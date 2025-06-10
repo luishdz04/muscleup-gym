@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { Box, Container, Typography, Paper, Button } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-export default function RegistroExitoso() {
+// Componente separado que usa useSearchParams
+function RegistroContent() {
   const searchParams = useSearchParams();
   const [userName, setUserName] = useState('');
   
@@ -300,5 +301,24 @@ export default function RegistroExitoso() {
         }
       `}</style>
     </Box>
+  );
+}
+
+// Componente principal con Suspense
+export default function RegistroExitoso() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #000000 0%, #1a1a1a 100%)'
+      }}>
+        <Typography sx={{ color: 'white' }}>Cargando...</Typography>
+      </Box>
+    }>
+      <RegistroContent />
+    </Suspense>
   );
 }
