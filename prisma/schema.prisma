@@ -1,0 +1,67 @@
+// schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String   @unique
+  password      String
+  whatsapp      String
+  birthDate     DateTime
+  gender        String
+  maritalStatus String
+  isMinor       Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  
+  // Relaciones
+  address          Address?
+  emergencyContact EmergencyContact?
+  membershipInfo   MembershipInfo?
+}
+
+model Address {
+  id          String @id @default(cuid())
+  street      String
+  number      String
+  neighborhood String
+  city        String
+  state       String
+  postalCode  String
+  country     String @default("México")
+  
+  // Relación
+  userId      String @unique
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmergencyContact {
+  id               String @id @default(cuid())
+  name             String
+  phone            String
+  medicalCondition String
+  bloodType        String
+  
+  // Relación
+  userId           String @unique
+  user             User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MembershipInfo {
+  id             String  @id @default(cuid())
+  referredBy     String
+  mainMotivation String
+  receivePlans   Boolean @default(false)
+  trainingLevel  String
+  
+  // Relación
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
