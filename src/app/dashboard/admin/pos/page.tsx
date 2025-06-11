@@ -1030,24 +1030,21 @@ console.log('🔍 POSPage Render:', {
         onSuccess={handleSaleSuccess}
       />
 
-      {/* ✅ LAYAWAY DIALOG CON PROPS ESTABLES */}
-  <ErrorBoundary name="LayawayDialog">
-  <LayawayDialog
-    open={layawayDialogOpen}
-    onClose={() => {
-      console.log('🔐 Cerrando LayawayDialog');
-      setLayawayDialogOpen(false);
-    }}
-    cart={stableCart}
-    customer={stableCustomer}
-    coupon={stableCoupon}
-    totals={totals}
-    onSuccess={() => {
-      console.log('✅ LayawayDialog Success');
-      handleSaleSuccess();
-    }}
-  />
-</ErrorBoundary>
+<LayawayDialog
+  open={layawayDialogOpen}
+  onClose={() => {
+    console.log('🔐 Cerrando LayawayDialog');
+    setLayawayDialogOpen(false);
+  }}
+  cart={stableCart}
+  customer={stableCustomer}
+  coupon={stableCoupon}
+  totals={totals}
+  onSuccess={() => {
+    console.log('✅ LayawayDialog Success');
+    handleSaleSuccess();
+  }}
+/>
 
       {/* FAB para scanner */}
       <Fab
