@@ -1,7 +1,6 @@
-// src/components/dialogs/ConvertToSaleDialog.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -57,6 +56,15 @@ interface ProductStock {
   available: boolean;
 }
 
+interface LayawayItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
 export default function ConvertToSaleDialog({ 
   open, 
   onClose, 
@@ -66,19 +74,52 @@ export default function ConvertToSaleDialog({
   const [processing, setProcessing] = useState(false);
   const [stockCheck, setStockCheck] = useState<ProductStock[]>([]);
   const [loadingStock, setLoadingStock] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [layawayItems, setLayawayItems] = useState<LayawayItem[]>([]);
   const [canConvert, setCanConvert] = useState(false);
   const [printReceipt, setPrintReceipt] = useState(true);
   const [sendEmail, setSendEmail] = useState(false);
 
   const supabase = createBrowserSupabaseClient();
 
+  // ✅ CARGAR ITEMS DEL APARTADO
+  const loadLayawayItems = useCallback(async () => {
+    if (!layaway?.id) return;
+
+    setLoadingItems(true);
+    try {
+      console.log('🔍 Cargando items del apartado:', layaway.sale_number);
+
+      const { data: items, error } = await supabase
+        .from('sale_items')
+        .select('*')
+        .eq('sale_id', layaway.id);
+
+      if (error) {
+        console.error('❌ Error cargando items:', error);
+        throw error;
+      }
+
+      setLayawayItems(items || []);
+      console.log('✅ Items cargados:', items?.length || 0);
+
+    } catch (error) {
+      console.error('💥 Error cargando items del apartado:', error);
+      showNotification('Error al cargar los productos del apartado', 'error');
+    } finally {
+      setLoadingItems(false);
+    }
+  }, [layaway?.id, layaway?.sale_number, supabase]);
+
   // ✅ VERIFICAR STOCK DISPONIBLE
-  const checkProductStock = async () => {
-    if (!layaway?.items) return;
+  const checkProductStock = useCallback(async () => {
+    if (layawayItems.length === 0) return;
 
     setLoadingStock(true);
     try {
-      const stockPromises = layaway.items.map(async (item: any) => {
+      console.log('🔍 Verificando stock para', layawayItems.length, 'productos...');
+
+      const stockPromises = layawayItems.map(async (item) => {
         const { data: product, error } = await supabase
           .from('products')
           .select('id, name, current_stock')
@@ -86,7 +127,7 @@ export default function ConvertToSaleDialog({
           .single();
 
         if (error) {
-          console.error('Error checking stock for product:', item.product_id, error);
+          console.error('❌ Error verificando stock para producto:', item.product_id, error);
           return {
             id: item.product_id,
             name: item.product_name,
@@ -99,52 +140,76 @@ export default function ConvertToSaleDialog({
         return {
           id: product.id,
           name: product.name,
-          current_stock: product.current_stock,
+          current_stock: product.current_stock || 0,
           required_quantity: item.quantity,
-          available: product.current_stock >= item.quantity
+          available: (product.current_stock || 0) >= item.quantity
         };
       });
 
       const stockResults = await Promise.all(stockPromises);
       setStockCheck(stockResults);
       
-      // Verificar si todos los productos tienen stock suficiente
+      // ✅ VERIFICAR SI SE PUEDE CONVERTIR
       const allAvailable = stockResults.every(stock => stock.available);
-      setCanConvert(allAvailable && layaway.pending_amount <= 0);
+      const isPaidInFull = (layaway.pending_amount || 0) <= 0;
+      const isLayawayStatus = layaway.status === 'pending';
+      
+      const canConvertNow = allAvailable && isPaidInFull && isLayawayStatus;
+      setCanConvert(canConvertNow);
+
+      console.log('📊 Verificación de conversión:', {
+        stockDisponible: allAvailable,
+        pagadoCompleto: isPaidInFull,
+        estadoPendiente: isLayawayStatus,
+        puedeConvertir: canConvertNow
+      });
 
     } catch (error) {
-      console.error('Error checking stock:', error);
+      console.error('💥 Error verificando stock:', error);
       showNotification('Error al verificar el inventario', 'error');
     } finally {
       setLoadingStock(false);
     }
-  };
+  }, [layawayItems, layaway.pending_amount, layaway.status, supabase]);
 
+  // ✅ EFECTOS
   useEffect(() => {
     if (open && layaway) {
-      checkProductStock();
+      console.log('🔄 Inicializando conversión para apartado:', layaway.sale_number);
+      loadLayawayItems();
       setSendEmail(!!layaway.customer_email);
     }
-  }, [open, layaway]);
+  }, [open, layaway, loadLayawayItems]);
 
-  // ✅ CONVERTIR APARTADO A VENTA
+  useEffect(() => {
+    if (layawayItems.length > 0) {
+      checkProductStock();
+    }
+  }, [layawayItems, checkProductStock]);
+
+  // ✅ CONVERTIR APARTADO A VENTA CORREGIDO
   const handleConvertToSale = async () => {
-    if (!canConvert) return;
+    if (!canConvert || layawayItems.length === 0) return;
 
     setProcessing(true);
     try {
-      const user = await supabase.auth.getUser();
-      const userId = user.data.user?.id;
+      console.log('🔄 Iniciando conversión a venta...', {
+        apartado: layaway.sale_number,
+        timestamp: '2025-06-11 07:05:12 UTC',
+        usuario: 'luishdz04'
+      });
 
-      if (!userId) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user?.id) {
         throw new Error('Usuario no autenticado');
       }
+      const userId = userData.user.id;
 
       // ✅ ACTUALIZAR APARTADO A VENTA
       const { error: updateError } = await supabase
         .from('sales')
         .update({
-          sale_type: 'sale',
+          sale_type: 'sale', // ✅ Cambiar de layaway a sale
           status: 'completed',
           payment_status: 'paid',
           completed_at: new Date().toISOString(),
@@ -155,45 +220,16 @@ export default function ConvertToSaleDialog({
         })
         .eq('id', layaway.id);
 
-      if (updateError) throw updateError;
-
-      // ✅ ACTUALIZAR STOCK DE PRODUCTOS
-      for (const item of layaway.items) {
-        const stockItem = stockCheck.find(s => s.id === item.product_id);
-        if (!stockItem) continue;
-
-        const newStock = stockItem.current_stock - item.quantity;
-
-        // Actualizar stock del producto
-        const { error: stockError } = await supabase
-          .from('products')
-          .update({
-            current_stock: newStock,
-            updated_at: new Date().toISOString(),
-            updated_by: userId
-          })
-          .eq('id', item.product_id);
-
-        if (stockError) throw stockError;
-
-        // ✅ REGISTRAR MOVIMIENTO DE INVENTARIO
-        await supabase
-          .from('inventory_movements')
-          .insert([{
-            product_id: item.product_id,
-            movement_type: 'salida',
-            quantity: -item.quantity,
-            previous_stock: stockItem.current_stock,
-            new_stock: newStock,
-            unit_cost: item.unit_price, // Usar precio de venta como referencia
-            total_cost: item.quantity * item.unit_price,
-            reason: 'Apartado convertido a venta',
-            reference_id: layaway.id,
-            notes: `Apartado #${layaway.sale_number} convertido a venta final`,
-            created_at: new Date().toISOString(),
-            created_by: userId
-          }]);
+      if (updateError) {
+        console.error('❌ Error actualizando apartado:', updateError);
+        throw updateError;
       }
+
+      console.log('✅ Apartado actualizado a venta');
+
+      // ✅ NOTA: NO actualizar stock aquí
+      // El stock ya se actualizó cuando se creó el apartado
+      // Al convertir a venta no hay movimiento adicional de inventario
 
       // ✅ REGISTRAR HISTORIAL DE CAMBIO
       await supabase
@@ -202,40 +238,44 @@ export default function ConvertToSaleDialog({
           layaway_id: layaway.id,
           previous_status: 'pending',
           new_status: 'completed',
-          previous_paid_amount: layaway.paid_amount,
-          new_paid_amount: layaway.paid_amount,
-          reason: 'Apartado convertido manualmente a venta final',
+          previous_paid_amount: layaway.paid_amount || 0,
+          new_paid_amount: layaway.paid_amount || 0,
+          reason: 'Apartado convertido manualmente a venta final - 2025-06-11 07:05:12 UTC por luishdz04',
           created_at: new Date().toISOString(),
           created_by: userId
         }]);
 
-      // ✅ ACTUALIZAR PUNTOS DEL CLIENTE SI APLICA
+      console.log('✅ Historial de conversión registrado');
+
+      // ✅ ACTUALIZAR PUNTOS DEL CLIENTE SI APLICA - CORREGIDO
       if (layaway.customer_id) {
-        const { data: customer } = await supabase
-          .from('users')
+        const { data: customer, error: customerError } = await supabase
+          .from('Users') // ✅ CORREGIDO: Tabla Users con mayúscula
           .select('points_balance, total_purchases, membership_type')
           .eq('id', layaway.customer_id)
           .single();
 
-        if (customer && customer.membership_type) {
-          const pointsEarned = Math.floor(layaway.total_amount / 100); // 1 punto por cada $100
+        if (!customerError && customer && customer.membership_type) {
+          const pointsEarned = Math.floor((layaway.total_amount || 0) / 100); // 1 punto por cada $100
           
           await supabase
-            .from('users')
+            .from('Users') // ✅ CORREGIDO: Tabla Users con mayúscula
             .update({
               points_balance: (customer.points_balance || 0) + pointsEarned,
-              total_purchases: (customer.total_purchases || 0) + layaway.total_amount,
+              total_purchases: (customer.total_purchases || 0) + (layaway.total_amount || 0),
               updated_at: new Date().toISOString()
             })
             .eq('id', layaway.customer_id);
+
+          console.log('✅ Puntos de cliente actualizados:', pointsEarned);
         }
       }
 
-      showNotification('¡Apartado convertido a venta exitosamente!', 'success');
+      showNotification('🎉 ¡Apartado convertido a venta exitosamente!', 'success');
       onSuccess();
     } catch (error) {
-      console.error('Error converting layaway:', error);
-      showNotification('Error al convertir el apartado', 'error');
+      console.error('💥 Error convirtiendo apartado:', error);
+      showNotification('Error al convertir el apartado: ' + (error as Error).message, 'error');
     } finally {
       setProcessing(false);
     }
@@ -244,7 +284,7 @@ export default function ConvertToSaleDialog({
   if (!layaway) return null;
 
   const hasInsufficientStock = stockCheck.some(stock => !stock.available);
-  const hasPendingAmount = layaway.pending_amount > 0;
+  const hasPendingAmount = (layaway.pending_amount || 0) > 0;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
@@ -260,6 +300,7 @@ export default function ConvertToSaleDialog({
           <Typography variant="h6" fontWeight="bold">
             🔄 Convertir Apartado a Venta
           </Typography>
+          {(loadingItems || loadingStock) && <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />}
         </Box>
         <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
           <CloseIcon />
@@ -267,6 +308,11 @@ export default function ConvertToSaleDialog({
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
+        {/* ✅ INDICADOR DE ACTUALIZACIÓN */}
+        <Alert severity="info" sx={{ mb: 3 }}>
+          🔄 Conversión de apartado - 2025-06-11 07:05:12 UTC - Usuario: luishdz04
+        </Alert>
+
         {/* Información del apartado */}
         <Card sx={{ 
           mb: 3,
@@ -283,7 +329,7 @@ export default function ConvertToSaleDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Total</Typography>
                   <Typography variant="h6" fontWeight="bold">
-                    {formatPrice(layaway.total_amount)}
+                    {formatPrice(layaway.total_amount || 0)}
                   </Typography>
                 </Box>
               </Grid>
@@ -292,7 +338,7 @@ export default function ConvertToSaleDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Pagado</Typography>
                   <Typography variant="h6" fontWeight="bold" color="success.main">
-                    {formatPrice(layaway.paid_amount)}
+                    {formatPrice(layaway.paid_amount || 0)}
                   </Typography>
                 </Box>
               </Grid>
@@ -301,7 +347,7 @@ export default function ConvertToSaleDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Pendiente</Typography>
                   <Typography variant="h6" fontWeight="bold" color={hasPendingAmount ? 'error.main' : 'success.main'}>
-                    {formatPrice(layaway.pending_amount)}
+                    {formatPrice(layaway.pending_amount || 0)}
                   </Typography>
                 </Box>
               </Grid>
@@ -334,7 +380,7 @@ export default function ConvertToSaleDialog({
         {hasPendingAmount && (
           <Alert severity="error" sx={{ mb: 3 }}>
             <Typography variant="body1" fontWeight="600">
-              ❌ No se puede convertir: Hay un saldo pendiente de {formatPrice(layaway.pending_amount)}
+              ❌ No se puede convertir: Hay un saldo pendiente de {formatPrice(layaway.pending_amount || 0)}
             </Typography>
             <Typography variant="body2">
               El apartado debe estar completamente pagado para poder convertirse a venta.
@@ -368,16 +414,27 @@ export default function ConvertToSaleDialog({
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2, color: '#2196f3', fontWeight: 700 }}>
-              📦 Verificación de Inventario
+              📦 Verificación de Inventario ({layawayItems.length} productos)
             </Typography>
 
-            {loadingStock ? (
+            {loadingItems ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                <CircularProgress />
+                <Typography variant="body1" sx={{ ml: 2 }}>
+                  Cargando productos del apartado...
+                </Typography>
+              </Box>
+            ) : loadingStock ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
                 <CircularProgress />
                 <Typography variant="body1" sx={{ ml: 2 }}>
                   Verificando stock disponible...
                 </Typography>
               </Box>
+            ) : layawayItems.length === 0 ? (
+              <Alert severity="warning">
+                No se encontraron productos en este apartado
+              </Alert>
             ) : (
               <TableContainer>
                 <Table size="small">
@@ -463,12 +520,12 @@ export default function ConvertToSaleDialog({
                 <Grid container spacing={3}>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <Box sx={{ textAlign: 'center', p: 2 }}>
-                      <InventoryIcon sx={{ fontSize: 40, color: '#ff9800', mb: 1 }} />
-                      <Typography variant="h6" fontWeight="bold" color="warning.main">
-                        Stock Actualizado
+                      <InventoryIcon sx={{ fontSize: 40, color: '#2196f3', mb: 1 }} />
+                      <Typography variant="h6" fontWeight="bold" color="primary">
+                        Sin Cambio de Stock
                       </Typography>
                       <Typography variant="body2" color="textSecondary">
-                        Se reducirá el inventario de {stockCheck.length} producto{stockCheck.length !== 1 ? 's' : ''}
+                        El inventario ya se actualizó al crear el apartado
                       </Typography>
                     </Box>
                   </Grid>
@@ -480,15 +537,15 @@ export default function ConvertToSaleDialog({
                         Venta Registrada
                       </Typography>
                       <Typography variant="body2" color="textSecondary">
-                        Se creará venta final por {formatPrice(layaway.total_amount)}
+                        Se completará venta por {formatPrice(layaway.total_amount || 0)}
                       </Typography>
                     </Box>
                   </Grid>
 
                   <Grid size={{ xs: 12, md: 4 }}>
                     <Box sx={{ textAlign: 'center', p: 2 }}>
-                      <CheckIcon sx={{ fontSize: 40, color: '#2196f3', mb: 1 }} />
-                      <Typography variant="h6" fontWeight="bold" color="primary">
+                      <CheckIcon sx={{ fontSize: 40, color: '#ff9800', mb: 1 }} />
+                      <Typography variant="h6" fontWeight="bold" color="warning.main">
                         Estado Actualizado
                       </Typography>
                       <Typography variant="body2" color="textSecondary">
@@ -502,7 +559,7 @@ export default function ConvertToSaleDialog({
                   <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(76, 175, 80, 0.2)' }}>
                     <Alert severity="info">
                       <Typography variant="body2">
-                        💎 <strong>Puntos de Cliente:</strong> Se otorgarán {Math.floor(layaway.total_amount / 100)} puntos al cliente por esta venta.
+                        💎 <strong>Puntos de Cliente:</strong> Se otorgarán {Math.floor((layaway.total_amount || 0) / 100)} puntos al cliente por esta venta.
                       </Typography>
                     </Alert>
                   </Box>
@@ -573,7 +630,7 @@ export default function ConvertToSaleDialog({
 
         <Button
           onClick={handleConvertToSale}
-          disabled={!canConvert || processing}
+          disabled={!canConvert || processing || loadingItems || loadingStock}
           variant="contained"
           size="large"
           startIcon={processing ? <CircularProgress size={20} /> : <ConvertIcon />}
@@ -585,7 +642,7 @@ export default function ConvertToSaleDialog({
             px: 4
           }}
         >
-          {processing ? 'Convirtiendo...' : '🔄 Convertir a Venta'}
+          {processing ? 'Convirtiendo...' : loadingItems ? 'Cargando...' : '🔄 Convertir a Venta'}
         </Button>
       </DialogActions>
     </Dialog>
