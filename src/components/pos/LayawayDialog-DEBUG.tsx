@@ -44,13 +44,10 @@ import {
   Check as CheckIcon,
   CalendarToday as CalendarIcon,
   AttachMoney as MoneyIcon,
-  Receipt as ReceiptIcon,
   Schedule as ScheduleIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon,
-  Payment as PaymentIcon,
-  Notifications as NotificationIcon
+  Edit as EditIcon
 } from '@mui/icons-material';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { formatPrice, formatDate } from '@/utils/formatUtils';
@@ -66,8 +63,8 @@ interface LayawayDialogProps {
   onSuccess: () => void;
 }
 
-// ✅ MÉTODOS DE PAGO COMPLETOS (IGUAL AL ORIGINAL)
-const paymentMethods = [
+// ✅ MÉTODOS DE PAGO LIMPIOS (COMISIÓN SOLO DÉBITO/CRÉDITO)
+const defaultPaymentMethods = [
   { 
     value: 'efectivo', 
     label: 'Efectivo', 
@@ -81,7 +78,7 @@ const paymentMethods = [
     value: 'debito', 
     label: 'Tarjeta de Débito', 
     icon: '💳',
-    commission: 2.5,
+    commission: 2.5, // Configurable desde BD
     requiresReference: true,
     allowsChange: false,
     allowsMixed: true
@@ -90,7 +87,7 @@ const paymentMethods = [
     value: 'credito', 
     label: 'Tarjeta de Crédito', 
     icon: '💳',
-    commission: 3.5,
+    commission: 3.5, // Configurable desde BD
     requiresReference: true,
     allowsChange: false,
     allowsMixed: true
@@ -99,7 +96,7 @@ const paymentMethods = [
     value: 'transferencia', 
     label: 'Transferencia', 
     icon: '🏦',
-    commission: 1.0,
+    commission: 0, // ✅ SIN COMISIÓN PARA TRANSFERENCIA
     requiresReference: true,
     allowsChange: false,
     allowsMixed: true
@@ -108,7 +105,7 @@ const paymentMethods = [
     value: 'vales', 
     label: 'Vales de Despensa', 
     icon: '🎫',
-    commission: 4.0,
+    commission: 4.0, // Configurable desde BD
     requiresReference: true,
     allowsChange: false,
     allowsMixed: true
@@ -126,16 +123,14 @@ interface PaymentDetail {
   sequence: number;
 }
 
-// ✅ CONFIGURACIONES AVANZADAS
+// ✅ CONFIGURACIONES LIMPIAS (SIN NOTIFICACIONES)
 const layawayConfig = {
   defaultDuration: 30,
   maxDuration: 365,
   minDepositPercentage: 10,
   maxDepositPercentage: 100,
   extensionFee: 50,
-  maxExtensions: 2,
-  reminderDaysBefore: [7, 3, 1],
-  autoExpireAfterDays: 3
+  maxExtensions: 2
 };
 
 export default function LayawayDialog({ 
@@ -155,21 +150,21 @@ export default function LayawayDialog({
   const [completed, setCompleted] = useState(false);
   const [layawayNumber, setLayawayNumber] = useState<string | null>(null);
 
-  // ✅ ESTADOS AVANZADOS - FASE 3
+  // ✅ ESTADOS AVANZADOS
   const [durationDays, setDurationDays] = useState(layawayConfig.defaultDuration);
   const [customDays, setCustomDays] = useState(layawayConfig.defaultDuration);
   const [useCustomDuration, setUseCustomDuration] = useState(false);
   const [customerNotes, setCustomerNotes] = useState('');
   const [applyCommission, setApplyCommission] = useState(true);
 
-  // 🚀 ESTADOS PARA PAGOS MIXTOS (FUNCIONALIDAD AVANZADA)
+  // 🚀 ESTADOS PARA PAGOS MIXTOS
   const [isMixedPayment, setIsMixedPayment] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState('');
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState(0);
   const [currentPaymentReference, setCurrentPaymentReference] = useState('');
 
-  // 🚀 ESTADOS PARA SISTEMA DE ABONOS (FUNCIONALIDAD AVANZADA)
+  // 🚀 ESTADOS PARA SISTEMA DE ABONOS
   const [allowInstallments, setAllowInstallments] = useState(false);
   const [installmentPlan, setInstallmentPlan] = useState({
     totalInstallments: 3,
@@ -177,47 +172,65 @@ export default function LayawayDialog({
     frequency: 'weekly' // weekly, biweekly, monthly
   });
 
-  // 🚀 ESTADOS PARA NOTIFICACIONES (FUNCIONALIDAD AVANZADA)
-  const [notificationSettings, setNotificationSettings] = useState({
-    sendCreationNotification: true,
-    sendReminderNotifications: true,
-    sendExpirationNotification: true,
-    preferredMethod: 'whatsapp' // email, whatsapp, both
-  });
-
   // 🚀 ESTADOS PARA CONFIGURACIÓN AVANZADA
   const [advancedConfig, setAdvancedConfig] = useState({
     allowExtensions: true,
     extensionFee: layawayConfig.extensionFee,
     maxExtensions: layawayConfig.maxExtensions,
-    autoRenewEnabled: false,
     priorityCustomer: false
   });
 
+  // 🚀 ESTADO PARA COMISIONES CONFIGURABLES
+  const [paymentMethods, setPaymentMethods] = useState(defaultPaymentMethods);
+  const [commissionsLoaded, setCommissionsLoaded] = useState(false);
+
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ EFECTO PARA CARGAR COMISIONES DINÁMICAS
+  // ✅ EFECTO PARA CARGAR COMISIONES CONFIGURABLES DESDE BD
   useEffect(() => {
     const loadPaymentCommissions = async () => {
+      if (!open || commissionsLoaded) return;
+      
       try {
+        console.log('🔍 Cargando comisiones configurables...');
+        
         const { data: commissions, error } = await supabase
           .from('payment_commissions')
           .select('*')
           .eq('is_active', true);
 
-        if (!error && commissions) {
-          // Actualizar comisiones dinámicamente desde la BD
-          console.log('💳 Comisiones cargadas:', commissions);
+        if (!error && commissions && commissions.length > 0) {
+          console.log('💳 Comisiones encontradas en BD:', commissions);
+          
+          // Actualizar métodos de pago con comisiones de BD
+          const updatedMethods = defaultPaymentMethods.map(method => {
+            const dbCommission = commissions.find(c => c.payment_method === method.value);
+            if (dbCommission) {
+              return {
+                ...method,
+                commission: dbCommission.commission_value
+              };
+            }
+            return method;
+          });
+          
+          setPaymentMethods(updatedMethods);
+          console.log('✅ Comisiones actualizadas:', updatedMethods);
+        } else {
+          console.log('⚠️ Usando comisiones por defecto');
+          setPaymentMethods(defaultPaymentMethods);
         }
+        
+        setCommissionsLoaded(true);
       } catch (error) {
-        console.warn('⚠️ No se pudieron cargar comisiones dinámicas');
+        console.warn('⚠️ Error cargando comisiones, usando valores por defecto:', error);
+        setPaymentMethods(defaultPaymentMethods);
+        setCommissionsLoaded(true);
       }
     };
 
-    if (open) {
-      loadPaymentCommissions();
-    }
-  }, [open, supabase]);
+    loadPaymentCommissions();
+  }, [open, commissionsLoaded, supabase]);
 
   // ✅ CÁLCULOS AVANZADOS CON PAGOS MIXTOS
   const calculations = useMemo(() => {
@@ -238,7 +251,7 @@ export default function LayawayDialog({
       totalPaymentAmount = baseDeposit;
       if (applyCommission && currentPaymentMethod) {
         const method = paymentMethods.find(m => m.value === currentPaymentMethod);
-        if (method) {
+        if (method && method.commission > 0) { // ✅ Solo si tiene comisión configurada
           totalCommission = baseDeposit * (method.commission / 100);
         }
       }
@@ -291,7 +304,8 @@ export default function LayawayDialog({
     useCustomDuration,
     allowInstallments,
     installmentPlan,
-    advancedConfig
+    advancedConfig,
+    paymentMethods
   ]);
 
   // 🚀 FUNCIÓN PARA GENERAR CRONOGRAMA DE PAGOS
@@ -354,7 +368,7 @@ export default function LayawayDialog({
     setCurrentPaymentReference('');
 
     showNotification('Pago agregado correctamente', 'success');
-  }, [currentPaymentMethod, currentPaymentAmount, currentPaymentReference, applyCommission, paymentDetails.length]);
+  }, [currentPaymentMethod, currentPaymentAmount, currentPaymentReference, applyCommission, paymentDetails.length, paymentMethods]);
 
   const removePaymentDetail = useCallback((id: string) => {
     setPaymentDetails(prev => prev.filter(p => p.id !== id));
@@ -382,7 +396,7 @@ export default function LayawayDialog({
     return `AP${year}${month}${day}${timestamp}`;
   }, []);
 
-  // 🚀 PROCESAMIENTO AVANZADO CON TODAS LAS FUNCIONALIDADES
+  // 🚀 PROCESAMIENTO FINAL LIMPIO
   const handleCreateLayaway = useCallback(async () => {
     if (!customer) {
       showNotification('Se requiere un cliente para apartados', 'error');
@@ -405,9 +419,9 @@ export default function LayawayDialog({
       const userId = userData.user.id;
       const layawayNumber = await generateLayawayNumber();
 
-      console.log('🚀 CREANDO APARTADO AVANZADO...');
+      console.log('🚀 CREANDO APARTADO FINAL...');
 
-      // 🔥 DATOS AVANZADOS CON TODAS LAS FUNCIONALIDADES
+      // 🔥 DATOS LIMPIOS SIN NOTIFICACIONES
       const layawayData = {
         sale_number: layawayNumber,
         customer_id: customer.id,
@@ -428,22 +442,22 @@ export default function LayawayDialog({
         payment_status: 'partial',
         is_mixed_payment: isMixedPayment,
         payment_received: calculations.totalToCollect,
-        change_amount: 0, // Se calculará por método si es efectivo
+        change_amount: 0,
         commission_rate: isMixedPayment ? 0 : (paymentMethods.find(m => m.value === currentPaymentMethod)?.commission || 0),
         commission_amount: calculations.totalCommission,
         custom_commission_rate: null,
         skip_inscription: false,
-        notes: generateAdvancedNotes(),
+        notes: generateCleanNotes(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        // 🔥 CAMPOS AVANZADOS ADICIONALES
+        // 🔥 CAMPOS AVANZADOS
         payment_plan_days: allowInstallments ? calculations.installmentDetails?.totalInstallments : null,
         initial_payment: calculations.totalToCollect,
         expiration_date: calculations.expirationDate.toISOString().split('T')[0],
         last_payment_date: new Date().toISOString()
       };
 
-      console.log('💾 Datos del apartado avanzado:', layawayData);
+      console.log('💾 Datos del apartado final:', layawayData);
 
       // ✅ INSERTAR VENTA PRINCIPAL
       const { data: layaway, error: layawayError } = await supabase
@@ -485,7 +499,7 @@ export default function LayawayDialog({
 
       console.log('✅ Items creados');
 
-      // 🔥 CREAR DETALLES DE PAGO (AVANZADO)
+      // 🔥 CREAR DETALLES DE PAGO AVANZADOS
       if (isMixedPayment && paymentDetails.length > 0) {
         // PAGOS MIXTOS
         const paymentInserts = paymentDetails.map((payment, index) => ({
@@ -573,7 +587,7 @@ export default function LayawayDialog({
             total_cost: item.quantity * (item.product.cost_price || 0),
             reason: 'Apartado',
             reference_id: layaway.id,
-            notes: `Apartado avanzado #${layaway.sale_number} - ${calculations.durationDays} días`,
+            notes: `Apartado #${layaway.sale_number} - ${calculations.durationDays} días`,
             created_at: new Date().toISOString(),
             created_by: userId
           }]);
@@ -581,7 +595,7 @@ export default function LayawayDialog({
 
       console.log('✅ Stock e inventario actualizados');
 
-      // 🔥 CREAR HISTORIAL DE ESTADO (FUNCIONALIDAD AVANZADA)
+      // 🔥 CREAR HISTORIAL DE ESTADO
       await supabase
         .from('layaway_status_history')
         .insert([{
@@ -610,19 +624,14 @@ export default function LayawayDialog({
         console.log('✅ Cupón actualizado');
       }
 
-      // 🔥 PROCESAR NOTIFICACIONES (SI ESTÁN HABILITADAS)
-      if (notificationSettings.sendCreationNotification) {
-        await processNotifications(layaway, 'created');
-      }
-
       setLayawayNumber(layaway.sale_number);
       setCompleted(true);
-      showNotification('¡Apartado avanzado creado exitosamente!', 'success');
+      showNotification('¡Apartado creado exitosamente!', 'success');
 
-      console.log('🎉 APARTADO AVANZADO COMPLETADO:', layaway.sale_number);
+      console.log('🎉 APARTADO FINAL COMPLETADO:', layaway.sale_number);
 
     } catch (error) {
-      console.error('💥 Error procesando apartado avanzado:', error);
+      console.error('💥 Error procesando apartado:', error);
       showNotification('Error al procesar apartado: ' + (error as Error).message, 'error');
     } finally {
       setProcessing(false);
@@ -643,13 +652,13 @@ export default function LayawayDialog({
     isMixedPayment,
     paymentDetails,
     allowInstallments,
-    notificationSettings,
-    advancedConfig
+    advancedConfig,
+    paymentMethods
   ]);
 
-  // 🔥 FUNCIÓN PARA GENERAR NOTAS AVANZADAS
-  const generateAdvancedNotes = useCallback(() => {
-    let notes = `Apartado avanzado por ${calculations.durationDays} días - Vence: ${formatDate(calculations.expirationDate.toISOString())}`;
+  // 🔥 FUNCIÓN PARA GENERAR NOTAS LIMPIAS
+  const generateCleanNotes = useCallback(() => {
+    let notes = `Apartado por ${calculations.durationDays} días - Vence: ${formatDate(calculations.expirationDate.toISOString())}`;
     
     if (isMixedPayment) {
       notes += ` | Pago mixto: ${paymentDetails.length} métodos`;
@@ -669,29 +678,6 @@ export default function LayawayDialog({
     
     return notes;
   }, [calculations, isMixedPayment, paymentDetails, allowInstallments, advancedConfig, customerNotes]);
-
-  // 🔥 FUNCIÓN PARA PROCESAR NOTIFICACIONES
-  const processNotifications = useCallback(async (layaway: any, type: 'created' | 'reminder' | 'expired') => {
-    try {
-      console.log(`📧 Procesando notificación ${type} para apartado ${layaway.sale_number}`);
-      
-      // Aquí se implementaría el envío real de notificaciones
-      // Por ahora solo loggeamos
-      const notificationData = {
-        layaway_id: layaway.id,
-        customer_id: customer?.id,
-        type,
-        method: notificationSettings.preferredMethod,
-        status: 'sent',
-        sent_at: new Date().toISOString()
-      };
-      
-      console.log('📱 Notificación procesada:', notificationData);
-      
-    } catch (error) {
-      console.error('❌ Error procesando notificación:', error);
-    }
-  }, [customer, notificationSettings]);
 
   // ✅ RESET AL CERRAR
   const handleClose = useCallback(() => {
@@ -719,10 +705,13 @@ export default function LayawayDialog({
     setCustomDays(layawayConfig.defaultDuration);
     setDurationDays(layawayConfig.defaultDuration);
     
+    // Reset comisiones
+    setCommissionsLoaded(false);
+    
     onClose();
   }, [completed, onSuccess, onClose]);
 
-  // ✅ VALIDACIÓN AVANZADA
+  // ✅ VALIDACIÓN LIMPIA
   const canProceedToNextStep = useCallback(() => {
     switch (activeStep) {
       case 0: 
@@ -740,12 +729,12 @@ export default function LayawayDialog({
       default: 
         return false;
     }
-  }, [activeStep, calculations, isMixedPayment, paymentDetails, currentPaymentMethod, currentPaymentReference]);
+  }, [activeStep, calculations, isMixedPayment, paymentDetails, currentPaymentMethod, currentPaymentReference, paymentMethods]);
 
   const steps = [
-    { label: 'Configuración Avanzada', description: 'Anticipo, duración y opciones especiales' },
+    { label: 'Configuración', description: 'Anticipo, duración y opciones' },
     { label: 'Métodos de Pago', description: 'Pago único o múltiples métodos' },
-    { label: 'Confirmación Final', description: 'Revisar y procesar apartado' }
+    { label: 'Confirmación', description: 'Revisar y procesar apartado' }
   ];
 
   if (!open) return null;
@@ -775,13 +764,13 @@ export default function LayawayDialog({
         <Box display="flex" alignItems="center" gap={2}>
           <BookmarkIcon />
           <Typography variant="h5" fontWeight="bold">
-            🚀 Apartado AVANZADO - Funcionalidades PRO
+            🚀 Apartado FINAL - Listo para Producción
           </Typography>
           <Chip 
-            label="v3.0 FINAL" 
-            color="secondary" 
+            label="FINAL v1.0" 
+            color="success" 
             size="small" 
-            sx={{ bgcolor: 'rgba(255,255,255,0.3)', color: '#FFFFFF', fontWeight: 'bold' }}
+            sx={{ bgcolor: 'rgba(76,175,80,0.8)', color: '#FFFFFF', fontWeight: 'bold' }}
           />
         </Box>
         <Button onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}>
@@ -820,6 +809,13 @@ export default function LayawayDialog({
               </Alert>
             )}
 
+            {/* Indicador de Comisiones Cargadas */}
+            {commissionsLoaded && (
+              <Alert severity="info" sx={{ mb: 3 }}>
+                💳 Comisiones configurables cargadas desde base de datos
+              </Alert>
+            )}
+
             <Grid container spacing={4}>
               {/* Stepper Principal */}
               <Grid size={{ xs: 12, md: 8 }}>
@@ -835,7 +831,7 @@ export default function LayawayDialog({
                             {step.description}
                           </Typography>
 
-                          {/* 🚀 PASO 1: CONFIGURACIÓN SUPER AVANZADA */}
+                          {/* 🚀 PASO 1: CONFIGURACIÓN LIMPIA */}
                           {index === 0 && (
                             <Box>
                               <Grid container spacing={3}>
@@ -843,7 +839,7 @@ export default function LayawayDialog({
                                 <Grid size={{ xs: 12, md: 6 }}>
                                   <Card sx={{ p: 3, background: 'rgba(156, 39, 176, 0.1)' }}>
                                     <Typography variant="h6" sx={{ color: '#9c27b0', mb: 2 }}>
-                                      💰 Anticipo Inteligente
+                                      💰 Anticipo del Apartado
                                     </Typography>
                                     
                                     <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 2 }}>
@@ -881,7 +877,7 @@ export default function LayawayDialog({
                                       </Typography>
                                     </Box>
 
-                                    {/* Opciones Avanzadas de Anticipo */}
+                                    {/* Cliente Prioritario */}
                                     <Box sx={{ mt: 2 }}>
                                       <FormControlLabel
                                         control={
@@ -894,18 +890,18 @@ export default function LayawayDialog({
                                             color="warning"
                                           />
                                         }
-                                        label="⭐ Cliente Prioritario (descuento especial)"
+                                        label="⭐ Cliente Prioritario"
                                         sx={{ color: '#CCCCCC' }}
                                       />
                                     </Box>
                                   </Card>
                                 </Grid>
 
-                                {/* Duración Avanzada */}
+                                {/* Duración */}
                                 <Grid size={{ xs: 12, md: 6 }}>
                                   <Card sx={{ p: 3, background: 'rgba(76, 175, 80, 0.1)' }}>
                                     <Typography variant="h6" sx={{ color: '#4caf50', mb: 2 }}>
-                                      📅 Configuración de Tiempo
+                                      📅 Duración del Apartado
                                     </Typography>
                                     
                                     <FormControl fullWidth sx={{ mb: 2 }}>
@@ -1082,99 +1078,31 @@ export default function LayawayDialog({
                                   </Card>
                                 </Grid>
 
-                                {/* Configuración de Notificaciones */}
+                                {/* Notas Personalizadas */}
                                 <Grid size={{ xs: 12, md: 6 }}>
-                                  <Card sx={{ p: 3, background: 'rgba(255, 152, 0, 0.1)' }}>
-                                    <Typography variant="h6" sx={{ color: '#ff9800', mb: 2 }}>
-                                      🔔 Notificaciones Automáticas
+                                  <Card sx={{ p: 3, background: 'rgba(255, 193, 7, 0.1)' }}>
+                                    <Typography variant="h6" sx={{ color: '#ffc107', mb: 2 }}>
+                                      📝 Notas del Apartado
                                     </Typography>
-                                    
-                                    <FormControlLabel
-                                      control={
-                                        <Switch
-                                          checked={notificationSettings.sendCreationNotification}
-                                          onChange={(e) => setNotificationSettings(prev => ({
-                                            ...prev,
-                                            sendCreationNotification: e.target.checked
-                                          }))}
-                                          color="primary"
-                                        />
-                                      }
-                                      label="📧 Enviar confirmación de apartado"
-                                      sx={{ color: '#CCCCCC', mb: 1 }}
+                                    <TextField
+                                      fullWidth
+                                      multiline
+                                      rows={4}
+                                      placeholder="Ej: Cliente prefiere recoger en horario específico, producto para regalo, etc."
+                                      value={customerNotes}
+                                      onChange={(e) => setCustomerNotes(e.target.value)}
+                                      sx={{ 
+                                        '& .MuiInputBase-input': { color: '#FFFFFF' },
+                                        '& .MuiInputBase-input::placeholder': { color: '#CCCCCC' }
+                                      }}
                                     />
-
-                                    <FormControlLabel
-                                      control={
-                                        <Switch
-                                          checked={notificationSettings.sendReminderNotifications}
-                                          onChange={(e) => setNotificationSettings(prev => ({
-                                            ...prev,
-                                            sendReminderNotifications: e.target.checked
-                                          }))}
-                                          color="primary"
-                                        />
-                                      }
-                                      label="⏰ Recordatorios antes del vencimiento"
-                                      sx={{ color: '#CCCCCC', mb: 1 }}
-                                    />
-
-                                    <FormControlLabel
-                                      control={
-                                        <Switch
-                                          checked={notificationSettings.sendExpirationNotification}
-                                          onChange={(e) => setNotificationSettings(prev => ({
-                                            ...prev,
-                                            sendExpirationNotification: e.target.checked
-                                          }))}
-                                          color="primary"
-                                        />
-                                      }
-                                      label="🚨 Aviso de vencimiento"
-                                      sx={{ color: '#CCCCCC', mb: 2 }}
-                                    />
-
-                                    <FormControl fullWidth size="small">
-                                      <InputLabel sx={{ color: '#CCCCCC' }}>Método preferido</InputLabel>
-                                      <Select
-                                        value={notificationSettings.preferredMethod}
-                                        onChange={(e) => setNotificationSettings(prev => ({
-                                          ...prev,
-                                          preferredMethod: e.target.value as any
-                                        }))}
-                                        sx={{ color: '#FFFFFF' }}
-                                      >
-                                        <MenuItem value="email">📧 Email</MenuItem>
-                                        <MenuItem value="whatsapp">📱 WhatsApp</MenuItem>
-                                        <MenuItem value="both">📧📱 Ambos</MenuItem>
-                                      </Select>
-                                    </FormControl>
                                   </Card>
                                 </Grid>
                               </Grid>
-
-                              {/* Notas Personalizadas */}
-                              <Card sx={{ mt: 3, p: 3, background: 'rgba(255, 193, 7, 0.1)' }}>
-                                <Typography variant="h6" sx={{ color: '#ffc107', mb: 2 }}>
-                                  📝 Notas y Observaciones Especiales
-                                </Typography>
-                                <TextField
-                                  fullWidth
-                                  multiline
-                                  rows={3}
-                                  placeholder="Ej: Cliente prefiere recoger en horario específico, producto para regalo de cumpleaños, requiere llamada previa, etc."
-                                  value={customerNotes}
-                                  onChange={(e) => setCustomerNotes(e.target.value)}
-                                  sx={{ 
-                                    '& .MuiInputBase-input': { color: '#FFFFFF' },
-                                    '& .MuiInputBase-input::placeholder': { color: '#CCCCCC' }
-                                  }}
-                                />
-                              </Card>
                             </Box>
                           )}
 
-                          {/* 🚀 PASO 2: MÉTODOS DE PAGO SUPER AVANZADOS */}
+                          {/* 🚀 PASO 2: MÉTODOS DE PAGO AVANZADOS */}
                           {index === 1 && (
                             <Box>
                               {/* Toggle Pago Mixto */}
@@ -1226,6 +1154,14 @@ export default function LayawayDialog({
                                             {paymentMethods.filter(m => m.allowsMixed).map((method) => (
                                               <MenuItem key={method.value} value={method.value}>
                                                 {method.icon} {method.label}
+                                                {method.commission > 0 && (
+                                                  <Chip 
+                                                    label={`+${method.commission}%`} 
+                                                    size="small" 
+                                                    color="warning"
+                                                    sx={{ ml: 1, fontSize: '0.7rem' }}
+                                                  />
+                                                )}
                                               </MenuItem>
                                             ))}
                                           </Select>
@@ -1383,7 +1319,7 @@ export default function LayawayDialog({
                                   )}
                                 </Box>
                               ) : (
-                                // 🔥 INTERFAZ DE PAGO ÚNICO (MEJORADA)
+                                // 🔥 INTERFAZ DE PAGO ÚNICO
                                 <Card sx={{ p: 3, background: 'rgba(33, 150, 243, 0.1)' }}>
                                   <Typography variant="h6" sx={{ color: '#2196f3', mb: 3 }}>
                                     💳 Método de Pago Único
@@ -1442,27 +1378,29 @@ export default function LayawayDialog({
                                               label="Referencia / Autorización"
                                               value={currentPaymentReference}
                                               onChange={(e) => setCurrentPaymentReference(e.target.value)}
-                                                                                            placeholder="Número de autorización, SPEI, etc."
+                                              placeholder="Número de autorización, SPEI, etc."
                                               required
                                               sx={{ mb: 2 }}
                                             />
                                           </Grid>
                                         )}
 
-                                        {/* Toggle Comisión */}
-                                        <Grid size={{ xs: 12, md: 6 }}>
-                                          <FormControlLabel
-                                            control={
-                                              <Switch
-                                                checked={applyCommission}
-                                                onChange={(e) => setApplyCommission(e.target.checked)}
-                                                color="primary"
-                                              />
-                                            }
-                                            label="Aplicar comisión al método de pago"
-                                            sx={{ color: '#CCCCCC' }}
-                                          />
-                                        </Grid>
+                                        {/* Toggle Comisión (solo si el método tiene comisión) */}
+                                        {paymentMethods.find(m => m.value === currentPaymentMethod)?.commission > 0 && (
+                                          <Grid size={{ xs: 12, md: 6 }}>
+                                            <FormControlLabel
+                                              control={
+                                                <Switch
+                                                  checked={applyCommission}
+                                                  onChange={(e) => setApplyCommission(e.target.checked)}
+                                                  color="primary"
+                                                />
+                                              }
+                                              label="Aplicar comisión al método de pago"
+                                              sx={{ color: '#CCCCCC' }}
+                                            />
+                                          </Grid>
+                                        )}
                                       </Grid>
 
                                       {/* Resumen de Cobro Único */}
@@ -1500,8 +1438,7 @@ export default function LayawayDialog({
                                           <Grid size={{ xs: 6, md: 3 }}>
                                             <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
                                               TOTAL A COBRAR:
-                                            </Typography>
-                                            <Typography variant="h5" sx={{ color: '#2196f3', fontWeight: 900 }}>
+                                                                                        <Typography variant="h5" sx={{ color: '#2196f3', fontWeight: 900 }}>
                                               {formatPrice(calculations.totalToCollect)}
                                             </Typography>
                                           </Grid>
@@ -1525,11 +1462,11 @@ export default function LayawayDialog({
                             </Box>
                           )}
 
-                          {/* 🚀 PASO 3: CONFIRMACIÓN SUPER DETALLADA */}
+                          {/* 🚀 PASO 3: CONFIRMACIÓN FINAL LIMPIA */}
                           {index === 2 && (
                             <Box>
                               <Typography variant="h6" sx={{ color: '#FFCC00', mb: 3 }}>
-                                ✅ Confirmación Final del Apartado AVANZADO
+                                ✅ Confirmación Final del Apartado
                               </Typography>
                               
                               <Grid container spacing={3}>
@@ -1537,7 +1474,7 @@ export default function LayawayDialog({
                                 <Grid size={{ xs: 12, md: 6 }}>
                                   <Card sx={{ p: 3, background: 'rgba(76, 175, 80, 0.1)', height: 'fit-content' }}>
                                     <Typography variant="h6" sx={{ color: '#4caf50', mb: 2 }}>
-                                      📋 Resumen Completo del Apartado
+                                      📋 Resumen del Apartado
                                     </Typography>
                                     
                                     {/* Información Básica */}
@@ -1605,18 +1542,18 @@ export default function LayawayDialog({
                                           sx={{ mr: 1, mb: 1 }}
                                         />
                                       )}
-                                      {notificationSettings.sendCreationNotification && (
-                                        <Chip 
-                                          label="📧 Notificaciones Activas" 
-                                          color="info" 
-                                          size="small" 
-                                          sx={{ mr: 1, mb: 1 }}
-                                        />
-                                      )}
                                       {isMixedPayment && (
                                         <Chip 
                                           label="💳 Pago Mixto" 
                                           color="secondary" 
+                                          size="small" 
+                                          sx={{ mr: 1, mb: 1 }}
+                                        />
+                                      )}
+                                      {commissionsLoaded && (
+                                        <Chip 
+                                          label="📊 Comisiones Configurables" 
+                                          color="info" 
                                           size="small" 
                                           sx={{ mr: 1, mb: 1 }}
                                         />
@@ -1693,7 +1630,7 @@ export default function LayawayDialog({
                                           borderRadius: 1 
                                         }}>
                                           <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 700 }}>
-                                            TOTAL A COBRAR: {formatPrice(calculations.totalToCollect)}
+                                                                                        TOTAL A COBRAR: {formatPrice(calculations.totalToCollect)}
                                           </Typography>
                                           <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
                                             ({paymentDetails.length} métodos de pago)
@@ -1746,36 +1683,11 @@ export default function LayawayDialog({
                                         </Box>
                                       </Box>
                                     )}
-
-                                    {/* Información de Notificaciones */}
-                                    {(notificationSettings.sendCreationNotification || notificationSettings.sendReminderNotifications) && (
-                                      <Box sx={{ mt: 3 }}>
-                                        <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.2)' }} />
-                                        <Typography variant="subtitle1" sx={{ color: '#ff9800', fontWeight: 600, mb: 1 }}>
-                                          🔔 Notificaciones Programadas:
-                                        </Typography>
-                                        {notificationSettings.sendCreationNotification && (
-                                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                                            ✅ Confirmación de apartado ({notificationSettings.preferredMethod})
-                                          </Typography>
-                                        )}
-                                        {notificationSettings.sendReminderNotifications && (
-                                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                                            ✅ Recordatorios antes del vencimiento
-                                          </Typography>
-                                        )}
-                                        {notificationSettings.sendExpirationNotification && (
-                                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                                            ✅ Aviso de vencimiento
-                                          </Typography>
-                                        )}
-                                      </Box>
-                                    )}
                                   </Card>
                                 </Grid>
                               </Grid>
 
-                              {/* Botón de Confirmación Final SUPER AVANZADO */}
+                              {/* Botón de Confirmación Final */}
                               <Box sx={{ 
                                 mt: 4, 
                                 p: 4, 
@@ -1785,7 +1697,7 @@ export default function LayawayDialog({
                                 border: '2px solid rgba(156, 39, 176, 0.5)'
                               }}>
                                 <Typography variant="h5" sx={{ color: '#FFFFFF', mb: 2, fontWeight: 700 }}>
-                                  🚀 ¿Confirmar Creación del Apartado AVANZADO?
+                                  🚀 ¿Confirmar Creación del Apartado?
                                 </Typography>
                                 <Typography variant="body1" sx={{ color: '#CCCCCC', mb: 3 }}>
                                   Se ejecutarán las siguientes acciones:
@@ -1823,12 +1735,12 @@ export default function LayawayDialog({
                                     </Box>
                                   </Grid>
                                   <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                    <Box sx={{ p: 2, background: 'rgba(255, 193, 7, 0.2)', borderRadius: 1 }}>
-                                      <Typography variant="body2" sx={{ color: '#ffc107', fontWeight: 600 }}>
-                                        🔔 Enviar Notificaciones
+                                    <Box sx={{ p: 2, background: 'rgba(96, 125, 139, 0.2)', borderRadius: 1 }}>
+                                      <Typography variant="body2" sx={{ color: '#607d8b', fontWeight: 600 }}>
+                                        📊 Crear Historial
                                       </Typography>
                                       <Typography variant="caption" sx={{ color: '#CCCCCC' }}>
-                                        {notificationSettings.preferredMethod === 'both' ? 'Email + WhatsApp' : notificationSettings.preferredMethod === 'email' ? 'Email' : 'WhatsApp'}
+                                        Estados y movimientos
                                       </Typography>
                                     </Box>
                                   </Grid>
@@ -1854,12 +1766,12 @@ export default function LayawayDialog({
                                     }
                                   }}
                                 >
-                                  {processing ? 'PROCESANDO APARTADO AVANZADO...' : '🚀 CREAR APARTADO PRO FINAL'}
+                                  {processing ? 'PROCESANDO APARTADO...' : '🚀 CREAR APARTADO FINAL'}
                                 </Button>
 
                                 {processing && (
                                   <Typography variant="body2" sx={{ color: '#CCCCCC', mt: 2 }}>
-                                    Guardando en Supabase, actualizando inventario y enviando notificaciones...
+                                    Guardando en Supabase, actualizando inventario y creando historial...
                                   </Typography>
                                 )}
                               </Box>
@@ -1908,7 +1820,7 @@ export default function LayawayDialog({
                 </Card>
               </Grid>
 
-              {/* 🚀 PANEL LATERAL SUPER AVANZADO */}
+              {/* 🚀 PANEL LATERAL FINAL */}
               <Grid size={{ xs: 12, md: 4 }}>
                 <Box sx={{ position: 'sticky', top: 20 }}>
                   {/* Resumen Financiero Principal */}
@@ -2005,7 +1917,7 @@ export default function LayawayDialog({
                     </CardContent>
                   </Card>
 
-                  {/* Info de Configuraciones Avanzadas */}
+                  {/* Info de Configuraciones */}
                   <Card sx={{ background: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)', mb: 2 }}>
                     <CardContent>
                       <Typography variant="h6" sx={{ color: '#ffc107', mb: 2 }}>
@@ -2068,9 +1980,9 @@ export default function LayawayDialog({
                             variant="outlined"
                           />
                         )}
-                        {notificationSettings.sendCreationNotification && (
+                        {commissionsLoaded && (
                           <Chip 
-                            label="🔔 Notificaciones" 
+                            label="📊 Comisiones BD" 
                             size="small" 
                             color="primary"
                             variant="outlined"
@@ -2088,7 +2000,7 @@ export default function LayawayDialog({
                       </Typography>
                       
                       <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
-                        Versión: <strong>FASE 3 - PRO FINAL</strong>
+                        Versión: <strong>FINAL v1.0</strong>
                       </Typography>
                       <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
                         Usuario: <strong>luishdz04</strong>
@@ -2097,7 +2009,7 @@ export default function LayawayDialog({
                         Fecha: <strong>{formatDate(new Date().toISOString())}</strong>
                       </Typography>
                       <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                        Estado: <strong>✅ Funcional</strong>
+                        Estado: <strong>✅ Listo para Producción</strong>
                       </Typography>
 
                       <Box sx={{ 
@@ -2111,6 +2023,18 @@ export default function LayawayDialog({
                           🎉 Sistema sin Error #301
                         </Typography>
                       </Box>
+
+                      <Box sx={{ 
+                        mt: 1,
+                        p: 1, 
+                        background: 'rgba(33, 150, 243, 0.2)', 
+                        borderRadius: 1, 
+                        textAlign: 'center' 
+                      }}>
+                        <Typography variant="caption" sx={{ color: '#2196f3', fontWeight: 600 }}>
+                          💳 Comisiones solo Débito/Crédito
+                        </Typography>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Box>
@@ -2118,18 +2042,18 @@ export default function LayawayDialog({
             </Grid>
           </Box>
         ) : (
-          // ✅ CONFIRMACIÓN DE ÉXITO SUPER AVANZADA
+          // ✅ CONFIRMACIÓN DE ÉXITO FINAL
           <Box textAlign="center" sx={{ py: 6 }}>
             <CheckIcon sx={{ fontSize: 120, color: '#4caf50', mb: 3 }} />
             <Typography variant="h2" color="#4caf50" fontWeight="bold" gutterBottom>
-              ¡APARTADO AVANZADO CREADO!
+              ¡APARTADO CREADO EXITOSAMENTE!
             </Typography>
             <Typography variant="h4" gutterBottom sx={{ color: '#9c27b0', fontWeight: 700, mb: 3 }}>
               #{layawayNumber}
             </Typography>
             
             <Typography variant="h6" color="#CCCCCC" sx={{ mb: 4 }}>
-              Apartado guardado exitosamente en Supabase
+              Apartado guardado exitosamente en Supabase - {formatDate(new Date().toISOString())}
             </Typography>
             
             <Grid container spacing={2} sx={{ maxWidth: 800, mx: 'auto', mb: 4 }}>
@@ -2172,22 +2096,21 @@ export default function LayawayDialog({
                   <Chip label="📅 Sistema de Abonos" color="info" />
                 )}
                 {advancedConfig.allowExtensions && (
-                  <Chip label="🔄 Extensiones Automáticas" color="success" />
-                )}
-                {notificationSettings.sendCreationNotification && (
-                  <Chip label="🔔 Notificaciones" color="primary" />
+                  <Chip label="🔄 Extensiones" color="success" />
                 )}
                 <Chip label="💾 Guardado en BD" color="default" />
                 <Chip label="📊 Historial de Estados" color="default" />
                 <Chip label="📦 Gestión de Inventario" color="default" />
+                <Chip label="💳 Comisiones Configurables" color="primary" />
+                <Chip label="✅ Sin Notificaciones Pendientes" color="warning" />
               </Box>
             </Box>
 
             <Typography variant="h5" sx={{ color: '#FFFFFF', fontWeight: 700, mb: 2 }}>
-              🎊 ¡FASE 3 COMPLETADA CON ÉXITO! 🎊
+              🎊 ¡SISTEMA FINAL COMPLETADO! 🎊
             </Typography>
             <Typography variant="body1" sx={{ color: '#CCCCCC' }}>
-              Todas las funcionalidades avanzadas del sistema original han sido implementadas
+              Apartado listo para producción - Comisiones solo débito/crédito - Sin notificaciones
             </Typography>
           </Box>
         )}
