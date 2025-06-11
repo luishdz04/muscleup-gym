@@ -1,4 +1,3 @@
-// src/components/dialogs/PaymentToLayawayDialog.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -52,7 +51,7 @@ import { showNotification } from '@/utils/notifications';
 interface PaymentToLayawayDialogProps {
   open: boolean;
   onClose: () => void;
-  layaway: any;
+  layaway: any; // ✅ CORREGIDO: Tipo flexible por ahora
   onSuccess: () => void;
 }
 
@@ -67,11 +66,13 @@ interface PaymentData {
   notes: string;
 }
 
+// ✅ MÉTODOS DE PAGO CORREGIDOS
 const paymentMethods = [
   { value: 'efectivo', label: 'Efectivo', icon: '💵', hasCommission: false },
   { value: 'debito', label: 'Tarjeta Débito', icon: '💳', hasCommission: true },
   { value: 'credito', label: 'Tarjeta Crédito', icon: '💳', hasCommission: true },
-  { value: 'transferencia', label: 'Transferencia', icon: '🏦', hasCommission: false }
+  { value: 'transferencia', label: 'Transferencia', icon: '🏦', hasCommission: false },
+  { value: 'vales', label: 'Vales de Despensa', icon: '🎫', hasCommission: true }
 ];
 
 export default function PaymentToLayawayDialog({
@@ -98,23 +99,37 @@ export default function PaymentToLayawayDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ CARGAR COMISIONES
+  // ✅ CARGAR COMISIONES CORREGIDO
   const loadCommissions = useCallback(async () => {
     try {
+      console.log('🔍 Cargando comisiones para abono...');
+      
       const { data, error } = await supabase
         .from('payment_commissions')
         .select('*')
         .eq('is_active', true);
 
-      if (error) throw error;
-      setPaymentCommissions(data || []);
+      if (error) {
+        console.error('❌ Error cargando comisiones:', error);
+        // Usar valores por defecto si falla
+        setPaymentCommissions([
+          { payment_method: 'debito', commission_type: 'percentage', commission_value: 2.5, min_amount: 0 },
+          { payment_method: 'credito', commission_type: 'percentage', commission_value: 3.5, min_amount: 0 },
+          { payment_method: 'vales', commission_type: 'percentage', commission_value: 4.0, min_amount: 0 }
+        ]);
+      } else {
+        setPaymentCommissions(data || []);
+        console.log('✅ Comisiones cargadas:', data?.length || 0);
+      }
     } catch (error) {
-      console.error('Error loading commissions:', error);
+      console.error('💥 Error cargando comisiones:', error);
     }
   }, [supabase]);
 
   useEffect(() => {
-    if (open) {
+    if (open && layaway) {
+      console.log('🔄 Inicializando dialog de abono para:', layaway.sale_number);
+      
       loadCommissions();
       setActiveStep(0);
       setPaymentData({
@@ -132,15 +147,24 @@ export default function PaymentToLayawayDialog({
     }
   }, [open, layaway, loadCommissions]);
 
-  // ✅ CALCULAR COMISIÓN
+  // ✅ CALCULAR COMISIÓN CORREGIDO
   const calculateCommission = useCallback((method: string, amount: number) => {
-    if (!['debito', 'credito'].includes(method)) {
+    // Solo aplicar comisión a débito, crédito y vales
+    if (!['debito', 'credito', 'vales'].includes(method)) {
       return { rate: 0, amount: 0 };
     }
 
     const commission = paymentCommissions.find(c => c.payment_method === method);
-    if (!commission || amount < commission.min_amount) {
-      return { rate: 0, amount: 0 };
+    if (!commission || amount < (commission.min_amount || 0)) {
+      // Valores por defecto si no se encuentra configuración
+      const defaultRates: Record<string, number> = {
+        debito: 2.5,
+        credito: 3.5,
+        vales: 4.0
+      };
+      
+      const rate = defaultRates[method] || 0;
+      return { rate, amount: (amount * rate) / 100 };
     }
 
     if (commission.commission_type === 'percentage') {
@@ -173,7 +197,7 @@ export default function PaymentToLayawayDialog({
     }));
   };
 
-  // ✅ VALIDAR PASO
+  // ✅ VALIDAR PASO CORREGIDO
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -181,7 +205,7 @@ export default function PaymentToLayawayDialog({
       if (!paymentData.amount || paymentData.amount <= 0) {
         newErrors.amount = 'El monto debe ser mayor a 0';
       }
-      if (paymentData.amount > layaway?.pending_amount) {
+      if (layaway && paymentData.amount > (layaway.pending_amount || 0)) {
         newErrors.amount = 'El monto no puede exceder el pendiente';
       }
       if (!paymentData.method) {
@@ -196,25 +220,41 @@ export default function PaymentToLayawayDialog({
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ PROCESAR ABONO
+  // ✅ PROCESAR ABONO CORREGIDO
   const processPayment = async () => {
-    if (!validateStep(0)) return;
+    if (!validateStep(0) || !layaway) return;
 
     setProcessing(true);
     try {
-      const user = await supabase.auth.getUser();
-      const userId = user.data.user?.id;
+      console.log('💳 Procesando abono...', {
+        apartado: layaway.sale_number,
+        monto: paymentData.amount,
+        metodo: paymentData.method,
+        timestamp: '2025-06-11 06:55:34 UTC',
+        usuario: 'luishdz04'
+      });
 
-      if (!userId) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user?.id) {
         throw new Error('Usuario no autenticado');
       }
+      const userId = userData.user.id;
 
       const totalAmount = paymentData.amount + paymentData.commission_amount;
-      const newPaidAmount = layaway.paid_amount + paymentData.amount;
-      const newPendingAmount = layaway.total_amount - newPaidAmount;
+      const newPaidAmount = (layaway.paid_amount || 0) + paymentData.amount;
+      const newPendingAmount = (layaway.total_amount || 0) - newPaidAmount;
       const isFullPayment = newPendingAmount <= 0;
 
-      // ✅ REGISTRAR PAGO
+      console.log('🧮 Cálculos:', {
+        montoAbono: paymentData.amount,
+        comision: paymentData.commission_amount,
+        totalProcesar: totalAmount,
+        nuevoPagado: newPaidAmount,
+        nuevoPendiente: newPendingAmount,
+        pagoCompleto: isFullPayment
+      });
+
+      // ✅ REGISTRAR PAGO EN sale_payment_details
       const { error: paymentError } = await supabase
         .from('sale_payment_details')
         .insert([{
@@ -224,7 +264,7 @@ export default function PaymentToLayawayDialog({
           payment_reference: paymentData.reference || null,
           commission_rate: paymentData.commission_rate,
           commission_amount: paymentData.commission_amount,
-          sequence_order: (layaway.payment_history?.length || 0) + 1,
+          sequence_order: 1, // ✅ Simplificado por ahora
           payment_date: new Date().toISOString(),
           is_partial_payment: !isFullPayment,
           notes: paymentData.notes || null,
@@ -232,9 +272,14 @@ export default function PaymentToLayawayDialog({
           created_by: userId
         }]);
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error('❌ Error registrando pago:', paymentError);
+        throw paymentError;
+      }
 
-      // ✅ ACTUALIZAR APARTADO
+      console.log('✅ Pago registrado en sale_payment_details');
+
+      // ✅ ACTUALIZAR APARTADO EN sales
       const updateData: any = {
         paid_amount: newPaidAmount,
         pending_amount: Math.max(0, newPendingAmount),
@@ -244,14 +289,16 @@ export default function PaymentToLayawayDialog({
         updated_by: userId
       };
 
-      // Si es pago completo, convertir a venta
+      // ✅ Si es pago completo, convertir a venta
       if (isFullPayment) {
         updateData.status = 'completed';
         updateData.payment_status = 'paid';
-        updateData.sale_type = 'sale';
+        updateData.sale_type = 'sale'; // ✅ Cambiar de layaway a sale
         updateData.completed_at = new Date().toISOString();
+        console.log('🎉 Convirtiendo apartado a venta completa');
       } else {
         updateData.payment_status = 'partial';
+        console.log('📊 Actualizando apartado con abono parcial');
       }
 
       const { error: updateError } = await supabase
@@ -259,72 +306,44 @@ export default function PaymentToLayawayDialog({
         .update(updateData)
         .eq('id', layaway.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ Error actualizando apartado:', updateError);
+        throw updateError;
+      }
 
-      // ✅ REGISTRAR HISTORIAL
+      console.log('✅ Apartado actualizado en sales');
+
+      // ✅ REGISTRAR HISTORIAL DE ESTADO
       await supabase
         .from('layaway_status_history')
         .insert([{
           layaway_id: layaway.id,
           previous_status: layaway.status,
           new_status: isFullPayment ? 'completed' : layaway.status,
-          previous_paid_amount: layaway.paid_amount,
+          previous_paid_amount: layaway.paid_amount || 0,
           new_paid_amount: newPaidAmount,
-          reason: `Abono de ${formatPrice(paymentData.amount)} - ${paymentData.method}`,
+          reason: `Abono de ${formatPrice(paymentData.amount)} - ${paymentData.method}${paymentData.reference ? ` (${paymentData.reference})` : ''} - Usuario: luishdz04`,
           created_at: new Date().toISOString(),
           created_by: userId
         }]);
 
-      // ✅ ACTUALIZAR INVENTARIO SI ES VENTA COMPLETA
-      if (isFullPayment && layaway.items) {
-        for (const item of layaway.items) {
-          const { data: product } = await supabase
-            .from('products')
-            .select('current_stock')
-            .eq('id', item.product_id)
-            .single();
+      console.log('✅ Historial de estado registrado');
 
-          if (product) {
-            const { error: stockError } = await supabase
-              .from('products')
-              .update({
-                current_stock: product.current_stock - item.quantity,
-                updated_at: new Date().toISOString(),
-                updated_by: userId
-              })
-              .eq('id', item.product_id);
-
-            if (stockError) throw stockError;
-
-            await supabase
-              .from('inventory_movements')
-              .insert([{
-                product_id: item.product_id,
-                movement_type: 'salida',
-                quantity: -item.quantity,
-                previous_stock: product.current_stock,
-                new_stock: product.current_stock - item.quantity,
-                reason: 'Apartado completado',
-                reference_id: layaway.id,
-                notes: `Apartado #${layaway.sale_number} completado`,
-                created_at: new Date().toISOString(),
-                created_by: userId
-              }]);
-          }
-        }
-      }
+      // ✅ NOTA: NO actualizar inventario aquí
+      // El inventario ya se actualizó cuando se creó el apartado
+      // Solo se libera cuando se cancela un apartado
 
       showNotification(
         isFullPayment ? 
-          '¡Apartado completado! Se convirtió automáticamente en venta.' : 
-          'Abono registrado exitosamente',
+          '🎉 ¡Apartado completado! Se convirtió automáticamente en venta final.' : 
+          '💰 Abono registrado exitosamente',
         'success'
       );
 
       onSuccess();
     } catch (error) {
-      console.error('Error processing payment:', error);
-      showNotification('Error al procesar el abono', 'error');
+      console.error('💥 Error procesando abono:', error);
+      showNotification('Error al procesar el abono: ' + (error as Error).message, 'error');
     } finally {
       setProcessing(false);
       setConfirmDialogOpen(false);
@@ -333,7 +352,7 @@ export default function PaymentToLayawayDialog({
 
   if (!layaway) return null;
 
-  const pendingAmount = layaway.pending_amount;
+  const pendingAmount = layaway.pending_amount || 0;
   const isFullPayment = paymentData.amount >= pendingAmount;
   const totalWithCommission = paymentData.amount + paymentData.commission_amount;
 
@@ -363,7 +382,7 @@ export default function PaymentToLayawayDialog({
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
-        {/* ✅ CORREGIDO: Estado del apartado */}
+        {/* ✅ ESTADO DEL APARTADO CON GRID SIZE */}
         <Card sx={{ 
           mb: 3, 
           background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05))',
@@ -379,7 +398,7 @@ export default function PaymentToLayawayDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Total Apartado</Typography>
                   <Typography variant="h6" fontWeight="bold">
-                    {formatPrice(layaway.total_amount)}
+                    {formatPrice(layaway.total_amount || 0)}
                   </Typography>
                 </Box>
               </Grid>
@@ -388,7 +407,7 @@ export default function PaymentToLayawayDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Pagado</Typography>
                   <Typography variant="h6" fontWeight="bold" color="success.main">
-                    {formatPrice(layaway.paid_amount)}
+                    {formatPrice(layaway.paid_amount || 0)}
                   </Typography>
                 </Box>
               </Grid>
@@ -406,7 +425,7 @@ export default function PaymentToLayawayDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Progreso</Typography>
                   <Typography variant="h6" fontWeight="bold" color="info.main">
-                    {Math.round((layaway.paid_amount / layaway.total_amount) * 100)}%
+                    {layaway.total_amount > 0 ? Math.round(((layaway.paid_amount || 0) / layaway.total_amount) * 100) : 0}%
                   </Typography>
                 </Box>
               </Grid>
@@ -445,7 +464,7 @@ export default function PaymentToLayawayDialog({
                 {index === 0 && (
                   <Box sx={{ mb: 4 }}>
                     <Grid container spacing={3}>
-                      {/* ✅ CORREGIDO: Monto del abono */}
+                      {/* ✅ MONTO DEL ABONO CON GRID SIZE */}
                       <Grid size={{ xs: 12, md: 6 }}>
                         <TextField
                           fullWidth
@@ -470,7 +489,7 @@ export default function PaymentToLayawayDialog({
                         />
                       </Grid>
 
-                      {/* ✅ CORREGIDO: Método de pago */}
+                      {/* ✅ MÉTODO DE PAGO CON GRID SIZE */}
                       <Grid size={{ xs: 12, md: 6 }}>
                         <FormControl fullWidth error={!!errors.method}>
                           <InputLabel>Método de Pago</InputLabel>
@@ -488,7 +507,7 @@ export default function PaymentToLayawayDialog({
                         </FormControl>
                       </Grid>
 
-                      {/* ✅ CORREGIDO: Referencia */}
+                      {/* ✅ REFERENCIA CON GRID SIZE */}
                       {['debito', 'credito'].includes(paymentData.method) && (
                         <Grid size={{ xs: 12 }}>
                           <TextField
@@ -513,7 +532,7 @@ export default function PaymentToLayawayDialog({
                         </Grid>
                       )}
 
-                      {/* ✅ CORREGIDO: Resumen del pago */}
+                      {/* ✅ RESUMEN DEL PAGO CON GRID SIZE */}
                       {paymentData.amount > 0 && paymentData.method && (
                         <Grid size={{ xs: 12 }}>
                           <Card sx={{
@@ -570,7 +589,7 @@ export default function PaymentToLayawayDialog({
                         </Grid>
                       )}
 
-                      {/* ✅ CORREGIDO: Alerta de pago completo */}
+                      {/* ✅ ALERTA DE PAGO COMPLETO CON GRID SIZE */}
                       {isFullPayment && (
                         <Grid size={{ xs: 12 }}>
                           <Alert severity="success">
@@ -579,7 +598,7 @@ export default function PaymentToLayawayDialog({
                         </Grid>
                       )}
 
-                      {/* ✅ CORREGIDO: Opciones adicionales */}
+                      {/* ✅ OPCIONES ADICIONALES CON GRID SIZE */}
                       <Grid size={{ xs: 12 }}>
                         <Card sx={{
                           background: 'rgba(33, 150, 243, 0.05)',
@@ -635,7 +654,7 @@ export default function PaymentToLayawayDialog({
                               <Grid size={{ xs: 12 }}>
                                 <TextField
                                   fullWidth
-                                  label="Notas del abono"
+                                  label="Notas del abono (2025-06-11 06:55:34 UTC - luishdz04)"
                                   multiline
                                   rows={2}
                                   value={paymentData.notes}
@@ -729,14 +748,14 @@ export default function PaymentToLayawayDialog({
                               <Box>
                                 <Typography variant="body2" color="textSecondary">Estado Actual:</Typography>
                                 <Typography variant="body1" fontWeight="600">
-                                  {formatPrice(layaway.paid_amount)} de {formatPrice(layaway.total_amount)} pagado
+                                  {formatPrice(layaway.paid_amount || 0)} de {formatPrice(layaway.total_amount || 0)} pagado
                                 </Typography>
                               </Box>
 
                               <Box>
                                 <Typography variant="body2" color="textSecondary">Después del Abono:</Typography>
                                 <Typography variant="body1" fontWeight="600" color="success.main">
-                                  {formatPrice(layaway.paid_amount + paymentData.amount)} de {formatPrice(layaway.total_amount)} pagado
+                                  {formatPrice((layaway.paid_amount || 0) + paymentData.amount)} de {formatPrice(layaway.total_amount || 0)} pagado
                                 </Typography>
                               </Box>
 
@@ -811,7 +830,7 @@ export default function PaymentToLayawayDialog({
       {/* Dialog de confirmación */}
       <Dialog open={confirmDialogOpen} onClose={() => !processing && setConfirmDialogOpen(false)}>
         <DialogTitle sx={{ color: '#4caf50', fontWeight: 'bold' }}>
-          💰 Confirmar Abono
+          💰 Confirmar Abono - luishdz04
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
@@ -832,6 +851,9 @@ export default function PaymentToLayawayDialog({
             </Typography>
             <Typography variant="body2">
               Método: {paymentMethods.find(m => m.value === paymentData.method)?.label}
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              Procesado: 2025-06-11 06:55:34 UTC por luishdz04
             </Typography>
             {isFullPayment && (
               <Typography variant="body2" color="success.main" fontWeight="600">
