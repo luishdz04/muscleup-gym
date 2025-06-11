@@ -393,34 +393,136 @@ export default function LayawayManagementPage() {
     return diffDays;
   }, []);
 
-  // ✅ HANDLERS SIMPLIFICADOS
-  const handleViewDetails = useCallback((layaway: Layaway) => {
-    if (!mounted || !layaway) return;
-    console.log('👁️ Ver detalles:', layaway.sale_number, '- 2025-06-11 07:50:17 UTC - luishdz04');
-    setSelectedLayaway(layaway);
+  // ✅ HANDLER CORREGIDO PARA VER DETALLES
+const handleViewDetails = useCallback((layaway: Layaway) => {
+  if (!mounted || !layaway?.id) {
+    console.error('❌ No se puede abrir detalles: layaway inválido o componente desmontado');
+    return;
+  }
+  
+  try {
+    console.log('👁️ Ver detalles:', layaway.sale_number, '- 2025-06-11 07:57:23 UTC - luishdz04');
+    
+    // ✅ VALIDAR DATOS ANTES DE ABRIR
+    const validLayaway = {
+      ...layaway,
+      // ✅ ASEGURAR CAMPOS OBLIGATORIOS
+      id: layaway.id || '',
+      sale_number: layaway.sale_number || 'Sin número',
+      total_amount: layaway.total_amount || 0,
+      paid_amount: layaway.paid_amount || 0,
+      pending_amount: layaway.pending_amount || 0,
+      status: layaway.status || 'pending',
+      customer_name: layaway.customer_name || 'Cliente General',
+      items: layaway.items || [],
+      payment_history: layaway.payment_history || [],
+      // ✅ COMPATIBILIDAD DE FECHAS
+      layaway_expires_at: layaway.layaway_expires_at || layaway.expiration_date || '',
+      expiration_date: layaway.expiration_date || layaway.layaway_expires_at || ''
+    };
+    
+    setSelectedLayaway(validLayaway);
     setDetailsDialogOpen(true);
-  }, [mounted]);
+  } catch (error) {
+    console.error('💥 Error en handleViewDetails:', error);
+    showNotification('Error al abrir detalles del apartado', 'error');
+  }
+}, [mounted]);
 
-  const handleAddPayment = useCallback((layaway: Layaway) => {
-    if (!mounted || !layaway) return;
-    console.log('💰 Agregar abono:', layaway.sale_number, '- 2025-06-11 07:50:17 UTC - luishdz04');
-    setSelectedLayaway(layaway);
+// ✅ HANDLER CORREGIDO PARA AGREGAR ABONO
+const handleAddPayment = useCallback((layaway: Layaway) => {
+  if (!mounted || !layaway?.id) {
+    console.error('❌ No se puede agregar abono: layaway inválido o componente desmontado');
+    return;
+  }
+  
+  try {
+    console.log('💰 Agregar abono:', layaway.sale_number, '- 2025-06-11 07:57:23 UTC - luishdz04');
+    
+    // ✅ VALIDAR DATOS ANTES DE ABRIR
+    const validLayaway = {
+      ...layaway,
+      id: layaway.id || '',
+      sale_number: layaway.sale_number || 'Sin número',
+      total_amount: layaway.total_amount || 0,
+      paid_amount: layaway.paid_amount || 0,
+      pending_amount: layaway.pending_amount || 0,
+      status: layaway.status || 'pending',
+      customer_name: layaway.customer_name || 'Cliente General',
+      customer_email: layaway.customer_email || '',
+      items: layaway.items || [],
+      payment_history: layaway.payment_history || []
+    };
+    
+    setSelectedLayaway(validLayaway);
     setPaymentDialogOpen(true);
-  }, [mounted]);
+  } catch (error) {
+    console.error('💥 Error en handleAddPayment:', error);
+    showNotification('Error al abrir formulario de abono', 'error');
+  }
+}, [mounted]);
 
-  const handleConvertToSale = useCallback((layaway: Layaway) => {
-    if (!mounted || !layaway) return;
-    console.log('🛒 Convertir a venta:', layaway.sale_number, '- 2025-06-11 07:50:17 UTC - luishdz04');
-    setSelectedLayaway(layaway);
+// ✅ HANDLER CORREGIDO PARA CONVERTIR A VENTA
+const handleConvertToSale = useCallback((layaway: Layaway) => {
+  if (!mounted || !layaway?.id) {
+    console.error('❌ No se puede convertir: layaway inválido o componente desmontado');
+    return;
+  }
+  
+  try {
+    console.log('🛒 Convertir a venta:', layaway.sale_number, '- 2025-06-11 07:57:23 UTC - luishdz04');
+    
+    const validLayaway = {
+      ...layaway,
+      id: layaway.id || '',
+      sale_number: layaway.sale_number || 'Sin número',
+      total_amount: layaway.total_amount || 0,
+      paid_amount: layaway.paid_amount || 0,
+      pending_amount: layaway.pending_amount || 0,
+      status: layaway.status || 'pending',
+      customer_name: layaway.customer_name || 'Cliente General',
+      items: layaway.items || [],
+      payment_history: layaway.payment_history || []
+    };
+    
+    setSelectedLayaway(validLayaway);
     setConvertDialogOpen(true);
-  }, [mounted]);
+  } catch (error) {
+    console.error('💥 Error en handleConvertToSale:', error);
+    showNotification('Error al abrir conversión a venta', 'error');
+  }
+}, [mounted]);
 
-  const handleCancelLayaway = useCallback((layaway: Layaway) => {
-    if (!mounted || !layaway) return;
-    console.log('❌ Cancelar apartado:', layaway.sale_number, '- 2025-06-11 07:50:17 UTC - luishdz04');
-    setSelectedLayaway(layaway);
+// ✅ HANDLER CORREGIDO PARA CANCELAR
+const handleCancelLayaway = useCallback((layaway: Layaway) => {
+  if (!mounted || !layaway?.id) {
+    console.error('❌ No se puede cancelar: layaway inválido o componente desmontado');
+    return;
+  }
+  
+  try {
+    console.log('❌ Cancelar apartado:', layaway.sale_number, '- 2025-06-11 07:57:23 UTC - luishdz04');
+    
+    const validLayaway = {
+      ...layaway,
+      id: layaway.id || '',
+      sale_number: layaway.sale_number || 'Sin número',
+      total_amount: layaway.total_amount || 0,
+      paid_amount: layaway.paid_amount || 0,
+      pending_amount: layaway.pending_amount || 0,
+      status: layaway.status || 'pending',
+      customer_name: layaway.customer_name || 'Cliente General',
+      items: layaway.items || [],
+      payment_history: layaway.payment_history || []
+    };
+    
+    setSelectedLayaway(validLayaway);
     setCancelDialogOpen(true);
-  }, [mounted]);
+  } catch (error) {
+    console.error('💥 Error en handleCancelLayaway:', error);
+    showNotification('Error al abrir cancelación', 'error');
+  }
+}, [mounted]);
 
   const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     if (!mounted) return;
