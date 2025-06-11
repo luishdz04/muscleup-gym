@@ -122,33 +122,35 @@ export default function LayawayDialog({
       const expirationDateTime = expirationDate.toISOString();
 
       // ✅ 4. CREAR VENTA TIPO LAYAWAY - DATOS SIMPLES
-      const layawayData = {
-        sale_number: layawayNumber,
-        customer_id: customer.id,
-        cashier_id: userId,
-        sale_type: 'layaway' as const,
-        subtotal: totals.subtotal || 0,
-        tax_amount: totals.taxAmount || 0,
-        discount_amount: totals.discountAmount || 0,
-        coupon_discount: totals.couponDiscount || 0,
-        coupon_code: coupon?.code || null,
-        total_amount: calculations.total,
-        required_deposit: calculations.depositAmount,
-        paid_amount: calculations.depositAmount,
-        pending_amount: calculations.remainingAmount,
-        deposit_percentage: depositPercentage,
-        layaway_expires_at: expirationDateTime,
-        status: 'pending' as const,
-        payment_status: 'partial' as const,
-        is_mixed_payment: false,
-        payment_received: calculations.depositAmount,
-        change_amount: 0,
-        commission_rate: 0, // ✅ SIN COMISIONES POR AHORA
-        commission_amount: 0,
-        notes: `Apartado - Vence: ${formatDate(expirationDateTime)}`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+     const layawayData = {
+  sale_number: layawayNumber,
+  customer_id: customer.id,
+  cashier_id: userId,
+  sale_type: 'layaway',
+  subtotal: totals.subtotal || 0,
+  tax_amount: totals.taxAmount || 0,
+  discount_amount: totals.discountAmount || 0,
+  coupon_discount: totals.couponDiscount || 0,
+  coupon_code: coupon?.code || null,
+  total_amount: calculations.total,
+  required_deposit: calculations.depositAmount,
+  paid_amount: calculations.depositAmount,
+  pending_amount: calculations.remainingAmount,
+  deposit_percentage: depositPercentage,
+  layaway_expires_at: expirationDateTime,
+  status: 'pending',
+  payment_status: 'partial',
+  is_mixed_payment: false,
+  payment_received: calculations.depositAmount,
+  change_amount: 0,
+  commission_rate: 0,
+  commission_amount: 0,
+  custom_commission_rate: null,
+  skip_inscription: false,
+  notes: `Apartado - Vence: ${formatDate(expirationDateTime)}`,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+};
 
       console.log('💾 Creando apartado:', layawayData);
 
