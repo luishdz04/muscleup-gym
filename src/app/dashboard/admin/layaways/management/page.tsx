@@ -1,4 +1,3 @@
-// src/app/dashboard/admin/layaways/management/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -21,7 +20,6 @@ import {
   Chip,
   IconButton,
   LinearProgress,
-  Grid,
   TextField,
   InputAdornment,
   FormControl,
@@ -29,15 +27,12 @@ import {
   Select,
   MenuItem,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Stack,
-  Divider,
   Avatar,
-  Tooltip
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
+import Grid from '@mui/material/Grid'; // ✅ CORREGIDO: Import correcto
 import {
   Search as SearchIcon,
   Payments as PaymentIcon,
@@ -60,14 +55,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { formatPrice, formatDate } from '@/utils/formatUtils';
 import { showNotification } from '@/utils/notifications';
-import PaymentToLayawayDialog from '@/components/dialogs/PaymentToLayawayDialog';
-import LayawayDetailsDialog from '@/components/dialogs/LayawayDetailsDialog';
-import ConvertToSaleDialog from '@/components/dialogs/ConvertToSaleDialog';
-import CancelLayawayDialog from '@/components/dialogs/CancelLayawayDialog';
 
 interface Layaway {
   id: string;
   sale_number: string;
+  customer_id: string;
   customer_name?: string;
   customer_email?: string;
   customer_phone?: string;
@@ -83,26 +75,8 @@ interface Layaway {
   created_at: string;
   last_payment_date?: string;
   notes?: string;
-  items?: LayawayItem[];
-  payment_history?: LayawayPayment[];
-}
-
-interface LayawayItem {
-  id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
-interface LayawayPayment {
-  id: string;
-  payment_method: string;
-  amount: number;
-  commission_amount: number;
-  payment_reference?: string;
-  payment_date: string;
-  created_by_name?: string;
+  items_count?: number;
+  payment_count?: number;
 }
 
 interface LayawayStats {
@@ -122,10 +96,6 @@ export default function LayawayManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedLayaway, setSelectedLayaway] = useState<Layaway | null>(null);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [stats, setStats] = useState<LayawayStats>({
     activeCount: 0,
     expiringCount: 0,
@@ -138,7 +108,7 @@ export default function LayawayManagementPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ DEFINIR TABS
+  // ✅ DEFINIR TABS CORREGIDO
   const tabsData = [
     { 
       label: 'Activos', 
@@ -170,22 +140,84 @@ export default function LayawayManagementPage() {
     }
   ];
 
-  // ✅ CARGAR APARTADOS CORREGIDO
+  // ✅ CARGAR ESTADÍSTICAS SIMPLIFICADO
+  const loadStats = useCallback(async () => {
+    try {
+      console.log('📊 Cargando estadísticas de apartados...');
+      
+      // Query simple para obtener todos los apartados
+      const { data: allLayaways, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('sale_type', 'layaway');
+
+      if (error) {
+        console.error('❌ Error en query de estadísticas:', error);
+        throw error;
+      }
+
+      console.log('✅ Apartados obtenidos:', allLayaways?.length || 0);
+
+      if (allLayaways) {
+        const today = new Date();
+        const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        // ✅ CORREGIDO: Filtros simplificados
+        const active = allLayaways.filter(l => 
+          l.status === 'pending' && 
+          l.layaway_expires_at && 
+          new Date(l.layaway_expires_at) >= today
+        );
+        
+        const expiring = allLayaways.filter(l => 
+          l.status === 'pending' && 
+          l.layaway_expires_at &&
+          new Date(l.layaway_expires_at) >= today &&
+          new Date(l.layaway_expires_at) <= weekFromNow
+        );
+        
+        const expired = allLayaways.filter(l => 
+          l.status === 'pending' && 
+          l.layaway_expires_at &&
+          new Date(l.layaway_expires_at) < today
+        );
+        
+        const completed = allLayaways.filter(l => l.status === 'completed');
+
+        const newStats = {
+          activeCount: active.length,
+          expiringCount: expiring.length,
+          expiredCount: expired.length,
+          completedCount: completed.length,
+          totalValue: allLayaways.reduce((sum, l) => sum + (l.total_amount || 0), 0),
+          totalPending: allLayaways.reduce((sum, l) => sum + (l.pending_amount || 0), 0),
+          totalCollected: allLayaways.reduce((sum, l) => sum + (l.paid_amount || 0), 0)
+        };
+
+        setStats(newStats);
+        console.log('📈 Estadísticas calculadas:', newStats);
+      }
+
+    } catch (error) {
+      console.error('💥 Error cargando estadísticas:', error);
+      showNotification('Error al cargar estadísticas de apartados', 'error');
+    }
+  }, [supabase]);
+
+  // ✅ CARGAR APARTADOS SIMPLIFICADO Y FUNCIONAL
   const loadLayaways = useCallback(async () => {
     setLoading(true);
     try {
+      console.log('🔍 Cargando apartados para tab:', tabsData[activeTab]?.value);
+      
+      // ✅ QUERY SIMPLIFICADO - Solo la tabla sales
       let query = supabase
         .from('sales')
-        .select(`
-          *,
-          customer:users(name, email, whatsapp),
-          sale_items(*),
-          sale_payment_details(*)
-        `)
+        .select('*')
         .eq('sale_type', 'layaway')
         .order('created_at', { ascending: false });
 
-      // ✅ CORREGIDO: Filtros usando layaway_expires_at
+      // ✅ FILTROS CORREGIDOS
       const currentFilter = tabsData[activeTab]?.value;
       const today = new Date();
       const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -207,82 +239,73 @@ export default function LayawayManagementPage() {
         query = query.eq('status', 'completed');
       }
 
-      // Filtro de búsqueda
-      if (searchTerm) {
-        query = query.or(`
-          sale_number.ilike.%${searchTerm}%,
-          customer.name.ilike.%${searchTerm}%,
-          notes.ilike.%${searchTerm}%
-        `);
+      // ✅ FILTRO DE BÚSQUEDA SIMPLIFICADO
+      if (searchTerm.trim()) {
+        query = query.or(`sale_number.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
       }
 
       const { data, error } = await query;
 
-      if (error) throw error;
-
-      const formattedLayaways = data?.map(layaway => ({
-        ...layaway,
-        customer_name: layaway.customer?.name,
-        customer_email: layaway.customer?.email,
-        customer_phone: layaway.customer?.whatsapp,
-        items: layaway.sale_items,
-        payment_history: layaway.sale_payment_details
-      })) || [];
-
-      setLayaways(formattedLayaways);
-
-      // ✅ CORREGIDO: Calcular estadísticas con layaway_expires_at
-      const allLayaways = await supabase
-        .from('sales')
-        .select('*')
-        .eq('sale_type', 'layaway');
-
-      if (allLayaways.data) {
-        const active = allLayaways.data.filter(l => 
-          l.status === 'pending' && new Date(l.layaway_expires_at) >= today
-        );
-        const expiring = allLayaways.data.filter(l => 
-          l.status === 'pending' && 
-          new Date(l.layaway_expires_at) >= today &&
-          new Date(l.layaway_expires_at) <= weekFromNow
-        );
-        const expired = allLayaways.data.filter(l => 
-          l.status === 'pending' && new Date(l.layaway_expires_at) < today
-        );
-        const completed = allLayaways.data.filter(l => l.status === 'completed');
-
-        setStats({
-          activeCount: active.length,
-          expiringCount: expiring.length,
-          expiredCount: expired.length,
-          completedCount: completed.length,
-          totalValue: allLayaways.data.reduce((sum, l) => sum + l.total_amount, 0),
-          totalPending: allLayaways.data.reduce((sum, l) => sum + l.pending_amount, 0),
-          totalCollected: allLayaways.data.reduce((sum, l) => sum + l.paid_amount, 0)
-        });
+      if (error) {
+        console.error('❌ Error en query principal:', error);
+        throw error;
       }
 
+      console.log('✅ Apartados cargados:', data?.length || 0);
+
+      // ✅ OBTENER DATOS DE CLIENTES SEPARADAMENTE
+      const layawaysWithCustomers = await Promise.all(
+        (data || []).map(async (layaway) => {
+          let customerData = null;
+          
+          if (layaway.customer_id) {
+            const { data: customer } = await supabase
+              .from('users')
+              .select('name, email, whatsapp')
+              .eq('id', layaway.customer_id)
+              .single();
+            
+            customerData = customer;
+          }
+
+          return {
+            ...layaway,
+            customer_name: customerData?.name || 'Cliente General',
+            customer_email: customerData?.email || '',
+            customer_phone: customerData?.whatsapp || ''
+          };
+        })
+      );
+
+      setLayaways(layawaysWithCustomers);
+      console.log('🎯 Apartados con clientes procesados:', layawaysWithCustomers.length);
+
     } catch (error) {
-      console.error('Error loading layaways:', error);
-      showNotification('Error al cargar los apartados', 'error');
+      console.error('💥 Error cargando apartados:', error);
+      showNotification('Error al cargar los apartados: ' + (error as Error).message, 'error');
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchTerm, statusFilter, supabase]);
+  }, [activeTab, searchTerm, supabase, tabsData]);
+
+  // ✅ EFECTOS CORREGIDOS
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
   useEffect(() => {
     loadLayaways();
   }, [loadLayaways]);
 
-  // ✅ OBTENER COLOR DEL PROGRESO
+  // ✅ FUNCIONES AUXILIARES
   const getProgressColor = (percentage: number) => {
     if (percentage >= 80) return '#4caf50';
     if (percentage >= 50) return '#ff9800';
     return '#f44336';
   };
 
-  // ✅ CORREGIDO: Calcular días restantes
   const getDaysUntilExpiration = (layawayExpiresAt: string) => {
+    if (!layawayExpiresAt) return 0;
     const today = new Date();
     const expiration = new Date(layawayExpiresAt);
     const diffTime = expiration.getTime() - today.getTime();
@@ -290,51 +313,57 @@ export default function LayawayManagementPage() {
     return diffDays;
   };
 
-  // ✅ VER DETALLES
+  // ✅ HANDLERS SIMPLIFICADOS (por ahora solo alertas)
   const handleViewDetails = (layaway: Layaway) => {
-    setSelectedLayaway(layaway);
-    setDetailsDialogOpen(true);
+    showNotification(`Ver detalles de apartado ${layaway.sale_number}`, 'info');
+    // TODO: Implementar dialog de detalles
   };
 
-  // ✅ ABRIR DIALOG DE ABONO
   const handleAddPayment = (layaway: Layaway) => {
-    setSelectedLayaway(layaway);
-    setPaymentDialogOpen(true);
+    showNotification(`Agregar abono a apartado ${layaway.sale_number}`, 'info');
+    // TODO: Implementar dialog de abono
   };
 
-  // ✅ CONVERTIR A VENTA
   const handleConvertToSale = (layaway: Layaway) => {
-    setSelectedLayaway(layaway);
-    setConvertDialogOpen(true);
+    showNotification(`Convertir apartado ${layaway.sale_number} a venta`, 'info');
+    // TODO: Implementar dialog de conversión
   };
 
-  // ✅ CANCELAR APARTADO
   const handleCancelLayaway = (layaway: Layaway) => {
-    setSelectedLayaway(layaway);
-    setCancelDialogOpen(true);
+    showNotification(`Cancelar apartado ${layaway.sale_number}`, 'warning');
+    // TODO: Implementar dialog de cancelación
   };
 
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, color: '#333' }}>
-          📦 Gestión de Apartados
-        </Typography>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: '#333' }}>
+            📦 Gestión de Apartados
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#666', mt: 1 }}>
+            2025-06-11 06:26:53 UTC - Usuario: luishdz04
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<RefreshIcon />}
-          onClick={loadLayaways}
+          onClick={() => {
+            loadStats();
+            loadLayaways();
+          }}
+          disabled={loading}
           sx={{
             background: 'linear-gradient(135deg, #4caf50, #388e3c)',
             fontWeight: 600
           }}
         >
-          Actualizar
+          {loading ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Actualizar'}
         </Button>
       </Box>
 
-      {/* ✅ CORREGIDO: Estadísticas con Grid v2 */}
+      {/* ✅ ESTADÍSTICAS CORREGIDAS */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
           <Card sx={{
@@ -364,7 +393,7 @@ export default function LayawayManagementPage() {
                 {stats.expiringCount}
               </Typography>
               <Typography variant="body2">
-                Por Vencer
+                Por Vencer (7 días)
               </Typography>
             </CardContent>
           </Card>
@@ -422,7 +451,7 @@ export default function LayawayManagementPage() {
         </Grid>
       </Grid>
 
-      {/* ✅ CORREGIDO: Filtros con Grid v2 */}
+      {/* ✅ FILTROS CORREGIDOS */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={3} alignItems="center">
@@ -430,7 +459,7 @@ export default function LayawayManagementPage() {
               <TextField
                 fullWidth
                 label="Buscar apartado"
-                placeholder="Número, cliente, notas..."
+                placeholder="Número de apartado, notas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -515,8 +544,17 @@ export default function LayawayManagementPage() {
         </Tabs>
       </Card>
 
-      {/* ✅ CORREGIDO: Tabla de apartados */}
+      {/* ✅ TABLA DE APARTADOS CORREGIDA */}
       <Card>
+        {loading && (
+          <Box sx={{ p: 2 }}>
+            <LinearProgress />
+            <Typography variant="body2" sx={{ mt: 1, textAlign: 'center', color: '#666' }}>
+              Cargando apartados...
+            </Typography>
+          </Box>
+        )}
+        
         <TableContainer>
           <Table>
             <TableHead>
@@ -535,7 +573,7 @@ export default function LayawayManagementPage() {
             <TableBody>
               <AnimatePresence>
                 {layaways.map((layaway, index) => {
-                  const progressPercentage = (layaway.paid_amount / layaway.total_amount) * 100;
+                  const progressPercentage = layaway.total_amount > 0 ? (layaway.paid_amount / layaway.total_amount) * 100 : 0;
                   const daysLeft = getDaysUntilExpiration(layaway.layaway_expires_at);
                   
                   return (
@@ -551,6 +589,9 @@ export default function LayawayManagementPage() {
                       <TableCell>
                         <Typography variant="body2" fontWeight="600" color="primary">
                           {layaway.sale_number}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {formatDate(layaway.created_at)}
                         </Typography>
                       </TableCell>
 
@@ -574,19 +615,19 @@ export default function LayawayManagementPage() {
 
                       <TableCell>
                         <Typography variant="body2" fontWeight="600">
-                          {formatPrice(layaway.total_amount)}
+                          {formatPrice(layaway.total_amount || 0)}
                         </Typography>
                       </TableCell>
 
                       <TableCell>
                         <Typography variant="body2" fontWeight="600" color="success.main">
-                          {formatPrice(layaway.paid_amount)}
+                          {formatPrice(layaway.paid_amount || 0)}
                         </Typography>
                       </TableCell>
 
                       <TableCell>
                         <Typography variant="body2" fontWeight="600" color="warning.main">
-                          {formatPrice(layaway.pending_amount)}
+                          {formatPrice(layaway.pending_amount || 0)}
                         </Typography>
                       </TableCell>
 
@@ -613,7 +654,7 @@ export default function LayawayManagementPage() {
                       <TableCell>
                         <Box>
                           <Typography variant="body2" fontWeight="500">
-                            {formatDate(layaway.layaway_expires_at)}
+                            {layaway.layaway_expires_at ? formatDate(layaway.layaway_expires_at) : 'Sin fecha'}
                           </Typography>
                           <Chip 
                             label={
@@ -697,8 +738,11 @@ export default function LayawayManagementPage() {
               {layaways.length === 0 && !loading && (
                 <TableRow>
                   <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body1" color="textSecondary">
-                      No se encontraron apartados en esta categoría
+                    <Typography variant="h6" color="textSecondary" sx={{ mb: 1 }}>
+                      📦 No se encontraron apartados
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {tabsData[activeTab]?.label} - Prueba a cambiar de pestaña o limpiar filtros
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -708,43 +752,36 @@ export default function LayawayManagementPage() {
         </TableContainer>
       </Card>
 
-{/* ✅ LISTO: Todos los dialogs implementados y corregidos */}
-<PaymentToLayawayDialog
-  open={paymentDialogOpen}
-  onClose={() => setPaymentDialogOpen(false)}
-  layaway={selectedLayaway}
-  onSuccess={() => {
-    loadLayaways();
-    setPaymentDialogOpen(false);
-  }}
-/>
-
-<LayawayDetailsDialog
-  open={detailsDialogOpen}
-  onClose={() => setDetailsDialogOpen(false)}
-  layaway={selectedLayaway}
-/>
-
-<ConvertToSaleDialog
-  open={convertDialogOpen}
-  onClose={() => setConvertDialogOpen(false)}
-  layaway={selectedLayaway}
-  onSuccess={() => {
-    loadLayaways();
-    setConvertDialogOpen(false);
-  }}
-/>
-
-<CancelLayawayDialog
-  open={cancelDialogOpen}
-  onClose={() => setCancelDialogOpen(false)}
-  layaway={selectedLayaway}
-  onSuccess={() => {
-    loadLayaways();
-    setCancelDialogOpen(false);
-  }}
-/>
-      */
+      {/* ✅ INFORMACIÓN DE DEBUG */}
+      <Card sx={{ mt: 3, background: 'rgba(33, 150, 243, 0.1)' }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ color: '#2196f3', mb: 2 }}>
+            🔧 Información de Debug
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                <strong>Tab Activo:</strong> {tabsData[activeTab]?.label}
+              </Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                <strong>Apartados:</strong> {layaways.length}
+              </Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                <strong>Búsqueda:</strong> {searchTerm || 'Sin filtro'}
+              </Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                <strong>Estado:</strong> {loading ? 'Cargando...' : 'Listo'}
+              </Typography>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
     </Box>
   );
 }
