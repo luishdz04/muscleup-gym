@@ -29,8 +29,7 @@ import {
   CircularProgress,
   Alert
 } from '@mui/material';
-import Grid from '@mui/material/Grid'; // ✅ CORREGIDO: Grid2 correcto
-// ✅ CORREGIDO: Timeline importado desde @mui/lab
+import Grid from '@mui/material/Grid'; // ✅ GRID2 HÍBRIDO
 import {
   Timeline,
   TimelineItem,
@@ -54,7 +53,8 @@ import {
   Warning as WarningIcon,
   ExpandMore as ExpandMoreIcon,
   Inventory as InventoryIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { formatPrice, formatDate } from '@/utils/formatUtils';
@@ -62,7 +62,7 @@ import { formatPrice, formatDate } from '@/utils/formatUtils';
 interface LayawayDetailsDialogProps {
   open: boolean;
   onClose: () => void;
-  layaway: any;
+  layaway: any; // ✅ TIPO FLEXIBLE HÍBRIDO
 }
 
 interface LayawayDetails {
@@ -74,6 +74,7 @@ interface LayawayDetails {
 
 export default function LayawayDetailsDialog({ open, onClose, layaway }: LayawayDetailsDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [details, setDetails] = useState<LayawayDetails>({
     items: [],
     payments: [],
@@ -83,13 +84,13 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ CARGAR DETALLES COMPLETOS DEL APARTADO
+  // ✅ FUNCIÓN HÍBRIDA PARA CARGAR DETALLES (useCallback con dependencias controladas)
   const loadLayawayDetails = useCallback(async () => {
     if (!layaway?.id || !open) return;
 
     setLoading(true);
     try {
-      console.log('🔍 Cargando detalles completos para apartado:', layaway.sale_number);
+      console.log('🔍 Cargando detalles completos para apartado:', layaway.sale_number, '- 2025-06-11 08:30:29 UTC - luishdz04');
 
       // ✅ CARGAR ITEMS DEL APARTADO
       const { data: items, error: itemsError } = await supabase
@@ -145,7 +146,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
         customer
       });
 
-      console.log('✅ Detalles cargados:', {
+      console.log('✅ Detalles cargados exitosamente:', {
         items: items?.length || 0,
         payments: payments?.length || 0,
         history: history?.length || 0,
@@ -157,30 +158,73 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     } finally {
       setLoading(false);
     }
-  }, [layaway?.id, layaway?.sale_number, layaway?.customer_id, open, supabase]);
+  }, [layaway?.id, open, supabase]); // ✅ DEPENDENCIAS ESPECÍFICAS HÍBRIDAS
 
+  // ✅ FUNCIÓN HÍBRIDA PARA REFRESCAR DATOS
+  const refreshData = useCallback(async () => {
+    if (!layaway?.id) return;
+    
+    setRefreshing(true);
+    console.log('🔄 Refrescando datos del apartado... - 2025-06-11 08:30:29 UTC - luishdz04');
+    
+    try {
+      await loadLayawayDetails();
+      console.log('✅ Datos refrescados exitosamente');
+    } catch (error) {
+      console.error('❌ Error refrescando datos:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [layaway?.id, loadLayawayDetails]);
+
+  // ✅ useEffect HÍBRIDO CON GUARD CLAUSE
   useEffect(() => {
+    if (!open || !layaway?.id) return;
     loadLayawayDetails();
-  }, [loadLayawayDetails]);
+  }, [open, layaway?.id, loadLayawayDetails]);
 
-  if (!layaway) return null;
+  // ✅ FUNCIÓN DE CIERRE HÍBRIDA
+  const handleClose = useCallback(() => {
+    console.log('🔒 Cerrando dialog de detalles - 2025-06-11 08:30:29 UTC - luishdz04');
+    onClose();
+  }, [onClose]);
 
-  // ✅ CÁLCULOS CORREGIDOS
-  const progressPercentage = layaway.total_amount > 0 ? ((layaway.paid_amount || 0) / layaway.total_amount) * 100 : 0;
+  // ✅ VALIDACIÓN TEMPRANA HÍBRIDA
+  if (!layaway) {
+    return null;
+  }
+
+  // ✅ DATOS SEGUROS HÍBRIDOS CON VALORES POR DEFECTO
+  const safeLayaway = {
+    id: layaway.id || '',
+    sale_number: layaway.sale_number || 'Sin número',
+    total_amount: layaway.total_amount || 0,
+    paid_amount: layaway.paid_amount || 0,
+    pending_amount: layaway.pending_amount || 0,
+    status: layaway.status || 'pending',
+    customer_name: layaway.customer_name || 'Cliente General',
+    customer_email: layaway.customer_email || '',
+    created_at: layaway.created_at || new Date().toISOString(),
+    layaway_expires_at: layaway.layaway_expires_at || layaway.expiration_date || '',
+    notes: layaway.notes || ''
+  };
+
+  // ✅ CÁLCULOS SEGUROS HÍBRIDOS
+  const progressPercentage = safeLayaway.total_amount > 0 ? 
+    ((safeLayaway.paid_amount || 0) / safeLayaway.total_amount) * 100 : 0;
   
-  // ✅ CORREGIDO: Usar layaway_expires_at en lugar de expiration_date
-  const expirationDate = layaway.layaway_expires_at || layaway.expiration_date;
+  const expirationDate = safeLayaway.layaway_expires_at;
   const daysLeft = expirationDate ? 
     Math.ceil((new Date(expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 
     0;
 
-  // ✅ NOMBRE DEL CLIENTE CORREGIDO
+  // ✅ NOMBRE DEL CLIENTE HÍBRIDO
   const customerName = details.customer ? 
     (details.customer.name || `${details.customer.firstName || ''} ${details.customer.lastName || ''}`.trim() || 'Cliente General') :
-    (layaway.customer_name || 'Cliente General');
+    (safeLayaway.customer_name || 'Cliente General');
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="xl" fullWidth>
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -191,22 +235,37 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <CartIcon />
           <Typography variant="h6" fontWeight="bold">
-            📦 Detalles del Apartado #{layaway.sale_number}
+            📦 Detalles del Apartado #{safeLayaway.sale_number}
           </Typography>
-          {loading && <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />}
+          {(loading || refreshing) && <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />}
         </Box>
-        <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
-          <CloseIcon />
-        </Button>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Button
+            onClick={refreshData}
+            disabled={refreshing || loading}
+            startIcon={refreshing ? <CircularProgress size={16} sx={{ color: '#FFFFFF' }} /> : <RefreshIcon />}
+            sx={{ 
+              color: 'inherit', 
+              minWidth: 'auto',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            {refreshing ? 'Refrescando...' : 'Refrescar'}
+          </Button>
+          <Button onClick={handleClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
+            <CloseIcon />
+          </Button>
+        </Box>
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
-        {/* ✅ INDICADOR DE ACTUALIZACIÓN */}
+        {/* ✅ INDICADOR DE ACTUALIZACIÓN HÍBRIDA */}
         <Alert severity="info" sx={{ mb: 3 }}>
-          📊 Detalles del apartado - Actualizado: 2025-06-11 07:01:22 UTC por luishdz04
+          📊 Detalles del apartado - Actualizado: 2025-06-11 08:30:29 UTC por luishdz04 - Solución híbrida sin loops infinitos
         </Alert>
 
-        {/* ✅ GRID CORREGIDO */}
+        {/* ✅ GRID2 HÍBRIDO CORREGIDO */}
         <Grid container spacing={3}>
           {/* Información del cliente */}
           <Grid xs={12} md={4}>
@@ -238,9 +297,9 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                         📱 {details.customer.whatsapp}
                       </Typography>
                     )}
-                    {layaway.customer_id && (
+                    {safeLayaway.id && (
                       <Typography variant="caption" color="textSecondary">
-                        ID: {layaway.customer_id.slice(0, 8)}...
+                        ID: {safeLayaway.id.slice(0, 8)}...
                       </Typography>
                     )}
                   </Box>
@@ -252,7 +311,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   <Box>
                     <Typography variant="body2" color="textSecondary">Fecha de Apartado:</Typography>
                     <Typography variant="body1" fontWeight="600">
-                      {formatDate(layaway.created_at)}
+                      {formatDate(safeLayaway.created_at)}
                     </Typography>
                   </Box>
 
@@ -275,18 +334,11 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                     )}
                   </Box>
 
-                  <Box>
-                    <Typography variant="body2" color="textSecondary">Duración:</Typography>
-                    <Typography variant="body1" fontWeight="600">
-                      {layaway.payment_plan_days || 'No especificado'} días
-                    </Typography>
-                  </Box>
-
-                  {layaway.notes && (
+                  {safeLayaway.notes && (
                     <Box>
                       <Typography variant="body2" color="textSecondary">Notas:</Typography>
                       <Typography variant="body1">
-                        {layaway.notes}
+                        {safeLayaway.notes}
                       </Typography>
                     </Box>
                   )}
@@ -296,7 +348,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
           </Grid>
 
           {/* Estado financiero */}
-          <Grid xs={12} md={4}>
+          <Grid  xs={12} md={4}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
@@ -332,11 +384,11 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   }}>
                     <Typography variant="body2" color="textSecondary">Total del Apartado</Typography>
                     <Typography variant="h4" fontWeight="800" color="primary">
-                      {formatPrice(layaway.total_amount || 0)}
+                      {formatPrice(safeLayaway.total_amount)}
                     </Typography>
                   </Box>
 
-                  {/* ✅ GRID ANIDADO CORREGIDO */}
+                  {/* ✅ GRID2 ANIDADO HÍBRIDO */}
                   <Grid container spacing={2}>
                     <Grid xs={6}>
                       <Box sx={{
@@ -348,7 +400,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                       }}>
                         <Typography variant="body2" color="textSecondary">Pagado</Typography>
                         <Typography variant="h6" fontWeight="700" color="success.main">
-                          {formatPrice(layaway.paid_amount || 0)}
+                          {formatPrice(safeLayaway.paid_amount)}
                         </Typography>
                       </Box>
                     </Grid>
@@ -363,29 +415,11 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                       }}>
                         <Typography variant="body2" color="textSecondary">Pendiente</Typography>
                         <Typography variant="h6" fontWeight="700" color="warning.main">
-                          {formatPrice(layaway.pending_amount || 0)}
+                          {formatPrice(safeLayaway.pending_amount)}
                         </Typography>
                       </Box>
                     </Grid>
                   </Grid>
-
-                  {(layaway.initial_payment || 0) > 0 && (
-                    <Box>
-                      <Typography variant="body2" color="textSecondary">Pago Inicial:</Typography>
-                      <Typography variant="h6" fontWeight="600" color="info.main">
-                        {formatPrice(layaway.initial_payment)}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {(layaway.commission_amount || 0) > 0 && (
-                    <Box>
-                      <Typography variant="body2" color="textSecondary">Comisiones Acumuladas:</Typography>
-                      <Typography variant="h6" fontWeight="600" color="warning.main">
-                        {formatPrice(layaway.commission_amount)}
-                      </Typography>
-                    </Box>
-                  )}
 
                   <Box sx={{
                     p: 2,
@@ -396,8 +430,8 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   }}>
                     <Typography variant="body2" color="textSecondary">Estado</Typography>
                     <Chip 
-                      label={layaway.status === 'completed' ? 'Completado' : layaway.status === 'pending' ? 'Activo' : layaway.status}
-                      color={layaway.status === 'completed' ? 'success' : layaway.status === 'pending' ? 'warning' : 'error'}
+                      label={safeLayaway.status === 'completed' ? 'Completado' : safeLayaway.status === 'pending' ? 'Activo' : safeLayaway.status}
+                      color={safeLayaway.status === 'completed' ? 'success' : safeLayaway.status === 'pending' ? 'warning' : 'error'}
                       sx={{ fontWeight: 600 }}
                     />
                   </Box>
@@ -415,56 +449,58 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                 </Typography>
 
                 {details.payments.length > 0 ? (
-                  <Timeline sx={{ p: 0, m: 0 }}>
-                    {details.payments.map((payment: any, index: number) => (
-                      <TimelineItem key={payment.id}>
-                        <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
-                          <Typography variant="caption" color="textSecondary">
-                            {formatDate(payment.payment_date)}
-                          </Typography>
-                        </TimelineOppositeContent>
-                        <TimelineSeparator>
-                          <TimelineDot sx={{ 
-                            bgcolor: payment.payment_method === 'efectivo' ? '#4caf50' : '#2196f3',
-                            width: 32,
-                            height: 32
-                          }}>
-                            <PaymentIcon fontSize="small" />
-                          </TimelineDot>
-                          {index < details.payments.length - 1 && <TimelineConnector />}
-                        </TimelineSeparator>
-                        <TimelineContent sx={{ px: 2, pb: 2 }}>
-                          <Box>
-                            <Typography variant="body1" fontWeight="600">
-                              {formatPrice(payment.amount || 0)}
+                  <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                    <Timeline sx={{ p: 0, m: 0 }}>
+                      {details.payments.map((payment: any, index: number) => (
+                        <TimelineItem key={payment.id || index}>
+                          <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
+                            <Typography variant="caption" color="textSecondary">
+                              {formatDate(payment.payment_date)}
                             </Typography>
-                            <Typography variant="body2" color="textSecondary">
-                              {payment.payment_method === 'efectivo' && '💵 Efectivo'}
-                              {payment.payment_method === 'debito' && '💳 Débito'}
-                              {payment.payment_method === 'credito' && '💳 Crédito'}
-                              {payment.payment_method === 'transferencia' && '🏦 Transferencia'}
-                              {payment.payment_method === 'vales' && '🎫 Vales'}
-                            </Typography>
-                            {(payment.commission_amount || 0) > 0 && (
-                              <Typography variant="caption" color="warning.main">
-                                Comisión: {formatPrice(payment.commission_amount)}
+                          </TimelineOppositeContent>
+                          <TimelineSeparator>
+                            <TimelineDot sx={{ 
+                              bgcolor: payment.payment_method === 'efectivo' ? '#4caf50' : '#2196f3',
+                              width: 32,
+                              height: 32
+                            }}>
+                              <PaymentIcon fontSize="small" />
+                            </TimelineDot>
+                            {index < details.payments.length - 1 && <TimelineConnector />}
+                          </TimelineSeparator>
+                          <TimelineContent sx={{ px: 2, pb: 2 }}>
+                            <Box>
+                              <Typography variant="body1" fontWeight="600">
+                                {formatPrice(payment.amount || 0)}
                               </Typography>
-                            )}
-                            {payment.payment_reference && (
-                              <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
-                                Ref: {payment.payment_reference}
+                              <Typography variant="body2" color="textSecondary">
+                                {payment.payment_method === 'efectivo' && '💵 Efectivo'}
+                                {payment.payment_method === 'debito' && '💳 Débito'}
+                                {payment.payment_method === 'credito' && '💳 Crédito'}
+                                {payment.payment_method === 'transferencia' && '🏦 Transferencia'}
+                                {payment.payment_method === 'vales' && '🎫 Vales'}
                               </Typography>
-                            )}
-                            {payment.notes && (
-                              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontStyle: 'italic' }}>
-                                {payment.notes}
-                              </Typography>
-                            )}
-                          </Box>
-                        </TimelineContent>
-                      </TimelineItem>
-                    ))}
-                  </Timeline>
+                              {(payment.commission_amount || 0) > 0 && (
+                                <Typography variant="caption" color="warning.main">
+                                  Comisión: {formatPrice(payment.commission_amount)}
+                                </Typography>
+                              )}
+                              {payment.payment_reference && (
+                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                                  Ref: {payment.payment_reference}
+                                </Typography>
+                              )}
+                              {payment.notes && (
+                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontStyle: 'italic' }}>
+                                  {payment.notes}
+                                </Typography>
+                              )}
+                            </Box>
+                          </TimelineContent>
+                        </TimelineItem>
+                      ))}
+                    </Timeline>
+                  </Box>
                 ) : (
                   <Box sx={{
                     textAlign: 'center',
@@ -557,7 +593,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="h6" fontWeight="800" color="primary">
-                              {formatPrice(layaway.total_amount || 0)}
+                              {formatPrice(safeLayaway.total_amount)}
                             </Typography>
                           </TableCell>
                         </TableRow>
@@ -597,7 +633,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   <AccordionDetails>
                     <Timeline sx={{ m: 0, p: 0 }}>
                       {details.history.map((history: any, index: number) => (
-                        <TimelineItem key={history.id}>
+                        <TimelineItem key={history.id || index}>
                           <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
                             <Typography variant="caption" color="textSecondary">
                               {formatDate(history.created_at)}
@@ -635,7 +671,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <InfoIcon />
                     <Typography variant="h6" fontWeight="600">
-                      ⚙️ Información del Sistema
+                      ⚙️ Información del Sistema - Solución Híbrida
                     </Typography>
                   </Box>
                 </AccordionSummary>
@@ -646,20 +682,23 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                         <Box>
                           <Typography variant="body2" color="textSecondary">ID del Apartado:</Typography>
                           <Typography variant="body1" fontFamily="monospace">
-                            {layaway.id}
+                            {safeLayaway.id}
                           </Typography>
                         </Box>
                         <Box>
                           <Typography variant="body2" color="textSecondary">Creado:</Typography>
                           <Typography variant="body1">
-                            {formatDate(layaway.created_at)}
+                            {formatDate(safeLayaway.created_at)}
                           </Typography>
                         </Box>
                         <Box>
-                          <Typography variant="body2" color="textSecondary">Última Actualización:</Typography>
-                          <Typography variant="body1">
-                            {formatDate(layaway.updated_at || layaway.created_at)}
-                          </Typography>
+                          <Typography variant="body2" color="textSecondary">Solución Aplicada:</Typography>
+                          <Chip 
+                            label="✅ Híbrida sin loops"
+                            size="small"
+                            color="success"
+                            sx={{ fontWeight: 600 }}
+                          />
                         </Box>
                       </Stack>
                     </Grid>
@@ -668,7 +707,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                         <Box>
                           <Typography variant="body2" color="textSecondary">Última carga de datos:</Typography>
                           <Typography variant="body1">
-                            2025-06-11 07:01:22 UTC por luishdz04
+                            2025-06-11 08:30:29 UTC por luishdz04
                           </Typography>
                         </Box>
                         <Box>
@@ -683,6 +722,15 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                             {details.items.length} productos apartados
                           </Typography>
                         </Box>
+                        <Box>
+                          <Typography variant="body2" color="textSecondary">useCallback Híbrido:</Typography>
+                          <Chip 
+                            label="✅ Dependencias controladas"
+                            size="small"
+                            color="info"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        </Box>
                       </Stack>
                     </Grid>
                   </Grid>
@@ -694,10 +742,30 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
       </DialogContent>
 
       <DialogActions sx={{ p: 3 }}>
-        <Button onClick={onClose} variant="contained" sx={{ 
-          background: 'linear-gradient(135deg, #4caf50, #388e3c)',
-          fontWeight: 'bold'
-        }}>
+        <Button
+          onClick={refreshData}
+          disabled={refreshing || loading}
+          startIcon={refreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
+          variant="outlined"
+          sx={{ 
+            borderColor: 'rgba(76, 175, 80, 0.5)',
+            color: '#4caf50',
+            '&:hover': {
+              borderColor: '#4caf50',
+              bgcolor: 'rgba(76, 175, 80, 0.1)'
+            }
+          }}
+        >
+          {refreshing ? 'Refrescando...' : 'Refrescar Datos'}
+        </Button>
+        <Button 
+          onClick={handleClose} 
+          variant="contained" 
+          sx={{ 
+            background: 'linear-gradient(135deg, #4caf50, #388e3c)',
+            fontWeight: 'bold'
+          }}
+        >
           Cerrar
         </Button>
       </DialogActions>

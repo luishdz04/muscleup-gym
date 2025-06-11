@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -9,34 +9,46 @@ import {
   Button,
   Typography,
   Box,
-  Grid,
   Card,
   CardContent,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   Alert,
+  Stepper,
+  Step,
+  StepLabel,
+  StepContent,
+  CircularProgress,
   Chip,
   Divider,
-  CircularProgress,
-  Stack,
+  FormControlLabel,
+  Switch,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Switch,
-  FormControlLabel
+  Paper,
+  IconButton,
+  Tooltip,
+  LinearProgress,
+  Stack
 } from '@mui/material';
-import {
+import Grid from '@mui/material/Grid';
+import { 
   Close as CloseIcon,
   ShoppingCart as ConvertIcon,
-  Warning as WarningIcon,
   Check as CheckIcon,
+  AttachMoney as MoneyIcon,
   Receipt as ReceiptIcon,
-  Email as EmailIcon,
-  Inventory as InventoryIcon,
-  AttachMoney as MoneyIcon
+  Warning as WarningIcon,
+  Info as InfoIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { formatPrice, formatDate } from '@/utils/formatUtils';
 import { showNotification } from '@/utils/notifications';
@@ -44,26 +56,67 @@ import { showNotification } from '@/utils/notifications';
 interface ConvertToSaleDialogProps {
   open: boolean;
   onClose: () => void;
-  layaway: any; // ✅ Puede ser null/undefined
+  layaway: any;
   onSuccess: () => void;
 }
 
-interface ProductStock {
+interface PaymentDetail {
   id: string;
-  name: string;
-  current_stock: number;
-  required_quantity: number;
-  available: boolean;
+  method: string;
+  amount: number;
+  reference?: string;
+  commission: number;
+  commissionAmount: number;
+  sequence: number;
 }
 
-interface LayawayItem {
-  id: string;
-  product_id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
+const defaultPaymentMethods = [
+  { 
+    value: 'efectivo', 
+    label: 'Efectivo', 
+    icon: '💵',
+    commission: 0,
+    requiresReference: false,
+    allowsChange: true,
+    allowsCommission: false
+  },
+  { 
+    value: 'debito', 
+    label: 'Tarjeta de Débito', 
+    icon: '💳',
+    commission: 2.5,
+    requiresReference: true,
+    allowsChange: false,
+    allowsCommission: true
+  },
+  { 
+    value: 'credito', 
+    label: 'Tarjeta de Crédito', 
+    icon: '💳',
+    commission: 3.5,
+    requiresReference: true,
+    allowsChange: false,
+    allowsCommission: true
+  },
+  { 
+    value: 'transferencia', 
+    label: 'Transferencia', 
+    icon: '🏦',
+    commission: 0,
+    requiresReference: true,
+    allowsChange: false,
+    allowsCommission: false
+  },
+  { 
+    value: 'vales', 
+    label: 'Vales de Despensa', 
+    icon: '🎫',
+    commission: 4.0,
+    requiresReference: true,
+    allowsChange: false,
+    allowsCommission: true
+  }
+];
 
 export default function ConvertToSaleDialog({ 
   open, 
@@ -71,629 +124,781 @@ export default function ConvertToSaleDialog({
   layaway, 
   onSuccess 
 }: ConvertToSaleDialogProps) {
+  
+  // ✅ ESTADOS BÁSICOS HÍBRIDOS
+  const [activeStep, setActiveStep] = useState(0);
   const [processing, setProcessing] = useState(false);
-  const [stockCheck, setStockCheck] = useState<ProductStock[]>([]);
-  const [loadingStock, setLoadingStock] = useState(false);
-  const [loadingItems, setLoadingItems] = useState(false);
-  const [layawayItems, setLayawayItems] = useState<LayawayItem[]>([]);
-  const [canConvert, setCanConvert] = useState(false);
-  const [printReceipt, setPrintReceipt] = useState(true);
-  const [sendEmail, setSendEmail] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('efectivo');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [applyCommission, setApplyCommission] = useState(true);
+  const [customerChange, setCustomerChange] = useState(0);
+  const [cashReceived, setCashReceived] = useState(0);
+  const [notes, setNotes] = useState('');
+  
+  // ✅ ESTADOS PARA CONVERSIÓN HÍBRIDOS
+  const [convertToRegularSale, setConvertToRegularSale] = useState(true);
+  const [generateNewNumber, setGenerateNewNumber] = useState(false);
+  const [newSaleNumber, setNewSaleNumber] = useState('');
+  
+  // ✅ ESTADOS DE COMISIONES HÍBRIDOS
+  const [paymentMethods, setPaymentMethods] = useState(defaultPaymentMethods);
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ CARGAR ITEMS DEL APARTADO CON VALIDACIÓN SEGURA
-  const loadLayawayItems = useCallback(async () => {
-    // ✅ VALIDACIÓN SEGURA ANTES DE PROCEDER
-    if (!layaway?.id || !open) {
-      setLayawayItems([]);
-      return;
-    }
+  // ✅ DATOS SEGUROS HÍBRIDOS
+  const safeLayaway = useMemo(() => {
+    if (!layaway) return null;
+    
+    return {
+      id: layaway.id || '',
+      sale_number: layaway.sale_number || 'Sin número',
+      total_amount: layaway.total_amount || 0,
+      paid_amount: layaway.paid_amount || 0,
+      pending_amount: layaway.pending_amount || 0,
+      customer_name: layaway.customer_name || 'Cliente General',
+      customer_email: layaway.customer_email || '',
+      customer_id: layaway.customer_id || '',
+      status: layaway.status || 'pending',
+      items: layaway.items || [],
+      payment_history: layaway.payment_history || []
+    };
+  }, [layaway]);
 
-    setLoadingItems(true);
+  // ✅ FUNCIÓN HÍBRIDA PARA CARGAR COMISIONES
+  const loadCommissions = useCallback(async () => {
+    if (!open) return;
+    
     try {
-      console.log('🔍 Cargando items del apartado:', layaway.sale_number, '- 2025-06-11 07:14:51 UTC - luishdz04');
-
-      const { data: items, error } = await supabase
-        .from('sale_items')
+      console.log('🔍 Cargando comisiones para conversión... - 2025-06-11 08:39:27 UTC - luishdz04');
+      
+      const { data: commissions, error } = await supabase
+        .from('payment_commissions')
         .select('*')
-        .eq('sale_id', layaway.id);
+        .eq('is_active', true);
 
-      if (error) {
-        console.error('❌ Error cargando items:', error);
-        throw error;
+      if (!error && commissions && commissions.length > 0) {
+        const updatedMethods = defaultPaymentMethods.map(method => {
+          const dbCommission = commissions.find(c => c.payment_method === method.value);
+          if (dbCommission && method.allowsCommission) {
+            return {
+              ...method,
+              commission: dbCommission.commission_value
+            };
+          }
+          return method;
+        });
+        
+        setPaymentMethods(updatedMethods);
+        console.log('✅ Comisiones cargadas para conversión:', updatedMethods);
+      } else {
+        setPaymentMethods(defaultPaymentMethods);
       }
-
-      const safeItems = (items || []).map(item => ({
-        ...item,
-        // ✅ ASEGURAR VALORES NUMÉRICOS SEGUROS
-        quantity: item.quantity || 0,
-        unit_price: item.unit_price || 0,
-        total_price: item.total_price || 0
-      }));
-
-      setLayawayItems(safeItems);
-      console.log('✅ Items cargados:', safeItems.length);
-
     } catch (error) {
-      console.error('💥 Error cargando items del apartado:', error);
-      if (open) { // ✅ Solo mostrar notificación si el dialog está abierto
-        showNotification('Error al cargar los productos del apartado', 'error');
-      }
-      setLayawayItems([]);
-    } finally {
-      setLoadingItems(false);
+      console.warn('⚠️ Error cargando comisiones:', error);
+      setPaymentMethods(defaultPaymentMethods);
     }
-  }, [layaway?.id, layaway?.sale_number, open, supabase]);
+  }, [open, supabase]); // ✅ DEPENDENCIAS ESPECÍFICAS
 
-  // ✅ VERIFICAR STOCK DISPONIBLE CON VALIDACIÓN SEGURA
-  const checkProductStock = useCallback(async () => {
-    if (layawayItems.length === 0 || !open) {
-      setStockCheck([]);
-      setCanConvert(false);
-      return;
-    }
+  // ✅ FUNCIÓN HÍBRIDA PARA GENERAR NÚMERO DE VENTA
+  const generateSaleNumber = useCallback(async (): Promise<string> => {
+    const today = new Date();
+    const year = today.getFullYear().toString().slice(-2);
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const day = today.getDate().toString().padStart(2, '0');
+    const timestamp = Date.now().toString().slice(-6);
+    
+    return `VT${year}${month}${day}${timestamp}`;
+  }, []);
 
-    setLoadingStock(true);
-    try {
-      console.log('🔍 Verificando stock para', layawayItems.length, 'productos... - luishdz04');
-
-      const stockPromises = layawayItems.map(async (item) => {
-        const { data: product, error } = await supabase
-          .from('products')
-          .select('id, name, current_stock')
-          .eq('id', item.product_id)
-          .single();
-
-        if (error) {
-          console.error('❌ Error verificando stock para producto:', item.product_id, error);
-          return {
-            id: item.product_id || '',
-            name: item.product_name || 'Producto desconocido',
-            current_stock: 0,
-            required_quantity: item.quantity || 0,
-            available: false
-          };
-        }
-
-        return {
-          id: product.id || '',
-          name: product.name || 'Producto sin nombre',
-          current_stock: product.current_stock || 0,
-          required_quantity: item.quantity || 0,
-          available: (product.current_stock || 0) >= (item.quantity || 0)
-        };
-      });
-
-      const stockResults = await Promise.all(stockPromises);
-      setStockCheck(stockResults);
-      
-      // ✅ VERIFICAR SI SE PUEDE CONVERTIR CON VALIDACIÓN SEGURA
-      const allAvailable = stockResults.every(stock => stock.available);
-      const isPaidInFull = (layaway?.pending_amount || 0) <= 0;
-      const isLayawayStatus = layaway?.status === 'pending';
-      
-      const canConvertNow = allAvailable && isPaidInFull && isLayawayStatus;
-      setCanConvert(canConvertNow);
-
-      console.log('📊 Verificación de conversión:', {
-        stockDisponible: allAvailable,
-        pagadoCompleto: isPaidInFull,
-        estadoPendiente: isLayawayStatus,
-        puedeConvertir: canConvertNow
-      });
-
-    } catch (error) {
-      console.error('💥 Error verificando stock:', error);
-      if (open) {
-        showNotification('Error al verificar el inventario', 'error');
-      }
-      setStockCheck([]);
-      setCanConvert(false);
-    } finally {
-      setLoadingStock(false);
-    }
-  }, [layawayItems, layaway?.pending_amount, layaway?.status, open, supabase]);
-
-  // ✅ EFECTOS CON VALIDACIÓN SEGURA
+  // ✅ useEffect HÍBRIDO CON GUARD CLAUSE
   useEffect(() => {
-    if (open && layaway?.id) {
-      console.log('🔄 Inicializando conversión para apartado:', layaway.sale_number);
-      loadLayawayItems();
-      setSendEmail(!!(layaway?.customer_email));
-    } else {
-      // ✅ LIMPIAR ESTADO CUANDO SE CIERRA O NO HAY LAYAWAY
-      setLayawayItems([]);
-      setStockCheck([]);
-      setCanConvert(false);
-      setProcessing(false);
+    if (!open || !layaway) return;
+    
+    console.log('🔄 Inicializando dialog de conversión... - 2025-06-11 08:39:27 UTC - luishdz04');
+    
+    // Reset estados
+    setActiveStep(0);
+    setProcessing(false);
+    setCompleted(false);
+    setPaymentMethod('efectivo');
+    setPaymentReference('');
+    setNotes('');
+    setConvertToRegularSale(true);
+    setGenerateNewNumber(false);
+    setNewSaleNumber('');
+    setCustomerChange(0);
+    setCashReceived(0);
+    
+    // Cargar comisiones
+    loadCommissions();
+    
+    // Set default cash received to pending amount
+    if (safeLayaway?.pending_amount) {
+      setCashReceived(safeLayaway.pending_amount);
     }
-  }, [open, layaway?.id, layaway?.sale_number, layaway?.customer_email, loadLayawayItems]);
+  }, [open, layaway, safeLayaway?.pending_amount, loadCommissions]);
 
-  useEffect(() => {
-    if (layawayItems.length > 0 && open) {
-      checkProductStock();
+  // ✅ CÁLCULOS HÍBRIDOS
+  const calculations = useMemo(() => {
+    if (!safeLayaway) return null;
+    
+    const pendingAmount = safeLayaway.pending_amount;
+    let commission = 0;
+    let totalToCollect = pendingAmount;
+    
+    if (applyCommission && paymentMethod) {
+      const method = paymentMethods.find(m => m.value === paymentMethod);
+      if (method && method.allowsCommission && method.commission > 0) {
+        commission = pendingAmount * (method.commission / 100);
+        totalToCollect = pendingAmount + commission;
+      }
     }
-  }, [layawayItems, open, checkProductStock]);
+    
+    const change = paymentMethod === 'efectivo' && cashReceived > totalToCollect ? 
+      cashReceived - totalToCollect : 0;
+    
+    return {
+      pendingAmount,
+      commission,
+      totalToCollect,
+      cashReceived,
+      change,
+      canComplete: pendingAmount <= 0 || (paymentMethod === 'efectivo' ? cashReceived >= totalToCollect : true),
+      willGenerateChange: change > 0
+    };
+  }, [safeLayaway, paymentMethod, applyCommission, paymentMethods, cashReceived]);
 
-  // ✅ CONVERTIR APARTADO A VENTA CORREGIDO
-  const handleConvertToSale = async () => {
-    // ✅ VALIDACIONES SEGURAS ANTES DE PROCEDER
-    if (!canConvert || layawayItems.length === 0 || !layaway?.id) {
-      console.log('❌ No se puede convertir:', { canConvert, itemsLength: layawayItems.length, layawayId: layaway?.id });
-      return;
-    }
+  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CONVERSIÓN
+  const processConversion = useCallback(async () => {
+    if (!safeLayaway || !calculations) return;
 
-    setProcessing(true);
     try {
-      console.log('🔄 Iniciando conversión a venta...', {
-        apartado: layaway.sale_number,
-        timestamp: '2025-06-11 07:14:51 UTC',
-        usuario: 'luishdz04'
-      });
+      setProcessing(true);
 
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user?.id) {
         throw new Error('Usuario no autenticado');
       }
+
       const userId = userData.user.id;
 
-      // ✅ ACTUALIZAR APARTADO A VENTA
+      console.log('🚀 Convirtiendo apartado a venta:', safeLayaway.sale_number, '- 2025-06-11 08:39:27 UTC - luishdz04');
+
+      // ✅ GENERAR NUEVO NÚMERO SI ES NECESARIO
+      let finalSaleNumber = safeLayaway.sale_number;
+      if (generateNewNumber) {
+        finalSaleNumber = newSaleNumber || await generateSaleNumber();
+      }
+
+      // ✅ ACTUALIZAR EL APARTADO A VENTA COMPLETADA
+      const updateData = {
+        sale_number: finalSaleNumber,
+        sale_type: convertToRegularSale ? 'regular' : 'layaway',
+        status: 'completed',
+        payment_status: 'paid',
+        paid_amount: safeLayaway.total_amount,
+        pending_amount: 0,
+        payment_received: calculations.totalToCollect,
+        change_amount: calculations.change,
+        commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
+        commission_amount: calculations.commission,
+        notes: notes || `Convertido de apartado ${safeLayaway.sale_number}`,
+        updated_at: new Date().toISOString(),
+        completed_at: new Date().toISOString()
+      };
+
       const { error: updateError } = await supabase
         .from('sales')
-        .update({
-          sale_type: 'sale', // ✅ Cambiar de layaway a sale
-          status: 'completed',
-          payment_status: 'paid',
-          completed_at: new Date().toISOString(),
-          receipt_printed: printReceipt,
-          email_sent: sendEmail,
-          updated_at: new Date().toISOString(),
-          updated_by: userId
-        })
-        .eq('id', layaway.id);
+        .update(updateData)
+        .eq('id', safeLayaway.id);
 
       if (updateError) {
-        console.error('❌ Error actualizando apartado:', updateError);
         throw updateError;
       }
 
-      console.log('✅ Apartado actualizado a venta');
+      // ✅ REGISTRAR PAGO FINAL SI HAY MONTO PENDIENTE
+      if (calculations.pendingAmount > 0) {
+        const paymentData = {
+          sale_id: safeLayaway.id,
+          payment_method: paymentMethod,
+          amount: calculations.totalToCollect,
+          payment_reference: paymentReference || null,
+          commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
+          commission_amount: calculations.commission,
+          sequence_order: (safeLayaway.payment_history?.length || 0) + 1,
+          payment_date: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          created_by: userId,
+          is_partial_payment: false,
+          payment_sequence: 1,
+          notes: `Pago final - Conversión a venta`
+        };
 
-      // ✅ REGISTRAR HISTORIAL DE CAMBIO
+        const { error: paymentError } = await supabase
+          .from('sale_payment_details')
+          .insert([paymentData]);
+
+        if (paymentError) {
+          throw paymentError;
+        }
+      }
+
+      // ✅ CREAR HISTORIAL DE CONVERSIÓN
       await supabase
         .from('layaway_status_history')
         .insert([{
-          layaway_id: layaway.id,
+          layaway_id: safeLayaway.id,
           previous_status: 'pending',
           new_status: 'completed',
-          previous_paid_amount: layaway.paid_amount || 0,
-          new_paid_amount: layaway.paid_amount || 0,
-          reason: 'Apartado convertido manualmente a venta final - 2025-06-11 07:14:51 UTC por luishdz04',
+          previous_paid_amount: safeLayaway.paid_amount,
+          new_paid_amount: safeLayaway.total_amount,
+          reason: `Convertido a ${convertToRegularSale ? 'venta regular' : 'venta completada'}`,
           created_at: new Date().toISOString(),
           created_by: userId
         }]);
 
-      console.log('✅ Historial de conversión registrado');
+      // ✅ RESTAURAR STOCK SI ES NECESARIO (los productos ya fueron descontados en el apartado)
+      // No necesitamos modificar stock aquí ya que se descontó al crear el apartado
 
-      // ✅ ACTUALIZAR PUNTOS DEL CLIENTE SI APLICA
-      if (layaway.customer_id) {
-        try {
-          const { data: customer, error: customerError } = await supabase
-            .from('Users')
-            .select('points_balance, total_purchases, membership_type')
-            .eq('id', layaway.customer_id)
-            .single();
+      setCompleted(true);
+      showNotification(
+        `¡Apartado convertido exitosamente a ${convertToRegularSale ? 'venta regular' : 'venta completada'}!`, 
+        'success'
+      );
 
-          if (!customerError && customer?.membership_type) {
-            const pointsEarned = Math.floor((layaway.total_amount || 0) / 100);
-            
-            await supabase
-              .from('Users')
-              .update({
-                points_balance: (customer.points_balance || 0) + pointsEarned,
-                total_purchases: (customer.total_purchases || 0) + (layaway.total_amount || 0),
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', layaway.customer_id);
+      console.log('✅ Conversión procesada exitosamente');
 
-            console.log('✅ Puntos de cliente actualizados:', pointsEarned);
-          }
-        } catch (customerUpdateError) {
-          console.log('⚠️ Error actualizando puntos de cliente (no crítico):', customerUpdateError);
-        }
-      }
-
-      showNotification('🎉 ¡Apartado convertido a venta exitosamente!', 'success');
-      onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error('💥 Error convirtiendo apartado:', error);
-      showNotification('Error al convertir el apartado: ' + (error as Error).message, 'error');
+      showNotification('Error al convertir apartado: ' + error.message, 'error');
     } finally {
       setProcessing(false);
     }
-  };
+  }, [safeLayaway, calculations, supabase, generateNewNumber, newSaleNumber, generateSaleNumber, convertToRegularSale, paymentMethod, paymentReference, applyCommission, paymentMethods, notes]);
 
-  // ✅ VALIDACIÓN TEMPRANA - EVITA ERRORES DE SSR
-  if (!layaway) {
-    return null;
-  }
+  // ✅ FUNCIÓN HÍBRIDA PARA CERRAR
+  const handleClose = useCallback(() => {
+    if (completed) {
+      onSuccess();
+    }
+    onClose();
+  }, [completed, onSuccess, onClose]);
 
-  // ✅ VALORES SEGUROS PARA EVITAR ERRORES DE NULL
-  const safeLayaway = {
-    id: layaway.id || '',
-    sale_number: layaway.sale_number || 'Sin número',
-    total_amount: layaway.total_amount || 0,
-    paid_amount: layaway.paid_amount || 0,
-    pending_amount: layaway.pending_amount || 0,
-    status: layaway.status || 'pending',
-    customer_name: layaway.customer_name || '',
-    customer_email: layaway.customer_email || '',
-    customer_id: layaway.customer_id || ''
-  };
+  // ✅ VALIDACIÓN HÍBRIDA
+  const canProceed = useCallback(() => {
+    if (!calculations) return false;
+    
+    switch (activeStep) {
+      case 0:
+        return true; // Siempre puede proceder del paso de configuración
+      case 1:
+        const method = paymentMethods.find(m => m.value === paymentMethod);
+        return paymentMethod !== '' && 
+               (!method?.requiresReference || paymentReference !== '') &&
+               (paymentMethod !== 'efectivo' || cashReceived >= calculations.totalToCollect);
+      case 2:
+        return calculations.canComplete;
+      default:
+        return false;
+    }
+  }, [activeStep, calculations, paymentMethod, paymentReference, paymentMethods, cashReceived]);
 
-  const hasInsufficientStock = stockCheck.some(stock => !stock.available);
-  const hasPendingAmount = safeLayaway.pending_amount > 0;
+  if (!open || !safeLayaway) return null;
+
+  const steps = [
+    { label: 'Configuración', description: 'Opciones de conversión' },
+    { label: 'Pago Final', description: 'Método para el saldo pendiente' },
+    { label: 'Confirmación', description: 'Revisar y procesar conversión' }
+  ];
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
+    <Dialog 
+      open={open} 
+      onClose={handleClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        sx: { 
+          borderRadius: 4,
+          background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
+          color: '#FFFFFF',
+          minHeight: '70vh'
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #2196f3, #1976d2)',
+        background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.98), rgba(76, 175, 80, 0.85))',
         color: '#FFFFFF'
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box display="flex" alignItems="center" gap={2}>
           <ConvertIcon />
-          <Typography variant="h6" fontWeight="bold">
-            🔄 Convertir Apartado a Venta
+          <Typography variant="h5" fontWeight="bold">
+            🛒 Convertir a Venta - Apartado #{safeLayaway.sale_number}
           </Typography>
-          {(loadingItems || loadingStock) && <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />}
+          <Chip 
+            label="HÍBRIDO v1.1" 
+            color="success" 
+            size="small" 
+            sx={{ bgcolor: 'rgba(33,150,243,0.8)', color: '#FFFFFF', fontWeight: 'bold' }}
+          />
         </Box>
-        <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
+        <Button onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}>
           <CloseIcon />
         </Button>
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
-        {/* ✅ INDICADOR DE ACTUALIZACIÓN */}
-        <Alert severity="info" sx={{ mb: 3 }}>
-          🔄 Conversión de apartado - 2025-06-11 07:14:51 UTC - Usuario: luishdz04 - Error SSR corregido
-        </Alert>
-
-        {/* Información del apartado CON VALIDACIÓN SEGURA */}
-        <Card sx={{ 
-          mb: 3,
-          background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05))',
-          border: '2px solid rgba(33, 150, 243, 0.3)'
-        }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2, color: '#2196f3', fontWeight: 700 }}>
-              📋 Información del Apartado #{safeLayaway.sale_number}
-            </Typography>
-
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 3 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">Total</Typography>
-                  <Typography variant="h6" fontWeight="bold">
-                    {formatPrice(safeLayaway.total_amount)}
+        {!completed ? (
+          <Box>
+            {/* ✅ INFORMACIÓN DEL APARTADO CON GRID CORRECTO */}
+            <Alert severity="info" sx={{ mb: 3 }}>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 3 }}>
+                  <Typography variant="body2">
+                    <strong>Cliente:</strong> {safeLayaway.customer_name}
                   </Typography>
-                </Box>
+                </Grid>
+                <Grid size={{ xs: 3 }}>
+                  <Typography variant="body2">
+                    <strong>Total:</strong> {formatPrice(safeLayaway.total_amount)}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 3 }}>
+                  <Typography variant="body2">
+                    <strong>Pagado:</strong> {formatPrice(safeLayaway.paid_amount)}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 3 }}>
+                  <Typography variant="body2">
+                    <strong>Pendiente:</strong> {formatPrice(safeLayaway.pending_amount)}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Alert>
+
+            {/* ✅ INDICADOR HÍBRIDO */}
+            <Alert severity="success" sx={{ mb: 3 }}>
+              ✅ <strong>SOLUCIÓN HÍBRIDA:</strong> useCallback controlado + Grid correcto - 2025-06-11 08:39:27 UTC por luishdz04
+            </Alert>
+
+            {/* ✅ ADVERTENCIA SI HAY SALDO PENDIENTE */}
+            {safeLayaway.pending_amount > 0 && (
+              <Alert severity="warning" sx={{ mb: 3 }}>
+                ⚠️ <strong>Saldo Pendiente:</strong> Se debe cobrar {formatPrice(safeLayaway.pending_amount)} para completar la conversión
+              </Alert>
+            )}
+
+            <Grid container spacing={4}>
+              {/* ✅ STEPPER CON GRID CORRECTO */}
+              <Grid size={{ xs: 8 }}>
+                <Card sx={{ background: 'rgba(51, 51, 51, 0.8)', p: 2 }}>
+                  <Stepper activeStep={activeStep} orientation="vertical">
+                    {steps.map((step, index) => (
+                      <Step key={step.label}>
+                        <StepLabel sx={{ '& .MuiStepLabel-label': { color: '#FFFFFF' } }}>
+                          {step.label}
+                        </StepLabel>
+                        <StepContent>
+                          <Typography sx={{ color: '#CCCCCC', mb: 2 }}>
+                            {step.description}
+                          </Typography>
+
+                          {/* PASO 1: CONFIGURACIÓN */}
+                          {index === 0 && (
+                            <Box>
+                              <Grid container spacing={3}>
+                                <Grid size={{ xs: 12 }}>
+                                  <Card sx={{ p: 3, background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.3)' }}>
+                                    <Typography variant="h6" sx={{ color: '#4caf50', mb: 2 }}>
+                                      ⚙️ Opciones de Conversión
+                                    </Typography>
+                                    
+                                    <FormControlLabel
+                                      control={
+                                        <Switch
+                                          checked={convertToRegularSale}
+                                          onChange={(e) => setConvertToRegularSale(e.target.checked)}
+                                          sx={{
+                                            '& .MuiSwitch-switchBase.Mui-checked': {
+                                              color: '#4caf50',
+                                            },
+                                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                              backgroundColor: '#4caf50',
+                                            },
+                                          }}
+                                        />
+                                      }
+                                      label={
+                                        <Typography sx={{ color: 'white' }}>
+                                          🛒 Convertir a venta regular (recomendado)
+                                        </Typography>
+                                      }
+                                    />
+                                    
+                                    <Typography variant="body2" sx={{ color: '#CCCCCC', mt: 1, mb: 3 }}>
+                                      {convertToRegularSale ? 
+                                        'Se marcará como venta regular completada' : 
+                                        'Se mantendrá como apartado completado'
+                                      }
+                                    </Typography>
+                                    
+                                    <FormControlLabel
+                                      control={
+                                        <Switch
+                                          checked={generateNewNumber}
+                                          onChange={(e) => setGenerateNewNumber(e.target.checked)}
+                                          sx={{
+                                            '& .MuiSwitch-switchBase.Mui-checked': {
+                                              color: '#2196f3',
+                                            },
+                                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                              backgroundColor: '#2196f3',
+                                            },
+                                          }}
+                                        />
+                                      }
+                                      label={
+                                        <Typography sx={{ color: 'white' }}>
+                                          🔢 Generar nuevo número de venta
+                                        </Typography>
+                                      }
+                                    />
+                                    
+                                    {generateNewNumber && (
+                                      <TextField
+                                        fullWidth
+                                        label="Nuevo número de venta (opcional)"
+                                        value={newSaleNumber}
+                                        onChange={(e) => setNewSaleNumber(e.target.value)}
+                                        placeholder="Se generará automáticamente si se deja vacío"
+                                        sx={{
+                                          mt: 2,
+                                          '& .MuiOutlinedInput-root': {
+                                            color: 'white',
+                                            '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                            '&:hover fieldset': { borderColor: 'rgba(33, 150, 243, 0.5)' },
+                                            '&.Mui-focused fieldset': { borderColor: '#2196f3' },
+                                          },
+                                          '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                                        }}
+                                      />
+                                    )}
+                                  </Card>
+                                </Grid>
+                              </Grid>
+
+                              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                                <Button
+                                  variant="contained"
+                                  onClick={() => setActiveStep(1)}
+                                  sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}
+                                >
+                                  Continuar
+                                </Button>
+                              </Box>
+                            </Box>
+                          )}
+
+                          {/* PASO 2: PAGO FINAL */}
+                          {index === 1 && (
+                            <Box>
+                              {safeLayaway.pending_amount > 0 ? (
+                                <Box>
+                                  <Typography variant="h6" sx={{ color: '#ff9800', mb: 2 }}>
+                                    💰 Pago del Saldo Pendiente: {formatPrice(safeLayaway.pending_amount)}
+                                  </Typography>
+                                  
+                                  {/* Métodos de pago */}
+                                  <Grid container spacing={2} sx={{ mb: 3 }}>
+                                    {paymentMethods.map(method => (
+                                      <Grid size={{ xs: 6 }} key={method.value}>
+                                        <Card 
+                                          sx={{
+                                            p: 2,
+                                            background: paymentMethod === method.value 
+                                              ? 'rgba(76, 175, 80, 0.2)' 
+                                              : 'rgba(255,255,255,0.05)',
+                                            border: paymentMethod === method.value 
+                                              ? '2px solid #4caf50' 
+                                              : '1px solid rgba(255,255,255,0.1)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                              background: 'rgba(76, 175, 80, 0.1)',
+                                              border: '1px solid rgba(76, 175, 80, 0.5)'
+                                            }
+                                          }}
+                                          onClick={() => setPaymentMethod(method.value)}
+                                        >
+                                          <Typography variant="body1" sx={{ color: '#FFFFFF', mb: 1 }}>
+                                            {method.icon} {method.label}
+                                          </Typography>
+                                          {method.commission > 0 && (
+                                            <Chip 
+                                              label={`Comisión: ${method.commission}%`}
+                                              size="small"
+                                              color="warning"
+                                              sx={{ fontWeight: 600 }}
+                                            />
+                                          )}
+                                        </Card>
+                                      </Grid>
+                                    ))}
+                                  </Grid>
+
+                                  {/* Campos específicos del método de pago */}
+                                  <Grid container spacing={3}>
+                                    {paymentMethod === 'efectivo' && (
+                                      <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                          fullWidth
+                                          label="Efectivo recibido"
+                                          type="number"
+                                          value={cashReceived}
+                                          onChange={(e) => setCashReceived(Number(e.target.value) || 0)}
+                                          inputProps={{ min: 0, step: 0.01 }}
+                                          sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                              color: 'white',
+                                              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                              '&:hover fieldset': { borderColor: 'rgba(76, 175, 80, 0.5)' },
+                                              '&.Mui-focused fieldset': { borderColor: '#4caf50' },
+                                            },
+                                            '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                                          }}
+                                        />
+                                      </Grid>
+                                    )}
+                                    
+                                    {paymentMethods.find(m => m.value === paymentMethod)?.requiresReference && (
+                                      <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                          fullWidth
+                                          label="Referencia del pago"
+                                          value={paymentReference}
+                                          onChange={(e) => setPaymentReference(e.target.value)}
+                                          required
+                                          sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                              color: 'white',
+                                              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                              '&:hover fieldset': { borderColor: 'rgba(76, 175, 80, 0.5)' },
+                                              '&.Mui-focused fieldset': { borderColor: '#4caf50' },
+                                            },
+                                            '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                                          }}
+                                        />
+                                      </Grid>
+                                    )}
+                                    
+                                    <Grid size={{ xs: 12 }}>
+                                      <TextField
+                                        fullWidth
+                                        label="Notas adicionales"
+                                        multiline
+                                        rows={2}
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        sx={{
+                                          '& .MuiOutlinedInput-root': {
+                                            color: 'white',
+                                            '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                            '&:hover fieldset': { borderColor: 'rgba(76, 175, 80, 0.5)' },
+                                            '&.Mui-focused fieldset': { borderColor: '#4caf50' },
+                                          },
+                                          '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                                        }}
+                                      />
+                                    </Grid>
+                                  </Grid>
+                                </Box>
+                              ) : (
+                                <Alert severity="success">
+                                  ✅ <strong>No hay saldo pendiente.</strong> El apartado ya está completamente pagado y listo para convertir.
+                                </Alert>
+                              )}
+
+                              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                                <Button onClick={() => setActiveStep(0)}>
+                                  Atrás
+                                </Button>
+                                <Button
+                                  variant="contained"
+                                  onClick={() => setActiveStep(2)}
+                                  disabled={!canProceed()}
+                                  sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}
+                                >
+                                  Continuar
+                                </Button>
+                              </Box>
+                            </Box>
+                          )}
+
+                          {/* PASO 3: CONFIRMACIÓN */}
+                          {index === 2 && calculations && (
+                            <Box>
+                              <Alert severity="info" sx={{ mb: 3 }}>
+                                <Typography variant="h6" sx={{ mb: 1 }}>
+                                  📋 Resumen de la Conversión
+                                </Typography>
+                                
+                                <Grid container spacing={2}>
+                                  <Grid size={{ xs: 6 }}>
+                                    <Typography><strong>Tipo de conversión:</strong> {convertToRegularSale ? 'Venta Regular' : 'Apartado Completado'}</Typography>
+                                    <Typography><strong>Número final:</strong> {generateNewNumber ? (newSaleNumber || 'Se generará automáticamente') : safeLayaway.sale_number}</Typography>
+                                    <Typography><strong>Método de pago:</strong> {paymentMethods.find(m => m.value === paymentMethod)?.label}</Typography>
+                                  </Grid>
+                                  <Grid size={{ xs: 6 }}>
+                                    {calculations.pendingAmount > 0 ? (
+                                      <>
+                                        <Typography><strong>Monto pendiente:</strong> {formatPrice(calculations.pendingAmount)}</Typography>
+                                        <Typography><strong>Comisión:</strong> {formatPrice(calculations.commission)}</Typography>
+                                        <Typography><strong>Total a cobrar:</strong> {formatPrice(calculations.totalToCollect)}</Typography>
+                                        {calculations.change > 0 && (
+                                          <Typography><strong>Cambio:</strong> {formatPrice(calculations.change)}</Typography>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <Typography><strong>Estado:</strong> ✅ Completamente pagado</Typography>
+                                    )}
+                                  </Grid>
+                                </Grid>
+                              </Alert>
+
+                              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                                <Button onClick={() => setActiveStep(1)}>
+                                  Atrás
+                                </Button>
+                                <Button
+                                  variant="contained"
+                                  onClick={processConversion}
+                                  disabled={processing}
+                                  startIcon={processing ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : <CheckIcon />}
+                                  sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}
+                                >
+                                  {processing ? 'Procesando...' : 'Confirmar Conversión'}
+                                </Button>
+                              </Box>
+                            </Box>
+                          )}
+                        </StepContent>
+                      </Step>
+                    ))}
+                  </Stepper>
+                </Card>
               </Grid>
 
-              <Grid size={{ xs: 12, md: 3 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">Pagado</Typography>
-                  <Typography variant="h6" fontWeight="bold" color="success.main">
-                    {formatPrice(safeLayaway.paid_amount)}
+              {/* ✅ RESUMEN CON GRID CORRECTO */}
+              <Grid size={{ xs: 4 }}>
+                <Card sx={{ background: 'rgba(76, 175, 80, 0.1)', p: 3, height: 'fit-content' }}>
+                  <Typography variant="h6" sx={{ color: '#4caf50', mb: 2, fontWeight: 700 }}>
+                    🛒 Resumen del Apartado
                   </Typography>
-                </Box>
-              </Grid>
 
-              <Grid size={{ xs: 12, md: 3 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">Pendiente</Typography>
-                  <Typography variant="h6" fontWeight="bold" color={hasPendingAmount ? 'error.main' : 'success.main'}>
-                    {formatPrice(safeLayaway.pending_amount)}
-                  </Typography>
-                </Box>
-              </Grid>
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                      Progreso actual: {Math.round((safeLayaway.paid_amount / safeLayaway.total_amount) * 100)}%
+                    </Typography>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(safeLayaway.paid_amount / safeLayaway.total_amount) * 100}
+                      sx={{ 
+                        height: 8, 
+                        borderRadius: 4,
+                        '& .MuiLinearProgress-bar': {
+                          backgroundColor: '#4caf50'
+                        }
+                      }}
+                    />
+                  </Box>
 
-              <Grid size={{ xs: 12, md: 3 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">Estado</Typography>
-                  <Chip 
-                    label={safeLayaway.status}
-                    color={safeLayaway.status === 'pending' ? 'warning' : 'success'}
-                    sx={{ fontWeight: 600 }}
-                  />
-                </Box>
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Total:</Typography>
+                      <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
+                        {formatPrice(safeLayaway.total_amount)}
+                      </Typography>
+                    </Box>
+                    
+                    <Box>
+                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Pagado:</Typography>
+                      <Typography variant="h6" sx={{ color: '#4caf50', fontWeight: 600 }}>
+                        {formatPrice(safeLayaway.paid_amount)}
+                      </Typography>
+                    </Box>
+                    
+                    <Box>
+                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Pendiente:</Typography>
+                      <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 600 }}>
+                        {formatPrice(safeLayaway.pending_amount)}
+                      </Typography>
+                    </Box>
+
+                    {calculations && calculations.pendingAmount > 0 && (
+                      <>
+                        <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.2)' }} />
+                        
+                        <Box>
+                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Pago final:</Typography>
+                          <Typography variant="h6" sx={{ color: '#4caf50', fontWeight: 600 }}>
+                            {formatPrice(calculations.pendingAmount)}
+                          </Typography>
+                        </Box>
+                        
+                        {calculations.commission > 0 && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Comisión:</Typography>
+                            <Typography variant="body1" sx={{ color: '#ff9800', fontWeight: 600 }}>
+                              {formatPrice(calculations.commission)}
+                            </Typography>
+                          </Box>
+                        )}
+                        
+                        <Box>
+                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Total a cobrar:</Typography>
+                          <Typography variant="h5" sx={{ color: '#4caf50', fontWeight: 700 }}>
+                            {formatPrice(calculations.totalToCollect)}
+                          </Typography>
+                        </Box>
+
+                        {calculations.change > 0 && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Cambio:</Typography>
+                            <Typography variant="h6" sx={{ color: '#2196f3', fontWeight: 600 }}>
+                              {formatPrice(calculations.change)}
+                            </Typography>
+                          </Box>
+                        )}
+                      </>
+                    )}
+                  </Stack>
+                </Card>
               </Grid>
             </Grid>
-
-            {safeLayaway.customer_name && (
-              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(33, 150, 243, 0.2)' }}>
-                <Typography variant="body2" color="textSecondary">Cliente:</Typography>
-                <Typography variant="body1" fontWeight="600">
-                  {safeLayaway.customer_name}
-                  {safeLayaway.customer_email && ` • ${safeLayaway.customer_email}`}
-                </Typography>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Alertas de validación */}
-        {hasPendingAmount && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            <Typography variant="body1" fontWeight="600">
-              ❌ No se puede convertir: Hay un saldo pendiente de {formatPrice(safeLayaway.pending_amount)}
+          </Box>
+        ) : (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <CheckIcon sx={{ fontSize: 80, color: '#4caf50', mb: 2 }} />
+            <Typography variant="h4" sx={{ color: '#4caf50', fontWeight: 700, mb: 2 }}>
+              ¡Conversión Exitosa!
             </Typography>
-            <Typography variant="body2">
-              El apartado debe estar completamente pagado para poder convertirse a venta.
+            <Typography variant="body1" sx={{ color: '#CCCCCC', mb: 3 }}>
+              El apartado #{safeLayaway.sale_number} ha sido convertido exitosamente a {convertToRegularSale ? 'venta regular' : 'venta completada'}
             </Typography>
-          </Alert>
-        )}
-
-        {hasInsufficientStock && (
-          <Alert severity="warning" sx={{ mb: 3 }}>
-            <Typography variant="body1" fontWeight="600">
-              ⚠️ Stock insuficiente para algunos productos
-            </Typography>
-            <Typography variant="body2">
-              Verifique el inventario antes de proceder con la conversión.
-            </Typography>
-          </Alert>
-        )}
-
-        {canConvert && (
-          <Alert severity="success" sx={{ mb: 3 }}>
-            <Typography variant="body1" fontWeight="600">
-              ✅ Apartado listo para conversión
-            </Typography>
-            <Typography variant="body2">
-              Todos los requisitos se cumplen. El apartado se puede convertir a venta final.
-            </Typography>
-          </Alert>
-        )}
-
-        {/* Verificación de stock */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2, color: '#2196f3', fontWeight: 700 }}>
-              📦 Verificación de Inventario ({layawayItems.length} productos)
-            </Typography>
-
-            {loadingItems ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                <CircularProgress />
-                <Typography variant="body1" sx={{ ml: 2 }}>
-                  Cargando productos del apartado...
-                </Typography>
-              </Box>
-            ) : loadingStock ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                <CircularProgress />
-                <Typography variant="body1" sx={{ ml: 2 }}>
-                  Verificando stock disponible...
-                </Typography>
-              </Box>
-            ) : layawayItems.length === 0 ? (
-              <Alert severity="warning">
-                No se encontraron productos en este apartado
-              </Alert>
-            ) : (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Producto</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }} align="center">Requerido</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }} align="center">Disponible</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }} align="center">Estado</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {stockCheck.map((stock, index) => (
-                      <TableRow 
-                        key={stock.id || index}
-                        sx={{ 
-                          backgroundColor: stock.available ? 'rgba(76, 175, 80, 0.05)' : 'rgba(244, 67, 54, 0.05)'
-                        }}
-                      >
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="500">
-                            {stock.name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip 
-                            label={stock.required_quantity}
-                            size="small"
-                            color="info"
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography 
-                            variant="body2" 
-                            fontWeight="600"
-                            color={stock.current_stock >= stock.required_quantity ? 'success.main' : 'error.main'}
-                          >
-                            {stock.current_stock}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          {stock.available ? (
-                            <Chip 
-                              icon={<CheckIcon />}
-                              label="Disponible" 
-                              size="small" 
-                              color="success"
-                            />
-                          ) : (
-                            <Chip 
-                              icon={<WarningIcon />}
-                              label="Insuficiente" 
-                              size="small" 
-                              color="error"
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Impacto de la conversión */}
-        {canConvert && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Card sx={{
-              background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05))',
-              border: '2px solid rgba(76, 175, 80, 0.3)'
-            }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
-                  🎯 Impacto de la Conversión
-                </Typography>
-
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Box sx={{ textAlign: 'center', p: 2 }}>
-                      <InventoryIcon sx={{ fontSize: 40, color: '#2196f3', mb: 1 }} />
-                      <Typography variant="h6" fontWeight="bold" color="primary">
-                        Sin Cambio de Stock
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        El inventario ya se actualizó al crear el apartado
-                      </Typography>
-                    </Box>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Box sx={{ textAlign: 'center', p: 2 }}>
-                      <MoneyIcon sx={{ fontSize: 40, color: '#4caf50', mb: 1 }} />
-                      <Typography variant="h6" fontWeight="bold" color="success.main">
-                        Venta Registrada
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Se completará venta por {formatPrice(safeLayaway.total_amount)}
-                      </Typography>
-                    </Box>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Box sx={{ textAlign: 'center', p: 2 }}>
-                      <CheckIcon sx={{ fontSize: 40, color: '#ff9800', mb: 1 }} />
-                      <Typography variant="h6" fontWeight="bold" color="warning.main">
-                        Estado Actualizado
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        El apartado cambiará a "Completado"
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-
-                {safeLayaway.customer_id && (
-                  <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(76, 175, 80, 0.2)' }}>
-                    <Alert severity="info">
-                      <Typography variant="body2">
-                        💎 <strong>Puntos de Cliente:</strong> Se otorgarán {Math.floor(safeLayaway.total_amount / 100)} puntos al cliente por esta venta.
-                      </Typography>
-                    </Alert>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* Opciones de conversión */}
-        {canConvert && (
-          <Card sx={{ mt: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2, color: '#2196f3', fontWeight: 700 }}>
-                ⚙️ Opciones de Conversión
-              </Typography>
-
-              <Grid container spacing={2}>
-                <Grid size={6}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={printReceipt}
-                        onChange={(e) => setPrintReceipt(e.target.checked)}
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <ReceiptIcon />
-                        Imprimir ticket de venta
-                      </Box>
-                    }
-                  />
-                </Grid>
-
-                <Grid size={6}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={sendEmail}
-                        onChange={(e) => setSendEmail(e.target.checked)}
-                        disabled={!safeLayaway.customer_email}
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <EmailIcon />
-                        Enviar comprobante por email
-                      </Box>
-                    }
-                  />
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+            <Button
+              variant="contained"
+              onClick={handleClose}
+              sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}
+            >
+              Cerrar
+            </Button>
+          </Box>
         )}
       </DialogContent>
-
-      <DialogActions sx={{ p: 3, gap: 2 }}>
-        <Button 
-          onClick={onClose} 
-          disabled={processing}
-          variant="outlined"
-          size="large"
-        >
-          Cancelar
-        </Button>
-
-        <Button
-          onClick={handleConvertToSale}
-          disabled={!canConvert || processing || loadingItems || loadingStock}
-          variant="contained"
-          size="large"
-          startIcon={processing ? <CircularProgress size={20} /> : <ConvertIcon />}
-          sx={{
-            background: canConvert ? 
-              'linear-gradient(135deg, #2196f3, #1976d2)' : 
-              'linear-gradient(135deg, #ccc, #999)',
-            fontWeight: 'bold',
-            px: 4
-          }}
-        >
-          {processing ? 'Convirtiendo...' : loadingItems ? 'Cargando...' : '🔄 Convertir a Venta'}
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 }
