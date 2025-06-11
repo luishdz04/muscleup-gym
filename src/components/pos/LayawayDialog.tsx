@@ -418,19 +418,22 @@ export default function LayawayDialog({
       }
     }, [formData.paymentMethod, cashReceived, finalDepositAmount]);
 
-    // Efecto 4: Calcular fecha de expiración
-    useEffect(() => {
-      if (!formData.customPeriod && formData.layawayPeriod > 0) {
-        const today = new Date();
-        const expiration = new Date(today.getTime() + (formData.layawayPeriod * 24 * 60 * 60 * 1000));
-        const expirationString = expiration.toISOString().split('T')[0];
-        
-        setFormData(prev => prev.expirationDate !== expirationString ? {
-          ...prev,
-          expirationDate: expirationString
-        } : prev);
-      }
-    }, [formData.layawayPeriod, formData.customPeriod]);
+// Efecto 4: Calcular fecha de expiración - VERSION CORREGIDA
+useEffect(() => {
+  if (!formData.customPeriod && formData.layawayPeriod > 0) {
+    const today = new Date();
+    const expiration = new Date(today.getTime() + (formData.layawayPeriod * 24 * 60 * 60 * 1000));
+    const expirationString = expiration.toISOString().split('T')[0];
+    
+    // Solo actualizar si la fecha es diferente
+    if (formData.expirationDate !== expirationString) {
+      setFormData(prev => ({
+        ...prev,
+        expirationDate: expirationString
+      }));
+    }
+  }
+}, [formData.layawayPeriod, formData.customPeriod, formData.expirationDate]); // ✅ Dependencias específicas
 
     // ✅ 10. INICIALIZACIÓN CONTROLADA
     useEffect(() => {
