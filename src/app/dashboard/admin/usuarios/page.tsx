@@ -107,6 +107,83 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  iconDefault: '#FFFFFF',
+  iconMuted: '#AAAAAA',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // Document Status
+  docMissing: '#B00020',
+  docPending: '#FFB300',
+  docApproved: '#388E3C',
+  docRejected: '#D32F2F',
+  docExpired: '#555555',
+  docExpiringSoon: '#FFA000',
+  docUploading: '#2196F3',
+  
+  // User Roles
+  roleAdmin: '#FFCC00',
+  roleStaff: '#1976D2',
+  roleTrainer: '#009688',
+  roleUser: '#777777',
+  roleModerator: '#9C27B0',
+  roleGuest: '#444444',
+  
+  // Profile Status
+  profileComplete: '#388E3C',
+  profileIncomplete: '#FFB300',
+  profileSuspended: '#B00020',
+  profilePending: '#1976D2',
+  profileVerified: '#43A047',
+  
+  // Notifications
+  notifNewBg: 'rgba(255,204,0,0.1)',
+  notifCriticalBg: 'rgba(176,0,32,0.2)',
+  notifWarningBg: 'rgba(255,160,0,0.1)',
+  notifSuccessBg: 'rgba(56,142,60,0.1)',
+  notifErrorBg: 'rgba(211,47,47,0.1)',
+  notifInfoBg: 'rgba(25,118,210,0.1)',
+  
+  // Focus & Interactions
+  focusRing: 'rgba(255,204,0,0.4)',
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
+
 // 🏗️ INTERFACES COMPARTIDAS - COHERENCIA TOTAL
 interface Address {
   street: string;
@@ -191,12 +268,12 @@ interface DebugInfo {
   userId?: string;
   basicUser?: User;
   completeUserData?: User;
-  files?: any[] | null; // ✅ Permitir null además de any[]
+  files?: any[] | null;
   finalUser?: User;
   error?: string;
 }
 
-// 🚀 COMPONENTE PRINCIPAL MEJORADO
+// 🚀 COMPONENTE PRINCIPAL MEJORADO CON DARK PRO SYSTEM
 export default function UsersPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -660,7 +737,7 @@ export default function UsersPage() {
         message: `Sincronizado: ${finalUsers.length} usuarios, ${imagesLoaded} con fotos cargadas`,
         timestamp: new Date().toISOString(),
         icon: <PhotoCameraIcon />,
-        color: '#4caf50'
+        color: darkProTokens.success
       };
       
       setActivityFeed(prev => [newActivity, ...prev.slice(0, 49)]);
@@ -819,7 +896,7 @@ export default function UsersPage() {
         userId: savedUser.id,
         userName: `${savedUser.firstName} ${savedUser.lastName}`,
         icon: userData.id ? <EditIcon /> : <AddIcon />,
-        color: userData.id ? '#ff9800' : '#4caf50'
+        color: userData.id ? darkProTokens.warning : darkProTokens.success
       };
       
       setActivityFeed(prev => [newActivity, ...prev.slice(0, 49)]);
@@ -889,7 +966,7 @@ export default function UsersPage() {
         userId: userToDelete.id,
         userName: `${userToDelete.firstName} ${userToDelete.lastName}`,
         icon: <DeleteIcon />,
-        color: '#f44336'
+        color: darkProTokens.error
       };
       
       setActivityFeed(prev => [newActivity, ...prev.slice(0, 49)]);
@@ -1024,25 +1101,25 @@ export default function UsersPage() {
     };
   }, []);
 
-  // 🎨 FUNCIONES AUXILIARES
+  // 🎨 FUNCIONES AUXILIARES CON DARK PRO SYSTEM
 
   // 🎨 FUNCIÓN PARA OBTENER ICONO DE ROL
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'admin': return <AdminIcon sx={{ color: '#f44336' }} />;
-      case 'empleado': return <EmployeeIcon sx={{ color: '#ff9800' }} />;
-      case 'cliente': return <ClientIcon sx={{ color: '#4caf50' }} />;
-      default: return <PersonIcon sx={{ color: '#9e9e9e' }} />;
+      case 'admin': return <AdminIcon sx={{ color: darkProTokens.roleAdmin }} />;
+      case 'empleado': return <EmployeeIcon sx={{ color: darkProTokens.roleStaff }} />;
+      case 'cliente': return <ClientIcon sx={{ color: darkProTokens.success }} />;
+      default: return <PersonIcon sx={{ color: darkProTokens.grayMuted }} />;
     }
   };
 
   // 🎨 FUNCIÓN PARA OBTENER COLOR DE ROL
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'admin': return '#f44336';
-      case 'empleado': return '#ff9800';
-      case 'cliente': return '#4caf50';
-      default: return '#9e9e9e';
+      case 'admin': return darkProTokens.roleAdmin;
+      case 'empleado': return darkProTokens.roleStaff;
+      case 'cliente': return darkProTokens.success;
+      default: return darkProTokens.grayMuted;
     }
   };
 
@@ -1070,6 +1147,13 @@ export default function UsersPage() {
     return Math.round((completed / total) * 100);
   };
 
+  // 🎨 FUNCIÓN PARA OBTENER COLOR DE COMPLETITUD
+  const getCompletionColor = (percentage: number) => {
+    if (percentage >= 80) return darkProTokens.success;
+    if (percentage >= 50) return darkProTokens.warning;
+    return darkProTokens.error;
+  };
+
   // 📅 FUNCIÓN PARA FORMATEAR FECHAS
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No disponible';
@@ -1080,30 +1164,34 @@ export default function UsersPage() {
     }
   };
 
-  // 🚀 =============== COMPONENTES UI ===============
+  // 🚀 =============== COMPONENTES UI CON DARK PRO SYSTEM ===============
 
-  // 📊 DASHBOARD DE MÉTRICAS PROFESIONAL
+  // 📊 DASHBOARD DE MÉTRICAS PROFESIONAL CON DARK PRO COLORS
   const MetricsDashboard = () => (
     <Grid container spacing={3} sx={{ mb: 4 }}>
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <Paper sx={{
           p: 3,
-          background: 'linear-gradient(135deg, #4caf50, #45a049)',
-          color: 'white',
+          background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+          color: darkProTokens.textPrimary,
           borderRadius: 3,
-          transition: 'transform 0.3s ease',
-          '&:hover': { transform: 'translateY(-4px)' }
+          border: `1px solid ${darkProTokens.success}30`,
+          transition: 'all 0.3s ease',
+          '&:hover': { 
+            transform: 'translateY(-4px)',
+            boxShadow: `0 8px 32px ${darkProTokens.success}40`
+          }
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
                 {userStats.totalUsers}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ opacity: 0.9, color: darkProTokens.textSecondary }}>
                 Total Usuarios
               </Typography>
             </Box>
-            <PeopleIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+            <PeopleIcon sx={{ fontSize: 40, opacity: 0.8, color: darkProTokens.textPrimary }} />
           </Box>
         </Paper>
       </Grid>
@@ -1111,22 +1199,26 @@ export default function UsersPage() {
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <Paper sx={{
           p: 3,
-          background: 'linear-gradient(135deg, #2196f3, #1976d2)',
-          color: 'white',
+          background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+          color: darkProTokens.textPrimary,
           borderRadius: 3,
-          transition: 'transform 0.3s ease',
-          '&:hover': { transform: 'translateY(-4px)' }
+          border: `1px solid ${darkProTokens.info}30`,
+          transition: 'all 0.3s ease',
+          '&:hover': { 
+            transform: 'translateY(-4px)',
+            boxShadow: `0 8px 32px ${darkProTokens.info}40`
+          }
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
                 {userStats.newUsersThisMonth}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ opacity: 0.9, color: darkProTokens.textSecondary }}>
                 Nuevos Este Mes
               </Typography>
             </Box>
-            <TrendingUpIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+            <TrendingUpIcon sx={{ fontSize: 40, opacity: 0.8, color: darkProTokens.textPrimary }} />
           </Box>
         </Paper>
       </Grid>
@@ -1134,22 +1226,26 @@ export default function UsersPage() {
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <Paper sx={{
           p: 3,
-          background: 'linear-gradient(135deg, #ff9800, #f57c00)',
-          color: 'white',
+          background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+          color: darkProTokens.background,
           borderRadius: 3,
-          transition: 'transform 0.3s ease',
-          '&:hover': { transform: 'translateY(-4px)' }
+          border: `1px solid ${darkProTokens.primary}30`,
+          transition: 'all 0.3s ease',
+          '&:hover': { 
+            transform: 'translateY(-4px)',
+            boxShadow: `0 8px 32px ${darkProTokens.primary}40`
+          }
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: darkProTokens.background }}>
                 {userStats.completionRate.profilePicture}%
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ opacity: 0.8, color: darkProTokens.background }}>
                 Con Fotos
               </Typography>
             </Box>
-            <PhotoCameraIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+            <PhotoCameraIcon sx={{ fontSize: 40, opacity: 0.8, color: darkProTokens.background }} />
           </Box>
         </Paper>
       </Grid>
@@ -1157,42 +1253,53 @@ export default function UsersPage() {
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <Paper sx={{
           p: 3,
-          background: 'linear-gradient(135deg, #9c27b0, #7b1fa2)',
-          color: 'white',
+          background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, #7b1fa2)`,
+          color: darkProTokens.textPrimary,
           borderRadius: 3,
-          transition: 'transform 0.3s ease',
-          '&:hover': { transform: 'translateY(-4px)' }
+          border: `1px solid ${darkProTokens.roleModerator}30`,
+          transition: 'all 0.3s ease',
+          '&:hover': { 
+            transform: 'translateY(-4px)',
+            boxShadow: `0 8px 32px ${darkProTokens.roleModerator}40`
+          }
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
                 {userStats.averageAge}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ opacity: 0.9, color: darkProTokens.textSecondary }}>
                 Edad Promedio
               </Typography>
             </Box>
-            <CakeIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+            <CakeIcon sx={{ fontSize: 40, opacity: 0.8, color: darkProTokens.textPrimary }} />
           </Box>
         </Paper>
       </Grid>
     </Grid>
   );
 
-  // 📊 WIDGET DE ACTIVIDAD RECIENTE
+  // 📊 WIDGET DE ACTIVIDAD RECIENTE CON DARK PRO SYSTEM
   const RecentActivityWidget = () => (
     <Paper sx={{
       p: 3,
       mb: 3,
-      background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.9), rgba(45, 45, 45, 0.9))',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: 3
+      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+      border: `1px solid ${darkProTokens.grayDark}`,
+      borderRadius: 3,
+      backdropFilter: 'blur(10px)'
     }}>
-      <Typography variant="h6" sx={{ color: 'white', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <TimelineIcon sx={{ color: '#ffcc00' }} />
+      <Typography variant="h6" sx={{ 
+        color: darkProTokens.textPrimary, 
+        mb: 2, 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 1 
+      }}>
+        <TimelineIcon sx={{ color: darkProTokens.primary }} />
         Actividad Reciente
         {loadingImages && (
-          <CircularProgress size={16} sx={{ color: '#ffcc00', ml: 1 }} />
+          <CircularProgress size={16} sx={{ color: darkProTokens.primary, ml: 1 }} />
         )}
       </Typography>
       
@@ -1204,19 +1311,28 @@ export default function UsersPage() {
               display: 'flex',
               alignItems: 'center',
               gap: 2,
-              p: 1,
-              borderRadius: 1,
-              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)' }
+              p: 1.5,
+              borderRadius: 2,
+              transition: 'all 0.2s ease',
+              '&:hover': { 
+                bgcolor: darkProTokens.hoverOverlay,
+                transform: 'translateX(4px)'
+              }
             }}
           >
-            <Avatar sx={{ width: 32, height: 32, bgcolor: activity.color }}>
+            <Avatar sx={{ 
+              width: 32, 
+              height: 32, 
+              bgcolor: activity.color,
+              border: `1px solid ${activity.color}40`
+            }}>
               {activity.icon}
             </Avatar>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ color: 'white' }}>
+              <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
                 {activity.message}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                 {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true, locale: es })}
               </Typography>
             </Box>
@@ -1226,7 +1342,7 @@ export default function UsersPage() {
     </Paper>
   );
 
-  // 📱 TOOLBAR DE ACCIONES MASIVAS
+  // 📱 TOOLBAR DE ACCIONES MASIVAS CON DARK PRO COLORS
   const BulkActionsToolbar = () => (
     <Slide direction="up" in={selectedUsers.size > 0}>
       <Paper
@@ -1238,21 +1354,29 @@ export default function UsersPage() {
           transform: 'translateX(-50%)',
           p: 2,
           zIndex: 1000,
-          background: 'linear-gradient(135deg, #1a1a1a, #2d2d2d)',
-          border: '1px solid rgba(255, 204, 0, 0.3)',
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `1px solid ${darkProTokens.primary}40`,
           borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+          backdropFilter: 'blur(20px)',
+          boxShadow: `0 8px 32px ${darkProTokens.background}80`
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography sx={{ color: 'white', fontWeight: 600 }}>
+          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
             {selectedUsers.size} usuarios seleccionados
           </Typography>
           
           <Button
             size="small"
             startIcon={<EmailIcon />}
-            sx={{ color: '#4caf50' }}
+            sx={{ 
+              color: darkProTokens.success,
+              borderColor: darkProTokens.success,
+              '&:hover': { 
+                bgcolor: `${darkProTokens.success}10`,
+                borderColor: darkProTokens.successHover
+              }
+            }}
           >
             Email Masivo
           </Button>
@@ -1260,7 +1384,14 @@ export default function UsersPage() {
           <Button
             size="small"
             startIcon={<WhatsAppIcon />}
-            sx={{ color: '#25d366' }}
+            sx={{ 
+              color: '#25d366',
+              borderColor: '#25d366',
+              '&:hover': { 
+                bgcolor: 'rgba(37, 211, 102, 0.1)',
+                borderColor: '#22c55e'
+              }
+            }}
           >
             WhatsApp
           </Button>
@@ -1269,7 +1400,14 @@ export default function UsersPage() {
             size="small"
             startIcon={<DeleteIcon />}
             onClick={() => setShowBulkDeleteDialog(true)}
-            sx={{ color: '#f44336' }}
+            sx={{ 
+              color: darkProTokens.error,
+              borderColor: darkProTokens.error,
+              '&:hover': { 
+                bgcolor: `${darkProTokens.error}10`,
+                borderColor: darkProTokens.errorHover
+              }
+            }}
           >
             Eliminar
           </Button>
@@ -1277,7 +1415,13 @@ export default function UsersPage() {
           <IconButton
             size="small"
             onClick={() => setSelectedUsers(new Set())}
-            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+            sx={{ 
+              color: darkProTokens.textSecondary,
+              '&:hover': { 
+                color: darkProTokens.textPrimary,
+                bgcolor: darkProTokens.hoverOverlay
+              }
+            }}
           >
             <CloseIcon />
           </IconButton>
@@ -1286,15 +1430,21 @@ export default function UsersPage() {
     </Slide>
   );
 
-  // 🎯 COMPONENTE DE VISTA PREVIA MEJORADA CON ZOOM
+  // 🎯 COMPONENTE DE VISTA PREVIA MEJORADA CON ZOOM Y DARK PRO
   const ImagePreviewDialog = () => (
     <Dialog
       open={!!previewImage}
       onClose={() => setPreviewImage(null)}
       maxWidth="lg"
       fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: darkProTokens.background,
+          border: `1px solid ${darkProTokens.grayDark}`
+        }
+      }}
     >
-      <DialogContent sx={{ p: 0, bgcolor: 'black', position: 'relative' }}>
+      <DialogContent sx={{ p: 0, bgcolor: darkProTokens.background, position: 'relative' }}>
         {previewImage && (
           <Box sx={{ position: 'relative', overflow: 'hidden' }}>
             <img
@@ -1314,24 +1464,38 @@ export default function UsersPage() {
               right: 16,
               display: 'flex',
               gap: 1,
-              bgcolor: 'rgba(0,0,0,0.7)',
+              bgcolor: `${darkProTokens.surfaceLevel2}E6`,
+              backdropFilter: 'blur(10px)',
               borderRadius: 2,
-              p: 1
+              p: 1,
+              border: `1px solid ${darkProTokens.grayDark}`
             }}>
               <IconButton
                 size="small"
                 onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.25))}
-                sx={{ color: 'white' }}
+                sx={{ 
+                  color: darkProTokens.textPrimary,
+                  '&:hover': { bgcolor: darkProTokens.hoverOverlay }
+                }}
               >
                 <ZoomOutIcon />
               </IconButton>
-              <Typography sx={{ color: 'white', minWidth: 50, textAlign: 'center' }}>
+              <Typography sx={{ 
+                color: darkProTokens.textPrimary, 
+                minWidth: 50, 
+                textAlign: 'center',
+                alignSelf: 'center',
+                fontWeight: 600
+              }}>
                 {Math.round(zoomLevel * 100)}%
               </Typography>
               <IconButton
                 size="small"
                 onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.25))}
-                sx={{ color: 'white' }}
+                sx={{ 
+                  color: darkProTokens.textPrimary,
+                  '&:hover': { bgcolor: darkProTokens.hoverOverlay }
+                }}
               >
                 <ZoomInIcon />
               </IconButton>
@@ -1342,26 +1506,36 @@ export default function UsersPage() {
     </Dialog>
   );
 
-  // 📱 COMPONENTE DE ESTADO DE CONEXIÓN
+  // 📱 COMPONENTE DE ESTADO DE CONEXIÓN CON DARK PRO
   const ConnectionStatus = () => (
     <Snackbar
       open={!isOnline}
       message="Sin conexión a internet. Los datos pueden no estar actualizados."
       action={
-        <Button color="inherit" onClick={() => window.location.reload()}>
+        <Button 
+          color="inherit" 
+          onClick={() => window.location.reload()}
+          sx={{ color: darkProTokens.primary }}
+        >
           Reintentar
         </Button>
       }
+      ContentProps={{
+        sx: {
+          bgcolor: darkProTokens.error,
+          color: darkProTokens.textPrimary
+        }
+      }}
     />
   );
 
-  // 🎨 RENDERIZADO PRINCIPAL
+  // 🎨 RENDERIZADO PRINCIPAL CON DARK PRO SYSTEM
   return (
     <Box sx={{ 
       p: 3, 
-      background: 'linear-gradient(135deg, #0a0a0a, #1a1a1a)',
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
       minHeight: '100vh',
-      color: 'white'
+      color: darkProTokens.textPrimary
     }}>
       {/* 📊 DASHBOARD DE MÉTRICAS */}
       <MetricsDashboard />
@@ -1369,13 +1543,14 @@ export default function UsersPage() {
       {/* 📊 WIDGET DE ACTIVIDAD RECIENTE */}
       <RecentActivityWidget />
       
-      {/* 🔧 PANEL DE CONTROL SUPERIOR - CORREGIDO ✅ */}
+      {/* 🔧 PANEL DE CONTROL SUPERIOR CON DARK PRO COLORS */}
       <Paper sx={{
         p: 3,
         mb: 3,
-        background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.9), rgba(45, 45, 45, 0.9))',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: 3
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 3,
+        backdropFilter: 'blur(10px)'
       }}>
         <Box sx={{ 
           display: 'flex', 
@@ -1387,39 +1562,54 @@ export default function UsersPage() {
         }}>
           <Box>
             <Typography variant="h4" sx={{ 
-              color: '#4caf50', 
+              color: darkProTokens.primary, 
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2
+              gap: 2,
+              textShadow: `0 0 20px ${darkProTokens.primary}40`
             }}>
-              <DashboardIcon sx={{ fontSize: 40 }} />
+              <DashboardIcon sx={{ fontSize: 40, color: darkProTokens.primary }} />
               Gestión de Usuarios MUP
             </Typography>
-            <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              Panel de administración completo
+            <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
+              Panel de administración completo con sistema Dark Pro
             </Typography>
           </Box>
           
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <Chip
-              icon={syncStatus === 'syncing' ? <CircularProgress size={16} /> : <CloudSyncIcon />}
+              icon={syncStatus === 'syncing' ? <CircularProgress size={16} sx={{ color: darkProTokens.textPrimary }} /> : <CloudSyncIcon />}
               label={
                 syncStatus === 'syncing' ? 'Sincronizando...' :
                 syncStatus === 'error' ? 'Error de sync' :
                 lastSyncTime ? `Sincronizado ${formatDistanceToNow(lastSyncTime, { locale: es })}` : 'Listo'
               }
-              color={syncStatus === 'error' ? 'error' : 'success'}
               size="small"
               variant="outlined"
-              sx={{ color: 'white' }}
+              sx={{ 
+                color: syncStatus === 'error' ? darkProTokens.error : darkProTokens.success,
+                borderColor: syncStatus === 'error' ? darkProTokens.error : darkProTokens.success,
+                bgcolor: syncStatus === 'error' ? `${darkProTokens.error}10` : `${darkProTokens.success}10`,
+                '& .MuiChip-icon': {
+                  color: syncStatus === 'error' ? darkProTokens.error : darkProTokens.success
+                }
+              }}
             />
             
             <Button
               size="small"
               startIcon={<ClearAllIcon />}
               onClick={cleanupCache}
-              sx={{ color: '#ffcc00' }}
+              variant="outlined"
+              sx={{ 
+                color: darkProTokens.primary,
+                borderColor: `${darkProTokens.primary}40`,
+                '&:hover': {
+                  borderColor: darkProTokens.primary,
+                  bgcolor: `${darkProTokens.primary}10`
+                }
+              }}
             >
               Limpiar Caché
             </Button>
@@ -1429,13 +1619,15 @@ export default function UsersPage() {
               startIcon={<AddIcon />}
               onClick={() => handleOpenFormDialog()}
               sx={{
-                background: 'linear-gradient(135deg, #4caf50, #45a049)',
+                background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
                 fontWeight: 600,
                 px: 3,
                 borderRadius: 2,
+                boxShadow: `0 4px 20px ${darkProTokens.success}40`,
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #45a049, #388e3c)',
+                  background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
                   transform: 'translateY(-2px)',
+                  boxShadow: `0 6px 25px ${darkProTokens.success}50`
                 },
                 transition: 'all 0.3s ease'
               }}
@@ -1445,7 +1637,7 @@ export default function UsersPage() {
           </Box>
         </Box>
         
-        {/* 🔍 BARRA DE BÚSQUEDA Y FILTROS */}
+        {/* 🔍 BARRA DE BÚSQUEDA Y FILTROS CON DARK PRO STYLING */}
         <Grid container spacing={3} sx={{ mb: 2 }}>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
@@ -1456,32 +1648,34 @@ export default function UsersPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                    <SearchIcon sx={{ color: darkProTokens.iconMuted }} />
                   </InputAdornment>
                 ),
               }}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderColor: darkProTokens.borderDefault,
                     borderWidth: '2px',
                   },
                   '&:hover fieldset': {
-                    borderColor: 'rgba(76, 175, 80, 0.5)',
+                    borderColor: `${darkProTokens.primary}60`,
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: '#4caf50',
+                    borderColor: darkProTokens.primary,
                     borderWidth: '2px',
+                    boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
                   },
-                  color: 'white',
+                  color: darkProTokens.textPrimary,
                   borderRadius: 2,
-                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  bgcolor: darkProTokens.surfaceLevel1,
+                  transition: 'all 0.2s ease'
                 },
                 '& .MuiInputBase-input': {
-                  color: 'white',
+                  color: darkProTokens.textPrimary,
                 },
                 '& .MuiInputBase-input::placeholder': {
-                  color: 'rgba(255, 255, 255, 0.6)',
+                  color: darkProTokens.textSecondary,
                 }
               }}
             />
@@ -1489,58 +1683,85 @@ export default function UsersPage() {
 
           <Grid size={{ xs: 12, md: 3 }}>
             <FormControl fullWidth>
-              <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Filtrar por Rol</InputLabel>
+              <InputLabel sx={{ color: darkProTokens.textSecondary }}>Filtrar por Rol</InputLabel>
               <Select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
                 label="Filtrar por Rol"
                 sx={{
-                  color: 'white',
+                  color: darkProTokens.textPrimary,
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderColor: darkProTokens.borderDefault,
                     borderWidth: '2px',
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(76, 175, 80, 0.5)',
+                    borderColor: `${darkProTokens.primary}60`,
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#4caf50',
+                    borderColor: darkProTokens.primary,
                     borderWidth: '2px',
+                    boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
                   },
                   '& .MuiSvgIcon-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: darkProTokens.iconMuted,
                   },
                   '& .MuiSelect-select': {
-                    color: 'white',
+                    color: darkProTokens.textPrimary,
                   },
-                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  bgcolor: darkProTokens.surfaceLevel1,
                   borderRadius: 2,
+                  transition: 'all 0.2s ease'
                 }}
                 MenuProps={{
                   PaperProps: {
                     sx: {
-                      bgcolor: 'rgba(30, 30, 30, 0.95)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      bgcolor: darkProTokens.surfaceLevel3,
+                      border: `1px solid ${darkProTokens.grayDark}`,
+                      borderRadius: 2,
+                      backdropFilter: 'blur(10px)',
                       '& .MuiMenuItem-root': {
-                        color: 'white',
+                        color: darkProTokens.textPrimary,
                         '&:hover': {
-                          bgcolor: 'rgba(76, 175, 80, 0.1)',
+                          bgcolor: darkProTokens.hoverOverlay,
                         },
                         '&.Mui-selected': {
-                          bgcolor: 'rgba(76, 175, 80, 0.2)',
+                          bgcolor: `${darkProTokens.primary}20`,
+                          '&:hover': {
+                            bgcolor: `${darkProTokens.primary}30`,
+                          }
                         }
                       }
                     }
                   }
                 }}
               >
-                <MenuItem value="todos">Todos los roles</MenuItem>
-                <MenuItem value="admin">👑 Administradores</MenuItem>
-                <MenuItem value="empleado">💼 Empleados</MenuItem>
-                <MenuItem value="cliente">🏋️ Clientes</MenuItem>
+                <MenuItem value="todos">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PeopleIcon sx={{ color: darkProTokens.iconMuted }} />
+                    Todos los roles
+                  </Box>
+                </MenuItem>
+                <MenuItem value="admin">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AdminIcon sx={{ color: darkProTokens.roleAdmin }} />
+                    Administradores
+                  </Box>
+                </MenuItem>
+                <MenuItem value="empleado">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <EmployeeIcon sx={{ color: darkProTokens.roleStaff }} />
+                    Empleados
+                  </Box>
+                </MenuItem>
+                <MenuItem value="cliente">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ClientIcon sx={{ color: darkProTokens.success }} />
+                    Clientes
+                  </Box>
+                </MenuItem>
               </Select>
             </FormControl>
-            </Grid>
+          </Grid>
           
           <Grid size={{ xs: 12, md: 3 }}>
             <Button
@@ -1550,49 +1771,58 @@ export default function UsersPage() {
               onClick={fetchUsers}
               disabled={loadingImages}
               sx={{
-                borderColor: 'rgba(255, 204, 0, 0.5)',
-                color: '#ffcc00',
+                borderColor: `${darkProTokens.primary}60`,
+                color: darkProTokens.primary,
+                bgcolor: `${darkProTokens.primary}05`,
                 '&:hover': {
-                  borderColor: '#ffcc00',
-                  backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}15`,
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px 15px ${darkProTokens.primary}30`
                 },
                 '&:disabled': {
-                  borderColor: 'rgba(255, 204, 0, 0.3)',
-                  color: 'rgba(255, 204, 0, 0.5)',
+                  borderColor: `${darkProTokens.primary}30`,
+                  color: `${darkProTokens.primary}60`,
+                  bgcolor: `${darkProTokens.primary}05`
                 },
-                height: '56px'
+                height: '56px',
+                borderWidth: '2px',
+                fontWeight: 600,
+                transition: 'all 0.3s ease'
               }}
             >
-              {loadingImages ? 'Cargando...' : 'Actualizar'}
+              {loadingImages ? 'Cargando imágenes...' : 'Actualizar'}
             </Button>
           </Grid>
         </Grid>
         
-        {/* 📊 INFORMACIÓN DE RESULTADOS - CORREGIDO ✅ */}
+        {/* 📊 INFORMACIÓN DE RESULTADOS CON BADGES DARK PRO */}
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
           mt: 2,
-          p: 2,
-          bgcolor: 'rgba(76, 175, 80, 0.1)',
+          p: 3,
+          bgcolor: `${darkProTokens.success}10`,
           borderRadius: 2,
-          border: '1px solid rgba(76, 175, 80, 0.3)'
+          border: `1px solid ${darkProTokens.success}30`,
+          backdropFilter: 'blur(5px)'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography sx={{ color: 'white', fontWeight: 600 }}>
+            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
               📊 Mostrando {filteredUsers.length} de {users.length} usuarios
             </Typography>
             {loadingImages && (
               <Chip
-                icon={<PhotoCameraIcon />}
+                icon={<PhotoCameraIcon sx={{ color: darkProTokens.warning }} />}
                 label="Cargando fotos..."
                 size="small"
                 sx={{
-                  bgcolor: 'rgba(255, 152, 0, 0.2)',
-                  color: '#ffab00',
-                  border: '1px solid rgba(255, 152, 0, 0.3)',
-                  animation: 'pulse 2s infinite'
+                  bgcolor: `${darkProTokens.warning}20`,
+                  color: darkProTokens.warning,
+                  border: `1px solid ${darkProTokens.warning}40`,
+                  animation: 'pulse 2s infinite',
+                  fontWeight: 600
                 }}
               />
             )}
@@ -1600,31 +1830,44 @@ export default function UsersPage() {
           
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Chip
-              icon={<PhotoCameraIcon />}
+              icon={<PhotoCameraIcon sx={{ color: darkProTokens.success }} />}
               label={`${users.filter(u => u.profilePictureUrl).length} con fotos`}
               size="small"
               sx={{
-                bgcolor: 'rgba(76, 175, 80, 0.2)',
-                color: '#4caf50',
-                border: '1px solid rgba(76, 175, 80, 0.3)'
+                bgcolor: `${darkProTokens.success}20`,
+                color: darkProTokens.success,
+                border: `1px solid ${darkProTokens.success}40`,
+                fontWeight: 600
+              }}
+            />
+            <Chip
+              icon={<VerifiedIcon sx={{ color: darkProTokens.info }} />}
+              label={`${users.filter(u => u.fingerprint).length} verificados`}
+              size="small"
+              sx={{
+                bgcolor: `${darkProTokens.info}20`,
+                color: darkProTokens.info,
+                border: `1px solid ${darkProTokens.info}40`,
+                fontWeight: 600
               }}
             />
           </Box>
         </Box>
       </Paper>
       
-      {/* 📋 TABLA DE USUARIOS */}
+      {/* 📋 TABLA DE USUARIOS CON DARK PRO SYSTEM */}
       <TableContainer 
         component={Paper} 
         sx={{
-          background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.95), rgba(45, 45, 45, 0.95))',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `1px solid ${darkProTokens.grayDark}`,
           borderRadius: 3,
           overflow: 'hidden',
+          backdropFilter: 'blur(10px)',
           '& .MuiTableCell-root': {
             bgcolor: 'transparent !important',
-            color: 'white !important',
-            borderColor: 'rgba(255, 255, 255, 0.1) !important'
+            color: `${darkProTokens.textPrimary} !important`,
+            borderColor: `${darkProTokens.grayDark} !important`
           }
         }}
       >
@@ -1632,43 +1875,48 @@ export default function UsersPage() {
           <TableHead>
             <TableRow>
               <TableCell sx={{ 
-                bgcolor: 'rgba(76, 175, 80, 0.2) !important', 
-                color: 'white !important', 
+                bgcolor: `${darkProTokens.surfaceLevel4} !important`, 
+                color: `${darkProTokens.textPrimary} !important`, 
                 fontWeight: 700,
-                borderBottom: '2px solid rgba(76, 175, 80, 0.5)'
+                borderBottom: `3px solid ${darkProTokens.primary}`,
+                fontSize: '1rem'
               }}>
                 Usuario
               </TableCell>
               <TableCell sx={{ 
-                bgcolor: 'rgba(76, 175, 80, 0.2) !important', 
-                color: 'white !important', 
+                bgcolor: `${darkProTokens.surfaceLevel4} !important`, 
+                color: `${darkProTokens.textPrimary} !important`, 
                 fontWeight: 700,
-                borderBottom: '2px solid rgba(76, 175, 80, 0.5)'
+                borderBottom: `3px solid ${darkProTokens.primary}`,
+                fontSize: '1rem'
               }}>
-                Email
+                Email & WhatsApp
               </TableCell>
               <TableCell sx={{ 
-                bgcolor: 'rgba(76, 175, 80, 0.2) !important', 
-                color: 'white !important', 
+                bgcolor: `${darkProTokens.surfaceLevel4} !important`, 
+                color: `${darkProTokens.textPrimary} !important`, 
                 fontWeight: 700,
-                borderBottom: '2px solid rgba(76, 175, 80, 0.5)'
+                borderBottom: `3px solid ${darkProTokens.primary}`,
+                fontSize: '1rem'
               }}>
                 Rol
               </TableCell>
               <TableCell sx={{ 
-                bgcolor: 'rgba(76, 175, 80, 0.2) !important', 
-                color: 'white !important', 
+                bgcolor: `${darkProTokens.surfaceLevel4} !important`, 
+                color: `${darkProTokens.textPrimary} !important`, 
                 fontWeight: 700,
-                borderBottom: '2px solid rgba(76, 175, 80, 0.5)'
+                borderBottom: `3px solid ${darkProTokens.primary}`,
+                fontSize: '1rem'
               }}>
                 Estado
               </TableCell>
               <TableCell sx={{ 
-                bgcolor: 'rgba(76, 175, 80, 0.2) !important', 
-                color: 'white !important', 
+                bgcolor: `${darkProTokens.surfaceLevel4} !important`, 
+                color: `${darkProTokens.textPrimary} !important`, 
                 fontWeight: 700,
-                borderBottom: '2px solid rgba(76, 175, 80, 0.5)',
-                textAlign: 'center'
+                borderBottom: `3px solid ${darkProTokens.primary}`,
+                textAlign: 'center',
+                fontSize: '1rem'
               }}>
                 Acciones
               </TableCell>
@@ -1678,35 +1926,85 @@ export default function UsersPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
-                  <TableCell sx={{ bgcolor: 'rgba(0, 0, 0, 0.3) !important' }}>
+                  <TableCell sx={{ bgcolor: `${darkProTokens.surfaceLevel1} !important` }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Skeleton variant="circular" width={40} height={40} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
-                      <Skeleton variant="text" width={120} height={20} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
+                      <Skeleton 
+                        variant="circular" 
+                        width={48} 
+                        height={48} 
+                        sx={{ bgcolor: darkProTokens.grayMedium }} 
+                      />
+                      <Box>
+                        <Skeleton 
+                          variant="text" 
+                          width={120} 
+                          height={24} 
+                          sx={{ bgcolor: darkProTokens.grayMedium, mb: 1 }} 
+                        />
+                        <Skeleton 
+                          variant="text" 
+                          width={80} 
+                          height={16} 
+                          sx={{ bgcolor: darkProTokens.grayMedium }} 
+                        />
+                      </Box>
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ bgcolor: 'rgba(0, 0, 0, 0.3) !important' }}>
-                  <Skeleton variant="text" width={180} height={20} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
+                  <TableCell sx={{ bgcolor: `${darkProTokens.surfaceLevel1} !important` }}>
+                    <Skeleton 
+                      variant="text" 
+                      width={180} 
+                      height={20} 
+                      sx={{ bgcolor: darkProTokens.grayMedium, mb: 1 }} 
+                    />
+                    <Skeleton 
+                      variant="text" 
+                      width={140} 
+                      height={16} 
+                      sx={{ bgcolor: darkProTokens.grayMedium }} 
+                    />
                   </TableCell>
-                  <TableCell sx={{ bgcolor: 'rgba(0, 0, 0, 0.3) !important' }}>
-                    <Skeleton variant="rectangular" width={80} height={24} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
+                  <TableCell sx={{ bgcolor: `${darkProTokens.surfaceLevel1} !important` }}>
+                    <Skeleton 
+                      variant="rectangular" 
+                      width={100} 
+                      height={32} 
+                      sx={{ bgcolor: darkProTokens.grayMedium, borderRadius: 1 }} 
+                    />
                   </TableCell>
-                  <TableCell sx={{ bgcolor: 'rgba(0, 0, 0, 0.3) !important' }}>
-                    <Skeleton variant="text" width={100} height={20} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
+                  <TableCell sx={{ bgcolor: `${darkProTokens.surfaceLevel1} !important` }}>
+                    <Skeleton 
+                      variant="text" 
+                      width={80} 
+                      height={16} 
+                      sx={{ bgcolor: darkProTokens.grayMedium, mb: 1 }} 
+                    />
+                    <Skeleton 
+                      variant="rectangular" 
+                      width={120} 
+                      height={6} 
+                      sx={{ bgcolor: darkProTokens.grayMedium, borderRadius: 1 }} 
+                    />
                   </TableCell>
-                  <TableCell sx={{ bgcolor: 'rgba(0, 0, 0, 0.3) !important', textAlign: 'center' }}>
-                    <Skeleton variant="rectangular" width={120} height={32} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1, mx: 'auto' }} />
+                  <TableCell sx={{ bgcolor: `${darkProTokens.surfaceLevel1} !important`, textAlign: 'center' }}>
+                    <Skeleton 
+                      variant="rectangular" 
+                      width={160} 
+                      height={32} 
+                      sx={{ bgcolor: darkProTokens.grayMedium, borderRadius: 1, mx: 'auto' }} 
+                    />
                   </TableCell>
                 </TableRow>
               ))
             ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} sx={{ textAlign: 'center', py: 8, bgcolor: 'rgba(0, 0, 0, 0.3) !important' }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                    <SearchIcon sx={{ fontSize: 64, color: 'rgba(255, 255, 255, 0.3)' }} />
-                    <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                <TableCell colSpan={5} sx={{ textAlign: 'center', py: 8, bgcolor: `${darkProTokens.surfaceLevel1} !important` }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                    <SearchIcon sx={{ fontSize: 64, color: darkProTokens.grayMuted }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
                       No se encontraron usuarios
                     </Typography>
-                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                       {users.length === 0 
                         ? 'No hay usuarios registrados en el sistema'
                         : 'Intenta cambiar los filtros de búsqueda'
@@ -1721,11 +2019,11 @@ export default function UsersPage() {
                         }}
                         sx={{
                           mt: 2,
-                          borderColor: 'rgba(76, 175, 80, 0.5)',
-                          color: '#4caf50',
+                          borderColor: darkProTokens.primary,
+                          color: darkProTokens.primary,
                           '&:hover': {
-                            borderColor: '#4caf50',
-                            bgcolor: 'rgba(76, 175, 80, 0.1)'
+                            borderColor: darkProTokens.primaryHover,
+                            bgcolor: `${darkProTokens.primary}10`
                           }
                         }}
                       >
@@ -1738,6 +2036,8 @@ export default function UsersPage() {
             ) : (
               filteredUsers.map((user) => {
                 const completionPercentage = getCompletionPercentage(user);
+                const completionColor = getCompletionColor(completionPercentage);
+                
                 return (
                   <TableRow
                     key={user.id}
@@ -1746,16 +2046,20 @@ export default function UsersPage() {
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
                       '&:hover': {
-                        bgcolor: 'rgba(76, 175, 80, 0.1) !important',
+                        bgcolor: `${darkProTokens.hoverOverlay} !important`,
                         transform: 'scale(1.01)',
+                        boxShadow: `0 4px 20px ${darkProTokens.primary}20`,
                       },
                       '&:nth-of-type(odd)': {
-                        bgcolor: 'rgba(255, 255, 255, 0.02) !important',
+                        bgcolor: `${darkProTokens.surfaceLevel1} !important`,
+                      },
+                      '&:nth-of-type(even)': {
+                        bgcolor: `${darkProTokens.surfaceLevel2} !important`,
                       }
                     }}
                     onClick={() => handleOpenViewDialog(user)}
                   >
-                    {/* 👤 COLUMNA USUARIO */}
+                    {/* 👤 COLUMNA USUARIO CON DARK PRO STYLING */}
                     <TableCell sx={{ minWidth: 200 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Badge
@@ -1765,10 +2069,11 @@ export default function UsersPage() {
                             user.fingerprint ? (
                               <FingerprintIcon sx={{ 
                                 fontSize: 16, 
-                                color: '#ffcc00',
-                                bgcolor: 'rgba(0, 0, 0, 0.8)',
+                                color: darkProTokens.primary,
+                                bgcolor: darkProTokens.background,
                                 borderRadius: '50%',
-                                p: 0.2
+                                p: 0.2,
+                                border: `2px solid ${darkProTokens.primary}`
                               }} />
                             ) : null
                           }
@@ -1780,12 +2085,12 @@ export default function UsersPage() {
                               height: 48,
                               bgcolor: getRoleColor(user.rol),
                               border: `3px solid ${getRoleColor(user.rol)}`,
-                              boxShadow: `0 4px 12px ${getRoleColor(user.rol)}40`,
+                              boxShadow: `0 4px 15px ${getRoleColor(user.rol)}40`,
                               cursor: 'pointer',
                               transition: 'all 0.3s ease',
                               '&:hover': {
                                 transform: 'scale(1.1)',
-                                boxShadow: `0 6px 20px ${getRoleColor(user.rol)}60`,
+                                boxShadow: `0 6px 25px ${getRoleColor(user.rol)}60`,
                               }
                             }}
                             onClick={(e) => {
@@ -1804,16 +2109,17 @@ export default function UsersPage() {
                           <Typography 
                             variant="h6" 
                             sx={{ 
-                              color: 'white', 
+                              color: darkProTokens.textPrimary, 
                               fontWeight: 600,
                               fontSize: '1rem',
-                              lineHeight: 1.2
+                              lineHeight: 1.2,
+                              mb: 0.5
                             }}
                           >
                             {user.firstName} {user.lastName}
                           </Typography>
                           
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                             {getRoleIcon(user.rol)}
                             <Typography 
                               variant="caption" 
@@ -1829,17 +2135,17 @@ export default function UsersPage() {
                             
                             {user.isMinor && (
                               <Chip
-                                icon={<CakeIcon sx={{ fontSize: '0.8rem !important' }} />}
+                                icon={<CakeIcon sx={{ fontSize: '0.8rem !important', color: darkProTokens.warning }} />}
                                 label="Menor"
                                 size="small"
                                 sx={{
                                   ml: 1,
                                   height: 18,
                                   fontSize: '0.65rem',
-                                  bgcolor: 'rgba(255, 152, 0, 0.2)',
-                                  color: '#ffab00',
-                                  border: '1px solid rgba(255, 152, 0, 0.3)',
-                                  '& .MuiChip-icon': { color: '#ffab00' }
+                                  bgcolor: `${darkProTokens.warning}20`,
+                                  color: darkProTokens.warning,
+                                  border: `1px solid ${darkProTokens.warning}40`,
+                                  '& .MuiChip-icon': { color: darkProTokens.warning }
                                 }}
                               />
                             )}
@@ -1848,11 +2154,10 @@ export default function UsersPage() {
                           <Typography 
                             variant="caption" 
                             sx={{ 
-                              color: 'rgba(255, 255, 255, 0.6)',
+                              color: darkProTokens.textSecondary,
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 0.5,
-                              mt: 0.5
+                              gap: 0.5
                             }}
                           >
                             <AccessTimeIcon sx={{ fontSize: '0.8rem' }} />
@@ -1862,25 +2167,52 @@ export default function UsersPage() {
                       </Box>
                     </TableCell>
                     
-                    {/* 📧 COLUMNA EMAIL */}
-                    <TableCell sx={{ minWidth: 180 }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {/* 📧 COLUMNA EMAIL & WHATSAPP CON BADGES DE ESTADO */}
+                    <TableCell sx={{ minWidth: 200 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <EmailIcon sx={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.5)' }} />
+                          <EmailIcon sx={{ fontSize: '1rem', color: darkProTokens.iconMuted }} />
                           <Typography 
                             variant="body2" 
                             sx={{ 
-                              color: 'white',
+                              color: darkProTokens.textPrimary,
                               fontFamily: 'monospace',
-                              fontSize: '0.85rem'
+                              fontSize: '0.85rem',
+                              flex: 1
                             }}
                           >
                             {user.email}
                           </Typography>
-                          {user.emailSent && (
+                          {user.emailSent ? (
                             <Tooltip title={`Email enviado ${user.emailSentAt ? formatDistanceToNow(new Date(user.emailSentAt), { addSuffix: true, locale: es }) : ''}`}>
-                              <CheckCircleIcon sx={{ fontSize: '1rem', color: '#4caf50' }} />
+                              <Chip
+                                icon={<CheckCircleIcon sx={{ fontSize: '0.8rem !important' }} />}
+                                label="Enviado"
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: '0.65rem',
+                                  bgcolor: `${darkProTokens.success}20`,
+                                  color: darkProTokens.success,
+                                  border: `1px solid ${darkProTokens.success}40`,
+                                  '& .MuiChip-icon': { color: darkProTokens.success }
+                                }}
+                              />
                             </Tooltip>
+                          ) : (
+                            <Chip
+                              icon={<ErrorIcon sx={{ fontSize: '0.8rem !important' }} />}
+                              label="Pendiente"
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                bgcolor: `${darkProTokens.docPending}20`,
+                                color: darkProTokens.docPending,
+                                border: `1px solid ${darkProTokens.docPending}40`,
+                                '& .MuiChip-icon': { color: darkProTokens.docPending }
+                              }}
+                            />
                           )}
                         </Box>
                         
@@ -1889,23 +2221,50 @@ export default function UsersPage() {
                           <Typography 
                             variant="body2" 
                             sx={{ 
-                              color: 'rgba(255, 255, 255, 0.8)',
+                              color: darkProTokens.textSecondary,
                               fontFamily: 'monospace',
-                              fontSize: '0.85rem'
+                              fontSize: '0.85rem',
+                              flex: 1
                             }}
                           >
                             {user.whatsapp || 'No disponible'}
                           </Typography>
-                          {user.whatsappSent && (
+                          {user.whatsappSent ? (
                             <Tooltip title={`WhatsApp enviado ${user.whatsappSentAt ? formatDistanceToNow(new Date(user.whatsappSentAt), { addSuffix: true, locale: es }) : ''}`}>
-                              <CheckCircleIcon sx={{ fontSize: '1rem', color: '#4caf50' }} />
+                              <Chip
+                                icon={<CheckCircleIcon sx={{ fontSize: '0.8rem !important' }} />}
+                                label="Enviado"
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: '0.65rem',
+                                  bgcolor: 'rgba(37, 211, 102, 0.2)',
+                                  color: '#25d366',
+                                  border: '1px solid rgba(37, 211, 102, 0.4)',
+                                  '& .MuiChip-icon': { color: '#25d366' }
+                                }}
+                              />
                             </Tooltip>
+                          ) : (
+                            <Chip
+                              icon={<ErrorIcon sx={{ fontSize: '0.8rem !important' }} />}
+                              label="Pendiente"
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                bgcolor: `${darkProTokens.docPending}20`,
+                                color: darkProTokens.docPending,
+                                border: `1px solid ${darkProTokens.docPending}40`,
+                                '& .MuiChip-icon': { color: darkProTokens.docPending }
+                              }}
+                            />
                           )}
                         </Box>
                       </Box>
                     </TableCell>
                     
-                    {/* 🎭 COLUMNA ROL */}
+                    {/* 🎭 COLUMNA ROL CON DARK PRO BADGE */}
                     <TableCell>
                       <Chip
                         icon={getRoleIcon(user.rol)}
@@ -1922,19 +2281,19 @@ export default function UsersPage() {
                       />
                     </TableCell>
                     
-                    {/* 📊 COLUMNA ESTADO */}
+                    {/* 📊 COLUMNA ESTADO CON PROGRESS BAR DARK PRO */}
                     <TableCell>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'space-between' }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Completitud:
                           </Typography>
                           <Typography 
                             variant="caption" 
                             sx={{ 
-                              color: completionPercentage >= 80 ? '#4caf50' : 
-                                     completionPercentage >= 50 ? '#ff9800' : '#f44336',
-                              fontWeight: 600
+                              color: completionColor,
+                              fontWeight: 700,
+                              fontSize: '0.8rem'
                             }}
                           >
                             {completionPercentage}%
@@ -1945,56 +2304,57 @@ export default function UsersPage() {
                           variant="determinate"
                           value={completionPercentage}
                           sx={{
-                            height: 6,
-                            borderRadius: 3,
-                            bgcolor: 'rgba(255, 255, 255, 0.1)',
+                            height: 8,
+                            borderRadius: 4,
+                            bgcolor: darkProTokens.grayDark,
                             '& .MuiLinearProgress-bar': {
-                              bgcolor: completionPercentage >= 80 ? '#4caf50' : 
-                                       completionPercentage >= 50 ? '#ff9800' : '#f44336',
-                              borderRadius: 3
+                              bgcolor: completionColor,
+                              borderRadius: 4,
+                              boxShadow: `0 0 10px ${completionColor}40`
                             }
                           }}
                         />
                         
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                           {user.profilePictureUrl && (
                             <Tooltip title="Foto de perfil">
-                              <PhotoCameraIcon sx={{ fontSize: '0.9rem', color: '#4caf50' }} />
+                              <PhotoCameraIcon sx={{ fontSize: '1rem', color: darkProTokens.success }} />
                             </Tooltip>
                           )}
                           {user.signatureUrl && (
                             <Tooltip title="Firma digital">
-                              <SignatureIcon sx={{ fontSize: '0.9rem', color: '#4caf50' }} />
+                              <SignatureIcon sx={{ fontSize: '1rem', color: darkProTokens.success }} />
                             </Tooltip>
                           )}
                           {user.contractPdfUrl && (
                             <Tooltip title="Contrato firmado">
-                              <AssignmentIcon sx={{ fontSize: '0.9rem', color: '#4caf50' }} />
+                              <PictureAsPdfIcon sx={{ fontSize: '1rem', color: darkProTokens.error }} />
                             </Tooltip>
                           )}
                           {user.fingerprint && (
                             <Tooltip title="Huella dactilar registrada">
-                              <FingerprintIcon sx={{ fontSize: '0.9rem', color: '#ffcc00' }} />
+                              <FingerprintIcon sx={{ fontSize: '1rem', color: darkProTokens.primary }} />
                             </Tooltip>
                           )}
                         </Box>
                       </Box>
                     </TableCell>
                     
-                    {/* ⚙️ COLUMNA ACCIONES */}
+                    {/* ⚙️ COLUMNA ACCIONES CON DARK PRO BUTTONS */}
                     <TableCell sx={{ textAlign: 'center' }}>
                       <ButtonGroup
                         variant="outlined"
                         size="small"
                         sx={{
                           '& .MuiButton-root': {
-                            borderColor: 'rgba(255, 255, 255, 0.2)',
-                            color: 'white',
-                            minWidth: '32px',
-                            height: '32px',
+                            borderColor: darkProTokens.borderDefault,
+                            color: darkProTokens.textSecondary,
+                            minWidth: '36px',
+                            height: '36px',
+                            transition: 'all 0.2s ease',
                             '&:hover': {
-                              borderColor: 'rgba(76, 175, 80, 0.5)',
-                              bgcolor: 'rgba(76, 175, 80, 0.1)',
+                              transform: 'translateY(-2px)',
+                              boxShadow: `0 4px 12px rgba(0,0,0,0.3)`
                             }
                           }
                         }}
@@ -2007,13 +2367,13 @@ export default function UsersPage() {
                             }}
                             sx={{
                               '&:hover': {
-                                borderColor: 'rgba(33, 150, 243, 0.5) !important',
-                                bgcolor: 'rgba(33, 150, 243, 0.1) !important',
-                                color: '#2196f3 !important'
+                                borderColor: `${darkProTokens.info} !important`,
+                                bgcolor: `${darkProTokens.info}15 !important`,
+                                color: `${darkProTokens.info} !important`
                               }
                             }}
                           >
-                            <VisibilityIcon sx={{ fontSize: '1rem' }} />
+                            <VisibilityIcon sx={{ fontSize: '1.1rem' }} />
                           </Button>
                         </Tooltip>
                         
@@ -2025,13 +2385,13 @@ export default function UsersPage() {
                             }}
                             sx={{
                               '&:hover': {
-                                borderColor: 'rgba(255, 152, 0, 0.5) !important',
-                                bgcolor: 'rgba(255, 152, 0, 0.1) !important',
-                                color: '#ff9800 !important'
+                                borderColor: `${darkProTokens.warning} !important`,
+                                bgcolor: `${darkProTokens.warning}15 !important`,
+                                color: `${darkProTokens.warning} !important`
                               }
                             }}
                           >
-                            <EditIcon sx={{ fontSize: '1rem' }} />
+                            <EditIcon sx={{ fontSize: '1.1rem' }} />
                           </Button>
                         </Tooltip>
                         
@@ -2044,13 +2404,13 @@ export default function UsersPage() {
                             }}
                             sx={{
                               '&:hover': {
-                                borderColor: 'rgba(244, 67, 54, 0.5) !important',
-                                bgcolor: 'rgba(244, 67, 54, 0.1) !important',
-                                color: '#f44336 !important'
+                                borderColor: `${darkProTokens.error} !important`,
+                                bgcolor: `${darkProTokens.error}15 !important`,
+                                color: `${darkProTokens.error} !important`
                               }
                             }}
                           >
-                            <DeleteIcon sx={{ fontSize: '1rem' }} />
+                            <DeleteIcon sx={{ fontSize: '1.1rem' }} />
                           </Button>
                         </Tooltip>
                         
@@ -2063,13 +2423,13 @@ export default function UsersPage() {
                               }}
                               sx={{
                                 '&:hover': {
-                                  borderColor: 'rgba(156, 39, 176, 0.5) !important',
-                                  bgcolor: 'rgba(156, 39, 176, 0.1) !important',
-                                  color: '#9c27b0 !important'
+                                  borderColor: `${darkProTokens.primary} !important`,
+                                  bgcolor: `${darkProTokens.primary}15 !important`,
+                                  color: `${darkProTokens.primary} !important`
                                 }
                               }}
                             >
-                              <MoreVertIcon sx={{ fontSize: '1rem' }} />
+                              <MoreVertIcon sx={{ fontSize: '1.1rem' }} />
                             </Button>
                           </Tooltip>
                         )}
@@ -2082,840 +2442,3 @@ export default function UsersPage() {
           </TableBody>
         </Table>
       </TableContainer>
-      
-      {/* 📱 TOOLBAR DE ACCIONES MASIVAS */}
-      <BulkActionsToolbar />
-      
-      {/* 🎯 VISTA PREVIA DE IMÁGENES */}
-      <ImagePreviewDialog />
-      
-      {/* 📱 ESTADO DE CONEXIÓN */}
-      <ConnectionStatus />
-      
-      {/* 📝 FORMULARIO DE USUARIO */}
-      <UserFormDialog
-        open={formDialogOpen}
-        onClose={() => setFormDialogOpen(false)}
-        user={selectedUser}
-        onSave={handleSaveUser}
-      />
-      
-      {/* 👁️ MODAL DE DETALLES COMPLETOS DEL USUARIO */}
-      <Dialog
-        open={viewUserDialogOpen}
-        onClose={handleCloseViewDialog}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.95), rgba(30, 30, 30, 0.95))',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: 3,
-            color: 'white',
-            maxHeight: '90vh'
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          bgcolor: 'rgba(76, 175, 80, 0.1)'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {selectedUser && (
-              <Avatar
-                src={selectedUser.profilePictureUrl}
-                sx={{
-                  width: 56,
-                  height: 56,
-                  bgcolor: getRoleColor(selectedUser.rol),
-                  border: `3px solid ${getRoleColor(selectedUser.rol)}`,
-                }}
-              >
-                {selectedUser.firstName?.[0]?.toUpperCase()}
-              </Avatar>
-            )}
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>
-                {selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : 'Cargando...'}
-              </Typography>
-              {selectedUser && (
-                <Chip
-                  icon={getRoleIcon(selectedUser.rol)}
-                  label={getRoleLabel(selectedUser.rol)}
-                  size="small"
-                  sx={{
-                    mt: 1,
-                    bgcolor: `${getRoleColor(selectedUser.rol)}20`,
-                    color: getRoleColor(selectedUser.rol),
-                    border: `1px solid ${getRoleColor(selectedUser.rol)}40`,
-                    '& .MuiChip-icon': { color: getRoleColor(selectedUser.rol) }
-                  }}
-                />
-              )}
-            </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {selectedUser?.rol === 'cliente' && (
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={regeneratingContract ? <CircularProgress size={16} /> : <UpdateIcon />}
-                disabled={regeneratingContract}
-                onClick={() => regenerateContract(selectedUser.id)}
-                sx={{
-                  bgcolor: '#ff9800',
-                  '&:hover': { bgcolor: '#f57c00' }
-                }}
-              >
-                {regeneratingContract ? 'Regenerando...' : 'Regenerar Contrato'}
-              </Button>
-            )}
-            
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<RefreshIcon />}
-              onClick={refreshModalData}
-              sx={{
-                borderColor: 'rgba(76, 175, 80, 0.5)',
-                color: '#4caf50',
-                '&:hover': {
-                  borderColor: '#4caf50',
-                  bgcolor: 'rgba(76, 175, 80, 0.1)'
-                }
-              }}
-            >
-              Recargar
-            </Button>
-            
-            <IconButton 
-              onClick={handleCloseViewDialog}
-              sx={{ 
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&:hover': { 
-                  color: 'white',
-                  bgcolor: 'rgba(255, 255, 255, 0.1)'
-                }
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        
-        <DialogContent sx={{ p: 0 }}>
-          {loadingUserDetails ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <CircularProgress size={40} sx={{ color: '#4caf50', mb: 2 }} />
-              <Typography sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                Cargando datos completos del usuario...
-              </Typography>
-            </Box>
-          ) : selectedUser ? (
-            <Box sx={{ p: 3 }}>
-              {/* 🔍 INFORMACIÓN DE DEBUG */}
-              {debugInfo && (
-                <Accordion sx={{ mb: 3, bgcolor: 'rgba(255, 204, 0, 0.1)', border: '1px solid rgba(255, 204, 0, 0.3)' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#ffcc00' }} />}>
-                    <Typography sx={{ color: '#ffcc00', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <InfoIcon />
-                      Debug Info - Etapa: {debugInfo.stage}
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Box sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'white' }}>
-                      <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-                    </Box>
-                  </AccordionDetails>
-                </Accordion>
-              )}
-              
-              <Grid container spacing={3}>
-                {/* 📋 INFORMACIÓN PERSONAL */}
-                <Grid size={12}>
-                  <Paper sx={{
-                    p: 3,
-                    bgcolor: 'rgba(76, 175, 80, 0.1)',
-                    border: '1px solid rgba(76, 175, 80, 0.3)',
-                    borderRadius: 2
-                  }}>
-                    <Typography variant="h6" sx={{ 
-                      color: '#4caf50', 
-                      fontWeight: 700, 
-                      mb: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1
-                    }}>
-                      <PersonIcon />
-                      Información Personal
-                    </Typography>
-                    
-                    <Grid container spacing={2}>
-                      <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Email:
-                          </Typography>
-                          <Typography sx={{ color: 'white', fontWeight: 500 }}>
-                            {selectedUser.email}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      
-                      <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            WhatsApp:
-                          </Typography>
-                          <Typography sx={{ color: 'white', fontWeight: 500 }}>
-                            {selectedUser.whatsapp || 'No disponible'}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      
-                      <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Fecha de Nacimiento:
-                          </Typography>
-                          <Typography sx={{ color: 'white', fontWeight: 500 }}>
-                            {selectedUser.birthDate ? formatDate(selectedUser.birthDate) : 'No disponible'}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      
-                      <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Género:
-                          </Typography>
-                          <Typography sx={{ color: 'white', fontWeight: 500 }}>
-                            {selectedUser.gender || 'No especificado'}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Paper>
-                </Grid>
-                
-                {/* 🏠 DIRECCIÓN (solo para clientes) */}
-                {selectedUser.rol === 'cliente' && selectedUser.address && (
-                  <Grid size={12}>
-                    <Paper sx={{
-                      p: 3,
-                      bgcolor: 'rgba(33, 150, 243, 0.1)',
-                      border: '1px solid rgba(33, 150, 243, 0.3)',
-                      borderRadius: 2
-                    }}>
-                      <Typography variant="h6" sx={{ 
-                        color: '#2196f3', 
-                        fontWeight: 700, 
-                        mb: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1
-                      }}>
-                        <HomeIcon />
-                        Dirección
-                      </Typography>
-                      
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 8 }}>
-                          <Typography sx={{ color: 'white' }}>
-                            {selectedUser.address.street} #{selectedUser.address.number}, {selectedUser.address.neighborhood}
-                          </Typography>
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <Typography sx={{ color: 'white' }}>
-                            {selectedUser.address.city}, {selectedUser.address.state}
-                          </Typography>
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <Typography sx={{ color: 'white' }}>
-                            C.P. {selectedUser.address.postalCode}
-                          </Typography>
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 8 }}>
-                          <Typography sx={{ color: 'white' }}>
-                            {selectedUser.address.country || 'México'}
-                          </Typography>
-                        </Grid>
-                      </Grid>
-                    </Paper>
-                  </Grid>
-                )}
-                
-                {/* 🆘 CONTACTO DE EMERGENCIA (solo para clientes) */}
-                {selectedUser.rol === 'cliente' && selectedUser.emergency && (
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Paper sx={{
-                      p: 3,
-                      bgcolor: 'rgba(244, 67, 54, 0.1)',
-                      border: '1px solid rgba(244, 67, 54, 0.3)',
-                      borderRadius: 2,
-                      height: '100%'
-                    }}>
-                      <Typography variant="h6" sx={{ 
-                        color: '#f44336', 
-                        fontWeight: 700, 
-                        mb: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1
-                      }}>
-                        <LocalHospitalIcon />
-                        Contacto de Emergencia
-                      </Typography>
-                      
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <Box>
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Nombre:
-                          </Typography>
-                          <Typography sx={{ color: 'white', fontWeight: 500 }}>
-                            {selectedUser.emergency.name}
-                          </Typography>
-                        </Box>
-                        
-                        <Box>
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Teléfono:
-                          </Typography>
-                          <Typography sx={{ color: 'white', fontWeight: 500 }}>
-                            {selectedUser.emergency.phone}
-                          </Typography>
-                        </Box>
-                        
-                        {selectedUser.emergency.bloodType && (
-                          <Box>
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              Tipo de Sangre:
-                            </Typography>
-                            <Typography sx={{ color: 'white', fontWeight: 500 }}>
-                              {selectedUser.emergency.bloodType}
-                            </Typography>
-                          </Box>
-                        )}
-                        
-                        {selectedUser.emergency.medicalCondition && (
-                          <Box>
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
-                              Condición Médica:
-                            </Typography>
-                            <Paper sx={{ 
-                              p: 2, 
-                              bgcolor: 'rgba(244, 67, 54, 0.05)',
-                              border: '1px solid rgba(244, 67, 54, 0.2)',
-                              borderRadius: 1
-                            }}>
-                              <Typography variant="body2" sx={{ color: 'white' }}>
-                                {selectedUser.emergency.medicalCondition}
-                              </Typography>
-                            </Paper>
-                          </Box>
-                        )}
-                      </Box>
-                    </Paper>
-                  </Grid>
-                )}
-                
-                {/* 💪 INFORMACIÓN DE MEMBRESÍA (solo para clientes) */}
-                {selectedUser.rol === 'cliente' && selectedUser.membership && (
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Paper sx={{
-                      p: 3,
-                      bgcolor: 'rgba(156, 39, 176, 0.1)',
-                      border: '1px solid rgba(156, 39, 176, 0.3)',
-                      borderRadius: 2,
-                      height: '100%'
-                    }}>
-                      <Typography variant="h6" sx={{ 
-                        color: '#9c27b0', 
-                        fontWeight: 700, 
-                        mb: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1
-                      }}>
-                        <ClientIcon />
-                        Información de Membresía
-                      </Typography>
-                      
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {selectedUser.membership.referredBy && (
-                          <Box>
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              Referido por:
-                            </Typography>
-                            <Typography sx={{ color: 'white', fontWeight: 500 }}>
-                              {selectedUser.membership.referredBy}
-                            </Typography>
-                          </Box>
-                        )}
-                        
-                        <Box>
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Nivel de Entrenamiento:
-                          </Typography>
-                          <Chip
-                            label={selectedUser.membership.trainingLevel || 'Principiante'}
-                            size="small"
-                            sx={{
-                              mt: 0.5,
-                              bgcolor: 'rgba(156, 39, 176, 0.2)',
-                              color: '#ce93d8',
-                              border: '1px solid rgba(156, 39, 176, 0.3)'
-                            }}
-                          />
-                        </Box>
-                        
-                        <Box>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={selectedUser.membership.receivePlans}
-                                disabled
-                                sx={{
-                                  '& .MuiSwitch-switchBase.Mui-checked': {
-                                    color: '#9c27b0',
-                                  },
-                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                    backgroundColor: '#9c27b0',
-                                  },
-                                }}
-                              />
-                            }
-                            label={
-                              <Typography sx={{ color: 'white' }}>
-                                Recibe planes de entrenamiento
-                              </Typography>
-                            }
-                          />
-                        </Box>
-                        
-                        {selectedUser.membership.mainMotivation && (
-                          <Box>
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
-                              Motivación Principal:
-                            </Typography>
-                            <Paper sx={{ 
-                              p: 2, 
-                              bgcolor: 'rgba(156, 39, 176, 0.05)',
-                              border: '1px solid rgba(156, 39, 176, 0.2)',
-                              borderRadius: 1
-                            }}>
-                              <Typography variant="body2" sx={{ color: 'white' }}>
-                                {selectedUser.membership.mainMotivation}
-                              </Typography>
-                            </Paper>
-                          </Box>
-                        )}
-                      </Box>
-                    </Paper>
-                  </Grid>
-                )}
-                
-                {/* 📄 DOCUMENTOS */}
-                <Grid size={12}>
-                  <Paper sx={{
-                    p: 3,
-                    bgcolor: 'rgba(255, 193, 7, 0.1)',
-                    border: '1px solid rgba(255, 193, 7, 0.3)',
-                    borderRadius: 2
-                  }}>
-                    <Typography variant="h6" sx={{ 
-                      color: '#ffc107', 
-                      fontWeight: 700, 
-                      mb: 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1
-                    }}>
-                      <AssignmentIcon />
-                      Documentos y Archivos
-                    </Typography>
-                    
-                    <Grid container spacing={3}>
-                      {/* Foto de Perfil */}
-                      <Grid size={{ xs: 12, md: 4 }}>
-                        <Box sx={{
-                          border: '2px dashed rgba(255, 193, 7, 0.3)',
-                          borderRadius: 2,
-                          p: 3,
-                          textAlign: 'center',
-                          minHeight: 200,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}>
-                          <Typography variant="subtitle2" sx={{ color: '#ffc107', mb: 2, fontWeight: 600 }}>
-                            📸 Foto de Perfil
-                          </Typography>
-                          
-                          {selectedUser.profilePictureUrl ? (
-                            <Box
-                              component="img"
-                              src={selectedUser.profilePictureUrl}
-                              alt="Foto de perfil"
-                              sx={{
-                                width: '100%',
-                                maxWidth: 150,
-                                height: 'auto',
-                                borderRadius: 2,
-                                cursor: 'pointer',
-                                transition: 'transform 0.3s ease',
-                                '&:hover': { transform: 'scale(1.05)' }
-                              }}
-                              onClick={() => {
-                                setPreviewImage(selectedUser.profilePictureUrl!);
-                                setZoomLevel(1);
-                              }}
-                            />
-                          ) : (
-                            <Box sx={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: 1,
-                              color: 'rgba(255, 255, 255, 0.5)'
-                            }}>
-                              <PhotoCameraIcon sx={{ fontSize: 48 }} />
-                              <Typography variant="body2">
-                                No disponible
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
-                      </Grid>
-                      
-                      {/* Firma Digital */}
-                      <Grid size={{ xs: 12, md: 4 }}>
-                        <Box sx={{
-                          border: '2px dashed rgba(255, 193, 7, 0.3)',
-                          borderRadius: 2,
-                          p: 3,
-                          textAlign: 'center',
-                          minHeight: 200,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}>
-                          <Typography variant="subtitle2" sx={{ color: '#ffc107', mb: 2, fontWeight: 600 }}>
-                            ✍️ Firma Digital
-                          </Typography>
-                          
-                          {selectedUser.signatureUrl ? (
-                            <Box
-                              component="img"
-                              src={selectedUser.signatureUrl}
-                              alt="Firma digital"
-                              sx={{
-                                width: '100%',
-                                maxWidth: 200,
-                                height: 'auto',
-                                bgcolor: 'white',
-                                borderRadius: 1,
-                                p: 1,
-                                cursor: 'pointer',
-                                transition: 'transform 0.3s ease',
-                                '&:hover': { transform: 'scale(1.05)' }
-                              }}
-                              onClick={() => {
-                                setPreviewImage(selectedUser.signatureUrl!);
-                                setZoomLevel(1);
-                              }}
-                            />
-                          ) : (
-                            <Box sx={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: 1,
-                              color: 'rgba(255, 255, 255, 0.5)'
-                            }}>
-                              <SignatureIcon sx={{ fontSize: 48 }} />
-                              <Typography variant="body2">
-                                No disponible
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
-                      </Grid>
-                      
-                      {/* Contrato PDF */}
-                      <Grid size={{ xs: 12, md: 4 }}>
-                        <Box sx={{
-                          border: '2px dashed rgba(255, 193, 7, 0.3)',
-                          borderRadius: 2,
-                          p: 3,
-                          textAlign: 'center',
-                          minHeight: 200,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}>
-                          <Typography variant="subtitle2" sx={{ color: '#ffc107', mb: 2, fontWeight: 600 }}>
-                            📄 Contrato PDF
-                          </Typography>
-                          
-                          {selectedUser.contractPdfUrl ? (
-                            <Box sx={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: 2
-                            }}>
-                              <PictureAsPdfIcon sx={{ fontSize: 64, color: '#f44336' }} />
-                              <Button
-                                variant="contained"
-                                size="small"
-                                startIcon={<DownloadIcon />}
-                                onClick={() => window.open(selectedUser.contractPdfUrl, '_blank')}
-                                sx={{
-                                  bgcolor: '#f44336',
-                                  '&:hover': { bgcolor: '#d32f2f' }
-                                }}
-                              >
-                                Ver PDF
-                              </Button>
-                            </Box>
-                          ) : (
-                            <Box sx={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: 1,
-                              color: 'rgba(255, 255, 255, 0.5)'
-                            }}>
-                              <PictureAsPdfIcon sx={{ fontSize: 48 }} />
-                              <Typography variant="body2">
-                                No disponible
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Paper>
-                </Grid>
-              </Grid>
-            </Box>
-          ) : (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                No se pudo cargar la información del usuario
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* 🗑️ DIÁLOGO DE CONFIRMACIÓN DE ELIMINACIÓN */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        PaperProps={{
-          sx: {
-            background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(30, 30, 30, 0.95))',
-            border: '1px solid rgba(244, 67, 54, 0.3)',
-            borderRadius: 3,
-            color: 'white'
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          color: '#f44336', 
-          fontWeight: 700,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1
-        }}>
-          <DeleteIcon />
-          Confirmar Eliminación
-        </DialogTitle>
-        
-        <DialogContent>
-          <DialogContentText sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 2 }}>
-            ¿Estás completamente seguro de que deseas eliminar al usuario{' '}
-            <strong style={{ color: 'white' }}>
-              {userToDelete?.firstName} {userToDelete?.lastName}
-            </strong>?
-          </DialogContentText>
-          
-          <Alert severity="warning" sx={{ bgcolor: 'rgba(255, 152, 0, 0.1)', border: '1px solid rgba(255, 152, 0, 0.3)' }}>
-            <Typography variant="body2" sx={{ color: 'white' }}>
-              Esta acción eliminará permanentemente:
-            </Typography>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px', color: 'white' }}>
-              <li>Todos los datos personales</li>
-              <li>Archivos subidos (fotos, firma, contrato)</li>
-              <li>Historial de asistencia</li>
-              <li>Registros de pagos</li>
-            </ul>
-            <Typography variant="body2" sx={{ color: '#ffcc00', fontWeight: 600 }}>
-              ⚠️ Esta acción NO se puede deshacer
-            </Typography>
-          </Alert>
-        </DialogContent>
-        
-        <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={() => setDeleteDialogOpen(false)}
-            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleDeleteUser}
-            variant="contained"
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={16} /> : <DeleteIcon />}
-            sx={{
-              bgcolor: '#f44336',
-              '&:hover': { bgcolor: '#d32f2f' }
-            }}
-          >
-            {loading ? 'Eliminando...' : 'Eliminar Definitivamente'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* 📱 MENÚ CONTEXTUAL */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          sx: {
-            background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.95), rgba(45, 45, 45, 0.95))',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: 2,
-            color: 'white',
-            minWidth: 200
-          }
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            if (selectedUserForMenu) {
-              handleOpenViewDialog(selectedUserForMenu);
-            }
-            handleMenuClose();
-          }}
-          sx={{ py: 1.5 }}
-        >
-          <ListItemIcon>
-            <VisibilityIcon sx={{ color: '#2196f3' }} />
-          </ListItemIcon>
-          <ListItemText>Ver Detalles Completos</ListItemText>
-        </MenuItem>
-        
-        <MenuItem
-          onClick={() => {
-            if (selectedUserForMenu) {
-              handleOpenFormDialog(selectedUserForMenu);
-            }
-            handleMenuClose();
-          }}
-          sx={{ py: 1.5 }}
-        >
-          <ListItemIcon>
-            <EditIcon sx={{ color: '#ff9800' }} />
-          </ListItemIcon>
-          <ListItemText>Editar Usuario</ListItemText>
-        </MenuItem>
-        
-        {selectedUserForMenu?.rol === 'cliente' && (
-          <MenuItem
-            onClick={() => {
-              if (selectedUserForMenu) {
-                regenerateContract(selectedUserForMenu.id);
-              }
-              handleMenuClose();
-            }}
-            sx={{ py: 1.5 }}
-          >
-            <ListItemIcon>
-              <UpdateIcon sx={{ color: '#9c27b0' }} />
-            </ListItemIcon>
-            <ListItemText>Regenerar Contrato</ListItemText>
-          </MenuItem>
-        )}
-        
-        <Divider sx={{ my: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-        
-        <MenuItem
-          onClick={() => {
-            if (selectedUserForMenu) {
-              setUserToDelete(selectedUserForMenu);
-              setDeleteDialogOpen(true);
-            }
-            handleMenuClose();
-          }}
-          sx={{ py: 1.5, color: '#f44336' }}
-        >
-          <ListItemIcon>
-            <DeleteIcon sx={{ color: '#f44336' }} />
-          </ListItemIcon>
-          <ListItemText>Eliminar Usuario</ListItemText>
-        </MenuItem>
-      </Menu>
-      
-      {/* 📨 SNACKBAR PARA MENSAJES */}
-      <Snackbar
-        open={!!successMessage}
-        autoHideDuration={6000}
-        onClose={() => setSuccessMessage(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          severity="success"
-          onClose={() => setSuccessMessage(null)}
-          sx={{
-            bgcolor: 'rgba(76, 175, 80, 0.9)',
-            color: 'white',
-            '& .MuiAlert-icon': { color: 'white' }
-          }}
-        >
-          {successMessage}
-        </Alert>
-      </Snackbar>
-      
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          severity="error"
-          onClose={() => setError(null)}
-          sx={{
-            bgcolor: 'rgba(244, 67, 54, 0.9)',
-            color: 'white',
-            '& .MuiAlert-icon': { color: 'white' }
-          }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-
-      {/* 🎨 ESTILOS PARA ANIMACIONES */}
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-      `}</style>
-    </Box>
-  );
-}
