@@ -16,7 +16,6 @@ export const getMexicoToday = (): string => {
     const day = mexicoDate.getDate().toString().padStart(2, '0');
     const result = `${year}-${month}-${day}`;
     
-    console.log(`🇲🇽 Fecha actual México: ${result}`);
     return result;
   };
   
@@ -33,26 +32,20 @@ export const getMexicoToday = (): string => {
     paymentType: string, 
     duration: number
   ): string => {
-    console.log(`📅 INICIO - Calculando período: ${dateString} + ${paymentType}`);
-    
     // ✅ PARSING MANUAL PARA EVITAR PROBLEMAS DE ZONA HORARIA
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day); // Mes es 0-indexado en JavaScript
-    
-    console.log(`🗓️ Fecha inicial parseada: ${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`);
     
     // ✅ LÓGICA INTELIGENTE SEGÚN TIPO DE PAGO
     switch (paymentType.toLowerCase()) {
       case 'weekly':
         // Semana = exactamente 7 días
         date.setDate(date.getDate() + 7);
-        console.log(`🗓️ Agregando 1 semana (7 días)`);
         break;
         
       case 'biweekly':
         // Quincenal = exactamente 15 días
         date.setDate(date.getDate() + 15);
-        console.log(`🗓️ Agregando 2 semanas (15 días)`);
         break;
         
       case 'monthly':
@@ -65,7 +58,6 @@ export const getMexicoToday = (): string => {
           // Si cambió, ir al último día del mes anterior
           date.setDate(0);
         }
-        console.log(`🗓️ Agregando 1 mes real (día original: ${originalDay}, día final: ${date.getDate()})`);
         break;
         
       case 'bimonthly':
@@ -75,7 +67,6 @@ export const getMexicoToday = (): string => {
         if (date.getDate() !== originalDayBi) {
           date.setDate(0);
         }
-        console.log(`🗓️ Agregando 2 meses reales`);
         break;
         
       case 'quarterly':
@@ -85,7 +76,6 @@ export const getMexicoToday = (): string => {
         if (date.getDate() !== originalDayQ) {
           date.setDate(0);
         }
-        console.log(`🗓️ Agregando 3 meses reales`);
         break;
         
       case 'semester':
@@ -95,7 +85,6 @@ export const getMexicoToday = (): string => {
         if (date.getDate() !== originalDayS) {
           date.setDate(0);
         }
-        console.log(`🗓️ Agregando 6 meses reales`);
         break;
         
       case 'annual':
@@ -105,12 +94,10 @@ export const getMexicoToday = (): string => {
         if (date.getDate() !== originalDayA) {
           date.setDate(0);
         }
-        console.log(`🗓️ Agregando 1 año real`);
         break;
         
       default:
         // Fallback: usar días literales (para casos como 'visit')
-        console.warn(`⚠️ Tipo desconocido '${paymentType}', usando ${duration} días literales`);
         date.setDate(date.getDate() + duration);
         break;
     }
@@ -121,7 +108,6 @@ export const getMexicoToday = (): string => {
     const resultDay = date.getDate().toString().padStart(2, '0');
     const resultDate = `${resultYear}-${resultMonth}-${resultDay}`;
     
-    console.log(`📅 RESULTADO FINAL: ${dateString} → ${resultDate}`);
     return resultDate;
   };
   
@@ -138,7 +124,6 @@ export const getMexicoToday = (): string => {
     const resultDay = date.getDate().toString().padStart(2, '0');
     const resultDate = `${resultYear}-${resultMonth}-${resultDay}`;
     
-    console.log(`📅 Días exactos: ${dateString} + ${days} días = ${resultDate}`);
     return resultDate;
   };
   
@@ -155,7 +140,6 @@ export const getMexicoToday = (): string => {
     const diffTime = end.getTime() - start.getTime();
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     
-    console.log(`📊 Diferencia calculada: ${startDate} → ${endDate} = ${diffDays} días`);
     return diffDays;
   };
   
@@ -185,7 +169,6 @@ export const getMexicoToday = (): string => {
         day: 'numeric'
       });
     } catch (error) {
-      console.error('❌ Error al formatear fecha:', dateInput, error);
       return 'Fecha inválida';
     }
   };
@@ -207,7 +190,6 @@ export const getMexicoToday = (): string => {
         second: '2-digit'
       });
     } catch (error) {
-      console.error('❌ Error al formatear timestamp:', timestamp, error);
       return 'Timestamp inválido';
     }
   };
@@ -236,7 +218,6 @@ export const getMexicoToday = (): string => {
       const day = date.getDate().toString().padStart(2, '0');
       return `${year}-${month}-${day}`;
     } catch (error) {
-      console.error('❌ Error al formatear fecha para DB:', dateInput, error);
       return getMexicoToday(); // Fallback a fecha actual
     }
   };
@@ -278,42 +259,46 @@ export const getMexicoToday = (): string => {
   };
   
   /**
-   * 🔍 FUNCIÓN DE DEBUG MEJORADA PARA PRUEBAS
+   * 🔍 FUNCIÓN DE DEBUG MEJORADA PARA PRUEBAS (SOLO EN DESARROLLO)
    */
   export const debugDateInfo = (label: string, dateInput: string | Date | any) => {
-    console.log(`🔍 ${label}:`, {
-      original: dateInput,
-      display: typeof dateInput === 'string' ? formatDateForDisplay(dateInput) : dateInput,
-      timestamp: typeof dateInput === 'string' ? formatTimestampForDisplay(dateInput) : dateInput,
-      db_format: typeof dateInput === 'string' ? formatDateForDB(dateInput) : dateInput,
-      type: typeof dateInput,
-      mexico_today: getMexicoToday()
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 ${label}:`, {
+        original: dateInput,
+        display: typeof dateInput === 'string' ? formatDateForDisplay(dateInput) : dateInput,
+        timestamp: typeof dateInput === 'string' ? formatTimestampForDisplay(dateInput) : dateInput,
+        db_format: typeof dateInput === 'string' ? formatDateForDB(dateInput) : dateInput,
+        type: typeof dateInput,
+        mexico_today: getMexicoToday()
+      });
+    }
   };
   
   /**
-   * 🧪 FUNCIÓN DE PRUEBAS PARA VALIDAR CÁLCULOS
+   * 🧪 FUNCIÓN DE PRUEBAS PARA VALIDAR CÁLCULOS (SOLO EN DESARROLLO)
    */
   export const debugDateCalculations = () => {
-    console.log('🧪 === INICIANDO PRUEBAS DE CÁLCULO DE FECHAS CORREGIDAS ===');
-    
-    const testCases = [
-      { start: '2025-06-08', type: 'monthly', desc: '🎯 CASO PRINCIPAL: Junio 8 + 1 mes' },
-      { start: '2025-07-08', type: 'monthly', desc: '🔄 RENOVACIÓN: Julio 8 + 1 mes' },
-      { start: '2025-01-31', type: 'monthly', desc: '🔥 EDGE CASE: Enero 31 + 1 mes' },
-      { start: '2025-02-28', type: 'monthly', desc: 'Febrero 28 + 1 mes' },
-      { start: '2025-03-31', type: 'monthly', desc: '🔥 EDGE CASE: Marzo 31 + 1 mes (abril tiene 30)' },
-      { start: '2025-06-08', type: 'quarterly', desc: 'Junio 8 + 3 meses' },
-      { start: '2025-06-08', type: 'annual', desc: 'Junio 8 + 1 año' },
-      { start: '2025-06-08', type: 'weekly', desc: 'Junio 8 + 1 semana' },
-    ];
-    
-    testCases.forEach(test => {
-      const result = addPeriodToMexicoDate(test.start, test.type, 30);
-      console.log(`✅ ${test.desc}: ${test.start} → ${result}`);
-    });
-    
-    console.log('🧪 === FIN DE PRUEBAS ===');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🧪 === INICIANDO PRUEBAS DE CÁLCULO DE FECHAS CORREGIDAS ===');
+      
+      const testCases = [
+        { start: '2025-06-08', type: 'monthly', desc: '🎯 CASO PRINCIPAL: Junio 8 + 1 mes' },
+        { start: '2025-07-08', type: 'monthly', desc: '🔄 RENOVACIÓN: Julio 8 + 1 mes' },
+        { start: '2025-01-31', type: 'monthly', desc: '🔥 EDGE CASE: Enero 31 + 1 mes' },
+        { start: '2025-02-28', type: 'monthly', desc: 'Febrero 28 + 1 mes' },
+        { start: '2025-03-31', type: 'monthly', desc: '🔥 EDGE CASE: Marzo 31 + 1 mes (abril tiene 30)' },
+        { start: '2025-06-08', type: 'quarterly', desc: 'Junio 8 + 3 meses' },
+        { start: '2025-06-08', type: 'annual', desc: 'Junio 8 + 1 año' },
+        { start: '2025-06-08', type: 'weekly', desc: 'Junio 8 + 1 semana' },
+      ];
+      
+      testCases.forEach(test => {
+        const result = addPeriodToMexicoDate(test.start, test.type, 30);
+        console.log(`✅ ${test.desc}: ${test.start} → ${result}`);
+      });
+      
+      console.log('🧪 === FIN DE PRUEBAS ===');
+    }
   };
   
   // Funciones de compatibilidad
