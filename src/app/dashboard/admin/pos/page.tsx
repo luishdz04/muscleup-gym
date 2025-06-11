@@ -53,7 +53,7 @@ import { corporateColors, getGradient } from '@/theme/colors';
 // Importar componentes del POS
 import CustomerSelector from '@/components/pos/CustomerSelector';
 import PaymentDialog from '@/components/pos/PaymentDialog';
-import LayawayDialog from '@/components/pos/LayawayDialog';
+import LayawayDialog from '@/components/pos/LayawayDialog-DEBUG';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface Customer extends User {
