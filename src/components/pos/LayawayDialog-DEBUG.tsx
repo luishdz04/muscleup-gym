@@ -169,7 +169,7 @@ export default function LayawayDialog({
   const [installmentPlan, setInstallmentPlan] = useState({
     totalInstallments: 3,
     installmentAmount: 0,
-    frequency: 'weekly' // weekly, biweekly, monthly
+    frequency: 'weekly' as 'weekly' | 'biweekly' | 'monthly'
   });
 
   // 🚀 ESTADOS PARA CONFIGURACIÓN AVANZADA
@@ -1437,7 +1437,201 @@ export default function LayawayDialog({
 
                                           <Grid size={{ xs: 6, md: 3 }}>
                                             <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                                                                                         TOTAL A COBRAR: {formatPrice(calculations.totalToCollect)}
+                                              TOTAL A COBRAR:
+                                            </Typography>
+                                            <Typography variant="h5" sx={{ color: '#2196f3', fontWeight: 900 }}>
+                                              {formatPrice(calculations.totalToCollect)}
+                                            </Typography>
+                                          </Grid>
+
+                                          <Grid size={{ xs: 6, md: 3 }}>
+                                            <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                                                                            Método:
+                                            </Typography>
+                                            <Chip 
+                                              label={`${paymentMethods.find(m => m.value === currentPaymentMethod)?.icon} ${paymentMethods.find(m => m.value === currentPaymentMethod)?.label}`}
+                                              color="primary"
+                                              sx={{ fontWeight: 'bold' }}
+                                            />
+                                          </Grid>
+                                        </Grid>
+                                      </Box>
+                                    </Box>
+                                  )}
+                                </Card>
+                              )}
+                            </Box>
+                          )}
+
+                          {/* 🚀 PASO 3: CONFIRMACIÓN DETALLADA */}
+                          {index === 2 && (
+                            <Box>
+                              <Typography variant="h6" sx={{ color: '#FFCC00', mb: 3 }}>
+                                ✅ Confirmación Final del Apartado
+                              </Typography>
+                              
+                              <Grid container spacing={3}>
+                                {/* Resumen Completo del Apartado */}
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                  <Card sx={{ p: 3, background: 'rgba(76, 175, 80, 0.1)', height: 'fit-content' }}>
+                                    <Typography variant="h6" sx={{ color: '#4caf50', mb: 2 }}>
+                                      📋 Resumen Completo del Apartado
+                                    </Typography>
+                                    
+                                    {/* Información Básica */}
+                                    <Box sx={{ mb: 3 }}>
+                                      <Typography variant="subtitle1" sx={{ color: '#4caf50', fontWeight: 600, mb: 1 }}>
+                                        💰 Información Financiera:
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                        Total del apartado: <strong>{formatPrice(calculations.total)}</strong>
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                        Anticipo ({depositPercentage}%): <strong>{formatPrice(calculations.baseDeposit)}</strong>
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                        Pendiente por pagar: <strong>{formatPrice(calculations.remainingAmount)}</strong>
+                                      </Typography>
+                                    </Box>
+
+                                    {/* Información de Tiempo */}
+                                    <Box sx={{ mb: 3 }}>
+                                      <Typography variant="subtitle1" sx={{ color: '#4caf50', fontWeight: 600, mb: 1 }}>
+                                        ⏰ Información de Tiempo:
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                        Duración: <strong>{calculations.durationDays} días</strong>
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                        Vence: <strong>{formatDate(calculations.expirationDate.toISOString())}</strong>
+                                      </Typography>
+                                      {advancedConfig.allowExtensions && (
+                                        <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                          Extensiones permitidas: <strong>{advancedConfig.maxExtensions}</strong> (costo: {formatPrice(advancedConfig.extensionFee)})
+                                        </Typography>
+                                      )}
+                                    </Box>
+
+                                    {/* Plan de Pagos */}
+                                    {allowInstallments && calculations.installmentDetails && (
+                                      <Box sx={{ mb: 3 }}>
+                                        <Typography variant="subtitle1" sx={{ color: '#4caf50', fontWeight: 600, mb: 1 }}>
+                                          📅 Plan de Pagos:
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                          Número de pagos: <strong>{calculations.installmentDetails.totalInstallments}</strong>
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                          Monto por pago: <strong>{formatPrice(calculations.installmentDetails.installmentAmount)}</strong>
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                          Frecuencia: <strong>{installmentPlan.frequency === 'weekly' ? 'Semanal' : installmentPlan.frequency === 'biweekly' ? 'Quincenal' : 'Mensual'}</strong>
+                                        </Typography>
+                                      </Box>
+                                    )}
+
+                                    {/* Configuraciones Especiales */}
+                                    <Box>
+                                      <Typography variant="subtitle1" sx={{ color: '#4caf50', fontWeight: 600, mb: 1 }}>
+                                        ⚙️ Configuraciones Especiales:
+                                      </Typography>
+                                      {advancedConfig.priorityCustomer && (
+                                        <Chip 
+                                          label="⭐ Cliente Prioritario" 
+                                          color="warning" 
+                                          size="small" 
+                                          sx={{ mr: 1, mb: 1 }}
+                                        />
+                                      )}
+                                      {commissionsLoaded && (
+                                        <Chip 
+                                          label="📊 Comisiones BD" 
+                                          color="info" 
+                                          size="small" 
+                                          sx={{ mr: 1, mb: 1 }}
+                                        />
+                                      )}
+                                      {isMixedPayment && (
+                                        <Chip 
+                                          label="💳 Pago Mixto" 
+                                          color="secondary" 
+                                          size="small" 
+                                          sx={{ mr: 1, mb: 1 }}
+                                        />
+                                      )}
+                                    </Box>
+
+                                    {/* Notas */}
+                                    {customerNotes && (
+                                      <Box sx={{ mt: 2 }}>
+                                        <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.2)' }} />
+                                        <Typography variant="subtitle1" sx={{ color: '#ffc107', fontWeight: 600, mb: 1 }}>
+                                          📝 Notas Especiales:
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#CCCCCC', fontStyle: 'italic' }}>
+                                          "{customerNotes}"
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Card>
+                                </Grid>
+
+                                {/* Resumen de Pagos Detallado */}
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                  <Card sx={{ p: 3, background: 'rgba(33, 150, 243, 0.1)', height: 'fit-content' }}>
+                                    <Typography variant="h6" sx={{ color: '#2196f3', mb: 2 }}>
+                                      💳 Detalle de Pagos
+                                    </Typography>
+                                    
+                                    {isMixedPayment ? (
+                                      // Resumen Pagos Mixtos
+                                      <Box>
+                                        <Typography variant="subtitle1" sx={{ color: '#2196f3', fontWeight: 600, mb: 2 }}>
+                                          🔄 Pagos Mixtos Configurados:
+                                        </Typography>
+                                        
+                                        {paymentDetails.map((payment, index) => (
+                                          <Box 
+                                            key={payment.id} 
+                                            sx={{ 
+                                              mb: 2, 
+                                              p: 2, 
+                                              background: 'rgba(255,255,255,0.05)', 
+                                              borderRadius: 1,
+                                              border: '1px solid rgba(33, 150, 243, 0.3)'
+                                            }}
+                                          >
+                                            <Typography variant="body2" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
+                                              Pago #{index + 1}: {paymentMethods.find(m => m.value === payment.method)?.icon} {paymentMethods.find(m => m.value === payment.method)?.label}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                              Monto: {formatPrice(payment.amount)}
+                                            </Typography>
+                                            {payment.commissionAmount > 0 && (
+                                              <Typography variant="body2" sx={{ color: '#ff9800' }}>
+                                                Comisión: +{formatPrice(payment.commissionAmount)}
+                                              </Typography>
+                                            )}
+                                            <Typography variant="body2" sx={{ color: '#4caf50', fontWeight: 600 }}>
+                                              Subtotal: {formatPrice(payment.amount + payment.commissionAmount)}
+                                            </Typography>
+                                            {payment.reference && (
+                                              <Typography variant="body2" sx={{ color: '#CCCCCC', fontSize: '0.8rem' }}>
+                                                Ref: {payment.reference}
+                                              </Typography>
+                                            )}
+                                          </Box>
+                                        ))}
+
+                                        <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                                        
+                                        <Box sx={{ 
+                                          p: 2, 
+                                          background: 'rgba(33, 150, 243, 0.2)', 
+                                          borderRadius: 1 
+                                        }}>
+                                          <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 700 }}>
+                                            TOTAL A COBRAR: {formatPrice(calculations.totalToCollect)}
                                           </Typography>
                                           <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
                                             ({paymentDetails.length} métodos de pago)
@@ -1813,7 +2007,7 @@ export default function LayawayDialog({
                         Usuario: <strong>luishdz04</strong>
                       </Typography>
                       <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
-                        Fecha: <strong>{formatDate(new Date().toISOString())}</strong>
+                        Fecha: <strong>2025-06-11 06:08:40 UTC</strong>
                       </Typography>
                       <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
                         Estado: <strong>✅ Listo para Producción</strong>
@@ -1860,7 +2054,7 @@ export default function LayawayDialog({
             </Typography>
             
             <Typography variant="h6" color="#CCCCCC" sx={{ mb: 4 }}>
-              Apartado guardado exitosamente en Supabase - {formatDate(new Date().toISOString())}
+              Apartado guardado exitosamente en Supabase - 2025-06-11 06:08:40 UTC
             </Typography>
             
             <Grid container spacing={2} sx={{ maxWidth: 800, mx: 'auto', mb: 4 }}>
