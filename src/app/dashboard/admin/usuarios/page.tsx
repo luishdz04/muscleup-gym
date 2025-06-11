@@ -1322,8 +1322,9 @@ export default function UsersPage() {
               <DashboardIcon sx={{ fontSize: 40, color: darkProTokens.primary }} />
               Gestión de Usuarios MUP
             </Typography>
-            <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
-              Panel de administración MUP
+<Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
+  Panel de administración MUP
+</Typography>
           </Box>
           
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
