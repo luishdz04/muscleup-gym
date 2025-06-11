@@ -1,7 +1,6 @@
-// src/components/dialogs/LayawayDetailsDialog.tsx
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -10,7 +9,6 @@ import {
   Button,
   Typography,
   Box,
-  Grid,
   Card,
   CardContent,
   Table,
@@ -27,8 +25,11 @@ import {
   LinearProgress,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  CircularProgress,
+  Alert
 } from '@mui/material';
+import Grid from '@mui/material/Grid'; // ✅ CORREGIDO: Grid2 correcto
 // ✅ CORREGIDO: Timeline importado desde @mui/lab
 import {
   Timeline,
@@ -55,6 +56,7 @@ import {
   Inventory as InventoryIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { formatPrice, formatDate } from '@/utils/formatUtils';
 
 interface LayawayDetailsDialogProps {
@@ -63,11 +65,119 @@ interface LayawayDetailsDialogProps {
   layaway: any;
 }
 
+interface LayawayDetails {
+  items: any[];
+  payments: any[];
+  history: any[];
+  customer: any;
+}
+
 export default function LayawayDetailsDialog({ open, onClose, layaway }: LayawayDetailsDialogProps) {
+  const [loading, setLoading] = useState(false);
+  const [details, setDetails] = useState<LayawayDetails>({
+    items: [],
+    payments: [],
+    history: [],
+    customer: null
+  });
+
+  const supabase = createBrowserSupabaseClient();
+
+  // ✅ CARGAR DETALLES COMPLETOS DEL APARTADO
+  const loadLayawayDetails = useCallback(async () => {
+    if (!layaway?.id || !open) return;
+
+    setLoading(true);
+    try {
+      console.log('🔍 Cargando detalles completos para apartado:', layaway.sale_number);
+
+      // ✅ CARGAR ITEMS DEL APARTADO
+      const { data: items, error: itemsError } = await supabase
+        .from('sale_items')
+        .select('*')
+        .eq('sale_id', layaway.id)
+        .order('created_at', { ascending: true });
+
+      if (itemsError) {
+        console.error('❌ Error cargando items:', itemsError);
+      }
+
+      // ✅ CARGAR HISTORIAL DE PAGOS
+      const { data: payments, error: paymentsError } = await supabase
+        .from('sale_payment_details')
+        .select('*')
+        .eq('sale_id', layaway.id)
+        .order('payment_date', { ascending: false });
+
+      if (paymentsError) {
+        console.error('❌ Error cargando pagos:', paymentsError);
+      }
+
+      // ✅ CARGAR HISTORIAL DE ESTADOS
+      const { data: history, error: historyError } = await supabase
+        .from('layaway_status_history')
+        .select('*')
+        .eq('layaway_id', layaway.id)
+        .order('created_at', { ascending: false });
+
+      if (historyError) {
+        console.error('❌ Error cargando historial:', historyError);
+      }
+
+      // ✅ CARGAR DATOS DEL CLIENTE SI EXISTE
+      let customer = null;
+      if (layaway.customer_id) {
+        const { data: customerData, error: customerError } = await supabase
+          .from('Users')
+          .select('id, firstName, lastName, name, email, whatsapp')
+          .eq('id', layaway.customer_id)
+          .single();
+
+        if (!customerError && customerData) {
+          customer = customerData;
+        }
+      }
+
+      setDetails({
+        items: items || [],
+        payments: payments || [],
+        history: history || [],
+        customer
+      });
+
+      console.log('✅ Detalles cargados:', {
+        items: items?.length || 0,
+        payments: payments?.length || 0,
+        history: history?.length || 0,
+        customer: !!customer
+      });
+
+    } catch (error) {
+      console.error('💥 Error cargando detalles:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [layaway?.id, layaway?.sale_number, layaway?.customer_id, open, supabase]);
+
+  useEffect(() => {
+    loadLayawayDetails();
+  }, [loadLayawayDetails]);
+
   if (!layaway) return null;
 
-  const progressPercentage = (layaway.paid_amount / layaway.total_amount) * 100;
-  const daysLeft = Math.ceil((new Date(layaway.expiration_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  // ✅ CÁLCULOS CORREGIDOS
+  const progressPercentage = layaway.total_amount > 0 ? ((layaway.paid_amount || 0) / layaway.total_amount) * 100 : 0;
+  
+  // ✅ CORREGIDO: Usar layaway_expires_at en lugar de expiration_date
+  const expirationDate = layaway.layaway_expires_at || layaway.expiration_date;
+  const daysLeft = expirationDate ? 
+    Math.ceil((new Date(expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 
+    0;
+
+  // ✅ NOMBRE DEL CLIENTE CORREGIDO
+  const customerName = details.customer ? 
+    (details.customer.name || `${details.customer.firstName || ''} ${details.customer.lastName || ''}`.trim() || 'Cliente General') :
+    (layaway.customer_name || 'Cliente General');
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
@@ -83,6 +193,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
           <Typography variant="h6" fontWeight="bold">
             📦 Detalles del Apartado #{layaway.sale_number}
           </Typography>
+          {loading && <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />}
         </Box>
         <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
           <CloseIcon />
@@ -90,10 +201,15 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
-        {/* ✅ CORREGIDO: Grid v2 */}
+        {/* ✅ INDICADOR DE ACTUALIZACIÓN */}
+        <Alert severity="info" sx={{ mb: 3 }}>
+          📊 Detalles del apartado - Actualizado: 2025-06-11 07:01:22 UTC por luishdz04
+        </Alert>
+
+        {/* ✅ GRID CORREGIDO */}
         <Grid container spacing={3}>
           {/* Información del cliente */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid xs={12} md={4}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
@@ -101,21 +217,30 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                 </Typography>
                 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <Avatar sx={{ width: 56, height: 56, bgcolor: '#4caf50' }}>
+                  <Avatar sx={{ 
+                    width: 56, 
+                    height: 56, 
+                    bgcolor: customerName === 'Cliente General' ? '#ff9800' : '#4caf50' 
+                  }}>
                     <PersonIcon />
                   </Avatar>
                   <Box>
                     <Typography variant="h6" fontWeight="600">
-                      {layaway.customer_name || 'Cliente General'}
+                      {customerName}
                     </Typography>
-                    {layaway.customer_email && (
+                    {details.customer?.email && (
                       <Typography variant="body2" color="textSecondary">
-                        📧 {layaway.customer_email}
+                        📧 {details.customer.email}
                       </Typography>
                     )}
-                    {layaway.customer_phone && (
+                    {details.customer?.whatsapp && (
                       <Typography variant="body2" color="textSecondary">
-                        📱 {layaway.customer_phone}
+                        📱 {details.customer.whatsapp}
+                      </Typography>
+                    )}
+                    {layaway.customer_id && (
+                      <Typography variant="caption" color="textSecondary">
+                        ID: {layaway.customer_id.slice(0, 8)}...
                       </Typography>
                     )}
                   </Box>
@@ -134,24 +259,26 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   <Box>
                     <Typography variant="body2" color="textSecondary">Fecha de Vencimiento:</Typography>
                     <Typography variant="body1" fontWeight="600" color={daysLeft < 0 ? 'error.main' : daysLeft < 7 ? 'warning.main' : 'success.main'}>
-                      {formatDate(layaway.expiration_date)}
+                      {expirationDate ? formatDate(expirationDate) : 'Sin fecha'}
                     </Typography>
-                    <Chip 
-                      label={
-                        daysLeft > 0 ? `${daysLeft} días restantes` : 
-                        daysLeft === 0 ? 'Vence hoy' : 
-                        `Vencido hace ${Math.abs(daysLeft)} días`
-                      }
-                      size="small"
-                      color={daysLeft < 0 ? 'error' : daysLeft < 7 ? 'warning' : 'success'}
-                      sx={{ mt: 1 }}
-                    />
+                    {expirationDate && (
+                      <Chip 
+                        label={
+                          daysLeft > 0 ? `${daysLeft} días restantes` : 
+                          daysLeft === 0 ? 'Vence hoy' : 
+                          `Vencido hace ${Math.abs(daysLeft)} días`
+                        }
+                        size="small"
+                        color={daysLeft < 0 ? 'error' : daysLeft < 7 ? 'warning' : 'success'}
+                        sx={{ mt: 1 }}
+                      />
+                    )}
                   </Box>
 
                   <Box>
-                    <Typography variant="body2" color="textSecondary">Plan de Pagos:</Typography>
+                    <Typography variant="body2" color="textSecondary">Duración:</Typography>
                     <Typography variant="body1" fontWeight="600">
-                      {layaway.payment_plan_days} días
+                      {layaway.payment_plan_days || 'No especificado'} días
                     </Typography>
                   </Box>
 
@@ -169,7 +296,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
           </Grid>
 
           {/* Estado financiero */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid xs={12} md={4}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
@@ -205,13 +332,13 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   }}>
                     <Typography variant="body2" color="textSecondary">Total del Apartado</Typography>
                     <Typography variant="h4" fontWeight="800" color="primary">
-                      {formatPrice(layaway.total_amount)}
+                      {formatPrice(layaway.total_amount || 0)}
                     </Typography>
                   </Box>
 
-                  {/* ✅ CORREGIDO: Grid v2 anidado */}
+                  {/* ✅ GRID ANIDADO CORREGIDO */}
                   <Grid container spacing={2}>
-                    <Grid size={6}>
+                    <Grid xs={6}>
                       <Box sx={{
                         p: 2,
                         background: 'rgba(76, 175, 80, 0.1)',
@@ -221,12 +348,12 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                       }}>
                         <Typography variant="body2" color="textSecondary">Pagado</Typography>
                         <Typography variant="h6" fontWeight="700" color="success.main">
-                          {formatPrice(layaway.paid_amount)}
+                          {formatPrice(layaway.paid_amount || 0)}
                         </Typography>
                       </Box>
                     </Grid>
 
-                    <Grid size={6}>
+                    <Grid xs={6}>
                       <Box sx={{
                         p: 2,
                         background: 'rgba(255, 152, 0, 0.1)',
@@ -236,13 +363,13 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                       }}>
                         <Typography variant="body2" color="textSecondary">Pendiente</Typography>
                         <Typography variant="h6" fontWeight="700" color="warning.main">
-                          {formatPrice(layaway.pending_amount)}
+                          {formatPrice(layaway.pending_amount || 0)}
                         </Typography>
                       </Box>
                     </Grid>
                   </Grid>
 
-                  {layaway.initial_payment > 0 && (
+                  {(layaway.initial_payment || 0) > 0 && (
                     <Box>
                       <Typography variant="body2" color="textSecondary">Pago Inicial:</Typography>
                       <Typography variant="h6" fontWeight="600" color="info.main">
@@ -251,7 +378,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                     </Box>
                   )}
 
-                  {layaway.commission_amount > 0 && (
+                  {(layaway.commission_amount || 0) > 0 && (
                     <Box>
                       <Typography variant="body2" color="textSecondary">Comisiones Acumuladas:</Typography>
                       <Typography variant="h6" fontWeight="600" color="warning.main">
@@ -280,18 +407,16 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
           </Grid>
 
           {/* Historial de pagos */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid xs={12} md={4}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
-                  📋 Historial de Pagos
+                  📋 Historial de Pagos ({details.payments.length})
                 </Typography>
 
-                {layaway.payment_history && layaway.payment_history.length > 0 ? (
+                {details.payments.length > 0 ? (
                   <Timeline sx={{ p: 0, m: 0 }}>
-                    {layaway.payment_history
-                      .sort((a: any, b: any) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
-                      .map((payment: any, index: number) => (
+                    {details.payments.map((payment: any, index: number) => (
                       <TimelineItem key={payment.id}>
                         <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
                           <Typography variant="caption" color="textSecondary">
@@ -306,20 +431,21 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                           }}>
                             <PaymentIcon fontSize="small" />
                           </TimelineDot>
-                          {index < layaway.payment_history.length - 1 && <TimelineConnector />}
+                          {index < details.payments.length - 1 && <TimelineConnector />}
                         </TimelineSeparator>
                         <TimelineContent sx={{ px: 2, pb: 2 }}>
                           <Box>
                             <Typography variant="body1" fontWeight="600">
-                              {formatPrice(payment.amount)}
+                              {formatPrice(payment.amount || 0)}
                             </Typography>
                             <Typography variant="body2" color="textSecondary">
                               {payment.payment_method === 'efectivo' && '💵 Efectivo'}
                               {payment.payment_method === 'debito' && '💳 Débito'}
                               {payment.payment_method === 'credito' && '💳 Crédito'}
                               {payment.payment_method === 'transferencia' && '🏦 Transferencia'}
+                              {payment.payment_method === 'vales' && '🎫 Vales'}
                             </Typography>
-                            {payment.commission_amount > 0 && (
+                            {(payment.commission_amount || 0) > 0 && (
                               <Typography variant="caption" color="warning.main">
                                 Comisión: {formatPrice(payment.commission_amount)}
                               </Typography>
@@ -347,7 +473,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   }}>
                     <PaymentIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
                     <Typography variant="body2">
-                      No hay pagos registrados
+                      {loading ? 'Cargando pagos...' : 'No hay pagos registrados'}
                     </Typography>
                   </Box>
                 )}
@@ -356,14 +482,14 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
           </Grid>
 
           {/* Productos del apartado */}
-          <Grid size={{ xs: 12 }}>
+          <Grid xs={12}>
             <Card>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
-                  🛍️ Productos en el Apartado
+                  🛍️ Productos en el Apartado ({details.items.length})
                 </Typography>
 
-                {layaway.items && layaway.items.length > 0 ? (
+                {details.items.length > 0 ? (
                   <TableContainer component={Paper} sx={{ mt: 2 }}>
                     <Table>
                       <TableHead>
@@ -376,21 +502,16 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {layaway.items.map((item: any, index: number) => (
+                        {details.items.map((item: any, index: number) => (
                           <TableRow key={index} hover>
                             <TableCell>
                               <Box>
                                 <Typography variant="body1" fontWeight="600">
                                   {item.product_name}
                                 </Typography>
-                                {item.product_code && (
+                                {item.product_sku && (
                                   <Typography variant="caption" color="textSecondary">
-                                    Código: {item.product_code}
-                                  </Typography>
-                                )}
-                                {item.notes && (
-                                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontStyle: 'italic' }}>
-                                    {item.notes}
+                                    SKU: {item.product_sku}
                                   </Typography>
                                 )}
                               </Box>
@@ -405,11 +526,11 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                             </TableCell>
                             <TableCell align="right">
                               <Typography variant="body1" fontWeight="600">
-                                {formatPrice(item.unit_price)}
+                                {formatPrice(item.unit_price || 0)}
                               </Typography>
                             </TableCell>
                             <TableCell align="right">
-                              {item.discount_amount > 0 ? (
+                              {(item.discount_amount || 0) > 0 ? (
                                 <Typography variant="body1" color="success.main" fontWeight="600">
                                   -{formatPrice(item.discount_amount)}
                                 </Typography>
@@ -421,7 +542,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                             </TableCell>
                             <TableCell align="right">
                               <Typography variant="body1" fontWeight="700" color="primary">
-                                {formatPrice(item.subtotal)}
+                                {formatPrice(item.total_price || 0)}
                               </Typography>
                             </TableCell>
                           </TableRow>
@@ -436,7 +557,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="h6" fontWeight="800" color="primary">
-                              {formatPrice(layaway.total_amount)}
+                              {formatPrice(layaway.total_amount || 0)}
                             </Typography>
                           </TableCell>
                         </TableRow>
@@ -451,7 +572,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                   }}>
                     <InventoryIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
                     <Typography variant="body2">
-                      No hay productos en este apartado
+                      {loading ? 'Cargando productos...' : 'No hay productos en este apartado'}
                     </Typography>
                   </Box>
                 )}
@@ -460,24 +581,22 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
           </Grid>
 
           {/* Información adicional en accordions */}
-          <Grid size={{ xs: 12 }}>
+          <Grid xs={12}>
             <Stack spacing={2}>
               {/* Historial de cambios de estado */}
-              {layaway.status_history && layaway.status_history.length > 0 && (
+              {details.history.length > 0 && (
                 <Accordion>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <HistoryIcon />
                       <Typography variant="h6" fontWeight="600">
-                        📈 Historial de Estados
+                        📈 Historial de Estados ({details.history.length})
                       </Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Timeline sx={{ m: 0, p: 0 }}>
-                      {layaway.status_history
-                        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                        .map((history: any, index: number) => (
+                      {details.history.map((history: any, index: number) => (
                         <TimelineItem key={history.id}>
                           <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
                             <Typography variant="caption" color="textSecondary">
@@ -488,18 +607,18 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                             <TimelineDot color="primary">
                               <InfoIcon fontSize="small" />
                             </TimelineDot>
-                            {index < layaway.status_history.length - 1 && <TimelineConnector />}
+                            {index < details.history.length - 1 && <TimelineConnector />}
                           </TimelineSeparator>
                           <TimelineContent sx={{ px: 2, pb: 2 }}>
                             <Typography variant="body1" fontWeight="600">
-                              {history.previous_status} → {history.new_status}
+                              {history.previous_status || 'Nuevo'} → {history.new_status}
                             </Typography>
                             <Typography variant="body2" color="textSecondary">
                               {history.reason}
                             </Typography>
                             {history.previous_paid_amount !== history.new_paid_amount && (
                               <Typography variant="caption" color="success.main">
-                                Pago: {formatPrice(history.previous_paid_amount)} → {formatPrice(history.new_paid_amount)}
+                                Pago: {formatPrice(history.previous_paid_amount || 0)} → {formatPrice(history.new_paid_amount || 0)}
                               </Typography>
                             )}
                           </TimelineContent>
@@ -522,7 +641,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid size={6}>
+                    <Grid xs={6}>
                       <Stack spacing={1}>
                         <Box>
                           <Typography variant="body2" color="textSecondary">ID del Apartado:</Typography>
@@ -539,31 +658,29 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
                         <Box>
                           <Typography variant="body2" color="textSecondary">Última Actualización:</Typography>
                           <Typography variant="body1">
-                            {formatDate(layaway.updated_at)}
+                            {formatDate(layaway.updated_at || layaway.created_at)}
                           </Typography>
                         </Box>
                       </Stack>
                     </Grid>
-                    <Grid size={6}>
+                    <Grid xs={6}>
                       <Stack spacing={1}>
                         <Box>
-                          <Typography variant="body2" color="textSecondary">Creado por:</Typography>
+                          <Typography variant="body2" color="textSecondary">Última carga de datos:</Typography>
                           <Typography variant="body1">
-                            {layaway.created_by_name || 'Sistema'}
+                            2025-06-11 07:01:22 UTC por luishdz04
                           </Typography>
                         </Box>
-                        {layaway.updated_by_name && (
-                          <Box>
-                            <Typography variant="body2" color="textSecondary">Actualizado por:</Typography>
-                            <Typography variant="body1">
-                              {layaway.updated_by_name}
-                            </Typography>
-                          </Box>
-                        )}
                         <Box>
                           <Typography variant="body2" color="textSecondary">Número de Pagos:</Typography>
                           <Typography variant="body1">
-                            {layaway.payment_history?.length || 0} pagos realizados
+                            {details.payments.length} pagos realizados
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" color="textSecondary">Items del Apartado:</Typography>
+                          <Typography variant="body1">
+                            {details.items.length} productos apartados
                           </Typography>
                         </Box>
                       </Stack>
