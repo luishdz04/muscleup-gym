@@ -30,20 +30,7 @@ import {
   Stack,
   Avatar,
   Tooltip,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
-  Switch,
-  FormControlLabel,
-  Radio,
-  RadioGroup,
-  Checkbox
+  CircularProgress
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -61,17 +48,18 @@ import {
   CalendarToday as CalendarIcon,
   AttachMoney as MoneyIcon,
   Refresh as RefreshIcon,
-  FilterList as FilterIcon,
-  Close as CloseIcon,
-  CreditCard as CreditCardIcon,
-  Calculate as CalculateIcon,
-  Receipt as ReceiptIcon,
-  Email as EmailIcon
+  FilterList as FilterIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { formatPrice, formatDate } from '@/utils/formatUtils';
 import { showNotification } from '@/utils/notifications';
+
+// ✅ IMPORTS ESTÁTICOS NORMALES - NO DYNAMIC
+import PaymentToLayawayDialog from '@/components/dialogs/PaymentToLayawayDialog';
+import LayawayDetailsDialog from '@/components/dialogs/LayawayDetailsDialog';
+import ConvertToSaleDialog from '@/components/dialogs/ConvertToSaleDialog';
+import CancelLayawayDialog from '@/components/dialogs/CancelLayawayDialog';
 
 interface Layaway {
   id: string;
@@ -104,278 +92,6 @@ interface LayawayStats {
   totalCollected: number;
 }
 
-// ✅ DIALOG SIMPLE INLINE PARA ABONOS
-function SimplePaymentDialog({ open, onClose, layaway }: { open: boolean; onClose: () => void; layaway: Layaway | null }) {
-  const [amount, setAmount] = useState(0);
-  const [method, setMethod] = useState('efectivo');
-  const [processing, setProcessing] = useState(false);
-  const supabase = createBrowserSupabaseClient();
-
-  const handlePayment = async () => {
-    if (!layaway || amount <= 0 || amount > (layaway.pending_amount || 0)) {
-      showNotification('Monto inválido', 'error');
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      console.log('💰 Procesando abono simple...', {
-        apartado: layaway.sale_number,
-        monto: amount,
-        metodo: method,
-        timestamp: '2025-06-11 07:29:40 UTC',
-        usuario: 'luishdz04'
-      });
-
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData.user?.id;
-
-      if (!userId) {
-        throw new Error('Usuario no autenticado');
-      }
-
-      const newPaidAmount = (layaway.paid_amount || 0) + amount;
-      const newPendingAmount = (layaway.total_amount || 0) - newPaidAmount;
-      const isFullPayment = newPendingAmount <= 0;
-
-      // Registrar pago
-      await supabase
-        .from('sale_payment_details')
-        .insert([{
-          sale_id: layaway.id,
-          payment_method: method,
-          amount: amount,
-          payment_reference: null,
-          commission_rate: 0,
-          commission_amount: 0,
-          sequence_order: 1,
-          payment_date: new Date().toISOString(),
-          is_partial_payment: !isFullPayment,
-          notes: `Abono procesado - 2025-06-11 07:29:40 UTC por luishdz04`,
-          created_at: new Date().toISOString(),
-          created_by: userId
-        }]);
-
-      // Actualizar apartado
-      const updateData: any = {
-        paid_amount: newPaidAmount,
-        pending_amount: Math.max(0, newPendingAmount),
-        last_payment_date: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        updated_by: userId
-      };
-
-      if (isFullPayment) {
-        updateData.status = 'completed';
-        updateData.payment_status = 'paid';
-        updateData.sale_type = 'sale';
-        updateData.completed_at = new Date().toISOString();
-      } else {
-        updateData.payment_status = 'partial';
-      }
-
-      await supabase
-        .from('sales')
-        .update(updateData)
-        .eq('id', layaway.id);
-
-      showNotification(
-        isFullPayment ? 
-          '🎉 ¡Apartado completado!' : 
-          '💰 Abono registrado exitosamente',
-        'success'
-      );
-
-      onClose();
-      window.location.reload(); // Refrescar página
-    } catch (error) {
-      console.error('Error:', error);
-      showNotification('Error al procesar abono', 'error');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  if (!layaway) return null;
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ 
-        background: 'linear-gradient(135deg, #4caf50, #388e3c)',
-        color: '#FFFFFF'
-      }}>
-        💰 Abono a Apartado #{layaway.sale_number}
-      </DialogTitle>
-      <DialogContent sx={{ p: 3 }}>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          <Typography variant="body1">
-            <strong>Estado Actual:</strong><br/>
-            Total: {formatPrice(layaway.total_amount || 0)}<br/>
-            Pagado: {formatPrice(layaway.paid_amount || 0)}<br/>
-            Pendiente: {formatPrice(layaway.pending_amount || 0)}
-          </Typography>
-        </Alert>
-
-        <TextField
-          fullWidth
-          label="Monto del Abono"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-          sx={{ mb: 3 }}
-          inputProps={{ 
-            max: layaway.pending_amount || 0, 
-            min: 0, 
-            step: 0.01 
-          }}
-          helperText={`Máximo: ${formatPrice(layaway.pending_amount || 0)}`}
-        />
-
-        <FormControl fullWidth sx={{ mb: 3 }}>
-          <InputLabel>Método de Pago</InputLabel>
-          <Select
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-          >
-            <MenuItem value="efectivo">💵 Efectivo</MenuItem>
-            <MenuItem value="debito">💳 Tarjeta Débito</MenuItem>
-            <MenuItem value="credito">💳 Tarjeta Crédito</MenuItem>
-            <MenuItem value="transferencia">🏦 Transferencia</MenuItem>
-          </Select>
-        </FormControl>
-
-        {amount > 0 && (
-          <Alert severity={amount >= (layaway.pending_amount || 0) ? 'success' : 'info'}>
-            <Typography variant="body2">
-              {amount >= (layaway.pending_amount || 0) ? 
-                '🎉 Este abono completará el apartado' :
-                `💰 Abono de ${formatPrice(amount)} - Quedará pendiente: ${formatPrice((layaway.pending_amount || 0) - amount)}`
-              }
-            </Typography>
-          </Alert>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={processing}>
-          Cancelar
-        </Button>
-        <Button
-          onClick={handlePayment}
-          disabled={processing || amount <= 0 || amount > (layaway.pending_amount || 0)}
-          variant="contained"
-          startIcon={processing ? <CircularProgress size={20} /> : <PaymentIcon />}
-          sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}
-        >
-          {processing ? 'Procesando...' : 'Procesar Abono'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// ✅ DIALOG SIMPLE PARA DETALLES
-function SimpleDetailsDialog({ open, onClose, layaway }: { open: boolean; onClose: () => void; layaway: Layaway | null }) {
-  if (!layaway) return null;
-
-  const progressPercentage = layaway.total_amount > 0 ? ((layaway.paid_amount || 0) / layaway.total_amount) * 100 : 0;
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ 
-        background: 'linear-gradient(135deg, #2196f3, #1976d2)',
-        color: '#FFFFFF'
-      }}>
-        👁️ Detalles del Apartado #{layaway.sale_number}
-      </DialogTitle>
-      <DialogContent sx={{ p: 3 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#2196f3' }}>
-                  👤 Información del Cliente
-                </Typography>
-                <Typography variant="body1">
-                  <strong>Nombre:</strong> {layaway.customer_name || 'Cliente General'}<br/>
-                  <strong>Email:</strong> {layaway.customer_email || 'No registrado'}<br/>
-                  <strong>Teléfono:</strong> {layaway.customer_phone || 'No registrado'}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#4caf50' }}>
-                  💰 Estado Financiero
-                </Typography>
-                <Typography variant="body1">
-                  <strong>Total:</strong> {formatPrice(layaway.total_amount || 0)}<br/>
-                  <strong>Pagado:</strong> {formatPrice(layaway.paid_amount || 0)}<br/>
-                  <strong>Pendiente:</strong> {formatPrice(layaway.pending_amount || 0)}<br/>
-                  <strong>Progreso:</strong> {Math.round(progressPercentage)}%
-                </Typography>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={progressPercentage} 
-                  sx={{ mt: 2, height: 8, borderRadius: 4 }}
-                />
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#ff9800' }}>
-                  📅 Información de Fechas
-                </Typography>
-                <Typography variant="body1">
-                  <strong>Creado:</strong> {formatDate(layaway.created_at)}<br/>
-                  <strong>Vence:</strong> {layaway.layaway_expires_at ? formatDate(layaway.layaway_expires_at) : 'Sin fecha'}<br/>
-                  <strong>Último Pago:</strong> {layaway.last_payment_date ? formatDate(layaway.last_payment_date) : 'Sin pagos'}<br/>
-                  <strong>Estado:</strong> {layaway.status}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} variant="contained">
-          Cerrar
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// ✅ PLACEHOLDER DIALOGS
-function PlaceholderDialog({ open, onClose, title, layaway }: { open: boolean; onClose: () => void; title: string; layaway: Layaway | null }) {
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Alert severity="warning">
-          <Typography variant="body1">
-            🚧 <strong>Función en desarrollo</strong>
-          </Typography>
-          <Typography variant="body2">
-            Esta funcionalidad está siendo implementada.<br/>
-            Apartado: {layaway?.sale_number || 'N/A'}<br/>
-            Usuario: luishdz04<br/>
-            Timestamp: 2025-06-11 07:29:40 UTC
-          </Typography>
-        </Alert>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cerrar</Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
 export default function LayawayManagementPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -397,13 +113,16 @@ export default function LayawayManagementPage() {
     totalPending: 0,
     totalCollected: 0
   });
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  // ✅ VERIFICAR SI ESTÁ MONTADO
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const supabase = createBrowserSupabaseClient();
 
+  // ✅ TABS ESTÁTICOS
   const tabsData = useMemo(() => [
     { 
       label: 'Activos', 
@@ -435,11 +154,12 @@ export default function LayawayManagementPage() {
     }
   ], [stats]);
 
+  // ✅ CARGAR ESTADÍSTICAS
   const loadStats = useCallback(async () => {
     if (!mounted) return;
 
     try {
-      console.log('📊 Cargando estadísticas... - 2025-06-11 07:29:40 UTC - luishdz04');
+      console.log('📊 Cargando estadísticas... - 2025-06-11 07:34:46 UTC - luishdz04');
       
       const { data: allLayaways, error } = await supabase
         .from('sales')
@@ -450,6 +170,8 @@ export default function LayawayManagementPage() {
         console.error('❌ Error cargando estadísticas:', error);
         return;
       }
+
+      console.log(`✅ ${allLayaways?.length || 0} apartados encontrados para estadísticas`);
 
       if (allLayaways) {
         const today = new Date();
@@ -476,7 +198,7 @@ export default function LayawayManagementPage() {
         
         const completed = allLayaways.filter(l => l.status === 'completed');
 
-        setStats({
+        const newStats = {
           activeCount: active.length,
           expiringCount: expiring.length,
           expiredCount: expired.length,
@@ -484,24 +206,32 @@ export default function LayawayManagementPage() {
           totalValue: allLayaways.reduce((sum, l) => sum + (l.total_amount || 0), 0),
           totalPending: allLayaways.reduce((sum, l) => sum + (l.pending_amount || 0), 0),
           totalCollected: allLayaways.reduce((sum, l) => sum + (l.paid_amount || 0), 0)
-        });
+        };
+
+        setStats(newStats);
+        console.log('📈 Estadísticas actualizadas:', newStats);
       }
+
     } catch (error) {
       console.error('💥 Error en estadísticas:', error);
     }
   }, [supabase, mounted]);
 
+  // ✅ CARGAR APARTADOS
   const loadLayaways = useCallback(async () => {
     if (!mounted) return;
 
     setLoading(true);
     try {
+      console.log(`🔍 Cargando apartados para tab: ${tabsData[activeTab]?.value} - luishdz04`);
+      
       let query = supabase
         .from('sales')
         .select('*')
         .eq('sale_type', 'layaway')
         .order('created_at', { ascending: false });
 
+      // ✅ FILTROS POR TAB
       const currentFilter = tabsData[activeTab]?.value;
       const today = new Date();
       const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -534,25 +264,38 @@ export default function LayawayManagementPage() {
 
       const { data: salesData, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en query principal:', error);
+        throw error;
+      }
+
+      console.log(`✅ ${salesData?.length || 0} apartados obtenidos del query principal`);
 
       if (!salesData || salesData.length === 0) {
         setLayaways([]);
         return;
       }
 
+      // ✅ OBTENER CLIENTES
       const customerIds = [...new Set(salesData.map(s => s.customer_id).filter(Boolean))];
-      let customersData: any[] = [];
+      console.log(`👥 Obteniendo datos de ${customerIds.length} clientes únicos`);
 
+      let customersData: any[] = [];
       if (customerIds.length > 0) {
-        const { data: customers } = await supabase
+        const { data: customers, error: customerError } = await supabase
           .from('Users')
           .select('id, firstName, lastName, name, email, whatsapp')
           .in('id', customerIds);
 
-        customersData = customers || [];
+        if (customerError) {
+          console.error('❌ Error obteniendo clientes de tabla Users:', customerError);
+        } else {
+          customersData = customers || [];
+          console.log(`✅ ${customersData.length} clientes obtenidos de tabla Users`);
+        }
       }
 
+      // ✅ COMBINAR DATOS CON VALIDACIÓN SEGURA
       const layawaysWithCustomers = salesData.map(layaway => {
         const customer = customersData.find(c => c.id === layaway.customer_id);
         
@@ -580,10 +323,12 @@ export default function LayawayManagementPage() {
       });
 
       setLayaways(layawaysWithCustomers);
+      console.log(`🎯 ${layawaysWithCustomers.length} apartados procesados con clientes`);
+
     } catch (error) {
       console.error('💥 Error cargando apartados:', error);
       if (mounted) {
-        showNotification('Error al cargar apartados', 'error');
+        showNotification(`Error al cargar apartados: ${(error as Error).message}`, 'error');
       }
       setLayaways([]);
     } finally {
@@ -593,20 +338,28 @@ export default function LayawayManagementPage() {
     }
   }, [activeTab, searchTerm, supabase, tabsData, mounted]);
 
+  // ✅ EFECTOS CONTROLADOS
   useEffect(() => {
     if (mounted) {
       loadStats();
+    }
+  }, [refreshKey, mounted, loadStats]);
+
+  useEffect(() => {
+    if (mounted) {
       loadLayaways();
     }
-  }, [mounted, loadStats, loadLayaways]);
+  }, [activeTab, searchTerm, refreshKey, mounted, loadLayaways]);
 
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN MANUAL
   const handleRefresh = useCallback(() => {
     if (!mounted) return;
-    console.log('🔄 Actualización manual... - 2025-06-11 07:29:40 UTC - luishdz04');
-    loadStats();
-    loadLayaways();
-  }, [mounted, loadStats, loadLayaways]);
+    console.log('🔄 Actualización manual iniciada... - 2025-06-11 07:34:46 UTC - luishdz04');
+    setRefreshKey(prev => prev + 1);
+    showNotification('Actualizando datos...', 'info');
+  }, [mounted]);
 
+  // ✅ FUNCIONES AUXILIARES
   const getProgressColor = useCallback((percentage: number) => {
     if (percentage >= 80) return '#4caf50';
     if (percentage >= 50) return '#ff9800';
@@ -622,31 +375,73 @@ export default function LayawayManagementPage() {
     return diffDays;
   }, []);
 
-  // ✅ HANDLERS SIMPLIFICADOS
+  // ✅ HANDLERS DE ACCIONES CORREGIDOS
   const handleViewDetails = useCallback((layaway: Layaway) => {
-    console.log('👁️ Ver detalles:', layaway.sale_number, '- 2025-06-11 07:29:40 UTC - luishdz04');
+    if (!mounted || !layaway) return;
+    console.log('👁️ Ver detalles:', layaway.sale_number, '- 2025-06-11 07:34:46 UTC - luishdz04');
     setSelectedLayaway(layaway);
     setDetailsDialogOpen(true);
-  }, []);
+  }, [mounted]);
 
   const handleAddPayment = useCallback((layaway: Layaway) => {
-    console.log('💰 Agregar abono:', layaway.sale_number, '- 2025-06-11 07:29:40 UTC - luishdz04');
+    if (!mounted || !layaway) return;
+    console.log('💰 Agregar abono:', layaway.sale_number, '- 2025-06-11 07:34:46 UTC - luishdz04');
     setSelectedLayaway(layaway);
     setPaymentDialogOpen(true);
-  }, []);
+  }, [mounted]);
 
   const handleConvertToSale = useCallback((layaway: Layaway) => {
-    console.log('🛒 Convertir a venta:', layaway.sale_number, '- 2025-06-11 07:29:40 UTC - luishdz04');
+    if (!mounted || !layaway) return;
+    console.log('🛒 Convertir a venta:', layaway.sale_number, '- 2025-06-11 07:34:46 UTC - luishdz04');
     setSelectedLayaway(layaway);
     setConvertDialogOpen(true);
-  }, []);
+  }, [mounted]);
 
   const handleCancelLayaway = useCallback((layaway: Layaway) => {
-    console.log('❌ Cancelar apartado:', layaway.sale_number, '- 2025-06-11 07:29:40 UTC - luishdz04');
+    if (!mounted || !layaway) return;
+    console.log('❌ Cancelar apartado:', layaway.sale_number, '- 2025-06-11 07:34:46 UTC - luishdz04');
     setSelectedLayaway(layaway);
     setCancelDialogOpen(true);
+  }, [mounted]);
+
+  // ✅ HANDLERS DE EVENTOS
+  const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!mounted) return;
+    const value = event.target.value;
+    setSearchTerm(value);
+    console.log('🔍 Búsqueda actualizada:', value);
+  }, [mounted]);
+
+  const handleTabChange = useCallback((event: React.SyntheticEvent, newValue: number) => {
+    if (!mounted) return;
+    console.log('📑 Cambiando a tab:', newValue, tabsData[newValue]?.label);
+    setActiveTab(newValue);
+    setSearchTerm('');
+  }, [tabsData, mounted]);
+
+  // ✅ SUCCESS HANDLERS PARA DIALOGS
+  const handlePaymentSuccess = useCallback(() => {
+    console.log('✅ Abono exitoso - refrescando datos...');
+    setRefreshKey(prev => prev + 1);
+    setPaymentDialogOpen(false);
+    setSelectedLayaway(null);
   }, []);
 
+  const handleConvertSuccess = useCallback(() => {
+    console.log('✅ Conversión exitosa - refrescando datos...');
+    setRefreshKey(prev => prev + 1);
+    setConvertDialogOpen(false);
+    setSelectedLayaway(null);
+  }, []);
+
+  const handleCancelSuccess = useCallback(() => {
+    console.log('✅ Cancelación exitosa - refrescando datos...');
+    setRefreshKey(prev => prev + 1);
+    setCancelDialogOpen(false);
+    setSelectedLayaway(null);
+  }, []);
+
+  // ✅ RENDERIZAR LOADING INICIAL PARA SSR
   if (!mounted) {
     return (
       <Box sx={{ p: 3 }}>
@@ -669,7 +464,7 @@ export default function LayawayManagementPage() {
             📦 Gestión de Apartados
           </Typography>
           <Typography variant="body2" sx={{ color: '#666', mt: 1 }}>
-            2025-06-11 07:29:40 UTC - Usuario: luishdz04 - {layaways.length} apartados cargados
+            2025-06-11 07:34:46 UTC - Usuario: luishdz04 - {layaways.length} apartados cargados
           </Typography>
         </Box>
         <Button
@@ -688,10 +483,10 @@ export default function LayawayManagementPage() {
 
       {/* ✅ ALERT DE CORRECCIÓN */}
       <Alert severity="success" sx={{ mb: 3 }}>
-        ✅ <strong>Dialogs inline implementados:</strong> Sin dynamic imports - Error #301 eliminado - 2025-06-11 07:29:40 UTC
+        ✅ <strong>Imports estáticos aplicados:</strong> Componentes reales de /src/components/dialogs - 2025-06-11 07:34:46 UTC
       </Alert>
 
-      {/* Estadísticas */}
+      {/* ✅ ESTADÍSTICAS CON GRID CORREGIDO */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={2.4}>
           <Card sx={{
@@ -721,7 +516,7 @@ export default function LayawayManagementPage() {
                 {stats.expiringCount}
               </Typography>
               <Typography variant="body2">
-                Por Vencer
+                Por Vencer (7 días)
               </Typography>
             </CardContent>
           </Card>
@@ -779,17 +574,17 @@ export default function LayawayManagementPage() {
         </Grid>
       </Grid>
 
-      {/* Filtros */}
+      {/* ✅ FILTROS CON GRID CORREGIDO */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={8}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Buscar apartado"
                 placeholder="Número de apartado, notas..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -800,15 +595,34 @@ export default function LayawayManagementPage() {
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="active">Activos</MenuItem>
+                  <MenuItem value="expiring">Por Vencer</MenuItem>
+                  <MenuItem value="expired">Vencidos</MenuItem>
+                  <MenuItem value="completed">Completados</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={3}>
               <Button
                 fullWidth
                 variant="outlined"
                 startIcon={<FilterIcon />}
-                onClick={() => setSearchTerm('')}
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                }}
                 sx={{ height: '56px' }}
               >
-                Limpiar Búsqueda
+                Limpiar Filtros
               </Button>
             </Grid>
           </Grid>
@@ -819,7 +633,7 @@ export default function LayawayManagementPage() {
       <Card sx={{ mb: 3 }}>
         <Tabs 
           value={activeTab} 
-          onChange={(e, newValue) => setActiveTab(newValue)}
+          onChange={handleTabChange}
           variant="fullWidth"
           sx={{
             '& .MuiTab-root': {
@@ -853,204 +667,218 @@ export default function LayawayManagementPage() {
         </Tabs>
       </Card>
 
-      {/* Tabla de apartados */}
+      {/* ✅ TABLA DE APARTADOS CORREGIDA */}
       <Card>
         {loading && (
           <Box sx={{ p: 2 }}>
             <LinearProgress />
             <Typography variant="body2" sx={{ mt: 1, textAlign: 'center', color: '#666' }}>
-              Cargando apartados...
+              Cargando apartados para {tabsData[activeTab]?.label}...
             </Typography>
           </Box>
         )}
         
-        <TableContainer>
-          <Table>
+        <TableContainer component={Paper}>
+          <Table stickyHeader>
             <TableHead>
               <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell sx={{ fontWeight: 'bold' }}>Número</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Cliente</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Total</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Pagado</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Pendiente</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Progreso</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Vence</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Acciones</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 140 }}>Número</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>Cliente</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Total</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Pagado</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Pendiente</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>Progreso</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 140 }}>Vence</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Estado</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {layaways.map((layaway, index) => {
-                const totalAmount = layaway.total_amount || 0;
-                const paidAmount = layaway.paid_amount || 0;
-                const pendingAmount = layaway.pending_amount || 0;
-                
-                const progressPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
-                const daysLeft = getDaysUntilExpiration(layaway.layaway_expires_at);
-                const isRealCustomer = layaway.customer_name !== 'Cliente General';
-                
-                return (
-                  <TableRow key={layaway.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="600" color="primary">
-                        {layaway.sale_number}
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {formatDate(layaway.created_at)}
-                      </Typography>
-                    </TableCell>
+              <AnimatePresence>
+                {layaways.map((layaway, index) => {
+                  const totalAmount = layaway.total_amount || 0;
+                  const paidAmount = layaway.paid_amount || 0;
+                  const pendingAmount = layaway.pending_amount || 0;
+                  
+                  const progressPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
+                  const daysLeft = getDaysUntilExpiration(layaway.layaway_expires_at);
+                  const isRealCustomer = layaway.customer_name !== 'Cliente General';
+                  
+                  return (
+                    <TableRow
+                      key={layaway.id}
+                      component={motion.tr}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      hover
+                      sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="600" color="primary">
+                          {layaway.sale_number}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {formatDate(layaway.created_at)}
+                        </Typography>
+                      </TableCell>
 
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ 
-                          width: 32, 
-                          height: 32, 
-                          bgcolor: isRealCustomer ? '#4caf50' : '#ff9800' 
-                        }}>
-                          <PersonIcon fontSize="small" />
-                        </Avatar>
-                        <Box>
-                          <Typography 
-                            variant="body2" 
-                            fontWeight="500"
-                            sx={{ 
-                              color: isRealCustomer ? '#333' : '#ff9800',
-                              fontStyle: isRealCustomer ? 'normal' : 'italic'
-                            }}
-                          >
-                            {layaway.customer_name || 'Cliente General'}
-                          </Typography>
-                          {layaway.customer_email && (
-                            <Typography variant="caption" color="textSecondary">
-                              {layaway.customer_email}
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Avatar sx={{ 
+                            width: 32, 
+                            height: 32, 
+                            bgcolor: isRealCustomer ? '#4caf50' : '#ff9800' 
+                          }}>
+                            <PersonIcon fontSize="small" />
+                          </Avatar>
+                          <Box>
+                            <Typography 
+                              variant="body2" 
+                              fontWeight="500"
+                              sx={{ 
+                                color: isRealCustomer ? '#333' : '#ff9800',
+                                fontStyle: isRealCustomer ? 'normal' : 'italic'
+                              }}
+                            >
+                              {layaway.customer_name || 'Cliente General'}
                             </Typography>
+                            {layaway.customer_email && (
+                              <Typography variant="caption" color="textSecondary">
+                                {layaway.customer_email}
+                              </Typography>
+                            )}
+                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                              ID: {layaway.customer_id ? `${layaway.customer_id.slice(0, 8)}...` : 'Sin ID'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="600">
+                          {formatPrice(totalAmount)}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="600" color="success.main">
+                          {formatPrice(paidAmount)}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="600" color="warning.main">
+                          {formatPrice(pendingAmount)}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={progressPercentage} 
+                            sx={{ 
+                              flexGrow: 1, 
+                              height: 8, 
+                              borderRadius: 4,
+                              '& .MuiLinearProgress-bar': {
+                                backgroundColor: getProgressColor(progressPercentage)
+                              }
+                            }}
+                          />
+                          <Typography variant="caption" fontWeight="600">
+                            {Math.round(progressPercentage)}%
+                          </Typography>
+                        </Box>
+                      </TableCell>
+
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2" fontWeight="500">
+                            {layaway.layaway_expires_at ? formatDate(layaway.layaway_expires_at) : 'Sin fecha'}
+                          </Typography>
+                          {layaway.layaway_expires_at && (
+                            <Chip 
+                              label={
+                                daysLeft > 0 ? `${daysLeft} días` : 
+                                daysLeft === 0 ? 'Hoy' : 
+                                `Vencido ${Math.abs(daysLeft)} días`
+                              }
+                              size="small"
+                              color={
+                                daysLeft > 7 ? 'success' :
+                                daysLeft > 0 ? 'warning' :
+                                'error'
+                              }
+                              sx={{ mt: 0.5, fontSize: '0.7rem' }}
+                            />
                           )}
                         </Box>
-                      </Box>
-                    </TableCell>
+                      </TableCell>
 
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="600">
-                        {formatPrice(totalAmount)}
-                      </Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="600" color="success.main">
-                        {formatPrice(paidAmount)}
-                      </Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="600" color="warning.main">
-                        {formatPrice(pendingAmount)}
-                      </Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={progressPercentage} 
-                          sx={{ 
-                            flexGrow: 1, 
-                            height: 8, 
-                            borderRadius: 4,
-                            '& .MuiLinearProgress-bar': {
-                              backgroundColor: getProgressColor(progressPercentage)
-                            }
-                          }}
+                      <TableCell>
+                        <Chip 
+                          label={layaway.status}
+                          size="small" 
+                          color={
+                            layaway.status === 'completed' ? 'success' :
+                            layaway.status === 'pending' ? 'warning' :
+                            'error'
+                          }
                         />
-                        <Typography variant="caption" fontWeight="600">
-                          {Math.round(progressPercentage)}%
-                        </Typography>
-                      </Box>
-                    </TableCell>
+                      </TableCell>
 
-                    <TableCell>
-                      <Box>
-                        <Typography variant="body2" fontWeight="500">
-                          {layaway.layaway_expires_at ? formatDate(layaway.layaway_expires_at) : 'Sin fecha'}
-                        </Typography>
-                        {layaway.layaway_expires_at && (
-                          <Chip 
-                            label={
-                              daysLeft > 0 ? `${daysLeft} días` : 
-                              daysLeft === 0 ? 'Hoy' : 
-                              `Vencido ${Math.abs(daysLeft)} días`
-                            }
-                            size="small"
-                            color={
-                              daysLeft > 7 ? 'success' :
-                              daysLeft > 0 ? 'warning' :
-                              'error'
-                            }
-                            sx={{ mt: 0.5, fontSize: '0.7rem' }}
-                          />
-                        )}
-                      </Box>
-                    </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="Ver Detalles">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewDetails(layaway)}
+                            >
+                              <ViewIcon />
+                            </IconButton>
+                          </Tooltip>
 
-                    <TableCell>
-                      <Chip 
-                        label={layaway.status}
-                        size="small" 
-                        color={
-                          layaway.status === 'completed' ? 'success' :
-                          layaway.status === 'pending' ? 'warning' :
-                          'error'
-                        }
-                      />
-                    </TableCell>
+                          <Tooltip title="Agregar Abono">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleAddPayment(layaway)}
+                              disabled={layaway.status !== 'pending'}
+                            >
+                              <AddPaymentIcon />
+                            </IconButton>
+                          </Tooltip>
 
-                    <TableCell>
-                      <Stack direction="row" spacing={0.5}>
-                        <Tooltip title="Ver Detalles">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleViewDetails(layaway)}
-                          >
-                            <ViewIcon />
-                          </IconButton>
-                        </Tooltip>
+                          <Tooltip title="Convertir a Venta">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => handleConvertToSale(layaway)}
+                              disabled={pendingAmount > 0 || layaway.status !== 'pending'}
+                            >
+                              <ConvertIcon />
+                            </IconButton>
+                          </Tooltip>
 
-                        <Tooltip title="Agregar Abono">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleAddPayment(layaway)}
-                            disabled={layaway.status !== 'pending'}
-                          >
-                            <AddPaymentIcon />
-                          </IconButton>
-                        </Tooltip>
-
-                        <Tooltip title="Convertir a Venta">
-                          <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => handleConvertToSale(layaway)}
-                            disabled={pendingAmount > 0 || layaway.status !== 'pending'}
-                          >
-                            <ConvertIcon />
-                          </IconButton>
-                        </Tooltip>
-
-                        <Tooltip title="Cancelar Apartado">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleCancelLayaway(layaway)}
-                            disabled={layaway.status !== 'pending'}
-                          >
-                            <CancelIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                          <Tooltip title="Cancelar Apartado">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleCancelLayaway(layaway)}
+                              disabled={layaway.status !== 'pending'}
+                            >
+                              <CancelIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </AnimatePresence>
 
               {layaways.length === 0 && !loading && (
                 <TableRow>
@@ -1059,7 +887,7 @@ export default function LayawayManagementPage() {
                       📦 No se encontraron apartados
                     </Typography>
                     <Typography variant="body2" color="textSecondary">
-                      {tabsData[activeTab]?.label} - Prueba a cambiar de pestaña
+                      {tabsData[activeTab]?.label} - Prueba a cambiar de pestaña o actualizar
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -1069,45 +897,69 @@ export default function LayawayManagementPage() {
         </TableContainer>
       </Card>
 
-      {/* ✅ DIALOGS INLINE SIN DYNAMIC IMPORTS */}
-      <SimplePaymentDialog
-        open={paymentDialogOpen}
-        onClose={() => setPaymentDialogOpen(false)}
-        layaway={selectedLayaway}
-      />
+      {/* ✅ DIALOGS CON IMPORTS ESTÁTICOS REALES */}
+      {mounted && (
+        <>
+          <PaymentToLayawayDialog
+            open={paymentDialogOpen}
+            onClose={() => setPaymentDialogOpen(false)}
+            layaway={selectedLayaway}
+            onSuccess={handlePaymentSuccess}
+          />
 
-      <SimpleDetailsDialog
-        open={detailsDialogOpen}
-        onClose={() => setDetailsDialogOpen(false)}
-        layaway={selectedLayaway}
-      />
+          <LayawayDetailsDialog
+            open={detailsDialogOpen}
+            onClose={() => setDetailsDialogOpen(false)}
+            layaway={selectedLayaway}
+          />
 
-      <PlaceholderDialog
-        open={convertDialogOpen}
-        onClose={() => setConvertDialogOpen(false)}
-        title="🔄 Convertir a Venta"
-        layaway={selectedLayaway}
-      />
+          <ConvertToSaleDialog
+            open={convertDialogOpen}
+            onClose={() => setConvertDialogOpen(false)}
+            layaway={selectedLayaway}
+            onSuccess={handleConvertSuccess}
+          />
 
-      <PlaceholderDialog
-        open={cancelDialogOpen}
-        onClose={() => setCancelDialogOpen(false)}
-        title="❌ Cancelar Apartado"
-        layaway={selectedLayaway}
-      />
+          <CancelLayawayDialog
+            open={cancelDialogOpen}
+            onClose={() => setCancelDialogOpen(false)}
+            layaway={selectedLayaway}
+            onSuccess={handleCancelSuccess}
+          />
+        </>
+      )}
 
-      {/* Info de debug */}
+      {/* ✅ INFORMACIÓN DE DEBUG CORREGIDA */}
       <Card sx={{ mt: 3, background: 'rgba(76, 175, 80, 0.1)' }}>
         <CardContent>
           <Typography variant="h6" sx={{ color: '#4caf50', mb: 2 }}>
-            ✅ Problema Resuelto - Dialogs Inline Funcionando
+            ✅ Imports Estáticos + Tabla Corregida
           </Typography>
-          <Typography variant="body2" sx={{ color: '#666' }}>
-            <strong>✅ Solución aplicada:</strong> Eliminados dynamic imports, implementados dialogs inline, error React #301 corregido
-            <br/>
-            <strong>Timestamp:</strong> 2025-06-11 07:29:40 UTC - Usuario: luishdz04
-            <br/>
-            <strong>Estado:</strong> Botones funcionando correctamente
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                <strong>Tab Activo:</strong> {tabsData[activeTab]?.label}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                <strong>Apartados:</strong> {layaways.length}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                <strong>Estado:</strong> {loading ? '🔄 Cargando...' : '✅ Listo'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                <strong>Dialogs:</strong> ✅ Reales
+              </Typography>
+            </Grid>
+          </Grid>
+          
+          <Typography variant="body2" sx={{ color: '#666', mt: 2 }}>
+            <strong>✅ Correcciones aplicadas:</strong> Imports estáticos para usar componentes reales, tabla con Paper y sticky header, minWidth para columnas
           </Typography>
         </CardContent>
       </Card>
