@@ -230,7 +230,6 @@ interface User {
   fingerprint: boolean;
   createdAt?: string;
   updatedAt?: string;
-  // 🔄 DATOS COMPLETOS PARA COHERENCIA
   address?: Address;
   emergency?: EmergencyContact;
   membership?: MembershipInfo;
@@ -262,7 +261,6 @@ interface ActivityFeedItem {
   color: string;
 }
 
-// ✅ INTERFAZ DEBUGINFO CORREGIDA
 interface DebugInfo {
   stage: string;
   userId?: string;
@@ -273,7 +271,7 @@ interface DebugInfo {
   error?: string;
 }
 
-// 🚀 COMPONENTE PRINCIPAL MEJORADO CON DARK PRO SYSTEM
+// 🚀 COMPONENTE PRINCIPAL CON DARK PRO SYSTEM
 export default function UsersPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -340,16 +338,13 @@ export default function UsersPage() {
   const fileCache = useRef<Map<string, string>>(new Map());
   const blobUrlsRef = useRef<Set<string>>(new Set());
 
-  // 🔄 =============== FUNCIONES DE ARCHIVOS - MEJORADAS CON CACHÉ ===============
-
-  // 📥 FUNCIÓN PARA DESCARGAR ARCHIVOS DESDE STORAGE CON CACHÉ
+  // 🔄 =============== FUNCIONES DE ARCHIVOS ===============
   const downloadFileFromStorage = async (fileName: string, userId: string): Promise<string | null> => {
     if (!fileName || !userId) {
       console.log('❌ downloadFileFromStorage: fileName o userId vacío');
       return null;
     }
     
-    // Verificar caché primero
     const cacheKey = `${userId}/${fileName}`;
     if (fileCache.current.has(cacheKey)) {
       console.log(`✅ Archivo obtenido de caché: ${fileName}`);
@@ -378,7 +373,6 @@ export default function UsersPage() {
       const objectUrl = URL.createObjectURL(fileData);
       console.log(`✅ Archivo ${fileName} descargado exitosamente:`, objectUrl);
       
-      // Guardar en caché y registrar blob URL
       fileCache.current.set(cacheKey, objectUrl);
       blobUrlsRef.current.add(objectUrl);
       
@@ -390,34 +384,28 @@ export default function UsersPage() {
     }
   };
 
-  // 🧹 FUNCIÓN PARA LIMPIAR CACHÉ Y BLOB URLs
   const cleanupCache = () => {
     console.log('🧹 Limpiando caché y blob URLs...');
     
-    // Limpiar blob URLs
     blobUrlsRef.current.forEach(url => {
       URL.revokeObjectURL(url);
     });
     blobUrlsRef.current.clear();
     
-    // Limpiar caché
     fileCache.current.clear();
     
     setSuccessMessage('Caché limpiado exitosamente');
   };
 
-  // 🔄 FUNCIÓN PARA ACTUALIZAR UN SOLO USUARIO EN LA LISTA
   const updateUserInList = async (userId: string) => {
     try {
       console.log('🔄 Actualizando usuario específico en lista:', userId);
       
-      // Obtener datos actualizados del usuario
       const response = await fetch(`/api/admin/users/${userId}`);
       if (!response.ok) return;
       
       const updatedUser = await response.json();
       
-      // Cargar imagen actualizada
       const supabase = createBrowserSupabaseClient();
       const { data: files } = await supabase.storage
         .from('user-files')
@@ -434,7 +422,6 @@ export default function UsersPage() {
         }
       }
       
-      // Actualizar en la lista
       setUsers(prevUsers => 
         prevUsers.map(u => u.id === userId ? updatedUser : u)
       );
@@ -446,14 +433,12 @@ export default function UsersPage() {
     }
   };
 
-  // 📊 FUNCIÓN PARA OBTENER DATOS COMPLETOS DEL USUARIO - CORREGIDA ✅
   const fetchCompleteUserData = async (userId: string): Promise<User | null> => {
     try {
       console.log('🔍 Obteniendo datos completos para usuario:', userId);
       setLoadingUserDetails(true);
       setDebugInfo({ stage: 'starting', userId });
       
-      // ✅ UNA SOLA LLAMADA A TU API QUE YA FUNCIONA
       console.log('📊 Llamando a API que ya tienes...');
       const response = await fetch(`/api/admin/users/${userId}`);
       
@@ -472,7 +457,6 @@ export default function UsersPage() {
         completeUserData 
       });
       
-      // 📁 Obtener archivos desde Storage
       console.log('📁 Obteniendo archivos del Storage...');
       let files = null;
       try {
@@ -502,7 +486,6 @@ export default function UsersPage() {
         files 
       });
       
-      // 🖼️ INICIALIZAR URLs COMO NULL (NO CON DATOS VIEJOS) ✅
       let profilePictureUrl = null;
       let signatureUrl = null; 
       let contractPdfUrl = null;
@@ -510,12 +493,10 @@ export default function UsersPage() {
       if (files && files.length > 0) {
         console.log('🔄 Procesando archivos encontrados...');
         
-        // 🎯 BUSCAR SOLO EL ARCHIVO MÁS RECIENTE DE CADA TIPO ✅
         const latestProfile = files.find(file => file.name.startsWith('profile-'));
         const latestSignature = files.find(file => file.name.startsWith('signature-'));
         const latestContract = files.find(file => file.name.startsWith('contrato-'));
         
-        // 📸 PROCESAR FOTO DE PERFIL
         if (latestProfile) {
           console.log('🖼️ Descargando foto de perfil más reciente:', latestProfile.name);
           profilePictureUrl = await downloadFileFromStorage(latestProfile.name, userId);
@@ -528,7 +509,6 @@ export default function UsersPage() {
           console.log('📸 No se encontró foto de perfil en Storage');
         }
         
-        // ✍️ PROCESAR FIRMA
         if (latestSignature) {
           console.log('🖊️ Descargando firma más reciente:', latestSignature.name);
           signatureUrl = await downloadFileFromStorage(latestSignature.name, userId);
@@ -541,7 +521,6 @@ export default function UsersPage() {
           console.log('✍️ No se encontró firma en Storage');
         }
         
-        // 📄 PROCESAR CONTRATO
         if (latestContract) {
           console.log('📄 Descargando contrato más reciente:', latestContract.name);
           contractPdfUrl = await downloadFileFromStorage(latestContract.name, userId);
@@ -558,10 +537,8 @@ export default function UsersPage() {
         console.log('📁 No se encontraron archivos en el Storage');
       }
       
-      // 🔧 Construir objeto usuario completo con archivos actualizados ✅
       const finalUser: User = {
         ...completeUserData,
-        // ✅ SOLO USAR URLs DEL STORAGE, NO DE LA BASE DE DATOS
         profilePictureUrl: profilePictureUrl || undefined,
         signatureUrl: signatureUrl || undefined,
         contractPdfUrl: contractPdfUrl || undefined
@@ -591,7 +568,6 @@ export default function UsersPage() {
     }
   };
 
-  // 🔄 FUNCIÓN PARA REGENERAR CONTRATO - CORREGIDA
   const regenerateContract = async (userId: string): Promise<boolean> => {
     try {
       console.log('🔄 Regenerando contrato para usuario:', userId);
@@ -618,14 +594,11 @@ export default function UsersPage() {
       const result = await response.json();
       console.log('✅ Contrato regenerado exitosamente:', result);
       
-      // 🔄 RECARGAR DATOS DEL MODAL DESPUÉS DE REGENERAR
       if (selectedUser) {
         setTimeout(async () => {
           const updatedUserData = await fetchCompleteUserData(userId);
           if (updatedUserData) {
             setSelectedUser(updatedUserData);
-            
-            // Actualizar también en la lista principal
             await updateUserInList(userId);
           }
         }, 2000);
@@ -644,8 +617,6 @@ export default function UsersPage() {
   };
 
   // 🔄 =============== FUNCIONES DE DATOS ===============
-
-  // 🔥 FUNCIÓN fetchUsers CORREGIDA PARA CARGAR IMÁGENES ✅
   const fetchUsers = async () => {
     setLoading(true);
     setLoadingImages(true);
@@ -673,12 +644,10 @@ export default function UsersPage() {
       const baseUsers = await response.json();
       console.log('✅ Usuarios base obtenidos:', baseUsers?.length || 0);
       
-      // 🖼️ CARGAR IMÁGENES PARA CADA USUARIO EN PARALELO
       console.log('🖼️ Iniciando carga de imágenes en paralelo...');
       const usersWithImages = await Promise.allSettled(
         (baseUsers || []).map(async (user: User) => {
           try {
-            // 📁 Obtener archivos del usuario desde Storage
             const { data: files, error: filesError } = await supabase.storage
               .from('user-files')
               .list(user.id, { 
@@ -688,18 +657,16 @@ export default function UsersPage() {
             
             if (filesError || !files) {
               console.log(`📁 No se encontraron archivos para ${user.firstName}:`, filesError?.message);
-              return user; // Retornar usuario sin cambios
+              return user;
             }
             
-            // 🔍 Buscar solo el archivo de perfil más reciente
             const latestProfile = files.find(file => file.name.startsWith('profile-'));
             
             if (!latestProfile) {
               console.log(`📸 No hay foto de perfil para ${user.firstName}`);
-              return user; // Retornar usuario sin foto
+              return user;
             }
             
-            // 📥 Descargar imagen de perfil
             console.log(`📥 Descargando foto para ${user.firstName}:`, latestProfile.name);
             const profileImageUrl = await downloadFileFromStorage(latestProfile.name, user.id);
             
@@ -716,12 +683,11 @@ export default function UsersPage() {
             
           } catch (error) {
             console.error(`💥 Error cargando imagen para ${user.firstName}:`, error);
-            return user; // Retornar usuario sin cambios en caso de error
+            return user;
           }
         })
       );
       
-      // 🔄 Procesar resultados y filtrar solo los exitosos
       const finalUsers = usersWithImages
         .filter((result): result is PromiseFulfilledResult<User> => result.status === 'fulfilled')
         .map(result => result.value);
@@ -729,7 +695,6 @@ export default function UsersPage() {
       console.log('🎉 Usuarios finales con imágenes:', finalUsers.length);
       setUsers(finalUsers);
       
-      // Actualizar feed de actividad
       const imagesLoaded = finalUsers.filter(u => u.profilePictureUrl).length;
       const newActivity: ActivityFeedItem = {
         id: Date.now().toString(),
@@ -754,10 +719,8 @@ export default function UsersPage() {
     }
   };
 
-  // 📊 FUNCIÓN PARA OBTENER ESTADÍSTICAS
   const fetchUserStatistics = async () => {
     try {
-      // Calcular estadísticas locales por ahora
       const totalUsers = users.length;
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -798,14 +761,11 @@ export default function UsersPage() {
   };
 
   // 🔄 =============== HANDLERS DE DIÁLOGOS ===============
-
-  // 📝 FUNCIÓN PARA ABRIR FORMULARIO DE EDICIÓN
   const handleOpenFormDialog = (user?: User) => {
     setSelectedUser(user || null);
     setFormDialogOpen(true);
   };
 
-  // 👀 FUNCIÓN PARA VER USUARIO CON DATOS COMPLETOS - CORREGIDA ✅
   const handleOpenViewDialog = async (user: User) => {
     console.log('👁️ Abriendo modal de detalles para usuario:', user);
     setSelectedUser(user);
@@ -825,14 +785,12 @@ export default function UsersPage() {
     }
   };
 
-  // 🔄 FUNCIÓN PARA CERRAR MODAL Y LIMPIAR MEMORY
   const handleCloseViewDialog = () => {
     setViewUserDialogOpen(false);
     setSelectedUser(null);
     setDebugInfo(null);
   };
 
-  // 🔄 FUNCIÓN PARA RECARGAR DATOS DEL MODAL
   const refreshModalData = async () => {
     if (!selectedUser) return;
     
@@ -844,7 +802,6 @@ export default function UsersPage() {
     }
   };
 
-  // 💾 FUNCIÓN PARA GUARDAR USUARIO CON SINCRONIZACIÓN - MEJORADA
   const handleSaveUser = async (userData: any) => {
     try {
       setLoading(true);
@@ -855,7 +812,6 @@ export default function UsersPage() {
       let actionType: string;
       
       if (userData.id) {
-        // Actualizar usuario existente
         console.log('🔄 Actualizando usuario existente...');
         response = await fetch(`/api/admin/users/${userData.id}`, {
           method: 'PUT',
@@ -867,7 +823,6 @@ export default function UsersPage() {
         actionType = 'actualizado';
         updatedUserId = userData.id;
       } else {
-        // Crear nuevo usuario
         console.log('🆕 Creando nuevo usuario...');
         response = await fetch('/api/admin/users', {
           method: 'POST',
@@ -887,7 +842,6 @@ export default function UsersPage() {
       const savedUser = await response.json();
       updatedUserId = savedUser.id;
       
-      // Actualizar feed de actividad
       const newActivity: ActivityFeedItem = {
         id: Date.now().toString(),
         type: userData.id ? 'user_updated' : 'user_created',
@@ -905,14 +859,12 @@ export default function UsersPage() {
       setFormDialogOpen(false);
       setSelectedUser(null);
       
-      // 🔄 ACTUALIZAR SOLO EL USUARIO ESPECÍFICO EN LUGAR DE RECARGAR TODO
       if (updatedUserId) {
         console.log('🔄 Actualizando usuario específico en lista...');
         setTimeout(async () => {
           await updateUserInList(updatedUserId!);
-        }, 2000); // Dar tiempo para que se procesen los archivos
+        }, 2000);
         
-        // 🔄 SINCRONIZACIÓN CRÍTICA: SI EL MODAL ESTÁ ABIERTO, RECARGAR DATOS COMPLETOS
         if (viewUserDialogOpen && updatedUserId) {
           console.log('🔄 Modal abierto, programando recarga de datos...');
           setTimeout(async () => {
@@ -922,10 +874,9 @@ export default function UsersPage() {
               setSelectedUser(completeUserData);
               console.log('✅ Datos del modal actualizados completamente');
             }
-          }, 3000); // 3 segundos para que se procesen todos los cambios
+          }, 3000);
         }
       } else {
-        // Recargar lista completa solo si es usuario nuevo
         await fetchUsers();
       }
       
@@ -937,7 +888,6 @@ export default function UsersPage() {
     }
   };
 
-  // 🗑️ FUNCIÓN PARA ELIMINAR USUARIO
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
     
@@ -954,10 +904,8 @@ export default function UsersPage() {
         throw new Error(errorData.message || 'Error al eliminar usuario');
       }
       
-      // Actualizar lista local
       setUsers(prevUsers => prevUsers.filter(u => u.id !== userToDelete.id));
       
-      // Actualizar feed de actividad
       const newActivity: ActivityFeedItem = {
         id: Date.now().toString(),
         type: 'user_deleted',
@@ -983,7 +931,6 @@ export default function UsersPage() {
     }
   };
 
-  // 📋 FUNCIÓN PARA ABRIR MENÚ DE ACCIONES
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: User) => {
     setAnchorEl(event.currentTarget);
     setSelectedUserForMenu(user);
@@ -1005,7 +952,6 @@ export default function UsersPage() {
     
     let filtered = users;
     
-    // Aplicar filtro de texto con debounce
     if (debouncedSearchTerm) {
       const searchLower = debouncedSearchTerm.toLowerCase();
       filtered = filtered.filter(user =>
@@ -1016,7 +962,6 @@ export default function UsersPage() {
       );
     }
     
-    // FILTRO DE ROL CORREGIDO
     if (filterRole !== 'todos') {
       filtered = filtered.filter(user => {
         if (filterRole === 'admin' || filterRole === 'empleado' || filterRole === 'cliente') {
@@ -1027,7 +972,6 @@ export default function UsersPage() {
       console.log(`🎯 Filtro por rol "${filterRole}" aplicado:`, filtered.length, 'usuarios');
     }
     
-    // Aplicar ordenamiento
     filtered.sort((a, b) => {
       let aValue: any;
       let bValue: any;
@@ -1102,8 +1046,6 @@ export default function UsersPage() {
   }, []);
 
   // 🎨 FUNCIONES AUXILIARES CON DARK PRO SYSTEM
-
-  // 🎨 FUNCIÓN PARA OBTENER ICONO DE ROL
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'admin': return <AdminIcon sx={{ color: darkProTokens.roleAdmin }} />;
@@ -1113,7 +1055,6 @@ export default function UsersPage() {
     }
   };
 
-  // 🎨 FUNCIÓN PARA OBTENER COLOR DE ROL
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'admin': return darkProTokens.roleAdmin;
@@ -1123,7 +1064,6 @@ export default function UsersPage() {
     }
   };
 
-  // 🎨 FUNCIÓN PARA OBTENER LABEL DE ROL
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'admin': return 'Administrador';
@@ -1133,7 +1073,6 @@ export default function UsersPage() {
     }
   };
 
-  // 🎯 FUNCIÓN PARA CALCULAR PORCENTAJE DE COMPLETITUD
   const getCompletionPercentage = (user: User) => {
     let completed = 0;
     const total = 5;
@@ -1147,14 +1086,12 @@ export default function UsersPage() {
     return Math.round((completed / total) * 100);
   };
 
-  // 🎨 FUNCIÓN PARA OBTENER COLOR DE COMPLETITUD
   const getCompletionColor = (percentage: number) => {
     if (percentage >= 80) return darkProTokens.success;
     if (percentage >= 50) return darkProTokens.warning;
     return darkProTokens.error;
   };
 
-  // 📅 FUNCIÓN PARA FORMATEAR FECHAS
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No disponible';
     try {
@@ -1342,193 +1279,6 @@ export default function UsersPage() {
     </Paper>
   );
 
-  // 📱 TOOLBAR DE ACCIONES MASIVAS CON DARK PRO COLORS
-  const BulkActionsToolbar = () => (
-    <Slide direction="up" in={selectedUsers.size > 0}>
-      <Paper
-        elevation={8}
-        sx={{
-          position: 'fixed',
-          bottom: 24,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          p: 2,
-          zIndex: 1000,
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.primary}40`,
-          borderRadius: 3,
-          backdropFilter: 'blur(20px)',
-          boxShadow: `0 8px 32px ${darkProTokens.background}80`
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-            {selectedUsers.size} usuarios seleccionados
-          </Typography>
-          
-          <Button
-            size="small"
-            startIcon={<EmailIcon />}
-            sx={{ 
-              color: darkProTokens.success,
-              borderColor: darkProTokens.success,
-              '&:hover': { 
-                bgcolor: `${darkProTokens.success}10`,
-                borderColor: darkProTokens.successHover
-              }
-            }}
-          >
-            Email Masivo
-          </Button>
-          
-          <Button
-            size="small"
-            startIcon={<WhatsAppIcon />}
-            sx={{ 
-              color: '#25d366',
-              borderColor: '#25d366',
-              '&:hover': { 
-                bgcolor: 'rgba(37, 211, 102, 0.1)',
-                borderColor: '#22c55e'
-              }
-            }}
-          >
-            WhatsApp
-          </Button>
-          
-          <Button
-            size="small"
-            startIcon={<DeleteIcon />}
-            onClick={() => setShowBulkDeleteDialog(true)}
-            sx={{ 
-              color: darkProTokens.error,
-              borderColor: darkProTokens.error,
-              '&:hover': { 
-                bgcolor: `${darkProTokens.error}10`,
-                borderColor: darkProTokens.errorHover
-              }
-            }}
-          >
-            Eliminar
-          </Button>
-          
-          <IconButton
-            size="small"
-            onClick={() => setSelectedUsers(new Set())}
-            sx={{ 
-              color: darkProTokens.textSecondary,
-              '&:hover': { 
-                color: darkProTokens.textPrimary,
-                bgcolor: darkProTokens.hoverOverlay
-              }
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </Paper>
-    </Slide>
-  );
-
-  // 🎯 COMPONENTE DE VISTA PREVIA MEJORADA CON ZOOM Y DARK PRO
-  const ImagePreviewDialog = () => (
-    <Dialog
-      open={!!previewImage}
-      onClose={() => setPreviewImage(null)}
-      maxWidth="lg"
-      fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: darkProTokens.background,
-          border: `1px solid ${darkProTokens.grayDark}`
-        }
-      }}
-    >
-      <DialogContent sx={{ p: 0, bgcolor: darkProTokens.background, position: 'relative' }}>
-        {previewImage && (
-          <Box sx={{ position: 'relative', overflow: 'hidden' }}>
-            <img
-              src={previewImage}
-              alt="Preview"
-              style={{
-                width: '100%',
-                height: 'auto',
-                transform: `scale(${zoomLevel})`,
-                transition: 'transform 0.3s ease'
-              }}
-            />
-            
-            <Box sx={{
-              position: 'absolute',
-              bottom: 16,
-              right: 16,
-              display: 'flex',
-              gap: 1,
-              bgcolor: `${darkProTokens.surfaceLevel2}E6`,
-              backdropFilter: 'blur(10px)',
-              borderRadius: 2,
-              p: 1,
-              border: `1px solid ${darkProTokens.grayDark}`
-            }}>
-              <IconButton
-                size="small"
-                onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.25))}
-                sx={{ 
-                  color: darkProTokens.textPrimary,
-                  '&:hover': { bgcolor: darkProTokens.hoverOverlay }
-                }}
-              >
-                <ZoomOutIcon />
-              </IconButton>
-              <Typography sx={{ 
-                color: darkProTokens.textPrimary, 
-                minWidth: 50, 
-                textAlign: 'center',
-                alignSelf: 'center',
-                fontWeight: 600
-              }}>
-                {Math.round(zoomLevel * 100)}%
-              </Typography>
-              <IconButton
-                size="small"
-                onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.25))}
-                sx={{ 
-                  color: darkProTokens.textPrimary,
-                  '&:hover': { bgcolor: darkProTokens.hoverOverlay }
-                }}
-              >
-                <ZoomInIcon />
-              </IconButton>
-            </Box>
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-
-  // 📱 COMPONENTE DE ESTADO DE CONEXIÓN CON DARK PRO
-  const ConnectionStatus = () => (
-    <Snackbar
-      open={!isOnline}
-      message="Sin conexión a internet. Los datos pueden no estar actualizados."
-      action={
-        <Button 
-          color="inherit" 
-          onClick={() => window.location.reload()}
-          sx={{ color: darkProTokens.primary }}
-        >
-          Reintentar
-        </Button>
-      }
-      ContentProps={{
-        sx: {
-          bgcolor: darkProTokens.error,
-          color: darkProTokens.textPrimary
-        }
-      }}
-    />
-  );
-
   // 🎨 RENDERIZADO PRINCIPAL CON DARK PRO SYSTEM
   return (
     <Box sx={{ 
@@ -1573,7 +1323,7 @@ export default function UsersPage() {
               Gestión de Usuarios MUP
             </Typography>
             <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
-              Panel de administración completo con sistema Dark Pro
+              Panel de administración con sistema Dark Pro
             </Typography>
           </Box>
           
@@ -1770,7 +1520,7 @@ export default function UsersPage() {
               startIcon={loadingImages ? <CircularProgress size={16} /> : <RefreshIcon />}
               onClick={fetchUsers}
               disabled={loadingImages}
-              sx={{
+                            sx={{
                 borderColor: `${darkProTokens.primary}60`,
                 color: darkProTokens.primary,
                 bgcolor: `${darkProTokens.primary}05`,
@@ -2442,3 +2192,1442 @@ export default function UsersPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      
+      {/* 📱 TOOLBAR DE ACCIONES MASIVAS CON DARK PRO COLORS */}
+      <Slide direction="up" in={selectedUsers.size > 0}>
+        <Paper
+          elevation={8}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            p: 2,
+            zIndex: 1000,
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.primary}40`,
+            borderRadius: 3,
+            backdropFilter: 'blur(20px)',
+            boxShadow: `0 8px 32px ${darkProTokens.background}80`
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+              {selectedUsers.size} usuarios seleccionados
+            </Typography>
+            
+            <Button
+              size="small"
+              startIcon={<EmailIcon />}
+              sx={{ 
+                color: darkProTokens.success,
+                borderColor: darkProTokens.success,
+                '&:hover': { 
+                  bgcolor: `${darkProTokens.success}10`,
+                  borderColor: darkProTokens.successHover
+                }
+              }}
+            >
+              Email Masivo
+            </Button>
+            
+            <Button
+              size="small"
+              startIcon={<WhatsAppIcon />}
+              sx={{ 
+                color: '#25d366',
+                borderColor: '#25d366',
+                '&:hover': { 
+                  bgcolor: 'rgba(37, 211, 102, 0.1)',
+                  borderColor: '#22c55e'
+                }
+              }}
+            >
+              WhatsApp
+            </Button>
+            
+            <Button
+              size="small"
+              startIcon={<DeleteIcon />}
+              onClick={() => setShowBulkDeleteDialog(true)}
+              sx={{ 
+                color: darkProTokens.error,
+                borderColor: darkProTokens.error,
+                '&:hover': { 
+                  bgcolor: `${darkProTokens.error}10`,
+                  borderColor: darkProTokens.errorHover
+                }
+              }}
+            >
+              Eliminar
+            </Button>
+            
+            <IconButton
+              size="small"
+              onClick={() => setSelectedUsers(new Set())}
+              sx={{ 
+                color: darkProTokens.textSecondary,
+                '&:hover': { 
+                  color: darkProTokens.textPrimary,
+                  bgcolor: darkProTokens.hoverOverlay
+                }
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </Paper>
+      </Slide>
+      
+      {/* 🎯 COMPONENTE DE VISTA PREVIA MEJORADA CON ZOOM Y DARK PRO */}
+      <Dialog
+        open={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: darkProTokens.background,
+            border: `1px solid ${darkProTokens.grayDark}`
+          }
+        }}
+      >
+        <DialogContent sx={{ p: 0, bgcolor: darkProTokens.background, position: 'relative' }}>
+          {previewImage && (
+            <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+              <img
+                src={previewImage}
+                alt="Preview"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  transform: `scale(${zoomLevel})`,
+                  transition: 'transform 0.3s ease'
+                }}
+              />
+              
+              <Box sx={{
+                position: 'absolute',
+                bottom: 16,
+                right: 16,
+                display: 'flex',
+                gap: 1,
+                bgcolor: `${darkProTokens.surfaceLevel2}E6`,
+                backdropFilter: 'blur(10px)',
+                borderRadius: 2,
+                p: 1,
+                border: `1px solid ${darkProTokens.grayDark}`
+              }}>
+                <IconButton
+                  size="small"
+                  onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.25))}
+                  sx={{ 
+                    color: darkProTokens.textPrimary,
+                    '&:hover': { bgcolor: darkProTokens.hoverOverlay }
+                  }}
+                >
+                  <ZoomOutIcon />
+                </IconButton>
+                <Typography sx={{ 
+                  color: darkProTokens.textPrimary, 
+                  minWidth: 50, 
+                  textAlign: 'center',
+                  alignSelf: 'center',
+                  fontWeight: 600
+                }}>
+                  {Math.round(zoomLevel * 100)}%
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.25))}
+                  sx={{ 
+                    color: darkProTokens.textPrimary,
+                    '&:hover': { bgcolor: darkProTokens.hoverOverlay }
+                  }}
+                >
+                  <ZoomInIcon />
+                </IconButton>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* 📱 COMPONENTE DE ESTADO DE CONEXIÓN CON DARK PRO */}
+      <Snackbar
+        open={!isOnline}
+        message="Sin conexión a internet. Los datos pueden no estar actualizados."
+        action={
+          <Button 
+            color="inherit" 
+            onClick={() => window.location.reload()}
+            sx={{ color: darkProTokens.primary }}
+          >
+            Reintentar
+          </Button>
+        }
+        ContentProps={{
+          sx: {
+            bgcolor: darkProTokens.error,
+            color: darkProTokens.textPrimary
+          }
+        }}
+      />
+      
+      {/* 📝 FORMULARIO DE USUARIO */}
+      <UserFormDialog
+        open={formDialogOpen}
+        onClose={() => setFormDialogOpen(false)}
+        user={selectedUser}
+        onSave={handleSaveUser}
+      />
+      
+      {/* 👁️ MODAL DE DETALLES COMPLETOS DEL USUARIO CON DARK PRO SYSTEM */}
+      <Dialog
+        open={viewUserDialogOpen}
+        onClose={handleCloseViewDialog}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            backdropFilter: 'blur(20px)',
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3,
+            color: darkProTokens.textPrimary,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          borderBottom: `1px solid ${darkProTokens.grayDark}`,
+          bgcolor: `${darkProTokens.primary}10`,
+          p: 3
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {selectedUser && (
+              <Avatar
+                src={selectedUser.profilePictureUrl}
+                sx={{
+                  width: 56,
+                  height: 56,
+                  bgcolor: getRoleColor(selectedUser.rol),
+                  border: `3px solid ${getRoleColor(selectedUser.rol)}`,
+                  boxShadow: `0 4px 20px ${getRoleColor(selectedUser.rol)}40`
+                }}
+              >
+                {selectedUser.firstName?.[0]?.toUpperCase()}
+              </Avatar>
+            )}
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
+                {selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : 'Cargando...'}
+              </Typography>
+              {selectedUser && (
+                <Chip
+                  icon={getRoleIcon(selectedUser.rol)}
+                  label={getRoleLabel(selectedUser.rol)}
+                  size="small"
+                  sx={{
+                    mt: 1,
+                    bgcolor: `${getRoleColor(selectedUser.rol)}20`,
+                    color: getRoleColor(selectedUser.rol),
+                    border: `1px solid ${getRoleColor(selectedUser.rol)}40`,
+                    '& .MuiChip-icon': { color: getRoleColor(selectedUser.rol) }
+                  }}
+                />
+              )}
+            </Box>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {selectedUser?.rol === 'cliente' && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={regeneratingContract ? <CircularProgress size={16} /> : <UpdateIcon />}
+                disabled={regeneratingContract}
+                onClick={() => regenerateContract(selectedUser.id)}
+                sx={{
+                  bgcolor: darkProTokens.warning,
+                  color: darkProTokens.background,
+                  '&:hover': { bgcolor: darkProTokens.warningHover }
+                }}
+              >
+                {regeneratingContract ? 'Regenerando...' : 'Regenerar Contrato'}
+              </Button>
+            )}
+            
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<RefreshIcon />}
+              onClick={refreshModalData}
+              sx={{
+                borderColor: darkProTokens.primary,
+                color: darkProTokens.primary,
+                '&:hover': {
+                  borderColor: darkProTokens.primaryHover,
+                  bgcolor: `${darkProTokens.primary}10`
+                }
+              }}
+            >
+              Recargar
+            </Button>
+            
+            <IconButton 
+              onClick={handleCloseViewDialog}
+              sx={{ 
+                color: darkProTokens.textSecondary,
+                '&:hover': { 
+                  color: darkProTokens.textPrimary,
+                  bgcolor: darkProTokens.hoverOverlay
+                }
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 0 }}>
+          {loadingUserDetails ? (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <CircularProgress size={40} sx={{ color: darkProTokens.primary, mb: 2 }} />
+              <Typography sx={{ color: darkProTokens.textSecondary }}>
+                Cargando datos completos del usuario...
+              </Typography>
+            </Box>
+          ) : selectedUser ? (
+            <Box sx={{ p: 3 }}>
+              {/* 🔍 INFORMACIÓN DE DEBUG CON DARK PRO */}
+              {debugInfo && (
+                <Accordion sx={{ 
+                  mb: 3, 
+                  bgcolor: `${darkProTokens.primary}10`, 
+                  border: `1px solid ${darkProTokens.primary}30`,
+                  borderRadius: 2,
+                  '&:before': { display: 'none' }
+                }}>
+                  <AccordionSummary 
+                    expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.primary }} />}
+                    sx={{ 
+                      bgcolor: `${darkProTokens.primary}15`,
+                      borderRadius: '8px 8px 0 0'
+                    }}
+                  >
+                    <Typography sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 600, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1 
+                    }}>
+                      <InfoIcon />
+                      Debug Info - Etapa: {debugInfo.stage}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ bgcolor: darkProTokens.surfaceLevel1 }}>
+                    <Box sx={{ 
+                      fontFamily: 'monospace', 
+                      fontSize: '0.8rem', 
+                      color: darkProTokens.textSecondary,
+                      bgcolor: darkProTokens.background,
+                      p: 2,
+                      borderRadius: 1,
+                      border: `1px solid ${darkProTokens.grayDark}`,
+                      overflow: 'auto',
+                      maxHeight: 300
+                    }}>
+                      <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+              
+              <Grid container spacing={3}>
+                {/* 📋 INFORMACIÓN PERSONAL CON DARK PRO */}
+                <Grid size={12}>
+                  <Paper sx={{
+                    p: 3,
+                    bgcolor: `${darkProTokens.success}10`,
+                    border: `1px solid ${darkProTokens.success}30`,
+                    borderRadius: 2
+                  }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.success, 
+                      fontWeight: 700, 
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1
+                    }}>
+                      <PersonIcon />
+                      Información Personal
+                    </Typography>
+                    
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Email:
+                          </Typography>
+                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
+                            {selectedUser.email}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            WhatsApp:
+                          </Typography>
+                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
+                            {selectedUser.whatsapp || 'No disponible'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha de Nacimiento:
+                          </Typography>
+                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
+                            {selectedUser.birthDate ? formatDate(selectedUser.birthDate) : 'No disponible'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Género:
+                          </Typography>
+                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
+                            {selectedUser.gender || 'No especificado'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+                </Grid>
+                
+                {/* 🏠 DIRECCIÓN CON DARK PRO (solo para clientes) */}
+                {selectedUser.rol === 'cliente' && selectedUser.address && (
+                  <Grid size={12}>
+                    <Paper sx={{
+                      p: 3,
+                      bgcolor: `${darkProTokens.info}10`,
+                      border: `1px solid ${darkProTokens.info}30`,
+                      borderRadius: 2
+                    }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.info, 
+                        fontWeight: 700, 
+                        mb: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1
+                      }}>
+                        <HomeIcon />
+                        Dirección
+                      </Typography>
+                      
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 12, md: 8 }}>
+                          <Typography sx={{ color: darkProTokens.textPrimary }}>
+                            {selectedUser.address.street} #{selectedUser.address.number}, {selectedUser.address.neighborhood}
+                          </Typography>
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <Typography sx={{ color: darkProTokens.textPrimary }}>
+                            {selectedUser.address.city}, {selectedUser.address.state}
+                          </Typography>
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <Typography sx={{ color: darkProTokens.textPrimary }}>
+                            C.P. {selectedUser.address.postalCode}
+                          </Typography>
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 8 }}>
+                          <Typography sx={{ color: darkProTokens.textPrimary }}>
+                            {selectedUser.address.country || 'México'}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {/* 🆘 CONTACTO DE EMERGENCIA CON DARK PRO (solo para clientes) */}
+                {selectedUser.rol === 'cliente' && selectedUser.emergency && (
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Paper sx={{
+                      p: 3,
+                      bgcolor: `${darkProTokens.error}10`,
+                      border: `1px solid ${darkProTokens.error}30`,
+                      borderRadius: 2,
+                      height: '100%'
+                    }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.error, 
+                        fontWeight: 700, 
+                        mb: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1
+                      }}>
+                        <LocalHospitalIcon />
+                        Contacto de Emergencia
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Nombre:
+                          </Typography>
+                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
+                            {selectedUser.emergency.name}
+                          </Typography>
+                        </Box>
+                        
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Teléfono:
+                          </Typography>
+                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
+                            {selectedUser.emergency.phone}
+                          </Typography>
+                        </Box>
+                        
+                        {selectedUser.emergency.bloodType && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Tipo de Sangre:
+                            </Typography>
+                            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
+                              {selectedUser.emergency.bloodType}
+                            </Typography>
+                          </Box>
+                        )}
+                        
+                        {selectedUser.emergency.medicalCondition && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                              Condición Médica:
+                            </Typography>
+                            <Paper sx={{ 
+                              p: 2, 
+                              bgcolor: `${darkProTokens.error}05`,
+                              border: `1px solid ${darkProTokens.error}20`,
+                              borderRadius: 1
+                            }}>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                                {selectedUser.emergency.medicalCondition}
+                              </Typography>
+                            </Paper>
+                          </Box>
+                        )}
+                      </Box>
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {/* 💪 INFORMACIÓN DE MEMBRESÍA CON DARK PRO (solo para clientes) */}
+                {selectedUser.rol === 'cliente' && selectedUser.membership && (
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Paper sx={{
+                      p: 3,
+                      bgcolor: `${darkProTokens.roleModerator}10`,
+                      border: `1px solid ${darkProTokens.roleModerator}30`,
+                      borderRadius: 2,
+                      height: '100%'
+                    }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.roleModerator, 
+                        fontWeight: 700, 
+                        mb: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1
+                      }}>
+                        <ClientIcon />
+                        Información de Membresía
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {selectedUser.membership.referredBy && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Referido por:
+                            </Typography>
+                            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 500 }}>
+                              {selectedUser.membership.referredBy}
+                            </Typography>
+                          </Box>
+                        )}
+                        
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Nivel de Entrenamiento:
+                          </Typography>
+                          <Chip
+                            label={selectedUser.membership.trainingLevel || 'Principiante'}
+                            size="small"
+                            sx={{
+                              mt: 0.5,
+                              bgcolor: `${darkProTokens.roleModerator}20`,
+                              color: darkProTokens.roleModerator,
+                              border: `1px solid ${darkProTokens.roleModerator}30`
+                            }}
+                          />
+                        </Box>
+                        
+                        <Box>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={selectedUser.membership.receivePlans}
+                                disabled
+                                sx={{
+                                  '& .MuiSwitch-switchBase.Mui-checked': {
+                                    color: darkProTokens.roleModerator,
+                                  },
+                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                    backgroundColor: darkProTokens.roleModerator,
+                                  },
+                                }}
+                              />
+                            }
+                            label={
+                              <Typography sx={{ color: darkProTokens.textPrimary }}>
+                                Recibe planes de entrenamiento
+                              </Typography>
+                            }
+                          />
+                        </Box>
+                        
+                        {selectedUser.membership.mainMotivation && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                              Motivación Principal:
+                            </Typography>
+                            <Paper sx={{ 
+                              p: 2, 
+                              bgcolor: `${darkProTokens.roleModerator}05`,
+                              border: `1px solid ${darkProTokens.roleModerator}20`,
+                              borderRadius: 1
+                            }}>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                                {selectedUser.membership.mainMotivation}
+                              </Typography>
+                            </Paper>
+                          </Box>
+                        )}
+                      </Box>
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {/* 📄 DOCUMENTOS CON DARK PRO SYSTEM */}
+                <Grid size={12}>
+                  <Paper sx={{
+                    p: 3,
+                    bgcolor: `${darkProTokens.warning}10`,
+                    border: `1px solid ${darkProTokens.warning}30`,
+                    borderRadius: 2
+                  }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.warning, 
+                      fontWeight: 700, 
+                      mb: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1
+                    }}>
+                      <AssignmentIcon />
+                      Documentos y Archivos
+                    </Typography>
+                    
+                    <Grid container spacing={3}>
+                      {/* Foto de Perfil */}
+                      <Grid size={{ xs: 12, md: 4 }}>
+                        <Box sx={{
+                          border: `2px dashed ${darkProTokens.warning}30`,
+                          borderRadius: 2,
+                          p: 3,
+                          textAlign: 'center',
+                          minHeight: 200,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          bgcolor: `${darkProTokens.warning}05`
+                        }}>
+                          <Typography variant="subtitle2" sx={{ color: darkProTokens.warning, mb: 2, fontWeight: 600 }}>
+                            📸 Foto de Perfil
+                          </Typography>
+                          
+                          {selectedUser.profilePictureUrl ? (
+                            <Box
+                              component="img"
+                              src={selectedUser.profilePictureUrl}
+                              alt="Foto de perfil"
+                              sx={{
+                                width: '100%',
+                                maxWidth: 150,
+                                height: 'auto',
+                                borderRadius: 2,
+                                cursor: 'pointer',
+                                transition: 'transform 0.3s ease',
+                                border: `2px solid ${darkProTokens.success}`,
+                                boxShadow: `0 4px 15px ${darkProTokens.success}40`,
+                                '&:hover': { transform: 'scale(1.05)' }
+                              }}
+                              onClick={() => {
+                                setPreviewImage(selectedUser.profilePictureUrl!);
+                                setZoomLevel(1);
+                              }}
+                            />
+                          ) : (
+                            <Box sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 1,
+                              color: darkProTokens.textDisabled
+                            }}>
+                              <PhotoCameraIcon sx={{ fontSize: 48 }} />
+                              <Typography variant="body2">
+                                No disponible
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </Grid>
+                      
+                      {/* Firma Digital */}
+                      <Grid size={{ xs: 12, md: 4 }}>
+                        <Box sx={{
+                          border: `2px dashed ${darkProTokens.warning}30`,
+                          borderRadius: 2,
+                          p: 3,
+                          textAlign: 'center',
+                          minHeight: 200,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          bgcolor: `${darkProTokens.warning}05`
+                        }}>
+                          <Typography variant="subtitle2" sx={{ color: darkProTokens.warning, mb: 2, fontWeight: 600 }}>
+                            ✍️ Firma Digital
+                          </Typography>
+                          
+                          {selectedUser.signatureUrl ? (
+                            <Box
+                              component="img"
+                              src={selectedUser.signatureUrl}
+                              alt="Firma digital"
+                              sx={{
+                                width: '100%',
+                                maxWidth: 200,
+                                height: 'auto',
+                                bgcolor: darkProTokens.textPrimary,
+                                borderRadius: 1,
+                                p: 1,
+                                cursor: 'pointer',
+                                transition: 'transform 0.3s ease',
+                                border: `2px solid ${darkProTokens.success}`,
+                                boxShadow: `0 4px 15px ${darkProTokens.success}40`,
+                                '&:hover': { transform: 'scale(1.05)' }
+                              }}
+                              onClick={() => {
+                                setPreviewImage(selectedUser.signatureUrl!);
+                                setZoomLevel(1);
+                              }}
+                            />
+                          ) : (
+                            <Box sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 1,
+                              color: darkProTokens.textDisabled
+                            }}>
+                              <SignatureIcon sx={{ fontSize: 48 }} />
+                              <Typography variant="body2">
+                                No disponible
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </Grid>
+                      
+                      {/* Contrato PDF */}
+                      <Grid size={{ xs: 12, md: 4 }}>
+                        <Box sx={{
+                          border: `2px dashed ${darkProTokens.warning}30`,
+                          borderRadius: 2,
+                          p: 3,
+                          textAlign: 'center',
+                          minHeight: 200,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          bgcolor: `${darkProTokens.warning}05`
+                        }}>
+                          <Typography variant="subtitle2" sx={{ color: darkProTokens.warning, mb: 2, fontWeight: 600 }}>
+                            📄 Contrato PDF
+                          </Typography>
+                          
+                          {selectedUser.contractPdfUrl ? (
+                            <Box sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 2
+                            }}>
+                              <PictureAsPdfIcon sx={{ 
+                                fontSize: 64, 
+                                color: darkProTokens.error,
+                                filter: `drop-shadow(0 4px 8px ${darkProTokens.error}40)`
+                              }} />
+                              <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={<DownloadIcon />}
+                                onClick={() => window.open(selectedUser.contractPdfUrl, '_blank')}
+                                sx={{
+                                  bgcolor: darkProTokens.error,
+                                  color: darkProTokens.textPrimary,
+                                  '&:hover': { 
+                                    bgcolor: darkProTokens.errorHover,
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: `0 6px 20px ${darkProTokens.error}50`
+                                  },
+                                  transition: 'all 0.3s ease'
+                                }}
+                              >
+                                Ver PDF
+                              </Button>
+                            </Box>
+                          ) : (
+                            <Box sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 1,
+                              color: darkProTokens.textDisabled
+                            }}>
+                              <PictureAsPdfIcon sx={{ fontSize: 48 }} />
+                              <Typography variant="body2">
+                                No disponible
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Box>
+          ) : (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Typography sx={{ color: darkProTokens.textSecondary }}>
+                No se pudo cargar la información del usuario
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+            {/* 🗑️ DIÁLOGO DE CONFIRMACIÓN DE ELIMINACIÓN CON DARK PRO */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.error}30`,
+            borderRadius: 3,
+            color: darkProTokens.textPrimary
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: darkProTokens.error, 
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          bgcolor: `${darkProTokens.error}10`,
+          borderBottom: `1px solid ${darkProTokens.error}30`
+        }}>
+          <DeleteIcon />
+          Confirmar Eliminación
+        </DialogTitle>
+        
+        <DialogContent sx={{ pt: 3 }}>
+          <DialogContentText sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+            ¿Estás completamente seguro de que deseas eliminar al usuario{' '}
+            <strong style={{ color: darkProTokens.textPrimary }}>
+              {userToDelete?.firstName} {userToDelete?.lastName}
+            </strong>?
+          </DialogContentText>
+          
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              bgcolor: `${darkProTokens.warning}10`, 
+              border: `1px solid ${darkProTokens.warning}30`,
+              color: darkProTokens.textPrimary,
+              '& .MuiAlert-icon': {
+                color: darkProTokens.warning
+              }
+            }}
+          >
+            <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, mb: 1 }}>
+              Esta acción eliminará permanentemente:
+            </Typography>
+            <ul style={{ margin: '8px 0', paddingLeft: '20px', color: darkProTokens.textPrimary }}>
+              <li>Todos los datos personales</li>
+              <li>Archivos subidos (fotos, firma, contrato)</li>
+              <li>Historial de asistencia</li>
+              <li>Registros de pagos</li>
+            </ul>
+            <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+              ⚠️ Esta acción NO se puede deshacer
+            </Typography>
+          </Alert>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button
+            onClick={() => setDeleteDialogOpen(false)}
+            variant="outlined"
+            sx={{ 
+              color: darkProTokens.textSecondary,
+              borderColor: darkProTokens.grayDark,
+              '&:hover': {
+                borderColor: darkProTokens.textSecondary,
+                bgcolor: darkProTokens.hoverOverlay
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleDeleteUser}
+            variant="contained"
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={16} /> : <DeleteIcon />}
+            sx={{
+              bgcolor: darkProTokens.error,
+              color: darkProTokens.textPrimary,
+              '&:hover': { 
+                bgcolor: darkProTokens.errorHover,
+                transform: 'translateY(-1px)',
+                boxShadow: `0 4px 15px ${darkProTokens.error}50`
+              },
+              '&:disabled': {
+                bgcolor: darkProTokens.grayMedium,
+                color: darkProTokens.textDisabled
+              },
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {loading ? 'Eliminando...' : 'Eliminar Definitivamente'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* 📱 MENÚ CONTEXTUAL CON DARK PRO */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 2,
+            color: darkProTokens.textPrimary,
+            minWidth: 220,
+            backdropFilter: 'blur(10px)',
+            boxShadow: `0 8px 32px ${darkProTokens.background}80`
+          }
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (selectedUserForMenu) {
+              handleOpenViewDialog(selectedUserForMenu);
+            }
+            handleMenuClose();
+          }}
+          sx={{ 
+            py: 1.5,
+            '&:hover': {
+              bgcolor: `${darkProTokens.info}15`,
+              '& .MuiListItemIcon-root': {
+                color: darkProTokens.info
+              },
+              '& .MuiListItemText-primary': {
+                color: darkProTokens.info
+              }
+            }
+          }}
+        >
+          <ListItemIcon>
+            <VisibilityIcon sx={{ color: darkProTokens.info }} />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Ver Detalles Completos"
+            sx={{ '& .MuiListItemText-primary': { fontWeight: 500 } }}
+          />
+        </MenuItem>
+        
+        <MenuItem
+          onClick={() => {
+            if (selectedUserForMenu) {
+              handleOpenFormDialog(selectedUserForMenu);
+            }
+            handleMenuClose();
+          }}
+          sx={{ 
+            py: 1.5,
+            '&:hover': {
+              bgcolor: `${darkProTokens.warning}15`,
+              '& .MuiListItemIcon-root': {
+                color: darkProTokens.warning
+              },
+              '& .MuiListItemText-primary': {
+                color: darkProTokens.warning
+              }
+            }
+          }}
+        >
+          <ListItemIcon>
+            <EditIcon sx={{ color: darkProTokens.warning }} />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Editar Usuario"
+            sx={{ '& .MuiListItemText-primary': { fontWeight: 500 } }}
+          />
+        </MenuItem>
+        
+        {selectedUserForMenu?.rol === 'cliente' && (
+          <MenuItem
+            onClick={() => {
+              if (selectedUserForMenu) {
+                regenerateContract(selectedUserForMenu.id);
+              }
+              handleMenuClose();
+            }}
+            sx={{ 
+              py: 1.5,
+              '&:hover': {
+                bgcolor: `${darkProTokens.primary}15`,
+                '& .MuiListItemIcon-root': {
+                  color: darkProTokens.primary
+                },
+                '& .MuiListItemText-primary': {
+                  color: darkProTokens.primary
+                }
+              }
+            }}
+          >
+            <ListItemIcon>
+              <UpdateIcon sx={{ color: darkProTokens.primary }} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Regenerar Contrato"
+              sx={{ '& .MuiListItemText-primary': { fontWeight: 500 } }}
+            />
+          </MenuItem>
+        )}
+        
+        <Divider sx={{ my: 1, borderColor: darkProTokens.grayDark }} />
+        
+        <MenuItem
+          onClick={() => {
+            if (selectedUserForMenu) {
+              setUserToDelete(selectedUserForMenu);
+              setDeleteDialogOpen(true);
+            }
+            handleMenuClose();
+          }}
+          sx={{ 
+            py: 1.5,
+            '&:hover': {
+              bgcolor: `${darkProTokens.error}15`,
+              '& .MuiListItemIcon-root': {
+                color: darkProTokens.error
+              },
+              '& .MuiListItemText-primary': {
+                color: darkProTokens.error
+              }
+            }
+          }}
+        >
+          <ListItemIcon>
+            <DeleteIcon sx={{ color: darkProTokens.error }} />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Eliminar Usuario"
+            sx={{ '& .MuiListItemText-primary': { fontWeight: 500 } }}
+          />
+        </MenuItem>
+      </Menu>
+      
+      {/* 📨 SNACKBARS PARA MENSAJES CON DARK PRO SYSTEM */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={6000}
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          severity="success"
+          onClose={() => setSuccessMessage(null)}
+          sx={{
+            bgcolor: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.success}60`,
+            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
+            '& .MuiAlert-icon': { 
+              color: darkProTokens.textPrimary 
+            },
+            '& .MuiAlert-action .MuiIconButton-root': {
+              color: darkProTokens.textPrimary
+            }
+          }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
+      
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          severity="error"
+          onClose={() => setError(null)}
+          sx={{
+            bgcolor: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.error}60`,
+            boxShadow: `0 8px 32px ${darkProTokens.error}40`,
+            '& .MuiAlert-icon': { 
+              color: darkProTokens.textPrimary 
+            },
+            '& .MuiAlert-action .MuiIconButton-root': {
+              color: darkProTokens.textPrimary
+            }
+          }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
+
+      {/* 🎨 ESTILOS CSS PERSONALIZADOS PARA ANIMACIONES DARK PRO */}
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { 
+            opacity: 1; 
+            transform: scale(1);
+          }
+          50% { 
+            opacity: 0.7; 
+            transform: scale(1.02);
+          }
+        }
+        
+        @keyframes shimmer {
+          0% {
+            background-position: -468px 0;
+          }
+          100% {
+            background-position: 468px 0;
+          }
+        }
+        
+        @keyframes glow {
+          0%, 100% {
+            box-shadow: 0 0 5px ${darkProTokens.primary}40;
+          }
+          50% {
+            box-shadow: 0 0 20px ${darkProTokens.primary}60, 0 0 30px ${darkProTokens.primary}40;
+          }
+        }
+        
+        @keyframes slideInUp {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes fadeInScale {
+          from {
+            transform: scale(0.95);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        /* Scrollbar personalizado para toda la página */
+        ::-webkit-scrollbar {
+          width: 12px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 6px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 6px;
+          border: 2px solid ${darkProTokens.surfaceLevel1};
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+          box-shadow: 0 0 10px ${darkProTokens.primary}60;
+        }
+        
+        /* Efecto de resplandor en elementos interactivos */
+        .glow-on-hover {
+          transition: all 0.3s ease;
+        }
+        
+        .glow-on-hover:hover {
+          animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        /* Efecto de entrada para tarjetas */
+        .fade-in-scale {
+          animation: fadeInScale 0.5s ease-out;
+        }
+        
+        /* Efecto de deslizamiento para toolbar flotante */
+        .slide-in-up {
+          animation: slideInUp 0.4s ease-out;
+        }
+        
+        /* Gradiente animado para skeleton loaders */
+        .shimmer {
+          background: linear-gradient(
+            90deg,
+            ${darkProTokens.grayDark} 25%,
+            ${darkProTokens.grayMedium} 50%,
+            ${darkProTokens.grayDark} 75%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+        }
+        
+        /* Efecto de glassmorphism para modales */
+        .glassmorphism {
+          backdrop-filter: blur(16px) saturate(180%);
+          background-color: ${darkProTokens.surfaceLevel2}CC;
+          border: 1px solid ${darkProTokens.grayDark}40;
+        }
+        
+        /* Texto con efecto de degradado dorado */
+        .golden-gradient-text {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        /* Efecto de hover para filas de tabla */
+        .table-row-hover {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .table-row-hover:hover {
+          transform: translateX(4px) scale(1.01);
+          box-shadow: 0 8px 25px ${darkProTokens.primary}20;
+        }
+        
+        /* Efecto de typing para placeholders */
+        @keyframes typing {
+          from { width: 0; }
+          to { width: 100%; }
+        }
+        
+        @keyframes blink {
+          50% { border-color: transparent; }
+        }
+        
+        .typing-effect {
+          overflow: hidden;
+          border-right: 2px solid ${darkProTokens.primary};
+          white-space: nowrap;
+          margin: 0 auto;
+          animation: typing 3.5s steps(40, end), blink 0.75s step-end infinite;
+        }
+        
+        /* Efecto de partículas para fondo (opcional) */
+        .particles-bg::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-image: 
+            radial-gradient(circle at 25% 25%, ${darkProTokens.primary}10 1px, transparent 1px),
+            radial-gradient(circle at 75% 75%, ${darkProTokens.success}10 1px, transparent 1px);
+          background-size: 100px 100px;
+          opacity: 0.3;
+          pointer-events: none;
+          z-index: -1;
+        }
+        
+        /* Efecto de ondas para botones importantes */
+        @keyframes ripple {
+          0% {
+            transform: scale(0);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(4);
+            opacity: 0;
+          }
+        }
+        
+        .ripple-effect {
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .ripple-effect::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 0;
+          height: 0;
+          border-radius: 50%;
+          background: ${darkProTokens.primary}60;
+          transform: translate(-50%, -50%);
+          transition: width 0.6s, height 0.6s;
+        }
+        
+        .ripple-effect:active::before {
+          width: 300px;
+          height: 300px;
+        }
+        
+        /* Estados de focus mejorados */
+        .enhanced-focus:focus-visible {
+          outline: none;
+          box-shadow: 
+            0 0 0 3px ${darkProTokens.focusRing},
+            0 4px 20px ${darkProTokens.primary}30;
+          transform: translateY(-1px);
+        }
+        
+        /* Efecto de loading mejorado */
+        @keyframes spin-glow {
+          0% {
+            transform: rotate(0deg);
+            filter: hue-rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+            filter: hue-rotate(360deg);
+          }
+        }
+        
+        .loading-spinner-glow {
+          animation: spin-glow 2s linear infinite;
+          filter: drop-shadow(0 0 10px ${darkProTokens.primary}60);
+        }
+        
+        /* Transiciones suaves globales */
+        * {
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Media queries para responsive design con Dark Pro */
+        @media (max-width: 768px) {
+          .mobile-hidden {
+            display: none !important;
+          }
+          
+          .mobile-full-width {
+            width: 100% !important;
+          }
+          
+          .mobile-padding {
+            padding: 1rem !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .mobile-stack {
+            flex-direction: column !important;
+          }
+          
+          .mobile-text-center {
+            text-align: center !important;
+          }
+        }
+        
+        /* Modo de alto contraste (opcional) */
+        @media (prefers-contrast: high) {
+          .high-contrast {
+            border-width: 2px !important;
+            font-weight: 600 !important;
+          }
+        }
+        
+        /* Modo de movimiento reducido */
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+        
+        /* Print styles */
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          
+          .print-friendly {
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+    </Box>
+  );
+}
