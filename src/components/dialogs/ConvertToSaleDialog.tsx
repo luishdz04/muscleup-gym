@@ -44,7 +44,7 @@ import { showNotification } from '@/utils/notifications';
 interface ConvertToSaleDialogProps {
   open: boolean;
   onClose: () => void;
-  layaway: any;
+  layaway: any; // ✅ Puede ser null/undefined
   onSuccess: () => void;
 }
 
@@ -82,13 +82,17 @@ export default function ConvertToSaleDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ CARGAR ITEMS DEL APARTADO
+  // ✅ CARGAR ITEMS DEL APARTADO CON VALIDACIÓN SEGURA
   const loadLayawayItems = useCallback(async () => {
-    if (!layaway?.id) return;
+    // ✅ VALIDACIÓN SEGURA ANTES DE PROCEDER
+    if (!layaway?.id || !open) {
+      setLayawayItems([]);
+      return;
+    }
 
     setLoadingItems(true);
     try {
-      console.log('🔍 Cargando items del apartado:', layaway.sale_number);
+      console.log('🔍 Cargando items del apartado:', layaway.sale_number, '- 2025-06-11 07:14:51 UTC - luishdz04');
 
       const { data: items, error } = await supabase
         .from('sale_items')
@@ -100,24 +104,39 @@ export default function ConvertToSaleDialog({
         throw error;
       }
 
-      setLayawayItems(items || []);
-      console.log('✅ Items cargados:', items?.length || 0);
+      const safeItems = (items || []).map(item => ({
+        ...item,
+        // ✅ ASEGURAR VALORES NUMÉRICOS SEGUROS
+        quantity: item.quantity || 0,
+        unit_price: item.unit_price || 0,
+        total_price: item.total_price || 0
+      }));
+
+      setLayawayItems(safeItems);
+      console.log('✅ Items cargados:', safeItems.length);
 
     } catch (error) {
       console.error('💥 Error cargando items del apartado:', error);
-      showNotification('Error al cargar los productos del apartado', 'error');
+      if (open) { // ✅ Solo mostrar notificación si el dialog está abierto
+        showNotification('Error al cargar los productos del apartado', 'error');
+      }
+      setLayawayItems([]);
     } finally {
       setLoadingItems(false);
     }
-  }, [layaway?.id, layaway?.sale_number, supabase]);
+  }, [layaway?.id, layaway?.sale_number, open, supabase]);
 
-  // ✅ VERIFICAR STOCK DISPONIBLE
+  // ✅ VERIFICAR STOCK DISPONIBLE CON VALIDACIÓN SEGURA
   const checkProductStock = useCallback(async () => {
-    if (layawayItems.length === 0) return;
+    if (layawayItems.length === 0 || !open) {
+      setStockCheck([]);
+      setCanConvert(false);
+      return;
+    }
 
     setLoadingStock(true);
     try {
-      console.log('🔍 Verificando stock para', layawayItems.length, 'productos...');
+      console.log('🔍 Verificando stock para', layawayItems.length, 'productos... - luishdz04');
 
       const stockPromises = layawayItems.map(async (item) => {
         const { data: product, error } = await supabase
@@ -129,30 +148,30 @@ export default function ConvertToSaleDialog({
         if (error) {
           console.error('❌ Error verificando stock para producto:', item.product_id, error);
           return {
-            id: item.product_id,
-            name: item.product_name,
+            id: item.product_id || '',
+            name: item.product_name || 'Producto desconocido',
             current_stock: 0,
-            required_quantity: item.quantity,
+            required_quantity: item.quantity || 0,
             available: false
           };
         }
 
         return {
-          id: product.id,
-          name: product.name,
+          id: product.id || '',
+          name: product.name || 'Producto sin nombre',
           current_stock: product.current_stock || 0,
-          required_quantity: item.quantity,
-          available: (product.current_stock || 0) >= item.quantity
+          required_quantity: item.quantity || 0,
+          available: (product.current_stock || 0) >= (item.quantity || 0)
         };
       });
 
       const stockResults = await Promise.all(stockPromises);
       setStockCheck(stockResults);
       
-      // ✅ VERIFICAR SI SE PUEDE CONVERTIR
+      // ✅ VERIFICAR SI SE PUEDE CONVERTIR CON VALIDACIÓN SEGURA
       const allAvailable = stockResults.every(stock => stock.available);
-      const isPaidInFull = (layaway.pending_amount || 0) <= 0;
-      const isLayawayStatus = layaway.status === 'pending';
+      const isPaidInFull = (layaway?.pending_amount || 0) <= 0;
+      const isLayawayStatus = layaway?.status === 'pending';
       
       const canConvertNow = allAvailable && isPaidInFull && isLayawayStatus;
       setCanConvert(canConvertNow);
@@ -166,36 +185,50 @@ export default function ConvertToSaleDialog({
 
     } catch (error) {
       console.error('💥 Error verificando stock:', error);
-      showNotification('Error al verificar el inventario', 'error');
+      if (open) {
+        showNotification('Error al verificar el inventario', 'error');
+      }
+      setStockCheck([]);
+      setCanConvert(false);
     } finally {
       setLoadingStock(false);
     }
-  }, [layawayItems, layaway.pending_amount, layaway.status, supabase]);
+  }, [layawayItems, layaway?.pending_amount, layaway?.status, open, supabase]);
 
-  // ✅ EFECTOS
+  // ✅ EFECTOS CON VALIDACIÓN SEGURA
   useEffect(() => {
-    if (open && layaway) {
+    if (open && layaway?.id) {
       console.log('🔄 Inicializando conversión para apartado:', layaway.sale_number);
       loadLayawayItems();
-      setSendEmail(!!layaway.customer_email);
+      setSendEmail(!!(layaway?.customer_email));
+    } else {
+      // ✅ LIMPIAR ESTADO CUANDO SE CIERRA O NO HAY LAYAWAY
+      setLayawayItems([]);
+      setStockCheck([]);
+      setCanConvert(false);
+      setProcessing(false);
     }
-  }, [open, layaway, loadLayawayItems]);
+  }, [open, layaway?.id, layaway?.sale_number, layaway?.customer_email, loadLayawayItems]);
 
   useEffect(() => {
-    if (layawayItems.length > 0) {
+    if (layawayItems.length > 0 && open) {
       checkProductStock();
     }
-  }, [layawayItems, checkProductStock]);
+  }, [layawayItems, open, checkProductStock]);
 
   // ✅ CONVERTIR APARTADO A VENTA CORREGIDO
   const handleConvertToSale = async () => {
-    if (!canConvert || layawayItems.length === 0) return;
+    // ✅ VALIDACIONES SEGURAS ANTES DE PROCEDER
+    if (!canConvert || layawayItems.length === 0 || !layaway?.id) {
+      console.log('❌ No se puede convertir:', { canConvert, itemsLength: layawayItems.length, layawayId: layaway?.id });
+      return;
+    }
 
     setProcessing(true);
     try {
       console.log('🔄 Iniciando conversión a venta...', {
         apartado: layaway.sale_number,
-        timestamp: '2025-06-11 07:05:12 UTC',
+        timestamp: '2025-06-11 07:14:51 UTC',
         usuario: 'luishdz04'
       });
 
@@ -227,10 +260,6 @@ export default function ConvertToSaleDialog({
 
       console.log('✅ Apartado actualizado a venta');
 
-      // ✅ NOTA: NO actualizar stock aquí
-      // El stock ya se actualizó cuando se creó el apartado
-      // Al convertir a venta no hay movimiento adicional de inventario
-
       // ✅ REGISTRAR HISTORIAL DE CAMBIO
       await supabase
         .from('layaway_status_history')
@@ -240,34 +269,38 @@ export default function ConvertToSaleDialog({
           new_status: 'completed',
           previous_paid_amount: layaway.paid_amount || 0,
           new_paid_amount: layaway.paid_amount || 0,
-          reason: 'Apartado convertido manualmente a venta final - 2025-06-11 07:05:12 UTC por luishdz04',
+          reason: 'Apartado convertido manualmente a venta final - 2025-06-11 07:14:51 UTC por luishdz04',
           created_at: new Date().toISOString(),
           created_by: userId
         }]);
 
       console.log('✅ Historial de conversión registrado');
 
-      // ✅ ACTUALIZAR PUNTOS DEL CLIENTE SI APLICA - CORREGIDO
+      // ✅ ACTUALIZAR PUNTOS DEL CLIENTE SI APLICA
       if (layaway.customer_id) {
-        const { data: customer, error: customerError } = await supabase
-          .from('Users') // ✅ CORREGIDO: Tabla Users con mayúscula
-          .select('points_balance, total_purchases, membership_type')
-          .eq('id', layaway.customer_id)
-          .single();
+        try {
+          const { data: customer, error: customerError } = await supabase
+            .from('Users')
+            .select('points_balance, total_purchases, membership_type')
+            .eq('id', layaway.customer_id)
+            .single();
 
-        if (!customerError && customer && customer.membership_type) {
-          const pointsEarned = Math.floor((layaway.total_amount || 0) / 100); // 1 punto por cada $100
-          
-          await supabase
-            .from('Users') // ✅ CORREGIDO: Tabla Users con mayúscula
-            .update({
-              points_balance: (customer.points_balance || 0) + pointsEarned,
-              total_purchases: (customer.total_purchases || 0) + (layaway.total_amount || 0),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', layaway.customer_id);
+          if (!customerError && customer?.membership_type) {
+            const pointsEarned = Math.floor((layaway.total_amount || 0) / 100);
+            
+            await supabase
+              .from('Users')
+              .update({
+                points_balance: (customer.points_balance || 0) + pointsEarned,
+                total_purchases: (customer.total_purchases || 0) + (layaway.total_amount || 0),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', layaway.customer_id);
 
-          console.log('✅ Puntos de cliente actualizados:', pointsEarned);
+            console.log('✅ Puntos de cliente actualizados:', pointsEarned);
+          }
+        } catch (customerUpdateError) {
+          console.log('⚠️ Error actualizando puntos de cliente (no crítico):', customerUpdateError);
         }
       }
 
@@ -281,10 +314,26 @@ export default function ConvertToSaleDialog({
     }
   };
 
-  if (!layaway) return null;
+  // ✅ VALIDACIÓN TEMPRANA - EVITA ERRORES DE SSR
+  if (!layaway) {
+    return null;
+  }
+
+  // ✅ VALORES SEGUROS PARA EVITAR ERRORES DE NULL
+  const safeLayaway = {
+    id: layaway.id || '',
+    sale_number: layaway.sale_number || 'Sin número',
+    total_amount: layaway.total_amount || 0,
+    paid_amount: layaway.paid_amount || 0,
+    pending_amount: layaway.pending_amount || 0,
+    status: layaway.status || 'pending',
+    customer_name: layaway.customer_name || '',
+    customer_email: layaway.customer_email || '',
+    customer_id: layaway.customer_id || ''
+  };
 
   const hasInsufficientStock = stockCheck.some(stock => !stock.available);
-  const hasPendingAmount = (layaway.pending_amount || 0) > 0;
+  const hasPendingAmount = safeLayaway.pending_amount > 0;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
@@ -310,10 +359,10 @@ export default function ConvertToSaleDialog({
       <DialogContent sx={{ p: 3 }}>
         {/* ✅ INDICADOR DE ACTUALIZACIÓN */}
         <Alert severity="info" sx={{ mb: 3 }}>
-          🔄 Conversión de apartado - 2025-06-11 07:05:12 UTC - Usuario: luishdz04
+          🔄 Conversión de apartado - 2025-06-11 07:14:51 UTC - Usuario: luishdz04 - Error SSR corregido
         </Alert>
 
-        {/* Información del apartado */}
+        {/* Información del apartado CON VALIDACIÓN SEGURA */}
         <Card sx={{ 
           mb: 3,
           background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05))',
@@ -321,7 +370,7 @@ export default function ConvertToSaleDialog({
         }}>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2, color: '#2196f3', fontWeight: 700 }}>
-              📋 Información del Apartado #{layaway.sale_number}
+              📋 Información del Apartado #{safeLayaway.sale_number}
             </Typography>
 
             <Grid container spacing={3}>
@@ -329,7 +378,7 @@ export default function ConvertToSaleDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Total</Typography>
                   <Typography variant="h6" fontWeight="bold">
-                    {formatPrice(layaway.total_amount || 0)}
+                    {formatPrice(safeLayaway.total_amount)}
                   </Typography>
                 </Box>
               </Grid>
@@ -338,7 +387,7 @@ export default function ConvertToSaleDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Pagado</Typography>
                   <Typography variant="h6" fontWeight="bold" color="success.main">
-                    {formatPrice(layaway.paid_amount || 0)}
+                    {formatPrice(safeLayaway.paid_amount)}
                   </Typography>
                 </Box>
               </Grid>
@@ -347,7 +396,7 @@ export default function ConvertToSaleDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Pendiente</Typography>
                   <Typography variant="h6" fontWeight="bold" color={hasPendingAmount ? 'error.main' : 'success.main'}>
-                    {formatPrice(layaway.pending_amount || 0)}
+                    {formatPrice(safeLayaway.pending_amount)}
                   </Typography>
                 </Box>
               </Grid>
@@ -356,20 +405,20 @@ export default function ConvertToSaleDialog({
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="textSecondary">Estado</Typography>
                   <Chip 
-                    label={layaway.status}
-                    color={layaway.status === 'pending' ? 'warning' : 'success'}
+                    label={safeLayaway.status}
+                    color={safeLayaway.status === 'pending' ? 'warning' : 'success'}
                     sx={{ fontWeight: 600 }}
                   />
                 </Box>
               </Grid>
             </Grid>
 
-            {layaway.customer_name && (
+            {safeLayaway.customer_name && (
               <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(33, 150, 243, 0.2)' }}>
                 <Typography variant="body2" color="textSecondary">Cliente:</Typography>
                 <Typography variant="body1" fontWeight="600">
-                  {layaway.customer_name}
-                  {layaway.customer_email && ` • ${layaway.customer_email}`}
+                  {safeLayaway.customer_name}
+                  {safeLayaway.customer_email && ` • ${safeLayaway.customer_email}`}
                 </Typography>
               </Box>
             )}
@@ -380,7 +429,7 @@ export default function ConvertToSaleDialog({
         {hasPendingAmount && (
           <Alert severity="error" sx={{ mb: 3 }}>
             <Typography variant="body1" fontWeight="600">
-              ❌ No se puede convertir: Hay un saldo pendiente de {formatPrice(layaway.pending_amount || 0)}
+              ❌ No se puede convertir: Hay un saldo pendiente de {formatPrice(safeLayaway.pending_amount)}
             </Typography>
             <Typography variant="body2">
               El apartado debe estar completamente pagado para poder convertirse a venta.
@@ -449,7 +498,7 @@ export default function ConvertToSaleDialog({
                   <TableBody>
                     {stockCheck.map((stock, index) => (
                       <TableRow 
-                        key={stock.id}
+                        key={stock.id || index}
                         sx={{ 
                           backgroundColor: stock.available ? 'rgba(76, 175, 80, 0.05)' : 'rgba(244, 67, 54, 0.05)'
                         }}
@@ -537,7 +586,7 @@ export default function ConvertToSaleDialog({
                         Venta Registrada
                       </Typography>
                       <Typography variant="body2" color="textSecondary">
-                        Se completará venta por {formatPrice(layaway.total_amount || 0)}
+                        Se completará venta por {formatPrice(safeLayaway.total_amount)}
                       </Typography>
                     </Box>
                   </Grid>
@@ -555,11 +604,11 @@ export default function ConvertToSaleDialog({
                   </Grid>
                 </Grid>
 
-                {layaway.customer_id && (
+                {safeLayaway.customer_id && (
                   <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(76, 175, 80, 0.2)' }}>
                     <Alert severity="info">
                       <Typography variant="body2">
-                        💎 <strong>Puntos de Cliente:</strong> Se otorgarán {Math.floor((layaway.total_amount || 0) / 100)} puntos al cliente por esta venta.
+                        💎 <strong>Puntos de Cliente:</strong> Se otorgarán {Math.floor(safeLayaway.total_amount / 100)} puntos al cliente por esta venta.
                       </Typography>
                     </Alert>
                   </Box>
@@ -601,7 +650,7 @@ export default function ConvertToSaleDialog({
                       <Switch
                         checked={sendEmail}
                         onChange={(e) => setSendEmail(e.target.checked)}
-                        disabled={!layaway.customer_email}
+                        disabled={!safeLayaway.customer_email}
                       />
                     }
                     label={
