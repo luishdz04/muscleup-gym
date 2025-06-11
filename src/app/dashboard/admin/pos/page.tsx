@@ -106,6 +106,36 @@ export default function POSPage() {
 
   const supabase = createBrowserSupabaseClient();
 
+  // ✅ MEMOIZAR OBJETOS ESTABLES PARA EVITAR RE-RENDERS
+  const stableCart = useMemo(() => cart.map(item => ({
+    product: { ...item.product },
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    total_price: item.total_price,
+    discount_amount: item.discount_amount,
+    tax_amount: item.tax_amount
+  })), [cart]);
+
+  const stableCustomer = useMemo(() => selectedCustomer ? {
+    id: selectedCustomer.id,
+    name: selectedCustomer.name,
+    email: selectedCustomer.email,
+    whatsapp: selectedCustomer.whatsapp,
+    membership_type: selectedCustomer.membership_type,
+    points_balance: selectedCustomer.points_balance,
+    total_purchases: selectedCustomer.total_purchases
+  } : null, [selectedCustomer]);
+
+  const stableCoupon = useMemo(() => appliedCoupon ? {
+    id: appliedCoupon.id,
+    code: appliedCoupon.code,
+    discount_type: appliedCoupon.discount_type,
+    discount_value: appliedCoupon.discount_value,
+    min_amount: appliedCoupon.min_amount,
+    max_uses: appliedCoupon.max_uses,
+    current_uses: appliedCoupon.current_uses
+  } : null, [appliedCoupon]);
+
   // Cargar productos activos con stock
   const loadProducts = useCallback(async () => {
     try {
@@ -272,12 +302,12 @@ export default function POSPage() {
     }
   }, [appliedCoupon]);
 
-  // Totales calculados con useMemo
+  // ✅ TOTALES ESTABLES - EVITAR RE-RENDERS
   const totals = useMemo(() => {
-    const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
-    const taxAmount = cart.reduce((sum, item) => sum + item.tax_amount, 0);
-    const discountAmount = cart.reduce((sum, item) => sum + item.discount_amount, 0);
-    const couponDiscount = appliedCoupon ? calculateCouponDiscount(subtotal) : 0;
+    const subtotal = stableCart.reduce((sum, item) => sum + item.total_price, 0);
+    const taxAmount = stableCart.reduce((sum, item) => sum + item.tax_amount, 0);
+    const discountAmount = stableCart.reduce((sum, item) => sum + item.discount_amount, 0);
+    const couponDiscount = stableCoupon ? calculateCouponDiscount(subtotal) : 0;
     const total = subtotal + taxAmount - discountAmount - couponDiscount;
     return {
       subtotal,
@@ -286,7 +316,7 @@ export default function POSPage() {
       couponDiscount,
       total: Math.max(total, 0)
     };
-  }, [cart, appliedCoupon, calculateCouponDiscount]);
+  }, [stableCart, stableCoupon, calculateCouponDiscount]);
 
   // Aplicar cupón
   const applyCoupon = useCallback(async () => {
@@ -346,12 +376,13 @@ export default function POSPage() {
     loadSalesStats();
   }, [loadProducts, loadSalesStats]);
 
-  // Cerrar LayawayDialog automáticamente si carrito vacío
+  // ✅ CERRAR LAYAWAY DIALOG SOLO CUANDO NECESARIO
+  const shouldCloseLayaway = cart.length === 0 && layawayDialogOpen;
   useEffect(() => {
-    if (cart.length === 0 && layawayDialogOpen) {
+    if (shouldCloseLayaway) {
       setLayawayDialogOpen(false);
     }
-  }, [cart.length, layawayDialogOpen]);
+  }, [shouldCloseLayaway]);
 
   // ProductCard como componente anidado normal
   const ProductCard = ({ product }: { product: Product }) => {
@@ -373,13 +404,7 @@ export default function POSPage() {
             },
             transition: 'all 0.3s ease'
           }}
-          onClick={() => {
-            if (typeof addToCart === 'function') {
-              addToCart(product);
-            } else {
-              console.error('addToCart no es función:', addToCart);
-            }
-          }}
+          onClick={() => addToCart(product)}
         >
           <Box
             sx={{
@@ -987,19 +1012,20 @@ export default function POSPage() {
       <PaymentDialog
         open={paymentDialogOpen}
         onClose={() => setPaymentDialogOpen(false)}
-        cart={cart}
-        customer={selectedCustomer}
-        coupon={appliedCoupon}
+        cart={stableCart}
+        customer={stableCustomer}
+        coupon={stableCoupon}
         totals={totals}
         onSuccess={handleSaleSuccess}
       />
 
+      {/* ✅ LAYAWAY DIALOG CON PROPS ESTABLES */}
       <LayawayDialog
         open={layawayDialogOpen}
         onClose={() => setLayawayDialogOpen(false)}
-        cart={cart}
-        customer={selectedCustomer}
-        coupon={appliedCoupon}
+        cart={stableCart}
+        customer={stableCustomer}
+        coupon={stableCoupon}
         totals={totals}
         onSuccess={handleSaleSuccess}
       />
