@@ -1323,8 +1323,7 @@ export default function UsersPage() {
               Gestión de Usuarios MUP
             </Typography>
             <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
-              Panel de administración con sistema Dark Pro
-            </Typography>
+              Panel de administración MUP
           </Box>
           
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
