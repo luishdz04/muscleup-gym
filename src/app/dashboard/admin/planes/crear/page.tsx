@@ -40,6 +40,51 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
+// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  iconDefault: '#FFFFFF',
+  iconMuted: '#AAAAAA',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // Focus & Interactions
+  focusRing: 'rgba(255,204,0,0.4)',
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
+
 // Iconos
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
@@ -62,33 +107,31 @@ import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import BusinessIcon from '@mui/icons-material/Business';
-import DiamondIcon from '@mui/icons-material/Diamond';
-import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 
 interface PlanFormData {
   name: string;
   description: string;
   is_active: boolean;
   
-  // Precios
+  // Precios - SEGÚN EL ESQUEMA REAL
   inscription_price: number;
   visit_price: number;
   weekly_price: number;
-  biweekly_price: number;
+  biweekly_price: number;  // ✅ AGREGADO - quincenal
   monthly_price: number;
-  bimonthly_price: number;
+  bimonthly_price: number; // ✅ AGREGADO - bimestral
   quarterly_price: number;
-  semester_price: number;
+  semester_price: number;  // ✅ AGREGADO - semestral
   annual_price: number;
   
-  // Duraciones
+  // Duraciones - SEGÚN EL ESQUEMA REAL
   weekly_duration: number;
-  biweekly_duration: number;
+  biweekly_duration: number;  // ✅ AGREGADO
   monthly_duration: number;
-  bimonthly_duration: number;
+  bimonthly_duration: number; // ✅ AGREGADO
   quarterly_duration: number;
-  semester_duration: number;
+  semester_duration: number;  // ✅ AGREGADO
   annual_duration: number;
   
   // Vigencia
@@ -116,19 +159,19 @@ const INITIAL_FORM_DATA: PlanFormData = {
   inscription_price: 0,
   visit_price: 0,
   weekly_price: 0,
-  biweekly_price: 0,
+  biweekly_price: 0,     // ✅ AGREGADO
   monthly_price: 0,
-  bimonthly_price: 0,
+  bimonthly_price: 0,    // ✅ AGREGADO
   quarterly_price: 0,
-  semester_price: 0,
+  semester_price: 0,     // ✅ AGREGADO
   annual_price: 0,
   
   weekly_duration: 7,
-  biweekly_duration: 15,
+  biweekly_duration: 15, // ✅ AGREGADO
   monthly_duration: 30,
-  bimonthly_duration: 60,
+  bimonthly_duration: 60, // ✅ AGREGADO
   quarterly_duration: 90,
-  semester_duration: 180,
+  semester_duration: 180, // ✅ AGREGADO
   annual_duration: 365,
   
   validity_type: 'permanent',
@@ -148,20 +191,20 @@ const INITIAL_FORM_DATA: PlanFormData = {
 const PREDEFINED_FEATURES = [
   'Acceso completo al gimnasio',
   'Clases grupales incluidas',
-  'Área funcional premium',
-  'Casilleros VIP con seguridad',
-  'Estacionamiento gratuito vigilado',
-  'Toallas de alta calidad incluidas',
-  'Consulta nutricional personalizada',
-  'Entrenador personal certificado',
-  'Acceso 24/7 sin restricciones',
-  'Área de cardio de última generación',
-  'Zona de crossfit profesional',
-  'Sauna y vapor relajante',
+  'Área funcional',
+  'Casilleros con seguridad',
+  'Estacionamiento gratuito',
+  'Toallas incluidas',
+  'Consulta nutricional',
+  'Entrenador personal',
+  'Acceso 24/7',
+  'Área de cardio',
+  'Zona de crossfit',
+  'Sauna y vapor',
   'Piscina climatizada',
-  'Canchas deportivas profesionales',
-  'Zona de recuperación muscular',
-  'Suplementos deportivos con descuento'
+  'Canchas deportivas',
+  'Zona de recuperación',
+  'Suplementos con descuento'
 ];
 
 const DAY_NAMES = [
@@ -189,7 +232,6 @@ export default function CrearPlanPage() {
   // Estados para características
   const [newFeature, setNewFeature] = useState('');
   const [expandedAccordion, setExpandedAccordion] = useState<string | false>('basic');
-  const [planCategory, setPlanCategory] = useState('Básico');
   const [formProgress, setFormProgress] = useState(0);
   
   // Estados de usuario
@@ -204,7 +246,6 @@ export default function CrearPlanPage() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setCurrentUser(session.user);
-          console.log('✅ Usuario actual obtenido:', session.user.email);
         }
       } catch (error) {
         console.error('❌ Error obteniendo usuario actual:', error);
@@ -349,55 +390,45 @@ export default function CrearPlanPage() {
 
   // Función principal de guardado
   const handleSave = async () => {
-    console.log('🚀 Iniciando guardado de plan...');
-    
-    if (!mountedRef.current) {
-      console.log('❌ Componente desmontado, cancelando guardado');
-      return;
-    }
+    if (!mountedRef.current) return;
 
     try {
       setLoading(true);
       setError(null);
-      console.log('📊 Datos del formulario:', formData);
 
       // Validaciones
       if (!validateForm()) {
-        console.log('❌ Formulario inválido');
         setLoading(false);
         return;
       }
 
-      console.log('✅ Validaciones pasadas');
-
       // Crear cliente Supabase
       const supabase = createBrowserSupabaseClient();
-      console.log('✅ Cliente Supabase creado');
       
-      // Preparar datos
+      // Preparar datos según el esquema real
       const planData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         is_active: formData.is_active,
         
-        // Precios
+        // Precios según esquema
         inscription_price: formData.inscription_price || 0,
         visit_price: formData.visit_price || 0,
         weekly_price: formData.weekly_price || 0,
-        biweekly_price: formData.biweekly_price || 0,
+        biweekly_price: formData.biweekly_price || 0,      // ✅ AGREGADO
         monthly_price: formData.monthly_price || 0,
-        bimonthly_price: formData.bimonthly_price || 0,
+        bimonthly_price: formData.bimonthly_price || 0,    // ✅ AGREGADO
         quarterly_price: formData.quarterly_price || 0,
-        semester_price: formData.semester_price || 0,
+        semester_price: formData.semester_price || 0,      // ✅ AGREGADO
         annual_price: formData.annual_price || 0,
         
-        // Duraciones
+        // Duraciones según esquema
         weekly_duration: formData.weekly_duration || 7,
-        biweekly_duration: formData.biweekly_duration || 15,
+        biweekly_duration: formData.biweekly_duration || 15,    // ✅ AGREGADO
         monthly_duration: formData.monthly_duration || 30,
-        bimonthly_duration: formData.bimonthly_duration || 60,
+        bimonthly_duration: formData.bimonthly_duration || 60,  // ✅ AGREGADO
         quarterly_duration: formData.quarterly_duration || 90,
-        semester_duration: formData.semester_duration || 180,
+        semester_duration: formData.semester_duration || 180,  // ✅ AGREGADO
         annual_duration: formData.annual_duration || 365,
         
         // Vigencia
@@ -405,13 +436,13 @@ export default function CrearPlanPage() {
         validity_start_date: formData.validity_start_date || null,
         validity_end_date: formData.validity_end_date || null,
         
-        // Características
+        // Características (como JSONB)
         features: formData.features || [],
         gym_access: formData.gym_access,
         classes_included: formData.classes_included,
         guest_passes: formData.guest_passes || 0,
         
-        // Restricciones
+        // Restricciones (como JSONB)
         has_time_restrictions: formData.has_time_restrictions,
         allowed_days: formData.allowed_days || [],
         time_slots: formData.time_slots || [],
@@ -421,8 +452,6 @@ export default function CrearPlanPage() {
         updated_by: currentUser?.id || null
       };
 
-      console.log('📤 Datos finales a insertar:', planData);
-
       // Insertar en Supabase
       const { data, error: insertError } = await supabase
         .from('membership_plans')
@@ -430,2299 +459,1606 @@ export default function CrearPlanPage() {
         .select()
         .single();
 
-      console.log('📥 Respuesta de Supabase:', { data, error: insertError });
-
       if (insertError) {
-        console.error('❌ Error de Supabase:', insertError);
         throw new Error(insertError.message || 'Error al guardar el plan');
       }
 
-      if (!mountedRef.current) {
-        console.log('❌ Componente desmontado durante guardado');
-        return;
-      }
+      if (!mountedRef.current) return;
 
-      console.log('✅ Plan guardado exitosamente:', data);
-      setSuccessMessage('🎉 Plan creado exitosamente');
+      setSuccessMessage('Plan creado exitosamente');
       
       // Redirigir después de 2 segundos
       setTimeout(() => {
         if (mountedRef.current) {
-          console.log('🔄 Redirigiendo a lista de planes...');
           router.push('/dashboard/admin/planes');
         }
       }, 2000);
 
     } catch (err: any) {
       if (!mountedRef.current) return;
-      
-      console.error('💥 Error durante guardado:', err);
       setError(err.message || 'Error inesperado al guardar el plan');
     } finally {
       if (mountedRef.current) {
         setLoading(false);
-        console.log('🏁 Proceso de guardado finalizado');
       }
     }
   };
 
-  // 🎨 ESTILOS ENTERPRISE PREMIUM
-  const enterpriseFieldStyle = {
+  // 🎨 ESTILOS DARK PRO
+  const darkProFieldStyle = {
     '& .MuiOutlinedInput-root': {
-      backgroundColor: 'rgba(255, 255, 255, 0.02)',
-      border: '2px solid rgba(255, 204, 0, 0.1)',
-      borderRadius: '16px',
-      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-      color: '#FFFFFF',
-      fontWeight: 500,
-      backdropFilter: 'blur(10px)',
+      backgroundColor: darkProTokens.surfaceLevel1,
+      border: `2px solid ${darkProTokens.borderDefault}`,
+      borderRadius: 2,
+      transition: 'all 0.3s ease',
+      color: darkProTokens.textPrimary,
       '&:hover': {
-        backgroundColor: 'rgba(255, 204, 0, 0.03)',
-        border: '2px solid rgba(255, 204, 0, 0.3)',
-        boxShadow: '0 0 30px rgba(255, 204, 0, 0.15)',
-        transform: 'translateY(-1px)',
+        backgroundColor: `${darkProTokens.primary}05`,
+        borderColor: `${darkProTokens.primary}60`,
       },
       '&.Mui-focused': {
-        backgroundColor: 'rgba(255, 204, 0, 0.05)',
-        border: '2px solid #FFCC00',
-        boxShadow: '0 0 40px rgba(255, 204, 0, 0.25)',
-        transform: 'translateY(-2px)',
+        backgroundColor: `${darkProTokens.primary}08`,
+        borderColor: darkProTokens.primary,
+        boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
       },
-      '& fieldset': {
-        border: 'none',
-      }
+      '& fieldset': { border: 'none' }
     },
     '& .MuiInputLabel-root': {
-      color: 'rgba(255, 255, 255, 0.7)',
-      fontWeight: 600,
-      fontSize: '0.95rem',
-      '&.Mui-focused': {
-        color: '#FFCC00',
-        fontWeight: 700,
-      }
-    },
-    '& .MuiInputBase-input': {
-      fontSize: '1rem',
-      fontWeight: 500,
-      letterSpacing: '0.3px',
+      color: darkProTokens.textSecondary,
+      '&.Mui-focused': { color: darkProTokens.primary }
     }
   };
 
   return (
     <Box sx={{ 
-      background: `
-        linear-gradient(135deg, #000000 0%, #0a0a0a 25%, #1a1a1a 50%, #0f0f0f 75%, #000000 100%),
-        radial-gradient(circle at 20% 30%, rgba(255, 204, 0, 0.02) 0%, transparent 70%),
-        radial-gradient(circle at 80% 70%, rgba(255, 107, 53, 0.015) 0%, transparent 70%),
-        radial-gradient(circle at 40% 80%, rgba(78, 205, 196, 0.01) 0%, transparent 70%)
-      `,
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
       minHeight: '100vh',
-      position: 'relative',
-      '&::before': {
-        content: '""',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `
-          linear-gradient(90deg, rgba(255, 204, 0, 0.003) 0%, transparent 50%, rgba(255, 204, 0, 0.003) 100%),
-          linear-gradient(0deg, rgba(255, 107, 53, 0.002) 0%, transparent 50%, rgba(255, 107, 53, 0.002) 100%)
-        `,
-        pointerEvents: 'none',
-        zIndex: 0
-      }
+      color: darkProTokens.textPrimary
     }}>
-      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1 }}>
-        <Box sx={{ py: 5 }}>
-          {/* 🎯 HEADER ULTRA ENTERPRISE */}
-          <motion.div
-            initial={{ opacity: 0, y: -40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <Paper elevation={0} sx={{
-              p: 5,
-              mb: 4,
-              background: `
-                linear-gradient(135deg, 
-                  rgba(255, 204, 0, 0.08) 0%, 
-                  rgba(255, 204, 0, 0.04) 25%,
-                  rgba(255, 107, 53, 0.02) 50%,
-                  rgba(78, 205, 196, 0.02) 75%,
-                  rgba(255, 204, 0, 0.02) 100%
-                )
-              `,
-              border: '1px solid rgba(255, 204, 0, 0.2)',
-              borderRadius: 6,
-              backdropFilter: 'blur(20px)',
-              position: 'relative',
-              overflow: 'hidden',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 204, 0, 0.1)',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '6px',
-                background: 'linear-gradient(90deg, #FFCC00 0%, #FF6B35 50%, #4ECDC4 100%)',
-              },
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                top: -2,
-                left: -2,
-                right: -2,
-                bottom: -2,
-                background: 'linear-gradient(45deg, rgba(255, 204, 0, 0.1), transparent, rgba(255, 107, 53, 0.1))',
-                zIndex: -1,
-                borderRadius: 6,
-              }
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Tooltip title="Volver a Planes" arrow>
-                    <IconButton
-                      onClick={() => router.push('/dashboard/admin/planes')}
-                      sx={{ 
-                        background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.15), rgba(255, 204, 0, 0.05))',
-                        border: '2px solid rgba(255, 204, 0, 0.3)',
-                        color: '#FFCC00',
-                        width: 52,
-                        height: 52,
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 8px 25px rgba(255, 204, 0, 0.2)',
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.25), rgba(255, 204, 0, 0.1))',
-                          transform: 'translateX(-3px) translateY(-2px)',
-                          boxShadow: '0 12px 35px rgba(255, 204, 0, 0.3)',
-                        },
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      }}
-                    >
-                      <ArrowBackIcon sx={{ fontSize: 24 }} />
-                    </IconButton>
-                  </Tooltip>
-                  
-                  <Box>
-                    <Typography variant="h2" sx={{ 
-                      background: 'linear-gradient(135deg, #FFCC00 0%, #FF6B35 50%, #FFCC00 100%)',
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      fontWeight: 900,
-                      fontSize: { xs: '2rem', md: '3rem' },
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      mb: 1,
-                      letterSpacing: '-0.02em',
-                    }}>
-                      <Avatar sx={{ 
-                        background: 'linear-gradient(135deg, #FFCC00, #FF6B35)',
-                        width: 70, 
-                        height: 70,
-                        boxShadow: '0 8px 25px rgba(255, 204, 0, 0.3)'
-                      }}>
-                        <WorkspacePremiumIcon sx={{ fontSize: 36, color: '#000' }} />
-                      </Avatar>
-                      Crear Plan Elite
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: '#FFFFFF',
-                      fontWeight: 500,
-                      maxWidth: 700,
-                      lineHeight: 1.6,
-                      opacity: 0.9
-                    }}>
-                      Diseñe planes de membresía de clase mundial con características premium y configuraciones avanzadas
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* 📊 PROGRESO ENTERPRISE */}
-                <Box sx={{ textAlign: 'right', minWidth: 200 }}>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2, fontWeight: 600 }}>
-                    Progreso de Configuración
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        {/* 🎯 HEADER SIMPLIFICADO */}
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Paper sx={{
+            p: 4,
+            mb: 4,
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3,
+            backdropFilter: 'blur(10px)'
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <Tooltip title="Volver a Planes">
+                  <IconButton
+                    onClick={() => router.push('/dashboard/admin/planes')}
+                    sx={{ 
+                      background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                      color: darkProTokens.background,
+                      '&:hover': {
+                        transform: 'translateX(-2px)',
+                        boxShadow: `0 6px 20px ${darkProTokens.primary}40`,
+                      }
+                    }}
+                  >
+                    <ArrowBackIcon />
+                  </IconButton>
+                </Tooltip>
+                
+                <Box>
+                  <Typography variant="h3" sx={{ 
+                    color: darkProTokens.primary, 
+                    fontWeight: 700,
+                    mb: 1
+                  }}>
+                    Crear Plan MUP
                   </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 1 }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={formProgress} 
-                      sx={{ 
-                        width: 140, 
-                        height: 12, 
-                        borderRadius: 6,
-                        backgroundColor: 'rgba(255, 204, 0, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #FFCC00, #FF6B35)',
-                          borderRadius: 6,
-                          boxShadow: '0 0 10px rgba(255, 204, 0, 0.4)'
-                        }
-                      }} 
-                    />
-                    <Typography variant="h6" sx={{ 
-                      color: '#FFCC00', 
-                      fontWeight: 800,
-                      minWidth: 50,
-                      textShadow: '0 0 10px rgba(255, 204, 0, 0.3)'
-                    }}>
-                      {Math.round(formProgress)}%
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.6)',
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.textSecondary,
                     fontWeight: 500
                   }}>
-                    {formProgress === 100 ? '¡Listo para publicar!' : 'Completando configuración...'}
+                    Configure un nuevo plan de membresía para el gimnasio
                   </Typography>
                 </Box>
               </Box>
-            </Paper>
-          </motion.div>
 
-          {/* 🚨 MENSAJES ENTERPRISE */}
-          <Snackbar
-            open={!!error}
-            autoHideDuration={8000}
-            onClose={() => setError(null)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            TransitionComponent={Slide}
-          >
-            <Alert 
-              severity="error" 
-              onClose={() => setError(null)}
-              icon={<WarningIcon />}
-              sx={{ 
-                background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.15), rgba(244, 67, 54, 0.05))',
-                border: '1px solid rgba(244, 67, 54, 0.3)',
-                color: '#FFFFFF',
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 8px 25px rgba(244, 67, 54, 0.2)',
-                '& .MuiAlert-icon': { color: '#ff4444' }
-              }}
-            >
-              {error}
-            </Alert>
-          </Snackbar>
-
-          <Snackbar
-            open={!!successMessage}
-            autoHideDuration={5000}
-            onClose={() => setSuccessMessage(null)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            TransitionComponent={Slide}
-          >
-            <Alert 
-              severity="success" 
-              onClose={() => setSuccessMessage(null)}
-              icon={<CheckCircleIcon />}
-              sx={{ 
-                background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.05))',
-                border: '1px solid rgba(76, 175, 80, 0.3)',
-                color: '#FFFFFF',
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 8px 25px rgba(76, 175, 80, 0.2)',
-                '& .MuiAlert-icon': { color: '#4caf50' }
-              }}
-            >
-              {successMessage}
-            </Alert>
-          </Snackbar>
-
-          {/* 📋 ERRORES DE VALIDACIÓN */}
-          {Object.keys(errors).length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Alert 
-                severity="warning" 
-                sx={{ 
-                  mb: 4,
-                  background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.12), rgba(255, 152, 0, 0.04))',
-                  border: '1px solid rgba(255, 152, 0, 0.3)',
-                  color: '#FFFFFF',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: 3,
-                  boxShadow: '0 8px 25px rgba(255, 152, 0, 0.15)'
-                }}
-              >
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#FFCC00' }}>
-                  ⚠️ Verificaciones Pendientes:
+              {/* Progreso */}
+              <Box sx={{ textAlign: 'right', minWidth: 180 }}>
+                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                  Progreso de Configuración
                 </Typography>
-                {Object.values(errors).map((error, index) => (
-                  <Typography key={index} variant="body2" sx={{ ml: 2, color: '#FFFFFF', opacity: 0.9 }}>
-                    • {error}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={formProgress} 
+                    sx={{ 
+                      width: 120, 
+                      height: 8, 
+                      borderRadius: 4,
+                      backgroundColor: `${darkProTokens.primary}20`,
+                      '& .MuiLinearProgress-bar': {
+                        background: `linear-gradient(90deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                        borderRadius: 4
+                      }
+                    }} 
+                  />
+                  <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                    {Math.round(formProgress)}%
                   </Typography>
-                ))}
-              </Alert>
-            </motion.div>
-          )}
+                </Box>
+              </Box>
+            </Box>
+          </Paper>
+        </motion.div>
 
-          {/* 🎨 FORMULARIO ULTRA ENTERPRISE */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.3 }}
-          >
-            <Paper elevation={0} sx={{
-              background: `
-                linear-gradient(135deg, 
-                  rgba(255, 255, 255, 0.02) 0%, 
-                  rgba(255, 204, 0, 0.01) 25%,
-                  rgba(255, 255, 255, 0.01) 50%,
-                  rgba(255, 107, 53, 0.01) 75%,
-                  rgba(255, 255, 255, 0.015) 100%
-                )
-              `,
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 6,
-              overflow: 'hidden',
-              backdropFilter: 'blur(20px)',
-              boxShadow: '0 25px 80px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-            }}>
-              {/* 1. INFORMACIÓN BÁSICA */}
-              <Accordion 
-                expanded={expandedAccordion === 'basic'} 
-                onChange={() => setExpandedAccordion(expandedAccordion === 'basic' ? false : 'basic')}
-                sx={{
-                  backgroundColor: 'transparent',
-                  '&:before': { display: 'none' },
-                  '& .MuiAccordionSummary-root': {
-                    background: expandedAccordion === 'basic' 
-                      ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.08), rgba(255, 204, 0, 0.03))'
-                      : 'transparent',
-                    borderBottom: '1px solid rgba(255, 204, 0, 0.1)',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                    minHeight: 80,
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.06), rgba(255, 204, 0, 0.02))',
-                    }
-                  }
-                }}
+        {/* 🚨 MENSAJES */}
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={() => setError(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert severity="error" onClose={() => setError(null)} sx={{ 
+            bgcolor: `${darkProTokens.error}20`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.error}40`
+          }}>
+            {error}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={4000}
+          onClose={() => setSuccessMessage(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ 
+            bgcolor: `${darkProTokens.success}20`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.success}40`
+          }}>
+            {successMessage}
+          </Alert>
+        </Snackbar>
+
+        {/* 📋 ERRORES DE VALIDACIÓN */}
+        {Object.keys(errors).length > 0 && (
+          <Alert severity="warning" sx={{ 
+            mb: 4,
+            bgcolor: `${darkProTokens.warning}20`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.warning}40`
+          }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+              Verificaciones Pendientes:
+            </Typography>
+            {Object.values(errors).map((error, index) => (
+              <Typography key={index} variant="body2" sx={{ ml: 2 }}>
+                • {error}
+              </Typography>
+            ))}
+          </Alert>
+        )}
+
+        {/* 🎨 FORMULARIO */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          <Paper sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3,
+            overflow: 'hidden',
+            backdropFilter: 'blur(10px)'
+          }}>
+            {/* 1. INFORMACIÓN BÁSICA */}
+            <Accordion 
+              expanded={expandedAccordion === 'basic'} 
+              onChange={() => setExpandedAccordion(expandedAccordion === 'basic' ? false : 'basic')}
+              sx={{
+                backgroundColor: 'transparent',
+                '&:before': { display: 'none' },
+                '& .MuiAccordionSummary-root': {
+                  background: expandedAccordion === 'basic' 
+                    ? `${darkProTokens.primary}15`
+                    : 'transparent',
+                  borderBottom: `1px solid ${darkProTokens.grayDark}`,
+                  minHeight: 80
+                }
+              }}
+            >
+              <AccordionSummary 
+                expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.primary }} />}
+                sx={{ px: 4 }}
               >
-                <AccordionSummary 
-                  expandIcon={<ExpandMoreIcon sx={{ color: '#FFCC00', fontSize: 28 }} />}
-                  sx={{ px: 4 }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-                    <Avatar sx={{ 
-                      background: 'linear-gradient(135deg, #FFCC00, #FF6B35)', 
-                      width: 56,
-                      height: 56,
-                      boxShadow: '0 8px 25px rgba(255, 204, 0, 0.3)'
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
+                  <Avatar sx={{ 
+                    background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                    color: darkProTokens.background
+                  }}>
+                    <EditIcon />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5" sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 700
                     }}>
-                      <EditIcon sx={{ fontSize: 28, color: '#000' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="h5" sx={{ 
-                        color: '#FFCC00', 
-                        fontWeight: 700,
-                        fontSize: '1.4rem',
-                        mb: 0.5
-                      }}>
-                        Información Básica del Plan
-                      </Typography>
-                      <Typography variant="body2" sx={{ 
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        fontWeight: 500
-                      }}>
-                        Configure el nombre, descripción y características fundamentales
-                      </Typography>
-                    </Box>
-                    {formData.name && formData.description && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 500 }}
-                      >
-                        <Chip 
-                          icon={<CheckCircleIcon />} 
-                          label="Completado" 
-                          size="medium"
-                          sx={{ 
-                            background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1))',
-                            color: '#4caf50',
-                            border: '1px solid rgba(76, 175, 80, 0.4)',
-                            fontWeight: 600,
-                            boxShadow: '0 4px 15px rgba(76, 175, 80, 0.2)'
-                          }}
-                        />
-                      </motion.div>
-                    )}
+                      Información Básica
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Nombre, descripción y configuración general del plan
+                    </Typography>
                   </Box>
-                </AccordionSummary>
-                <AccordionDetails sx={{ p: 5 }}>
-                  <Grid container spacing={5}>
-                    <Grid size={{ xs: 12, md: 8 }}>
-                      <TextField
-                        fullWidth
-                        label="Nombre del Plan Elite"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        required
-                        placeholder="Ej: Plan Executive Premium"
-                        sx={enterpriseFieldStyle}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <DiamondIcon sx={{ color: '#FFCC00' }} />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 4 }}>
-                      <FormControl fullWidth sx={enterpriseFieldStyle}>
-                        <InputLabel>Vigencia del Plan</InputLabel>
-                        <Select
-                          value={formData.validity_type}
-                          onChange={(e) => handleInputChange('validity_type', e.target.value)}
-                          label="Vigencia del Plan"
-                        >
-                          <MenuItem value="permanent">
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <CheckCircleIcon sx={{ color: '#4ECDC4' }} />
-                              <Typography sx={{ fontWeight: 600 }}>Permanente</Typography>
-                            </Box>
-                          </MenuItem>
-                          <MenuItem value="limited">
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <ScheduleIcon sx={{ color: '#FF6B35' }} />
-                              <Typography sx={{ fontWeight: 600 }}>Tiempo Limitado</Typography>
-                            </Box>
-                          </MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid size={{ xs: 12 }}>
-                      <TextField
-                        fullWidth
-                        label="Descripción Ejecutiva"
-                        value={formData.description}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
-                        multiline
-                        rows={4}
-                        required
-                        placeholder="Describa detalladamente las características exclusivas, beneficios premium y valor agregado de este plan..."
-                        sx={enterpriseFieldStyle}
-                      />
-                    </Grid>
-
-                    {formData.validity_type === 'limited' && (
-                      <AnimatePresence>
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.5, ease: "easeInOut" }}
-                          style={{ width: '100%' }}
-                        >
-                          <Grid container spacing={3} sx={{ mt: 1 }}>
-                            <Grid size={{ xs: 12, md: 6 }}>
-                              <TextField
-                                fullWidth
-                                label="Fecha de Inicio"
-                                type="date"
-                                value={formData.validity_start_date}
-                                onChange={(e) => handleInputChange('validity_start_date', e.target.value)}
-                                InputLabelProps={{ shrink: true }}
-                                sx={enterpriseFieldStyle}
-                              />
-                            </Grid>
-                            
-                            <Grid size={{ xs: 12, md: 6 }}>
-                              <TextField
-                                fullWidth
-                                label="Fecha de Finalización"
-                                type="date"
-                                value={formData.validity_end_date}
-                                onChange={(e) => handleInputChange('validity_end_date', e.target.value)}
-                                InputLabelProps={{ shrink: true }}
-                                sx={enterpriseFieldStyle}
-                              />
-                            </Grid>
-                          </Grid>
-                        </motion.div>
-                      </AnimatePresence>
-                    )}
-                    
-                    <Grid size={{ xs: 12 }}>
-                      <Card sx={{
-                        background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.06), rgba(255, 204, 0, 0.02))',
-                        border: '1px solid rgba(255, 204, 0, 0.2)',
-                        borderRadius: 4,
-                        p: 3
-                      }}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={formData.is_active}
-                              onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                              sx={{
-                                '& .MuiSwitch-switchBase.Mui-checked': { 
-                                  color: '#FFCC00',
-                                  '& + .MuiSwitch-track': { 
-                                    backgroundColor: '#FFCC00',
-                                    boxShadow: '0 0 15px rgba(255, 204, 0, 0.3)'
-                                  }
-                                },
-                                '& .MuiSwitch-track': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.2)'
-                                }
-                              }}
-                            />
-                          }
-                          label={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Typography sx={{ color: '#FFFFFF', fontWeight: 600, fontSize: '1.1rem' }}>
-                                Estado del Plan
-                              </Typography>
-                              <Chip 
-                                label={formData.is_active ? 'ACTIVO' : 'INACTIVO'} 
-                                size="small"
-                                sx={{
-                                  background: formData.is_active 
-                                    ? 'linear-gradient(135deg, #4caf50, #45a049)'
-                                    : 'linear-gradient(135deg, #f44336, #d32f2f)',
-                                  color: '#FFFFFF',
-                                  fontWeight: 700,
-                                  boxShadow: formData.is_active 
-                                    ? '0 4px 15px rgba(76, 175, 80, 0.3)'
-                                    : '0 4px 15px rgba(244, 67, 54, 0.3)'
-                                }}
-                              />
-                            </Box>
-                          }
-                        />
-                      </Card>
-                    </Grid>
+                  {formData.name && formData.description && (
+                    <Chip icon={<CheckCircleIcon />} label="Completado" sx={{ 
+                      bgcolor: `${darkProTokens.success}20`,
+                      color: darkProTokens.success,
+                      border: `1px solid ${darkProTokens.success}40`
+                    }} />
+                  )}
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 4 }}>
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, md: 8 }}>
+                    <TextField
+                      fullWidth
+                      label="Nombre del Plan"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      required
+                      placeholder="Ej: Plan Básico, Plan Premium"
+                      sx={darkProFieldStyle}
+                    />
                   </Grid>
-                </AccordionDetails>
-              </Accordion>
-
-              {/* 2. ESTRUCTURA DE PRECIOS PREMIUM */}
-              <Accordion 
-                expanded={expandedAccordion === 'pricing'} 
-                onChange={() => setExpandedAccordion(expandedAccordion === 'pricing' ? false : 'pricing')}
-                sx={{
-                  backgroundColor: 'transparent',
-                  '&:before': { display: 'none' },
-                  '& .MuiAccordionSummary-root': {
-                    background: expandedAccordion === 'pricing' 
-                      ? 'linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(255, 107, 53, 0.03))'
-                      : 'transparent',
-                    borderBottom: '1px solid rgba(255, 107, 53, 0.1)',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                    minHeight: 80,
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.06), rgba(255, 107, 53, 0.02))',
-                    }
-                  }
-                }}
-              >
-                <AccordionSummary 
-                  expandIcon={<ExpandMoreIcon sx={{ color: '#FF6B35', fontSize: 28 }} />}
-                  sx={{ px: 4 }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-                    <Avatar sx={{ 
-                      background: 'linear-gradient(135deg, #FF6B35, #FFCC00)', 
-                      width: 56,
-                      height: 56,
-                      boxShadow: '0 8px 25px rgba(255, 107, 53, 0.3)'
-                    }}>
-                      <AttachMoneyIcon sx={{ fontSize: 28, color: '#000' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="h5" sx={{ 
-                        color: '#FF6B35', 
-                        fontWeight: 700,
-                        fontSize: '1.4rem',
-                        mb: 0.5
-                      }}>
-                        Estructura de Precios Premium
-                      </Typography>
-                      <Typography variant="body2" sx={{ 
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        fontWeight: 500
-                      }}>
-                        Configure los precios estratégicos para diferentes modalidades de membresía
-                      </Typography>
-                    </Box>
-                    {(formData.monthly_price > 0 || formData.visit_price > 0) && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 500 }}
+                  
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <FormControl fullWidth sx={darkProFieldStyle}>
+                      <InputLabel>Vigencia</InputLabel>
+                      <Select
+                        value={formData.validity_type}
+                        onChange={(e) => handleInputChange('validity_type', e.target.value)}
+                        label="Vigencia"
                       >
-                        <Chip 
-                          icon={<TrendingUpIcon />} 
-                          label={`$${Math.max(formData.monthly_price, formData.visit_price).toLocaleString('es-MX')}`}
-                          size="medium"
-                          sx={{ 
-                            background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(255, 107, 53, 0.1))',
-                            color: '#FF6B35',
-                            border: '1px solid rgba(255, 107, 53, 0.4)',
-                            fontWeight: 700,
-                            fontSize: '0.9rem',
-                            boxShadow: '0 4px 15px rgba(255, 107, 53, 0.2)'
-                          }}
-                        />
-                      </motion.div>
-                    )}
-                  </Box>
-                </AccordionSummary>
-                <AccordionDetails sx={{ p: 5 }}>
-                  <Grid container spacing={5}>
-                    <Grid size={{ xs: 12 }}>
-                      <Typography variant="h5" sx={{ 
-                        color: '#FFCC00', 
-                        mb: 4, 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 2,
-                        fontWeight: 700
-                      }}>
-                        <MonetizationOnIcon sx={{ fontSize: 32 }} />
-                        Configuración de Tarifas Ejecutivas
-                      </Typography>
-                    </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <TextField
-                        fullWidth
-                        label="Inversión de Inscripción"
-                        type="number"
-                        value={formData.inscription_price}
-                        onChange={(e) => handleInputChange('inscription_price', parseFloat(e.target.value) || 0)}
-                        sx={enterpriseFieldStyle}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">
-                            <Typography sx={{ color: '#FFCC00', fontWeight: 700 }}>$</Typography>
-                          </InputAdornment>,
-                        }}
-                      />
-                    </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <TextField
-                        fullWidth
-                        label="Tarifa por Sesión"
-                        type="number"
-                        value={formData.visit_price}
-                        onChange={(e) => handleInputChange('visit_price', parseFloat(e.target.value) || 0)}
-                        sx={enterpriseFieldStyle}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">
-                            <Typography sx={{ color: '#FFCC00', fontWeight: 700 }}>$</Typography>
-                          </InputAdornment>,
-                        }}
-                      />
-                    </Grid>
-                    
-                    {/* GRID DE PRECIOS PREMIUM */}
-                    <Grid size={{ xs: 12 }}>
-                      <Typography variant="h6" sx={{ 
-                        color: '#FFFFFF', 
-                        mb: 3, 
-                        fontWeight: 700,
-                        textAlign: 'center'
-                      }}>
-                        📊 Modalidades de Membresía Premium
-                      </Typography>
-                      <Grid container spacing={4}>
-                        {[
-                          { 
-                            key: 'weekly_price', 
-                            label: 'Semanal', 
-                            duration: '7 días',
-                            color: '#4ECDC4',
-                            icon: '📅'
-                          },
-                          { 
-                            key: 'monthly_price', 
-                            label: 'Mensual', 
-                            duration: '30 días',
-                            color: '#FFCC00',
-                            icon: '⭐'
-                          },
-                          { 
-                            key: 'quarterly_price', 
-                            label: 'Trimestral', 
-                            duration: '90 días',
-                            color: '#FF6B35',
-                            icon: '🔥'
-                          },
-                          { 
-                            key: 'annual_price', 
-                            label: 'Anual', 
-                            duration: '365 días',
-                            color: '#45B7D1',
-                            icon: '💎'
-                          }
-                        ].map((period) => (
-                          <Grid key={period.key} size={{ xs: 12, sm: 6, md: 3 }}>
-                            <motion.div
-                              whileHover={{ 
-                                scale: 1.02,
-                                y: -8
-                              }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <Card sx={{
-                                background: `
-                                  linear-gradient(135deg, 
-                                    ${period.color}15 0%, 
-                                    ${period.color}08 50%,
-                                    ${period.color}05 100%
-                                  )
-                                `,
-                                border: `2px solid ${period.color}30`,
-                                borderRadius: 4,
-                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                                backdropFilter: 'blur(10px)',
-                                boxShadow: `0 8px 25px ${period.color}20`,
-                                '&:hover': {
-                                  border: `2px solid ${period.color}60`,
-                                  boxShadow: `0 15px 40px ${period.color}30`,
-                                }
-                              }}>
-                                <CardContent sx={{ p: 4, textAlign: 'center' }}>
-                                  <Typography variant="h4" sx={{ mb: 1 }}>
-                                    {period.icon}
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ 
-                                    color: period.color, 
-                                    mb: 1, 
-                                    fontWeight: 700
-                                  }}>
-                                    {period.label}
-                                  </Typography>
-                                  <Typography variant="caption" sx={{ 
-                                    color: 'rgba(255, 255, 255, 0.7)', 
-                                    mb: 3, 
-                                    display: 'block',
-                                    fontWeight: 500
-                                  }}>
-                                    {period.duration}
-                                  </Typography>
-                                  <TextField
-                                    fullWidth
-                                    type="number"
-                                    value={formData[period.key as keyof PlanFormData] as number}
-                                    onChange={(e) => handleInputChange(period.key as keyof PlanFormData, parseFloat(e.target.value) || 0)}
-                                    sx={{
-                                      ...enterpriseFieldStyle,
-                                      '& .MuiOutlinedInput-root': {
-                                        ...enterpriseFieldStyle['& .MuiOutlinedInput-root'],
-                                        backgroundColor: `${period.color}08`,
-                                        border: `2px solid ${period.color}20`,
-                                        '&:hover': {
-                                          backgroundColor: `${period.color}12`,
-                                          border: `2px solid ${period.color}40`,
-                                        },
-                                        '&.Mui-focused': {
-                                          backgroundColor: `${period.color}15`,
-                                          border: `2px solid ${period.color}`,
-                                          boxShadow: `0 0 20px ${period.color}40`,
-                                        }
-                                      }
-                                    }}
-                                    InputProps={{
-                                      startAdornment: <InputAdornment position="start">
-                                        <Typography sx={{ color: period.color, fontWeight: 700 }}>$</Typography>
-                                      </InputAdornment>,
-                                    }}
-                                  />
-                                </CardContent>
-                              </Card>
-                            </motion.div>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    </Grid>
+                        <MenuItem value="permanent">Permanente</MenuItem>
+                        <MenuItem value="limited">Tiempo Limitado</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
-                </AccordionDetails>
-              </Accordion>
+                  
+                  <Grid size={12}>
+                    <TextField
+                      fullWidth
+                      label="Descripción del Plan"
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      multiline
+                      rows={3}
+                      required
+                      placeholder="Describa las características y beneficios del plan..."
+                      sx={darkProFieldStyle}
+                    />
+                  </Grid>
 
-              {/* 3. CARACTERÍSTICAS PREMIUM */}
-              <Accordion 
-                expanded={expandedAccordion === 'features'} 
-                onChange={() => setExpandedAccordion(expandedAccordion === 'features' ? false : 'features')}
-                sx={{
-                  backgroundColor: 'transparent',
-                  '&:before': { display: 'none' },
-                  '& .MuiAccordionSummary-root': {
-                    background: expandedAccordion === 'features' 
-                      ? 'linear-gradient(135deg, rgba(78, 205, 196, 0.08), rgba(78, 205, 196, 0.03))'
-                      : 'transparent',
-                    borderBottom: '1px solid rgba(78, 205, 196, 0.1)',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                    minHeight: 80,
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, rgba(78, 205, 196, 0.06), rgba(78, 205, 196, 0.02))',
-                    }
-                  }
-                }}
-              >
-                <AccordionSummary 
-                  expandIcon={<ExpandMoreIcon sx={{ color: '#4ECDC4', fontSize: 28 }} />}
-                  sx={{ px: 4 }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-                    <Avatar sx={{ 
-                      background: 'linear-gradient(135deg, #4ECDC4, #45B7D1)', 
-                      width: 56,
-                      height: 56,
-                      boxShadow: '0 8px 25px rgba(78, 205, 196, 0.3)'
-                    }}>
-                      <FeatureIcon sx={{ fontSize: 28, color: '#000' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="h5" sx={{ 
-                        color: '#4ECDC4', 
-                        fontWeight: 700,
-                        fontSize: '1.4rem',
-                        mb: 0.5
-                      }}>
-                        Características y Beneficios Elite
-                      </Typography>
-                      <Typography variant="body2" sx={{ 
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        fontWeight: 500
-                      }}>
-                        Defina las características exclusivas y beneficios premium incluidos
-                      </Typography>
-                    </Box>
-                    {formData.features.length > 0 && (
+                  {formData.validity_type === 'limited' && (
+                    <AnimatePresence>
                       <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 500 }}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{ width: '100%' }}
                       >
-                        <Badge 
-                          badgeContent={formData.features.length} 
-                          sx={{
-                            '& .MuiBadge-badge': {
-                              background: 'linear-gradient(135deg, #FFCC00, #FF6B35)',
-                              color: '#000',
-                              fontWeight: 700
-                            }
-                          }}
-                        >
-                          <Chip 
-                            icon={<StarIcon />} 
-                            label="Características"
-                            size="medium"
-                            sx={{ 
-                              background: 'linear-gradient(135deg, rgba(78, 205, 196, 0.2), rgba(78, 205, 196, 0.1))',
-                              color: '#4ECDC4',
-                              border: '1px solid rgba(78, 205, 196, 0.4)',
-                              fontWeight: 600,
-                              boxShadow: '0 4px 15px rgba(78, 205, 196, 0.2)'
-                            }}
-                          />
-                        </Badge>
-                      </motion.div>
-                    )}
-                  </Box>
-                </AccordionSummary>
-                <AccordionDetails sx={{ p: 5 }}>
-                  <Grid container spacing={5}>
-                    {/* BENEFICIOS PRINCIPALES */}
-                    <Grid size={{ xs: 12 }}>
-                      <Typography variant="h5" sx={{ 
-                        color: '#FFCC00', 
-                        mb: 4, 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 2,
-                        fontWeight: 700
-                      }}>
-                        <FeatureIcon sx={{ fontSize: 32 }} />
-                        Configuración de Beneficios Executive
-                      </Typography>
-                    </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 4 }}>
-                      <motion.div whileHover={{ scale: 1.02 }}>
-                        <Card sx={{
-                          background: 'linear-gradient(135deg, rgba(78, 205, 196, 0.08), rgba(78, 205, 196, 0.03))',
-                          border: '2px solid rgba(78, 205, 196, 0.2)',
-                          borderRadius: 4,
-                          p: 4,
-                          height: '100%',
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            border: '2px solid rgba(78, 205, 196, 0.4)',
-                            boxShadow: '0 12px 30px rgba(78, 205, 196, 0.2)'
-                          }
-                        }}>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={formData.gym_access}
-                                onChange={(e) => handleInputChange('gym_access', e.target.checked)}
-                                sx={{
-                                    '& .MuiSwitch-switchBase.Mui-checked': { 
-                                        color: '#4ECDC4',
-                                        '& + .MuiSwitch-track': { 
-                                          backgroundColor: '#4ECDC4',
-                                          boxShadow: '0 0 15px rgba(78, 205, 196, 0.4)'
-                                        }
-                                      },
-                                      '& .MuiSwitch-track': {
-                                        backgroundColor: 'rgba(255, 255, 255, 0.2)'
-                                      }
-                                    }}
-                                  />
-                                }
-                                label={
-                                  <Box>
-                                    <Typography sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
-                                      🏋️ Acceso Total al Gimnasio
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}>
-                                      Equipos de última generación y área completa de entrenamiento
-                                    </Typography>
-                                  </Box>
-                                }
-                              />
-                            </Card>
-                          </motion.div>
-                        </Grid>
-                        
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <motion.div whileHover={{ scale: 1.02 }}>
-                            <Card sx={{
-                              background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(255, 107, 53, 0.03))',
-                              border: '2px solid rgba(255, 107, 53, 0.2)',
-                              borderRadius: 4,
-                              p: 4,
-                              height: '100%',
-                              transition: 'all 0.3s ease',
-                              '&:hover': {
-                                border: '2px solid rgba(255, 107, 53, 0.4)',
-                                boxShadow: '0 12px 30px rgba(255, 107, 53, 0.2)'
-                              }
-                            }}>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={formData.classes_included}
-                                    onChange={(e) => handleInputChange('classes_included', e.target.checked)}
-                                    sx={{
-                                      '& .MuiSwitch-switchBase.Mui-checked': { 
-                                        color: '#FF6B35',
-                                        '& + .MuiSwitch-track': { 
-                                          backgroundColor: '#FF6B35',
-                                          boxShadow: '0 0 15px rgba(255, 107, 53, 0.4)'
-                                        }
-                                      },
-                                      '& .MuiSwitch-track': {
-                                        backgroundColor: 'rgba(255, 255, 255, 0.2)'
-                                      }
-                                    }}
-                                  />
-                                }
-                                label={
-                                  <Box>
-                                    <Typography sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
-                                      🧘 Clases Grupales Premium
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}>
-                                      Yoga, pilates, spinning, zumba y entrenamientos especializados
-                                    </Typography>
-                                  </Box>
-                                }
-                              />
-                            </Card>
-                          </motion.div>
-                        </Grid>
-                        
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <motion.div whileHover={{ scale: 1.02 }}>
-                            <Card sx={{
-                              background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.08), rgba(255, 204, 0, 0.03))',
-                              border: '2px solid rgba(255, 204, 0, 0.2)',
-                              borderRadius: 4,
-                              p: 4,
-                              height: '100%',
-                              transition: 'all 0.3s ease',
-                              '&:hover': {
-                                border: '2px solid rgba(255, 204, 0, 0.4)',
-                                boxShadow: '0 12px 30px rgba(255, 204, 0, 0.2)'
-                              }
-                            }}>
-                              <Typography sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '1.1rem', mb: 2 }}>
-                                👥 Pases de Invitado VIP
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 3, fontWeight: 500 }}>
-                                Invitaciones mensuales para acompañantes
-                              </Typography>
-                              <TextField
-                                fullWidth
-                                type="number"
-                                value={formData.guest_passes}
-                                onChange={(e) => handleInputChange('guest_passes', parseInt(e.target.value) || 0)}
-                                sx={{
-                                  ...enterpriseFieldStyle,
-                                  '& .MuiOutlinedInput-root': {
-                                    ...enterpriseFieldStyle['& .MuiOutlinedInput-root'],
-                                    backgroundColor: 'rgba(255, 204, 0, 0.05)',
-                                    border: '2px solid rgba(255, 204, 0, 0.2)',
-                                    '&:hover': {
-                                      backgroundColor: 'rgba(255, 204, 0, 0.08)',
-                                      border: '2px solid rgba(255, 204, 0, 0.4)',
-                                    },
-                                    '&.Mui-focused': {
-                                      backgroundColor: 'rgba(255, 204, 0, 0.1)',
-                                      border: '2px solid #FFCC00',
-                                      boxShadow: '0 0 20px rgba(255, 204, 0, 0.3)',
-                                    }
-                                  }
-                                }}
-                                InputProps={{
-                                  startAdornment: (
-                                    <InputAdornment position="start">
-                                      <GroupIcon sx={{ color: '#FFCC00' }} />
-                                    </InputAdornment>
-                                  ),
-                                }}
-                              />
-                            </Card>
-                          </motion.div>
-                        </Grid>
-                        
-                        {/* CARACTERÍSTICAS PERSONALIZADAS */}
-                        <Grid size={{ xs: 12 }}>
-                          <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', my: 3 }} />
-                          <Typography variant="h6" sx={{ 
-                            color: '#FFFFFF', 
-                            mb: 3, 
-                            fontWeight: 700,
-                            textAlign: 'center'
-                          }}>
-                            ✨ Características Exclusivas Personalizadas
-                          </Typography>
-                          
-                          {/* AGREGAR NUEVA CARACTERÍSTICA */}
-                          <Box sx={{ 
-                            display: 'flex', 
-                            gap: 3, 
-                            mb: 4,
-                            p: 3,
-                            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01))',
-                            borderRadius: 4,
-                            border: '1px solid rgba(255, 255, 255, 0.1)'
-                          }}>
+                        <Grid container spacing={3} sx={{ mt: 1 }}>
+                          <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                               fullWidth
-                              value={newFeature}
-                              onChange={(e) => setNewFeature(e.target.value)}
-                              placeholder="Escriba una característica exclusiva personalizada..."
-                              sx={enterpriseFieldStyle}
+                              label="Fecha de Inicio"
+                              type="date"
+                              value={formData.validity_start_date}
+                              onChange={(e) => handleInputChange('validity_start_date', e.target.value)}
+                              InputLabelProps={{ shrink: true }}
+                              sx={darkProFieldStyle}
                             />
-                            <Button
-                              onClick={addFeature}
-                              variant="contained"
-                              startIcon={<AddIcon />}
-                              disabled={!newFeature.trim()}
-                              sx={{
-                                background: 'linear-gradient(135deg, #FFCC00, #FF6B35)',
-                                color: '#000',
-                                minWidth: 140,
-                                fontWeight: 700,
-                                borderRadius: 3,
-                                boxShadow: '0 8px 25px rgba(255, 204, 0, 0.3)',
-                                '&:hover': { 
-                                  background: 'linear-gradient(135deg, #FF6B35, #FFCC00)',
-                                  transform: 'translateY(-2px)',
-                                  boxShadow: '0 12px 35px rgba(255, 204, 0, 0.4)',
-                                },
-                                '&:disabled': {
-                                  background: 'rgba(255, 255, 255, 0.1)',
-                                  color: 'rgba(255, 255, 255, 0.3)'
-                                }
-                              }}
-                            >
-                              Agregar
-                            </Button>
-                          </Box>
-                          
-                          {/* CARACTERÍSTICAS POPULARES */}
-                          <Typography variant="body2" sx={{ 
-                            color: 'rgba(255, 255, 255, 0.8)', 
-                            mb: 3,
-                            textAlign: 'center',
-                            fontWeight: 600
-                          }}>
-                            💡 Características Populares (clic para agregar):
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4, justifyContent: 'center' }}>
-                            {PREDEFINED_FEATURES.filter(f => !formData.features.includes(f)).slice(0, 8).map((feature) => (
-                              <motion.div
-                                key={feature}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                <Chip
-                                  label={feature}
-                                  onClick={() => addPredefinedFeature(feature)}
-                                  sx={{
-                                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04))',
-                                    color: 'rgba(255, 255, 255, 0.9)',
-                                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                                    fontWeight: 500,
-                                    fontSize: '0.85rem',
-                                    backdropFilter: 'blur(10px)',
-                                    '&:hover': {
-                                      background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.15), rgba(255, 204, 0, 0.08))',
-                                      color: '#FFCC00',
-                                      border: '1px solid rgba(255, 204, 0, 0.4)',
-                                      cursor: 'pointer',
-                                      boxShadow: '0 4px 15px rgba(255, 204, 0, 0.2)'
-                                    }
-                                  }}
-                                />
-                              </motion.div>
-                            ))}
-                          </Box>
-                          
-                          {/* CARACTERÍSTICAS SELECCIONADAS */}
-                          {formData.features.length > 0 && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                            >
-                              <Card sx={{
-                                background: 'linear-gradient(135deg, rgba(78, 205, 196, 0.08), rgba(78, 205, 196, 0.03))',
-                                border: '2px solid rgba(78, 205, 196, 0.2)',
-                                borderRadius: 4,
-                                p: 4
-                              }}>
-                                <Typography variant="h6" sx={{ 
-                                  color: '#4ECDC4', 
-                                  mb: 3, 
-                                  fontWeight: 700,
-                                  textAlign: 'center'
-                                }}>
-                                  🎯 Características Incluidas en el Plan:
-                                </Typography>
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
-                                  {formData.features.map((feature, index) => (
-                                    <motion.div
-                                      key={index}
-                                      initial={{ opacity: 0, scale: 0.8 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      transition={{ delay: index * 0.1 }}
-                                    >
-                                      <Chip
-                                        label={feature}
-                                        onDelete={() => removeFeature(feature)}
-                                        deleteIcon={<DeleteIcon />}
-                                        sx={{
-                                          background: 'linear-gradient(135deg, rgba(78, 205, 196, 0.2), rgba(78, 205, 196, 0.1))',
-                                          color: '#4ECDC4',
-                                          border: '1px solid rgba(78, 205, 196, 0.4)',
-                                          fontWeight: 600,
-                                          fontSize: '0.9rem',
-                                          backdropFilter: 'blur(10px)',
-                                          boxShadow: '0 4px 15px rgba(78, 205, 196, 0.2)',
-                                          '& .MuiChip-deleteIcon': { 
-                                            color: '#4ECDC4',
-                                            '&:hover': { 
-                                              color: '#FF6B35',
-                                              transform: 'scale(1.2)'
-                                            }
-                                          }
-                                        }}
-                                      />
-                                    </motion.div>
-                                  ))}
-                                </Box>
-                              </Card>
-                            </motion.div>
-                          )}
+                          </Grid>
+                          <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                              fullWidth
+                              label="Fecha de Fin"
+                              type="date"
+                              value={formData.validity_end_date}
+                              onChange={(e) => handleInputChange('validity_end_date', e.target.value)}
+                              InputLabelProps={{ shrink: true }}
+                              sx={darkProFieldStyle}
+                            />
+                          </Grid>
                         </Grid>
-                      </Grid>
-                    </AccordionDetails>
-                  </Accordion>
-    
-                  {/* 4. RESTRICCIONES DE HORARIO */}
-                  <Accordion 
-                    expanded={expandedAccordion === 'schedule'} 
-                    onChange={() => setExpandedAccordion(expandedAccordion === 'schedule' ? false : 'schedule')}
-                    sx={{
-                      backgroundColor: 'transparent',
-                      '&:before': { display: 'none' },
-                      '& .MuiAccordionSummary-root': {
-                        background: expandedAccordion === 'schedule' 
-                          ? 'linear-gradient(135deg, rgba(69, 183, 209, 0.08), rgba(69, 183, 209, 0.03))'
-                          : 'transparent',
-                        borderBottom: '1px solid rgba(69, 183, 209, 0.1)',
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                        minHeight: 80,
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, rgba(69, 183, 209, 0.06), rgba(69, 183, 209, 0.02))',
-                        }
-                      }
-                    }}
-                  >
-                    <AccordionSummary 
-                      expandIcon={<ExpandMoreIcon sx={{ color: '#45B7D1', fontSize: 28 }} />}
-                      sx={{ px: 4 }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-                        <Avatar sx={{ 
-                          background: 'linear-gradient(135deg, #45B7D1, #4ECDC4)', 
-                          width: 56,
-                          height: 56,
-                          boxShadow: '0 8px 25px rgba(69, 183, 209, 0.3)'
-                        }}>
-                          <AccessTimeIcon sx={{ fontSize: 28, color: '#000' }} />
-                        </Avatar>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="h5" sx={{ 
-                            color: '#45B7D1', 
-                            fontWeight: 700,
-                            fontSize: '1.4rem',
-                            mb: 0.5
-                          }}>
-                            Configuración de Acceso Temporal
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: 'rgba(255, 255, 255, 0.7)',
-                            fontWeight: 500
-                          }}>
-                            Establezca días y horarios específicos para el acceso al plan
-                          </Typography>
-                        </Box>
-                        <Chip 
-                          label={formData.has_time_restrictions ? 'CON RESTRICCIONES' : 'ACCESO COMPLETO'}
+                      </motion.div>
+                    </AnimatePresence>
+                  )}
+                  
+                  <Grid size={12}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.is_active}
+                          onChange={(e) => handleInputChange('is_active', e.target.checked)}
                           sx={{
-                            background: formData.has_time_restrictions 
-                              ? 'linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1))'
-                              : 'linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1))',
-                            color: formData.has_time_restrictions ? '#ff9800' : '#4caf50',
-                            border: formData.has_time_restrictions 
-                              ? '1px solid rgba(255, 152, 0, 0.4)'
-                              : '1px solid rgba(76, 175, 80, 0.4)',
-                            fontWeight: 700,
-                            boxShadow: formData.has_time_restrictions 
-                              ? '0 4px 15px rgba(255, 152, 0, 0.2)'
-                              : '0 4px 15px rgba(76, 175, 80, 0.2)'
+                            '& .MuiSwitch-switchBase.Mui-checked': { 
+                              color: darkProTokens.primary,
+                              '& + .MuiSwitch-track': { backgroundColor: darkProTokens.primary }
+                            }
                           }}
-                          size="medium"
                         />
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ p: 5 }}>
-                      <Grid container spacing={5}>
-                        <Grid size={{ xs: 12 }}>
-                          <motion.div whileHover={{ scale: 1.01 }}>
-                            <Card sx={{
-                              background: 'linear-gradient(135deg, rgba(69, 183, 209, 0.08), rgba(69, 183, 209, 0.03))',
-                              border: '2px solid rgba(69, 183, 209, 0.2)',
-                              borderRadius: 4,
-                              p: 4,
-                              transition: 'all 0.3s ease',
-                              '&:hover': {
-                                border: '2px solid rgba(69, 183, 209, 0.4)',
-                                boxShadow: '0 12px 30px rgba(69, 183, 209, 0.2)'
-                              }
-                            }}>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={formData.has_time_restrictions}
-                                    onChange={(e) => handleInputChange('has_time_restrictions', e.target.checked)}
-                                    sx={{
-                                      transform: 'scale(1.2)',
-                                      '& .MuiSwitch-switchBase.Mui-checked': { 
-                                        color: '#45B7D1',
-                                        '& + .MuiSwitch-track': { 
-                                          backgroundColor: '#45B7D1',
-                                          boxShadow: '0 0 15px rgba(69, 183, 209, 0.4)'
-                                        }
-                                      },
-                                      '& .MuiSwitch-track': {
-                                        backgroundColor: 'rgba(255, 255, 255, 0.2)'
-                                      }
-                                    }}
-                                  />
-                                }
-                                label={
-                                  <Box sx={{ ml: 2 }}>
-                                    <Typography sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '1.2rem', mb: 0.5 }}>
-                                      🕐 Aplicar Restricciones de Horario
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}>
-                                      Active esta opción para limitar el acceso a días y horarios específicos
-                                    </Typography>
-                                  </Box>
-                                }
-                              />
-                            </Card>
-                          </motion.div>
-                        </Grid>
-                        
-                        {formData.has_time_restrictions && (
-                          <AnimatePresence>
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.6, ease: "easeInOut" }}
-                              style={{ width: '100%' }}
-                            >
-                              <Grid container spacing={5}>
-                                <Grid size={{ xs: 12 }}>
-                                  <Typography variant="h6" sx={{ 
-                                    color: '#FFCC00', 
-                                    mb: 3, 
-                                    fontWeight: 700,
-                                    textAlign: 'center'
-                                  }}>
-                                    📅 Días de Acceso Permitidos
-                                  </Typography>
-                                  <Box sx={{ 
-                                    display: 'flex', 
-                                    flexWrap: 'wrap', 
-                                    gap: 2, 
-                                    justifyContent: 'center',
-                                    p: 3,
-                                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01))',
-                                    borderRadius: 4,
-                                    border: '1px solid rgba(255, 255, 255, 0.1)'
-                                  }}>
-                                    {DAY_NAMES.map((day) => (
-                                      <motion.div
-                                        key={day.value}
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                      >
-                                        <FormControlLabel
-                                          control={
-                                            <Checkbox
-                                              checked={formData.allowed_days.includes(day.value)}
-                                              onChange={(e) => {
-                                                if (e.target.checked) {
-                                                  handleInputChange('allowed_days', [...formData.allowed_days, day.value]);
-                                                } else {
-                                                  handleInputChange('allowed_days', formData.allowed_days.filter(d => d !== day.value));
-                                                }
-                                              }}
-                                              sx={{ 
-                                                color: '#45B7D1',
-                                                '&.Mui-checked': { color: '#45B7D1' }
-                                              }}
-                                            />
-                                          }
-                                          label={
-                                            <Box sx={{ textAlign: 'center', px: 1 }}>
-                                              <Typography variant="body1" sx={{ 
-                                                color: '#FFFFFF', 
-                                                fontWeight: 600,
-                                                mb: 0.5
-                                              }}>
-                                                {day.label}
-                                              </Typography>
-                                              <Typography variant="h6" sx={{ 
-                                                color: formData.allowed_days.includes(day.value) ? '#45B7D1' : 'rgba(255, 255, 255, 0.4)',
-                                                fontWeight: 700,
-                                                fontSize: '1.2rem'
-                                              }}>
-                                                {day.short}
-                                              </Typography>
-                                            </Box>
-                                          }
-                                          sx={{
-                                            background: formData.allowed_days.includes(day.value) 
-                                              ? 'linear-gradient(135deg, rgba(69, 183, 209, 0.15), rgba(69, 183, 209, 0.08))'
-                                              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01))',
-                                            border: '2px solid',
-                                            borderColor: formData.allowed_days.includes(day.value)
-                                              ? 'rgba(69, 183, 209, 0.4)'
-                                              : 'rgba(255, 255, 255, 0.1)',
-                                            borderRadius: 3,
-                                            p: 2,
-                                            transition: 'all 0.3s ease',
-                                            backdropFilter: 'blur(10px)',
-                                            minWidth: 100,
-                                            '&:hover': {
-                                              borderColor: formData.allowed_days.includes(day.value)
-                                                ? 'rgba(69, 183, 209, 0.6)'
-                                                : 'rgba(255, 255, 255, 0.3)',
-                                              transform: 'translateY(-2px)',
-                                              boxShadow: formData.allowed_days.includes(day.value)
-                                                ? '0 8px 25px rgba(69, 183, 209, 0.2)'
-                                                : '0 8px 25px rgba(255, 255, 255, 0.1)'
-                                            }
-                                          }}
-                                        />
-                                      </motion.div>
-                                    ))}
-                                  </Box>
-                                </Grid>
-                                
-                                <Grid size={{ xs: 12 }}>
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                                    <Typography variant="h6" sx={{ 
-                                      color: '#FFCC00', 
-                                      fontWeight: 700
-                                    }}>
-                                      ⏰ Franjas Horarias de Acceso
-                                    </Typography>
-                                    <Button
-                                      onClick={addTimeSlot}
-                                      variant="outlined"
-                                      startIcon={<AddIcon />}
-                                      sx={{
-                                        borderColor: 'rgba(69, 183, 209, 0.5)',
-                                        color: '#45B7D1',
-                                        fontWeight: 600,
-                                        borderRadius: 3,
-                                        px: 3,
-                                        '&:hover': {
-                                          borderColor: '#45B7D1',
-                                          backgroundColor: 'rgba(69, 183, 209, 0.1)',
-                                          transform: 'translateY(-1px)',
-                                          boxShadow: '0 4px 15px rgba(69, 183, 209, 0.2)'
-                                        }
-                                      }}
-                                    >
-                                      Agregar Horario
-                                    </Button>
-                                  </Box>
-                                  
-                                  <Stack spacing={3}>
-                                    {formData.time_slots.map((slot, index) => (
-                                      <motion.div
-                                        key={index}
-                                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                                        transition={{ duration: 0.3, delay: index * 0.1 }}
-                                      >
-                                        <Card sx={{
-                                          background: 'linear-gradient(135deg, rgba(69, 183, 209, 0.08), rgba(69, 183, 209, 0.03))',
-                                          border: '2px solid rgba(69, 183, 209, 0.2)',
-                                          borderRadius: 4,
-                                          p: 4,
-                                          transition: 'all 0.3s ease',
-                                          '&:hover': {
-                                            border: '2px solid rgba(69, 183, 209, 0.4)',
-                                            transform: 'translateY(-2px)',
-                                            boxShadow: '0 12px 30px rgba(69, 183, 209, 0.2)'
-                                          }
-                                        }}>
-                                          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                                              <Typography variant="body1" sx={{ 
-                                                color: '#45B7D1', 
-                                                fontWeight: 700,
-                                                minWidth: 80
-                                              }}>
-                                                Horario {index + 1}:
-                                              </Typography>
-                                              <TextField
-                                                label="Hora de Inicio"
-                                                type="time"
-                                                value={slot.start}
-                                                onChange={(e) => updateTimeSlot(index, 'start', e.target.value)}
-                                                InputLabelProps={{ shrink: true }}
-                                                sx={{
-                                                  ...enterpriseFieldStyle,
-                                                  flex: 1,
-                                                  '& .MuiOutlinedInput-root': {
-                                                    ...enterpriseFieldStyle['& .MuiOutlinedInput-root'],
-                                                    backgroundColor: 'rgba(69, 183, 209, 0.05)',
-                                                    border: '2px solid rgba(69, 183, 209, 0.2)',
-                                                  }
-                                                }}
-                                              />
-                                              <Typography variant="h6" sx={{ 
-                                                color: '#FFFFFF', 
-                                                fontWeight: 700,
-                                                px: 2
-                                              }}>
-                                                →
-                                              </Typography>
-                                              <TextField
-                                                label="Hora de Fin"
-                                                type="time"
-                                                value={slot.end}
-                                                onChange={(e) => updateTimeSlot(index, 'end', e.target.value)}
-                                                InputLabelProps={{ shrink: true }}
-                                                sx={{
-                                                  ...enterpriseFieldStyle,
-                                                  flex: 1,
-                                                  '& .MuiOutlinedInput-root': {
-                                                    ...enterpriseFieldStyle['& .MuiOutlinedInput-root'],
-                                                    backgroundColor: 'rgba(69, 183, 209, 0.05)',
-                                                    border: '2px solid rgba(69, 183, 209, 0.2)',
-                                                  }
-                                                }}
-                                              />
-                                            </Box>
-                                            {formData.time_slots.length > 1 && (
-                                              <Tooltip title="Eliminar horario" arrow>
-                                                <IconButton
-                                                  onClick={() => removeTimeSlot(index)}
-                                                  sx={{ 
-                                                    background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.2), rgba(244, 67, 54, 0.1))',
-                                                    color: '#f44336',
-                                                    border: '2px solid rgba(244, 67, 54, 0.3)',
-                                                    '&:hover': {
-                                                      background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.3), rgba(244, 67, 54, 0.15))',
-                                                      transform: 'scale(1.1)',
-                                                      boxShadow: '0 4px 15px rgba(244, 67, 54, 0.3)'
-                                                    }
-                                                  }}
-                                                >
-                                                  <DeleteIcon />
-                                                </IconButton>
-                                              </Tooltip>
-                                            )}
-                                          </Box>
-                                        </Card>
-                                      </motion.div>
-                                    ))}
-                                  </Stack>
-                                </Grid>
-                              </Grid>
-                            </motion.div>
-                          </AnimatePresence>
-                        )}
-                      </Grid>
-                    </AccordionDetails>
-                  </Accordion>
-    
-                  {/* 5. VISTA PREVIA Y PUBLICACIÓN */}
-                  <Accordion 
-                    expanded={expandedAccordion === 'preview'} 
-                    onChange={() => setExpandedAccordion(expandedAccordion === 'preview' ? false : 'preview')}
-                    sx={{
-                      backgroundColor: 'transparent',
-                      '&:before': { display: 'none' },
-                      '& .MuiAccordionSummary-root': {
-                        background: expandedAccordion === 'preview' 
-                          ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.08), rgba(255, 204, 0, 0.03))'
-                          : 'transparent',
-                        minHeight: 80,
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.06), rgba(255, 204, 0, 0.02))',
-                        }
                       }
-                    }}
-                  >
-                    <AccordionSummary 
-                      expandIcon={<ExpandMoreIcon sx={{ color: '#FFCC00', fontSize: 28 }} />}
-                      sx={{ px: 4 }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-                        <Avatar sx={{ 
-                          background: 'linear-gradient(135deg, #FFCC00, #FF6B35)', 
-                          width: 56,
-                          height: 56,
-                          boxShadow: '0 8px 25px rgba(255, 204, 0, 0.3)'
-                        }}>
-                          <PreviewIcon sx={{ fontSize: 28, color: '#000' }} />
-                        </Avatar>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="h5" sx={{ 
-                            color: '#FFCC00', 
-                            fontWeight: 700,
-                            fontSize: '1.4rem',
-                            mb: 0.5
-                          }}>
-                            Vista Previa y Publicación
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            Plan Activo
                           </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: 'rgba(255, 255, 255, 0.7)',
-                            fontWeight: 500
-                          }}>
-                            Revise la configuración completa antes de publicar el plan elite
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
                           <Chip 
-                            icon={<InfoIcon />} 
-                            label="Revisión Ejecutiva"
-                            size="medium"
-                            sx={{ 
-                              background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1))',
-                              color: '#2196f3',
-                              border: '1px solid rgba(33, 150, 243, 0.4)',
-                              fontWeight: 600,
-                              boxShadow: '0 4px 15px rgba(33, 150, 243, 0.2)'
+                            label={formData.is_active ? 'ACTIVO' : 'INACTIVO'} 
+                            size="small"
+                            sx={{
+                              bgcolor: formData.is_active ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
+                              color: formData.is_active ? darkProTokens.success : darkProTokens.error,
+                              border: `1px solid ${formData.is_active ? darkProTokens.success : darkProTokens.error}40`
                             }}
                           />
                         </Box>
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ p: 5 }}>
-                      <Grid container spacing={5}>
-                        <Grid size={{ xs: 12, lg: 8 }}>
-                          {/* VISTA PREVIA ENTERPRISE */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6 }}
-                          >
+                      }
+                    />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* 2. ESTRUCTURA DE PRECIOS */}
+            <Accordion 
+              expanded={expandedAccordion === 'pricing'} 
+              onChange={() => setExpandedAccordion(expandedAccordion === 'pricing' ? false : 'pricing')}
+              sx={{
+                backgroundColor: 'transparent',
+                '&:before': { display: 'none' },
+                '& .MuiAccordionSummary-root': {
+                  background: expandedAccordion === 'pricing' 
+                    ? `${darkProTokens.info}15`
+                    : 'transparent',
+                  borderBottom: `1px solid ${darkProTokens.grayDark}`,
+                  minHeight: 80
+                }
+              }}
+            >
+              <AccordionSummary 
+                expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.info }} />}
+                sx={{ px: 4 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
+                  <Avatar sx={{ 
+                    background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+                    color: darkProTokens.textPrimary
+                  }}>
+                    <MonetizationOnIcon />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5" sx={{ 
+                      color: darkProTokens.info, 
+                      fontWeight: 700
+                    }}>
+                      Estructura de Precios
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Configure los precios para diferentes modalidades de membresía
+                    </Typography>
+                  </Box>
+                  {(formData.monthly_price > 0 || formData.visit_price > 0) && (
+                    <Chip 
+                      icon={<TrendingUpIcon />} 
+                      label={`$${Math.max(formData.monthly_price, formData.visit_price).toLocaleString('es-MX')}`}
+                      sx={{ 
+                        bgcolor: `${darkProTokens.info}20`,
+                        color: darkProTokens.info,
+                        border: `1px solid ${darkProTokens.info}40`
+                      }}
+                    />
+                  )}
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 4 }}>
+                <Grid container spacing={4}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Precio de Inscripción"
+                      type="number"
+                      value={formData.inscription_price}
+                      onChange={(e) => handleInputChange('inscription_price', parseFloat(e.target.value) || 0)}
+                      sx={darkProFieldStyle}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Precio por Visita"
+                      type="number"
+                      value={formData.visit_price}
+                      onChange={(e) => handleInputChange('visit_price', parseFloat(e.target.value) || 0)}
+                      sx={darkProFieldStyle}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  
+                  {/* MODALIDADES DE MEMBRESÍA - SEGÚN ESQUEMA REAL */}
+                  <Grid size={12}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      mb: 3, 
+                      fontWeight: 700,
+                      textAlign: 'center'
+                    }}>
+                      Modalidades de Membresía
+                    </Typography>
+                    <Grid container spacing={3}>
+                      {[
+                        { 
+                          key: 'weekly_price', 
+                          label: 'Semanal', 
+                          duration: '7 días',
+                          color: darkProTokens.success,
+                          icon: '📅'
+                        },
+                        { 
+                          key: 'biweekly_price', 
+                          label: 'Quincenal', 
+                          duration: '15 días',
+                          color: darkProTokens.info,
+                          icon: '📊'
+                        },
+                        { 
+                          key: 'monthly_price', 
+                          label: 'Mensual', 
+                          duration: '30 días',
+                          color: darkProTokens.primary,
+                          icon: '⭐'
+                        },
+                        { 
+                          key: 'bimonthly_price', 
+                          label: 'Bimestral', 
+                          duration: '60 días',
+                          color: darkProTokens.warning,
+                          icon: '🔶'
+                        },
+                        { 
+                          key: 'quarterly_price', 
+                          label: 'Trimestral', 
+                          duration: '90 días',
+                          color: '#FF6B35',
+                          icon: '🔥'
+                        },
+                        { 
+                          key: 'semester_price', 
+                          label: 'Semestral', 
+                          duration: '180 días',
+                          color: '#9C27B0',
+                          icon: '💎'
+                        },
+                        { 
+                          key: 'annual_price', 
+                          label: 'Anual', 
+                          duration: '365 días',
+                          color: '#45B7D1',
+                          icon: '👑'
+                        }
+                      ].map((period) => (
+                        <Grid key={period.key} size={{ xs: 12, sm: 6, md: 4 }}>
+                          <motion.div whileHover={{ scale: 1.02, y: -4 }}>
                             <Card sx={{
-                              background: `
-                                linear-gradient(135deg, 
-                                  rgba(255, 204, 0, 0.12) 0%, 
-                                  rgba(255, 107, 53, 0.08) 25%,
-                                  rgba(78, 205, 196, 0.06) 50%,
-                                  rgba(69, 183, 209, 0.04) 75%,
-                                  rgba(255, 204, 0, 0.08) 100%
-                                )
-                              `,
-                              border: '3px solid rgba(255, 204, 0, 0.4)',
-                              borderRadius: 6,
-                              overflow: 'hidden',
-                              position: 'relative',
-                              boxShadow: '0 25px 80px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 204, 0, 0.2)',
-                              '&::before': {
-                                content: '""',
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                height: '8px',
-                                background: 'linear-gradient(90deg, #FFCC00 0%, #FF6B35 25%, #4ECDC4 50%, #45B7D1 75%, #FFCC00 100%)',
+                              background: `linear-gradient(135deg, ${period.color}15, ${period.color}08)`,
+                              border: `2px solid ${period.color}30`,
+                              borderRadius: 3,
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                border: `2px solid ${period.color}60`,
+                                boxShadow: `0 8px 25px ${period.color}20`,
                               }
                             }}>
-                              <CardContent sx={{ p: 5, pt: 6 }}>
-                                {/* HEADER DEL PLAN */}
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
-                                  <Box>
-                                    <Typography variant="h3" sx={{ 
-                                      background: 'linear-gradient(135deg, #FFCC00 0%, #FF6B35 50%, #FFCC00 100%)',
-                                      backgroundClip: 'text',
-                                      WebkitBackgroundClip: 'text',
-                                      WebkitTextFillColor: 'transparent',
-                                      fontWeight: 900,
-                                      mb: 1,
-                                      textShadow: '0 0 30px rgba(255, 204, 0, 0.3)',
-                                      letterSpacing: '-0.02em'
-                                    }}>
-                                      {formData.name || 'Nombre del Plan Elite'}
-                                    </Typography>
-                                    <Typography variant="h6" sx={{ 
-                                      color: '#FFFFFF', 
-                                      mb: 3,
-                                      lineHeight: 1.6,
-                                      opacity: 0.95,
-                                      fontWeight: 500
-                                    }}>
-                                      {formData.description || 'Descripción del plan ejecutivo...'}
-                                    </Typography>
-                                  </Box>
-                                  <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
-                                    <Chip 
-                                      label={planCategory}
-                                      sx={{ 
-                                        background: 'linear-gradient(135deg, #FFCC00, #FF6B35)',
-                                        color: '#000',
-                                        fontWeight: 700,
-                                        border: '2px solid rgba(255, 204, 0, 0.5)',
-                                        boxShadow: '0 4px 15px rgba(255, 204, 0, 0.3)'
-                                      }}
-                                    />
-                                    <Chip 
-                                      label={formData.is_active ? 'ACTIVO' : 'INACTIVO'} 
-                                      sx={{
-                                        background: formData.is_active 
-                                          ? 'linear-gradient(135deg, #4caf50, #45a049)'
-                                          : 'linear-gradient(135deg, #f44336, #d32f2f)',
-                                        color: '#FFFFFF',
-                                        fontWeight: 700,
-                                        boxShadow: formData.is_active 
-                                          ? '0 4px 15px rgba(76, 175, 80, 0.3)'
-                                          : '0 4px 15px rgba(244, 67, 54, 0.3)'
-                                      }}
-                                    />
-                                  </Box>
-                                </Box>
-                                
-                                <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.4)', my: 4, borderWidth: 2 }} />
-                                
-                                {/* ESTRUCTURA DE PRECIOS */}
-                                <Box sx={{ mb: 4 }}>
-                                  <Typography variant="h5" sx={{ 
-                                    color: '#FFCC00', 
-                                    mb: 3, 
-                                    fontWeight: 700,
-                                    textAlign: 'center'
-                                  }}>
-                                    💰 Estructura de Inversión Premium
-                                  </Typography>
-                                  <Grid container spacing={3}>
-                                    {[
-                                      { label: 'Inscripción', value: formData.inscription_price, color: '#FF6B35', icon: '🎯' },
-                                      { label: 'Sesión', value: formData.visit_price, color: '#4ECDC4', icon: '⚡' },
-                                      { label: 'Semanal', value: formData.weekly_price, color: '#45B7D1', icon: '📅' },
-                                      { label: 'Mensual', value: formData.monthly_price, color: '#FFCC00', icon: '⭐' },
-                                      { label: 'Trimestral', value: formData.quarterly_price, color: '#FF6B35', icon: '🔥' },
-                                      { label: 'Anual', value: formData.annual_price, color: '#9C27B0', icon: '💎' }
-                                    ].filter(price => price.value > 0).map((price) => (
-                                      <Grid key={price.label} size={{ xs: 6, sm: 4, md: 2 }}>
-                                        <motion.div whileHover={{ scale: 1.05, y: -5 }}>
-                                          <Card sx={{
-                                            background: `linear-gradient(135deg, ${price.color}20, ${price.color}10)`,
-                                            border: `2px solid ${price.color}50`,
-                                            borderRadius: 3,
-                                            p: 2,
-                                            textAlign: 'center',
-                                            transition: 'all 0.3s ease',
-                                            backdropFilter: 'blur(10px)',
-                                            boxShadow: `0 8px 25px ${price.color}20`,
-                                            '&:hover': {
-                                              border: `2px solid ${price.color}`,
-                                              boxShadow: `0 12px 35px ${price.color}30`
-                                            }
-                                          }}>
-                                            <Typography variant="h5" sx={{ mb: 0.5 }}>
-                                              {price.icon}
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ 
-                                              color: price.color, 
-                                              fontWeight: 700,
-                                              textTransform: 'uppercase',
-                                              letterSpacing: '0.5px'
-                                            }}>
-                                              {price.label}
-                                            </Typography>
-                                            <Typography variant="h6" sx={{ 
-                                              color: '#FFFFFF', 
-                                              fontWeight: 700,
-                                              textShadow: '0 0 10px rgba(255, 255, 255, 0.3)'
-                                            }}>
-                                              ${price.value.toLocaleString('es-MX')}
-                                            </Typography>
-                                          </Card>
-                                        </motion.div>
-                                      </Grid>
-                                    ))}
-                                  </Grid>
-                                </Box>
-                                
-                                {/* CARACTERÍSTICAS PREMIUM */}
-                                {formData.features.length > 0 && (
-                                  <Box sx={{ mb: 4 }}>
-                                    <Typography variant="h5" sx={{ 
-                                      color: '#4ECDC4', 
-                                      mb: 3, 
-                                      fontWeight: 700,
-                                      textAlign: 'center'
-                                    }}>
-                                      ✨ Características Executive Incluidas
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
-                                      {formData.features.map((feature, index) => (
-                                        <motion.div
-                                          key={index}
-                                          initial={{ opacity: 0, scale: 0.8 }}
-                                          animate={{ opacity: 1, scale: 1 }}
-                                          transition={{ delay: index * 0.1 }}
-                                        >
-                                          <Chip
-                                            label={feature}
-                                            icon={<CheckCircleIcon />}
-                                            sx={{
-                                              background: 'linear-gradient(135deg, rgba(78, 205, 196, 0.2), rgba(78, 205, 196, 0.1))',
-                                              color: '#4ECDC4',
-                                              border: '1px solid rgba(78, 205, 196, 0.4)',
-                                              fontWeight: 600,
-                                              backdropFilter: 'blur(10px)',
-                                              boxShadow: '0 4px 15px rgba(78, 205, 196, 0.2)',
-                                              '& .MuiChip-icon': { color: '#4ECDC4' }
-                                            }}
-                                          />
-                                        </motion.div>
-                                      ))}
-                                    </Box>
-                                  </Box>
-                                )}
-                                
-                                {/* BENEFICIOS PRINCIPALES */}
-                                <Box sx={{ mb: 4 }}>
-                                  <Typography variant="h5" sx={{ 
-                                    color: '#FF6B35', 
-                                    mb: 3, 
-                                    fontWeight: 700,
-                                    textAlign: 'center'
-                                  }}>
-                                    🎯 Beneficios Premium Garantizados
-                                  </Typography>
-                                  <Grid container spacing={3}>
-                                    {[
-                                      { 
-                                        label: 'Acceso Total al Gimnasio', 
-                                        value: formData.gym_access,
-                                        icon: <FitnessCenterIcon />,
-                                        color: '#4ECDC4'
-                                      },
-                                      { 
-                                        label: 'Clases Grupales Elite', 
-                                        value: formData.classes_included,
-                                        icon: <GroupIcon />,
-                                        color: '#FF6B35'
-                                      },
-                                      { 
-                                        label: `${formData.guest_passes} Pases VIP de Invitado`, 
-                                        value: formData.guest_passes > 0,
-                                        icon: <GroupIcon />,
-                                        color: '#FFCC00'
-                                      }
-                                    ].filter(benefit => benefit.value).map((benefit, index) => (
-                                      <Grid key={index} size={{ xs: 12, sm: 6, md: 4 }}>
-                                        <motion.div whileHover={{ scale: 1.02, y: -3 }}>
-                                          <Card sx={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 2,
-                                            p: 3,
-                                            background: `linear-gradient(135deg, ${benefit.color}15, ${benefit.color}08)`,
-                                            border: `2px solid ${benefit.color}30`,
-                                            borderRadius: 3,
-                                            transition: 'all 0.3s ease',
-                                            backdropFilter: 'blur(10px)',
-                                            boxShadow: `0 8px 25px ${benefit.color}15`,
-                                            '&:hover': {
-                                              border: `2px solid ${benefit.color}60`,
-                                              boxShadow: `0 12px 35px ${benefit.color}25`
-                                            }
-                                          }}>
-                                            <Avatar sx={{ 
-                                              background: `linear-gradient(135deg, ${benefit.color}, ${benefit.color}CC)`,
-                                              width: 40,
-                                              height: 40,
-                                              color: '#000'
-                                            }}>
-                                              {benefit.icon}
-                                            </Avatar>
-                                            <Typography variant="body1" sx={{ 
-                                              color: '#FFFFFF', 
-                                              fontWeight: 600,
-                                              textShadow: '0 0 10px rgba(255, 255, 255, 0.2)'
-                                            }}>
-                                              {benefit.label}
-                                            </Typography>
-                                          </Card>
-                                        </motion.div>
-                                      </Grid>
-                                    ))}
-                                  </Grid>
-                                </Box>
-                                
-                                {/* RESTRICCIONES DE HORARIO */}
-                                {formData.has_time_restrictions && (
-                                  <Box sx={{ mb: 4 }}>
-                                    <Typography variant="h5" sx={{ 
-                                      color: '#45B7D1', 
-                                      mb: 3, 
-                                      fontWeight: 700,
-                                      textAlign: 'center'
-                                    }}>
-                                      🕐 Configuración de Acceso Temporal
-                                    </Typography>
-                                    <Grid container spacing={3}>
-                                      <Grid size={{ xs: 12, md: 6 }}>
-                                        <Card sx={{
-                                          background: 'linear-gradient(135deg, rgba(69, 183, 209, 0.12), rgba(69, 183, 209, 0.06))',
-                                          border: '2px solid rgba(69, 183, 209, 0.3)',
-                                          borderRadius: 3,
-                                          p: 3
-                                        }}>
-                                          <Typography variant="body1" sx={{ 
-                                            color: '#45B7D1', 
-                                            mb: 2, 
-                                            fontWeight: 700
-                                          }}>
-                                            📅 Días Permitidos:
-                                          </Typography>
-                                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                            {DAY_NAMES.filter(day => formData.allowed_days.includes(day.value)).map((day) => (
-                                              <Chip
-                                                key={day.value}
-                                                label={day.short}
-                                                size="small"
-                                                sx={{
-                                                  background: 'linear-gradient(135deg, #45B7D1, #4ECDC4)',
-                                                  color: '#000',
-                                                  fontWeight: 700,
-                                                  boxShadow: '0 2px 8px rgba(69, 183, 209, 0.3)'
-                                                }}
-                                              />
-                                            ))}
-                                          </Box>
-                                        </Card>
-                                      </Grid>
-                                      
-                                      <Grid size={{ xs: 12, md: 6 }}>
-                                        <Card sx={{
-                                          background: 'linear-gradient(135deg, rgba(69, 183, 209, 0.12), rgba(69, 183, 209, 0.06))',
-                                          border: '2px solid rgba(69, 183, 209, 0.3)',
-                                          borderRadius: 3,
-                                          p: 3
-                                        }}>
-                                          <Typography variant="body1" sx={{ 
-                                            color: '#45B7D1', 
-                                            mb: 2, 
-                                            fontWeight: 700
-                                          }}>
-                                            ⏰ Horarios de Acceso:
-                                          </Typography>
-                                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                            {formData.time_slots.map((slot, index) => (
-                                              <Chip
-                                                key={index}
-                                                label={`${slot.start} - ${slot.end}`}
-                                                icon={<AccessTimeIcon />}
-                                                size="small"
-                                                sx={{
-                                                  background: 'linear-gradient(135deg, #45B7D1, #4ECDC4)',
-                                                  color: '#000',
-                                                  fontWeight: 600,
-                                                  boxShadow: '0 2px 8px rgba(69, 183, 209, 0.3)',
-                                                  '& .MuiChip-icon': { color: '#000' }
-                                                }}
-                                              />
-                                            ))}
-                                          </Box>
-                                        </Card>
-                                      </Grid>
-                                    </Grid>
-                                  </Box>
-                                )}
-                                
-                                {/* VIGENCIA */}
-                                <Box sx={{ 
-                                  mt: 4, 
-                                  p: 3, 
-                                  background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.08), rgba(33, 150, 243, 0.04))', 
-                                  borderRadius: 3, 
-                                  border: '2px solid rgba(33, 150, 243, 0.3)',
-                                  textAlign: 'center'
+                              <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                                <Typography variant="h4" sx={{ mb: 1 }}>
+                                  {period.icon}
+                                </Typography>
+                                <Typography variant="h6" sx={{ 
+                                  color: period.color, 
+                                  mb: 1, 
+                                  fontWeight: 700
                                 }}>
-                                  <Typography variant="h6" sx={{ 
-                                    color: '#2196f3', 
-                                    fontWeight: 700,
-                                    textShadow: '0 0 10px rgba(33, 150, 243, 0.3)'
-                                  }}>
-                                    📅 Vigencia: {formData.validity_type === 'permanent' 
-                                      ? '♾️ Permanente (Sin fecha límite)' 
-                                      : `📊 ${formData.validity_start_date} → ${formData.validity_end_date}`
+                                  {period.label}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: darkProTokens.textSecondary, 
+                                  mb: 2, 
+                                  display: 'block'
+                                }}>
+                                  {period.duration}
+                                </Typography>
+                                <TextField
+                                  fullWidth
+                                  type="number"
+                                  value={formData[period.key as keyof PlanFormData] as number}
+                                  onChange={(e) => handleInputChange(period.key as keyof PlanFormData, parseFloat(e.target.value) || 0)}
+                                  sx={{
+                                    ...darkProFieldStyle,
+                                    '& .MuiOutlinedInput-root': {
+                                      backgroundColor: `${period.color}10`,
+                                      border: `2px solid ${period.color}20`,
                                     }
-                                  </Typography>
-                                </Box>
+                                  }}
+                                  InputProps={{
+                                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                  }}
+                                />
                               </CardContent>
                             </Card>
                           </motion.div>
                         </Grid>
-                        
-                        <Grid size={{ xs: 12, lg: 4 }}>
-                          {/* PANEL DE CONTROL ENTERPRISE */}
-                          <motion.div
-                            initial={{ opacity: 0, x: 30 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.6, delay: 0.3 }}
-                          >
-                            <Card sx={{
-                              background: `
-                                linear-gradient(135deg, 
-                                  rgba(255, 204, 0, 0.12) 0%, 
-                                  rgba(255, 107, 53, 0.08) 50%,
-                                  rgba(255, 204, 0, 0.06) 100%
-                                )
-                              `,
-                              border: '2px solid rgba(255, 204, 0, 0.3)',
-                              borderRadius: 4,
-                              p: 4,
-                              height: 'fit-content',
-                              position: 'sticky',
-                              top: 20,
-                              backdropFilter: 'blur(20px)',
-                              boxShadow: '0 25px 80px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 204, 0, 0.2)'
+                      ))}
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* 3. CARACTERÍSTICAS */}
+            <Accordion 
+              expanded={expandedAccordion === 'features'} 
+              onChange={() => setExpandedAccordion(expandedAccordion === 'features' ? false : 'features')}
+              sx={{
+                backgroundColor: 'transparent',
+                '&:before': { display: 'none' },
+                '& .MuiAccordionSummary-root': {
+                  background: expandedAccordion === 'features' 
+                    ? `${darkProTokens.success}15`
+                    : 'transparent',
+                  borderBottom: `1px solid ${darkProTokens.grayDark}`,
+                  minHeight: 80
+                }
+              }}
+            >
+              <AccordionSummary 
+                expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.success }} />}
+                sx={{ px: 4 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
+                  <Avatar sx={{ 
+                    background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+                    color: darkProTokens.textPrimary
+                  }}>
+                    <FeatureIcon />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5" sx={{ 
+                      color: darkProTokens.success, 
+                      fontWeight: 700
+                    }}>
+                      Características y Beneficios
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Defina las características incluidas en el plan
+                    </Typography>
+                  </Box>
+                  {formData.features.length > 0 && (
+                    <Badge badgeContent={formData.features.length}>
+                      <Chip 
+                        icon={<StarIcon />} 
+                        label="Características"
+                        sx={{ 
+                          bgcolor: `${darkProTokens.success}20`,
+                          color: darkProTokens.success,
+                          border: `1px solid ${darkProTokens.success}40`
+                        }}
+                      />
+                    </Badge>
+                  )}
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 4 }}>
+                <Grid container spacing={4}>
+                  {/* BENEFICIOS PRINCIPALES */}
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Card sx={{
+                      background: `${darkProTokens.success}10`,
+                      border: `2px solid ${darkProTokens.success}30`,
+                      borderRadius: 3,
+                      p: 3,
+                      height: '100%'
+                    }}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={formData.gym_access}
+                            onChange={(e) => handleInputChange('gym_access', e.target.checked)}
+                            sx={{
+                              '& .MuiSwitch-switchBase.Mui-checked': { 
+                                color: darkProTokens.success,
+                                '& + .MuiSwitch-track': { backgroundColor: darkProTokens.success }
+                              }
+                            }}
+                          />
+                        }
+                        label={
+                          <Box>
+                            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              🏋️ Acceso al Gimnasio
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Equipos y área completa de entrenamiento
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    </Card>
+                  </Grid>
+                  
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Card sx={{
+                      background: `${darkProTokens.info}10`,
+                      border: `2px solid ${darkProTokens.info}30`,
+                      borderRadius: 3,
+                      p: 3,
+                      height: '100%'
+                    }}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={formData.classes_included}
+                            onChange={(e) => handleInputChange('classes_included', e.target.checked)}
+                            sx={{
+                              '& .MuiSwitch-switchBase.Mui-checked': { 
+                                color: darkProTokens.info,
+                                '& + .MuiSwitch-track': { backgroundColor: darkProTokens.info }
+                              }
+                            }}
+                          />
+                        }
+                        label={
+                          <Box>
+                            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              🧘 Clases Grupales
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Yoga, pilates, spinning y más
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    </Card>
+                  </Grid>
+                  
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Card sx={{
+                      background: `${darkProTokens.warning}10`,
+                      border: `2px solid ${darkProTokens.warning}30`,
+                      borderRadius: 3,
+                      p: 3,
+                      height: '100%'
+                    }}>
+                      <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700, mb: 2 }}>
+                        👥 Pases de Invitado
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        value={formData.guest_passes}
+                        onChange={(e) => handleInputChange('guest_passes', parseInt(e.target.value) || 0)}
+                        sx={darkProFieldStyle}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <GroupIcon sx={{ color: darkProTokens.warning }} />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Card>
+                  </Grid>
+                  
+                  {/* CARACTERÍSTICAS PERSONALIZADAS */}
+                  <Grid size={12}>
+                    <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      mb: 3, 
+                      fontWeight: 700,
+                      textAlign: 'center'
+                    }}>
+                      Características Personalizadas
+                    </Typography>
+                    
+                    {/* AGREGAR NUEVA CARACTERÍSTICA */}
+                    <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                      <TextField
+                        fullWidth
+                        value={newFeature}
+                        onChange={(e) => setNewFeature(e.target.value)}
+                        placeholder="Escriba una característica personalizada..."
+                        sx={darkProFieldStyle}
+                      />
+                      <Button
+                        onClick={addFeature}
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        disabled={!newFeature.trim()}
+                        sx={{
+                          background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                          color: darkProTokens.background,
+                          minWidth: 120,
+                          '&:disabled': {
+                            bgcolor: darkProTokens.grayMedium,
+                            color: darkProTokens.textDisabled
+                          }
+                        }}
+                      >
+                        Agregar
+                      </Button>
+                    </Box>
+                    
+                    {/* CARACTERÍSTICAS POPULARES */}
+                    <Typography variant="body2" sx={{ 
+                      color: darkProTokens.textSecondary, 
+                      mb: 2,
+                      textAlign: 'center'
+                    }}>
+                      Características populares (clic para agregar):
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 4, justifyContent: 'center' }}>
+                      {PREDEFINED_FEATURES.filter(f => !formData.features.includes(f)).slice(0, 6).map((feature) => (
+                        <Chip
+                          key={feature}
+                          label={feature}
+                          onClick={() => addPredefinedFeature(feature)}
+                          sx={{
+                            bgcolor: `${darkProTokens.grayDark}40`,
+                            color: darkProTokens.textSecondary,
+                            border: `1px solid ${darkProTokens.grayDark}`,
+                            '&:hover': {
+                              bgcolor: `${darkProTokens.primary}20`,
+                              color: darkProTokens.primary,
+                              border: `1px solid ${darkProTokens.primary}40`,
+                              cursor: 'pointer'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    
+                    {/* CARACTERÍSTICAS SELECCIONADAS */}
+                    {formData.features.length > 0 && (
+                      <Card sx={{
+                        bgcolor: `${darkProTokens.success}10`,
+                        border: `2px solid ${darkProTokens.success}30`,
+                        borderRadius: 3,
+                        p: 3
+                      }}>
+                        <Typography variant="h6" sx={{ 
+                          color: darkProTokens.success, 
+                          mb: 2, 
+                          fontWeight: 700,
+                          textAlign: 'center'
+                        }}>
+                          Características Incluidas:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+                          {formData.features.map((feature, index) => (
+                            <Chip
+                              key={index}
+                              label={feature}
+                              onDelete={() => removeFeature(feature)}
+                              deleteIcon={<DeleteIcon />}
+                              sx={{
+                                bgcolor: `${darkProTokens.success}20`,
+                                color: darkProTokens.success,
+                                border: `1px solid ${darkProTokens.success}40`,
+                                '& .MuiChip-deleteIcon': { 
+                                  color: darkProTokens.success,
+                                  '&:hover': { color: darkProTokens.error }
+                                }
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      </Card>
+                    )}
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* 4. RESTRICCIONES DE HORARIO */}
+            <Accordion 
+              expanded={expandedAccordion === 'schedule'} 
+              onChange={() => setExpandedAccordion(expandedAccordion === 'schedule' ? false : 'schedule')}
+              sx={{
+                backgroundColor: 'transparent',
+                '&:before': { display: 'none' },
+                '& .MuiAccordionSummary-root': {
+                  background: expandedAccordion === 'schedule' 
+                    ? `${darkProTokens.warning}15`
+                    : 'transparent',
+                  borderBottom: `1px solid ${darkProTokens.grayDark}`,
+                  minHeight: 80
+                }
+              }}
+            >
+              <AccordionSummary 
+                expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.warning }} />}
+                sx={{ px: 4 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
+                  <Avatar sx={{ 
+                    background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+                    color: darkProTokens.background
+                  }}>
+                    <AccessTimeIcon />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5" sx={{ 
+                      color: darkProTokens.warning, 
+                      fontWeight: 700
+                    }}>
+                      Restricciones de Horario
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Configure días y horarios específicos de acceso
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    label={formData.has_time_restrictions ? 'CON RESTRICCIONES' : 'ACCESO COMPLETO'}
+                    sx={{
+                      bgcolor: formData.has_time_restrictions 
+                        ? `${darkProTokens.warning}20`
+                        : `${darkProTokens.success}20`,
+                      color: formData.has_time_restrictions ? darkProTokens.warning : darkProTokens.success,
+                      border: formData.has_time_restrictions 
+                        ? `1px solid ${darkProTokens.warning}40`
+                        : `1px solid ${darkProTokens.success}40`
+                    }}
+                  />
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 4 }}>
+                <Grid container spacing={4}>
+                  <Grid size={12}>
+                    <Card sx={{
+                      bgcolor: `${darkProTokens.warning}10`,
+                      border: `2px solid ${darkProTokens.warning}30`,
+                      borderRadius: 3,
+                      p: 3
+                    }}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={formData.has_time_restrictions}
+                            onChange={(e) => handleInputChange('has_time_restrictions', e.target.checked)}
+                            sx={{
+                              '& .MuiSwitch-switchBase.Mui-checked': { 
+                                color: darkProTokens.warning,
+                                '& + .MuiSwitch-track': { backgroundColor: darkProTokens.warning }
+                              }
+                            }}
+                          />
+                        }
+                        label={
+                          <Box>
+                            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              🕐 Aplicar Restricciones de Horario
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Limite el acceso a días y horarios específicos
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    </Card>
+                  </Grid>
+                  
+                  {formData.has_time_restrictions && (
+                    <AnimatePresence>
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{ width: '100%' }}
+                      >
+                        <Grid container spacing={4}>
+                          <Grid size={12}>
+                            <Typography variant="h6" sx={{ 
+                              color: darkProTokens.textPrimary, 
+                              mb: 2, 
+                              fontWeight: 700
                             }}>
-                              <Typography variant="h5" sx={{ 
-                                color: '#FFCC00', 
-                                mb: 4, 
-                                fontWeight: 800,
-                                textAlign: 'center',
-                                textShadow: '0 0 20px rgba(255, 204, 0, 0.3)'
+                              Días Permitidos
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                              {DAY_NAMES.map((day) => (
+                                <FormControlLabel
+                                  key={day.value}
+                                  control={
+                                    <Checkbox
+                                      checked={formData.allowed_days.includes(day.value)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          handleInputChange('allowed_days', [...formData.allowed_days, day.value]);
+                                        } else {
+                                          handleInputChange('allowed_days', formData.allowed_days.filter(d => d !== day.value));
+                                        }
+                                      }}
+                                      sx={{ 
+                                        color: darkProTokens.warning,
+                                        '&.Mui-checked': { color: darkProTokens.warning }
+                                      }}
+                                    />
+                                  }
+                                  label={
+                                    <Typography sx={{ color: darkProTokens.textPrimary }}>
+                                      {day.label}
+                                    </Typography>
+                                  }
+                                  sx={{
+                                    bgcolor: formData.allowed_days.includes(day.value) 
+                                      ? `${darkProTokens.warning}15`
+                                      : 'transparent',
+                                    border: `1px solid ${formData.allowed_days.includes(day.value) 
+                                      ? darkProTokens.warning + '40' 
+                                      : darkProTokens.grayDark}`,
+                                    borderRadius: 2,
+                                    p: 1,
+                                    minWidth: 120
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          </Grid>
+                          
+                          <Grid size={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                              <Typography variant="h6" sx={{ 
+                                color: darkProTokens.textPrimary, 
+                                fontWeight: 700
                               }}>
-                                🚀 Centro de Control Executive
+                                Horarios de Acceso
                               </Typography>
-                              
-                              {/* VALIDACIONES ENTERPRISE */}
-                              <Box sx={{ mb: 4 }}>
-                                <Typography variant="body1" sx={{ 
-                                  color: '#FFFFFF', 
-                                  mb: 3, 
-                                  fontWeight: 700,
+                              <Button
+                                onClick={addTimeSlot}
+                                variant="outlined"
+                                startIcon={<AddIcon />}
+                                sx={{
+                                  borderColor: darkProTokens.warning,
+                                  color: darkProTokens.warning,
+                                  '&:hover': {
+                                    borderColor: darkProTokens.warningHover,
+                                    bgcolor: `${darkProTokens.warning}10`
+                                  }
+                                }}
+                              >
+                                Agregar Horario
+                              </Button>
+                            </Box>
+                            
+                            <Stack spacing={2}>
+                              {formData.time_slots.map((slot, index) => (
+                                <Card key={index} sx={{
+                                  bgcolor: `${darkProTokens.warning}10`,
+                                  border: `1px solid ${darkProTokens.warning}30`,
+                                  p: 3
+                                }}>
+                                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                    <Typography sx={{ color: darkProTokens.warning, fontWeight: 700, minWidth: 80 }}>
+                                      Horario {index + 1}:
+                                    </Typography>
+                                    <TextField
+                                      label="Inicio"
+                                      type="time"
+                                      value={slot.start}
+                                      onChange={(e) => updateTimeSlot(index, 'start', e.target.value)}
+                                      InputLabelProps={{ shrink: true }}
+                                      sx={{ ...darkProFieldStyle, flex: 1 }}
+                                    />
+                                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                                      →
+                                    </Typography>
+                                    <TextField
+                                      label="Fin"
+                                      type="time"
+                                      value={slot.end}
+                                      onChange={(e) => updateTimeSlot(index, 'end', e.target.value)}
+                                      InputLabelProps={{ shrink: true }}
+                                      sx={{ ...darkProFieldStyle, flex: 1 }}
+                                    />
+                                    {formData.time_slots.length > 1 && (
+                                      <IconButton
+                                                                        onClick={() => removeTimeSlot(index)}
+                                        sx={{ 
+                                          color: darkProTokens.error,
+                                          '&:hover': {
+                                            bgcolor: `${darkProTokens.error}15`,
+                                            transform: 'scale(1.1)'
+                                          }
+                                        }}
+                                      >
+                                        <DeleteIcon />
+                                      </IconButton>
+                                    )}
+                                  </Box>
+                                </Card>
+                              ))}
+                            </Stack>
+                          </Grid>
+                        </Grid>
+                      </motion.div>
+                    </AnimatePresence>
+                  )}
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* 5. VISTA PREVIA Y GUARDADO */}
+            <Accordion 
+              expanded={expandedAccordion === 'preview'} 
+              onChange={() => setExpandedAccordion(expandedAccordion === 'preview' ? false : 'preview')}
+              sx={{
+                backgroundColor: 'transparent',
+                '&:before': { display: 'none' },
+                '& .MuiAccordionSummary-root': {
+                  background: expandedAccordion === 'preview' 
+                    ? `${darkProTokens.primary}15`
+                    : 'transparent',
+                  minHeight: 80
+                }
+              }}
+            >
+              <AccordionSummary 
+                expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.primary }} />}
+                sx={{ px: 4 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
+                  <Avatar sx={{ 
+                    background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                    color: darkProTokens.background
+                  }}>
+                    <PreviewIcon />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5" sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 700
+                    }}>
+                      Vista Previa y Guardado
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Revise la configuración completa antes de crear el plan
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    icon={<InfoIcon />} 
+                    label="Listo para Guardar"
+                    sx={{ 
+                      bgcolor: `${darkProTokens.primary}20`,
+                      color: darkProTokens.primary,
+                      border: `1px solid ${darkProTokens.primary}40`
+                    }}
+                  />
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 4 }}>
+                <Grid container spacing={4}>
+                  <Grid size={{ xs: 12, lg: 8 }}>
+                    {/* VISTA PREVIA DEL PLAN */}
+                    <Card sx={{
+                      background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}08)`,
+                      border: `2px solid ${darkProTokens.primary}40`,
+                      borderRadius: 3,
+                      overflow: 'hidden'
+                    }}>
+                      <CardContent sx={{ p: 4 }}>
+                        {/* HEADER */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+                          <Box>
+                            <Typography variant="h3" sx={{ 
+                              color: darkProTokens.primary, 
+                              fontWeight: 700,
+                              mb: 1
+                            }}>
+                              {formData.name || 'Nombre del Plan'}
+                            </Typography>
+                            <Typography variant="h6" sx={{ 
+                              color: darkProTokens.textSecondary, 
+                              mb: 2
+                            }}>
+                              {formData.description || 'Descripción del plan...'}
+                            </Typography>
+                          </Box>
+                          <Chip 
+                            label={formData.is_active ? 'ACTIVO' : 'INACTIVO'} 
+                            sx={{
+                              bgcolor: formData.is_active ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
+                              color: formData.is_active ? darkProTokens.success : darkProTokens.error,
+                              border: `1px solid ${formData.is_active ? darkProTokens.success : darkProTokens.error}40`,
+                              fontWeight: 700
+                            }}
+                          />
+                        </Box>
+                        
+                        <Divider sx={{ borderColor: `${darkProTokens.primary}40`, my: 3 }} />
+                        
+                        {/* PRECIOS */}
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="h5" sx={{ 
+                            color: darkProTokens.primary, 
+                            mb: 2, 
+                            fontWeight: 700
+                          }}>
+                            💰 Estructura de Precios
+                          </Typography>
+                          <Grid container spacing={2}>
+                            {[
+                              { label: 'Inscripción', value: formData.inscription_price, color: darkProTokens.warning },
+                              { label: 'Visita', value: formData.visit_price, color: darkProTokens.info },
+                              { label: 'Semanal', value: formData.weekly_price, color: darkProTokens.success },
+                              { label: 'Quincenal', value: formData.biweekly_price, color: darkProTokens.info },
+                              { label: 'Mensual', value: formData.monthly_price, color: darkProTokens.primary },
+                              { label: 'Bimestral', value: formData.bimonthly_price, color: darkProTokens.warning },
+                              { label: 'Trimestral', value: formData.quarterly_price, color: '#FF6B35' },
+                              { label: 'Semestral', value: formData.semester_price, color: '#9C27B0' },
+                              { label: 'Anual', value: formData.annual_price, color: '#45B7D1' }
+                            ].filter(price => price.value > 0).map((price) => (
+                              <Grid key={price.label} size={{ xs: 6, sm: 4, md: 3 }}>
+                                <Card sx={{
+                                  bgcolor: `${price.color}15`,
+                                  border: `1px solid ${price.color}30`,
+                                  borderRadius: 2,
+                                  p: 2,
                                   textAlign: 'center'
                                 }}>
-                                  📊 Estado de Configuración:
-                                </Typography>
-                                
-                                {[
-                                  { label: 'Información básica', check: !!formData.name.trim() && !!formData.description.trim() },
-                                  { label: 'Estructura de precios', check: formData.monthly_price > 0 || formData.visit_price > 0 },
-                                  { label: 'Características definidas', check: formData.features.length > 0 || formData.gym_access || formData.classes_included },
-                                  { label: 'Configuración temporal', check: !formData.has_time_restrictions || (formData.allowed_days.length > 0 && formData.time_slots.length > 0) },
-                                  { label: 'Validaciones completas', check: Object.keys(errors).length === 0 }
-                                ].map((validation, index) => (
-                                  <motion.div
-                                    key={index}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.1 }}
-                                  >
-                                    <Box sx={{ 
-                                      display: 'flex', 
-                                      alignItems: 'center', 
-                                      gap: 2, 
-                                      mb: 2,
-                                      p: 2,
-                                      background: validation.check 
-                                        ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05))'
-                                        : 'linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05))',
-                                      border: validation.check 
-                                        ? '1px solid rgba(76, 175, 80, 0.3)'
-                                        : '1px solid rgba(255, 152, 0, 0.3)',
-                                      borderRadius: 2,
-                                      transition: 'all 0.3s ease'
-                                    }}>
-                                      {validation.check ? (
-                                        <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 22 }} />
-                                      ) : (
-                                        <WarningIcon sx={{ color: '#ff9800', fontSize: 22 }} />
-                                      )}
-                                      <Typography variant="body2" sx={{ 
-                                        color: validation.check ? '#4caf50' : '#ff9800',
-                                        fontWeight: 600,
-                                        flex: 1
-                                      }}>
-                                        {validation.label}
-                                      </Typography>
-                                    </Box>
-                                  </motion.div>
-                                ))}
-                              </Box>
-                              
-                              <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.3)', my: 3, borderWidth: 2 }} />
-                              
-                              {/* INFORMACIÓN DEL USUARIO */}
-                              <Box sx={{ mb: 4 }}>
-                                <Typography variant="body2" sx={{ 
-                                  color: 'rgba(255, 255, 255, 0.7)', 
-                                  mb: 2,
-                                  textAlign: 'center',
-                                  fontWeight: 600
-                                }}>
-                                  👤 Configurado por:
-                                </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: price.color, 
+                                    fontWeight: 700
+                                  }}>
+                                    {price.label}
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ 
+                                    color: darkProTokens.textPrimary, 
+                                    fontWeight: 700
+                                  }}>
+                                    ${price.value.toLocaleString('es-MX')}
+                                  </Typography>
+                                </Card>
+                              </Grid>
+                            ))}
+                          </Grid>
+                        </Box>
+                        
+                        {/* CARACTERÍSTICAS */}
+                        {formData.features.length > 0 && (
+                          <Box sx={{ mb: 3 }}>
+                            <Typography variant="h5" sx={{ 
+                              color: darkProTokens.success, 
+                              mb: 2, 
+                              fontWeight: 700
+                            }}>
+                              ✨ Características Incluidas
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                              {formData.features.map((feature, index) => (
+                                <Chip
+                                  key={index}
+                                  label={feature}
+                                  icon={<CheckCircleIcon />}
+                                  sx={{
+                                    bgcolor: `${darkProTokens.success}20`,
+                                    color: darkProTokens.success,
+                                    border: `1px solid ${darkProTokens.success}40`,
+                                    '& .MuiChip-icon': { color: darkProTokens.success }
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+                        
+                        {/* BENEFICIOS */}
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="h5" sx={{ 
+                            color: darkProTokens.info, 
+                            mb: 2, 
+                            fontWeight: 700
+                          }}>
+                            🎯 Beneficios Principales
+                          </Typography>
+                          <Grid container spacing={2}>
+                            {[
+                              { 
+                                label: 'Acceso al Gimnasio', 
+                                value: formData.gym_access,
+                                icon: <FitnessCenterIcon />
+                              },
+                              { 
+                                label: 'Clases Grupales', 
+                                value: formData.classes_included,
+                                icon: <GroupIcon />
+                              },
+                              { 
+                                label: `${formData.guest_passes} Pases de Invitado`, 
+                                value: formData.guest_passes > 0,
+                                icon: <GroupIcon />
+                              }
+                            ].filter(benefit => benefit.value).map((benefit, index) => (
+                              <Grid key={index} size={{ xs: 12, sm: 6 }}>
                                 <Box sx={{ 
                                   display: 'flex', 
                                   alignItems: 'center', 
                                   gap: 2,
                                   p: 2,
-                                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))',
-                                  borderRadius: 3,
-                                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                                  bgcolor: `${darkProTokens.info}10`,
+                                  border: `1px solid ${darkProTokens.info}30`,
+                                  borderRadius: 2
                                 }}>
                                   <Avatar sx={{ 
-                                    background: 'linear-gradient(135deg, #2196f3, #21CBF3)',
-                                    width: 32, 
-                                    height: 32,
-                                    fontSize: '1rem',
-                                    fontWeight: 700
+                                    bgcolor: darkProTokens.info,
+                                    color: darkProTokens.textPrimary,
+                                    width: 32,
+                                    height: 32
                                   }}>
-                                    {currentUser?.email?.charAt(0).toUpperCase() || 'L'}
+                                    {benefit.icon}
                                   </Avatar>
-                                  <Box>
-                                    <Typography variant="body2" sx={{ 
-                                      color: '#FFFFFF', 
-                                      fontWeight: 600
-                                    }}>
-                                      {currentUser?.email || 'luishdz04@admin.com'}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ 
-                                      color: 'rgba(255, 255, 255, 0.6)',
-                                      fontWeight: 500
-                                    }}>
-                                      7 de junio de 2025 • 16:23 UTC
-                                    </Typography>
-                                  </Box>
+                                  <Typography sx={{ 
+                                    color: darkProTokens.textPrimary, 
+                                    fontWeight: 600
+                                  }}>
+                                    {benefit.label}
+                                  </Typography>
                                 </Box>
-                              </Box>
-                              
-                              {/* BOTONES DE ACCIÓN ENTERPRISE */}
-                              <Stack spacing={3}>
-                                <motion.div
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                >
-                                  <Button
-                                    variant="contained"
-                                    size="large"
-                                    fullWidth
-                                    onClick={handleSave}
-                                    disabled={loading || !formData.name.trim() || !formData.description.trim()}
-                                    startIcon={loading ? <CircularProgress size={22} sx={{ color: '#000' }} /> : <PublishIcon />}
-                                    sx={{
-                                      background: 'linear-gradient(135deg, #FFCC00 0%, #FF6B35 50%, #FFCC00 100%)',
-                                      color: '#000000',
-                                      fontWeight: 800,
-                                      py: 2,
-                                      fontSize: '1.1rem',
-                                      borderRadius: 3,
-                                      textTransform: 'none',
-                                      letterSpacing: '0.5px',
-                                      boxShadow: '0 8px 30px rgba(255, 204, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                                      border: '2px solid rgba(255, 204, 0, 0.3)',
-                                      '&:hover': { 
-                                        background: 'linear-gradient(135deg, #FF6B35 0%, #FFCC00 50%, #FF6B35 100%)',
-                                        transform: 'translateY(-3px)',
-                                        boxShadow: '0 15px 40px rgba(255, 204, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
-                                        border: '2px solid rgba(255, 204, 0, 0.6)',
-                                      },
-                                      '&:active': {
-                                        transform: 'translateY(-1px)',
-                                      },
-                                      '&:disabled': {
-                                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
-                                        color: 'rgba(255, 255, 255, 0.3)',
-                                        border: '2px solid rgba(255, 255, 255, 0.1)',
-                                        boxShadow: 'none'
-                                      },
-                                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-                                    }}
-                                  >
-                                    {loading ? 'Publicando Plan Elite...' : '🚀 Publicar Plan Executive'}
-                                  </Button>
-                                </motion.div>
-                                
-                                <motion.div
-                                  whileHover={{ scale: 1.01 }}
-                                  whileTap={{ scale: 0.99 }}
-                                >
-                                  <Button
-                                    variant="outlined"
-                                    size="large"
-                                    fullWidth
-                                    onClick={() => router.push('/dashboard/admin/planes')}
-                                    disabled={loading}
-                                    startIcon={<ArrowBackIcon />}
-                                    sx={{
-                                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                                      color: 'rgba(255, 255, 255, 0.9)',
-                                      fontWeight: 600,
-                                      py: 1.5,
-                                      borderRadius: 3,
-                                      textTransform: 'none',
-                                      backdropFilter: 'blur(10px)',
-                                      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01))',
-                                      '&:hover': {
-                                        borderColor: 'rgba(255, 255, 255, 0.5)',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                                        color: '#FFFFFF',
-                                        transform: 'translateY(-1px)',
-                                        boxShadow: '0 4px 15px rgba(255, 255, 255, 0.1)'
-                                      },
-                                      '&:disabled': {
-                                        borderColor: 'rgba(255, 255, 255, 0.1)',
-                                        color: 'rgba(255, 255, 255, 0.3)'
-                                      },
-                                      transition: 'all 0.3s ease'
-                                    }}
-                                  >
-                                    ← Volver al Dashboard
-                                  </Button>
-                                </motion.div>
-                              </Stack>
-                              
-                              {/* ESTADÍSTICAS RÁPIDAS */}
-                              <Box sx={{ 
-                                mt: 4, 
-                                p: 3, 
-                                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01))',
-                                borderRadius: 3,
-                                border: '1px solid rgba(255, 255, 255, 0.1)'
-                              }}>
-                                <Typography variant="body2" sx={{ 
-                                  color: 'rgba(255, 255, 255, 0.7)', 
-                                  mb: 2,
-                                  textAlign: 'center',
+                              </Grid>
+                            ))}
+                          </Grid>
+                        </Box>
+                        
+                        {/* RESTRICCIONES */}
+                        {formData.has_time_restrictions && (
+                          <Box>
+                            <Typography variant="h5" sx={{ 
+                              color: darkProTokens.warning, 
+                              mb: 2, 
+                              fontWeight: 700
+                            }}>
+                              🕐 Restricciones de Acceso
+                            </Typography>
+                            <Grid container spacing={2}>
+                              <Grid size={{ xs: 12, md: 6 }}>
+                                <Typography variant="body1" sx={{ 
+                                  color: darkProTokens.warning, 
+                                  mb: 1, 
                                   fontWeight: 600
                                 }}>
-                                  📈 Resumen de Configuración:
+                                  Días Permitidos:
                                 </Typography>
-                                <Grid container spacing={2}>
-                                  <Grid size={6}>
-                                    <Box sx={{ textAlign: 'center' }}>
-                                      <Typography variant="h6" sx={{ color: '#4ECDC4', fontWeight: 700 }}>
-                                        {formData.features.length}
-                                      </Typography>
-                                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                        Características
-                                      </Typography>
-                                    </Box>
-                                  </Grid>
-                                  <Grid size={6}>
-                                    <Box sx={{ textAlign: 'center' }}>
-                                      <Typography variant="h6" sx={{ color: '#FF6B35', fontWeight: 700 }}>
-                                        {[formData.inscription_price, formData.visit_price, formData.weekly_price, formData.monthly_price, formData.quarterly_price, formData.annual_price].filter(p => p > 0).length}
-                                      </Typography>
-                                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                        Modalidades
-                                      </Typography>
-                                    </Box>
-                                  </Grid>
-                                  <Grid size={6}>
-                                    <Box sx={{ textAlign: 'center' }}>
-                                      <Typography variant="h6" sx={{ color: '#45B7D1', fontWeight: 700 }}>
-                                        {formData.has_time_restrictions ? formData.allowed_days.length : 7}
-                                      </Typography>
-                                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                        Días Activos
-                                      </Typography>
-                                    </Box>
-                                  </Grid>
-                                  <Grid size={6}>
-                                    <Box sx={{ textAlign: 'center' }}>
-                                      <Typography variant="h6" sx={{ color: '#FFCC00', fontWeight: 700 }}>
-                                        {formData.guest_passes}
-                                      </Typography>
-                                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                        Pases VIP
-                                      </Typography>
-                                    </Box>
-                                  </Grid>
-                                </Grid>
-                              </Box>
-                            </Card>
-                          </motion.div>
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                  {DAY_NAMES.filter(day => formData.allowed_days.includes(day.value)).map((day) => (
+                                    <Chip
+                                      key={day.value}
+                                      label={day.short}
+                                      size="small"
+                                      sx={{
+                                        bgcolor: darkProTokens.warning,
+                                        color: darkProTokens.background,
+                                        fontWeight: 700
+                                      }}
+                                    />
+                                  ))}
+                                </Box>
+                              </Grid>
+                              
+                              <Grid size={{ xs: 12, md: 6 }}>
+                                <Typography variant="body1" sx={{ 
+                                  color: darkProTokens.warning, 
+                                  mb: 1, 
+                                  fontWeight: 600
+                                }}>
+                                  Horarios:
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                  {formData.time_slots.map((slot, index) => (
+                                    <Chip
+                                      key={index}
+                                      label={`${slot.start} - ${slot.end}`}
+                                      icon={<AccessTimeIcon />}
+                                      size="small"
+                                      sx={{
+                                        bgcolor: `${darkProTokens.warning}20`,
+                                        color: darkProTokens.warning,
+                                        border: `1px solid ${darkProTokens.warning}40`,
+                                        '& .MuiChip-icon': { color: darkProTokens.warning }
+                                      }}
+                                    />
+                                  ))}
+                                </Box>
+                              </Grid>
+                            </Grid>
+                          </Box>
+                        )}
+                        
+                        {/* VIGENCIA */}
+                        <Box sx={{ 
+                          mt: 3, 
+                          p: 2, 
+                          bgcolor: `${darkProTokens.info}10`, 
+                          borderRadius: 2, 
+                          border: `1px solid ${darkProTokens.info}30`,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="h6" sx={{ 
+                            color: darkProTokens.info, 
+                            fontWeight: 700
+                          }}>
+                            📅 Vigencia: {formData.validity_type === 'permanent' 
+                              ? 'Permanente' 
+                              : `${formData.validity_start_date} → ${formData.validity_end_date}`
+                            }
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  
+                  <Grid size={{ xs: 12, lg: 4 }}>
+                    {/* PANEL DE CONTROL */}
+                    <Card sx={{
+                      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                      border: `1px solid ${darkProTokens.grayDark}`,
+                      borderRadius: 3,
+                      p: 3,
+                      position: 'sticky',
+                      top: 20
+                    }}>
+                      <Typography variant="h5" sx={{ 
+                        color: darkProTokens.primary, 
+                        mb: 3, 
+                        fontWeight: 700,
+                        textAlign: 'center'
+                      }}>
+                        🚀 Centro de Control
+                      </Typography>
+                      
+                      {/* VALIDACIONES */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="body1" sx={{ 
+                          color: darkProTokens.textPrimary, 
+                          mb: 2, 
+                          fontWeight: 700
+                        }}>
+                          Estado de Configuración:
+                        </Typography>
+                        
+                        {[
+                          { label: 'Información básica', check: !!formData.name.trim() && !!formData.description.trim() },
+                          { label: 'Precios configurados', check: formData.monthly_price > 0 || formData.visit_price > 0 },
+                          { label: 'Características definidas', check: formData.features.length > 0 || formData.gym_access || formData.classes_included },
+                          { label: 'Configuración válida', check: Object.keys(errors).length === 0 }
+                        ].map((validation, index) => (
+                          <Box key={index} sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 2, 
+                            mb: 1,
+                            p: 1,
+                            bgcolor: validation.check 
+                              ? `${darkProTokens.success}10`
+                              : `${darkProTokens.warning}10`,
+                            border: validation.check 
+                              ? `1px solid ${darkProTokens.success}30`
+                              : `1px solid ${darkProTokens.warning}30`,
+                            borderRadius: 1
+                          }}>
+                            {validation.check ? (
+                              <CheckCircleIcon sx={{ color: darkProTokens.success, fontSize: 20 }} />
+                            ) : (
+                              <WarningIcon sx={{ color: darkProTokens.warning, fontSize: 20 }} />
+                            )}
+                            <Typography variant="body2" sx={{ 
+                              color: validation.check ? darkProTokens.success : darkProTokens.warning,
+                              fontWeight: 600,
+                              flex: 1
+                            }}>
+                              {validation.label}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                      
+                      <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
+                      
+                      {/* INFORMACIÓN DEL USUARIO */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="body2" sx={{ 
+                          color: darkProTokens.textSecondary, 
+                          mb: 1
+                        }}>
+                          Configurado por:
+                        </Typography>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 2,
+                          p: 2,
+                          bgcolor: darkProTokens.surfaceLevel1,
+                          borderRadius: 2,
+                          border: `1px solid ${darkProTokens.grayDark}`
+                        }}>
+                          <Avatar sx={{ 
+                            bgcolor: darkProTokens.primary,
+                            color: darkProTokens.background,
+                            width: 32, 
+                            height: 32,
+                            fontWeight: 700
+                          }}>
+                            L
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" sx={{ 
+                              color: darkProTokens.textPrimary, 
+                              fontWeight: 600
+                            }}>
+                              luishdz04
+                            </Typography>
+                            <Typography variant="caption" sx={{ 
+                              color: darkProTokens.textSecondary
+                            }}>
+                              11 de junio de 2025 • 23:53 UTC
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                      
+                      {/* BOTONES DE ACCIÓN */}
+                      <Stack spacing={2}>
+                        <Button
+                          variant="contained"
+                          size="large"
+                          fullWidth
+                          onClick={handleSave}
+                          disabled={loading || !formData.name.trim() || !formData.description.trim()}
+                          startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+                          sx={{
+                            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                            color: darkProTokens.background,
+                            fontWeight: 700,
+                            py: 1.5,
+                            borderRadius: 2,
+                            '&:hover': { 
+                              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                              transform: 'translateY(-2px)',
+                              boxShadow: `0 6px 20px ${darkProTokens.primary}40`
+                            },
+                            '&:disabled': {
+                              bgcolor: darkProTokens.grayMedium,
+                              color: darkProTokens.textDisabled
+                            },
+                            transition: 'all 0.3s ease'
+                          }}
+                        >
+                          {loading ? 'Creando Plan...' : '💾 Crear Plan MUP'}
+                        </Button>
+                        
+                        <Button
+                          variant="outlined"
+                          size="large"
+                          fullWidth
+                          onClick={() => router.push('/dashboard/admin/planes')}
+                          disabled={loading}
+                          startIcon={<ArrowBackIcon />}
+                          sx={{
+                            borderColor: darkProTokens.grayDark,
+                            color: darkProTokens.textSecondary,
+                            '&:hover': {
+                              borderColor: darkProTokens.textSecondary,
+                              bgcolor: darkProTokens.hoverOverlay,
+                              color: darkProTokens.textPrimary
+                            },
+                            '&:disabled': {
+                              borderColor: darkProTokens.grayDark,
+                              color: darkProTokens.textDisabled
+                            }
+                          }}
+                        >
+                          ← Volver a Planes
+                        </Button>
+                      </Stack>
+                      
+                      {/* ESTADÍSTICAS RÁPIDAS */}
+                      <Box sx={{ 
+                        mt: 3, 
+                        p: 2, 
+                        bgcolor: darkProTokens.surfaceLevel1,
+                        borderRadius: 2,
+                        border: `1px solid ${darkProTokens.grayDark}`
+                      }}>
+                        <Typography variant="body2" sx={{ 
+                          color: darkProTokens.textSecondary, 
+                          mb: 1,
+                          textAlign: 'center'
+                        }}>
+                          Resumen de Configuración:
+                        </Typography>
+                        <Grid container spacing={1}>
+                          <Grid size={6}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                                {formData.features.length}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                Características
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid size={6}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
+                                {[
+                                  formData.inscription_price, 
+                                  formData.visit_price, 
+                                  formData.weekly_price, 
+                                  formData.biweekly_price,
+                                  formData.monthly_price, 
+                                  formData.bimonthly_price,
+                                  formData.quarterly_price, 
+                                  formData.semester_price,
+                                  formData.annual_price
+                                ].filter(p => p > 0).length}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                Modalidades
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid size={6}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                                {formData.has_time_restrictions ? formData.allowed_days.length : 7}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                Días Activos
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid size={6}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                                {formData.guest_passes}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                Pases VIP
+                              </Typography>
+                            </Box>
+                          </Grid>
                         </Grid>
-                      </Grid>
-                    </AccordionDetails>
-                  </Accordion>
-                </Paper>
-              </motion.div>
-            </Box>
-          </Container>
-        </Box>
-      );
-    }
+                      </Box>
+                    </Card>
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          </Paper>
+        </motion.div>
+      </Container>
+    </Box>
+  );
+}
