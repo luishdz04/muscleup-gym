@@ -57,14 +57,12 @@ export default function LayawayDialog({
   onSuccess 
 }: LayawayDialogProps) {
 
-  // ✅ ESTADOS CONTROLADOS
   const [activeStep, setActiveStep] = useState(0);
   const [depositPercentage, setDepositPercentage] = useState(50);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [processing, setProcessing] = useState(false);
   const [completed, setCompleted] = useState(false);
 
-  // ✅ CÁLCULOS SEGUROS CON useMemo
   const calculations = useMemo(() => {
     const total = totals?.total || 0;
     const deposit = total * (depositPercentage / 100);
@@ -77,7 +75,6 @@ export default function LayawayDialog({
     };
   }, [totals?.total, depositPercentage]);
 
-  // ✅ FUNCIÓN DE PROCESAMIENTO
   const handleCreateLayaway = useCallback(() => {
     setProcessing(true);
     
@@ -88,7 +85,6 @@ export default function LayawayDialog({
       setTimeout(() => {
         onSuccess();
         onClose();
-        // Reset
         setCompleted(false);
         setActiveStep(0);
         setPaymentMethod('');
@@ -96,7 +92,6 @@ export default function LayawayDialog({
     }, 1500);
   }, [onSuccess, onClose]);
 
-  // ✅ RESET AL CERRAR
   const handleClose = useCallback(() => {
     setCompleted(false);
     setProcessing(false);
@@ -105,11 +100,11 @@ export default function LayawayDialog({
     onClose();
   }, [onClose]);
 
-  // ✅ VALIDACIÓN DE STEPS
   const canProceedToNextStep = useCallback(() => {
     switch (activeStep) {
       case 0: return calculations.depositAmount > 0;
       case 1: return paymentMethod !== '';
+      case 2: return true; // ✅ Paso final siempre válido
       default: return false;
     }
   }, [activeStep, calculations.depositAmount, paymentMethod]);
@@ -146,7 +141,7 @@ export default function LayawayDialog({
         <Box display="flex" alignItems="center" gap={2}>
           <BookmarkIcon />
           <Typography variant="h5" fontWeight="bold">
-            📦 Apartado Intermedio (Con Stepper)
+            📦 Apartado FUNCIONAL (Corregido)
           </Typography>
         </Box>
         <Button onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}>
@@ -157,7 +152,6 @@ export default function LayawayDialog({
       <DialogContent sx={{ p: 3 }}>
         {!completed ? (
           <Box>
-            {/* Cliente */}
             {customer && (
               <Alert severity="success" sx={{ mb: 3 }}>
                 <Typography variant="h6">
@@ -167,7 +161,6 @@ export default function LayawayDialog({
             )}
 
             <Grid container spacing={4}>
-              {/* Stepper */}
               <Grid size={{ xs: 12, md: 8 }}>
                 <Card sx={{ background: 'rgba(51, 51, 51, 0.8)', p: 2 }}>
                   <Stepper activeStep={activeStep} orientation="vertical">
@@ -230,10 +223,39 @@ export default function LayawayDialog({
                               <Typography variant="h6" sx={{ color: '#FFCC00', mb: 2 }}>
                                 ✅ Confirmar Apartado
                               </Typography>
-                              <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                              <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 3 }}>
                                 Anticipo: {formatPrice(calculations.depositAmount)} 
                                 ({paymentMethods.find(m => m.value === paymentMethod)?.label})
                               </Typography>
+                              
+                              {/* ✅ BOTÓN DE CONFIRMACIÓN FINAL */}
+                              <Box sx={{ 
+                                mt: 3, 
+                                p: 3, 
+                                background: 'rgba(156, 39, 176, 0.2)', 
+                                borderRadius: 2, 
+                                textAlign: 'center' 
+                              }}>
+                                <Typography variant="h6" sx={{ color: '#FFFFFF', mb: 2 }}>
+                                  ¿Confirmar creación del apartado?
+                                </Typography>
+                                <Button
+                                  variant="contained"
+                                  onClick={handleCreateLayaway}
+                                  disabled={processing}
+                                  startIcon={processing ? null : <BookmarkIcon />}
+                                  sx={{
+                                    background: 'linear-gradient(135deg, #4caf50, #388e3c)',
+                                    color: '#FFFFFF',
+                                    fontWeight: 'bold',
+                                    px: 4,
+                                    py: 1.5,
+                                    fontSize: '1.1rem'
+                                  }}
+                                >
+                                  {processing ? 'Procesando...' : '✅ CREAR APARTADO'}
+                                </Button>
+                              </Box>
                             </Box>
                           )}
 
@@ -248,16 +270,7 @@ export default function LayawayDialog({
                               ← Anterior
                             </Button>
                             
-                            {activeStep === steps.length - 1 ? (
-                              <Button
-                                variant="contained"
-                                onClick={handleCreateLayaway}
-                                disabled={!canProceedToNextStep()}
-                                sx={{ background: '#9c27b0' }}
-                              >
-                                Crear Apartado
-                              </Button>
-                            ) : (
+                            {activeStep < steps.length - 1 && (
                               <Button
                                 variant="contained"
                                 onClick={() => setActiveStep(prev => prev + 1)}
@@ -275,7 +288,6 @@ export default function LayawayDialog({
                 </Card>
               </Grid>
 
-              {/* Resumen */}
               <Grid size={{ xs: 12, md: 4 }}>
                 <Card sx={{ background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.3)' }}>
                   <CardContent>
@@ -309,7 +321,6 @@ export default function LayawayDialog({
             </Grid>
           </Box>
         ) : (
-          // Confirmación
           <Box textAlign="center" sx={{ py: 4 }}>
             <CheckIcon sx={{ fontSize: 80, color: '#4caf50', mb: 2 }} />
             <Typography variant="h4" color="#4caf50" fontWeight="bold">
