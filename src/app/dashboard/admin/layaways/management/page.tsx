@@ -32,7 +32,7 @@ import {
   Tooltip,
   CircularProgress
 } from '@mui/material';
-import Grid from '@mui/material/Grid'; // ✅ CORREGIDO: Grid normal
+import Grid from '@mui/material/Grid';
 import {
   Search as SearchIcon,
   Payments as PaymentIcon,
@@ -40,7 +40,6 @@ import {
   Cancel as CancelIcon,
   Visibility as ViewIcon,
   Add as AddPaymentIcon,
-  History as HistoryIcon,
   Warning as WarningIcon,
   CheckCircle as CheckIcon,
   Schedule as PendingIcon,
@@ -75,8 +74,6 @@ interface Layaway {
   created_at: string;
   last_payment_date?: string;
   notes?: string;
-  items_count?: number;
-  payment_count?: number;
 }
 
 interface LayawayStats {
@@ -95,7 +92,6 @@ export default function LayawayManagementPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedLayaway, setSelectedLayaway] = useState<Layaway | null>(null);
   const [stats, setStats] = useState<LayawayStats>({
     activeCount: 0,
     expiringCount: 0,
@@ -105,11 +101,11 @@ export default function LayawayManagementPage() {
     totalPending: 0,
     totalCollected: 0
   });
-  const [refreshKey, setRefreshKey] = useState(0); // ✅ Para forzar actualización manual
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ TABS ESTÁTICOS - No causan re-renders infinitos
+  // ✅ TABS ESTÁTICOS
   const tabsData = useMemo(() => [
     { 
       label: 'Activos', 
@@ -139,9 +135,9 @@ export default function LayawayManagementPage() {
       icon: <CheckIcon />,
       count: stats.completedCount
     }
-  ], [stats]); // ✅ Solo depende de stats
+  ], [stats]);
 
-  // ✅ CARGAR ESTADÍSTICAS - Optimizado
+  // ✅ CARGAR ESTADÍSTICAS
   const loadStats = useCallback(async () => {
     try {
       console.log('📊 Cargando estadísticas...');
@@ -203,7 +199,7 @@ export default function LayawayManagementPage() {
     }
   }, [supabase]);
 
-  // ✅ CARGAR APARTADOS - Con nombres de clientes corregido
+  // ✅ CARGAR APARTADOS - CORREGIDO CON TABLA CORRECTA
   const loadLayaways = useCallback(async () => {
     setLoading(true);
     try {
@@ -262,44 +258,77 @@ export default function LayawayManagementPage() {
         return;
       }
 
-      // ✅ OBTENER CLIENTES - Query separado y optimizado
+      // ✅ OBTENER CLIENTES - CORREGIDO: Tabla "Users" con campos correctos
       const customerIds = [...new Set(salesData.map(s => s.customer_id).filter(Boolean))];
       console.log(`👥 Obteniendo datos de ${customerIds.length} clientes únicos:`, customerIds);
 
       let customersData: any[] = [];
       if (customerIds.length > 0) {
+        // ✅ CORREGIDO: Tabla "Users" (mayúscula) con campos firstName, lastName, email, whatsapp
         const { data: customers, error: customerError } = await supabase
-          .from('users')
-          .select('id, name, email, whatsapp')
+          .from('Users') // ✅ CORREGIDO: "Users" con U mayúscula
+          .select('id, firstName, lastName, name, email, whatsapp') // ✅ CORREGIDO: Campos correctos
           .in('id', customerIds);
 
         if (customerError) {
-          console.error('❌ Error obteniendo clientes:', customerError);
+          console.error('❌ Error obteniendo clientes de tabla Users:', customerError);
+          console.error('❌ Detalles del error:', customerError.message);
         } else {
           customersData = customers || [];
-          console.log(`✅ ${customersData.length} clientes obtenidos:`, customersData.map(c => ({ id: c.id, name: c.name })));
+          console.log(`✅ ${customersData.length} clientes obtenidos de tabla Users:`, 
+            customersData.map(c => ({ 
+              id: c.id, 
+              firstName: c.firstName, 
+              lastName: c.lastName, 
+              name: c.name,
+              fullName: c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim()
+            }))
+          );
         }
       }
 
-      // ✅ COMBINAR DATOS - Apartados con clientes
+      // ✅ COMBINAR DATOS - CORREGIDO: Usar firstName + lastName o name
       const layawaysWithCustomers = salesData.map(layaway => {
         const customer = customersData.find(c => c.id === layaway.customer_id);
         
+        // ✅ LÓGICA CORREGIDA PARA NOMBRES
+        let customerName = 'Cliente General';
+        if (customer) {
+          if (customer.name) {
+            customerName = customer.name;
+          } else if (customer.firstName) {
+            customerName = `${customer.firstName} ${customer.lastName || ''}`.trim();
+          }
+        }
+
         const result = {
           ...layaway,
-          customer_name: customer?.name || 'Cliente General',
+          customer_name: customerName,
           customer_email: customer?.email || '',
           customer_phone: customer?.whatsapp || ''
         };
 
-        // Debug log para cada apartado
-        console.log(`🔗 Apartado ${layaway.sale_number}: customer_id=${layaway.customer_id} → name=${result.customer_name}`);
+        // Debug detallado
+        console.log(`🔗 Apartado ${layaway.sale_number}:`);
+        console.log(`   customer_id: ${layaway.customer_id}`);
+        console.log(`   customer encontrado:`, customer ? 'SÍ' : 'NO');
+        if (customer) {
+          console.log(`   firstName: ${customer.firstName}`);
+          console.log(`   lastName: ${customer.lastName}`);
+          console.log(`   name: ${customer.name}`);
+          console.log(`   nombre final: ${customerName}`);
+        }
         
         return result;
       });
 
       setLayaways(layawaysWithCustomers);
       console.log(`🎯 ${layawaysWithCustomers.length} apartados procesados con clientes`);
+
+      // ✅ ESTADÍSTICAS DE DEBUG
+      const realCustomers = layawaysWithCustomers.filter(l => l.customer_name !== 'Cliente General').length;
+      const genericCustomers = layawaysWithCustomers.filter(l => l.customer_name === 'Cliente General').length;
+      console.log(`📊 Debug final: ${realCustomers} con nombre real, ${genericCustomers} sin nombre`);
 
     } catch (error) {
       console.error('💥 Error cargando apartados:', error);
@@ -308,18 +337,18 @@ export default function LayawayManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchTerm, supabase, tabsData]); // ✅ Dependencias estables
+  }, [activeTab, searchTerm, supabase, tabsData]);
 
-  // ✅ EFECTOS CONTROLADOS - Sin loops infinitos
+  // ✅ EFECTOS CONTROLADOS
   useEffect(() => {
     console.log('🔄 Efecto de estadísticas ejecutándose...');
     loadStats();
-  }, [refreshKey]); // ✅ Solo depende de refreshKey manual
+  }, [refreshKey]);
 
   useEffect(() => {
     console.log('🔄 Efecto de apartados ejecutándose...');
     loadLayaways();
-  }, [activeTab, searchTerm, refreshKey]); // ✅ Dependencias estables
+  }, [activeTab, searchTerm, refreshKey]);
 
   // ✅ FUNCIÓN DE ACTUALIZACIÓN MANUAL
   const handleRefresh = useCallback(() => {
@@ -328,7 +357,7 @@ export default function LayawayManagementPage() {
     showNotification('Actualizando datos...', 'info');
   }, []);
 
-  // ✅ FUNCIONES AUXILIARES - Optimizadas
+  // ✅ FUNCIONES AUXILIARES
   const getProgressColor = useCallback((percentage: number) => {
     if (percentage >= 80) return '#4caf50';
     if (percentage >= 50) return '#ff9800';
@@ -348,39 +377,34 @@ export default function LayawayManagementPage() {
   const handleViewDetails = useCallback((layaway: Layaway) => {
     console.log('👁️ Ver detalles:', layaway.sale_number);
     showNotification(`Ver detalles de apartado ${layaway.sale_number}`, 'info');
-    // TODO: Implementar dialog de detalles
   }, []);
 
   const handleAddPayment = useCallback((layaway: Layaway) => {
     console.log('💰 Agregar abono:', layaway.sale_number);
     showNotification(`Agregar abono a apartado ${layaway.sale_number}`, 'info');
-    // TODO: Implementar dialog de abono
   }, []);
 
   const handleConvertToSale = useCallback((layaway: Layaway) => {
     console.log('🛒 Convertir a venta:', layaway.sale_number);
     showNotification(`Convertir apartado ${layaway.sale_number} a venta`, 'info');
-    // TODO: Implementar dialog de conversión
   }, []);
 
   const handleCancelLayaway = useCallback((layaway: Layaway) => {
     console.log('❌ Cancelar apartado:', layaway.sale_number);
     showNotification(`Cancelar apartado ${layaway.sale_number}`, 'warning');
-    // TODO: Implementar dialog de cancelación
   }, []);
 
-  // ✅ HANDLER DE BÚSQUEDA CON DEBOUNCE
+  // ✅ HANDLERS DE EVENTOS
   const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setSearchTerm(value);
     console.log('🔍 Búsqueda actualizada:', value);
   }, []);
 
-  // ✅ HANDLER DE TAB CHANGE
   const handleTabChange = useCallback((event: React.SyntheticEvent, newValue: number) => {
     console.log('📑 Cambiando a tab:', newValue, tabsData[newValue]?.label);
     setActiveTab(newValue);
-    setSearchTerm(''); // Limpiar búsqueda al cambiar tab
+    setSearchTerm('');
   }, [tabsData]);
 
   return (
@@ -392,7 +416,7 @@ export default function LayawayManagementPage() {
             📦 Gestión de Apartados
           </Typography>
           <Typography variant="body2" sx={{ color: '#666', mt: 1 }}>
-            2025-06-11 06:32:10 UTC - Usuario: luishdz04 - {layaways.length} apartados cargados
+            2025-06-11 06:36:35 UTC - Usuario: luishdz04 - {layaways.length} apartados cargados
           </Typography>
         </Box>
         <Button
@@ -409,7 +433,12 @@ export default function LayawayManagementPage() {
         </Button>
       </Box>
 
-      {/* ✅ ESTADÍSTICAS CON GRID CORREGIDO */}
+      {/* ✅ ALERT DE CORRECCIÓN */}
+      <Alert severity="info" sx={{ mb: 3 }}>
+        🔧 <strong>Corrección aplicada:</strong> Usando tabla "Users" con campos firstName/lastName/name para obtener nombres reales de clientes
+      </Alert>
+
+      {/* ✅ ESTADÍSTICAS */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={2.4}>
           <Card sx={{
@@ -497,7 +526,7 @@ export default function LayawayManagementPage() {
         </Grid>
       </Grid>
 
-      {/* ✅ FILTROS CORREGIDOS */}
+      {/* ✅ FILTROS */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={3} alignItems="center">
@@ -590,7 +619,7 @@ export default function LayawayManagementPage() {
         </Tabs>
       </Card>
 
-      {/* ✅ TABLA DE APARTADOS OPTIMIZADA */}
+      {/* ✅ TABLA DE APARTADOS CORREGIDA */}
       <Card>
         {loading && (
           <Box sx={{ p: 2 }}>
@@ -621,6 +650,7 @@ export default function LayawayManagementPage() {
                 {layaways.map((layaway, index) => {
                   const progressPercentage = layaway.total_amount > 0 ? (layaway.paid_amount / layaway.total_amount) * 100 : 0;
                   const daysLeft = getDaysUntilExpiration(layaway.layaway_expires_at);
+                  const isRealCustomer = layaway.customer_name !== 'Cliente General';
                   
                   return (
                     <TableRow
@@ -646,12 +676,19 @@ export default function LayawayManagementPage() {
                           <Avatar sx={{ 
                             width: 32, 
                             height: 32, 
-                            bgcolor: layaway.customer_name === 'Cliente General' ? '#ff9800' : '#4caf50' 
+                            bgcolor: isRealCustomer ? '#4caf50' : '#ff9800' 
                           }}>
                             <PersonIcon fontSize="small" />
                           </Avatar>
                           <Box>
-                            <Typography variant="body2" fontWeight="500">
+                            <Typography 
+                              variant="body2" 
+                              fontWeight="500"
+                              sx={{ 
+                                color: isRealCustomer ? '#333' : '#ff9800',
+                                fontStyle: isRealCustomer ? 'normal' : 'italic'
+                              }}
+                            >
                               {layaway.customer_name}
                             </Typography>
                             {layaway.customer_email && (
@@ -660,7 +697,7 @@ export default function LayawayManagementPage() {
                               </Typography>
                             )}
                             <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
-                              ID: {layaway.customer_id || 'Sin ID'}
+                              ID: {layaway.customer_id ? `${layaway.customer_id.slice(0, 8)}...` : 'Sin ID'}
                             </Typography>
                           </Box>
                         </Box>
@@ -805,11 +842,11 @@ export default function LayawayManagementPage() {
         </TableContainer>
       </Card>
 
-      {/* ✅ INFORMACIÓN DE DEBUG MEJORADA */}
+      {/* ✅ INFORMACIÓN DE DEBUG CORREGIDA */}
       <Card sx={{ mt: 3, background: 'rgba(33, 150, 243, 0.1)' }}>
         <CardContent>
           <Typography variant="h6" sx={{ color: '#2196f3', mb: 2 }}>
-            🔧 Estado del Sistema
+            🔧 Estado del Sistema - Corrección de Nombres
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
@@ -837,7 +874,10 @@ export default function LayawayManagementPage() {
           {layaways.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" sx={{ color: '#666' }}>
-                <strong>Debug Clientes:</strong> {layaways.filter(l => l.customer_name !== 'Cliente General').length} con nombre real, {layaways.filter(l => l.customer_name === 'Cliente General').length} sin nombre
+                <strong>Debug Clientes:</strong> {layaways.filter(l => l.customer_name !== 'Cliente General').length} con nombre real, {layaways.filter(l => l.customer_name === 'Cliente General').length} genéricos
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#666', mt: 1 }}>
+                <strong>Tabla usada:</strong> "Users" (mayúscula) con campos firstName, lastName, name
               </Typography>
             </Box>
           )}
