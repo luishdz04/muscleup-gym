@@ -54,6 +54,7 @@ import { corporateColors, getGradient } from '@/theme/colors';
 import CustomerSelector from '@/components/pos/CustomerSelector';
 import PaymentDialog from '@/components/pos/PaymentDialog';
 import LayawayDialog from '@/components/pos/LayawayDialog';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface Customer extends User {
   name: string;
@@ -461,6 +462,16 @@ export default function POSPage() {
       </motion.div>
     );
   };
+
+  // ✅ DEBUG LOGGING
+console.log('🔍 POSPage Render:', {
+  cartLength: cart.length,
+  customerName: selectedCustomer?.name,
+  layawayDialogOpen,
+  totalsTotal: totals.total,
+  timestamp: new Date().toISOString()
+});
+
 
   return (
     <Box
@@ -1020,15 +1031,23 @@ export default function POSPage() {
       />
 
       {/* ✅ LAYAWAY DIALOG CON PROPS ESTABLES */}
-      <LayawayDialog
-        open={layawayDialogOpen}
-        onClose={() => setLayawayDialogOpen(false)}
-        cart={stableCart}
-        customer={stableCustomer}
-        coupon={stableCoupon}
-        totals={totals}
-        onSuccess={handleSaleSuccess}
-      />
+  <ErrorBoundary name="LayawayDialog">
+  <LayawayDialog
+    open={layawayDialogOpen}
+    onClose={() => {
+      console.log('🔐 Cerrando LayawayDialog');
+      setLayawayDialogOpen(false);
+    }}
+    cart={stableCart}
+    customer={stableCustomer}
+    coupon={stableCoupon}
+    totals={totals}
+    onSuccess={() => {
+      console.log('✅ LayawayDialog Success');
+      handleSaleSuccess();
+    }}
+  />
+</ErrorBoundary>
 
       {/* FAB para scanner */}
       <Fab
