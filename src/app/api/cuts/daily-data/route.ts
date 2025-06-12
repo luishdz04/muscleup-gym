@@ -4,11 +4,23 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    
+    // 🇲🇽 Obtener fecha en zona horaria de México/Monterrey
+    const requestedDate = searchParams.get('date');
+    let targetDate: string;
+    
+    if (requestedDate) {
+      targetDate = requestedDate;
+    } else {
+      // Fecha actual en Monterrey
+      const now = new Date();
+      const monterreyTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+      targetDate = monterreyTime.toISOString().split('T')[0];
+    }
     
     const supabase = createServerSupabaseClient();
 
-    // 📊 Consultar ventas POS del día
+    // 📊 Consultar ventas POS del día (usando zona horaria de Monterrey)
     const { data: posData, error: posError } = await supabase
       .from('sales')
       .select(`
@@ -22,13 +34,13 @@ const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
           commission_amount
         )
       `)
-      .gte('created_at', `${date}T00:00:00`)
-      .lt('created_at', `${date}T23:59:59`)
+      .gte('created_at', `${targetDate}T06:00:00.000Z`)  // 00:00 Monterrey = 06:00 UTC
+      .lt('created_at', `${getNextDay(targetDate)}T06:00:00.000Z`)   // 24:00 Monterrey = 06:00 UTC del día siguiente
       .eq('status', 'completed');
 
     if (posError) throw posError;
 
-    // 💪 Consultar membresías del día
+    // 💪 Consultar membresías del día (usando zona horaria de Monterrey)
     const { data: membershipData, error: membershipError } = await supabase
       .from('user_memberships')
       .select(`
@@ -42,8 +54,8 @@ const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
           commission_amount
         )
       `)
-      .gte('created_at', `${date}T00:00:00`)
-      .lt('created_at', `${date}T23:59:59`)
+      .gte('created_at', `${targetDate}T06:00:00.000Z`)  // 00:00 Monterrey = 06:00 UTC
+      .lt('created_at', `${getNextDay(targetDate)}T06:00:00.000Z`)   // 24:00 Monterrey = 06:00 UTC del día siguiente
       .eq('status', 'active');
 
     if (membershipError) throw membershipError;
@@ -134,12 +146,17 @@ const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
     };
 
     return NextResponse.json({
-      date,
+      date: targetDate,
       pos: posStats,
       memberships: membershipStats,
       totals,
       success: true,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      debug: {
+        posTransactions: posData?.length || 0,
+        membershipTransactions: membershipData?.length || 0,
+        dateRange: `${targetDate}T06:00:00.000Z to ${getNextDay(targetDate)}T06:00:00.000Z`
+      }
     });
 
   } catch (error) {
@@ -149,4 +166,11 @@ const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
       { status: 500 }
     );
   }
+}
+
+// 📅 Función auxiliar para obtener el día siguiente
+function getNextDay(dateString: string): string {
+  const date = new Date(dateString);
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().split('T')[0];
 }
