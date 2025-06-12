@@ -28,11 +28,36 @@ import {
   AccountBalance as BankIcon,
   LocalAtm as CashIcon,
   History as HistoryIcon,
-  Today as TodayIcon
+  Today as TodayIcon,
+  Payment as PaymentIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
+
+// 💰 Función para formatear precios en pesos mexicanos
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2
+  }).format(amount);
+}
+
+// 📅 Función para formatear fechas en español mexicano
+function formatDate(dateString: string): string {
+  const date = new Date(dateString + 'T12:00:00'); // Evitar problemas de zona horaria
+  
+  const months = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+  ];
+  
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  
+  return `${day} de ${month} de ${year}`;
+}
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -83,6 +108,16 @@ interface DailyData {
     transactions: number;
     commissions: number;
   };
+  abonos: {
+    efectivo: number;
+    transferencia: number;
+    debito: number;
+    credito: number;
+    mixto: number;
+    total: number;
+    transactions: number;
+    commissions: number;
+  };
   memberships: {
     efectivo: number;
     transferencia: number;
@@ -121,11 +156,12 @@ export default function CortesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
-const [selectedDate, setSelectedDate] = useState(() => {
-  const now = new Date();
-  const monterreyTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
-  return monterreyTime.toISOString().split('T')[0];
-});
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    const monterreyTime = new Date(now.getTime() - (6 * 60 * 60 * 1000)); // UTC-6
+    return monterreyTime.toISOString().split('T')[0];
+  });
+
   // ✅ FUNCIÓN PARA CARGAR DATOS DEL DÍA
   const loadDailyData = useCallback(async (date: string = selectedDate) => {
     try {
@@ -135,6 +171,7 @@ const [selectedDate, setSelectedDate] = useState(() => {
       
       if (data.success) {
         setDailyData(data);
+        console.log('Datos cargados:', data.debug);
       } else {
         console.error('Error cargando datos:', data.error);
       }
@@ -393,7 +430,7 @@ const [selectedDate, setSelectedDate] = useState(() => {
             </motion.div>
           </Grid>
 
-          {/* 🏪 DESGLOSE POS VS MEMBRESÍAS */}
+          {/* 🏪 DESGLOSE POR FUENTE DE INGRESOS */}
           <Grid xs={12}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -405,8 +442,8 @@ const [selectedDate, setSelectedDate] = useState(() => {
               </Typography>
               
               <Grid container spacing={3}>
-                {/* POS */}
-                <Grid xs={12} md={6}>
+                {/* VENTAS POS */}
+                <Grid xs={12} md={4}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                     border: `1px solid ${darkProTokens.info}30`,
@@ -442,8 +479,45 @@ const [selectedDate, setSelectedDate] = useState(() => {
                   </Card>
                 </Grid>
 
+                {/* ABONOS */}
+                <Grid xs={12} md={4}>
+                  <Card sx={{
+                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                    border: `1px solid ${darkProTokens.warning}30`,
+                    borderRadius: 4
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <PaymentIcon sx={{ color: darkProTokens.warning, mr: 1 }} />
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                          Abonos
+                        </Typography>
+                      </Box>
+                      
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
+                        {formatPrice(dailyData.abonos.total)}
+                      </Typography>
+                      
+                      <Stack spacing={1}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Transacciones:</Typography>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            {dailyData.abonos.transactions}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisiones:</Typography>
+                          <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                            {formatPrice(dailyData.abonos.commissions)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
                 {/* MEMBRESÍAS */}
-                <Grid xs={12} md={6}>
+                <Grid xs={12} md={4}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                     border: `1px solid ${darkProTokens.success}30`,
@@ -536,12 +610,11 @@ const [selectedDate, setSelectedDate] = useState(() => {
                         fullWidth
                         variant="outlined"
                         startIcon={<TodayIcon />}
-    onClick={() => {
-  const now = new Date();
-  const monterreyTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
-  monterreyTime.setDate(monterreyTime.getDate() - 1);
-  loadDailyData(monterreyTime.toISOString().split('T')[0]);
-}}
+                        onClick={() => {
+                          const now = new Date();
+                          const yesterday = new Date(now.getTime() - (6 * 60 * 60 * 1000) - (24 * 60 * 60 * 1000)); // UTC-6 - 1 día
+                          loadDailyData(yesterday.toISOString().split('T')[0]);
+                        }}
                         sx={{
                           borderColor: darkProTokens.info,
                           color: darkProTokens.info,
