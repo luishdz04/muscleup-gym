@@ -35,7 +35,7 @@ import {
   IconButton,
   Badge
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -229,13 +229,14 @@ const paymentTypes = [
   { value: 'annual', label: 'Anual', key: 'annual_price', duration: 'annual_duration' }
 ];
 
+// 🔥 MÉTODOS DE PAGO CORREGIDOS CON COMISIONES
 const paymentMethods = [
   { 
     value: 'efectivo', 
     label: 'Efectivo', 
     icon: '💵',
     color: darkProTokens.primary,
-    description: 'Sin comisión • Con cálculo de cambio',
+    description: '🚫 Sin comisión • Con cálculo de cambio',
     hasCommission: false
   },
   { 
@@ -243,7 +244,7 @@ const paymentMethods = [
     label: 'Tarjeta de Débito', 
     icon: '💳',
     color: darkProTokens.grayMedium,
-    description: 'Con comisión configurable',
+    description: '💰 Con comisión configurable',
     hasCommission: true
   },
   { 
@@ -251,7 +252,7 @@ const paymentMethods = [
     label: 'Tarjeta de Crédito', 
     icon: '💳',
     color: darkProTokens.grayLight,
-    description: 'Con comisión configurable',
+    description: '💰 Con comisión configurable',
     hasCommission: true
   },
   { 
@@ -259,7 +260,7 @@ const paymentMethods = [
     label: 'Transferencia', 
     icon: '🏦',
     color: darkProTokens.info,
-    description: 'Sin comisión • Transferencia bancaria',
+    description: '🚫 Sin comisión • Transferencia bancaria',
     hasCommission: false
   },
   { 
@@ -267,7 +268,7 @@ const paymentMethods = [
     label: 'Pago Mixto', 
     icon: '🔄',
     color: darkProTokens.warning,
-    description: 'Comisión según métodos seleccionados',
+    description: '💰 Comisión según métodos seleccionados',
     hasCommission: true
   }
 ];
@@ -575,34 +576,39 @@ export default function RegistrarMembresiaPage() {
     }
   };
 
-// 🔧 CALCULAR COMISIÓN CORREGIDA - SOLO TARJETAS
-const calculateCommission = (method: string, amount: number): { rate: number; amount: number } => {
-  // ✅ SOLO TARJETAS TIENEN COMISIÓN
-  const methodsWithCommission = ['debito', 'credito'];
-  
-  if (!methodsWithCommission.includes(method)) {
-    return { rate: 0, amount: 0 };
-  }
+  // 🔥 CALCULAR COMISIÓN CORREGIDA - SOLO TARJETAS
+  const calculateCommission = (method: string, amount: number): { rate: number; amount: number } => {
+    // ✅ SOLO TARJETAS TIENEN COMISIÓN
+    const methodsWithCommission = ['debito', 'credito'];
+    
+    if (!methodsWithCommission.includes(method)) {
+      console.log(`💳 Método ${method}: SIN comisión (solo tarjetas tienen comisión)`);
+      return { rate: 0, amount: 0 };
+    }
 
-  // Si hay comisión personalizada, usarla
-  if (formData.customCommissionRate !== null) {
-    const customAmount = (amount * formData.customCommissionRate) / 100;
-    return { rate: formData.customCommissionRate, amount: customAmount };
-  }
+    // Si hay comisión personalizada, usarla
+    if (formData.customCommissionRate !== null) {
+      const customAmount = (amount * formData.customCommissionRate) / 100;
+      console.log(`💳 Comisión personalizada ${method}: ${formData.customCommissionRate}% = $${customAmount.toFixed(2)}`);
+      return { rate: formData.customCommissionRate, amount: customAmount };
+    }
 
-  // Usar comisión predeterminada SOLO para tarjetas
-  const commission = paymentCommissions.find(c => c.payment_method === method);
-  if (!commission || amount < commission.min_amount) {
-    return { rate: 0, amount: 0 };
-  }
+    // Usar comisión predeterminada SOLO para tarjetas
+    const commission = paymentCommissions.find(c => c.payment_method === method);
+    if (!commission || amount < commission.min_amount) {
+      console.log(`💳 ${method}: Sin comisión (no configurada o monto menor al mínimo)`);
+      return { rate: 0, amount: 0 };
+    }
 
-  if (commission.commission_type === 'percentage') {
-    const commissionAmount = (amount * commission.commission_value) / 100;
-    return { rate: commission.commission_value, amount: commissionAmount };
-  } else {
-    return { rate: 0, amount: commission.commission_value };
-  }
-};
+    if (commission.commission_type === 'percentage') {
+      const commissionAmount = (amount * commission.commission_value) / 100;
+      console.log(`💳 Comisión predeterminada ${method}: ${commission.commission_value}% = $${commissionAmount.toFixed(2)}`);
+      return { rate: commission.commission_value, amount: commissionAmount };
+    } else {
+      console.log(`💳 Comisión fija ${method}: $${commission.commission_value}`);
+      return { rate: 0, amount: commission.commission_value };
+    }
+  };
 
   // Manejar pagos mixtos
   const addMixedPaymentDetail = () => {
@@ -683,10 +689,11 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
     const newDiscount = Math.min(discount, newSubtotal);
     const newTotal = newSubtotal + newInscription - newDiscount;
 
-    // Calcular comisión
+    // 🔥 CALCULAR COMISIÓN CORREGIDA - SOLO TARJETAS
     let newCommission = 0;
     if (formData.isMixedPayment) {
       newCommission = formData.paymentDetails.reduce((sum, detail) => sum + detail.commission_amount, 0);
+      console.log(`💳 Comisión mixta total: $${newCommission.toFixed(2)}`);
     } else if (formData.paymentMethod) {
       const commission = calculateCommission(formData.paymentMethod, newTotal);
       newCommission = commission.amount;
@@ -899,7 +906,7 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
         notes: formData.notes || null,
         created_at: createTimestampForDB(),       // ✅ UTC timestamp correcto
         updated_at: createTimestampForDB(),       // ✅ UTC timestamp correcto
-        created_by: null // TODO: Agregar ID del usuario logueado
+        created_by: 'luishdz04' // ✅ Usuario actual del sistema
       };
 
       console.log('💾 Guardando nueva membresía con períodos reales:', membershipData);
@@ -1445,7 +1452,7 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                                         `${darkProTokens.success}10`,
                                       border: userHistory.length > 0 ? 
                                         `1px solid ${darkProTokens.warning}30` : 
-                                        `1px solid ${darkProTokens.success}30`,
+                                                                                `1px solid ${darkProTokens.success}30`,
                                       borderRadius: 3,
                                       p: 3
                                     }}>
@@ -1474,7 +1481,7 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                                                 alignItems: 'center',
                                                 py: 1.5,
                                                 px: 2,
-                                                                                                borderBottom: idx < Math.min(2, userHistory.length - 1) ? `1px solid ${darkProTokens.grayDark}` : 'none',
+                                                borderBottom: idx < Math.min(2, userHistory.length - 1) ? `1px solid ${darkProTokens.grayDark}` : 'none',
                                                 background: idx === 0 && membership.status === 'active' ? `${darkProTokens.primary}05` : 'transparent',
                                                 borderRadius: idx === 0 && membership.status === 'active' ? 2 : 0
                                               }}>
@@ -2102,195 +2109,442 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                           </CardContent>
                         </Card>
 
-                        {/* 🔧 CONFIGURADOR DE COMISIÓN PERSONALIZADA */}
-{(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') && (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.3 }}
-  >
-    <Card sx={{
-      background: `${darkProTokens.warning}10`,
-      border: `1px solid ${darkProTokens.warning}30`,
-      borderRadius: 3,
-      mt: 3
-    }}>
-      <CardContent sx={{ p: 3 }}>
-        <Typography variant="h6" sx={{ 
-          color: darkProTokens.warning, 
-          mb: 3,
-          fontWeight: 700,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2
-        }}>
-          <PercentIcon />
-          ⚙️ Configuración de Comisión
-        </Typography>
+                        {/* Pago Simple */}
+                        {!formData.isMixedPayment && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <Card sx={{
+                              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel2})`,
+                              border: `2px solid ${darkProTokens.primary}30`,
+                              borderRadius: 3
+                            }}>
+                              <CardContent sx={{ p: 4 }}>
+                                <Typography variant="h6" sx={{ 
+                                  color: darkProTokens.primary, 
+                                  mb: 3,
+                                  fontWeight: 700
+                                }}>
+                                  Método de Pago
+                                </Typography>
+                                
+                                <Grid container spacing={3}>
+                                  {paymentMethods.filter(m => m.value !== 'mixto').map((method) => (
+                                    <Grid key={method.value} size={{ xs: 12, sm: 6 }}>
+                                      <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                      >
+                                        <Card
+                                          sx={{
+                                            cursor: 'pointer',
+                                            background: formData.paymentMethod === method.value 
+                                              ? `linear-gradient(135deg, ${method.color}20, ${method.color}10)`
+                                              : `${darkProTokens.surfaceLevel3}05`,
+                                            border: formData.paymentMethod === method.value 
+                                              ? `3px solid ${method.color}` 
+                                              : `1px solid ${darkProTokens.grayDark}`,
+                                            borderRadius: 3,
+                                            transition: 'all 0.3s ease',
+                                            minHeight: '140px',
+                                            '&:hover': {
+                                              borderColor: method.color,
+                                              transform: 'translateY(-2px)'
+                                            }
+                                          }}
+                                          onClick={() => setFormData(prev => ({ 
+                                            ...prev, 
+                                            paymentMethod: method.value 
+                                          }))}
+                                        >
+                                          <CardContent sx={{ 
+                                            textAlign: 'center',
+                                            height: '100%',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'center',
+                                            position: 'relative',
+                                            p: 3
+                                          }}>
+                                            <Typography variant="h3" sx={{ mb: 1 }}>
+                                              {method.icon}
+                                            </Typography>
+                                            <Typography variant="h6" sx={{ 
+                                              color: darkProTokens.textPrimary,
+                                              fontWeight: 600,
+                                              fontSize: '0.9rem',
+                                              mb: 1
+                                            }}>
+                                              {method.label}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ 
+                                              color: darkProTokens.textSecondary,
+                                              fontSize: '0.75rem',
+                                              lineHeight: 1.3
+                                            }}>
+                                              {method.description}
+                                            </Typography>
+                                            {formData.paymentMethod === method.value && (
+                                              <CheckCircleIcon sx={{ 
+                                                color: method.color,
+                                                position: 'absolute',
+                                                top: 8,
+                                                right: 8
+                                              }} />
+                                            )}
+                                          </CardContent>
+                                        </Card>
+                                      </motion.div>
+                                    </Grid>
+                                  ))}
+                                </Grid>
 
-        <Grid container spacing={3}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Box sx={{
-              background: `${darkProTokens.grayDark}10`,
-              border: `1px solid ${darkProTokens.grayDark}30`,
-              borderRadius: 2,
-              p: 2,
-              textAlign: 'center'
-            }}>
-              <Typography variant="body2" sx={{ 
-                color: darkProTokens.textSecondary,
-                mb: 1
-              }}>
-                Comisión Predeterminada
-              </Typography>
-              <Typography variant="h6" sx={{ 
-                color: darkProTokens.textPrimary,
-                fontWeight: 700
-              }}>
-                {paymentCommissions.find(c => c.payment_method === formData.paymentMethod)?.commission_value || 0}%
-              </Typography>
-            </Box>
-          </Grid>
+                                {/* 🔥 CONFIGURADOR DE COMISIÓN PERSONALIZADA - SOLO TARJETAS */}
+                                {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                  >
+                                    <Card sx={{
+                                      background: `${darkProTokens.warning}10`,
+                                      border: `1px solid ${darkProTokens.warning}30`,
+                                      borderRadius: 3,
+                                      mt: 3
+                                    }}>
+                                      <CardContent sx={{ p: 3 }}>
+                                        <Typography variant="h6" sx={{ 
+                                          color: darkProTokens.warning, 
+                                          mb: 3,
+                                          fontWeight: 700,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 2
+                                        }}>
+                                          <PercentIcon />
+                                          ⚙️ Configuración de Comisión
+                                        </Typography>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.editingCommission}
-                  onChange={(e) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      editingCommission: e.target.checked,
-                      customCommissionRate: e.target.checked ? 
-                        (paymentCommissions.find(c => c.payment_method === formData.paymentMethod)?.commission_value || 0) : 
-                        null
-                    }));
-                  }}
-                  sx={{
-                    '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: darkProTokens.warning,
-                    },
-                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                      backgroundColor: darkProTokens.warning,
-                    },
-                  }}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body1" sx={{ 
-                    color: darkProTokens.textPrimary, 
-                    fontWeight: 600 
-                  }}>
-                    ⚙️ Comisión Personalizada
-                  </Typography>
-                  <Typography variant="caption" sx={{ 
-                    color: darkProTokens.textSecondary
-                  }}>
-                    {formData.editingCommission ? 'Editar porcentaje' : 'Usar predeterminada'}
-                  </Typography>
-                </Box>
-              }
-            />
-          </Grid>
+                                        <Grid container spacing={3}>
+                                          <Grid size={{ xs: 12, md: 6 }}>
+                                            <Box sx={{
+                                              background: `${darkProTokens.grayDark}10`,
+                                              border: `1px solid ${darkProTokens.grayDark}30`,
+                                              borderRadius: 2,
+                                              p: 2,
+                                              textAlign: 'center'
+                                            }}>
+                                              <Typography variant="body2" sx={{ 
+                                                color: darkProTokens.textSecondary,
+                                                mb: 1
+                                              }}>
+                                                Comisión Predeterminada
+                                              </Typography>
+                                              <Typography variant="h6" sx={{ 
+                                                color: darkProTokens.textPrimary,
+                                                fontWeight: 700
+                                              }}>
+                                                {paymentCommissions.find(c => c.payment_method === formData.paymentMethod)?.commission_value || 0}%
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
 
-          {formData.editingCommission && (
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Porcentaje de Comisión"
-                type="number"
-                value={formData.customCommissionRate || ''}
-                onChange={(e) => {
-                  const rate = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({
-                    ...prev,
-                    customCommissionRate: Math.max(0, Math.min(100, rate)) // Entre 0% y 100%
-                  }));
-                }}
-                inputProps={{ 
-                  min: 0, 
-                  max: 100, 
-                  step: 0.1 
-                }}
-                placeholder="Ej: 3.5"
-                helperText="Porcentaje entre 0% y 100%"
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                  sx: {
-                    color: darkProTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: `${darkProTokens.warning}30`
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.warning
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.warning
-                    }
-                  }
-                }}
-                InputLabelProps={{
-                  sx: { 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.warning }
-                  }
-                }}
-                FormHelperTextProps={{
-                  sx: { color: darkProTokens.textSecondary }
-                }}
-              />
-            </Grid>
-          )}
+                                          <Grid size={{ xs: 12, md: 6 }}>
+                                            <FormControlLabel
+                                              control={
+                                                <Switch
+                                                  checked={formData.editingCommission}
+                                                  onChange={(e) => {
+                                                    setFormData(prev => ({
+                                                      ...prev,
+                                                      editingCommission: e.target.checked,
+                                                      customCommissionRate: e.target.checked ? 
+                                                        (paymentCommissions.find(c => c.payment_method === formData.paymentMethod)?.commission_value || 0) : 
+                                                        null
+                                                    }));
+                                                  }}
+                                                  sx={{
+                                                    '& .MuiSwitch-switchBase.Mui-checked': {
+                                                      color: darkProTokens.warning,
+                                                    },
+                                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                                      backgroundColor: darkProTokens.warning,
+                                                    },
+                                                  }}
+                                                />
+                                              }
+                                              label={
+                                                <Box>
+                                                  <Typography variant="body1" sx={{ 
+                                                    color: darkProTokens.textPrimary, 
+                                                    fontWeight: 600 
+                                                  }}>
+                                                    ⚙️ Comisión Personalizada
+                                                  </Typography>
+                                                  <Typography variant="caption" sx={{ 
+                                                    color: darkProTokens.textSecondary
+                                                  }}>
+                                                    {formData.editingCommission ? 'Editar porcentaje' : 'Usar predeterminada'}
+                                                  </Typography>
+                                                </Box>
+                                              }
+                                            />
+                                          </Grid>
 
-          {formData.customCommissionRate !== null && (
-            <Grid size={12}>
-              <Box sx={{
-                background: `${darkProTokens.primary}10`,
-                border: `1px solid ${darkProTokens.primary}30`,
-                borderRadius: 2,
-                p: 2,
-                textAlign: 'center'
-              }}>
-                <Typography variant="body2" sx={{ 
-                  color: darkProTokens.textSecondary,
-                  mb: 1
-                }}>
-                  Comisión Calculada
-                </Typography>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.primary,
-                  fontWeight: 700
-                }}>
-                  {formatPrice((totalAmount * (formData.customCommissionRate || 0)) / 100)} 
-                  <span style={{ fontSize: '0.8rem', color: darkProTokens.textSecondary }}>
-                    {' '}({formData.customCommissionRate}%)
-                  </span>
-                </Typography>
-              </Box>
-            </Grid>
-          )}
-        </Grid>
+                                          {formData.editingCommission && (
+                                            <Grid size={12}>
+                                              <TextField
+                                                fullWidth
+                                                label="Porcentaje de Comisión"
+                                                type="number"
+                                                value={formData.customCommissionRate || ''}
+                                                onChange={(e) => {
+                                                  const rate = parseFloat(e.target.value) || 0;
+                                                  setFormData(prev => ({
+                                                    ...prev,
+                                                    customCommissionRate: Math.max(0, Math.min(100, rate)) // Entre 0% y 100%
+                                                  }));
+                                                }}
+                                                inputProps={{ 
+                                                  min: 0, 
+                                                  max: 100, 
+                                                  step: 0.1 
+                                                }}
+                                                placeholder="Ej: 3.5"
+                                                helperText="Porcentaje entre 0% y 100%"
+                                                InputProps={{
+                                                  endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                                                  sx: {
+                                                    color: darkProTokens.textPrimary,
+                                                    '& .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: `${darkProTokens.warning}30`
+                                                    },
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: darkProTokens.warning
+                                                    },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: darkProTokens.warning
+                                                    }
+                                                  }
+                                                }}
+                                                InputLabelProps={{
+                                                  sx: { 
+                                                    color: darkProTokens.textSecondary,
+                                                    '&.Mui-focused': { color: darkProTokens.warning }
+                                                  }
+                                                }}
+                                                FormHelperTextProps={{
+                                                  sx: { color: darkProTokens.textSecondary }
+                                                }}
+                                              />
+                                            </Grid>
+                                          )}
 
-        <Alert 
-          severity="info"
-          sx={{
-            mt: 3,
-            backgroundColor: `${darkProTokens.info}10`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.info}30`,
-            '& .MuiAlert-icon': { color: darkProTokens.info }
-          }}
-        >
-          <Typography variant="body2">
-            <strong>💡 Información:</strong> Solo las tarjetas de débito y crédito tienen comisión.
-            Efectivo y transferencias están exentas.
-          </Typography>
-        </Alert>
-      </CardContent>
-    </Card>
-  </motion.div>
-)}
+                                          {formData.customCommissionRate !== null && (
+                                            <Grid size={12}>
+                                              <Box sx={{
+                                                background: `${darkProTokens.primary}10`,
+                                                border: `1px solid ${darkProTokens.primary}30`,
+                                                borderRadius: 2,
+                                                p: 2,
+                                                textAlign: 'center'
+                                              }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: darkProTokens.textSecondary,
+                                                  mb: 1
+                                                }}>
+                                                  Comisión Calculada
+                                                </Typography>
+                                                <Typography variant="h6" sx={{ 
+                                                  color: darkProTokens.primary,
+                                                  fontWeight: 700
+                                                }}>
+                                                  {formatPrice((totalAmount * (formData.customCommissionRate || 0)) / 100)} 
+                                                  <span style={{ fontSize: '0.8rem', color: darkProTokens.textSecondary }}>
+                                                    {' '}({formData.customCommissionRate}%)
+                                                  </span>
+                                                </Typography>
+                                              </Box>
+                                            </Grid>
+                                          )}
+                                        </Grid>
+
+                                        <Alert 
+                                          severity="info"
+                                          sx={{
+                                            mt: 3,
+                                            backgroundColor: `${darkProTokens.info}10`,
+                                            color: darkProTokens.textPrimary,
+                                            border: `1px solid ${darkProTokens.info}30`,
+                                            '& .MuiAlert-icon': { color: darkProTokens.info }
+                                          }}
+                                        >
+                                          <Typography variant="body2">
+                                            <strong>💡 Información:</strong> Solo las tarjetas de débito y crédito tienen comisión.
+                                            Efectivo y transferencias están exentas.
+                                          </Typography>
+                                        </Alert>
+                                      </CardContent>
+                                    </Card>
+                                  </motion.div>
+                                )}
+
+                                {/* Configuración específica por método */}
+                                {formData.paymentMethod === 'efectivo' && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                  >
+                                    <Card sx={{
+                                      background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}05)`,
+                                      border: `2px solid ${darkProTokens.primary}50`,
+                                      borderRadius: 3,
+                                      mt: 3
+                                    }}>
+                                      <CardContent sx={{ p: 4 }}>
+                                        <Typography variant="h6" sx={{ 
+                                          color: darkProTokens.primary, 
+                                          mb: 3,
+                                          fontWeight: 700,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 2
+                                        }}>
+                                          💵 Calculadora de Efectivo
+                                        </Typography>
+
+                                        <Grid container spacing={3}>
+                                          <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                              fullWidth
+                                              label="Total a Cobrar"
+                                              value={formatPrice(finalAmount)}
+                                              disabled
+                                              InputProps={{
+                                                sx: {
+                                                  color: darkProTokens.textPrimary,
+                                                  backgroundColor: `${darkProTokens.primary}10`,
+                                                  fontSize: '1.3rem',
+                                                  fontWeight: 700,
+                                                  '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: `${darkProTokens.primary}50`,
+                                                    borderWidth: 2
+                                                  }
+                                                }
+                                              }}
+                                              InputLabelProps={{
+                                                sx: { 
+                                                  color: darkProTokens.textSecondary,
+                                                  fontWeight: 600
+                                                }
+                                              }}
+                                            />
+                                          </Grid>
+
+                                          <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                              fullWidth
+                                              label="Dinero Recibido"
+                                              type="number"
+                                              value={formData.paymentReceived || ''}
+                                              onChange={(e) => {
+                                                const received = parseFloat(e.target.value) || 0;
+                                                setFormData(prev => ({
+                                                  ...prev,
+                                                  paymentReceived: received,
+                                                  paymentChange: Math.max(0, received - finalAmount)
+                                                }));
+                                              }}
+                                              placeholder="0.00"
+                                              InputProps={{
+                                                startAdornment: (
+                                                  <InputAdornment position="start">
+                                                    <AttachMoneyIcon sx={{ color: darkProTokens.primary }} />
+                                                  </InputAdornment>
+                                                ),
+                                                sx: {
+                                                  color: darkProTokens.textPrimary,
+                                                  fontSize: '1.3rem',
+                                                  fontWeight: 700,
+                                                  '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: `${darkProTokens.primary}50`,
+                                                    borderWidth: 2
+                                                  },
+                                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: darkProTokens.primary
+                                                  },
+                                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: darkProTokens.primary
+                                                  }
+                                                }
+                                              }}
+                                              InputLabelProps={{
+                                                sx: { 
+                                                  color: darkProTokens.textSecondary,
+                                                  fontWeight: 600,
+                                                  '&.Mui-focused': { color: darkProTokens.primary }
+                                                }
+                                              }}
+                                            />
+                                          </Grid>
+
+                                          <Grid size={12}>
+                                            <Box sx={{
+                                              background: formData.paymentChange > 0 
+                                                ? `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`
+                                                : `${darkProTokens.grayMedium}05`,
+                                              border: formData.paymentChange > 0 
+                                                ? `2px solid ${darkProTokens.primary}` 
+                                                : `1px solid ${darkProTokens.grayDark}`,
+                                              borderRadius: 3,
+                                              p: 3,
+                                              textAlign: 'center'
+                                            }}>
+                                              <Typography variant="h4" sx={{ 
+                                                color: formData.paymentChange > 0 ? darkProTokens.primary : darkProTokens.textSecondary,
+                                                fontWeight: 800,
+                                                mb: 1
+                                              }}>
+                                                {formData.paymentChange > 0 
+                                                  ? `💰 Cambio: ${formatPrice(formData.paymentChange)}`
+                                                  : '💰 Cambio: $0.00'
+                                                }
+                                              </Typography>
+                                              <Typography variant="body1" sx={{ 
+                                                color: darkProTokens.textSecondary
+                                              }}>
+                                                {formData.paymentReceived < finalAmount 
+                                                  ? `Faltan: ${formatPrice(finalAmount - formData.paymentReceived)}`
+                                                  : formData.paymentChange > 0 
+                                                    ? 'Entregar cambio al cliente'
+                                                    : 'Pago exacto'
+                                                }
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
+                                        </Grid>
+
+                                        <Alert 
+                                          severity="success"
+                                          sx={{
+                                            mt: 3,
+                                            backgroundColor: `${darkProTokens.success}10`,
+                                            color: darkProTokens.textPrimary,
+                                            border: `1px solid ${darkProTokens.success}30`,
+                                            '& .MuiAlert-icon': { color: darkProTokens.success }
+                                          }}
+                                        >
+                                          <Typography variant="body2">
+                                            <strong>💵 Efectivo:</strong> Sin comisión adicional • Cálculo automático de cambio
+                                          </Typography>
+                                        </Alert>
+                                      </CardContent>
+                                    </Card>
+                                  </motion.div>
+                                )}
 
                                 {/* Referencias para otros métodos */}
                                 {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito' || formData.paymentMethod === 'transferencia') && (
@@ -2349,6 +2603,23 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                                             }
                                           }}
                                         />
+
+                                        {formData.paymentMethod === 'transferencia' && (
+                                          <Alert 
+                                            severity="info"
+                                            sx={{
+                                              mt: 2,
+                                              backgroundColor: `${darkProTokens.info}10`,
+                                              color: darkProTokens.textPrimary,
+                                              border: `1px solid ${darkProTokens.info}30`,
+                                              '& .MuiAlert-icon': { color: darkProTokens.info }
+                                            }}
+                                          >
+                                            <Typography variant="body2">
+                                              <strong>🏦 Transferencia:</strong> Sin comisión adicional • Transferencia bancaria directa
+                                            </Typography>
+                                          </Alert>
+                                        )}
                                       </CardContent>
                                     </Card>
                                   </motion.div>
@@ -2488,7 +2759,18 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                                                 >
                                                   {paymentMethods.filter(m => m.value !== 'mixto').map((method) => (
                                                     <MenuItem key={method.value} value={method.value}>
-                                                      {method.icon} {method.label}
+                                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <span>{method.icon}</span>
+                                                        <span>{method.label}</span>
+                                                        {!method.hasCommission && (
+                                                          <Chip label="Sin comisión" size="small" sx={{ 
+                                                            backgroundColor: darkProTokens.success, 
+                                                            color: darkProTokens.background,
+                                                            fontSize: '0.65rem',
+                                                            ml: 1
+                                                          }} />
+                                                        )}
+                                                      </Box>
                                                     </MenuItem>
                                                   ))}
                                                 </Select>
@@ -2550,6 +2832,21 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                                                 }}
                                               />
                                             </Grid>
+
+                                            {detail.commission_amount > 0 && (
+                                              <Grid size={12}>
+                                                <Alert severity="warning" sx={{
+                                                  backgroundColor: `${darkProTokens.warning}10`,
+                                                  color: darkProTokens.textPrimary,
+                                                  border: `1px solid ${darkProTokens.warning}30`,
+                                                  '& .MuiAlert-icon': { color: darkProTokens.warning }
+                                                }}>
+                                                  <Typography variant="body2">
+                                                    <strong>💳 Comisión:</strong> {detail.commission_rate}% = {formatPrice(detail.commission_amount)}
+                                                  </Typography>
+                                                </Alert>
+                                              </Grid>
+                                            )}
                                           </Grid>
                                         </CardContent>
                                       </Card>
@@ -2567,7 +2864,7 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                                     <Box sx={{ mt: 4 }}>
                                       <Card sx={{
                                         background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
-                                        border: `2px solid ${darkProTokens.primary}`,
+                                                                                border: `2px solid ${darkProTokens.primary}`,
                                         borderRadius: 3
                                       }}>
                                         <CardContent sx={{ p: 3 }}>
@@ -2653,6 +2950,22 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                                     </Box>
                                   </motion.div>
                                 )}
+
+                                <Alert 
+                                  severity="info"
+                                  sx={{
+                                    mt: 3,
+                                    backgroundColor: `${darkProTokens.info}10`,
+                                    color: darkProTokens.textPrimary,
+                                    border: `1px solid ${darkProTokens.info}30`,
+                                    '& .MuiAlert-icon': { color: darkProTokens.info }
+                                  }}
+                                >
+                                  <Typography variant="body2">
+                                    <strong>💡 Comisiones en Pago Mixto:</strong> Solo se aplicarán comisiones a los métodos de tarjeta (débito/crédito).
+                                    Efectivo y transferencias están exentos.
+                                  </Typography>
+                                </Alert>
                               </CardContent>
                             </Card>
                           </motion.div>
@@ -2885,7 +3198,7 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                       fontWeight: 700,
                       mb: 1
                     }}>
-                                            {selectedPlan.name}
+                      {selectedPlan.name}
                     </Typography>
                     <Typography variant="body2" sx={{ 
                       color: darkProTokens.textSecondary,
@@ -3081,9 +3394,22 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                           }}>
                             <Typography variant="body1" sx={{ 
                               color: darkProTokens.textPrimary,
-                              fontWeight: 600
+                              fontWeight: 600,
+                              mb: 1
                             }}>
                               {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.icon} {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.label}
+                            </Typography>
+
+                            {/* 🔥 MOSTRAR SI TIENE COMISIÓN O NO */}
+                            <Typography variant="caption" sx={{ 
+                              color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                                darkProTokens.warning : darkProTokens.success,
+                              fontWeight: 600,
+                              display: 'block',
+                              mb: 1
+                            }}>
+                              {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                                '💰 Con comisión' : '🚫 Sin comisión'}
                             </Typography>
                             
                             {formData.paymentMethod === 'efectivo' && formData.paymentReceived > 0 && (
@@ -3360,6 +3686,18 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                         <Typography variant="h6" sx={{ fontWeight: 600 }}>
                           {formData.isMixedPayment ? 'Mixto' : paymentMethods.find(pm => pm.value === formData.paymentMethod)?.label}
                         </Typography>
+                        {/* 🔥 INDICADOR DE COMISIÓN EN CONFIRMACIÓN */}
+                        {!formData.isMixedPayment && (
+                          <Typography variant="caption" sx={{ 
+                            color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                              darkProTokens.warning : darkProTokens.success,
+                            fontWeight: 600,
+                            display: 'block'
+                          }}>
+                            {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                              '💰 Con comisión' : '🚫 Sin comisión'}
+                          </Typography>
+                        )}
                       </Box>
                     </Grid>
 
@@ -3432,6 +3770,24 @@ const calculateCommission = (method: string, amount: number): { rate: number; am
                       </Alert>
                     </Box>
                   )}
+
+                  {/* 🔥 ALERT INFORMATIVO SOBRE COMISIONES */}
+                  <Box sx={{ mt: 2 }}>
+                    <Alert 
+                      severity="info"
+                      sx={{
+                        backgroundColor: `${darkProTokens.info}10`,
+                        color: darkProTokens.textPrimary,
+                        border: `1px solid ${darkProTokens.info}30`,
+                        '& .MuiAlert-icon': { color: darkProTokens.info }
+                      }}
+                    >
+                      <Typography variant="body2">
+                        <strong>💡 Política de Comisiones:</strong> Solo tarjetas de débito y crédito tienen comisión. 
+                        Efectivo y transferencias están exentas.
+                      </Typography>
+                    </Alert>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
