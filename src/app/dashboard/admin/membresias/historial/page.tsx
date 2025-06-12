@@ -59,14 +59,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-// ✅ IMPORTS DE UTILIDADES DE FECHA - VERIFICADOS
+// ✅ IMPORTS DE UTILIDADES - SOLO LAS QUE NECESITAMOS
 import {
-  getMexicoToday,
-  formatDateForDisplay,
-  formatTimestampForDisplay,
   createTimestampForDB,
-  getDaysBetweenMexicoDates,
-  debugDateInfo,
   addDaysToMexicoDate
 } from '@/lib/utils/dateUtils';
 
@@ -220,7 +215,6 @@ interface Filters {
   isRenewal: string;
 }
 
-// ✅ INTERFACE PARA CONGELAMIENTO MASIVO AVANZADO - VERIFICADA
 interface BulkFreezeOperation {
   type: 'freeze' | 'unfreeze' | 'manual_freeze' | 'manual_unfreeze';
   membershipIds: string[];
@@ -239,7 +233,6 @@ interface BulkPreview {
   daysToAdd: number;
 }
 
-// ✅ INTERFACE PARA DATOS DE EDICIÓN - COHERENTE CON DB
 interface EditData {
   status?: string;
   start_date?: string;
@@ -251,7 +244,6 @@ interface EditData {
   commission_rate?: number;
   commission_amount?: number;
   is_mixed_payment?: boolean;
-  // ✅ CAMPOS TEMPORALES PARA EL MODAL (NO SE GUARDAN EN DB)
   cash_amount?: number;
   card_amount?: number;
   transfer_amount?: number;
@@ -311,11 +303,11 @@ export default function HistorialMembresiaPage() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   
-  // ✅ ESTADOS PARA CONGELAMIENTO INDIVIDUAL - VERIFICADOS
+  // Estados para congelamiento individual
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [unfreezeLoading, setUnfreezeLoading] = useState(false);
   
-  // ✅ ESTADOS PARA CONGELAMIENTO MASIVO AVANZADO - VERIFICADOS
+  // Estados para congelamiento masivo
   const [selectedMembershipIds, setSelectedMembershipIds] = useState<string[]>([]);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -351,25 +343,123 @@ export default function HistorialMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
+  // ✅ FUNCIONES DE FECHAS CORREGIDAS - ANÁLISIS INTEGRAL
+  
+  // 🇲🇽 OBTENER FECHA ACTUAL DE MÉXICO
+  const getMexicoCurrentDate = useCallback((): string => {
+    const now = new Date();
+    // Convertir a zona horaria de México (UTC-6)
+    const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+    
+    const year = mexicoTime.getFullYear();
+    const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
+    const day = String(mexicoTime.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  // 📅 FORMATEAR FECHAS PARA DISPLAY EN ESPAÑOL
+  const formatDisplayDate = useCallback((dateString: string | null): string => {
+    if (!dateString) return 'Sin fecha';
+    
+    try {
+      // Crear fecha sin componente de hora para evitar problemas de zona horaria
+      const date = new Date(dateString + 'T12:00:00');
+      
+      if (isNaN(date.getTime())) {
+        console.warn('⚠️ Fecha inválida:', dateString);
+        return 'Fecha inválida';
+      }
+      
+      return date.toLocaleDateString('es-MX', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('❌ Error formateando fecha:', dateString, error);
+      return 'Error de fecha';
+    }
+  }, []);
+
+  // ⏰ CALCULAR DÍAS RESTANTES CON ZONA HORARIA MÉXICO
+  const calculateDaysRemaining = useCallback((endDate: string | null): number | null => {
+    if (!endDate) return null;
+    
+    try {
+      const today = getMexicoCurrentDate();
+      
+      // Crear fechas sin hora para comparación exacta
+      const todayDate = new Date(today + 'T00:00:00');
+      const endDateObj = new Date(endDate + 'T00:00:00');
+      
+      if (isNaN(todayDate.getTime()) || isNaN(endDateObj.getTime())) {
+        console.error('❌ Fechas inválidas para cálculo:', { today, endDate });
+        return null;
+      }
+      
+      const diffTime = endDateObj.getTime() - todayDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Debug específico para Erick
+      console.log(`📊 CÁLCULO DÍAS [${endDate}]:`, {
+        fecha_fin: endDate,
+        fecha_hoy_mexico: today,
+        diferencia_ms: diffTime,
+        dias_restantes: diffDays,
+        formatted_end: formatDisplayDate(endDate)
+      });
+      
+      return diffDays;
+    } catch (error) {
+      console.error('❌ Error calculando días restantes:', error);
+      return null;
+    }
+  }, [getMexicoCurrentDate, formatDisplayDate]);
+
+  // 🧪 FUNCIÓN DE DEBUG PARA MEMBRESÍAS ESPECÍFICAS
+  const debugMembership = useCallback((membership: MembershipHistory) => {
+    const daysRemaining = calculateDaysRemaining(membership.end_date);
+    const todayMexico = getMexicoCurrentDate();
+    
+    console.group(`🔍 DEBUG MEMBRESÍA: ${membership.user_name}`);
+    console.log('📋 Datos básicos:', {
+      id: membership.id,
+      nombre: membership.user_name,
+      plan: membership.plan_name,
+      tipo_pago: membership.payment_type,
+      estado: membership.status
+    });
+    console.log('📅 Fechas:', {
+      inicio: membership.start_date,
+      fin: membership.end_date,
+      formato_inicio: formatDisplayDate(membership.start_date),
+      formato_fin: formatDisplayDate(membership.end_date)
+    });
+    console.log('⏰ Cálculos:', {
+      hoy_mexico: todayMexico,
+      dias_restantes: daysRemaining,
+      estado_calculado: daysRemaining === null ? 'Sin límite' : 
+                       daysRemaining < 0 ? 'Vencida' : 
+                       daysRemaining === 0 ? 'Vence hoy' : 
+                       'Vigente'
+    });
+    console.groupEnd();
+    
+    return {
+      todayMexico,
+      daysRemaining,
+      formattedEnd: formatDisplayDate(membership.end_date)
+    };
+  }, [calculateDaysRemaining, getMexicoCurrentDate, formatDisplayDate]);
+
   // ✅ FUNCIONES MEMOIZADAS - VERIFICADAS
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
     }).format(price);
-  }, []);
-
-  const formatDate = useCallback((dateString: string) => {
-    try {
-      return formatDateForDisplay(dateString);
-    } catch (error) {
-      console.warn('⚠️ Error al formatear fecha:', dateString, error);
-      return new Date(dateString).toLocaleDateString('es-MX', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    }
   }, []);
 
   const getStatusColor = useCallback((status: string) => {
@@ -382,7 +472,7 @@ export default function HistorialMembresiaPage() {
     return statusOption?.icon || '📋';
   }, []);
 
-  // ✅ FUNCIÓN DE RECARGA FORZADA - VERIFICADA
+  // ✅ FUNCIÓN DE RECARGA FORZADA CON DEBUGGING
   const forceReloadMemberships = useCallback(async () => {
     console.log('🔄 Forzando recarga completa de membresías...');
     setLoading(true);
@@ -406,18 +496,50 @@ export default function HistorialMembresiaPage() {
 
       if (error) throw error;
 
-      const formattedData: MembershipHistory[] = (data || []).map(item => ({
-        ...item,
-        freeze_date: item.freeze_date || null,
-        unfreeze_date: item.unfreeze_date || null,
-        total_frozen_days: item.total_frozen_days || 0,
-        payment_details: item.payment_details || {},
-        user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
-        user_email: item.Users?.email || '',
-        plan_name: item.membership_plans?.name || 'Plan Desconocido'
-      }));
+      const formattedData: MembershipHistory[] = (data || []).map(item => {
+        const membership = {
+          ...item,
+          freeze_date: item.freeze_date || null,
+          unfreeze_date: item.unfreeze_date || null,
+          total_frozen_days: item.total_frozen_days || 0,
+          payment_details: item.payment_details || {},
+          user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
+          user_email: item.Users?.email || '',
+          plan_name: item.membership_plans?.name || 'Plan Desconocido'
+        };
+        
+        // Debug específico para usuarios de prueba
+        if (membership.user_name.toLowerCase().includes('erick') || 
+            membership.user_name.toLowerCase().includes('luna')) {
+          console.log(`🎯 DATOS RAW ERICK:`, {
+            id: item.id,
+            user_name: membership.user_name,
+            plan_name: membership.plan_name,
+            payment_type: item.payment_type,
+            start_date: item.start_date,
+            end_date: item.end_date,
+            status: item.status,
+            raw_supabase_data: item
+          });
+        }
+        
+        return membership;
+      });
 
-      console.log('✅ Membresías recargadas exitosamente:', formattedData.length);
+      console.log('✅ Membresías recargadas exitosamente:', {
+        total: formattedData.length,
+        fecha_mexico_actual: getMexicoCurrentDate(),
+        muestra_erick: formattedData
+          .filter(m => m.user_name.toLowerCase().includes('erick'))
+          .map(m => ({
+            nombre: m.user_name,
+            plan: m.plan_name,
+            inicio: m.start_date,
+            fin: m.end_date,
+            dias_calc: calculateDaysRemaining(m.end_date)
+          }))
+      });
+      
       setMemberships(formattedData);
       calculateStats(formattedData);
       
@@ -427,79 +549,58 @@ export default function HistorialMembresiaPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, getMexicoCurrentDate, calculateDaysRemaining]);
 
-  // ✅ CARGAR DATOS INICIALES - FUNCIÓN VERIFICADA
- // ✅ FUNCIÓN DE CARGA CON DEBUGGING - CORREGIDA
-const loadMemberships = useCallback(async () => {
-  setLoading(true);
-  try {
-    const { data, error } = await supabase
-      .from('user_memberships')
-      .select(`
-        *,
-        Users!userid (firstName, lastName, email),
-        membership_plans!planid (name, description)
-      `)
-      .order('created_at', { ascending: false });
+  // ✅ CARGAR DATOS INICIALES CON DEBUGGING
+  const loadMemberships = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_memberships')
+        .select(`
+          *,
+          Users!userid (firstName, lastName, email),
+          membership_plans!planid (name, description)
+        `)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const formattedData: MembershipHistory[] = (data || []).map(item => {
-      const membership = {
-        ...item,
-        freeze_date: item.freeze_date || null,
-        unfreeze_date: item.unfreeze_date || null,
-        total_frozen_days: item.total_frozen_days || 0,
-        payment_details: item.payment_details || {},
-        user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
-        user_email: item.Users?.email || '',
-        plan_name: item.membership_plans?.name || 'Plan Desconocido'
-      };
+      const formattedData: MembershipHistory[] = (data || []).map(item => {
+        const membership = {
+          ...item,
+          freeze_date: item.freeze_date || null,
+          unfreeze_date: item.unfreeze_date || null,
+          total_frozen_days: item.total_frozen_days || 0,
+          payment_details: item.payment_details || {},
+          user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
+          user_email: item.Users?.email || '',
+          plan_name: item.membership_plans?.name || 'Plan Desconocido'
+        };
+        
+        return membership;
+      });
+
+      setMemberships(formattedData);
+      calculateStats(formattedData);
       
-      // ✅ DEBUG ESPECÍFICO PARA VERIFICAR FECHAS
-      if (item.Users?.firstName === 'Erick' || item.Users?.lastName?.includes('Luna')) {
-        console.log(`🔍 DEBUGGING ERICK LUNA:`, {
-          id: item.id,
-          user_name: membership.user_name,
-          plan_name: membership.plan_name,
-          payment_type: item.payment_type,
-          start_date: item.start_date,
-          end_date: item.end_date,
-          status: item.status,
-          raw_data: item
-        });
-      }
+      // Debug inicial
+      console.log('📊 CARGA INICIAL COMPLETADA:', {
+        total_memberships: formattedData.length,
+        fecha_actual_mexico: getMexicoCurrentDate(),
+        usuarios_erick: formattedData
+          .filter(m => m.user_name.toLowerCase().includes('erick'))
+          .length
+      });
       
-      return membership;
-    });
-
-    setMemberships(formattedData);
-    calculateStats(formattedData);
-    
-    // ✅ MOSTRAR DEBUGGING GENERAL
-    const todayMexico = getMexicoCurrentDate();
-    console.log(`📊 MEMBRESÍAS CARGADAS:`, {
-      total: formattedData.length,
-      fecha_mexico_actual: todayMexico,
-      muestra_datos: formattedData.slice(0, 2).map(m => ({
-        nombre: m.user_name,
-        plan: m.plan_name,
-        tipo_pago: m.payment_type,
-        inicio: m.start_date,
-        fin: m.end_date,
-        dias_restantes: getDaysRemaining(m.end_date)
-      }))
-    });
-    
-    setInfoMessage(`📊 ${formattedData.length} membresías cargadas correctamente`);
-    
-  } catch (err: any) {
-    setError(`Error al cargar membresías: ${err.message}`);
-  } finally {
-    setLoading(false);
-  }
-}, [supabase, calculateStats, getDaysRemaining, getMexicoCurrentDate]);
+      setInfoMessage(`📊 ${formattedData.length} membresías cargadas`);
+      
+    } catch (err: any) {
+      setError(`Error al cargar membresías: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, getMexicoCurrentDate]);
 
   const loadPlans = useCallback(async () => {
     try {
@@ -645,7 +746,7 @@ const loadMemberships = useCallback(async () => {
     }
   }, [supabase, forceReloadMemberships]);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO AVANZADO - VERIFICADAS
+  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO - VERIFICADAS
   const handleSelectAllMemberships = useCallback(() => {
     const eligibleMemberships = filteredMemberships
       .filter(m => m.status === 'active' || m.status === 'frozen')
@@ -718,18 +819,15 @@ const loadMemberships = useCallback(async () => {
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
 
-  // ✅ GENERAR PREVIEW DE CONGELAMIENTO MASIVO - VERIFICADO
   const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
     const preview: BulkPreview[] = eligibleMemberships.map(membership => {
       let newEndDate = membership.end_date;
       let daysToAdd = 0;
 
       if (operationType === 'manual_freeze' && bulkOperation.freezeDays && membership.end_date) {
-        // Congelamiento manual: agregar días específicos
         daysToAdd = bulkOperation.freezeDays;
         newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
       } else if (operationType === 'manual_unfreeze' && membership.end_date) {
-        // Descongelamiento manual: agregar días congelados actuales
         const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
         daysToAdd = currentFrozenDays;
         newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
@@ -750,14 +848,12 @@ const loadMemberships = useCallback(async () => {
     setShowPreview(true);
   }, [bulkOperation.freezeDays]);
 
-  // ✅ FUNCIÓN DE TÍTULOS DINÁMICOS - VERIFICADA
   const getBulkOperationTitle = useCallback(() => {
     const baseTitle = bulkOperation.type.includes('freeze') ? 'Congelamiento' : 'Reactivación';
     const modeTitle = bulkOperation.isManual ? 'Manual' : 'Automático';
     return `🧊 ${baseTitle} Masivo ${modeTitle}`;
   }, [bulkOperation.type, bulkOperation.isManual]);
 
-  // ✅ EJECUTAR OPERACIÓN MASIVA - VERIFICADA Y CORREGIDA
   const executeBulkOperation = useCallback(async () => {
     setBulkLoading(true);
     setBulkProgress(0);
@@ -781,10 +877,8 @@ const loadMemberships = useCallback(async () => {
         let result: any;
         
         if (bulkOperation.type === 'freeze' || bulkOperation.type === 'manual_freeze') {
-          // Congelamiento automático o manual
           if (bulkOperation.isManual && bulkOperation.freezeDays) {
-            // Congelamiento manual con días específicos
-            const freezeDate = getMexicoToday();
+            const freezeDate = getMexicoCurrentDate();
             let newEndDate = membership.end_date;
             
             if (membership.end_date) {
@@ -799,8 +893,8 @@ const loadMemberships = useCallback(async () => {
                 end_date: newEndDate,
                 total_frozen_days: (membership.total_frozen_days || 0) + bulkOperation.freezeDays,
                 notes: membership.notes ? 
-                  `${membership.notes}\nCongelado manualmente por ${bulkOperation.freezeDays} días el ${formatDate(freezeDate)}. ${bulkOperation.reason || ''}` :
-                  `Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDate(freezeDate)}. ${bulkOperation.reason || ''}`,
+                  `${membership.notes}\nCongelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(freezeDate)}. ${bulkOperation.reason || ''}` :
+                  `Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(freezeDate)}. ${bulkOperation.reason || ''}`,
                 updated_at: createTimestampForDB()
               })
               .eq('id', membershipId);
@@ -808,13 +902,10 @@ const loadMemberships = useCallback(async () => {
             if (error) throw error;
             result = { success: true };
           } else {
-            // Congelamiento automático
             result = await freezeMembership(supabase, membershipId);
           }
         } else {
-          // Descongelamiento automático o manual
           if (bulkOperation.isManual) {
-            // Descongelamiento manual: agregar días congelados actuales
             const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
             let newEndDate = membership.end_date;
             
@@ -827,12 +918,12 @@ const loadMemberships = useCallback(async () => {
               .update({
                 status: 'active',
                 freeze_date: null,
-                unfreeze_date: getMexicoToday(),
+                unfreeze_date: getMexicoCurrentDate(),
                 end_date: newEndDate,
                 total_frozen_days: (membership.total_frozen_days || 0) + currentFrozenDays,
                 notes: membership.notes ? 
-                  `${membership.notes}\nDescongelado manualmente el ${formatDate(getMexicoToday())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}` :
-                  `Descongelado manualmente el ${formatDate(getMexicoToday())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}`,
+                  `${membership.notes}\nDescongelado manualmente el ${formatDisplayDate(getMexicoCurrentDate())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}` :
+                  `Descongelado manualmente el ${formatDisplayDate(getMexicoCurrentDate())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}`,
                 updated_at: createTimestampForDB()
               })
               .eq('id', membershipId);
@@ -840,7 +931,6 @@ const loadMemberships = useCallback(async () => {
             if (error) throw error;
             result = { success: true };
           } else {
-            // Descongelamiento automático
             result = await unfreezeMembership(
               supabase,
               membershipId,
@@ -862,33 +952,26 @@ const loadMemberships = useCallback(async () => {
         errors.push(`${membership.user_name}: ${err.message}`);
       }
 
-      // Actualizar progreso
       setBulkProgress(Math.round(((i + 1) / bulkOperation.membershipIds.length) * 100));
-      
-      // Pequeña pausa para evitar sobrecarga
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     setBulkResults({ success: successCount, failed: failedCount, errors });
     setBulkLoading(false);
     
-    // ✅ CORRECCIÓN: RECARGA FORZADA Y CIERRE AUTOMÁTICO
     console.log('🔄 Operación completada, recargando datos...');
     await forceReloadMemberships();
     
-    // Limpiar selección
     setSelectedMembershipIds([]);
     setBulkMode(false);
     
-    // ✅ CORRECCIÓN: CERRAR MODAL AUTOMÁTICAMENTE
     setTimeout(() => {
       setBulkDialogOpen(false);
       setShowPreview(false);
       setBulkResults({ success: 0, failed: 0, errors: [] });
       setBulkProgress(0);
-    }, 2000); // Esperar 2 segundos para que el usuario vea los resultados
+    }, 2000);
 
-    // Mensaje de resultado
     if (successCount > 0) {
       const operationName = bulkOperation.type.includes('freeze') ? 'congelamiento' : 'reactivación';
       const manualText = bulkOperation.isManual ? 'manual' : 'automático';
@@ -897,9 +980,8 @@ const loadMemberships = useCallback(async () => {
     if (failedCount > 0) {
       setWarningMessage(`⚠️ ${failedCount} operaciones fallaron. Revise los detalles.`);
     }
-  }, [bulkOperation, memberships, supabase, formatDate, forceReloadMemberships]);
+  }, [bulkOperation, memberships, supabase, formatDisplayDate, forceReloadMemberships, getMexicoCurrentDate]);
 
-  // ✅ FUNCIÓN DE ACTUALIZACIÓN COHERENTE CON DB - VERIFICADA
   const handleUpdateMembership = useCallback(async () => {
     if (!selectedMembership || !editData) return;
     
@@ -915,24 +997,21 @@ const loadMemberships = useCallback(async () => {
         return;
       }
 
-      // ✅ LÓGICA DE EXTENSIÓN CORREGIDA
       if (editData.extend_days && editData.extend_days > 0 && selectedMembership?.end_date) {
         const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
         currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
         editData.end_date = currentEnd.toISOString().split('T')[0];
         
-        const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${formatDate(getMexicoToday())}.`;
+        const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${formatDisplayDate(getMexicoCurrentDate())}.`;
         editData.notes = editData.notes ? `${editData.notes}\n${extensionNote}` : extensionNote;
         
         console.log(`🔧 Extensión aplicada: ${selectedMembership.end_date} → ${editData.end_date} (+${editData.extend_days} días)`);
       }
 
-      // ✅ PREPARAR DATOS PARA ACTUALIZACIÓN - SOLO CAMPOS QUE EXISTEN EN LA TABLA
       const updateData: any = {
         updated_at: createTimestampForDB()
       };
 
-      // ✅ SOLO INCLUIR CAMPOS QUE EXISTEN EN user_memberships
       const allowedFields = [
         'status',
         'start_date', 
@@ -952,11 +1031,9 @@ const loadMemberships = useCallback(async () => {
         }
       });
 
-      // ✅ MANEJAR PAGOS MIXTOS CORRECTAMENTE - GUARDAR EN JSONB
       if (editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') {
         updateData.is_mixed_payment = true;
         
-        // Si hay detalles de pago mixto, guardarlos en payment_details JSONB
         if (editData.cash_amount || editData.card_amount || editData.transfer_amount) {
           const paymentDetails = {
             cash_amount: editData.cash_amount || 0,
@@ -994,11 +1071,9 @@ const loadMemberships = useCallback(async () => {
     } finally {
       setEditLoading(false);
     }
-  }, [selectedMembership, editData, supabase, formatDate, forceReloadMemberships]);
+  }, [selectedMembership, editData, supabase, formatDisplayDate, forceReloadMemberships, getMexicoCurrentDate]);
 
-  // ✅ INICIALIZAR DATOS DE EDICIÓN - VERIFICADA
   const initializeEditData = useCallback((membership: MembershipHistory) => {
-    // Obtener detalles de pago mixto desde payment_details JSONB
     const paymentDetails = membership.payment_details || {};
     
     setEditData({
@@ -1012,7 +1087,6 @@ const loadMemberships = useCallback(async () => {
       commission_rate: membership.commission_rate,
       commission_amount: membership.commission_amount,
       is_mixed_payment: membership.is_mixed_payment,
-      // ✅ CARGAR DATOS DE PAGO MIXTO DESDE JSONB
       cash_amount: paymentDetails.cash_amount || 0,
       card_amount: paymentDetails.card_amount || 0,
       transfer_amount: paymentDetails.transfer_amount || 0,
@@ -1020,89 +1094,6 @@ const loadMemberships = useCallback(async () => {
     });
   }, []);
 
-// ✅ FUNCIÓN CORREGIDA PARA CALCULAR DÍAS RESTANTES
-const getDaysRemaining = useCallback((endDate: string | null) => {
-  if (!endDate) return null;
-  
-  // ✅ OBTENER FECHA ACTUAL EN ZONA HORARIA DE MÉXICO
-  const mexicoNow = new Date();
-  const mexicoOffset = -6; // UTC-6 (CST México)
-  const utc = mexicoNow.getTime() + (mexicoNow.getTimezoneOffset() * 60000);
-  const mexicoTime = new Date(utc + (mexicoOffset * 3600000));
-  
-  // ✅ FORMATEAR FECHA ACTUAL DE MÉXICO COMO STRING (YYYY-MM-DD)
-  const todayMexico = mexicoTime.toISOString().split('T')[0];
-  
-  // ✅ CREAR OBJETOS DATE PARA COMPARACIÓN SIN COMPONENTE DE HORA
-  const today = new Date(todayMexico + 'T00:00:00');
-  const endDateObj = new Date(endDate + 'T00:00:00');
-  
-  // ✅ CALCULAR DIFERENCIA EN MILISEGUNDOS Y CONVERTIR A DÍAS
-  const diffTime = endDateObj.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  console.log(`📅 CÁLCULO DÍAS - Hoy México: ${todayMexico}, Vence: ${endDate}, Diferencia: ${diffDays} días`);
-  
-  return diffDays;
-}, []);
-
-// ✅ FUNCIÓN MEJORADA PARA FORMATEAR FECHAS DE DISPLAY
-const formatDate = useCallback((dateString: string) => {
-  try {
-    if (!dateString) return 'Sin fecha';
-    
-    // ✅ ASEGURAR QUE ES UNA FECHA VÁLIDA
-    const date = new Date(dateString + 'T00:00:00');
-    
-    if (isNaN(date.getTime())) {
-      console.warn('⚠️ Fecha inválida:', dateString);
-      return 'Fecha inválida';
-    }
-    
-    // ✅ FORMATEAR EN ESPAÑOL CON ZONA HORARIA DE MÉXICO
-    return date.toLocaleDateString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'America/Mexico_City'
-    });
-  } catch (error) {
-    console.error('❌ Error al formatear fecha:', dateString, error);
-    return 'Error de fecha';
-  }
-}, []);
-
-// ✅ FUNCIÓN PARA OBTENER FECHA ACTUAL DE MÉXICO
-const getMexicoCurrentDate = useCallback(() => {
-  const mexicoNow = new Date();
-  const mexicoOffset = -6; // UTC-6 (CST México)
-  const utc = mexicoNow.getTime() + (mexicoNow.getTimezoneOffset() * 60000);
-  const mexicoTime = new Date(utc + (mexicoOffset * 3600000));
-  
-  return mexicoTime.toISOString().split('T')[0]; // YYYY-MM-DD
-}, []);
-
-// ✅ FUNCIÓN PARA DEBUGGING DE FECHAS
-const debugMembershipDates = useCallback((membership: MembershipHistory) => {
-  const today = getMexicoCurrentDate();
-  const daysRemaining = getDaysRemaining(membership.end_date);
-  
-  console.log(`🔍 DEBUG MEMBRESÍA ${membership.user_name}:`, {
-    id: membership.id,
-    plan: membership.plan_name,
-    payment_type: membership.payment_type,
-    start_date: membership.start_date,
-    end_date: membership.end_date,
-    status: membership.status,
-    today_mexico: today,
-    days_remaining: daysRemaining,
-    formatted_end: membership.end_date ? formatDate(membership.end_date) : 'Sin fecha'
-  });
-  
-  return { today, daysRemaining };
-}, [getDaysRemaining, getMexicoCurrentDate, formatDate]);
-  // ✅ FUNCIONES UTILITARIAS - VERIFICADAS
   const handleStatusChange = useCallback(async (membership: MembershipHistory, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -1135,7 +1126,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
     });
   }, []);
 
-  // ✅ EFFECTS - VERIFICADOS
+  // ✅ EFFECTS
   useEffect(() => {
     loadMemberships();
     loadPlans();
@@ -1145,7 +1136,6 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
     applyFilters();
   }, [applyFilters]);
 
-  // Regenerar preview cuando cambian los días de congelamiento
   useEffect(() => {
     if (showPreview && bulkOperation.type === 'manual_freeze') {
       const eligibleMemberships = filteredMemberships.filter(m => 
@@ -1155,738 +1145,11 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
     }
   }, [bulkOperation.freezeDays, bulkOperation.membershipIds, filteredMemberships, generateBulkPreview, showPreview, bulkOperation.type]);
 
-  // ✅ HANDLERS DE CIERRE - VERIFICADOS
+  // ✅ HANDLERS DE CIERRE
   const handleCloseError = useCallback(() => setError(null), []);
   const handleCloseSuccess = useCallback(() => setSuccessMessage(null), []);
   const handleCloseWarning = useCallback(() => setWarningMessage(null), []);
   const handleCloseInfo = useCallback(() => setInfoMessage(null), []);
-
-  // ✅ MODAL DE EDICIÓN OPTIMIZADO - VERIFICADO
-  const OptimizedEditModal = useMemo(() => {
-    if (!editDialogOpen || !selectedMembership) return null;
-
-    // ✅ OBTENER DETALLES DE PAGO MIXTO DESDE JSONB
-    const paymentDetailsFromDB = selectedMembership.payment_details || {};
-    
-    // ✅ SOLO MOSTRAR CAMPOS DE PAGO MIXTO SI SON RELEVANTES
-    const showMixedPaymentFields = editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto';
-
-    return (
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={() => !editLoading && setEditDialogOpen(false)}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.primary}50`,
-            borderRadius: 4,
-            color: darkProTokens.textPrimary,
-            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
-            maxHeight: '90vh'
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          color: darkProTokens.primary, 
-          fontWeight: 800,
-          fontSize: '1.8rem',
-          textAlign: 'center',
-          pb: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <EditIcon sx={{ fontSize: 40 }} />
-            Editar Registro de Venta
-          </Box>
-          <IconButton 
-            onClick={() => setEditDialogOpen(false)}
-            disabled={editLoading}
-            sx={{ color: darkProTokens.textSecondary }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
-          <Box sx={{ mt: 2 }}>
-            {/* Header del Cliente */}
-            <Card sx={{
-              background: `${darkProTokens.primary}10`,
-              border: `1px solid ${darkProTokens.primary}30`,
-              borderRadius: 3,
-              mb: 3
-            }}>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    borderRadius: '50%', 
-                    background: darkProTokens.primary,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: darkProTokens.background,
-                    fontWeight: 800,
-                    fontSize: '1.5rem'
-                  }}>
-                    {selectedMembership.user_name.split(' ').map((n: string) => n[0]).join('')}
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.primary, 
-                      fontWeight: 700
-                    }}>
-                      {selectedMembership.user_name}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                      📅 Registrado: {formatDate(selectedMembership.created_at)}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Chip 
-                      label={selectedMembership.is_renewal ? '🔄 RENOVACIÓN' : '🆕 PRIMERA VEZ'}
-                      sx={{
-                        backgroundColor: selectedMembership.is_renewal ? darkProTokens.warning : darkProTokens.success,
-                        color: selectedMembership.is_renewal ? darkProTokens.background : darkProTokens.textPrimary,
-                        fontWeight: 700,
-                        mb: 1
-                      }}
-                    />
-                    {selectedMembership.skip_inscription && (
-                      <Chip 
-                        label="🚫 SIN INSCRIPCIÓN" 
-                        size="small"
-                        sx={{
-                          backgroundColor: darkProTokens.success,
-                          color: darkProTokens.textPrimary,
-                          fontWeight: 600,
-                          display: 'block'
-                        }}
-                      />
-                    )}
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-
-            <Grid container spacing={3}>
-              {/* Estado y Método de Pago */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                <FormControl fullWidth>
-                  <InputLabel sx={{ 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
-                  }}>
-                    Estado de la Membresía
-                  </InputLabel>
-                  <Select
-                    value={editData.status || selectedMembership.status}
-                    onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
-                    sx={{
-                      color: darkProTokens.textPrimary,
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      }
-                    }}
-                  >
-                    {statusOptions.filter(s => s.value !== '').map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>{option.icon}</span>
-                          <span>{option.label}</span>
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 6 }}>
-                <FormControl fullWidth>
-                  <InputLabel sx={{ 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
-                  }}>
-                    Método de Pago
-                  </InputLabel>
-                  <Select
-                    value={editData.payment_method || selectedMembership.payment_method}
-                    onChange={(e) => {
-                      const newMethod = e.target.value;
-                      setEditData(prev => ({ 
-                        ...prev, 
-                        payment_method: newMethod,
-                        // ✅ LIMPIAR CAMPOS DE PAGO MIXTO AL CAMBIAR MÉTODO
-                        cash_amount: newMethod === 'mixto' ? (prev.cash_amount || paymentDetailsFromDB.cash_amount || 0) : 0,
-                        card_amount: newMethod === 'mixto' ? (prev.card_amount || paymentDetailsFromDB.card_amount || 0) : 0,
-                        transfer_amount: newMethod === 'mixto' ? (prev.transfer_amount || paymentDetailsFromDB.transfer_amount || 0) : 0
-                      }));
-                    }}
-                    sx={{
-                      color: darkProTokens.textPrimary,
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      }
-                    }}
-                  >
-                    {paymentMethodOptions.filter(p => p.value !== '').map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>{option.icon}</span>
-                          <span>{option.label}</span>
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              {/* ✅ CAMPOS PARA PAGO MIXTO - SOLO SI ES RELEVANTE */}
-              {showMixedPaymentFields && (
-                <>
-                  <Grid size={12}>
-                    <Alert severity="info" sx={{
-                      backgroundColor: `${darkProTokens.info}10`,
-                      color: darkProTokens.textPrimary,
-                      border: `1px solid ${darkProTokens.info}30`,
-                      '& .MuiAlert-icon': { color: darkProTokens.info }
-                    }}>
-                      💳 Pago Mixto - Los cambios se guardarán en el historial de la membresía
-                    </Alert>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField
-                      fullWidth
-                      label="Efectivo"
-                      type="number"
-                      value={editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0}
-                      onChange={(e) => setEditData(prev => ({ ...prev, cash_amount: parseFloat(e.target.value) || 0 }))}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">💵</InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.success}30`
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.success }
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField
-                      fullWidth
-                      label="Tarjeta"
-                      type="number"
-                      value={editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0}
-                      onChange={(e) => setEditData(prev => ({ ...prev, card_amount: parseFloat(e.target.value) || 0 }))}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">💳</InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.info}30`
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.info }
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField
-                      fullWidth
-                      label="Transferencia"
-                      type="number"
-                      value={editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0}
-                      onChange={(e) => setEditData(prev => ({ ...prev, transfer_amount: parseFloat(e.target.value) || 0 }))}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">🏦</InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.warning}30`
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.warning }
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <Box sx={{
-                      background: `${darkProTokens.primary}10`,
-                      border: `1px solid ${darkProTokens.primary}30`,
-                      borderRadius: 2,
-                      p: 2,
-                      textAlign: 'center',
-                      height: '56px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center'
-                    }}>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                        Total Mixto
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                        {formatPrice(
-                          (editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0) + 
-                          (editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0) + 
-                          (editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0)
-                        )}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </>
-              )}
-
-              {/* Fechas */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  fullWidth
-                  label="Fecha de Inicio"
-                  type="date"
-                  value={editData.start_date || selectedMembership.start_date}
-                  onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
-                  InputLabelProps={{ 
-                    shrink: true,
-                    sx: { 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
-                    }
-                  }}
-                  InputProps={{
-                    sx: {
-                      color: darkProTokens.textPrimary,
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      }
-                    }
-                  }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  fullWidth
-                  label="Fecha de Vencimiento"
-                  type="date"
-                  value={editData.end_date || selectedMembership.end_date || ''}
-                  onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
-                  InputLabelProps={{ 
-                    shrink: true,
-                    sx: { 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
-                    }
-                  }}
-                  InputProps={{
-                    sx: {
-                      color: darkProTokens.textPrimary,
-                                            '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      }
-                    }
-                  }}
-                />
-              </Grid>
-
-              {/* Montos y Comisiones */}
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label="Monto Total Pagado"
-                  type="number"
-                  value={editData.amount_paid || selectedMembership.amount_paid}
-                  onChange={(e) => {
-                    const amount = parseFloat(e.target.value) || 0;
-                    const commissionRate = editData.commission_rate || selectedMembership.commission_rate || 0;
-                    const commissionAmount = amount * (commissionRate / 100);
-                    setEditData(prev => ({ 
-                      ...prev, 
-                      amount_paid: amount,
-                      commission_amount: commissionAmount
-                    }));
-                  }}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">💰</InputAdornment>,
-                    sx: {
-                      color: darkProTokens.textPrimary,
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
-                      }
-                    }
-                  }}
-                  InputLabelProps={{
-                    sx: { 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
-                    }
-                  }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label="Comisión (%)"
-                  type="number"
-                  value={editData.commission_rate || selectedMembership.commission_rate || 0}
-                  onChange={(e) => {
-                    const rate = parseFloat(e.target.value) || 0;
-                    const amount = editData.amount_paid || selectedMembership.amount_paid;
-                    const commissionAmount = amount * (rate / 100);
-                    setEditData(prev => ({ 
-                      ...prev, 
-                      commission_rate: rate,
-                      commission_amount: commissionAmount
-                    }));
-                  }}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><PercentIcon sx={{ color: darkProTokens.warning }} /></InputAdornment>,
-                    sx: {
-                      color: darkProTokens.textPrimary,
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.warning}30`
-                      }
-                    }
-                  }}
-                  InputLabelProps={{
-                    sx: { 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.warning }
-                    }
-                  }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Box sx={{
-                  background: `${darkProTokens.success}10`,
-                  border: `1px solid ${darkProTokens.success}30`,
-                  borderRadius: 2,
-                  p: 2,
-                  textAlign: 'center',
-                  height: '56px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center'
-                }}>
-                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                    Comisión Total
-                  </Typography>
-                  <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                    {formatPrice(editData.commission_amount || selectedMembership.commission_amount || 0)}
-                  </Typography>
-                </Box>
-              </Grid>
-
-              {/* Referencia de Pago */}
-              <Grid size={12}>
-                <TextField
-                  fullWidth
-                  label="Referencia de Pago"
-                  value={editData.payment_reference || selectedMembership.payment_reference || ''}
-                  onChange={(e) => setEditData(prev => ({ ...prev, payment_reference: e.target.value }))}
-                  placeholder="Número de autorización, SPEI, folio, etc."
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">📄</InputAdornment>,
-                    sx: {
-                      color: darkProTokens.textPrimary,
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      }
-                    }
-                  }}
-                  InputLabelProps={{
-                    sx: { 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
-                    }
-                  }}
-                />
-              </Grid>
-
-              {/* ✅ EXTENSIÓN MANUAL CORREGIDA */}
-              <Grid size={12}>
-                <Card sx={{
-                  background: `${darkProTokens.info}10`,
-                  border: `1px solid ${darkProTokens.info}30`,
-                  borderRadius: 3,
-                  mt: 2
-                }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.info,
-                      fontWeight: 700,
-                      mb: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2
-                    }}>
-                      <AcUnitIcon />
-                      📅 Extensión Manual de Vigencia
-                    </Typography>
-
-                    <Grid container spacing={3}>
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{
-                          background: `${darkProTokens.grayDark}10`,
-                          border: `1px solid ${darkProTokens.grayDark}30`,
-                          borderRadius: 2,
-                          p: 2,
-                          textAlign: 'center'
-                        }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                            Días Congelados Históricos
-                          </Typography>
-                          <Typography variant="h6" sx={{ 
-                            color: darkProTokens.info,
-                            fontWeight: 700
-                          }}>
-                            🧊 {selectedMembership.total_frozen_days || 0} días
-                          </Typography>
-                        </Box>
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{
-                          background: `${darkProTokens.grayDark}10`,
-                          border: `1px solid ${darkProTokens.grayDark}30`,
-                          borderRadius: 2,
-                          p: 2,
-                          textAlign: 'center'
-                        }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                            Vencimiento Actual
-                          </Typography>
-                          <Typography variant="body1" sx={{ 
-                            color: darkProTokens.textPrimary,
-                            fontWeight: 600
-                          }}>
-                            📅 {selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha'}
-                          </Typography>
-                        </Box>
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
-                          fullWidth
-                          label="Días a Extender"
-                          type="number"
-                          value={editData.extend_days || 0}
-                          onChange={(e) => setEditData(prev => ({ ...prev, extend_days: parseInt(e.target.value) || 0 }))}
-                          placeholder="Ej: 1"
-                          helperText="Solo extiende la fecha de vencimiento"
-                          InputProps={{
-                            startAdornment: <InputAdornment position="start">📅</InputAdornment>,
-                            sx: {
-                              color: darkProTokens.textPrimary,
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: `${darkProTokens.info}30`
-                              }
-                            }
-                          }}
-                          FormHelperTextProps={{
-                            sx: { color: darkProTokens.textSecondary }
-                          }}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{
-                          background: `${darkProTokens.primary}10`,
-                          border: `1px solid ${darkProTokens.primary}30`,
-                          borderRadius: 2,
-                          p: 2,
-                          textAlign: 'center'
-                        }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                            Nueva Fecha de Vencimiento
-                          </Typography>
-                          <Typography variant="body1" sx={{ 
-                            color: darkProTokens.primary,
-                            fontWeight: 700
-                          }}>
-                            📅 {(() => {
-                              if (!selectedMembership.end_date || !editData.extend_days) {
-                                return selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha';
-                              }
-                              const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
-                              currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
-                              return formatDate(currentEnd.toISOString().split('T')[0]);
-                            })()}
-                          </Typography>
-                        </Box>
-                      </Grid>
-
-                      {editData.extend_days > 0 && (
-                        <Grid size={12}>
-                          <Alert 
-                            severity="success"
-                            sx={{
-                              backgroundColor: `${darkProTokens.success}10`,
-                              color: darkProTokens.textPrimary,
-                              border: `1px solid ${darkProTokens.success}30`,
-                              '& .MuiAlert-icon': { color: darkProTokens.success }
-                            }}
-                          >
-                            <Typography variant="body2">
-                              <strong>📅 Extensión de Vigencia:</strong> Se extenderá la fecha de vencimiento por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}.<br/>
-                              <strong>🧊 Diferencia con congelamiento:</strong> Esto NO se registra como días congelados, solo extiende la vigencia manualmente.
-                            </Typography>
-                          </Alert>
-                        </Grid>
-                      )}
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* Notas */}
-              <Grid size={12}>
-                <TextField
-                  fullWidth
-                  label="Notas del Registro"
-                  multiline
-                  rows={3}
-                  value={editData.notes || selectedMembership.notes || ''}
-                  onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Observaciones sobre esta venta, correcciones realizadas, etc..."
-                  InputProps={{
-                    sx: {
-                      color: darkProTokens.textPrimary,
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
-                      }
-                    }
-                  }}
-                  InputLabelProps={{
-                    sx: { 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
-                    }
-                  }}
-                />
-              </Grid>
-            </Grid>
-
-            {/* Alerta de Confirmación */}
-            <Alert 
-              severity="warning"
-              sx={{
-                mt: 3,
-                backgroundColor: `${darkProTokens.warning}10`,
-                color: darkProTokens.textPrimary,
-                border: `1px solid ${darkProTokens.warning}30`,
-                '& .MuiAlert-icon': { color: darkProTokens.warning }
-              }}
-            >
-              <Typography variant="body2">
-                <strong>⚠️ Edición de Registro:</strong> Solo modifique datos para corregir errores en el registro original.
-                {editData.extend_days > 0 && (
-                  <>
-                    <br/><strong>📅 Extensión Manual:</strong> Se extenderá la vigencia por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''} (no cuenta como congelamiento).
-                  </>
-                )}
-              </Typography>
-            </Alert>
-          </Box>
-        </DialogContent>
-        
-        <DialogActions sx={{ p: 3, gap: 2 }}>
-          <Button 
-            onClick={() => setEditDialogOpen(false)}
-            disabled={editLoading}
-            sx={{ 
-              color: darkProTokens.textSecondary,
-              borderColor: darkProTokens.grayDark,
-              px: 3,
-              py: 1
-            }}
-            variant="outlined"
-          >
-            Cancelar
-          </Button>
-          
-          <Button 
-            onClick={handleUpdateMembership}
-            disabled={editLoading}
-            variant="contained"
-            startIcon={editLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
-            sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-              color: darkProTokens.background,
-              fontWeight: 700,
-              px: 4,
-              py: 1,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-                transform: 'translateY(-1px)'
-              }
-            }}
-          >
-            {editLoading ? 'Guardando...' : 'Guardar Correcciones'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    );
-  }, [editDialogOpen, selectedMembership, editData, editLoading, formatDate, formatPrice, handleUpdateMembership]);
 
   return (
     <Box sx={{ 
@@ -1895,7 +1158,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
       minHeight: '100vh',
       color: darkProTokens.textPrimary
     }}>
-      {/* ✅ SNACKBARS - VERIFICADOS */}
+      {/* ✅ SNACKBARS */}
       <Snackbar 
         open={!!error} 
         autoHideDuration={8000} 
@@ -2000,7 +1263,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
         </Alert>
       </Snackbar>
 
-      {/* ✅ HEADER ENTERPRISE - VERIFICADO */}
+      {/* ✅ HEADER CON BOTÓN DE DEBUG */}
       <Paper sx={{
         p: 4,
         mb: 4,
@@ -2036,6 +1299,40 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
           </Box>
           
           <Stack direction="row" spacing={2}>
+            {/* 🧪 BOTÓN DE DEBUG TEMPORAL */}
+            <Button
+              startIcon={<InfoIcon />}
+              onClick={() => {
+                console.log('🧪 INICIANDO DEBUG DE FECHAS...');
+                const hoy = getMexicoCurrentDate();
+                console.log('📅 Fecha México actual:', hoy);
+                
+                // Debug específico para Erick
+                filteredMemberships
+                  .filter(m => m.user_name.toLowerCase().includes('erick'))
+                  .forEach(membership => {
+                    debugMembership(membership);
+                  });
+                
+                setInfoMessage('🧪 Debug completado - Revisa la consola');
+              }}
+              sx={{ 
+                color: darkProTokens.warning,
+                borderColor: `${darkProTokens.warning}60`,
+                px: 2,
+                py: 1,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.warning,
+                  backgroundColor: `${darkProTokens.warning}10`
+                }
+              }}
+              variant="outlined"
+              size="small"
+            >
+              🧪 Debug Fechas
+            </Button>
+            
             <Button
               startIcon={<RefreshIcon />}
               onClick={forceReloadMemberships}
@@ -2083,7 +1380,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
           </Stack>
         </Box>
 
-        {/* ✅ ESTADÍSTICAS ENTERPRISE - VERIFICADAS */}
+        {/* ✅ ESTADÍSTICAS */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <Card sx={{
@@ -2194,7 +1491,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
               p: 2
             }}>
               <Typography variant="h5" sx={{ 
-                color: darkProTokens.primary, 
+                                color: darkProTokens.primary, 
                 fontWeight: 800,
                 display: 'flex',
                 alignItems: 'center',
@@ -2237,7 +1534,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
         </Grid>
       </Paper>
 
-      {/* ✅ BARRA DE CONGELAMIENTO MASIVO AVANZADO - VERIFICADA */}
+      {/* ✅ BARRA DE CONGELAMIENTO MASIVO */}
       <AnimatePresence>
         {bulkMode && (
           <motion.div
@@ -2294,7 +1591,6 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
               </Box>
 
               <Grid container spacing={2}>
-                {/* Selección */}
                 <Grid size={{ xs: 12, md: 3 }}>
                   <Stack spacing={1}>
                     <Button
@@ -2337,7 +1633,6 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
                   </Stack>
                 </Grid>
 
-                {/* Congelamiento */}
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Stack spacing={1}>
                     <Button
@@ -2386,7 +1681,6 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
                   </Stack>
                 </Grid>
 
-                {/* Descongelamiento */}
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Stack spacing={1}>
                     <Button
@@ -2435,7 +1729,6 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
                   </Stack>
                 </Grid>
 
-                {/* Estado */}
                 <Grid size={{ xs: 12, md: 1 }}>
                   <Box sx={{
                     background: `${darkProTokens.primary}10`,
@@ -2484,7 +1777,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
         )}
       </AnimatePresence>
 
-      {/* ✅ CONTROLES Y FILTROS - VERIFICADOS */}
+      {/* ✅ CONTROLES Y FILTROS */}
       <Paper sx={{
         p: 3,
         mb: 3,
@@ -2549,7 +1842,6 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
           </Stack>
         </Box>
 
-        {/* Búsqueda rápida */}
         <TextField
           fullWidth
           placeholder="Buscar por nombre, email, plan o referencia de pago..."
@@ -2580,7 +1872,6 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
           sx={{ mb: 3 }}
         />
 
-        {/* Filtros avanzados */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -2809,7 +2100,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
         </AnimatePresence>
       </Paper>
 
-      {/* ✅ TABLA PRINCIPAL - VERIFICADA */}
+      {/* ✅ TABLA PRINCIPAL CON FECHAS CORREGIDAS */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
         border: `1px solid ${darkProTokens.primary}20`,
@@ -2970,65 +2261,67 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
                             />
                           </TableCell>
 
-                          // ✅ EN LA COLUMNA DE VIGENCIA DE LA TABLA - CORREGIDA
-<TableCell>
-  <Box>
-    <Typography variant="body2" sx={{ 
-      color: darkProTokens.textPrimary,
-      fontWeight: 500
-    }}>
-      📅 Inicio: {formatDate(membership.start_date)}
-    </Typography>
-    {membership.end_date ? (
-      <>
-        <Typography variant="body2" sx={{ 
-          color: darkProTokens.textPrimary,
-          fontWeight: 600,
-          mb: 0.5
-        }}>
-          🏁 Vence: {formatDate(membership.end_date)}
-        </Typography>
-        <Typography variant="caption" sx={{ 
-          color: (() => {
-            const daysRemaining = getDaysRemaining(membership.end_date);
-            if (daysRemaining === null) return darkProTokens.textSecondary;
-            if (daysRemaining < 0) return darkProTokens.error;
-            if (daysRemaining < 7) return darkProTokens.warning;
-            return darkProTokens.success;
-          })()
-        }}>
-          ⏰ {(() => {
-            const daysRemaining = getDaysRemaining(membership.end_date!);
-            if (daysRemaining === null) return 'Sin límite';
-            if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
-            if (daysRemaining === 0) return 'Vence hoy';
-            return `${daysRemaining} días restantes`;
-          })()}
-        </Typography>
-        
-        {/* 🆕 BOTÓN DE DEBUG TEMPORAL */}
-        <Button
-          size="small"
-          onClick={() => debugMembershipDates(membership)}
-          sx={{ 
-            fontSize: '0.7rem',
-            color: darkProTokens.info,
-            p: 0,
-            minWidth: 'auto'
-          }}
-        >
-          🔍 Debug
-        </Button>
-      </>
-    ) : (
-      <Typography variant="caption" sx={{ 
-        color: darkProTokens.success
-      }}>
-        ♾️ Sin vencimiento
-      </Typography>
-    )}
-  </Box>
-</TableCell>
+                          {/* ✅ COLUMNA DE VIGENCIA CORREGIDA CON FECHAS MÉXICO */}
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 500
+                              }}>
+                                📅 Inicio: {formatDisplayDate(membership.start_date)}
+                              </Typography>
+                              {membership.end_date ? (
+                                <>
+                                  <Typography variant="body2" sx={{ 
+                                    color: darkProTokens.textPrimary,
+                                    fontWeight: 600,
+                                    mb: 0.5
+                                  }}>
+                                    🏁 Vence: {formatDisplayDate(membership.end_date)}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: (() => {
+                                      const daysRemaining = calculateDaysRemaining(membership.end_date);
+                                      if (daysRemaining === null) return darkProTokens.textSecondary;
+                                      if (daysRemaining < 0) return darkProTokens.error;
+                                      if (daysRemaining < 7) return darkProTokens.warning;
+                                      return darkProTokens.success;
+                                    })()
+                                  }}>
+                                    ⏰ {(() => {
+                                      const daysRemaining = calculateDaysRemaining(membership.end_date!);
+                                      if (daysRemaining === null) return 'Sin límite';
+                                      if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
+                                      if (daysRemaining === 0) return 'Vence hoy';
+                                      return `${daysRemaining} días restantes`;
+                                    })()}
+                                  </Typography>
+                                  
+                                  {/* 🧪 BOTÓN DE DEBUG POR FILA */}
+                                  <Button
+                                    size="small"
+                                    onClick={() => debugMembership(membership)}
+                                    sx={{ 
+                                      fontSize: '0.6rem',
+                                      color: darkProTokens.info,
+                                      p: 0,
+                                      minWidth: 'auto',
+                                      mt: 0.5,
+                                      display: 'block'
+                                    }}
+                                  >
+                                    🔍 Debug
+                                  </Button>
+                                </>
+                              ) : (
+                                <Typography variant="caption" sx={{ 
+                                  color: darkProTokens.success
+                                }}>
+                                  ♾️ Sin vencimiento
+                                </Typography>
+                              )}
+                            </Box>
+                          </TableCell>
 
                           <TableCell>
                             <Box>
@@ -3071,7 +2364,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
                                 <Chip 
                                   label={`🧊 ${membership.total_frozen_days} días`}
                                   size="small"
-                                                                  sx={{
+                                  sx={{
                                     backgroundColor: `${darkProTokens.success}20`,
                                     color: darkProTokens.success,
                                     fontWeight: 600
@@ -3179,7 +2472,8 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
         </CardContent>
       </Card>
 
-      {/* ✅ MENU DE ACCIONES - VERIFICADO */}
+      {/* ✅ RESTO DE COMPONENTES (MENUS, DIALOGS, ETC.) - Siguen igual */}
+      {/* Menu de acciones */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -3258,7 +2552,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
         </MenuList>
       </Menu>
 
-      {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO AVANZADO - VERIFICADO */}
+    {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO AVANZADO - VERIFICADO */}
       <Dialog
         open={bulkDialogOpen}
         onClose={() => !bulkLoading && setBulkDialogOpen(false)}
@@ -4340,10 +3634,7 @@ const debugMembershipDates = useCallback((membership: MembershipHistory) => {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL DE EDICIÓN OPTIMIZADO */}
-      {OptimizedEditModal}
-
-      {/* ✅ ESTILOS CSS DARK PRO */}
+      {/* ✅ ESTILOS CSS */}
       <style jsx>{`
         ::-webkit-scrollbar {
           width: 8px;
