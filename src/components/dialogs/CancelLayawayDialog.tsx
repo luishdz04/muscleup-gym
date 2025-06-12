@@ -38,7 +38,9 @@ import {
   IconButton,
   Tooltip,
   LinearProgress,
-  Stack
+  Stack,
+  Avatar,
+  Slider
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { 
@@ -50,11 +52,54 @@ import {
   Info as InfoIcon,
   Inventory as InventoryIcon,
   Receipt as ReceiptIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  ErrorOutline as ErrorIcon,
+  CreditCard as CreditCardIcon,
+  AccountBalance as BankIcon,
+  LocalAtm as CashIcon,
+  CardGiftcard as GiftCardIcon
 } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { formatPrice, formatDate } from '@/utils/formatUtils';
 import { showNotification } from '@/utils/notifications';
+
+// 🎨 DARK PRO SYSTEM - TOKENS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // User Roles
+  roleModerator: '#9C27B0'
+};
 
 interface CancelLayawayDialogProps {
   open: boolean;
@@ -73,20 +118,20 @@ interface RefundDetail {
 }
 
 const cancelReasons = [
-  { value: 'customer_request', label: '🙋 Solicitud del cliente', description: 'El cliente decidió cancelar' },
-  { value: 'expired', label: '⏰ Apartado vencido', description: 'Superó el tiempo límite' },
-  { value: 'product_unavailable', label: '📦 Producto no disponible', description: 'No hay stock suficiente' },
-  { value: 'administrative', label: '📋 Decisión administrativa', description: 'Cancelación por políticas' },
-  { value: 'payment_issues', label: '💳 Problemas de pago', description: 'Incidencias con pagos' },
-  { value: 'other', label: '❓ Otro motivo', description: 'Especificar en notas' }
+  { value: 'customer_request', label: '🙋 Solicitud del cliente', description: 'El cliente decidió cancelar', color: darkProTokens.info },
+  { value: 'expired', label: '⏰ Apartado vencido', description: 'Superó el tiempo límite', color: darkProTokens.warning },
+  { value: 'product_unavailable', label: '📦 Producto no disponible', description: 'No hay stock suficiente', color: darkProTokens.error },
+  { value: 'administrative', label: '📋 Decisión administrativa', description: 'Cancelación por políticas', color: darkProTokens.roleModerator },
+  { value: 'payment_issues', label: '💳 Problemas de pago', description: 'Incidencias con pagos', color: darkProTokens.error },
+  { value: 'other', label: '❓ Otro motivo', description: 'Especificar en notas', color: darkProTokens.grayMuted }
 ];
 
 const refundMethods = [
-  { value: 'efectivo', label: 'Efectivo', icon: '💵', description: 'Devolución en efectivo' },
-  { value: 'transfer', label: 'Transferencia', icon: '🏦', description: 'Transferencia bancaria' },
-  { value: 'store_credit', label: 'Crédito en tienda', icon: '🎫', description: 'Vale para compras futuras' },
-  { value: 'original_method', label: 'Método original', icon: '🔄', description: 'Mismo método de pago' },
-  { value: 'no_refund', label: 'Sin reembolso', icon: '❌', description: 'No aplica devolución' }
+  { value: 'efectivo', label: 'Efectivo', icon: '💵', description: 'Devolución en efectivo', color: darkProTokens.primary },
+  { value: 'transfer', label: 'Transferencia', icon: '🏦', description: 'Transferencia bancaria', color: darkProTokens.info },
+  { value: 'store_credit', label: 'Crédito en tienda', icon: '🎫', description: 'Vale para compras futuras', color: darkProTokens.warning },
+  { value: 'original_method', label: 'Método original', icon: '🔄', description: 'Mismo método de pago', color: darkProTokens.success },
+  { value: 'no_refund', label: 'Sin reembolso', icon: '❌', description: 'No aplica devolución', color: darkProTokens.error }
 ];
 
 export default function CancelLayawayDialog({ 
@@ -147,8 +192,6 @@ export default function CancelLayawayDialog({
     if (!open || !safeLayaway) return;
     
     try {
-      console.log('🔍 Cargando detalles para reembolso... - 2025-06-11 08:46:59 UTC - luishdz04');
-      
       // Crear detalles de reembolso basados en pagos existentes
       const details: RefundDetail[] = safeLayaway.payment_history.map((payment: any) => ({
         payment_id: payment.id,
@@ -159,17 +202,14 @@ export default function CancelLayawayDialog({
       }));
       
       setRefundDetails(details);
-      console.log('✅ Detalles de reembolso calculados:', details);
     } catch (error) {
-      console.error('❌ Error calculando reembolsos:', error);
+      console.error('Error calculando reembolsos:', error);
     }
   }, [open, safeLayaway, refundPercentage, refundMethod]);
 
   // ✅ useEffect HÍBRIDO CON GUARD CLAUSE
   useEffect(() => {
     if (!open || !layaway) return;
-    
-    console.log('🔄 Inicializando dialog de cancelación... - 2025-06-11 08:46:59 UTC - luishdz04');
     
     // Reset estados
     setActiveStep(0);
@@ -205,7 +245,7 @@ export default function CancelLayawayDialog({
     
     const totalPaid = safeLayaway.paid_amount;
     const baseRefund = totalPaid * (refundPercentage / 100);
-    const penalty = applyPenalty ? penaltyAmount : 0; // ✅ DEFINIR penalty AQUÍ
+    const penalty = applyPenalty ? penaltyAmount : 0;
     const finalRefund = Math.max(0, baseRefund - penalty);
     
     const totalCommissionRefund = refundDetails.reduce((sum, detail) => sum + detail.commission_refund, 0);
@@ -222,7 +262,7 @@ export default function CancelLayawayDialog({
     };
   }, [safeLayaway, refundPercentage, applyPenalty, penaltyAmount, refundDetails]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CANCELACIÓN - CORREGIDA
+  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CANCELACIÓN
   const processCancellation = useCallback(async () => {
     if (!safeLayaway || !calculations) return;
 
@@ -236,8 +276,6 @@ export default function CancelLayawayDialog({
 
       const userId = userData.user.id;
 
-      console.log('🚀 Procesando cancelación de apartado:', safeLayaway.sale_number, '- 2025-06-11 08:46:59 UTC - luishdz04');
-
       // ✅ ACTUALIZAR APARTADO A CANCELADO
       const updateData = {
         status: 'cancelled',
@@ -248,7 +286,7 @@ export default function CancelLayawayDialog({
         refund_amount: processRefund ? calculations.finalRefund : 0,
         refund_method: processRefund ? refundMethod : null,
         refund_reference: refundReference || null,
-        penalty_amount: calculations.penalty, // ✅ USAR calculations.penalty
+        penalty_amount: calculations.penalty,
         notes: notes || null,
         updated_at: new Date().toISOString()
       };
@@ -269,7 +307,7 @@ export default function CancelLayawayDialog({
           refund_amount: calculations.finalRefund,
           refund_method: refundMethod,
           refund_reference: refundReference || null,
-          penalty_amount: calculations.penalty, // ✅ USAR calculations.penalty
+          penalty_amount: calculations.penalty,
           commission_refund: calculations.totalCommissionRefund,
           refund_date: new Date().toISOString(),
           created_at: new Date().toISOString(),
@@ -283,8 +321,7 @@ export default function CancelLayawayDialog({
           .insert([refundData]);
 
         if (refundError) {
-          console.error('❌ Error registrando reembolso:', refundError);
-          // No throw, continuar con el proceso
+          console.error('Error registrando reembolso:', refundError);
         }
       }
 
@@ -313,7 +350,7 @@ export default function CancelLayawayDialog({
               .eq('id', item.product_id);
 
             if (stockError) {
-              console.error('❌ Error restaurando stock:', stockError);
+              console.error('Error restaurando stock:', stockError);
             }
 
             // ✅ REGISTRAR MOVIMIENTO DE INVENTARIO
@@ -335,8 +372,6 @@ export default function CancelLayawayDialog({
               }]);
           }
         }
-
-        console.log('✅ Stock restaurado correctamente');
       }
 
       // ✅ CREAR HISTORIAL DE CANCELACIÓN
@@ -356,10 +391,8 @@ export default function CancelLayawayDialog({
       setCompleted(true);
       showNotification('¡Apartado cancelado exitosamente!', 'success');
 
-      console.log('✅ Cancelación procesada exitosamente');
-
     } catch (error: any) {
-      console.error('💥 Error procesando cancelación:', error);
+      console.error('Error procesando cancelación:', error);
       showNotification('Error al cancelar apartado: ' + error.message, 'error');
     } finally {
       setProcessing(false);
@@ -400,14 +433,15 @@ export default function CancelLayawayDialog({
     <Dialog 
       open={open} 
       onClose={handleClose}
-      maxWidth="lg"
+      maxWidth="xl"
       fullWidth
       PaperProps={{
         sx: { 
           borderRadius: 4,
-          background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-          color: '#FFFFFF',
-          minHeight: '70vh'
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `2px solid ${darkProTokens.error}50`,
+          color: darkProTokens.textPrimary,
+          minHeight: '80vh'
         }
       }}
     >
@@ -415,84 +449,121 @@ export default function CancelLayawayDialog({
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.98), rgba(244, 67, 54, 0.85))',
-        color: '#FFFFFF'
+        background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+        color: darkProTokens.textPrimary,
+        borderRadius: '16px 16px 0 0'
       }}>
         <Box display="flex" alignItems="center" gap={2}>
-          <CancelIcon />
-          <Typography variant="h5" fontWeight="bold">
-            ❌ Cancelar Apartado #{safeLayaway.sale_number}
-          </Typography>
-          <Chip 
-            label="HÍBRIDO v1.1" 
-            color="error" 
-            size="small" 
-            sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#FFFFFF', fontWeight: 'bold' }}
-          />
+          <Avatar sx={{ 
+            bgcolor: darkProTokens.background, 
+            color: darkProTokens.error,
+            width: 50,
+            height: 50
+          }}>
+            <CancelIcon sx={{ fontSize: 28 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h5" fontWeight="bold">
+              ❌ Cancelar Apartado
+            </Typography>
+            <Typography variant="h6" sx={{ opacity: 0.9 }}>
+              #{safeLayaway.sale_number}
+            </Typography>
+          </Box>
         </Box>
-        <Button onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}>
+        <IconButton onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}>
           <CloseIcon />
-        </Button>
+        </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: 0 }}>
         {!completed ? (
-          <Box>
-            {/* ✅ INFORMACIÓN DEL APARTADO CON GRID CORRECTO */}
-            <Alert severity="warning" sx={{ mb: 3 }}>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Cliente:</strong> {safeLayaway.customer_name}
-                  </Typography>
+          <Box sx={{ p: 4 }}>
+            {/* ✅ INFORMACIÓN DEL APARTADO */}
+            <Card sx={{
+              mb: 4,
+              background: `${darkProTokens.warning}10`,
+              border: `1px solid ${darkProTokens.warning}30`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ color: darkProTokens.warning, mb: 2, fontWeight: 700 }}>
+                  📋 Información del Apartado
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 3 }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      <strong>Cliente:</strong> {safeLayaway.customer_name}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 3 }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      <strong>Total:</strong> {formatPrice(safeLayaway.total_amount)}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 3 }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      <strong>Pagado:</strong> {formatPrice(safeLayaway.paid_amount)}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 3 }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      <strong>Creado:</strong> {formatDate(safeLayaway.created_at)}
+                    </Typography>
+                  </Grid>
                 </Grid>
-                <Grid size={{ xs: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Total:</strong> {formatPrice(safeLayaway.total_amount)}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Pagado:</strong> {formatPrice(safeLayaway.paid_amount)}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Creado:</strong> {formatDate(safeLayaway.created_at)}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Alert>
-
-            {/* ✅ INDICADOR HÍBRIDO */}
-            <Alert severity="success" sx={{ mb: 3 }}>
-              ✅ <strong>SOLUCIÓN HÍBRIDA:</strong> useCallback controlado + Grid correcto - 2025-06-11 08:46:59 UTC por luishdz04
-            </Alert>
+              </CardContent>
+            </Card>
 
             {/* ✅ ADVERTENCIA IMPORTANTE */}
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 4,
+                background: `${darkProTokens.error}20`,
+                border: `1px solid ${darkProTokens.error}30`,
+                color: darkProTokens.textPrimary,
+                '& .MuiAlert-icon': { color: darkProTokens.error }
+              }}
+            >
               ⚠️ <strong>ATENCIÓN:</strong> Esta acción cancelará permanentemente el apartado y puede afectar el inventario. Revise cuidadosamente antes de proceder.
             </Alert>
 
             <Grid container spacing={4}>
-              {/* ✅ STEPPER CON GRID CORRECTO */}
+              {/* ✅ STEPPER */}
               <Grid size={{ xs: 8 }}>
-                <Card sx={{ background: 'rgba(51, 51, 51, 0.8)', p: 2 }}>
+                <Card sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `1px solid ${darkProTokens.grayDark}`,
+                  borderRadius: 4,
+                  p: 2 
+                }}>
                   <Stepper activeStep={activeStep} orientation="vertical">
                     {steps.map((step, index) => (
                       <Step key={step.label}>
-                        <StepLabel sx={{ '& .MuiStepLabel-label': { color: '#FFFFFF' } }}>
+                        <StepLabel sx={{ 
+                          '& .MuiStepLabel-label': { 
+                            color: darkProTokens.textPrimary,
+                            fontWeight: activeStep === index ? 700 : 500
+                          },
+                          '& .MuiStepIcon-root': {
+                            color: activeStep === index ? darkProTokens.error : darkProTokens.grayMuted,
+                            '&.Mui-completed': {
+                              color: darkProTokens.error
+                            }
+                          }
+                        }}>
                           {step.label}
                         </StepLabel>
                         <StepContent>
-                          <Typography sx={{ color: '#CCCCCC', mb: 2 }}>
+                          <Typography sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
                             {step.description}
                           </Typography>
 
                           {/* PASO 1: MOTIVO DE CANCELACIÓN */}
                           {index === 0 && (
                             <Box>
-                              <Typography variant="h6" sx={{ color: '#f44336', mb: 2 }}>
+                              <Typography variant="h6" sx={{ color: darkProTokens.error, mb: 3, fontWeight: 700 }}>
                                 📋 Seleccione el motivo de cancelación
                               </Typography>
                               
@@ -500,42 +571,49 @@ export default function CancelLayawayDialog({
                                 value={cancelReason}
                                 onChange={(e) => setCancelReason(e.target.value)}
                               >
-                                <Grid container spacing={2}>
+                                <Grid container spacing={3}>
                                   {cancelReasons.map(reason => (
                                     <Grid size={{ xs: 6 }} key={reason.value}>
-                                      <Card 
-                                        sx={{
-                                          p: 2,
-                                          background: cancelReason === reason.value 
-                                            ? 'rgba(244, 67, 54, 0.2)' 
-                                            : 'rgba(255,255,255,0.05)',
-                                          border: cancelReason === reason.value 
-                                            ? '2px solid #f44336' 
-                                            : '1px solid rgba(255,255,255,0.1)',
-                                          cursor: 'pointer',
-                                          transition: 'all 0.3s ease',
-                                          '&:hover': {
-                                            background: 'rgba(244, 67, 54, 0.1)',
-                                            border: '1px solid rgba(244, 67, 54, 0.5)'
-                                          }
-                                        }}
-                                        onClick={() => setCancelReason(reason.value)}
+                                      <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
                                       >
-                                        <FormControlLabel
-                                          value={reason.value}
-                                          control={<Radio sx={{ color: '#f44336' }} />}
-                                          label={
-                                            <Box>
-                                              <Typography variant="body1" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
-                                                {reason.label}
-                                              </Typography>
-                                              <Typography variant="caption" sx={{ color: '#CCCCCC' }}>
-                                                {reason.description}
-                                              </Typography>
-                                            </Box>
-                                          }
-                                        />
-                                      </Card>
+                                        <Card 
+                                          sx={{
+                                            p: 3,
+                                            background: cancelReason === reason.value 
+                                              ? `${reason.color}20` 
+                                              : `${darkProTokens.surfaceLevel1}60`,
+                                            border: cancelReason === reason.value 
+                                              ? `2px solid ${reason.color}` 
+                                              : `1px solid ${darkProTokens.grayDark}`,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease',
+                                            borderRadius: 3,
+                                            '&:hover': {
+                                              background: `${reason.color}10`,
+                                              border: `1px solid ${reason.color}50`,
+                                              transform: 'translateY(-2px)'
+                                            }
+                                          }}
+                                          onClick={() => setCancelReason(reason.value)}
+                                        >
+                                          <FormControlLabel
+                                            value={reason.value}
+                                            control={<Radio sx={{ color: reason.color }} />}
+                                            label={
+                                              <Box>
+                                                <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                                                  {reason.label}
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                                  {reason.description}
+                                                </Typography>
+                                              </Box>
+                                            }
+                                          />
+                                        </Card>
+                                      </motion.div>
                                     </Grid>
                                   ))}
                                 </Grid>
@@ -553,24 +631,40 @@ export default function CancelLayawayDialog({
                                   sx={{
                                     mt: 3,
                                     '& .MuiOutlinedInput-root': {
-                                      color: 'white',
-                                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                      '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                                      '&.Mui-focused fieldset': { borderColor: '#f44336' },
+                                      color: darkProTokens.textPrimary,
+                                      '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: darkProTokens.grayDark
+                                      },
+                                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: darkProTokens.error
+                                      },
+                                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: darkProTokens.error
+                                      }
                                     },
-                                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                                    '& .MuiInputLabel-root': { 
+                                      color: darkProTokens.textSecondary,
+                                      '&.Mui-focused': { color: darkProTokens.error }
+                                    }
                                   }}
                                 />
                               )}
 
-                              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                              <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
                                 <Button
                                   variant="contained"
                                   onClick={() => setActiveStep(1)}
                                   disabled={!canProceed()}
-                                  sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
+                                  sx={{ 
+                                    background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+                                    color: darkProTokens.textPrimary,
+                                    fontWeight: 700,
+                                    px: 4,
+                                    py: 1.5,
+                                    borderRadius: 3
+                                  }}
                                 >
-                                  Continuar
+                                  Continuar →
                                 </Button>
                               </Box>
                             </Box>
@@ -586,56 +680,68 @@ export default function CancelLayawayDialog({
                                     onChange={(e) => setProcessRefund(e.target.checked)}
                                     sx={{
                                       '& .MuiSwitch-switchBase.Mui-checked': {
-                                        color: '#f44336',
+                                        color: darkProTokens.error,
                                       },
                                       '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                        backgroundColor: '#f44336',
+                                        backgroundColor: darkProTokens.error,
                                       },
                                     }}
                                   />
                                 }
                                 label={
-                                  <Typography sx={{ color: 'white' }}>
+                                  <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                                     💰 Procesar reembolso al cliente
                                   </Typography>
                                 }
                               />
 
                               {processRefund && calculations && (
-                                <Box sx={{ mt: 3 }}>
+                                <Box sx={{ mt: 4 }}>
                                   {/* Métodos de reembolso */}
-                                  <Typography variant="h6" sx={{ color: '#f44336', mb: 2 }}>
+                                  <Typography variant="h6" sx={{ color: darkProTokens.error, mb: 3, fontWeight: 700 }}>
                                     💳 Método de reembolso
                                   </Typography>
                                   
-                                  <Grid container spacing={2} sx={{ mb: 3 }}>
+                                  <Grid container spacing={3} sx={{ mb: 4 }}>
                                     {refundMethods.map(method => (
                                       <Grid size={{ xs: 6 }} key={method.value}>
-                                        <Card 
-                                          sx={{
-                                            p: 2,
-                                            background: refundMethod === method.value 
-                                              ? 'rgba(244, 67, 54, 0.2)' 
-                                              : 'rgba(255,255,255,0.05)',
-                                            border: refundMethod === method.value 
-                                              ? '2px solid #f44336' 
-                                              : '1px solid rgba(255,255,255,0.1)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s ease',
-                                            '&:hover': {
-                                              background: 'rgba(244, 67, 54, 0.1)',
-                                              border: '1px solid rgba(244, 67, 54, 0.5)'
-                                            }
-                                          }}
-                                          onClick={() => setRefundMethod(method.value)}
+                                        <motion.div
+                                          whileHover={{ scale: 1.02 }}
+                                          whileTap={{ scale: 0.98 }}
                                         >
-                                          <Typography variant="body1" sx={{ color: '#FFFFFF', mb: 1 }}>
-                                            {method.icon} {method.label}
-                                          </Typography>
-                                          <Typography variant="caption" sx={{ color: '#CCCCCC' }}>
-                                            {method.description}
-                                          </Typography>
-                                        </Card>
+                                          <Card 
+                                            sx={{
+                                              p: 3,
+                                              background: refundMethod === method.value 
+                                                ? `${method.color}20` 
+                                                : `${darkProTokens.surfaceLevel1}60`,
+                                              border: refundMethod === method.value 
+                                                ? `2px solid ${method.color}` 
+                                                : `1px solid ${darkProTokens.grayDark}`,
+                                              cursor: 'pointer',
+                                              transition: 'all 0.3s ease',
+                                              borderRadius: 3,
+                                              '&:hover': {
+                                                background: `${method.color}10`,
+                                                border: `1px solid ${method.color}50`,
+                                                transform: 'translateY(-2px)'
+                                              }
+                                            }}
+                                            onClick={() => setRefundMethod(method.value)}
+                                          >
+                                            <Box sx={{ textAlign: 'center' }}>
+                                              <Typography variant="h4" sx={{ mb: 1 }}>
+                                                {method.icon}
+                                              </Typography>
+                                              <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 1, fontWeight: 700 }}>
+                                                {method.label}
+                                              </Typography>
+                                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                                {method.description}
+                                              </Typography>
+                                            </Box>
+                                          </Card>
+                                        </motion.div>
                                       </Grid>
                                     ))}
                                   </Grid>
@@ -643,27 +749,29 @@ export default function CancelLayawayDialog({
                                   {/* Configuración del reembolso */}
                                   <Grid container spacing={3}>
                                     <Grid size={{ xs: 6 }}>
-                                      <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
                                         Porcentaje de reembolso: {refundPercentage}%
                                       </Typography>
-                                      <Box sx={{ px: 2 }}>
-                                        <input
-                                          type="range"
-                                          min="0"
-                                          max="100"
-                                          step="5"
-                                          value={refundPercentage}
-                                          onChange={(e) => setRefundPercentage(Number(e.target.value))}
-                                          style={{
-                                            width: '100%',
-                                            height: '8px',
-                                            background: '#f44336',
-                                            borderRadius: '4px',
-                                            outline: 'none',
-                                            cursor: 'pointer'
-                                          }}
-                                        />
-                                      </Box>
+                                      <Slider
+                                        value={refundPercentage}
+                                        onChange={(e, value) => setRefundPercentage(value as number)}
+                                        min={0}
+                                        max={100}
+                                        step={5}
+                                        valueLabelDisplay="auto"
+                                        sx={{
+                                          color: darkProTokens.error,
+                                          '& .MuiSlider-thumb': {
+                                            backgroundColor: darkProTokens.error,
+                                          },
+                                          '& .MuiSlider-track': {
+                                            backgroundColor: darkProTokens.error,
+                                          },
+                                          '& .MuiSlider-rail': {
+                                            backgroundColor: darkProTokens.grayDark,
+                                          }
+                                        }}
+                                      />
                                     </Grid>
                                     
                                     <Grid size={{ xs: 6 }}>
@@ -674,16 +782,16 @@ export default function CancelLayawayDialog({
                                             onChange={(e) => setApplyPenalty(e.target.checked)}
                                             sx={{
                                               '& .MuiSwitch-switchBase.Mui-checked': {
-                                                color: '#ff9800',
+                                                color: darkProTokens.warning,
                                               },
                                               '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                                backgroundColor: '#ff9800',
+                                                backgroundColor: darkProTokens.warning,
                                               },
                                             }}
                                           />
                                         }
                                         label={
-                                          <Typography sx={{ color: 'white' }}>
+                                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                                             ⚠️ Aplicar penalización
                                           </Typography>
                                         }
@@ -700,12 +808,15 @@ export default function CancelLayawayDialog({
                                           sx={{
                                             mt: 1,
                                             '& .MuiOutlinedInput-root': {
-                                              color: 'white',
-                                              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                              '&:hover fieldset': { borderColor: 'rgba(255, 152, 0, 0.5)' },
-                                              '&.Mui-focused fieldset': { borderColor: '#ff9800' },
+                                              color: darkProTokens.textPrimary,
+                                              '& .MuiOutlinedInput-notchedOutline': {
+                                                borderColor: darkProTokens.grayDark
+                                              }
                                             },
-                                            '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                                            '& .MuiInputLabel-root': { 
+                                              color: darkProTokens.textSecondary,
+                                              '&.Mui-focused': { color: darkProTokens.warning }
+                                            }
                                           }}
                                         />
                                       )}
@@ -719,14 +830,19 @@ export default function CancelLayawayDialog({
                                           value={refundReference}
                                           onChange={(e) => setRefundReference(e.target.value)}
                                           required
-                                          sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                              color: 'white',
-                                              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                              '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                                              '&.Mui-focused fieldset': { borderColor: '#f44336' },
-                                            },
-                                            '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                                          InputProps={{
+                                            sx: {
+                                              color: darkProTokens.textPrimary,
+                                              '& .MuiOutlinedInput-notchedOutline': {
+                                                borderColor: darkProTokens.grayDark
+                                              }
+                                            }
+                                          }}
+                                          InputLabelProps={{
+                                            sx: { 
+                                              color: darkProTokens.textSecondary,
+                                              '&.Mui-focused': { color: darkProTokens.error }
+                                            }
                                           }}
                                         />
                                       </Grid>
@@ -734,8 +850,14 @@ export default function CancelLayawayDialog({
                                   </Grid>
 
                                   {/* Configuración de inventario */}
-                                  <Box sx={{ mt: 4, p: 3, background: 'rgba(156, 39, 176, 0.1)', borderRadius: 2, border: '1px solid rgba(156, 39, 176, 0.3)' }}>
-                                    <Typography variant="h6" sx={{ color: '#9c27b0', mb: 2 }}>
+                                  <Box sx={{ 
+                                    mt: 4, 
+                                    p: 3, 
+                                    background: `${darkProTokens.roleModerator}10`, 
+                                    borderRadius: 3, 
+                                    border: `1px solid ${darkProTokens.roleModerator}30` 
+                                  }}>
+                                    <Typography variant="h6" sx={{ color: darkProTokens.roleModerator, mb: 2, fontWeight: 700 }}>
                                       📦 Gestión de Inventario
                                     </Typography>
                                     
@@ -746,16 +868,16 @@ export default function CancelLayawayDialog({
                                           onChange={(e) => setRestoreStock(e.target.checked)}
                                           sx={{
                                             '& .MuiSwitch-switchBase.Mui-checked': {
-                                              color: '#9c27b0',
+                                              color: darkProTokens.roleModerator,
                                             },
                                             '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                              backgroundColor: '#9c27b0',
+                                              backgroundColor: darkProTokens.roleModerator,
                                             },
                                           }}
                                         />
                                       }
                                       label={
-                                        <Typography sx={{ color: 'white' }}>
+                                        <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                                           📦 Restaurar productos al inventario
                                         </Typography>
                                       }
@@ -770,16 +892,16 @@ export default function CancelLayawayDialog({
                                             sx={{
                                               ml: 3,
                                               '& .MuiSwitch-switchBase.Mui-checked': {
-                                                color: '#ff9800',
+                                                color: darkProTokens.warning,
                                               },
                                               '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                                backgroundColor: '#ff9800',
+                                                backgroundColor: darkProTokens.warning,
                                               },
                                             }}
                                           />
                                         }
                                         label={
-                                          <Typography sx={{ color: 'white' }}>
+                                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                                             ⚠️ Restauración parcial (80%)
                                           </Typography>
                                         }
@@ -799,26 +921,36 @@ export default function CancelLayawayDialog({
                                 sx={{
                                   mt: 3,
                                   '& .MuiOutlinedInput-root': {
-                                    color: 'white',
-                                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                    '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                                    '&.Mui-focused fieldset': { borderColor: '#f44336' },
+                                    color: darkProTokens.textPrimary,
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: darkProTokens.grayDark
+                                    }
                                   },
-                                  '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                                  '& .MuiInputLabel-root': { 
+                                    color: darkProTokens.textSecondary,
+                                    '&.Mui-focused': { color: darkProTokens.error }
+                                  }
                                 }}
                               />
 
                               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                                <Button onClick={() => setActiveStep(0)}>
-                                  Atrás
+                                <Button 
+                                  onClick={() => setActiveStep(0)}
+                                  sx={{ color: darkProTokens.textSecondary }}
+                                >
+                                  ← Atrás
                                 </Button>
                                 <Button
                                   variant="contained"
                                   onClick={() => setActiveStep(2)}
                                   disabled={!canProceed()}
-                                  sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
+                                  sx={{ 
+                                    background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+                                    color: darkProTokens.textPrimary,
+                                    fontWeight: 700
+                                  }}
                                 >
-                                  Continuar
+                                  Continuar →
                                 </Button>
                               </Box>
                             </Box>
@@ -827,33 +959,62 @@ export default function CancelLayawayDialog({
                           {/* PASO 3: CONFIRMACIÓN */}
                           {index === 2 && calculations && (
                             <Box>
-                              <Alert severity="error" sx={{ mb: 3 }}>
-                                <Typography variant="h6" sx={{ mb: 1 }}>
-                                  ⚠️ Confirmación de Cancelación
-                                </Typography>
-                                
-                                <Grid container spacing={2}>
-                                  <Grid size={{ xs: 6 }}>
-                                    <Typography><strong>Motivo:</strong> {cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label}</Typography>
-                                    <Typography><strong>Procesar reembolso:</strong> {processRefund ? 'Sí' : 'No'}</Typography>
-                                    {processRefund && (
-                                      <>
-                                        <Typography><strong>Método de reembolso:</strong> {refundMethods.find(m => m.value === refundMethod)?.label}</Typography>
-                                        <Typography><strong>Monto a reembolsar:</strong> {formatPrice(calculations.finalRefund)}</Typography>
-                                      </>
-                                    )}
+                              <Card sx={{
+                                mb: 3,
+                                background: `${darkProTokens.error}10`,
+                                border: `1px solid ${darkProTokens.error}30`
+                              }}>
+                                <CardContent>
+                                  <Typography variant="h6" sx={{ color: darkProTokens.error, mb: 2, fontWeight: 700 }}>
+                                    ⚠️ Confirmación de Cancelación
+                                  </Typography>
+                                  
+                                  <Grid container spacing={2}>
+                                    <Grid size={{ xs: 6 }}>
+                                      <Typography sx={{ color: darkProTokens.textSecondary }}>
+                                        <strong>Motivo:</strong> {cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label}
+                                      </Typography>
+                                      <Typography sx={{ color: darkProTokens.textSecondary }}>
+                                        <strong>Procesar reembolso:</strong> {processRefund ? 'Sí' : 'No'}
+                                      </Typography>
+                                      {processRefund && (
+                                        <>
+                                          <Typography sx={{ color: darkProTokens.textSecondary }}>
+                                            <strong>Método de reembolso:</strong> {refundMethods.find(m => m.value === refundMethod)?.label}
+                                          </Typography>
+                                          <Typography sx={{ color: darkProTokens.textSecondary }}>
+                                            <strong>Monto a reembolsar:</strong> {formatPrice(calculations.finalRefund)}
+                                          </Typography>
+                                        </>
+                                      )}
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
+                                      <Typography sx={{ color: darkProTokens.textSecondary }}>
+                                        <strong>Restaurar inventario:</strong> {restoreStock ? (partialRestore ? 'Parcial (80%)' : 'Completo') : 'No'}
+                                      </Typography>
+                                      <Typography sx={{ color: darkProTokens.textSecondary }}>
+                                        <strong>Productos afectados:</strong> {calculations.itemsToRestore}
+                                      </Typography>
+                                      {applyPenalty && (
+                                        <Typography sx={{ color: darkProTokens.textSecondary }}>
+                                          <strong>Penalización:</strong> {formatPrice(calculations.penalty)}
+                                        </Typography>
+                                      )}
+                                    </Grid>
                                   </Grid>
-                                  <Grid size={{ xs: 6 }}>
-                                    <Typography><strong>Restaurar inventario:</strong> {restoreStock ? (partialRestore ? 'Parcial (80%)' : 'Completo') : 'No'}</Typography>
-                                    <Typography><strong>Productos afectados:</strong> {calculations.itemsToRestore}</Typography>
-                                    {applyPenalty && (
-                                      <Typography><strong>Penalización:</strong> {formatPrice(calculations.penalty)}</Typography>
-                                    )}
-                                  </Grid>
-                                </Grid>
-                              </Alert>
+                                </CardContent>
+                              </Card>
 
-                              <Alert severity="warning" sx={{ mb: 3 }}>
+                              <Alert 
+                                severity="warning" 
+                                sx={{ 
+                                  mb: 3,
+                                  background: `${darkProTokens.warning}20`,
+                                  border: `1px solid ${darkProTokens.warning}30`,
+                                  color: darkProTokens.textPrimary,
+                                  '& .MuiAlert-icon': { color: darkProTokens.warning }
+                                }}
+                              >
                                 <Typography variant="body1">
                                   <strong>⚠️ ESTA ACCIÓN NO SE PUEDE DESHACER</strong>
                                 </Typography>
@@ -863,17 +1024,27 @@ export default function CancelLayawayDialog({
                               </Alert>
 
                               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                                <Button onClick={() => setActiveStep(1)}>
-                                  Atrás
+                                <Button 
+                                  onClick={() => setActiveStep(1)}
+                                  sx={{ color: darkProTokens.textSecondary }}
+                                >
+                                  ← Atrás
                                 </Button>
                                 <Button
                                   variant="contained"
                                   onClick={processCancellation}
                                   disabled={processing}
-                                  startIcon={processing ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : <CancelIcon />}
-                                  sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
+                                  startIcon={processing ? <CircularProgress size={20} sx={{ color: darkProTokens.textPrimary }} /> : <CancelIcon />}
+                                  sx={{ 
+                                    background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+                                    color: darkProTokens.textPrimary,
+                                    fontWeight: 700,
+                                    px: 4,
+                                    py: 1.5,
+                                    borderRadius: 3
+                                  }}
                                 >
-                                  {processing ? 'Procesando...' : 'CONFIRMAR CANCELACIÓN'}
+                                  {processing ? 'Procesando...' : '🔴 CONFIRMAR CANCELACIÓN'}
                                 </Button>
                               </Box>
                             </Box>
@@ -885,15 +1056,23 @@ export default function CancelLayawayDialog({
                 </Card>
               </Grid>
 
-              {/* ✅ RESUMEN CON GRID CORRECTO */}
+              {/* ✅ RESUMEN DE CANCELACIÓN */}
               <Grid size={{ xs: 4 }}>
-                <Card sx={{ background: 'rgba(244, 67, 54, 0.1)', p: 3, height: 'fit-content' }}>
-                  <Typography variant="h6" sx={{ color: '#f44336', mb: 2, fontWeight: 700 }}>
+                <Card sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `1px solid ${darkProTokens.error}30`,
+                  borderRadius: 4,
+                  p: 3, 
+                  height: 'fit-content',
+                  position: 'sticky',
+                  top: 20
+                }}>
+                  <Typography variant="h6" sx={{ color: darkProTokens.error, mb: 3, fontWeight: 700 }}>
                     ❌ Resumen de Cancelación
                   </Typography>
 
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
                       Estado actual del apartado
                     </Typography>
                     <LinearProgress 
@@ -902,8 +1081,9 @@ export default function CancelLayawayDialog({
                       sx={{ 
                         height: 8, 
                         borderRadius: 4,
+                        backgroundColor: darkProTokens.grayDark,
                         '& .MuiLinearProgress-bar': {
-                          backgroundColor: '#f44336'
+                          backgroundColor: darkProTokens.error
                         }
                       }}
                     />
@@ -911,49 +1091,54 @@ export default function CancelLayawayDialog({
 
                   <Stack spacing={2}>
                     <Box>
-                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Total apartado:</Typography>
-                      <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Total apartado:</Typography>
+                      <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                         {formatPrice(safeLayaway.total_amount)}
                       </Typography>
                     </Box>
                     
                     <Box>
-                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Monto pagado:</Typography>
-                      <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Monto pagado:</Typography>
+                      <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
                         {formatPrice(safeLayaway.paid_amount)}
                       </Typography>
                     </Box>
                     
                     <Box>
-                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Productos:</Typography>
-                      <Typography variant="h6" sx={{ color: '#9c27b0', fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Productos:</Typography>
+                      <Typography variant="h6" sx={{ color: darkProTokens.roleModerator, fontWeight: 600 }}>
                         {safeLayaway.items.length} items
                       </Typography>
                     </Box>
 
                     {calculations && processRefund && (
                       <>
-                        <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.2)' }} />
+                        <Divider sx={{ my: 2, borderColor: darkProTokens.grayDark }} />
                         
                         <Box>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Reembolso base:</Typography>
-                          <Typography variant="h6" sx={{ color: '#4caf50', fontWeight: 600 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Reembolso base:</Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 600 }}>
                             {formatPrice(calculations.baseRefund)}
                           </Typography>
                         </Box>
                         
                         {calculations.penalty > 0 && (
                           <Box>
-                            <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Penalización:</Typography>
-                            <Typography variant="body1" sx={{ color: '#ff9800', fontWeight: 600 }}>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Penalización:</Typography>
+                            <Typography variant="body1" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
                               -{formatPrice(calculations.penalty)}
                             </Typography>
                           </Box>
                         )}
                         
-                        <Box>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Reembolso final:</Typography>
-                          <Typography variant="h5" sx={{ color: '#4caf50', fontWeight: 700 }}>
+                        <Box sx={{
+                          p: 2,
+                          background: `${darkProTokens.success}20`,
+                          borderRadius: 2,
+                          border: `1px solid ${darkProTokens.success}30`
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Reembolso final:</Typography>
+                          <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
                             {formatPrice(calculations.finalRefund)}
                           </Typography>
                         </Box>
@@ -962,8 +1147,16 @@ export default function CancelLayawayDialog({
 
                     {!processRefund && (
                       <>
-                        <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.2)' }} />
-                        <Alert severity="info"> {/* ✅ CORREGIDO: sin size="small" */}
+                        <Divider sx={{ my: 2, borderColor: darkProTokens.grayDark }} />
+                        <Alert 
+                          severity="info"
+                          sx={{
+                            background: `${darkProTokens.info}20`,
+                            border: `1px solid ${darkProTokens.info}30`,
+                            color: darkProTokens.textPrimary,
+                            '& .MuiAlert-icon': { color: darkProTokens.info }
+                          }}
+                        >
                           No se procesará reembolso
                         </Alert>
                       </>
@@ -974,29 +1167,63 @@ export default function CancelLayawayDialog({
             </Grid>
           </Box>
         ) : (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <CancelIcon sx={{ fontSize: 80, color: '#f44336', mb: 2 }} />
-            <Typography variant="h4" sx={{ color: '#f44336', fontWeight: 700, mb: 2 }}>
-              ¡Apartado Cancelado!
-            </Typography>
-            <Typography variant="body1" sx={{ color: '#CCCCCC', mb: 3 }}>
-              El apartado #{safeLayaway.sale_number} ha sido cancelado exitosamente
-            </Typography>
-            {processRefund && calculations && (
-              <Typography variant="body2" sx={{ color: '#4caf50', mb: 3 }}>
-                💰 Reembolso procesado: {formatPrice(calculations.finalRefund)}
-              </Typography>
-            )}
-            <Button
-              variant="contained"
-              onClick={handleClose}
-              sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
+          <Box sx={{ textAlign: 'center', py: 6 }}>
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5 }}
             >
-              Cerrar
-            </Button>
+              <CancelIcon sx={{ fontSize: 100, color: darkProTokens.error, mb: 3 }} />
+              <Typography variant="h3" sx={{ color: darkProTokens.error, fontWeight: 700, mb: 2 }}>
+                ¡Apartado Cancelado!
+              </Typography>
+              <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 4 }}>
+                El apartado #{safeLayaway.sale_number} ha sido cancelado exitosamente
+              </Typography>
+              {processRefund && calculations && (
+                <Typography variant="body1" sx={{ color: darkProTokens.success, mb: 3, fontWeight: 600 }}>
+                  💰 Reembolso procesado: {formatPrice(calculations.finalRefund)}
+                </Typography>
+              )}
+              <Button
+                variant="contained"
+                onClick={handleClose}
+                sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+                  color: darkProTokens.textPrimary,
+                  fontWeight: 700,
+                  px: 4,
+                  py: 1.5,
+                  borderRadius: 3
+                }}
+              >
+                Cerrar
+              </Button>
+            </motion.div>
           </Box>
         )}
       </DialogContent>
+
+      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover});
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.errorHover}, ${darkProTokens.error});
+        }
+      `}</style>
     </Dialog>
   );
 }
