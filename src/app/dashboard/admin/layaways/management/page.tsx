@@ -979,24 +979,122 @@ export default function LayawayManagementPage() {
           </Box>
         )}
         
-        <TableContainer component={Paper} sx={{
+            <TableContainer component={Paper} sx={{
           background: darkProTokens.surfaceLevel1,
           border: `1px solid ${darkProTokens.grayDark}`
         }}>
           <Table stickyHeader>
             <TableHead>
-              <TableRow sx={{ 
-                background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
-              }}>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 140 }}>Número</TableCell>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 200 }}>Cliente</TableCell>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 120 }}>Total</TableCell>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 120 }}>Pagado</TableCell>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 120 }}>Pendiente</TableCell>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 150 }}>Progreso</TableCell>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 140 }}>Vence</TableCell>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 100 }}>Estado</TableCell>
-                <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', minWidth: 200 }}>Acciones</TableCell>
+              <TableRow>
+                {/* ✅ HEADER CORREGIDO CON FONDO VISIBLE */}
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 140,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Número
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 200,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Cliente
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 120,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Total
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 120,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Pagado
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 120,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Pendiente
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 150,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Progreso
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 140,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Vence
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 100,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Estado
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 200,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Acciones
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
