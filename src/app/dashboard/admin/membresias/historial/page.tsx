@@ -2362,366 +2362,508 @@ export default function HistorialMembresiaPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ✏️ MODAL DE EDICIÓN - IGUAL QUE ANTES PERO CON COLORES DARK PRO */}
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={() => !editLoading && setEditDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.primary}50`,
-            borderRadius: 4,
-            color: darkProTokens.textPrimary,
-            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          color: darkProTokens.primary, 
-          fontWeight: 800,
-          fontSize: '1.6rem',
-          textAlign: 'center',
-          pb: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+{/* ✏️ MODAL DE EDICIÓN SIMPLE - SOLO CORRECCIONES */}
+<Dialog 
+  open={editDialogOpen} 
+  onClose={() => !editLoading && setEditDialogOpen(false)}
+  maxWidth="md"
+  fullWidth
+  PaperProps={{
+    sx: {
+      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+      border: `2px solid ${darkProTokens.primary}50`,
+      borderRadius: 4,
+      color: darkProTokens.textPrimary,
+      boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
+    }
+  }}
+>
+  <DialogTitle sx={{ 
+    color: darkProTokens.primary, 
+    fontWeight: 800,
+    fontSize: '1.6rem',
+    textAlign: 'center',
+    pb: 2,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <EditIcon sx={{ fontSize: 35 }} />
+      Editar Registro de Venta
+    </Box>
+    <IconButton 
+      onClick={() => setEditDialogOpen(false)}
+      disabled={editLoading}
+      sx={{ color: darkProTokens.textSecondary }}
+    >
+      <CloseIcon />
+    </IconButton>
+  </DialogTitle>
+  
+  <DialogContent>
+    {selectedMembership && (
+      <Box sx={{ mt: 2 }}>
+        {/* Información del Cliente (Solo lectura) */}
+        <Card sx={{
+          background: `${darkProTokens.primary}10`,
+          border: `1px solid ${darkProTokens.primary}30`,
+          borderRadius: 3,
+          mb: 3
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <EditIcon sx={{ fontSize: 35 }} />
-            Editar Membresía
-          </Box>
-          <IconButton 
-            onClick={() => setEditDialogOpen(false)}
-            disabled={editLoading}
-            sx={{ color: darkProTokens.textSecondary }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent>
-          {selectedMembership && (
-            <Box sx={{ mt: 2 }}>
-              {/* Información del Cliente (Solo lectura) */}
-              <Card sx={{
-                background: `${darkProTokens.primary}10`,
-                border: `1px solid ${darkProTokens.primary}30`,
-                borderRadius: 3,
-                mb: 3
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.primary,
+              fontWeight: 700,
+              mb: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}>
+              <AccountCircleIcon />
+              Cliente: {selectedMembership.user_name}
+            </Typography>
+            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+              📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name} | 
+              📅 Registrado: {formatDate(selectedMembership.created_at)}
+            </Typography>
+          </CardContent>
+        </Card>
+
+        <Grid container spacing={3}>
+          {/* Estado de la Membresía */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <FormControl fullWidth>
+              <InputLabel sx={{ 
+                color: darkProTokens.textSecondary,
+                '&.Mui-focused': { color: darkProTokens.primary }
               }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Typography variant="h6" sx={{ 
-                    color: darkProTokens.primary,
-                    fontWeight: 700,
-                    mb: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2
-                  }}>
-                    <AccountCircleIcon />
-                    Cliente: {selectedMembership.user_name}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                    📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name}
-                  </Typography>
-                </CardContent>
-              </Card>
-
-              <Grid container spacing={3}>
-                {/* Estado */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <FormControl fullWidth>
-                    <InputLabel sx={{ 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
-                    }}>
-                      Estado de la Membresía
-                    </InputLabel>
-                    <Select
-                      value={editData.status || selectedMembership.status}
-                      onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
-                      sx={{
-                        color: darkProTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        }
-                      }}
-                    >
-                      {statusOptions.filter(s => s.value !== '').map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <span>{option.icon}</span>
-                            <span>{option.label}</span>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                {/* Método de Pago */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <FormControl fullWidth>
-                    <InputLabel sx={{ 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
-                    }}>
-                      Método de Pago
-                    </InputLabel>
-                    <Select
-                      value={editData.payment_method || selectedMembership.payment_method}
-                      onChange={(e) => setEditData(prev => ({ ...prev, payment_method: e.target.value }))}
-                      sx={{
-                        color: darkProTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        }
-                      }}
-                    >
-                      {paymentMethodOptions.filter(p => p.value !== '').map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <span>{option.icon}</span>
-                            <span>{option.label}</span>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                {/* Fecha de Inicio */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Inicio"
-                    type="date"
-                    value={editData.start_date || selectedMembership.start_date}
-                    onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
-                    InputLabelProps={{ 
-                      shrink: true,
-                      sx: { 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }
-                    }}
-                    InputProps={{
-                      sx: {
-                        color: darkProTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        }
-                      }
-                    }}
-                  />
-                </Grid>
-
-                {/* Fecha de Fin */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Fin"
-                    type="date"
-                    value={editData.end_date || selectedMembership.end_date || ''}
-                    onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
-                    InputLabelProps={{ 
-                      shrink: true,
-                      sx: { 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }
-                    }}
-                    InputProps={{
-                      sx: {
-                        color: darkProTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        }
-                      }
-                    }}
-                  />
-                </Grid>
-
-                {/* Monto Pagado */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Monto Pagado"
-                    type="number"
-                    value={editData.amount_paid || selectedMembership.amount_paid}
-                    onChange={(e) => setEditData(prev => ({ ...prev, amount_paid: parseFloat(e.target.value) || 0 }))}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                      sx: {
-                        color: darkProTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        }
-                      }
-                    }}
-                    InputLabelProps={{
-                      sx: { 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }
-                    }}
-                  />
-                </Grid>
-
-                {/* Referencia de Pago */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Referencia de Pago"
-                    value={editData.payment_reference || selectedMembership.payment_reference || ''}
-                    onChange={(e) => setEditData(prev => ({ ...prev, payment_reference: e.target.value }))}
-                    placeholder="Número de autorización, SPEI, etc."
-                    InputProps={{
-                      sx: {
-                        color: darkProTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        }
-                      }
-                    }}
-                    InputLabelProps={{
-                      sx: { 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }
-                    }}
-                  />
-                </Grid>
-
-                {/* Notas */}
-                <Grid size={12}>
-                  <TextField
-                    fullWidth
-                    label="Notas y Observaciones"
-                    multiline
-                    rows={3}
-                    value={editData.notes || selectedMembership.notes || ''}
-                    onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Observaciones, motivos de cambio, etc..."
-                    InputProps={{
-                      sx: {
-                        color: darkProTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        }
-                      }
-                    }}
-                    InputLabelProps={{
-                      sx: { 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }
-                    }}
-                  />
-                </Grid>
-              </Grid>
-
-              {/* Alerta de Confirmación */}
-              <Alert 
-                severity="warning"
+                Estado de la Membresía
+              </InputLabel>
+              <Select
+                value={editData.status || selectedMembership.status}
+                onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
                 sx={{
-                  mt: 3,
-                  backgroundColor: `${darkProTokens.warning}10`,
                   color: darkProTokens.textPrimary,
-                  border: `1px solid ${darkProTokens.warning}30`,
-                  '& .MuiAlert-icon': { color: darkProTokens.warning }
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
                 }}
               >
-                <Typography variant="body2">
-                  <strong>⚠️ Importante:</strong> Los cambios realizados se aplicarán inmediatamente. 
-                  Asegúrese de que la información sea correcta antes de guardar.
-                </Typography>
-              </Alert>
-            </Box>
-          )}
-        </DialogContent>
-        
-        <DialogActions sx={{ p: 3, gap: 2 }}>
-          <Button 
-            onClick={() => setEditDialogOpen(false)}
-            disabled={editLoading}
-            sx={{ 
-              color: darkProTokens.textSecondary,
-              borderColor: darkProTokens.grayDark,
-              px: 3,
-              py: 1
-            }}
-            variant="outlined"
-          >
-            Cancelar
-          </Button>
-          
-          <Button 
-            onClick={handleUpdateMembership}
-            disabled={editLoading}
-            variant="contained"
-            startIcon={editLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
-            sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-              color: darkProTokens.background,
-              fontWeight: 700,
-              px: 4,
-              py: 1,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-                transform: 'translateY(-1px)'
-              }
-            }}
-          >
-            {editLoading ? 'Guardando...' : 'Guardar Cambios'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+                {statusOptions.filter(s => s.value !== '').map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>{option.icon}</span>
+                      <span>{option.label}</span>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
 
+          {/* Método de Pago del Registro */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <FormControl fullWidth>
+              <InputLabel sx={{ 
+                color: darkProTokens.textSecondary,
+                '&.Mui-focused': { color: darkProTokens.primary }
+              }}>
+                Método de Pago (Registro)
+              </InputLabel>
+              <Select
+                value={editData.payment_method || selectedMembership.payment_method}
+                onChange={(e) => setEditData(prev => ({ ...prev, payment_method: e.target.value }))}
+                sx={{
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }}
+              >
+                {paymentMethodOptions.filter(p => p.value !== '').map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>{option.icon}</span>
+                      <span>{option.label}</span>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* Fecha de Inicio */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Fecha de Inicio de Membresía"
+              type="date"
+              value={editData.start_date || selectedMembership.start_date}
+              onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
+              InputLabelProps={{ 
+                shrink: true,
+                sx: { 
+                  color: darkProTokens.textSecondary,
+                  '&.Mui-focused': { color: darkProTokens.primary }
+                }
+              }}
+              InputProps={{
+                sx: {
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }
+              }}
+            />
+          </Grid>
+
+          {/* Fecha de Vencimiento */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Fecha de Vencimiento"
+              type="date"
+              value={editData.end_date || selectedMembership.end_date || ''}
+              onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
+              InputLabelProps={{ 
+                shrink: true,
+                sx: { 
+                  color: darkProTokens.textSecondary,
+                  '&.Mui-focused': { color: darkProTokens.primary }
+                }
+              }}
+              InputProps={{
+                sx: {
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }
+              }}
+            />
+          </Grid>
+
+          {/* Monto Pagado */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Monto Total Pagado"
+              type="number"
+              value={editData.amount_paid || selectedMembership.amount_paid}
+              onChange={(e) => setEditData(prev => ({ ...prev, amount_paid: parseFloat(e.target.value) || 0 }))}
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                sx: {
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }
+              }}
+              InputLabelProps={{
+                sx: { 
+                  color: darkProTokens.textSecondary,
+                  '&.Mui-focused': { color: darkProTokens.primary }
+                }
+              }}
+            />
+          </Grid>
+
+          {/* Referencia de Pago */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Referencia de Pago"
+              value={editData.payment_reference || selectedMembership.payment_reference || ''}
+              onChange={(e) => setEditData(prev => ({ ...prev, payment_reference: e.target.value }))}
+              placeholder="Número de autorización, SPEI, etc."
+              InputProps={{
+                sx: {
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }
+              }}
+              InputLabelProps={{
+                sx: { 
+                  color: darkProTokens.textSecondary,
+                  '&.Mui-focused': { color: darkProTokens.primary }
+                }
+              }}
+            />
+          </Grid>
+
+          {/* 🆕 DÍAS CONGELADOS MANUALES */}
+          <Grid size={12}>
+            <Card sx={{
+              background: `${darkProTokens.info}10`,
+              border: `1px solid ${darkProTokens.info}30`,
+              borderRadius: 3,
+              mt: 2
+            }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h6" sx={{ 
+                  color: darkProTokens.info,
+                  fontWeight: 700,
+                  mb: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2
+                }}>
+                  <AcUnitIcon />
+                  Ajuste Manual de Congelamiento
+                </Typography>
+
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Box sx={{
+                      background: `${darkProTokens.grayDark}10`,
+                      border: `1px solid ${darkProTokens.grayDark}30`,
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        Días Congelados Actuales
+                      </Typography>
+                      <Typography variant="h5" sx={{ 
+                        color: darkProTokens.info,
+                        fontWeight: 700
+                      }}>
+                        🧊 {selectedMembership.total_frozen_days || 0} días
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField
+                      fullWidth
+                      label="Agregar Días Congelados"
+                      type="number"
+                      value={editData.manual_frozen_days || 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, manual_frozen_days: parseInt(e.target.value) || 0 }))}
+                      placeholder="Ej: 15"
+                      helperText="Se sumarán a los días existentes"
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">🧊</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.info}30`
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.info
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.info
+                          }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.info }
+                        }
+                      }}
+                      FormHelperTextProps={{
+                        sx: { color: darkProTokens.textSecondary }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Box sx={{
+                      background: `${darkProTokens.primary}10`,
+                      border: `1px solid ${darkProTokens.primary}30`,
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        Total Después del Ajuste
+                      </Typography>
+                      <Typography variant="h5" sx={{ 
+                        color: darkProTokens.primary,
+                        fontWeight: 700
+                      }}>
+                        🧊 {(selectedMembership.total_frozen_days || 0) + (editData.manual_frozen_days || 0)} días
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  {editData.manual_frozen_days > 0 && (
+                    <Grid size={12}>
+                      <Alert 
+                        severity="info"
+                        sx={{
+                          backgroundColor: `${darkProTokens.info}10`,
+                          color: darkProTokens.textPrimary,
+                          border: `1px solid ${darkProTokens.info}30`,
+                          '& .MuiAlert-icon': { color: darkProTokens.info }
+                        }}
+                      >
+                        <Typography variant="body2">
+                          <strong>🧊 Ajuste Manual:</strong> Se agregarán {editData.manual_frozen_days} días al historial de congelamiento.<br/>
+                          <strong>📅 Impacto:</strong> {editData.end_date ? `La fecha de vencimiento se extenderá hasta ${(() => {
+                            const endDate = new Date(`${editData.end_date}T23:59:59`);
+                            endDate.setDate(endDate.getDate() + (editData.manual_frozen_days || 0));
+                            return formatDate(endDate.toISOString().split('T')[0]);
+                          })()}` : 'Sin fecha de vencimiento definida'}
+                        </Typography>
+                      </Alert>
+                    </Grid>
+                  )}
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Notas */}
+          <Grid size={12}>
+            <TextField
+              fullWidth
+              label="Notas del Registro"
+              multiline
+              rows={3}
+              value={editData.notes || selectedMembership.notes || ''}
+              onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Observaciones sobre esta venta, correcciones realizadas, etc..."
+              InputProps={{
+                sx: {
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }
+              }}
+              InputLabelProps={{
+                sx: { 
+                  color: darkProTokens.textSecondary,
+                  '&.Mui-focused': { color: darkProTokens.primary }
+                }
+              }}
+            />
+          </Grid>
+        </Grid>
+
+        {/* Alerta de Confirmación */}
+        <Alert 
+          severity="warning"
+          sx={{
+            mt: 3,
+            backgroundColor: `${darkProTokens.warning}10`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.warning}30`,
+            '& .MuiAlert-icon': { color: darkProTokens.warning }
+          }}
+        >
+          <Typography variant="body2">
+            <strong>⚠️ Edición de Registro:</strong> Solo modifique datos para corregir errores en el registro original.
+            {editData.manual_frozen_days > 0 && (
+              <>
+                <br/><strong>🧊 Ajuste de congelamiento:</strong> Los días se aplicarán al historial y extenderán la vigencia automáticamente.
+              </>
+            )}
+          </Typography>
+        </Alert>
+      </Box>
+    )}
+  </DialogContent>
+  
+  <DialogActions sx={{ p: 3, gap: 2 }}>
+    <Button 
+      onClick={() => setEditDialogOpen(false)}
+      disabled={editLoading}
+      sx={{ 
+        color: darkProTokens.textSecondary,
+        borderColor: darkProTokens.grayDark,
+        px: 3,
+        py: 1
+      }}
+      variant="outlined"
+    >
+      Cancelar
+    </Button>
+    
+    <Button 
+      onClick={() => {
+        // Actualizar función para manejar días manuales
+        if (editData.manual_frozen_days > 0) {
+          editData.total_frozen_days = (selectedMembership?.total_frozen_days || 0) + editData.manual_frozen_days;
+          
+          // Extender fecha si se agregaron días
+          if (editData.end_date) {
+            const endDate = new Date(`${editData.end_date}T23:59:59`);
+            endDate.setDate(endDate.getDate() + editData.manual_frozen_days);
+            editData.end_date = endDate.toISOString().split('T')[0];
+          }
+        }
+        handleUpdateMembership();
+      }}
+      disabled={editLoading}
+      variant="contained"
+      startIcon={editLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
+      sx={{
+        background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+        color: darkProTokens.background,
+        fontWeight: 700,
+        px: 4,
+        py: 1,
+        '&:hover': {
+          background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+          transform: 'translateY(-1px)'
+        }
+      }}
+    >
+      {editLoading ? 'Guardando...' : 'Guardar Correcciones'}
+    </Button>
+  </DialogActions>
+</Dialog>
       {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
       <style jsx>{`
         /* Scrollbar personalizado para Dark Pro System */
