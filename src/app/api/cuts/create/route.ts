@@ -7,10 +7,12 @@ export async function POST(request: NextRequest) {
     
     const supabase = createServerSupabaseClient();
 
-    // Generar número de corte único
+    // Generar número de corte único con timestamp
+    const now = new Date();
+    const monterreyTime = new Date(now.getTime() - (6 * 60 * 60 * 1000)); // UTC-6
     const cutDate = new Date(formData.cut_date);
     const dateStr = cutDate.toISOString().slice(0, 10).replace(/-/g, '');
-    const timeStr = new Date().toTimeString().slice(0, 5).replace(':', '');
+    const timeStr = monterreyTime.toTimeString().slice(0, 8).replace(/:/g, '');
     const cut_number = `CUT${dateStr}${timeStr}`;
 
     // Calcular totales consolidados
@@ -25,13 +27,24 @@ export async function POST(request: NextRequest) {
     const net_amount = grand_total - total_commissions;
     const final_balance = net_amount - formData.expenses_amount;
 
+    // Verificar que no haya campos negativos críticos
+    if (grand_total < 0 || total_transactions < 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Los valores de total y transacciones no pueden ser negativos'
+        },
+        { status: 400 }
+      );
+    }
+
     // Insertar corte en la base de datos
     const { data: cutData, error: cutError } = await supabase
       .from('cash_cuts')
       .insert({
         cut_number,
         cut_date: formData.cut_date,
-        cut_time: new Date().toISOString(),
+        cut_time: monterreyTime.toISOString(),
         
         // POS data
         pos_efectivo: formData.pos_efectivo,
@@ -39,7 +52,7 @@ export async function POST(request: NextRequest) {
         pos_debito: formData.pos_debito,
         pos_credito: formData.pos_credito,
         pos_mixto: formData.pos_mixto,
-        pos_total: formData.pos_total,
+        pos_total: formData.pos_efectivo + formData.pos_transferencia + formData.pos_debito + formData.pos_credito + formData.pos_mixto,
         pos_transactions: formData.pos_transactions,
         pos_commissions: formData.pos_commissions,
         
@@ -49,7 +62,7 @@ export async function POST(request: NextRequest) {
         membership_debito: formData.membership_debito,
         membership_credito: formData.membership_credito,
         membership_mixto: formData.membership_mixto,
-        membership_total: formData.membership_total,
+        membership_total: formData.membership_efectivo + formData.membership_transferencia + formData.membership_debito + formData.membership_credito + formData.membership_mixto,
         membership_transactions: formData.membership_transactions,
         membership_commissions: formData.membership_commissions,
         
@@ -68,12 +81,12 @@ export async function POST(request: NextRequest) {
         
         // Status and metadata
         status: 'closed',
-        is_manual: false,
-        notes: formData.notes,
-        created_by: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // ID del usuario actual
-        updated_by: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-        closed_at: new Date().toISOString(),
-        closed_by: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+        is_manual: true, // Marcamos como manual porque fue creado desde el formulario
+        notes: formData.notes || '',
+        created_by: formData.user_id || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        updated_by: formData.user_id || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        closed_at: monterreyTime.toISOString(),
+        closed_by: formData.user_id || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
       })
       .select()
       .single();
@@ -83,15 +96,22 @@ export async function POST(request: NextRequest) {
       throw cutError;
     }
 
+    console.log('✅ Corte creado exitosamente:', {
+      cut_number,
+      total: grand_total,
+      balance: final_balance
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Corte creado exitosamente',
       cut: cutData,
-      cut_number
+      cut_number,
+      final_balance
     });
 
   } catch (error) {
-    console.error('Error en API de creación de corte:', error);
+    console.error('💥 Error en API de creación de corte:', error);
     return NextResponse.json(
       { 
         success: false, 
