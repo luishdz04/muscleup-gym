@@ -139,25 +139,55 @@ import InfoIcon from '@mui/icons-material/Info';
 import CloseIcon from '@mui/icons-material/Close';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
+// ✅ INTERFAZ CORREGIDA - INCLUYE TODOS LOS CAMPOS DEL ESQUEMA
 interface MembershipPlan {
   id: string;
   name: string;
   description: string;
   is_active: boolean;
+  
+  // ✅ PRECIOS COMPLETOS SEGÚN ESQUEMA
   inscription_price: number;
   visit_price: number;
   weekly_price: number;
+  biweekly_price: number;      // ✅ AGREGADO
   monthly_price: number;
+  bimonthly_price: number;     // ✅ AGREGADO
   quarterly_price: number;
+  semester_price: number;      // ✅ AGREGADO
   annual_price: number;
+  
+  // ✅ DURACIONES COMPLETAS
+  weekly_duration: number;
+  biweekly_duration: number;   // ✅ AGREGADO
+  monthly_duration: number;
+  bimonthly_duration: number;  // ✅ AGREGADO
+  quarterly_duration: number;
+  semester_duration: number;   // ✅ AGREGADO
+  annual_duration: number;
+  
+  // Vigencia
+  validity_type: string;
+  validity_start_date: string | null;
+  validity_end_date: string | null;
+  
+  // Características
   features: string[];
   gym_access: boolean;
   classes_included: boolean;
   guest_passes: number;
+  equipment_access: string[];
+  
+  // Restricciones
   has_time_restrictions: boolean;
   allowed_days: number[];
   time_slots: { start: string; end: string }[];
+  
+  // Metadatos
   created_at: string;
+  created_by: string | null;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 export default function PlanesPage() {
@@ -169,7 +199,7 @@ export default function PlanesPage() {
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
-  // Cargar planes
+  // ✅ CARGAR PLANES CON QUERY COMPLETO
   useEffect(() => {
     loadPlans();
   }, []);
@@ -180,15 +210,21 @@ export default function PlanesPage() {
       setError(null);
       const supabase = createBrowserSupabaseClient();
       
+      // ✅ SELECT * PARA OBTENER TODOS LOS CAMPOS
       const { data, error } = await supabase
         .from('membership_plans')
         .select('*')
         .order('monthly_price', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error cargando planes:', error);
+        throw error;
+      }
       
+      console.log('✅ Planes cargados:', data);
       setPlans(data || []);
     } catch (err: any) {
+      console.error('💥 Error en loadPlans:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -228,6 +264,33 @@ export default function PlanesPage() {
     }).format(price);
   };
 
+  // ✅ FUNCIÓN MEJORADA PARA OBTENER EL MEJOR PRECIO
+  const getBestPrice = (plan: MembershipPlan) => {
+    // Prioridad: mensual > semanal > quincenal > visita > otros
+    if (plan.monthly_price > 0) return plan.monthly_price;
+    if (plan.weekly_price > 0) return plan.weekly_price;
+    if (plan.biweekly_price > 0) return plan.biweekly_price;
+    if (plan.visit_price > 0) return plan.visit_price;
+    if (plan.bimonthly_price > 0) return plan.bimonthly_price;
+    if (plan.quarterly_price > 0) return plan.quarterly_price;
+    if (plan.semester_price > 0) return plan.semester_price;
+    if (plan.annual_price > 0) return plan.annual_price;
+    return 0;
+  };
+
+  // ✅ FUNCIÓN MEJORADA PARA OBTENER ETIQUETA DE PRECIO
+  const getBestPriceLabel = (plan: MembershipPlan) => {
+    if (plan.monthly_price > 0) return 'Mensual';
+    if (plan.weekly_price > 0) return 'Semanal';
+    if (plan.biweekly_price > 0) return 'Quincenal';
+    if (plan.visit_price > 0) return 'Por Visita';
+    if (plan.bimonthly_price > 0) return 'Bimestral';
+    if (plan.quarterly_price > 0) return 'Trimestral';
+    if (plan.semester_price > 0) return 'Semestral';
+    if (plan.annual_price > 0) return 'Anual';
+    return 'Sin precio';
+  };
+
   // Formatear días
   const formatDays = (days: number[]) => {
     const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -240,11 +303,12 @@ export default function PlanesPage() {
     setViewDialogOpen(true);
   };
 
-  // Función para obtener color de plan por precio
-  const getPlanColor = (monthlyPrice: number) => {
-    if (monthlyPrice <= 500) return darkProTokens.success;
-    if (monthlyPrice <= 1000) return darkProTokens.warning;
-    if (monthlyPrice <= 1500) return darkProTokens.info;
+  // ✅ FUNCIÓN MEJORADA PARA COLOR DE PLAN
+  const getPlanColor = (plan: MembershipPlan) => {
+    const bestPrice = getBestPrice(plan);
+    if (bestPrice <= 500) return darkProTokens.success;
+    if (bestPrice <= 1000) return darkProTokens.warning;
+    if (bestPrice <= 1500) return darkProTokens.info;
     return darkProTokens.roleModerator;
   };
 
@@ -255,7 +319,7 @@ export default function PlanesPage() {
     if (plan.classes_included) score += 30;
     if (plan.guest_passes > 0) score += 15;
     if (!plan.has_time_restrictions) score += 25;
-    if (plan.features.length > 3) score += 10;
+    if (plan.features && plan.features.length > 3) score += 10;
     return Math.min(score, 100);
   };
 
@@ -677,8 +741,10 @@ export default function PlanesPage() {
           </TableHead>
           <TableBody>
             {plans.map((plan, index) => {
-              const planColor = getPlanColor(plan.monthly_price);
+              const planColor = getPlanColor(plan);
               const popularity = getPlanPopularity(plan);
+              const bestPrice = getBestPrice(plan);
+              const bestPriceLabel = getBestPriceLabel(plan);
               
               return (
                 <TableRow 
@@ -727,7 +793,7 @@ export default function PlanesPage() {
                           fontSize: '1.2rem',
                           boxShadow: `0 4px 15px ${planColor}40`
                         }}>
-                          {plan.name[0].toUpperCase()}
+                          {plan.name[0]?.toUpperCase() || 'P'}
                         </Box>
                       </Badge>
                       
@@ -779,7 +845,7 @@ export default function PlanesPage() {
                     </Box>
                   </TableCell>
                   
-                  {/* 💰 PRECIOS */}
+                  {/* 💰 PRECIOS - CORREGIDO */}
                   <TableCell sx={{ minWidth: 180 }}>
                     <Box>
                       <Typography variant="body2" sx={{ 
@@ -788,20 +854,22 @@ export default function PlanesPage() {
                         mb: 0.5
                       }}>
                         <MonetizationOnIcon sx={{ fontSize: 16, mr: 0.5, color: planColor }} />
-                        {formatPrice(plan.monthly_price)}
+                        {formatPrice(bestPrice)}
                       </Typography>
                       <Typography variant="caption" sx={{ 
                         color: darkProTokens.textSecondary,
                         display: 'block'
                       }}>
-                        Mensualidad
+                        {bestPriceLabel}
                       </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: darkProTokens.textSecondary,
-                        display: 'block'
-                      }}>
-                        Inscripción: {formatPrice(plan.inscription_price)}
-                      </Typography>
+                      {plan.inscription_price > 0 && (
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          display: 'block'
+                        }}>
+                          Inscripción: {formatPrice(plan.inscription_price)}
+                        </Typography>
+                      )}
                     </Box>
                   </TableCell>
                   
@@ -970,7 +1038,7 @@ export default function PlanesPage() {
         </Table>
       </TableContainer>
 
-      {/* 👁️ MODAL DE DETALLES CON DARK PRO SYSTEM */}
+      {/* 👁️ MODAL DE DETALLES CON DARK PRO SYSTEM - MEJORADO */}
       <Dialog 
         open={viewDialogOpen} 
         onClose={() => setViewDialogOpen(false)}
@@ -1022,7 +1090,7 @@ export default function PlanesPage() {
               
               <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
               
-              {/* 💰 SECCIÓN DE PRECIOS */}
+              {/* 💰 SECCIÓN DE PRECIOS COMPLETA */}
               <Box sx={{ mb: 3 }}>
                 <Typography variant="h6" sx={{ 
                   color: darkProTokens.success, 
@@ -1032,112 +1100,38 @@ export default function PlanesPage() {
                   gap: 1
                 }}>
                   <MonetizationOnIcon />
-                  Estructura de Precios
+                  Estructura de Precios Completa
                 </Typography>
                 
                 <Grid container spacing={2}>
-                  {selectedPlan.inscription_price > 0 && (
-                    <Grid size={{ xs: 6, sm: 4 }}>
+                  {/* ✅ MOSTRAR TODOS LOS PRECIOS DISPONIBLES */}
+                  {[
+                    { key: 'inscription_price', label: 'Inscripción', color: darkProTokens.warning },
+                    { key: 'visit_price', label: 'Por Visita', color: darkProTokens.info },
+                    { key: 'weekly_price', label: 'Semanal', color: darkProTokens.success },
+                    { key: 'biweekly_price', label: 'Quincenal', color: darkProTokens.info },
+                    { key: 'monthly_price', label: 'Mensual', color: darkProTokens.primary },
+                    { key: 'bimonthly_price', label: 'Bimestral', color: darkProTokens.warning },
+                    { key: 'quarterly_price', label: 'Trimestral', color: darkProTokens.roleModerator },
+                    { key: 'semester_price', label: 'Semestral', color: '#9C27B0' },
+                    { key: 'annual_price', label: 'Anual', color: darkProTokens.error }
+                  ].filter(priceType => selectedPlan[priceType.key as keyof MembershipPlan] as number > 0).map((priceType) => (
+                    <Grid key={priceType.key} size={{ xs: 6, sm: 4 }}>
                       <Paper sx={{ 
                         p: 2, 
-                        bgcolor: `${darkProTokens.warning}10`,
-                        border: `1px solid ${darkProTokens.warning}30`,
+                        bgcolor: `${priceType.color}10`,
+                        border: `1px solid ${priceType.color}30`,
                         borderRadius: 2
                       }}>
-                        <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
-                          {formatPrice(selectedPlan.inscription_price)}
+                        <Typography variant="h6" sx={{ color: priceType.color, fontWeight: 700 }}>
+                          {formatPrice(selectedPlan[priceType.key as keyof MembershipPlan] as number)}
                         </Typography>
                         <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Inscripción
+                          {priceType.label}
                         </Typography>
                       </Paper>
                     </Grid>
-                  )}
-                  {selectedPlan.visit_price > 0 && (
-                    <Grid size={{ xs: 6, sm: 4 }}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: `${darkProTokens.info}10`,
-                        border: `1px solid ${darkProTokens.info}30`,
-                        borderRadius: 2
-                      }}>
-                        <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
-                          {formatPrice(selectedPlan.visit_price)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Por Visita
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  )}
-                  {selectedPlan.weekly_price > 0 && (
-                    <Grid size={{ xs: 6, sm: 4 }}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: `${darkProTokens.success}10`,
-                        border: `1px solid ${darkProTokens.success}30`,
-                        borderRadius: 2
-                      }}>
-                        <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                          {formatPrice(selectedPlan.weekly_price)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Semanal
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  )}
-                  {selectedPlan.monthly_price > 0 && (
-                    <Grid size={{ xs: 6, sm: 4 }}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: `${darkProTokens.primary}10`,
-                        border: `1px solid ${darkProTokens.primary}30`,
-                        borderRadius: 2
-                      }}>
-                        <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                          {formatPrice(selectedPlan.monthly_price)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Mensual
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  )}
-                  {selectedPlan.quarterly_price > 0 && (
-                    <Grid size={{ xs: 6, sm: 4 }}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: `${darkProTokens.roleModerator}10`,
-                        border: `1px solid ${darkProTokens.roleModerator}30`,
-                        borderRadius: 2
-                      }}>
-                        <Typography variant="h6" sx={{ color: darkProTokens.roleModerator, fontWeight: 700 }}>
-                          {formatPrice(selectedPlan.quarterly_price)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Trimestral
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  )}
-                  {selectedPlan.annual_price > 0 && (
-                    <Grid size={{ xs: 6, sm: 4 }}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: `${darkProTokens.error}10`,
-                        border: `1px solid ${darkProTokens.error}30`,
-                        borderRadius: 2
-                      }}>
-                        <Typography variant="h6" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
-                          {formatPrice(selectedPlan.annual_price)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Anual
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  )}
+                  ))}
                 </Grid>
               </Box>
               
