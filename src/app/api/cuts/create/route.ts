@@ -1,9 +1,18 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.json();
+    
+    console.log('📊 Creando corte con datos:', {
+      date: formData.cut_date,
+      total_pos: formData.pos_efectivo + formData.pos_transferencia + formData.pos_debito + formData.pos_credito + formData.pos_mixto,
+      total_memberships: formData.membership_efectivo + formData.membership_transferencia + formData.membership_debito + formData.membership_credito + formData.membership_mixto,
+      total_abonos: formData.abonos_efectivo + formData.abonos_transferencia + formData.abonos_debito + formData.abonos_credito + formData.abonos_mixto,
+      expenses: formData.expenses_amount
+    });
     
     const supabase = createServerSupabaseClient();
 
@@ -27,7 +36,7 @@ export async function POST(request: NextRequest) {
     const net_amount = grand_total - total_commissions;
     const final_balance = net_amount - formData.expenses_amount;
 
-    // Verificar que no haya campos negativos críticos
+    // Validar que no haya campos negativos críticos
     if (grand_total < 0 || total_transactions < 0) {
       return NextResponse.json(
         { 
@@ -66,13 +75,23 @@ export async function POST(request: NextRequest) {
         membership_transactions: formData.membership_transactions,
         membership_commissions: formData.membership_commissions,
         
+        // Abonos data
+        abonos_efectivo: formData.abonos_efectivo,
+        abonos_transferencia: formData.abonos_transferencia,
+        abonos_debito: formData.abonos_debito,
+        abonos_credito: formData.abonos_credito,
+        abonos_mixto: formData.abonos_mixto,
+        abonos_total: formData.abonos_efectivo + formData.abonos_transferencia + formData.abonos_debito + formData.abonos_credito + formData.abonos_mixto,
+        abonos_transactions: formData.abonos_transactions,
+        abonos_commissions: formData.abonos_commissions,
+        
         // Totals
         total_efectivo,
         total_transferencia,
         total_debito,
         total_credito,
         total_mixto,
-        grand_total,
+                grand_total,
         total_transactions,
         total_commissions,
         net_amount,
@@ -92,14 +111,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (cutError) {
-      console.error('Error creando corte:', cutError);
+      console.error('💥 Error creando corte:', cutError);
       throw cutError;
     }
 
     console.log('✅ Corte creado exitosamente:', {
       cut_number,
-      total: grand_total,
-      balance: final_balance
+      date: formData.cut_date,
+      grand_total,
+      final_balance,
+      transactions: total_transactions
     });
 
     return NextResponse.json({
@@ -107,7 +128,14 @@ export async function POST(request: NextRequest) {
       message: 'Corte creado exitosamente',
       cut: cutData,
       cut_number,
-      final_balance
+      final_balance,
+      summary: {
+        grand_total,
+        total_commissions,
+        expenses: formData.expenses_amount,
+        final_balance,
+        transactions: total_transactions
+      }
     });
 
   } catch (error) {
