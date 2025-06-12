@@ -782,35 +782,38 @@ export default function HistorialMembresiaPage() {
     generateBulkPreview(eligibleMemberships, isManual ? 'manual_unfreeze' : 'unfreeze');
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
+const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
+  const preview: BulkPreview[] = eligibleMemberships.map(membership => {
+    let newEndDate = membership.end_date;
+    let daysToAdd = 0;
 
-  const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
-    const preview: BulkPreview[] = eligibleMemberships.map(membership => {
-      let newEndDate = membership.end_date;
-      let daysToAdd = 0;
-
-      if (operationType === 'manual_freeze' && bulkOperation.freezeDays && membership.end_date) {
-        daysToAdd = bulkOperation.freezeDays;
-        newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
-      } else if (operationType === 'manual_unfreeze' && membership.end_date) {
-        const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
-        daysToAdd = currentFrozenDays;
+    if (operationType === 'manual_freeze' && bulkOperation.freezeDays && membership.end_date) {
+      // Congelamiento manual: agregar días específicos
+      daysToAdd = bulkOperation.freezeDays;
+      newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+    } else if (operationType === 'manual_unfreeze' && membership.end_date) {
+      // ✅ CORRECCIÓN: Reactivación manual - agregar días congelados actuales
+      const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
+      daysToAdd = currentFrozenDays;
+      if (currentFrozenDays > 0) {
         newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
       }
+    }
 
-      return {
-        membershipId: membership.id,
-        userName: membership.user_name,
-        planName: membership.plan_name,
-        currentStatus: membership.status,
-        currentEndDate: membership.end_date,
-        newEndDate,
-        daysToAdd
-      };
-    });
+    return {
+      membershipId: membership.id,
+      userName: membership.user_name,
+      planName: membership.plan_name,
+      currentStatus: membership.status,
+      currentEndDate: membership.end_date,
+      newEndDate,
+      daysToAdd
+    };
+  });
 
-    setBulkPreview(preview);
-    setShowPreview(true);
-  }, [bulkOperation.freezeDays]);
+  setBulkPreview(preview);
+  setShowPreview(true);
+}, [bulkOperation.freezeDays]);
 
   const getBulkOperationTitle = useCallback(() => {
     const baseTitle = bulkOperation.type.includes('freeze') ? 'Congelamiento' : 'Reactivación';
@@ -3419,12 +3422,14 @@ export default function HistorialMembresiaPage() {
                       👁️ Vista Previa de Cambios
                     </Typography>
 
-                    <Typography variant="body2" sx={{ 
-                      color: darkProTokens.textSecondary,
-                      mb: 2
-                    }}>
-                      Se procesarán {bulkPreview.length} membresías. Aquí se muestran algunos ejemplos:
-                    </Typography>
+                  <Typography variant="body2" sx={{ 
+  color: darkProTokens.textSecondary,
+  mb: 2
+}}>
+  Se procesarán {bulkPreview.length} membresías para {/* ✅ CORREGIDO */}
+  {bulkOperation.type.includes('freeze') ? 'congelamiento' : 'reactivación'}. 
+  Aquí se muestran algunos ejemplos:
+</Typography>
 
                     <Box sx={{
                       maxHeight: 300,
