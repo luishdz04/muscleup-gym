@@ -1,4 +1,5 @@
 import { toast, ToastOptions, ToastContent } from 'react-toastify';
+import React from 'react';
 
 // 🎨 DARK PRO SYSTEM - TOKENS PARA TOASTIFY
 export const darkProToastTokens = {
@@ -31,10 +32,6 @@ export const darkProToastTokens = {
   primary: '#FFCC00',
   primaryBackground: 'linear-gradient(135deg, #FFCC0015, #FFCC0008)',
   primaryBorder: '#FFCC0040',
-  
-  // Focus & Interactions
-  focusRing: 'rgba(255,204,0,0.4)',
-  hoverOverlay: 'rgba(255,204,0,0.05)',
 };
 
 // ✅ CONFIGURACIÓN BASE PARA TOASTIFY
@@ -144,7 +141,23 @@ export const showLoadingToast = (message: ToastContent) => {
   });
 };
 
-// 🎨 TOAST PERSONALIZADO CON ICONOS Y ACCIONES
+// ✅ FUNCIÓN HELPER PARA CREAR ELEMENTO PERSONALIZADO
+export const createCustomToastContent = (
+  message: ToastContent,
+  icon?: string,
+  action?: { label: string; onClick: () => void }
+) => {
+  // Crear el contenido como objeto que React pueda renderizar
+  const contentData = {
+    message,
+    icon,
+    action
+  };
+  
+  return contentData;
+};
+
+// 🎨 TOAST PERSONALIZADO CON ICONOS Y ACCIONES - SIMPLIFICADO
 export const showCustomToast = (
   message: ToastContent, 
   type: 'success' | 'error' | 'warning' | 'info' = 'info',
@@ -155,42 +168,74 @@ export const showCustomToast = (
 ) => {
   const { icon, action, ...toastOptions } = options || {};
   
-  const customContent = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-      {icon && <span style={{ fontSize: '20px' }}>{icon}</span>}
-      <div style={{ flex: 1 }}>
-        {message}
-        {action && (
-          <div style={{ marginTop: '8px' }}>
-            <button
-              onClick={action.onClick}
-              style={{
-                background: 'rgba(255, 204, 0, 0.1)',
-                border: '1px solid rgba(255, 204, 0, 0.3)',
-                color: '#FFCC00',
-                padding: '4px 12px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              {action.label}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  // Crear mensaje enriquecido como string
+  let enrichedMessage = '';
+  if (icon) {
+    enrichedMessage = `${icon} ${message}`;
+  } else {
+    enrichedMessage = String(message);
+  }
+  
+  // Agregar acción como texto si existe
+  if (action) {
+    enrichedMessage += ` • ${action.label}`;
+  }
+
+  // Función personalizada onClick si hay acción
+  const customOptions = {
+    ...toastOptions,
+    onClick: action ? action.onClick : undefined,
+  };
 
   switch (type) {
     case 'success':
-      return showSuccessToast(customContent, toastOptions);
+      return showSuccessToast(enrichedMessage, customOptions);
     case 'error':
-      return showErrorToast(customContent, toastOptions);
+      return showErrorToast(enrichedMessage, customOptions);
     case 'warning':
-      return showWarningToast(customContent, toastOptions);
+      return showWarningToast(enrichedMessage, customOptions);
     default:
-      return showInfoToast(customContent, toastOptions);
+      return showInfoToast(enrichedMessage, customOptions);
+  }
+};
+
+// 🎯 FUNCIÓN ALTERNATIVA PARA CONTENIDO COMPLEJO
+export const showAdvancedToast = (
+  message: string,
+  type: 'success' | 'error' | 'warning' | 'info' = 'info',
+  options?: {
+    icon?: string;
+    duration?: number;
+    clickable?: boolean;
+    actionText?: string;
+    onActionClick?: () => void;
+  }
+) => {
+  const { icon, duration, clickable = true, actionText, onActionClick } = options || {};
+  
+  let finalMessage = message;
+  if (icon) {
+    finalMessage = `${icon} ${message}`;
+  }
+  
+  if (actionText && onActionClick) {
+    finalMessage += ` • Haz clic para ${actionText}`;
+  }
+
+  const toastConfig: ToastOptions = {
+    autoClose: duration || (type === 'error' ? 7000 : 5000),
+    closeOnClick: clickable,
+    onClick: onActionClick,
+  };
+
+  switch (type) {
+    case 'success':
+      return showSuccessToast(finalMessage, toastConfig);
+    case 'error':
+      return showErrorToast(finalMessage, toastConfig);
+    case 'warning':
+      return showWarningToast(finalMessage, toastConfig);
+    default:
+      return showInfoToast(finalMessage, toastConfig);
   }
 };
