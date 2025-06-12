@@ -47,9 +47,14 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  LinearProgress
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemAvatar,
+  Avatar,
+  Slider
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -61,7 +66,8 @@ import {
   formatTimestampForDisplay,
   createTimestampForDB,
   getDaysBetweenMexicoDates,
-  debugDateInfo
+  debugDateInfo,
+  addDaysToMexicoDate
 } from '@/lib/utils/dateUtils';
 
 // ✅ IMPORTS DEL SISTEMA DE CONGELAMIENTO - VERIFICADOS
@@ -112,6 +118,9 @@ import FreezeIcon from '@mui/icons-material/Pause';
 import UnfreezeIcon from '@mui/icons-material/PlayArrow';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
+import ManualIcon from '@mui/icons-material/Settings';
+import AutoIcon from '@mui/icons-material/AutoMode';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 // 🎨 DARK PRO SYSTEM - TOKENS VERIFICADOS
 const darkProTokens = {
@@ -152,7 +161,7 @@ const darkProTokens = {
   borderActive: '#E6B800'
 };
 
-// ✅ INTERFACES COMPLETAS - VERIFICADAS
+// ✅ INTERFACES COHERENTES - VERIFICADAS
 interface MembershipHistory {
   id: string;
   userid: string;
@@ -174,14 +183,15 @@ interface MembershipHistory {
   payment_change: number;
   is_mixed_payment: boolean;
   is_renewal: boolean;
-  skip_inscription: boolean;
   custom_commission_rate: number | null;
+  skip_inscription: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;
   freeze_date: string | null;
   unfreeze_date: string | null;
   total_frozen_days: number;
+  payment_details: any;
   user_name: string;
   user_email: string;
   plan_name: string;
@@ -210,10 +220,42 @@ interface Filters {
   isRenewal: string;
 }
 
-interface BulkOperation {
-  type: 'freeze' | 'unfreeze' | 'cancel';
+// 🆕 INTERFACE PARA CONGELAMIENTO MASIVO AVANZADO
+interface BulkFreezeOperation {
+  type: 'freeze' | 'unfreeze' | 'manual_freeze' | 'manual_unfreeze';
   membershipIds: string[];
   reason?: string;
+  freezeDays?: number; // Para congelamiento manual
+  isManual?: boolean;
+}
+
+interface BulkPreview {
+  membershipId: string;
+  userName: string;
+  planName: string;
+  currentStatus: string;
+  currentEndDate: string | null;
+  newEndDate: string | null;
+  daysToAdd: number;
+}
+
+// ✅ INTERFACE PARA DATOS DE EDICIÓN - COHERENTE CON DB
+interface EditData {
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  amount_paid?: number;
+  payment_method?: string;
+  payment_reference?: string;
+  notes?: string;
+  commission_rate?: number;
+  commission_amount?: number;
+  is_mixed_payment?: boolean;
+  // ✅ CAMPOS TEMPORALES PARA EL MODAL (NO SE GUARDAN EN DB)
+  cash_amount?: number;
+  card_amount?: number;
+  transfer_amount?: number;
+  extend_days?: number;
 }
 
 // ✅ OPCIONES VERIFICADAS
@@ -269,30 +311,33 @@ export default function HistorialMembresiaPage() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   
-  // ✅ ESTADOS PARA CONGELAMIENTO - VERIFICADOS
+  // ✅ ESTADOS PARA CONGELAMIENTO INDIVIDUAL - VERIFICADOS
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [unfreezeLoading, setUnfreezeLoading] = useState(false);
   
-  // 🆕 ESTADOS PARA CONGELAMIENTO MASIVO
+  // 🆕 ESTADOS PARA CONGELAMIENTO MASIVO AVANZADO
   const [selectedMembershipIds, setSelectedMembershipIds] = useState<string[]>([]);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
-  const [bulkOperation, setBulkOperation] = useState<BulkOperation>({ type: 'freeze', membershipIds: [] });
+  const [bulkOperation, setBulkOperation] = useState<BulkFreezeOperation>({ 
+    type: 'freeze', 
+    membershipIds: [],
+    isManual: false,
+    freezeDays: 7
+  });
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
-  const [bulkResults, setBulkResults] = useState<{ success: number; failed: number; errors: string[] }>({ success: 0, failed: 0, errors: [] });
+  const [bulkResults, setBulkResults] = useState<{ success: number; failed: number; errors: string[] }>({ 
+    success: 0, 
+    failed: 0, 
+    errors: [] 
+  });
+  const [bulkPreview, setBulkPreview] = useState<BulkPreview[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
   
   // Estados de edición
-  const [editData, setEditData] = useState<Partial<MembershipHistory>>({});
+  const [editData, setEditData] = useState<EditData>({});
   const [editLoading, setEditLoading] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
-    client: true,
-    membership: true,
-    payment: true,
-    dates: true,
-    freeze: false,
-    notes: false
-  });
   
   // Estados de estadísticas
   const [stats, setStats] = useState({
@@ -357,6 +402,7 @@ export default function HistorialMembresiaPage() {
         freeze_date: item.freeze_date || null,
         unfreeze_date: item.unfreeze_date || null,
         total_frozen_days: item.total_frozen_days || 0,
+        payment_details: item.payment_details || {},
         user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
         user_email: item.Users?.email || '',
         plan_name: item.membership_plans?.name || 'Plan Desconocido'
@@ -517,12 +563,12 @@ export default function HistorialMembresiaPage() {
     }
   }, [supabase, loadMemberships]);
 
-  // 🆕 FUNCIONES DE CONGELAMIENTO MASIVO
+  // 🆕 FUNCIONES DE CONGELAMIENTO MASIVO AVANZADO
   const handleSelectAllMemberships = useCallback(() => {
-    const activeMemberships = filteredMemberships
-      .filter(m => m.status === 'active')
+    const eligibleMemberships = filteredMemberships
+      .filter(m => m.status === 'active' || m.status === 'frozen')
       .map(m => m.id);
-    setSelectedMembershipIds(activeMemberships);
+    setSelectedMembershipIds(eligibleMemberships);
   }, [filteredMemberships]);
 
   const handleClearSelection = useCallback(() => {
@@ -539,7 +585,7 @@ export default function HistorialMembresiaPage() {
     });
   }, []);
 
-  const handleBulkFreeze = useCallback(() => {
+  const handleBulkFreeze = useCallback((isManual: boolean = false) => {
     if (selectedMembershipIds.length === 0) {
       setError('Seleccione al menos una membresía para congelar');
       return;
@@ -555,13 +601,17 @@ export default function HistorialMembresiaPage() {
     }
 
     setBulkOperation({
-      type: 'freeze',
-      membershipIds: eligibleMemberships.map(m => m.id)
+      type: isManual ? 'manual_freeze' : 'freeze',
+      membershipIds: eligibleMemberships.map(m => m.id),
+      isManual,
+      freezeDays: isManual ? 7 : undefined
     });
+    
+    generateBulkPreview(eligibleMemberships, isManual ? 'manual_freeze' : 'freeze');
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
 
-  const handleBulkUnfreeze = useCallback(() => {
+  const handleBulkUnfreeze = useCallback((isManual: boolean = false) => {
     if (selectedMembershipIds.length === 0) {
       setError('Seleccione al menos una membresía para reactivar');
       return;
@@ -577,11 +627,46 @@ export default function HistorialMembresiaPage() {
     }
 
     setBulkOperation({
-      type: 'unfreeze',
-      membershipIds: eligibleMemberships.map(m => m.id)
+      type: isManual ? 'manual_unfreeze' : 'unfreeze',
+      membershipIds: eligibleMemberships.map(m => m.id),
+      isManual
     });
+    
+    generateBulkPreview(eligibleMemberships, isManual ? 'manual_unfreeze' : 'unfreeze');
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
+
+  // 🆕 GENERAR PREVIEW DE CONGELAMIENTO MASIVO
+  const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
+    const preview: BulkPreview[] = eligibleMemberships.map(membership => {
+      let newEndDate = membership.end_date;
+      let daysToAdd = 0;
+
+      if (operationType === 'manual_freeze' && bulkOperation.freezeDays && membership.end_date) {
+        // Congelamiento manual: agregar días específicos
+        daysToAdd = bulkOperation.freezeDays;
+        newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+      } else if (operationType === 'manual_unfreeze' && membership.end_date) {
+        // Descongelamiento manual: agregar días congelados actuales
+        const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
+        daysToAdd = currentFrozenDays;
+        newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+      }
+
+      return {
+        membershipId: membership.id,
+        userName: membership.user_name,
+        planName: membership.plan_name,
+        currentStatus: membership.status,
+        currentEndDate: membership.end_date,
+        newEndDate,
+        daysToAdd
+      };
+    });
+
+    setBulkPreview(preview);
+    setShowPreview(true);
+  }, [bulkOperation.freezeDays]);
 
   const executeBulkOperation = useCallback(async () => {
     setBulkLoading(true);
@@ -603,18 +688,77 @@ export default function HistorialMembresiaPage() {
       }
 
       try {
-        let result: FreezeResult;
+        let result: any;
         
-        if (bulkOperation.type === 'freeze') {
-          result = await freezeMembership(supabase, membershipId);
+        if (bulkOperation.type === 'freeze' || bulkOperation.type === 'manual_freeze') {
+          // Congelamiento automático o manual
+          if (bulkOperation.isManual && bulkOperation.freezeDays) {
+            // Congelamiento manual con días específicos
+            const freezeDate = getMexicoToday();
+            let newEndDate = membership.end_date;
+            
+            if (membership.end_date) {
+              newEndDate = addDaysToMexicoDate(membership.end_date, bulkOperation.freezeDays);
+            }
+
+            const { error } = await supabase
+              .from('user_memberships')
+              .update({
+                status: 'frozen',
+                freeze_date: freezeDate,
+                end_date: newEndDate,
+                total_frozen_days: (membership.total_frozen_days || 0) + bulkOperation.freezeDays,
+                notes: membership.notes ? 
+                  `${membership.notes}\nCongelado manualmente por ${bulkOperation.freezeDays} días el ${formatDate(freezeDate)}. ${bulkOperation.reason || ''}` :
+                  `Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDate(freezeDate)}. ${bulkOperation.reason || ''}`,
+                updated_at: createTimestampForDB()
+              })
+              .eq('id', membershipId);
+
+            if (error) throw error;
+            result = { success: true };
+          } else {
+            // Congelamiento automático
+            result = await freezeMembership(supabase, membershipId);
+          }
         } else {
-          result = await unfreezeMembership(
-            supabase,
-            membershipId,
-            membership.freeze_date!,
-            membership.end_date,
-            membership.total_frozen_days
-          );
+          // Descongelamiento automático o manual
+          if (bulkOperation.isManual) {
+            // Descongelamiento manual: agregar días congelados actuales
+            const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
+            let newEndDate = membership.end_date;
+            
+            if (membership.end_date && currentFrozenDays > 0) {
+              newEndDate = addDaysToMexicoDate(membership.end_date, currentFrozenDays);
+            }
+
+            const { error } = await supabase
+              .from('user_memberships')
+              .update({
+                status: 'active',
+                freeze_date: null,
+                unfreeze_date: getMexicoToday(),
+                end_date: newEndDate,
+                total_frozen_days: (membership.total_frozen_days || 0) + currentFrozenDays,
+                notes: membership.notes ? 
+                  `${membership.notes}\nDescongelado manualmente el ${formatDate(getMexicoToday())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}` :
+                  `Descongelado manualmente el ${formatDate(getMexicoToday())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}`,
+                updated_at: createTimestampForDB()
+              })
+              .eq('id', membershipId);
+
+            if (error) throw error;
+            result = { success: true };
+          } else {
+            // Descongelamiento automático
+            result = await unfreezeMembership(
+              supabase,
+              membershipId,
+              membership.freeze_date!,
+              membership.end_date,
+              membership.total_frozen_days
+            );
+          }
         }
 
         if (result.success) {
@@ -632,7 +776,7 @@ export default function HistorialMembresiaPage() {
       setBulkProgress(Math.round(((i + 1) / bulkOperation.membershipIds.length) * 100));
       
       // Pequeña pausa para evitar sobrecarga
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     setBulkResults({ success: successCount, failed: failedCount, errors });
@@ -647,14 +791,16 @@ export default function HistorialMembresiaPage() {
 
     // Mensaje de resultado
     if (successCount > 0) {
-      setSuccessMessage(`✅ Operación masiva completada: ${successCount} exitosas, ${failedCount} fallidas`);
+      const operationName = bulkOperation.type.includes('freeze') ? 'congelamiento' : 'reactivación';
+      const manualText = bulkOperation.isManual ? 'manual' : 'automático';
+      setSuccessMessage(`✅ ${operationName.charAt(0).toUpperCase() + operationName.slice(1)} ${manualText} completado: ${successCount} exitosas, ${failedCount} fallidas`);
     }
     if (failedCount > 0) {
       setWarningMessage(`⚠️ ${failedCount} operaciones fallaron. Revise los detalles.`);
     }
-  }, [bulkOperation, memberships, supabase, loadMemberships]);
+  }, [bulkOperation, memberships, supabase, loadMemberships, formatDate]);
 
-  // ✅ FUNCIÓN DE ACTUALIZACIÓN - VERIFICADA
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN CORREGIDA - COHERENTE CON DB
   const handleUpdateMembership = useCallback(async () => {
     if (!selectedMembership || !editData) return;
     
@@ -671,7 +817,7 @@ export default function HistorialMembresiaPage() {
       }
 
       // ✅ LÓGICA DE EXTENSIÓN CORREGIDA
-      if (editData.extend_days > 0 && selectedMembership?.end_date) {
+      if (editData.extend_days && editData.extend_days > 0 && selectedMembership?.end_date) {
         const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
         currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
         editData.end_date = currentEnd.toISOString().split('T')[0];
@@ -682,16 +828,54 @@ export default function HistorialMembresiaPage() {
         console.log(`🔧 Extensión aplicada: ${selectedMembership.end_date} → ${editData.end_date} (+${editData.extend_days} días)`);
       }
 
-      const updateData = {
-        ...editData,
+      // ✅ PREPARAR DATOS PARA ACTUALIZACIÓN - SOLO CAMPOS QUE EXISTEN EN LA TABLA
+      const updateData: any = {
         updated_at: createTimestampForDB()
       };
 
-      delete updateData.user_name;
-      delete updateData.user_email;
-      delete updateData.plan_name;
-      delete updateData.created_at;
-      delete updateData.extend_days; // No guardar este campo temporal
+      // ✅ SOLO INCLUIR CAMPOS QUE EXISTEN EN user_memberships
+      const allowedFields = [
+        'status',
+        'start_date', 
+        'end_date',
+        'amount_paid',
+        'payment_method',
+        'payment_reference',
+        'notes',
+        'commission_rate',
+        'commission_amount',
+        'is_mixed_payment'
+      ];
+
+      allowedFields.forEach(field => {
+        if (editData[field as keyof EditData] !== undefined && editData[field as keyof EditData] !== null) {
+          updateData[field] = editData[field as keyof EditData];
+        }
+      });
+
+      // ✅ MANEJAR PAGOS MIXTOS CORRECTAMENTE - GUARDAR EN JSONB
+      if (editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') {
+        updateData.is_mixed_payment = true;
+        
+        // Si hay detalles de pago mixto, guardarlos en payment_details JSONB
+        if (editData.cash_amount || editData.card_amount || editData.transfer_amount) {
+          const paymentDetails = {
+            cash_amount: editData.cash_amount || 0,
+            card_amount: editData.card_amount || 0,
+            transfer_amount: editData.transfer_amount || 0,
+            total_amount: (editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0),
+            updated_at: createTimestampForDB()
+          };
+          
+          updateData.payment_details = paymentDetails;
+          console.log('💳 Guardando detalles de pago mixto:', paymentDetails);
+        }
+      } else {
+        updateData.is_mixed_payment = false;
+        updateData.payment_details = {};
+      }
+
+      console.log('💾 Datos a actualizar:', updateData);
 
       const { error } = await supabase
         .from('user_memberships')
@@ -707,13 +891,17 @@ export default function HistorialMembresiaPage() {
       
     } catch (err: any) {
       setError(`Error al actualizar membresía: ${err.message}`);
+      console.error('💥 Error al actualizar:', err);
     } finally {
       setEditLoading(false);
     }
   }, [selectedMembership, editData, supabase, loadMemberships, formatDate]);
 
-  // ✅ INICIALIZAR DATOS DE EDICIÓN - FUNCIÓN VERIFICADA
+  // ✅ INICIALIZAR DATOS DE EDICIÓN CORREGIDA
   const initializeEditData = useCallback((membership: MembershipHistory) => {
+    // Obtener detalles de pago mixto desde payment_details JSONB
+    const paymentDetails = membership.payment_details || {};
+    
     setEditData({
       status: membership.status,
       start_date: membership.start_date,
@@ -725,9 +913,10 @@ export default function HistorialMembresiaPage() {
       commission_rate: membership.commission_rate,
       commission_amount: membership.commission_amount,
       is_mixed_payment: membership.is_mixed_payment,
-      cash_amount: 0,
-      card_amount: 0,
-      transfer_amount: 0,
+      // ✅ CARGAR DATOS DE PAGO MIXTO DESDE JSONB
+      cash_amount: paymentDetails.cash_amount || 0,
+      card_amount: paymentDetails.card_amount || 0,
+      transfer_amount: paymentDetails.transfer_amount || 0,
       extend_days: 0
     });
   }, []);
@@ -738,8 +927,6 @@ export default function HistorialMembresiaPage() {
     
     const todayMexico = getMexicoToday();
     const daysRemaining = getDaysBetweenMexicoDates(todayMexico, endDate);
-    
-    debugDateInfo('Cálculo días restantes', { today: todayMexico, end: endDate, remaining: daysRemaining });
     
     return daysRemaining;
   }, []);
@@ -786,15 +973,31 @@ export default function HistorialMembresiaPage() {
     applyFilters();
   }, [applyFilters]);
 
+  // Regenerar preview cuando cambian los días de congelamiento
+  useEffect(() => {
+    if (showPreview && bulkOperation.type === 'manual_freeze') {
+      const eligibleMemberships = filteredMemberships.filter(m => 
+        bulkOperation.membershipIds.includes(m.id)
+      );
+      generateBulkPreview(eligibleMemberships, 'manual_freeze');
+    }
+  }, [bulkOperation.freezeDays, bulkOperation.membershipIds, filteredMemberships, generateBulkPreview, showPreview, bulkOperation.type]);
+
   // ✅ HANDLERS DE CIERRE - VERIFICADOS
   const handleCloseError = useCallback(() => setError(null), []);
   const handleCloseSuccess = useCallback(() => setSuccessMessage(null), []);
   const handleCloseWarning = useCallback(() => setWarningMessage(null), []);
   const handleCloseInfo = useCallback(() => setInfoMessage(null), []);
 
-  // ✅ MODAL DE EDICIÓN OPTIMIZADO - VERIFICADO
+  // ✅ MODAL DE EDICIÓN OPTIMIZADO - COHERENTE CON DB
   const OptimizedEditModal = useMemo(() => {
     if (!editDialogOpen || !selectedMembership) return null;
+
+    // ✅ OBTENER DETALLES DE PAGO MIXTO DESDE JSONB
+    const paymentDetailsFromDB = selectedMembership.payment_details || {};
+    
+    // ✅ SOLO MOSTRAR CAMPOS DE PAGO MIXTO SI SON RELEVANTES
+    const showMixedPaymentFields = editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto';
 
     return (
       <Dialog 
@@ -950,7 +1153,17 @@ export default function HistorialMembresiaPage() {
                   </InputLabel>
                   <Select
                     value={editData.payment_method || selectedMembership.payment_method}
-                    onChange={(e) => setEditData(prev => ({ ...prev, payment_method: e.target.value }))}
+                    onChange={(e) => {
+                      const newMethod = e.target.value;
+                      setEditData(prev => ({ 
+                        ...prev, 
+                        payment_method: newMethod,
+                        // ✅ LIMPIAR CAMPOS DE PAGO MIXTO AL CAMBIAR MÉTODO
+                        cash_amount: newMethod === 'mixto' ? (prev.cash_amount || paymentDetailsFromDB.cash_amount || 0) : 0,
+                        card_amount: newMethod === 'mixto' ? (prev.card_amount || paymentDetailsFromDB.card_amount || 0) : 0,
+                        transfer_amount: newMethod === 'mixto' ? (prev.transfer_amount || paymentDetailsFromDB.transfer_amount || 0) : 0
+                      }));
+                    }}
                     sx={{
                       color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
@@ -976,8 +1189,8 @@ export default function HistorialMembresiaPage() {
                 </FormControl>
               </Grid>
 
-              {/* Campos para Pago Mixto */}
-              {(editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') && (
+              {/* ✅ CAMPOS PARA PAGO MIXTO - SOLO SI ES RELEVANTE */}
+              {showMixedPaymentFields && (
                 <>
                   <Grid size={12}>
                     <Alert severity="info" sx={{
@@ -986,7 +1199,7 @@ export default function HistorialMembresiaPage() {
                       border: `1px solid ${darkProTokens.info}30`,
                       '& .MuiAlert-icon': { color: darkProTokens.info }
                     }}>
-                      💳 Pago Mixto - Configure los montos por método
+                      💳 Pago Mixto - Los cambios se guardarán en el historial de la membresía
                     </Alert>
                   </Grid>
 
@@ -995,7 +1208,7 @@ export default function HistorialMembresiaPage() {
                       fullWidth
                       label="Efectivo"
                       type="number"
-                      value={editData.cash_amount || 0}
+                      value={editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0}
                       onChange={(e) => setEditData(prev => ({ ...prev, cash_amount: parseFloat(e.target.value) || 0 }))}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">💵</InputAdornment>,
@@ -1006,6 +1219,12 @@ export default function HistorialMembresiaPage() {
                           }
                         }
                       }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.success }
+                        }
+                      }}
                     />
                   </Grid>
 
@@ -1014,7 +1233,7 @@ export default function HistorialMembresiaPage() {
                       fullWidth
                       label="Tarjeta"
                       type="number"
-                      value={editData.card_amount || 0}
+                      value={editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0}
                       onChange={(e) => setEditData(prev => ({ ...prev, card_amount: parseFloat(e.target.value) || 0 }))}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">💳</InputAdornment>,
@@ -1025,6 +1244,12 @@ export default function HistorialMembresiaPage() {
                           }
                         }
                       }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.info }
+                        }
+                      }}
                     />
                   </Grid>
 
@@ -1033,7 +1258,7 @@ export default function HistorialMembresiaPage() {
                       fullWidth
                       label="Transferencia"
                       type="number"
-                      value={editData.transfer_amount || 0}
+                      value={editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0}
                       onChange={(e) => setEditData(prev => ({ ...prev, transfer_amount: parseFloat(e.target.value) || 0 }))}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">🏦</InputAdornment>,
@@ -1042,6 +1267,12 @@ export default function HistorialMembresiaPage() {
                           '& .MuiOutlinedInput-notchedOutline': {
                             borderColor: `${darkProTokens.warning}30`
                           }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.warning }
                         }
                       }}
                     />
@@ -1063,7 +1294,11 @@ export default function HistorialMembresiaPage() {
                         Total Mixto
                       </Typography>
                       <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                        {formatPrice((editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0))}
+                        {formatPrice(
+                          (editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0) + 
+                          (editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0) + 
+                          (editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0)
+                        )}
                       </Typography>
                     </Box>
                   </Grid>
@@ -1090,6 +1325,12 @@ export default function HistorialMembresiaPage() {
                       color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
@@ -1115,6 +1356,12 @@ export default function HistorialMembresiaPage() {
                       color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
@@ -1147,6 +1394,12 @@ export default function HistorialMembresiaPage() {
                       }
                     }
                   }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
                 />
               </Grid>
 
@@ -1175,6 +1428,12 @@ export default function HistorialMembresiaPage() {
                       }
                     }
                   }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.warning }
+                    }
+                  }}
                 />
               </Grid>
 
@@ -1186,7 +1445,7 @@ export default function HistorialMembresiaPage() {
                   p: 2,
                   textAlign: 'center',
                   height: '56px',
-                  display: 'flex',
+                                    display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center'
                 }}>
@@ -1199,7 +1458,7 @@ export default function HistorialMembresiaPage() {
                 </Box>
               </Grid>
 
-              {/* Referencia */}
+              {/* Referencia de Pago */}
               <Grid size={12}>
                 <TextField
                   fullWidth
@@ -1213,13 +1472,25 @@ export default function HistorialMembresiaPage() {
                       color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
                       }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }
                   }}
                 />
               </Grid>
 
-              {/* Extensión Manual */}
+              {/* ✅ EXTENSIÓN MANUAL CORREGIDA */}
               <Grid size={12}>
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
@@ -1373,6 +1644,12 @@ export default function HistorialMembresiaPage() {
                       }
                     }
                   }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
                 />
               </Grid>
             </Grid>
@@ -1488,7 +1765,7 @@ export default function HistorialMembresiaPage() {
             color: darkProTokens.textPrimary,
             border: `1px solid ${darkProTokens.success}60`,
             borderRadius: 3,
-                        boxShadow: `0 8px 32px ${darkProTokens.success}40`,
+            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
             backdropFilter: 'blur(20px)',
             fontWeight: 600,
             '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
@@ -1582,7 +1859,7 @@ export default function HistorialMembresiaPage() {
               color: darkProTokens.textSecondary,
               fontWeight: 300
             }}>
-              Gestión Integral | Congelamiento Inteligente | Control Masivo
+              Gestión Integral | Congelamiento Inteligente | Control Masivo Avanzado
             </Typography>
           </Box>
           
@@ -1788,7 +2065,7 @@ export default function HistorialMembresiaPage() {
         </Grid>
       </Paper>
 
-      {/* 🆕 BARRA DE CONGELAMIENTO MASIVO */}
+      {/* 🆕 BARRA DE CONGELAMIENTO MASIVO AVANZADO */}
       <AnimatePresence>
         {bulkMode && (
           <motion.div
@@ -1805,7 +2082,7 @@ export default function HistorialMembresiaPage() {
               borderRadius: 4,
               boxShadow: `0 8px 32px ${darkProTokens.info}20`
             }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <BatchIcon sx={{ color: darkProTokens.info, fontSize: 30 }} />
                   <Box>
@@ -1813,124 +2090,223 @@ export default function HistorialMembresiaPage() {
                       color: darkProTokens.info, 
                       fontWeight: 700 
                     }}>
-                      🧊 Modo Congelamiento Masivo Activado
+                      🧊 Modo Congelamiento Masivo Avanzado
                     </Typography>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      {selectedMembershipIds.length} membresías seleccionadas
+                      {selectedMembershipIds.length} membresías seleccionadas • Gestión inteligente por lotes
                     </Typography>
                   </Box>
                 </Box>
 
-                <Stack direction="row" spacing={2}>
-                  <Button
-                    startIcon={<SelectAllIcon />}
-                    onClick={handleSelectAllMemberships}
-                    sx={{ 
-                      color: darkProTokens.info,
-                      borderColor: `${darkProTokens.info}60`,
-                      px: 3,
-                      fontWeight: 600,
-                      '&:hover': {
-                        borderColor: darkProTokens.info,
-                        backgroundColor: `${darkProTokens.info}10`
-                      }
-                    }}
-                    variant="outlined"
-                    size="small"
-                  >
-                    Seleccionar Activas
-                  </Button>
-
-                  <Button
-                    startIcon={<ClearAllIcon />}
-                    onClick={handleClearSelection}
-                    sx={{ 
-                      color: darkProTokens.textSecondary,
-                      borderColor: `${darkProTokens.textSecondary}40`,
-                      px: 3,
-                      fontWeight: 600,
-                      '&:hover': {
-                        borderColor: darkProTokens.textSecondary,
-                        backgroundColor: `${darkProTokens.textSecondary}10`
-                      }
-                    }}
-                    variant="outlined"
-                    size="small"
-                  >
-                    Limpiar
-                  </Button>
-
-                  <Button
-                    startIcon={<FreezeIcon />}
-                    onClick={handleBulkFreeze}
-                    disabled={selectedMembershipIds.length === 0}
-                    sx={{ 
-                      color: darkProTokens.textPrimary,
-                      backgroundColor: darkProTokens.info,
-                      px: 3,
-                      fontWeight: 700,
-                      '&:hover': {
-                        backgroundColor: darkProTokens.infoHover,
-                        transform: 'translateY(-2px)'
-                      },
-                      '&:disabled': {
-                        backgroundColor: `${darkProTokens.info}30`,
-                        color: `${darkProTokens.textPrimary}50`
-                      }
-                    }}
-                    variant="contained"
-                    size="small"
-                  >
-                    Congelar Seleccionadas
-                  </Button>
-
-                  <Button
-                    startIcon={<UnfreezeIcon />}
-                    onClick={handleBulkUnfreeze}
-                    disabled={selectedMembershipIds.length === 0}
-                    sx={{ 
-                      color: darkProTokens.textPrimary,
-                      backgroundColor: darkProTokens.success,
-                      px: 3,
-                      fontWeight: 700,
-                      '&:hover': {
-                        backgroundColor: darkProTokens.successHover,
-                        transform: 'translateY(-2px)'
-                      },
-                      '&:disabled': {
-                        backgroundColor: `${darkProTokens.success}30`,
-                        color: `${darkProTokens.textPrimary}50`
-                      }
-                    }}
-                    variant="contained"
-                    size="small"
-                  >
-                    Reactivar Seleccionadas
-                  </Button>
-
-                  <Button
-                    startIcon={<CloseIcon />}
-                    onClick={() => {
-                      setBulkMode(false);
-                      setSelectedMembershipIds([]);
-                    }}
-                    sx={{ 
-                      color: darkProTokens.error,
-                      borderColor: `${darkProTokens.error}60`,
-                      px: 3,
-                      fontWeight: 600,
-                      '&:hover': {
-                        borderColor: darkProTokens.error,
-                        backgroundColor: `${darkProTokens.error}10`
-                      }
-                    }}
-                    variant="outlined"
-                    size="small"
-                  >
-                    Salir
-                  </Button>
-                </Stack>
+                <Button
+                  startIcon={<CloseIcon />}
+                  onClick={() => {
+                    setBulkMode(false);
+                    setSelectedMembershipIds([]);
+                  }}
+                  sx={{ 
+                    color: darkProTokens.error,
+                    borderColor: `${darkProTokens.error}60`,
+                    px: 3,
+                    fontWeight: 600,
+                    '&:hover': {
+                      borderColor: darkProTokens.error,
+                      backgroundColor: `${darkProTokens.error}10`
+                    }
+                  }}
+                  variant="outlined"
+                  size="small"
+                >
+                  Salir
+                </Button>
               </Box>
+
+              <Grid container spacing={2}>
+                {/* Selección */}
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <Stack spacing={1}>
+                    <Button
+                      startIcon={<SelectAllIcon />}
+                      onClick={handleSelectAllMemberships}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.info,
+                        borderColor: `${darkProTokens.info}60`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderColor: darkProTokens.info,
+                          backgroundColor: `${darkProTokens.info}10`
+                        }
+                      }}
+                      variant="outlined"
+                      size="small"
+                    >
+                      Seleccionar Todas
+                    </Button>
+
+                    <Button
+                      startIcon={<ClearAllIcon />}
+                      onClick={handleClearSelection}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.textSecondary,
+                        borderColor: `${darkProTokens.textSecondary}40`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderColor: darkProTokens.textSecondary,
+                          backgroundColor: `${darkProTokens.textSecondary}10`
+                        }
+                      }}
+                      variant="outlined"
+                      size="small"
+                    >
+                      Limpiar
+                    </Button>
+                  </Stack>
+                </Grid>
+
+                {/* Congelamiento */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Stack spacing={1}>
+                    <Button
+                      startIcon={<AutoIcon />}
+                      onClick={() => handleBulkFreeze(false)}
+                      disabled={selectedMembershipIds.length === 0}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.textPrimary,
+                        backgroundColor: darkProTokens.info,
+                        fontWeight: 700,
+                        '&:hover': {
+                          backgroundColor: darkProTokens.infoHover,
+                          transform: 'translateY(-1px)'
+                        },
+                        '&:disabled': {
+                          backgroundColor: `${darkProTokens.info}30`,
+                          color: `${darkProTokens.textPrimary}50`
+                        }
+                      }}
+                      variant="contained"
+                      size="small"
+                    >
+                      🧊 Congelar Automático
+                    </Button>
+
+                    <Button
+                      startIcon={<ManualIcon />}
+                      onClick={() => handleBulkFreeze(true)}
+                      disabled={selectedMembershipIds.length === 0}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.info,
+                        borderColor: `${darkProTokens.info}60`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderColor: darkProTokens.info,
+                          backgroundColor: `${darkProTokens.info}10`
+                        }
+                      }}
+                      variant="outlined"
+                      size="small"
+                    >
+                      🧊 Congelar Manual
+                    </Button>
+                  </Stack>
+                </Grid>
+
+                {/* Descongelamiento */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Stack spacing={1}>
+                    <Button
+                      startIcon={<AutoIcon />}
+                      onClick={() => handleBulkUnfreeze(false)}
+                      disabled={selectedMembershipIds.length === 0}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.textPrimary,
+                        backgroundColor: darkProTokens.success,
+                        fontWeight: 700,
+                        '&:hover': {
+                          backgroundColor: darkProTokens.successHover,
+                          transform: 'translateY(-1px)'
+                        },
+                        '&:disabled': {
+                          backgroundColor: `${darkProTokens.success}30`,
+                          color: `${darkProTokens.textPrimary}50`
+                        }
+                      }}
+                      variant="contained"
+                      size="small"
+                    >
+                      🔄 Reactivar Automático
+                    </Button>
+
+                    <Button
+                      startIcon={<ManualIcon />}
+                      onClick={() => handleBulkUnfreeze(true)}
+                      disabled={selectedMembershipIds.length === 0}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.success,
+                        borderColor: `${darkProTokens.success}60`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderColor: darkProTokens.success,
+                          backgroundColor: `${darkProTokens.success}10`
+                        }
+                      }}
+                      variant="outlined"
+                      size="small"
+                    >
+                      🔄 Reactivar Manual
+                    </Button>
+                  </Stack>
+                </Grid>
+
+                {/* Estado */}
+                <Grid size={{ xs: 12, md: 1 }}>
+                  <Box sx={{
+                    background: `${darkProTokens.primary}10`,
+                    border: `1px solid ${darkProTokens.primary}30`,
+                    borderRadius: 2,
+                    p: 1,
+                    textAlign: 'center',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center'
+                  }}>
+                    <Typography variant="h4" sx={{ 
+                      color: darkProTokens.primary,
+                      fontWeight: 800
+                    }}>
+                      {selectedMembershipIds.length}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      Seleccionadas
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+
+              {selectedMembershipIds.length > 0 && (
+                <Alert 
+                  severity="info"
+                  sx={{
+                    mt: 2,
+                    backgroundColor: `${darkProTokens.info}05`,
+                    color: darkProTokens.textPrimary,
+                    border: `1px solid ${darkProTokens.info}20`,
+                    '& .MuiAlert-icon': { color: darkProTokens.info }
+                  }}
+                >
+                  <Typography variant="body2">
+                    <strong>💡 Modos Disponibles:</strong><br/>
+                    <strong>🤖 Automático:</strong> El sistema calcula automáticamente los días y fechas<br/>
+                    <strong>⚙️ Manual:</strong> Usted especifica cuántos días congelar/agregar y el sistema actualiza las fechas
+                  </Typography>
+                </Alert>
+              )}
             </Paper>
           </motion.div>
         )}
@@ -1976,7 +2352,7 @@ export default function HistorialMembresiaPage() {
                 }}
                 variant="outlined"
               >
-                Congelamiento Masivo
+                🧊 Congelamiento Masivo
               </Button>
             )}
 
@@ -2607,7 +2983,7 @@ export default function HistorialMembresiaPage() {
         </CardContent>
       </Card>
 
-      {/* ✅ MENU DE ACCIONES - VERIFICADO */}
+            {/* ✅ MENU DE ACCIONES - VERIFICADO */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -2686,11 +3062,11 @@ export default function HistorialMembresiaPage() {
         </MenuList>
       </Menu>
 
-      {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO */}
+      {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO AVANZADO */}
       <Dialog
         open={bulkDialogOpen}
         onClose={() => !bulkLoading && setBulkDialogOpen(false)}
-        maxWidth="md"
+        maxWidth="lg"
         fullWidth
         PaperProps={{
           sx: {
@@ -2698,21 +3074,35 @@ export default function HistorialMembresiaPage() {
             border: `2px solid ${darkProTokens.info}50`,
             borderRadius: 4,
             color: darkProTokens.textPrimary,
-            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
+            maxHeight: '90vh'
           }
         }}
       >
         <DialogTitle sx={{ 
           color: darkProTokens.info, 
           fontWeight: 800,
-          fontSize: '1.6rem',
+          fontSize: '1.8rem',
           textAlign: 'center',
-          pb: 2
+          pb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
-          🧊 {bulkOperation.type === 'freeze' ? 'Congelamiento' : 'Reactivación'} Masivo
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {bulkOperation.isManual ? <ManualIcon sx={{ fontSize: 40 }} /> : <AutoIcon sx={{ fontSize: 40 }} />}
+            🧊 {bulkOperation.type.includes('freeze') ? 'Congelamiento' : 'Reactivación'} Masivo {bulkOperation.isManual ? 'Manual' : 'Automático'}
+          </Box>
+          <IconButton 
+            onClick={() => setBulkDialogOpen(false)}
+            disabled={bulkLoading}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
         
-        <DialogContent>
+        <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
           {!bulkLoading ? (
             <Box>
               <Alert 
@@ -2726,19 +3116,224 @@ export default function HistorialMembresiaPage() {
                 }}
               >
                 <Typography variant="body1">
-                  <strong>⚠️ Operación Masiva:</strong> Esta acción se aplicará a {bulkOperation.membershipIds.length} membresía{bulkOperation.membershipIds.length > 1 ? 's' : ''}.
+                  <strong>⚠️ Operación Masiva {bulkOperation.isManual ? 'Manual' : 'Automática'}:</strong> Esta acción se aplicará a {bulkOperation.membershipIds.length} membresía{bulkOperation.membershipIds.length > 1 ? 's' : ''}.
+                  {bulkOperation.isManual && (
+                    <>
+                      <br/><strong>⚙️ Modo Manual:</strong> Usted define los días específicos y el sistema actualiza las fechas automáticamente.
+                    </>
+                  )}
                 </Typography>
               </Alert>
 
+              {/* 🆕 CONFIGURACIÓN PARA CONGELAMIENTO MANUAL */}
+              {bulkOperation.isManual && bulkOperation.type === 'manual_freeze' && (
+                <Card sx={{
+                  background: `${darkProTokens.info}10`,
+                  border: `1px solid ${darkProTokens.info}30`,
+                  borderRadius: 3,
+                  mb: 3
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info,
+                      fontWeight: 700,
+                      mb: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <AccessTimeIcon />
+                      ⚙️ Configuración de Congelamiento Manual
+                    </Typography>
+
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body1" sx={{ 
+                        color: darkProTokens.textPrimary,
+                        fontWeight: 600,
+                        mb: 2
+                      }}>
+                        Días a congelar: {bulkOperation.freezeDays} días
+                      </Typography>
+                      
+                      <Slider
+                        value={bulkOperation.freezeDays || 7}
+                        onChange={(e, newValue) => {
+                          setBulkOperation(prev => ({
+                            ...prev,
+                            freezeDays: Array.isArray(newValue) ? newValue[0] : newValue
+                          }));
+                        }}
+                        min={1}
+                        max={90}
+                        step={1}
+                        marks={[
+                          { value: 1, label: '1 día' },
+                          { value: 7, label: '1 semana' },
+                          { value: 15, label: '15 días' },
+                          { value: 30, label: '1 mes' },
+                          { value: 60, label: '2 meses' },
+                          { value: 90, label: '3 meses' }
+                        ]}
+                        valueLabelDisplay="auto"
+                        sx={{
+                          color: darkProTokens.info,
+                          '& .MuiSlider-thumb': {
+                            backgroundColor: darkProTokens.info,
+                            border: `2px solid ${darkProTokens.textPrimary}`,
+                            '&:hover': {
+                              boxShadow: `0 0 0 8px ${darkProTokens.info}30`
+                            }
+                          },
+                          '& .MuiSlider-track': {
+                            backgroundColor: darkProTokens.info
+                          },
+                          '& .MuiSlider-rail': {
+                            backgroundColor: darkProTokens.grayDark
+                          },
+                          '& .MuiSlider-mark': {
+                            backgroundColor: darkProTokens.textSecondary
+                          },
+                          '& .MuiSlider-markLabel': {
+                            color: darkProTokens.textSecondary,
+                            fontSize: '0.75rem'
+                          }
+                        }}
+                      />
+                    </Box>
+
+                    <Alert 
+                      severity="info"
+                      sx={{
+                        backgroundColor: `${darkProTokens.info}05`,
+                        color: darkProTokens.textPrimary,
+                        border: `1px solid ${darkProTokens.info}20`,
+                        '& .MuiAlert-icon': { color: darkProTokens.info }
+                      }}
+                    >
+                      <Typography variant="body2">
+                        <strong>💡 ¿Cómo funciona?</strong><br/>
+                        • Las membresías se marcarán como "congeladas"<br/>
+                        • Se agregarán <strong>{bulkOperation.freezeDays} días</strong> a la fecha de vencimiento<br/>
+                        • Los días se registrarán en el historial de congelamiento<br/>
+                        • El proceso es reversible con la reactivación manual
+                      </Typography>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 🆕 VISTA PREVIA DE CAMBIOS */}
+              {showPreview && bulkPreview.length > 0 && (
+                <Card sx={{
+                  background: `${darkProTokens.success}10`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 3,
+                  mb: 3
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.success,
+                      fontWeight: 700,
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <VisibilityIcon />
+                      👁️ Vista Previa de Cambios
+                    </Typography>
+
+                    <Typography variant="body2" sx={{ 
+                      color: darkProTokens.textSecondary,
+                      mb: 2
+                    }}>
+                      Se procesarán {bulkPreview.length} membresías. Aquí se muestran algunos ejemplos:
+                    </Typography>
+
+                    <Box sx={{
+                      maxHeight: 300,
+                      overflow: 'auto',
+                      border: `1px solid ${darkProTokens.success}30`,
+                      borderRadius: 2
+                    }}>
+                      <List dense>
+                        {bulkPreview.slice(0, 5).map((preview, index) => (
+                          <ListItem key={preview.membershipId} sx={{
+                            borderBottom: index < Math.min(4, bulkPreview.length - 1) ? 
+                              `1px solid ${darkProTokens.grayDark}20` : 'none'
+                          }}>
+                            <ListItemAvatar>
+                              <Avatar sx={{ 
+                                background: darkProTokens.primary,
+                                color: darkProTokens.background,
+                                width: 40,
+                                height: 40
+                              }}>
+                                {preview.userName.split(' ').map(n => n[0]).join('')}
+                              </Avatar>
+                            </ListItemAvatar>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="body1" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 600
+                              }}>
+                                {preview.userName}
+                              </Typography>
+                              <Typography variant="caption" sx={{ 
+                                color: darkProTokens.textSecondary
+                              }}>
+                                {preview.planName} • {preview.currentStatus.toUpperCase()}
+                              </Typography>
+                              <Box sx={{ mt: 1 }}>
+                                <Typography variant="body2" sx={{ 
+                                  color: darkProTokens.textSecondary
+                                }}>
+                                  📅 Actual: {preview.currentEndDate ? formatDate(preview.currentEndDate) : 'Sin fecha'}
+                                </Typography>
+                                {preview.newEndDate && preview.newEndDate !== preview.currentEndDate && (
+                                  <Typography variant="body2" sx={{ 
+                                    color: darkProTokens.success,
+                                    fontWeight: 600
+                                  }}>
+                                    📅 Nueva: {formatDate(preview.newEndDate)} 
+                                    {preview.daysToAdd > 0 && (
+                                      <span style={{ color: darkProTokens.info }}>
+                                        {' '}(+{preview.daysToAdd} días)
+                                      </span>
+                                    )}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+                          </ListItem>
+                        ))}
+                      </List>
+
+                      {bulkPreview.length > 5 && (
+                        <Box sx={{ p: 2, textAlign: 'center' }}>
+                          <Typography variant="caption" sx={{ 
+                            color: darkProTokens.textSecondary,
+                            fontStyle: 'italic'
+                          }}>
+                            ... y {bulkPreview.length - 5} membresías más
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Lista de Membresías Seleccionadas */}
               <Typography variant="h6" sx={{ 
                 color: darkProTokens.textPrimary,
                 mb: 2
               }}>
-                Membresías seleccionadas:
+                Membresías seleccionadas ({bulkOperation.membershipIds.length}):
               </Typography>
 
               <Box sx={{
-                maxHeight: 300,
+                maxHeight: 200,
                 overflow: 'auto',
                 border: `1px solid ${darkProTokens.grayDark}`,
                 borderRadius: 2,
@@ -2754,9 +3349,14 @@ export default function HistorialMembresiaPage() {
                       py: 1,
                       borderBottom: `1px solid ${darkProTokens.grayDark}40`
                     }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                        {membership.user_name} - {membership.plan_name}
-                      </Typography>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {membership.user_name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          {membership.plan_name} • Vence: {membership.end_date ? formatDate(membership.end_date) : 'Sin fecha'}
+                        </Typography>
+                      </Box>
                       <Chip 
                         label={membership.status.toUpperCase()}
                         size="small"
@@ -2771,6 +3371,7 @@ export default function HistorialMembresiaPage() {
                 })}
               </Box>
 
+              {/* Motivo/Razón */}
               <TextField
                 fullWidth
                 label="Motivo (opcional)"
@@ -2778,14 +3379,26 @@ export default function HistorialMembresiaPage() {
                 rows={3}
                 value={bulkOperation.reason || ''}
                 onChange={(e) => setBulkOperation(prev => ({ ...prev, reason: e.target.value }))}
-                placeholder={`Motivo del ${bulkOperation.type === 'freeze' ? 'congelamiento' : 'reactivación'} masivo...`}
+                placeholder={`Motivo del ${bulkOperation.type.includes('freeze') ? 'congelamiento' : 'reactivación'} masivo...`}
                 sx={{ mt: 3 }}
                 InputProps={{
                   sx: {
                     color: darkProTokens.textPrimary,
                     '& .MuiOutlinedInput-notchedOutline': {
                       borderColor: `${darkProTokens.info}30`
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: darkProTokens.info
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: darkProTokens.info
                     }
+                  }
+                }}
+                InputLabelProps={{
+                  sx: { 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.info }
                   }
                 }}
               />
@@ -2797,7 +3410,7 @@ export default function HistorialMembresiaPage() {
                 mb: 3,
                 textAlign: 'center'
               }}>
-                {bulkOperation.type === 'freeze' ? 'Congelando' : 'Reactivando'} membresías...
+                {bulkOperation.type.includes('freeze') ? 'Congelando' : 'Reactivando'} membresías{bulkOperation.isManual ? ' manualmente' : ''}...
               </Typography>
 
               <LinearProgress 
@@ -2818,37 +3431,67 @@ export default function HistorialMembresiaPage() {
                 textAlign: 'center',
                 mt: 2
               }}>
-                {bulkProgress}% completado
+                {bulkProgress}% completado • Procesando {bulkOperation.membershipIds.length} membresías
               </Typography>
 
               {bulkResults.success > 0 || bulkResults.failed > 0 ? (
                 <Box sx={{ mt: 3 }}>
                   <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 1 }}>
-                    Resultados:
+                    Resultados en tiempo real:
                   </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.success }}>
-                    ✅ Exitosas: {bulkResults.success}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.error }}>
-                    ❌ Fallidas: {bulkResults.failed}
-                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid size={6}>
+                      <Box sx={{
+                        background: `${darkProTokens.success}10`,
+                        border: `1px solid ${darkProTokens.success}30`,
+                        borderRadius: 2,
+                        p: 2,
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 800 }}>
+                          {bulkResults.success}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          ✅ Exitosas
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid size={6}>
+                      <Box sx={{
+                        background: `${darkProTokens.error}10`,
+                        border: `1px solid ${darkProTokens.error}30`,
+                        borderRadius: 2,
+                        p: 2,
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 800 }}>
+                          {bulkResults.failed}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          ❌ Fallidas
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
                   
                   {bulkResults.errors.length > 0 && (
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="body2" sx={{ color: darkProTokens.error, mb: 1 }}>
-                        Errores:
+                        Errores detectados:
                       </Typography>
                       <Box sx={{
                         maxHeight: 150,
                         overflow: 'auto',
                         border: `1px solid ${darkProTokens.error}30`,
                         borderRadius: 1,
-                        p: 1
+                        p: 1,
+                        background: `${darkProTokens.error}05`
                       }}>
                         {bulkResults.errors.map((error, index) => (
                           <Typography key={index} variant="caption" sx={{ 
                             color: darkProTokens.error,
-                            display: 'block'
+                            display: 'block',
+                            fontSize: '0.75rem'
                           }}>
                             • {error}
                           </Typography>
@@ -2881,7 +3524,11 @@ export default function HistorialMembresiaPage() {
             <Button 
               onClick={executeBulkOperation}
               variant="contained"
-              startIcon={bulkOperation.type === 'freeze' ? <FreezeIcon /> : <UnfreezeIcon />}
+              startIcon={
+                bulkOperation.type.includes('freeze') ? 
+                  (bulkOperation.isManual ? <ManualIcon /> : <FreezeIcon />) : 
+                  (bulkOperation.isManual ? <ManualIcon /> : <UnfreezeIcon />)
+              }
               sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
                 color: darkProTokens.textPrimary,
@@ -2894,13 +3541,21 @@ export default function HistorialMembresiaPage() {
                 }
               }}
             >
-              {bulkOperation.type === 'freeze' ? 'Congelar' : 'Reactivar'} {bulkOperation.membershipIds.length} Membresía{bulkOperation.membershipIds.length > 1 ? 's' : ''}
+              {bulkOperation.type.includes('freeze') ? 
+                `🧊 Congelar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
+                `🔄 Reactivar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
+              }
+              {bulkOperation.isManual && bulkOperation.freezeDays && (
+                <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>
+                  {' '}({bulkOperation.freezeDays} días)
+                </span>
+              )}
             </Button>
           )}
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL DE DETALLES - PLACEHOLDER */}
+      {/* ✅ MODAL DE DETALLES - PLACEHOLDER MEJORADO */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
@@ -2922,22 +3577,53 @@ export default function HistorialMembresiaPage() {
           fontWeight: 800,
           fontSize: '1.8rem',
           textAlign: 'center',
-          pb: 2
+          pb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
-          👁️ Detalles de Membresía
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <VisibilityIcon sx={{ fontSize: 40 }} />
+            Detalles Completos de Membresía
+          </Box>
+          <IconButton 
+            onClick={() => setDetailsDialogOpen(false)}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
         
         <DialogContent>
           {selectedMembership && (
-            <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
-              Detalles completos de {selectedMembership.user_name} - {selectedMembership.plan_name}
-              {/* Aquí iría el modal de detalles completo */}
-            </Typography>
+            <Box>
+              <Typography variant="h6" sx={{ color: darkProTokens.primary, mb: 2 }}>
+                📋 {selectedMembership.user_name} - {selectedMembership.plan_name}
+              </Typography>
+              <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                🚧 Vista detallada en desarrollo...
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
+                ID: {selectedMembership.id}<br/>
+                Estado: {selectedMembership.status}<br/>
+                Monto: {formatPrice(selectedMembership.amount_paid)}<br/>
+                Días congelados: {selectedMembership.total_frozen_days}
+              </Typography>
+            </Box>
           )}
         </DialogContent>
         
         <DialogActions>
-          <Button onClick={() => setDetailsDialogOpen(false)}>
+          <Button 
+            onClick={() => setDetailsDialogOpen(false)}
+            sx={{ 
+              color: darkProTokens.primary,
+              borderColor: darkProTokens.primary,
+              px: 3,
+              py: 1
+            }}
+            variant="outlined"
+          >
             Cerrar
           </Button>
         </DialogActions>
