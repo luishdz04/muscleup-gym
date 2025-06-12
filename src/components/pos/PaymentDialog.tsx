@@ -288,8 +288,8 @@ export default function PaymentDialog({
   // ✅ Estados de cálculo - se calculan con useMemo para evitar re-renders
   const [cashReceived, setCashReceived] = useState(0);
   
-  // ✅ Estados de validación y procesamiento
-  const [errors, setErrors] = useState<Record<string, string>>({]);
+  // ✅ Estados de validación y procesamiento - CORREGIDO
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [processing, setProcessing] = useState(false);
   const [saleCompleted, setSaleCompleted] = useState(false);
   const [saleNumber, setSaleNumber] = useState<string | null>(null);
