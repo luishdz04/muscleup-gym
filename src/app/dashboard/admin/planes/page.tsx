@@ -18,14 +18,12 @@ import {
   Paper,
   Switch,
   Tooltip,
-  Alert,
   CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Divider,
-  Snackbar,
   Badge,
   LinearProgress,
   Accordion,
@@ -37,6 +35,17 @@ import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+
+// ✅ REACT TOASTIFY IMPORTS
+import { 
+  showSuccessToast, 
+  showErrorToast, 
+  showWarningToast, 
+  showInfoToast,
+  showLoadingToast,
+  showCustomToast 
+} from '@/lib/toast/config';
+import { toast } from 'react-toastify';
 
 // 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
 const darkProTokens = {
@@ -195,8 +204,7 @@ export default function PlanesPage() {
   const router = useRouter();
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // ✅ ELIMINADOS: error y successMessage ya no se necesitan
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   
@@ -213,7 +221,6 @@ export default function PlanesPage() {
   const loadPlans = async () => {
     try {
       setLoading(true);
-      setError(null);
       const supabase = createBrowserSupabaseClient();
       
       // ✅ SELECT * PARA OBTENER TODOS LOS CAMPOS
@@ -229,9 +236,24 @@ export default function PlanesPage() {
       
       console.log('✅ Planes cargados:', data);
       setPlans(data || []);
+      
+      // ✅ TOASTIFY: Mostrar éxito al cargar planes
+      if (data && data.length > 0) {
+        showInfoToast(`📊 ${data.length} planes cargados correctamente`, {
+          autoClose: 3000
+        });
+      } else {
+        showWarningToast('📋 No hay planes configurados aún', {
+          autoClose: 4000
+        });
+      }
+      
     } catch (err: any) {
       console.error('💥 Error en loadPlans:', err);
-      setError(err.message);
+      // ✅ TOASTIFY: Mostrar error
+      showErrorToast(`❌ Error cargando planes: ${err.message}`, {
+        autoClose: 7000
+      });
     } finally {
       setLoading(false);
     }
@@ -256,9 +278,30 @@ export default function PlanesPage() {
         )
       );
       
-      setSuccessMessage(`Plan ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`);
+      const planName = plans.find(p => p.id === planId)?.name || 'Plan';
+      
+      // ✅ TOASTIFY: Mostrar éxito con icono y acción de deshacer
+      showCustomToast(
+        `Plan "${planName}" ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`,
+        'success',
+        {
+          icon: !currentStatus ? '✅' : '⏸️',
+          autoClose: 5000,
+          action: {
+            label: 'Deshacer',
+            onClick: () => {
+              togglePlanStatus(planId, !currentStatus);
+              showInfoToast('🔄 Cambio deshecho', { autoClose: 2000 });
+            }
+          }
+        }
+      );
+      
     } catch (err: any) {
-      setError(err.message);
+      // ✅ TOASTIFY: Mostrar error
+      showErrorToast(`❌ Error actualizando estado del plan: ${err.message}`, {
+        autoClose: 6000
+      });
     }
   };
 
@@ -266,22 +309,35 @@ export default function PlanesPage() {
   const handleDeleteClick = (plan: MembershipPlan) => {
     setPlanToDelete(plan);
     setDeleteDialogOpen(true);
+    
+    // ✅ TOASTIFY: Advertencia
+    showWarningToast(`⚠️ Vas a eliminar el plan "${plan.name}". Confirma en el diálogo.`, {
+      autoClose: 4000
+    });
   };
 
   // ✅ FUNCIÓN PARA CERRAR DIÁLOGO DE ELIMINACIÓN
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
+    const planName = planToDelete?.name || 'Plan';
     setPlanToDelete(null);
+    
+    // ✅ TOASTIFY: Información de cancelación
+    showInfoToast(`🔄 Eliminación de "${planName}" cancelada`, {
+      autoClose: 3000
+    });
   };
 
   // ✅ FUNCIÓN PRINCIPAL DE ELIMINACIÓN
   const handleDeleteConfirm = async () => {
     if (!planToDelete) return;
 
+    // ✅ TOASTIFY: Mostrar loading toast
+    const loadingToastId = showLoadingToast(`🗑️ Eliminando plan "${planToDelete.name}"...`);
+
     try {
       console.log('🗑️ [DELETE] Iniciando eliminación de plan:', planToDelete.name);
       setDeletingPlan(true);
-      setError(null);
 
       const supabase = createBrowserSupabaseClient();
       
@@ -301,18 +357,27 @@ export default function PlanesPage() {
       // ✅ ACTUALIZAR ESTADO LOCAL
       setPlans(prevPlans => prevPlans.filter(plan => plan.id !== planToDelete.id));
       
-      // ✅ MOSTRAR MENSAJE DE ÉXITO
-      setSuccessMessage(`🗑️ Plan "${planToDelete.name}" eliminado exitosamente`);
-      
       // ✅ CERRAR DIÁLOGO
       setDeleteDialogOpen(false);
+      const deletedPlanName = planToDelete.name;
       setPlanToDelete(null);
+
+      // ✅ TOASTIFY: Cerrar loading y mostrar éxito
+      toast.dismiss(loadingToastId);
+      showSuccessToast(`🗑️ Plan "${deletedPlanName}" eliminado exitosamente`, {
+        autoClose: 5000
+      });
 
       console.log('✅ Eliminación completada correctamente');
 
     } catch (err: any) {
       console.error('💥 Error durante eliminación:', err);
-      setError(err.message || 'Error inesperado al eliminar el plan');
+      
+      // ✅ TOASTIFY: Cerrar loading y mostrar error
+      toast.dismiss(loadingToastId);
+      showErrorToast(`💥 Error eliminando plan: ${err.message}`, {
+        autoClose: 8000
+      });
     } finally {
       setDeletingPlan(false);
     }
@@ -363,6 +428,11 @@ export default function PlanesPage() {
   const viewPlanDetails = (plan: MembershipPlan) => {
     setSelectedPlan(plan);
     setViewDialogOpen(true);
+    
+    // ✅ TOASTIFY: Información
+    showInfoToast(`👁️ Visualizando detalles de "${plan.name}"`, {
+      autoClose: 2000
+    });
   };
 
   // ✅ FUNCIÓN MEJORADA PARA COLOR DE PLAN
@@ -472,7 +542,10 @@ export default function PlanesPage() {
             <Button
               size="small"
               startIcon={<RefreshIcon />}
-              onClick={loadPlans}
+              onClick={() => {
+                showInfoToast('🔄 Actualizando lista de planes...', { autoClose: 2000 });
+                loadPlans();
+              }}
               variant="outlined"
               sx={{ 
                 color: darkProTokens.primary,
@@ -494,7 +567,10 @@ export default function PlanesPage() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => router.push('/dashboard/admin/planes/crear')}
+              onClick={() => {
+                showInfoToast('➕ Redirigiendo a crear nuevo plan...', { autoClose: 2000 });
+                router.push('/dashboard/admin/planes/crear');
+              }}
               sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
                 fontWeight: 600,
@@ -573,46 +649,7 @@ export default function PlanesPage() {
         </Box>
       </Paper>
 
-      {/* 📨 MENSAJES CON DARK PRO SYSTEM */}
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity="error" 
-          onClose={() => setError(null)}
-          sx={{
-            bgcolor: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.error}60`,
-            '& .MuiAlert-icon': { color: darkProTokens.textPrimary }
-          }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar
-        open={!!successMessage}
-        autoHideDuration={4000}
-        onClose={() => setSuccessMessage(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity="success" 
-          onClose={() => setSuccessMessage(null)}
-          sx={{
-            bgcolor: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.success}60`,
-            '& .MuiAlert-icon': { color: darkProTokens.textPrimary }
-          }}
-        >
-          {successMessage}
-        </Alert>
-      </Snackbar>
+      {/* ✅ SIN SNACKBARS - Ahora usamos React Toastify */}
 
       {/* 📊 ESTADÍSTICAS DARK PRO PROFESIONALES */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -1061,6 +1098,7 @@ export default function PlanesPage() {
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
+                            showInfoToast(`✏️ Redirigiendo a editar "${plan.name}"...`, { autoClose: 2000 });
                             router.push(`/dashboard/admin/planes/${plan.id}/editar`);
                           }}
                           sx={{ 
@@ -1295,6 +1333,7 @@ export default function PlanesPage() {
             variant="contained"
             onClick={() => {
               if (selectedPlan) {
+                showInfoToast(`✏️ Redirigiendo a editar "${selectedPlan.name}"...`, { autoClose: 2000 });
                 router.push(`/dashboard/admin/planes/${selectedPlan.id}/editar`);
               }
             }}
@@ -1399,27 +1438,25 @@ export default function PlanesPage() {
                 </Box>
               </Box>
               
-              <Alert 
-                severity="error"
-                sx={{ 
-                  bgcolor: `${darkProTokens.error}20`,
-                  color: darkProTokens.textPrimary,
-                  border: `1px solid ${darkProTokens.error}40`,
-                  '& .MuiAlert-icon': { color: darkProTokens.error }
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Paper sx={{ 
+                p: 2,
+                bgcolor: `${darkProTokens.error}20`,
+                color: darkProTokens.textPrimary,
+                border: `1px solid ${darkProTokens.error}40`
+              }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <WarningIcon sx={{ color: darkProTokens.error }} />
                   ⚠️ Esta acción no se puede deshacer
                 </Typography>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>
                   El plan será eliminado permanentemente de la base de datos
                 </Typography>
-              </Alert>
+              </Paper>
             </Box>
           )}
         </DialogContent>
         
-        <DialogActions sx={{ 
+                <DialogActions sx={{ 
           p: 3, 
           borderTop: `1px solid ${darkProTokens.grayDark}`,
           gap: 2
@@ -1466,7 +1503,7 @@ export default function PlanesPage() {
 
       {/* 🎨 ESTILOS CSS DARK PRO */}
       <style jsx>{`
-                @keyframes pulse {
+        @keyframes pulse {
           0%, 100% { 
             opacity: 1; 
             transform: scale(1);
