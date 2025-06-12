@@ -31,8 +31,7 @@ import {
   Step,
   StepLabel,
   StepContent,
-  Stack,
-  Snackbar
+  Stack
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -49,91 +48,22 @@ import {
   Edit as EditIcon,
   Info as InfoIcon,
   ShoppingCart as CartIcon,
-  LocalOffer as CouponIcon,
-  Loyalty as LoyaltyIcon
+  LocalOffer as CouponIcon,  // ✅ CAMBIADO A LocalOffer QUE SÍ EXISTE
+  Loyalty as LoyaltyIcon  
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-
-// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
-const darkProTokens = {
-  // Base Colors
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  
-  // Neutrals
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  
-  // Primary Accent (Golden)
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  
-  // Semantic Colors
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  
-  // User Roles
-  roleAdmin: '#FFCC00',
-  roleStaff: '#1976D2',
-  roleTrainer: '#009688',
-  roleUser: '#777777',
-  roleModerator: '#9C27B0',
-  roleGuest: '#444444',
-  
-  // Interactions
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
-
-interface Product {
-  id: string;
-  name: string;
-  sku?: string;
-  current_stock: number;
-  unit: string;
-  cost_price: number;
-  sale_price: number;
-  is_taxable?: boolean;
-  tax_rate?: number;
-}
-
-interface CartItem {
-  product: Product;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  discount_amount: number;
-  tax_amount: number;
-}
-
-interface User {
-  id: string;
-  firstName: string;
-  lastName?: string;
-  email?: string;
-  whatsapp?: string;
-  rol?: string;
-}
+import { formatPrice, formatDate } from '@/utils/formatUtils';
+import { showNotification } from '@/utils/notifications';
+import { 
+  Product, 
+  User, 
+  Coupon, 
+  CartItem, 
+  CartTotals,
+  PaymentCommission,
+  PaymentDetail
+} from '@/types';
 
 interface Customer extends User {
   name: string;
@@ -141,46 +71,6 @@ interface Customer extends User {
   membership_type?: string;
   points_balance?: number;
   total_purchases?: number;
-}
-
-interface Coupon {
-  id: string;
-  code: string;
-  discount_type: string;
-  discount_value: number;
-  min_amount?: number;
-  max_uses?: number;
-  current_uses?: number;
-}
-
-interface CartTotals {
-  subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
-  couponDiscount: number;
-  total: number;
-}
-
-interface PaymentCommission {
-  id: string;
-  payment_method: string;
-  commission_type: 'percentage' | 'fixed';
-  commission_value: number;
-  min_amount: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
-}
-
-interface PaymentDetail {
-  id: string;
-  method: string;
-  amount: number;
-  commission_rate: number;
-  commission_amount: number;
-  reference: string;
-  sequence: number;
 }
 
 interface PaymentDialogProps {
@@ -211,7 +101,7 @@ interface PaymentMethodConfig {
   icon: string;
   color: string;
   description: string;
-  hasCommission: boolean;
+  hasCommission: boolean; // ✅ NUEVA PROPIEDAD
 }
 
 // ✅ CONFIGURACIÓN CORREGIDA - COMISIÓN SOLO PARA DÉBITO Y CRÉDITO
@@ -220,33 +110,33 @@ const paymentMethodsConfig: PaymentMethodConfig[] = [
     value: 'efectivo', 
     label: 'Efectivo', 
     icon: '💵',
-    color: darkProTokens.primary,
+    color: '#CCAA00',
     description: 'Pago en efectivo',
-    hasCommission: false
+    hasCommission: false // ✅ SIN COMISIÓN
   },
   { 
     value: 'debito', 
     label: 'Tarjeta de Débito', 
     icon: '💳',
-    color: darkProTokens.info,
+    color: '#4D4D4D',
     description: 'Pago con tarjeta de débito',
-    hasCommission: true
+    hasCommission: true // ✅ CON COMISIÓN
   },
   { 
     value: 'credito', 
     label: 'Tarjeta de Crédito', 
     icon: '💳',
-    color: darkProTokens.roleModerator,
+    color: '#666666',
     description: 'Pago con tarjeta de crédito',
-    hasCommission: true
+    hasCommission: true // ✅ CON COMISIÓN
   },
   { 
     value: 'transferencia', 
     label: 'Transferencia', 
     icon: '🏦',
-    color: darkProTokens.roleTrainer,
+    color: '#808080',
     description: 'Transferencia bancaria',
-    hasCommission: false
+    hasCommission: false // ✅ SIN COMISIÓN
   }
 ];
 
@@ -274,7 +164,7 @@ export default function PaymentDialog({
     sendEmail: false
   });
   
-  // Estados de pago mixto
+  // ✅ ESTADOS EXACTOS COMO EN MEMBRESÍAS
   const [isMixedPayment, setIsMixedPayment] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
   const [customCommissionRate, setCustomCommissionRate] = useState<number | null>(null);
@@ -293,45 +183,9 @@ export default function PaymentDialog({
   const [saleNumber, setSaleNumber] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
-  // Estados de notificaciones
-  const [notification, setNotification] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'warning' | 'info';
-  }>({
-    open: false,
-    message: '',
-    severity: 'info'
-  });
-
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ Formatear precio
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  };
-
-  // ✅ Formatear fecha
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  // ✅ Mostrar notificación
-  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
-    setNotification({ open: true, message, severity });
-  };
-
-  // ✅ CARGAR COMISIONES DINÁMICAS
+  // ✅ CARGAR COMISIONES DINÁMICAS (OPTIMIZADO)
   const loadPaymentCommissions = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -344,13 +198,14 @@ export default function PaymentDialog({
       if (data && data.length > 0) {
         setPaymentCommissions(data);
       } else {
+        // ✅ USAR VALORES POR DEFECTO SOLO PARA MÉTODOS CON COMISIÓN
         const defaultCommissions = paymentMethodsConfig
           .filter(pm => pm.hasCommission)
           .map(pm => ({
             id: pm.value,
             payment_method: pm.value,
             commission_type: 'percentage' as const,
-            commission_value: pm.value === 'debito' ? 2.5 : 3.5,
+            commission_value: pm.value === 'debito' ? 2.5 : 3.5, // Débito 2.5%, Crédito 3.5%
             min_amount: 0,
             is_active: true,
             created_at: new Date().toISOString(),
@@ -361,6 +216,7 @@ export default function PaymentDialog({
       }
     } catch (error) {
       console.error('Error loading payment commissions:', error);
+      // ✅ FALLBACK
       const defaultCommissions = paymentMethodsConfig
         .filter(pm => pm.hasCommission)
         .map(pm => ({
@@ -378,18 +234,21 @@ export default function PaymentDialog({
     }
   }, [supabase]);
 
-  // ✅ CALCULAR COMISIÓN
+  // ✅ CALCULAR COMISIÓN CORREGIDO - SOLO PARA DÉBITO Y CRÉDITO
   const calculateCommission = useCallback((method: string, amount: number): { rate: number; amount: number } => {
+    // ✅ COMISIÓN SOLO PARA DÉBITO Y CRÉDITO
     const methodConfig = paymentMethodsConfig.find(pm => pm.value === method);
     if (!methodConfig || !methodConfig.hasCommission) {
       return { rate: 0, amount: 0 };
     }
 
+    // Si hay comisión personalizada global, usarla (solo para métodos con comisión)
     if (customCommissionRate !== null) {
       const customAmount = (amount * customCommissionRate) / 100;
       return { rate: customCommissionRate, amount: customAmount };
     }
 
+    // Buscar comisión en la base de datos
     const commission = paymentCommissions.find(c => c.payment_method === method);
     if (!commission || amount < commission.min_amount) {
       return { rate: 0, amount: 0 };
@@ -403,7 +262,7 @@ export default function PaymentDialog({
     }
   }, [paymentCommissions, customCommissionRate]);
 
-  // ✅ OBTENER COMISIÓN POR DEFECTO
+  // ✅ OBTENER COMISIÓN POR DEFECTO CORREGIDO
   const getDefaultCommissionRate = useCallback((method: string): number => {
     const methodConfig = paymentMethodsConfig.find(pm => pm.value === method);
     if (!methodConfig || !methodConfig.hasCommission) {
@@ -418,13 +277,13 @@ export default function PaymentDialog({
     return commission?.commission_value || (method === 'debito' ? 2.5 : 3.5);
   }, [paymentCommissions, customCommissionRate]);
 
-  // ✅ MANEJAR PAGOS MIXTOS
+  // ✅ MANEJAR PAGOS MIXTOS OPTIMIZADO
   const addMixedPaymentDetail = useCallback(() => {
     const newDetail: PaymentDetail = {
       id: Date.now().toString(),
       method: 'efectivo',
       amount: 0,
-      commission_rate: 0,
+      commission_rate: 0, // Efectivo sin comisión
       commission_amount: 0,
       reference: '',
       sequence: paymentDetails.length + 1
@@ -442,6 +301,7 @@ export default function PaymentDialog({
       if (detail.id === id) {
         const updatedDetail = { ...detail, [field]: value };
         
+        // ✅ RECALCULAR COMISIÓN AL CAMBIAR MÉTODO O MONTO
         if (field === 'method' || field === 'amount') {
           const commission = calculateCommission(updatedDetail.method, updatedDetail.amount);
           updatedDetail.commission_rate = commission.rate;
@@ -454,20 +314,23 @@ export default function PaymentDialog({
     }));
   }, [calculateCommission]);
 
-  // ✅ CALCULAR MONTOS
+  // ✅ CALCULAR MONTOS OPTIMIZADO - SIN RE-RENDERS INFINITOS
   const calculatedValues = useMemo(() => {
     let newCommission = 0;
     let newFinalAmount = totals.total;
 
     if (isMixedPayment) {
+      // Para pagos mixtos, sumar todas las comisiones
       newCommission = paymentDetails.reduce((sum, detail) => sum + detail.commission_amount, 0);
       newFinalAmount = totals.total + newCommission;
     } else if (formData.paymentMethod) {
+      // Para pago simple, calcular comisión del total
       const commission = calculateCommission(formData.paymentMethod, totals.total);
       newCommission = commission.amount;
       newFinalAmount = totals.total + newCommission;
     }
 
+    // Calcular cambio para efectivo
     let newChangeAmount = 0;
     if (formData.paymentMethod === 'efectivo' && cashReceived > 0) {
       newChangeAmount = Math.max(0, cashReceived - newFinalAmount);
@@ -487,14 +350,14 @@ export default function PaymentDialog({
     cashReceived
   ]);
 
-  // ✅ ACTUALIZAR ESTADOS CALCULADOS
+  // ✅ ACTUALIZAR ESTADOS CALCULADOS SIN RE-RENDERS
   useEffect(() => {
     setCommissionAmount(calculatedValues.commissionAmount);
     setFinalTotalAmount(calculatedValues.finalTotalAmount);
     setChangeAmount(calculatedValues.changeAmount);
   }, [calculatedValues]);
 
-  // ✅ VALIDAR VENTA
+  // ✅ VALIDAR VENTA OPTIMIZADO
   const validateSale = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -512,6 +375,7 @@ export default function PaymentDialog({
           newErrors.payment = `El total de pagos (${formatPrice(totalPaid)}) debe cubrir el total final (${formatPrice(finalTotalAmount)})`;
         }
 
+        // Validar referencias requeridas para métodos con comisión
         for (const detail of paymentDetails) {
           const methodConfig = paymentMethodsConfig.find(pm => pm.value === detail.method);
           if (methodConfig?.hasCommission && !detail.reference.trim()) {
@@ -585,7 +449,7 @@ export default function PaymentDialog({
 
       const saleNumber = await generateSaleNumber();
 
-      // Calcular montos finales
+      // ✅ CALCULAR MONTOS FINALES
       let totalPaidAmount = 0;
       let totalCommissionAmount = 0;
       let paymentReceivedAmount = 0;
@@ -600,7 +464,7 @@ export default function PaymentDialog({
         totalPaidAmount = totals.total + totalCommissionAmount;
       }
 
-      // Crear venta
+      // ✅ CREAR VENTA
       const saleData = {
         sale_number: saleNumber,
         customer_id: customer?.id || null,
@@ -640,7 +504,7 @@ export default function PaymentDialog({
 
       if (saleError) throw saleError;
 
-      // Crear items de la venta
+      // ✅ CREAR ITEMS DE LA VENTA
       const saleItems = cart.map(item => ({
         sale_id: sale.id,
         product_id: item.product.id,
@@ -661,7 +525,7 @@ export default function PaymentDialog({
 
       if (itemsError) throw itemsError;
 
-      // Crear detalles de pagos
+      // ✅ CREAR DETALLES DE PAGOS
       if (isMixedPayment) {
         const paymentDetailsData = paymentDetails.map((payment) => ({
           sale_id: sale.id,
@@ -700,7 +564,7 @@ export default function PaymentDialog({
         if (paymentError) throw paymentError;
       }
 
-      // Actualizar stock de productos
+      // ✅ ACTUALIZAR STOCK DE PRODUCTOS
       for (const item of cart) {
         const { error: stockError } = await supabase
           .from('products')
@@ -713,7 +577,7 @@ export default function PaymentDialog({
 
         if (stockError) throw stockError;
 
-        // Registrar movimiento de inventario
+        // ✅ REGISTRAR MOVIMIENTO DE INVENTARIO
         await supabase
           .from('inventory_movements')
           .insert([{
@@ -732,7 +596,7 @@ export default function PaymentDialog({
           }]);
       }
 
-      // Actualizar cupón si se usó
+      // ✅ ACTUALIZAR CUPÓN SI SE USÓ
       if (coupon) {
         await supabase
           .from('coupons')
@@ -743,7 +607,7 @@ export default function PaymentDialog({
           .eq('id', coupon.id);
       }
 
-      // Actualizar puntos del cliente si aplica
+      // ✅ ACTUALIZAR PUNTOS DEL CLIENTE SI APLICA
       if (customer && customer.membership_type) {
         const pointsEarned = Math.floor(totals.total / 100);
         
@@ -780,10 +644,11 @@ export default function PaymentDialog({
     onClose();
   }, [onSuccess, onClose]);
 
-  // ✅ CARGAR DATOS INICIALES
+  // ✅ CARGAR DATOS INICIALES OPTIMIZADO
   useEffect(() => {
     if (open) {
       loadPaymentCommissions();
+      // Reset form
       setActiveStep(0);
       setFormData({
         paymentMethod: '',
@@ -834,75 +699,28 @@ export default function PaymentDialog({
       fullWidth
       PaperProps={{
         sx: { 
-          borderRadius: 4,
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${darkProTokens.primary}50`,
-          color: darkProTokens.textPrimary,
+          borderRadius: 4, 
           maxHeight: '95vh',
-          boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
+          background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
+          color: '#FFFFFF'
         }
       }}
     >
-      {/* ✅ SNACKBAR CON DARK PRO SYSTEM */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          severity={notification.severity}
-          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-          sx={{
-            background: notification.severity === 'success' ? 
-              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
-              notification.severity === 'error' ?
-              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
-              notification.severity === 'warning' ?
-              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
-              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${
-              notification.severity === 'success' ? darkProTokens.success :
-              notification.severity === 'error' ? darkProTokens.error :
-              notification.severity === 'warning' ? darkProTokens.warning :
-              darkProTokens.info
-            }60`,
-            borderRadius: 3,
-            fontWeight: 600,
-            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
-            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
-          }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
-
       <DialogTitle sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-        color: darkProTokens.background,
-        pb: 2,
-        borderRadius: '16px 16px 0 0'
+        background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.98), rgba(76, 175, 80, 0.85))',
+        color: '#FFFFFF',
+        pb: 2
       }}>
         <Box display="flex" alignItems="center" gap={2}>
-          <PaymentIcon sx={{ fontSize: 35 }} />
+          <PaymentIcon />
           <Typography variant="h5" fontWeight="bold">
-            💳 Sistema de Pagos
+            💳 Sistema de Pagos Empresarial
           </Typography>
         </Box>
-        <IconButton 
-          onClick={onClose} 
-          sx={{ 
-            color: darkProTokens.background,
-            '&:hover': {
-              backgroundColor: `${darkProTokens.background}20`
-            }
-          }} 
-          disabled={processing}
-        >
+        <IconButton onClick={onClose} sx={{ color: 'inherit' }} disabled={processing}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -910,29 +728,23 @@ export default function PaymentDialog({
       <DialogContent sx={{ p: 0 }}>
         {!saleCompleted ? (
           <Box sx={{ p: 3 }}>
-            {/* ✅ INFORMACIÓN DEL CLIENTE CON DARK PRO SYSTEM */}
+            {/* Información del cliente */}
             {customer && (
               <Card sx={{ 
                 mb: 3, 
-                background: `${darkProTokens.success}10`,
-                border: `2px solid ${darkProTokens.success}30`,
-                borderRadius: 3
+                background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1))',
+                border: '2px solid rgba(76, 175, 80, 0.5)'
               }}>
                 <CardContent>
                   <Box display="flex" alignItems="center" gap={2}>
-                    <Avatar sx={{ 
-                      bgcolor: darkProTokens.success, 
-                      width: 56, 
-                      height: 56,
-                      color: darkProTokens.textPrimary
-                    }}>
+                    <Avatar sx={{ bgcolor: '#4caf50', width: 56, height: 56 }}>
                       <PersonIcon />
                     </Avatar>
                     <Box>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: '#FFFFFF' }}>
                         {customer.name}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
                         {customer.email} • {customer.whatsapp || customer.phone}
                       </Typography>
                       {customer.membership_type && (
@@ -941,8 +753,8 @@ export default function PaymentDialog({
                             label={customer.membership_type} 
                             size="small" 
                             sx={{
-                              backgroundColor: darkProTokens.success,
-                              color: darkProTokens.textPrimary,
+                              backgroundColor: '#4caf50',
+                              color: '#FFFFFF',
                               fontWeight: 600
                             }}
                           />
@@ -952,8 +764,8 @@ export default function PaymentDialog({
                               label={`${customer.points_balance} puntos`} 
                               size="small" 
                               sx={{
-                                backgroundColor: darkProTokens.warning,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: '#ff9800',
+                                color: '#FFFFFF',
                                 fontWeight: 600
                               }}
                             />
@@ -967,14 +779,14 @@ export default function PaymentDialog({
             )}
 
             <Grid container spacing={4}>
-              {/* ✅ PANEL PRINCIPAL - STEPPER CON DARK PRO SYSTEM */}
+              {/* Panel Principal - Stepper */}
               <Grid size={{ xs: 12, lg: 8 }}>
                 <Paper sx={{
                   p: 4,
-                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                  border: `1px solid ${darkProTokens.grayDark}`,
+                  background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
+                  border: '1px solid rgba(76, 175, 80, 0.2)',
                   borderRadius: 4,
-                  color: darkProTokens.textPrimary
+                  color: '#FFFFFF'
                 }}>
                   <Stepper activeStep={activeStep} orientation="vertical">
                     {steps.map((step, index) => (
@@ -982,15 +794,15 @@ export default function PaymentDialog({
                         <StepLabel
                           sx={{
                             '& .MuiStepLabel-label': {
-                              color: darkProTokens.textPrimary,
+                              color: '#FFFFFF',
                               fontWeight: activeStep === index ? 700 : 500,
                               fontSize: activeStep === index ? '1.1rem' : '1rem'
                             },
                             '& .MuiStepIcon-root': {
-                              color: activeStep === index ? darkProTokens.primary : darkProTokens.grayMuted,
+                              color: activeStep === index ? '#4caf50' : 'rgba(204, 204, 204, 0.4)',
                               fontSize: '2rem',
                               '&.Mui-completed': {
-                                color: darkProTokens.primary
+                                color: '#4caf50'
                               }
                             }
                           }}
@@ -999,20 +811,20 @@ export default function PaymentDialog({
                         </StepLabel>
                         <StepContent>
                           <Typography sx={{ 
-                            color: darkProTokens.textSecondary, 
+                            color: '#CCCCCC', 
                             mb: 3,
                             fontSize: '1rem'
                           }}>
                             {step.description}
                           </Typography>
 
-                          {/* ✅ PASO 1: MÉTODO DE PAGO CON DARK PRO SYSTEM */}
+                          {/* PASO 1: Método de Pago */}
                           {index === 0 && (
                             <Box sx={{ mb: 4 }}>
-                              {/* Configuración Global de Comisión */}
+                              {/* ✅ CONFIGURACIÓN GLOBAL DE COMISIÓN CORREGIDA */}
                               <Card sx={{
-                                background: `${darkProTokens.warning}10`,
-                                border: `1px solid ${darkProTokens.warning}30`,
+                                background: 'rgba(255, 152, 0, 0.1)',
+                                border: '1px solid rgba(255, 152, 0, 0.3)',
                                 borderRadius: 3,
                                 mb: 4
                               }}>
@@ -1024,7 +836,7 @@ export default function PaymentDialog({
                                     mb: 2
                                   }}>
                                     <Typography variant="h6" sx={{ 
-                                      color: darkProTokens.warning,
+                                      color: '#ff9800',
                                       fontWeight: 700,
                                       display: 'flex',
                                       alignItems: 'center',
@@ -1037,9 +849,9 @@ export default function PaymentDialog({
                                     <IconButton
                                       onClick={() => setEditingCommission(!editingCommission)}
                                       sx={{ 
-                                        color: darkProTokens.warning,
+                                        color: '#ff9800',
                                         '&:hover': {
-                                          backgroundColor: `${darkProTokens.warning}10`
+                                          backgroundColor: 'rgba(255, 152, 0, 0.1)'
                                         }
                                       }}
                                     >
@@ -1050,17 +862,17 @@ export default function PaymentDialog({
                                   <Grid container spacing={3}>
                                     <Grid size={6}>
                                       <Box sx={{
-                                        background: `${darkProTokens.grayMedium}20`,
-                                        border: `1px solid ${darkProTokens.grayMedium}30`,
+                                        background: 'rgba(102, 102, 102, 0.1)',
+                                        border: '1px solid rgba(102, 102, 102, 0.3)',
                                         borderRadius: 2,
                                         p: 2,
                                         textAlign: 'center'
                                       }}>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                                        <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
                                           Comisiones por Defecto
                                         </Typography>
                                         <Typography variant="body2" sx={{ 
-                                          color: darkProTokens.textPrimary,
+                                          color: '#FFFFFF',
                                           fontWeight: 600
                                         }}>
                                           Solo tarjetas débito y crédito
@@ -1084,50 +896,41 @@ export default function PaymentDialog({
                                           InputProps={{
                                             startAdornment: (
                                               <InputAdornment position="start">
-                                                <PercentIcon sx={{ color: darkProTokens.warning }} />
+                                                <PercentIcon sx={{ color: '#ff9800' }} />
                                               </InputAdornment>
                                             ),
                                             sx: {
-                                              color: darkProTokens.textPrimary,
+                                              color: '#FFFFFF',
                                               '& .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: `${darkProTokens.warning}50`,
+                                                borderColor: 'rgba(255, 152, 0, 0.5)',
                                                 borderWidth: 2
-                                              },
-                                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: darkProTokens.warning
-                                              },
-                                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: darkProTokens.warning
                                               }
                                             }
                                           }}
                                           InputLabelProps={{
                                             sx: { 
-                                              color: darkProTokens.textSecondary,
-                                              '&.Mui-focused': { color: darkProTokens.warning }
+                                              color: '#CCCCCC',
+                                              '&.Mui-focused': { color: '#ff9800' }
                                             }
-                                          }}
-                                          FormHelperTextProps={{
-                                            sx: { color: darkProTokens.textSecondary }
                                           }}
                                         />
                                       ) : (
                                         <Box sx={{
                                           background: customCommissionRate !== null ?
-                                            `${darkProTokens.primary}10` :
-                                            `${darkProTokens.grayMedium}20`,
+                                            'rgba(255, 204, 0, 0.1)' :
+                                            'rgba(102, 102, 102, 0.1)',
                                           border: customCommissionRate !== null ?
-                                            `1px solid ${darkProTokens.primary}30` :
-                                            `1px solid ${darkProTokens.grayMedium}30`,
+                                            '1px solid rgba(255, 204, 0, 0.3)' :
+                                            '1px solid rgba(102, 102, 102, 0.3)',
                                           borderRadius: 2,
                                           p: 2,
                                           textAlign: 'center'
                                         }}>
-                                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                                          <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
                                             Comisión Aplicada
                                           </Typography>
                                           <Typography variant="h6" sx={{ 
-                                            color: customCommissionRate !== null ? darkProTokens.primary : darkProTokens.textPrimary,
+                                            color: customCommissionRate !== null ? '#FFCC00' : '#FFFFFF',
                                             fontWeight: 700
                                           }}>
                                             {customCommissionRate !== null ? 
@@ -1145,10 +948,10 @@ export default function PaymentDialog({
                                       <Alert 
                                         severity="info"
                                         sx={{
-                                          backgroundColor: `${darkProTokens.info}10`,
-                                          color: darkProTokens.textPrimary,
-                                          border: `1px solid ${darkProTokens.info}30`,
-                                          '& .MuiAlert-icon': { color: darkProTokens.info }
+                                          backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                                          color: '#FFFFFF',
+                                          border: '1px solid rgba(33, 150, 243, 0.3)',
+                                          '& .MuiAlert-icon': { color: '#2196f3' }
                                         }}
                                       >
                                         Comisión global aplicada solo a tarjetas débito y crédito. Efectivo y transferencia no tienen comisión.
@@ -1160,8 +963,8 @@ export default function PaymentDialog({
 
                               {/* Toggle Pago Mixto */}
                               <Card sx={{
-                                background: `${darkProTokens.primary}10`,
-                                border: `1px solid ${darkProTokens.primary}30`,
+                                background: 'rgba(255, 204, 0, 0.05)',
+                                border: '1px solid rgba(255, 204, 0, 0.3)',
                                 borderRadius: 3,
                                 mb: 4
                               }}>
@@ -1179,17 +982,17 @@ export default function PaymentDialog({
                                         }}
                                         sx={{
                                           '& .MuiSwitch-switchBase.Mui-checked': {
-                                            color: darkProTokens.primary,
+                                            color: '#FFCC00',
                                           },
                                           '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                            backgroundColor: darkProTokens.primary,
+                                            backgroundColor: '#FFCC00',
                                           },
                                         }}
                                       />
                                     }
                                     label={
                                       <Typography variant="h6" sx={{ 
-                                        color: darkProTokens.textPrimary, 
+                                        color: '#FFFFFF', 
                                         fontWeight: 600 
                                       }}>
                                         🔄 Activar Pago Mixto
@@ -1197,7 +1000,7 @@ export default function PaymentDialog({
                                     }
                                   />
                                   <Typography variant="body2" sx={{ 
-                                    color: darkProTokens.textSecondary,
+                                    color: '#CCCCCC',
                                     mt: 1
                                   }}>
                                     Permite usar múltiples métodos para pagar la venta
@@ -1205,7 +1008,7 @@ export default function PaymentDialog({
                                 </CardContent>
                               </Card>
 
-                              {/* ✅ PAGO SIMPLE CON DARK PRO SYSTEM */}
+                              {/* Pago Simple */}
                               {!isMixedPayment && (
                                 <motion.div
                                   initial={{ opacity: 0, y: 20 }}
@@ -1213,7 +1016,7 @@ export default function PaymentDialog({
                                   transition={{ duration: 0.3 }}
                                 >
                                   <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.primary, 
+                                    color: '#4caf50', 
                                     mb: 3,
                                     fontWeight: 700
                                   }}>
@@ -1234,18 +1037,17 @@ export default function PaymentDialog({
                                               sx={{
                                                 cursor: 'pointer',
                                                 background: formData.paymentMethod === method.value 
-                                                  ? `${method.color}20`
-                                                  : `${darkProTokens.surfaceLevel4}`,
+                                                  ? `linear-gradient(135deg, ${method.color}20, ${method.color}10)`
+                                                  : 'rgba(77, 77, 77, 0.05)',
                                                 border: formData.paymentMethod === method.value 
                                                   ? `3px solid ${method.color}` 
-                                                  : `1px solid ${darkProTokens.grayDark}`,
+                                                  : '1px solid rgba(204, 204, 204, 0.2)',
                                                 borderRadius: 3,
                                                 transition: 'all 0.3s ease',
                                                 height: '160px',
                                                 '&:hover': {
                                                   borderColor: method.color,
-                                                  transform: 'translateY(-2px)',
-                                                  boxShadow: `0 8px 24px ${method.color}30`
+                                                  transform: 'translateY(-2px)'
                                                 }
                                               }}
                                               onClick={() => setFormData(prev => ({ 
@@ -1265,20 +1067,21 @@ export default function PaymentDialog({
                                                   {method.icon}
                                                 </Typography>
                                                 <Typography variant="h6" sx={{ 
-                                                  color: darkProTokens.textPrimary,
+                                                  color: '#FFFFFF',
                                                   fontWeight: 600,
                                                   mb: 1
                                                 }}>
                                                   {method.label}
                                                 </Typography>
                                                 <Typography variant="caption" sx={{ 
-                                                  color: darkProTokens.textSecondary,
+                                                  color: '#CCCCCC',
                                                   mb: 1
                                                 }}>
                                                   {method.description}
                                                 </Typography>
+                                                {/* ✅ MOSTRAR COMISIÓN CORREGIDA */}
                                                 <Typography variant="caption" sx={{ 
-                                                  color: method.hasCommission ? darkProTokens.warning : darkProTokens.success,
+                                                  color: method.hasCommission ? '#ff9800' : '#4caf50',
                                                   fontWeight: 600
                                                 }}>
                                                   {method.hasCommission ? 
@@ -1303,7 +1106,7 @@ export default function PaymentDialog({
                                     })}
                                   </Grid>
 
-                                  {/* ✅ CAMPOS ESPECÍFICOS POR MÉTODO */}
+                                  {/* CAMPOS ESPECÍFICOS POR MÉTODO DE PAGO */}
                                   {formData.paymentMethod && (
                                     <motion.div
                                       initial={{ opacity: 0, y: 20 }}
@@ -1311,16 +1114,15 @@ export default function PaymentDialog({
                                       transition={{ duration: 0.3 }}
                                     >
                                       <Box sx={{ mt: 4 }}>
-                                        {/* EFECTIVO */}
                                         {formData.paymentMethod === 'efectivo' && (
                                           <Card sx={{
-                                            background: `${darkProTokens.primary}15`,
-                                            border: `2px solid ${darkProTokens.primary}50`,
+                                            background: 'linear-gradient(135deg, rgba(204, 170, 0, 0.15), rgba(204, 170, 0, 0.05))',
+                                            border: '2px solid rgba(204, 170, 0, 0.5)',
                                             borderRadius: 4
                                           }}>
                                             <CardContent>
                                               <Typography variant="h6" sx={{ 
-                                                color: darkProTokens.primary, 
+                                                color: '#CCAA00', 
                                                 mb: 3,
                                                 fontWeight: 800,
                                                 display: 'flex',
@@ -1339,8 +1141,8 @@ export default function PaymentDialog({
                                                     disabled
                                                     InputProps={{
                                                       sx: {
-                                                        color: darkProTokens.textPrimary,
-                                                        backgroundColor: `${darkProTokens.primary}10`,
+                                                        color: '#FFFFFF',
+                                                        backgroundColor: 'rgba(204, 170, 0, 0.1)',
                                                         fontSize: '1.3rem',
                                                         fontWeight: 700
                                                       }
@@ -1359,28 +1161,13 @@ export default function PaymentDialog({
                                                     InputProps={{
                                                       startAdornment: (
                                                         <InputAdornment position="start">
-                                                          <MoneyIcon sx={{ color: darkProTokens.primary }} />
+                                                          <MoneyIcon sx={{ color: '#FFCC00' }} />
                                                         </InputAdornment>
                                                       ),
                                                       sx: {
-                                                        color: darkProTokens.textPrimary,
+                                                        color: '#FFFFFF',
                                                         fontSize: '1.3rem',
-                                                        fontWeight: 700,
-                                                        '& .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: `${darkProTokens.primary}30`
-                                                        },
-                                                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: darkProTokens.primary
-                                                        },
-                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: darkProTokens.primary
-                                                        }
-                                                      }
-                                                    }}
-                                                    InputLabelProps={{
-                                                      sx: { 
-                                                        color: darkProTokens.textSecondary,
-                                                        '&.Mui-focused': { color: darkProTokens.primary }
+                                                        fontWeight: 700
                                                       }
                                                     }}
                                                   />
@@ -1389,17 +1176,17 @@ export default function PaymentDialog({
                                                 <Grid size={12}>
                                                   <Box sx={{
                                                     background: changeAmount > 0 
-                                                      ? `${darkProTokens.primary}20`
-                                                      : `${darkProTokens.grayMedium}20`,
+                                                      ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.2), rgba(255, 204, 0, 0.1))'
+                                                      : 'rgba(77, 77, 77, 0.05)',
                                                     border: changeAmount > 0 
-                                                      ? `2px solid ${darkProTokens.primary}` 
-                                                      : `1px solid ${darkProTokens.grayDark}`,
+                                                      ? '2px solid #FFCC00' 
+                                                      : '1px solid rgba(204, 204, 204, 0.2)',
                                                     borderRadius: 3,
                                                     p: 3,
                                                     textAlign: 'center'
                                                   }}>
                                                     <Typography variant="h4" sx={{ 
-                                                      color: changeAmount > 0 ? darkProTokens.primary : darkProTokens.textSecondary,
+                                                      color: changeAmount > 0 ? '#FFCC00' : '#808080',
                                                       fontWeight: 800,
                                                       mb: 1
                                                     }}>
@@ -1409,7 +1196,7 @@ export default function PaymentDialog({
                                                       }
                                                     </Typography>
                                                     <Typography variant="body1" sx={{ 
-                                                      color: darkProTokens.textSecondary
+                                                      color: '#CCCCCC'
                                                     }}>
                                                       {cashReceived < finalTotalAmount 
                                                         ? `Faltan: ${formatPrice(finalTotalAmount - cashReceived)}`
@@ -1425,16 +1212,16 @@ export default function PaymentDialog({
                                           </Card>
                                         )}
 
-                                        {/* TARJETAS */}
+                                        {/* MÉTODOS CON COMISIÓN (SOLO DÉBITO Y CRÉDITO) */}
                                         {(['debito', 'credito'].includes(formData.paymentMethod)) && (
                                           <Card sx={{
-                                            background: `${darkProTokens.info}15`,
-                                            border: `2px solid ${darkProTokens.info}50`,
+                                            background: 'linear-gradient(135deg, rgba(77, 77, 77, 0.15), rgba(102, 102, 102, 0.05))',
+                                            border: '2px solid rgba(77, 77, 77, 0.5)',
                                             borderRadius: 4
                                           }}>
                                             <CardContent>
                                               <Typography variant="h6" sx={{ 
-                                                color: darkProTokens.info, 
+                                                color: '#4D4D4D', 
                                                 mb: 3,
                                                 fontWeight: 800,
                                                 display: 'flex',
@@ -1461,57 +1248,39 @@ export default function PaymentDialog({
                                                     InputProps={{
                                                       startAdornment: (
                                                         <InputAdornment position="start">
-                                                          <CreditCardIcon sx={{ color: darkProTokens.info }} />
+                                                          <CreditCardIcon sx={{ color: '#4D4D4D' }} />
                                                         </InputAdornment>
                                                       ),
                                                       sx: {
-                                                        color: darkProTokens.textPrimary,
-                                                        '& .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: `${darkProTokens.info}30`
-                                                        },
-                                                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: darkProTokens.info
-                                                        },
-                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: darkProTokens.info
-                                                        }
+                                                        color: '#FFFFFF'
                                                       }
-                                                    }}
-                                                    InputLabelProps={{
-                                                      sx: { 
-                                                        color: darkProTokens.textSecondary,
-                                                        '&.Mui-focused': { color: darkProTokens.info }
-                                                      }
-                                                    }}
-                                                    FormHelperTextProps={{
-                                                      sx: { color: darkProTokens.error }
                                                     }}
                                                   />
                                                 </Grid>
 
                                                 <Grid size={{ xs: 12, md: 4 }}>
                                                   <Box sx={{
-                                                    background: `${darkProTokens.info}10`,
-                                                    border: `1px solid ${darkProTokens.info}30`,
+                                                    background: 'rgba(77, 77, 77, 0.1)',
+                                                    border: '1px solid rgba(77, 77, 77, 0.3)',
                                                     borderRadius: 3,
                                                     p: 2,
                                                     textAlign: 'center'
                                                   }}>
                                                     <Typography variant="body2" sx={{ 
-                                                      color: darkProTokens.textSecondary,
+                                                      color: '#CCCCCC',
                                                       mb: 1
                                                     }}>
                                                       Total + Comisión
                                                     </Typography>
                                                     <Typography variant="h5" sx={{ 
-                                                      color: darkProTokens.info,
+                                                      color: '#4D4D4D',
                                                       fontWeight: 700
                                                     }}>
                                                       {formatPrice(finalTotalAmount)}
                                                     </Typography>
                                                     {commissionAmount > 0 && (
                                                       <Typography variant="caption" sx={{ 
-                                                        color: darkProTokens.warning
+                                                        color: '#ff9800'
                                                       }}>
                                                         (Incl. {formatPrice(commissionAmount)} comisión)
                                                       </Typography>
@@ -1523,16 +1292,16 @@ export default function PaymentDialog({
                                           </Card>
                                         )}
 
-                                        {/* TRANSFERENCIA */}
+                                        {/* TRANSFERENCIA SIN COMISIÓN */}
                                         {formData.paymentMethod === 'transferencia' && (
                                           <Card sx={{
-                                            background: `${darkProTokens.roleTrainer}15`,
-                                            border: `2px solid ${darkProTokens.roleTrainer}50`,
+                                            background: 'linear-gradient(135deg, rgba(128, 128, 128, 0.15), rgba(128, 128, 128, 0.05))',
+                                            border: '2px solid rgba(128, 128, 128, 0.5)',
                                             borderRadius: 4
                                           }}>
                                             <CardContent>
                                               <Typography variant="h6" sx={{ 
-                                                color: darkProTokens.roleTrainer, 
+                                                color: '#808080', 
                                                 mb: 3,
                                                 fontWeight: 800,
                                                 display: 'flex',
@@ -1552,7 +1321,7 @@ export default function PaymentDialog({
                                                       ...prev, 
                                                       paymentReference: e.target.value 
                                                     }))}
-                                                                                                        placeholder="Ej: SPEI123456..."
+                                                    placeholder="Ej: SPEI123456..."
                                                     InputProps={{
                                                       startAdornment: (
                                                         <InputAdornment position="start">
@@ -1560,22 +1329,7 @@ export default function PaymentDialog({
                                                         </InputAdornment>
                                                       ),
                                                       sx: {
-                                                        color: darkProTokens.textPrimary,
-                                                        '& .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: `${darkProTokens.roleTrainer}30`
-                                                        },
-                                                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: darkProTokens.roleTrainer
-                                                        },
-                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                          borderColor: darkProTokens.roleTrainer
-                                                        }
-                                                      }
-                                                    }}
-                                                    InputLabelProps={{
-                                                      sx: { 
-                                                        color: darkProTokens.textSecondary,
-                                                        '&.Mui-focused': { color: darkProTokens.roleTrainer }
+                                                        color: '#FFFFFF'
                                                       }
                                                     }}
                                                   />
@@ -1583,26 +1337,26 @@ export default function PaymentDialog({
 
                                                 <Grid size={{ xs: 12, md: 4 }}>
                                                   <Box sx={{
-                                                    background: `${darkProTokens.roleTrainer}10`,
-                                                    border: `1px solid ${darkProTokens.roleTrainer}30`,
+                                                    background: 'rgba(128, 128, 128, 0.1)',
+                                                    border: '1px solid rgba(128, 128, 128, 0.3)',
                                                     borderRadius: 3,
                                                     p: 2,
                                                     textAlign: 'center'
                                                   }}>
                                                     <Typography variant="body2" sx={{ 
-                                                      color: darkProTokens.textSecondary,
+                                                      color: '#CCCCCC',
                                                       mb: 1
                                                     }}>
                                                       Total a Transferir
                                                     </Typography>
                                                     <Typography variant="h5" sx={{ 
-                                                      color: darkProTokens.roleTrainer,
+                                                      color: '#808080',
                                                       fontWeight: 700
                                                     }}>
                                                       {formatPrice(finalTotalAmount)}
                                                     </Typography>
                                                     <Typography variant="caption" sx={{ 
-                                                      color: darkProTokens.success
+                                                      color: '#4caf50'
                                                     }}>
                                                       Sin comisión
                                                     </Typography>
@@ -1618,7 +1372,7 @@ export default function PaymentDialog({
                                 </motion.div>
                               )}
 
-                              {/* ✅ SISTEMA DE PAGOS MIXTOS CON DARK PRO SYSTEM */}
+                              {/* ✅ SISTEMA DE PAGOS MIXTOS CON COMISIONES CORREGIDAS */}
                               {isMixedPayment && (
                                 <motion.div
                                   initial={{ opacity: 0, y: 20 }}
@@ -1626,8 +1380,8 @@ export default function PaymentDialog({
                                   transition={{ duration: 0.3 }}
                                 >
                                   <Card sx={{
-                                    background: `${darkProTokens.primary}15`,
-                                    border: `2px solid ${darkProTokens.primary}50`,
+                                    background: 'linear-gradient(135deg, rgba(255, 221, 51, 0.15), rgba(255, 221, 51, 0.05))',
+                                    border: '2px solid rgba(255, 221, 51, 0.5)',
                                     borderRadius: 4
                                   }}>
                                     <CardContent>
@@ -1638,7 +1392,7 @@ export default function PaymentDialog({
                                         mb: 3
                                       }}>
                                         <Typography variant="h6" sx={{ 
-                                          color: darkProTokens.primary, 
+                                          color: '#FFDD33', 
                                           fontWeight: 800
                                         }}>
                                           🔄 Sistema de Pagos Mixtos
@@ -1649,11 +1403,11 @@ export default function PaymentDialog({
                                           startIcon={<AddIcon />}
                                           onClick={addMixedPaymentDetail}
                                           sx={{
-                                            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-                                            color: darkProTokens.background,
+                                            background: 'linear-gradient(135deg, #FFDD33, #FFCC00)',
+                                            color: '#000000',
                                             fontWeight: 700,
                                             '&:hover': {
-                                              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                                              background: 'linear-gradient(135deg, #FFCC00, #FFB300)',
                                             }
                                           }}
                                         >
@@ -1665,17 +1419,17 @@ export default function PaymentDialog({
                                         <Box sx={{
                                           textAlign: 'center',
                                           py: 4,
-                                          border: `2px dashed ${darkProTokens.primary}30`,
+                                          border: '2px dashed rgba(255, 221, 51, 0.3)',
                                           borderRadius: 3
                                         }}>
                                           <Typography variant="body1" sx={{ 
-                                            color: darkProTokens.textSecondary,
+                                            color: '#CCCCCC',
                                             mb: 2
                                           }}>
                                             No hay métodos de pago agregados
                                           </Typography>
                                           <Typography variant="body2" sx={{ 
-                                            color: darkProTokens.textDisabled
+                                            color: '#808080'
                                           }}>
                                             Haga clic en "Agregar Método" para comenzar
                                           </Typography>
@@ -1691,8 +1445,8 @@ export default function PaymentDialog({
                                             transition={{ duration: 0.3, delay: index * 0.1 }}
                                           >
                                             <Card sx={{
-                                              background: `${darkProTokens.surfaceLevel4}`,
-                                              border: `1px solid ${darkProTokens.grayDark}`,
+                                              background: 'rgba(77, 77, 77, 0.05)',
+                                              border: '1px solid rgba(204, 204, 204, 0.2)',
                                               borderRadius: 3
                                             }}>
                                               <CardContent>
@@ -1703,7 +1457,7 @@ export default function PaymentDialog({
                                                   mb: 2
                                                 }}>
                                                   <Typography variant="h6" sx={{ 
-                                                    color: darkProTokens.primary,
+                                                    color: '#FFDD33',
                                                     fontWeight: 600
                                                   }}>
                                                     Pago #{detail.sequence}
@@ -1711,7 +1465,7 @@ export default function PaymentDialog({
                                                   
                                                   <IconButton
                                                     onClick={() => removeMixedPaymentDetail(detail.id)}
-                                                    sx={{ color: darkProTokens.error }}
+                                                    sx={{ color: '#f44336' }}
                                                   >
                                                     <RemoveIcon />
                                                   </IconButton>
@@ -1721,8 +1475,8 @@ export default function PaymentDialog({
                                                   <Grid size={{ xs: 12, md: 4 }}>
                                                     <FormControl fullWidth>
                                                       <InputLabel sx={{ 
-                                                        color: darkProTokens.textSecondary,
-                                                        '&.Mui-focused': { color: darkProTokens.primary }
+                                                        color: '#CCCCCC',
+                                                        '&.Mui-focused': { color: '#FFDD33' }
                                                       }}>
                                                         Método
                                                       </InputLabel>
@@ -1730,15 +1484,15 @@ export default function PaymentDialog({
                                                         value={detail.method}
                                                         onChange={(e) => updateMixedPaymentDetail(detail.id, 'method', e.target.value)}
                                                         sx={{
-                                                          color: darkProTokens.textPrimary,
+                                                          color: '#FFFFFF',
                                                           '& .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: `${darkProTokens.primary}30`
+                                                            borderColor: 'rgba(255, 221, 51, 0.3)'
                                                           },
                                                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: darkProTokens.primary
+                                                            borderColor: '#FFDD33'
                                                           },
                                                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: darkProTokens.primary
+                                                            borderColor: '#FFDD33'
                                                           }
                                                         }}
                                                       >
@@ -1765,22 +1519,16 @@ export default function PaymentDialog({
                                                           </InputAdornment>
                                                         ),
                                                         sx: {
-                                                          color: darkProTokens.textPrimary,
+                                                          color: '#FFFFFF',
                                                           '& .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: `${darkProTokens.primary}30`
-                                                          },
-                                                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: darkProTokens.primary
-                                                          },
-                                                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: darkProTokens.primary
+                                                            borderColor: 'rgba(255, 221, 51, 0.3)'
                                                           }
                                                         }
                                                       }}
                                                       InputLabelProps={{
                                                         sx: { 
-                                                          color: darkProTokens.textSecondary,
-                                                          '&.Mui-focused': { color: darkProTokens.primary }
+                                                          color: '#CCCCCC',
+                                                          '&.Mui-focused': { color: '#FFDD33' }
                                                         }
                                                       }}
                                                     />
@@ -1794,7 +1542,7 @@ export default function PaymentDialog({
                                                       disabled
                                                       InputProps={{
                                                         sx: {
-                                                          color: detail.commission_rate > 0 ? darkProTokens.warning : darkProTokens.success,
+                                                          color: detail.commission_rate > 0 ? '#ff9800' : '#4caf50',
                                                           fontWeight: 600
                                                         }
                                                       }}
@@ -1809,7 +1557,7 @@ export default function PaymentDialog({
                                                       disabled
                                                       InputProps={{
                                                         sx: {
-                                                          color: detail.commission_amount > 0 ? darkProTokens.warning : darkProTokens.success,
+                                                          color: detail.commission_amount > 0 ? '#ff9800' : '#4caf50',
                                                           fontWeight: 600
                                                         }
                                                       }}
@@ -1824,7 +1572,7 @@ export default function PaymentDialog({
                                                       disabled
                                                       InputProps={{
                                                         sx: {
-                                                          color: darkProTokens.primary,
+                                                          color: '#FFDD33',
                                                           fontWeight: 700,
                                                           fontSize: '1.1rem'
                                                         }
@@ -1841,22 +1589,7 @@ export default function PaymentDialog({
                                                       placeholder="Número de autorización, SPEI, etc."
                                                       InputProps={{
                                                         sx: {
-                                                          color: darkProTokens.textPrimary,
-                                                          '& .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: `${darkProTokens.primary}30`
-                                                          },
-                                                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: darkProTokens.primary
-                                                          },
-                                                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: darkProTokens.primary
-                                                          }
-                                                        }
-                                                      }}
-                                                      InputLabelProps={{
-                                                        sx: { 
-                                                          color: darkProTokens.textSecondary,
-                                                          '&.Mui-focused': { color: darkProTokens.primary }
+                                                          color: '#FFFFFF'
                                                         }
                                                       }}
                                                     />
@@ -1868,17 +1601,17 @@ export default function PaymentDialog({
                                         ))}
                                       </Stack>
 
-                                      {/* Resumen de Pagos Mixtos */}
+                                      {/* ✅ RESUMEN DE PAGOS MIXTOS CON COMISIONES CORREGIDAS */}
                                       {paymentDetails.length > 0 && (
                                         <Box sx={{ mt: 4 }}>
                                           <Card sx={{
-                                            background: `${darkProTokens.success}10`,
-                                            border: `2px solid ${darkProTokens.success}30`,
+                                            background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1))',
+                                            border: '2px solid #4caf50',
                                             borderRadius: 3
                                           }}>
                                             <CardContent>
                                               <Typography variant="h6" sx={{ 
-                                                color: darkProTokens.success,
+                                                color: '#4caf50',
                                                 fontWeight: 700,
                                                 mb: 2
                                               }}>
@@ -1889,12 +1622,12 @@ export default function PaymentDialog({
                                                 <Grid size={3}>
                                                   <Box sx={{ textAlign: 'center' }}>
                                                     <Typography variant="body2" sx={{ 
-                                                      color: darkProTokens.textSecondary
+                                                      color: '#CCCCCC'
                                                     }}>
                                                       Sub-total
                                                     </Typography>
                                                     <Typography variant="h6" sx={{ 
-                                                      color: darkProTokens.textPrimary,
+                                                      color: '#FFFFFF',
                                                       fontWeight: 700
                                                     }}>
                                                       {formatPrice(paymentDetails.reduce((sum, detail) => sum + detail.amount, 0))}
@@ -1905,18 +1638,18 @@ export default function PaymentDialog({
                                                 <Grid size={3}>
                                                   <Box sx={{ textAlign: 'center' }}>
                                                     <Typography variant="body2" sx={{ 
-                                                      color: darkProTokens.textSecondary
+                                                      color: '#CCCCCC'
                                                     }}>
                                                       Comisiones
                                                     </Typography>
                                                     <Typography variant="h6" sx={{ 
-                                                      color: darkProTokens.warning,
+                                                      color: '#ff9800',
                                                       fontWeight: 700
                                                     }}>
                                                       {formatPrice(paymentDetails.reduce((sum, detail) => sum + detail.commission_amount, 0))}
                                                     </Typography>
                                                     <Typography variant="caption" sx={{ 
-                                                      color: darkProTokens.success,
+                                                      color: '#4caf50',
                                                       display: 'block'
                                                     }}>
                                                       (Solo tarjetas)
@@ -1927,12 +1660,12 @@ export default function PaymentDialog({
                                                 <Grid size={3}>
                                                   <Box sx={{ textAlign: 'center' }}>
                                                     <Typography variant="body2" sx={{ 
-                                                      color: darkProTokens.textSecondary
+                                                      color: '#CCCCCC'
                                                     }}>
                                                       Total Pagado
                                                     </Typography>
                                                     <Typography variant="h6" sx={{ 
-                                                      color: darkProTokens.success,
+                                                      color: '#4caf50',
                                                       fontWeight: 700
                                                     }}>
                                                       {formatPrice(paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0))}
@@ -1943,13 +1676,13 @@ export default function PaymentDialog({
                                                 <Grid size={3}>
                                                   <Box sx={{ textAlign: 'center' }}>
                                                     <Typography variant="body2" sx={{ 
-                                                      color: darkProTokens.textSecondary
+                                                      color: '#CCCCCC'
                                                     }}>
                                                       vs Total
                                                     </Typography>
                                                     <Typography variant="h6" sx={{ 
                                                       color: paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0) >= finalTotalAmount
-                                                        ? darkProTokens.success : darkProTokens.error,
+                                                        ? '#4caf50' : '#f44336',
                                                       fontWeight: 700
                                                     }}>
                                                       {paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0) >= finalTotalAmount
@@ -1961,18 +1694,19 @@ export default function PaymentDialog({
                                                 </Grid>
                                               </Grid>
 
+                                              {/* ✅ ALERTA SI HAY SOBRANTE */}
                                               {paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0) > finalTotalAmount && (
                                                 <Box sx={{ mt: 2 }}>
                                                   <Alert 
                                                     severity="warning"
                                                     sx={{
-                                                      backgroundColor: `${darkProTokens.warning}10`,
-                                                      color: darkProTokens.textPrimary,
-                                                      border: `1px solid ${darkProTokens.warning}30`,
-                                                      '& .MuiAlert-icon': { color: darkProTokens.warning }
+                                                      backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                                                      color: '#FFFFFF',
+                                                      border: '1px solid rgba(255, 193, 7, 0.3)',
+                                                      '& .MuiAlert-icon': { color: '#ffc107' }
                                                     }}
                                                   >
-                                                    ⚠️ Total de pagos ({formatPrice(paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0))}) excede el total requerido.
+                                                    ⚠️ Total de pagos ({formatPrice(paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0))}) excede el total requerido ({formatPrice(finalTotalAmount)}). 
                                                     El excedente se generará como cambio.
                                                   </Alert>
                                                 </Box>
@@ -1986,16 +1720,16 @@ export default function PaymentDialog({
                                 </motion.div>
                               )}
 
-                              {/* ✅ OPCIONES ADICIONALES CON DARK PRO SYSTEM */}
+                              {/* Opciones adicionales */}
                               <Box sx={{ mt: 4 }}>
                                 <Card sx={{
-                                  background: `${darkProTokens.info}10`,
-                                  border: `1px solid ${darkProTokens.info}30`,
+                                  background: 'rgba(33, 150, 243, 0.1)',
+                                  border: '1px solid rgba(33, 150, 243, 0.3)',
                                   borderRadius: 3
                                 }}>
                                   <CardContent>
                                     <Typography variant="h6" sx={{ 
-                                      color: darkProTokens.info,
+                                      color: '#2196f3',
                                       fontWeight: 700,
                                       mb: 3
                                     }}>
@@ -2014,17 +1748,17 @@ export default function PaymentDialog({
                                               }))}
                                               sx={{
                                                 '& .MuiSwitch-switchBase.Mui-checked': {
-                                                  color: darkProTokens.info,
+                                                  color: '#2196f3',
                                                 },
                                                 '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                                  backgroundColor: darkProTokens.info,
+                                                  backgroundColor: '#2196f3',
                                                 },
                                               }}
                                             />
                                           }
                                           label={
                                             <Typography variant="body1" sx={{ 
-                                              color: darkProTokens.textPrimary, 
+                                              color: '#FFFFFF', 
                                               fontWeight: 500
                                             }}>
                                               🖨️ Imprimir ticket
@@ -2045,17 +1779,17 @@ export default function PaymentDialog({
                                               disabled={!customer?.email}
                                               sx={{
                                                 '& .MuiSwitch-switchBase.Mui-checked': {
-                                                  color: darkProTokens.info,
+                                                  color: '#2196f3',
                                                 },
                                                 '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                                  backgroundColor: darkProTokens.info,
+                                                  backgroundColor: '#2196f3',
                                                 },
                                               }}
                                             />
                                           }
                                           label={
                                             <Typography variant="body1" sx={{ 
-                                              color: customer?.email ? darkProTokens.textPrimary : darkProTokens.textDisabled, 
+                                              color: customer?.email ? '#FFFFFF' : '#808080', 
                                               fontWeight: 500
                                             }}>
                                               📧 Enviar por email
@@ -2078,22 +1812,16 @@ export default function PaymentDialog({
                                           placeholder="Información adicional sobre la venta..."
                                           InputProps={{
                                             sx: {
-                                              color: darkProTokens.textPrimary,
+                                              color: '#FFFFFF',
                                               '& .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: `${darkProTokens.info}30`
-                                              },
-                                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: darkProTokens.info
-                                              },
-                                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: darkProTokens.info
+                                                borderColor: 'rgba(33, 150, 243, 0.3)'
                                               }
                                             }
                                           }}
                                           InputLabelProps={{
                                             sx: { 
-                                              color: darkProTokens.textSecondary,
-                                              '&.Mui-focused': { color: darkProTokens.info }
+                                              color: '#CCCCCC',
+                                              '&.Mui-focused': { color: '#2196f3' }
                                             }
                                           }}
                                         />
@@ -2105,211 +1833,351 @@ export default function PaymentDialog({
                             </Box>
                           )}
 
-                          {/* ✅ PASO 2: CONFIRMACIÓN CON DARK PRO SYSTEM */}
+                          {/* PASO 2: Confirmación */}
                           {index === 1 && (
                             <Box sx={{ mb: 4 }}>
                               <Typography variant="h5" sx={{ 
-                                color: darkProTokens.success, 
+                                color: '#4caf50', 
                                 mb: 3,
                                 fontWeight: 800
                               }}>
                                 ✅ Confirmar Venta
                               </Typography>
 
-                              {/* Resumen Final de la Venta */}
                               <Card sx={{
-                                background: `${darkProTokens.success}10`,
-                                border: `2px solid ${darkProTokens.success}30`,
+                                background: 'rgba(76, 175, 80, 0.1)',
+                                border: '2px solid rgba(76, 175, 80, 0.3)',
                                 borderRadius: 4
                               }}>
                                 <CardContent>
                                   <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.success, 
+                                    color: '#4caf50', 
                                     mb: 3,
                                     fontWeight: 700
                                   }}>
                                     🎯 Resumen Final de la Venta
                                   </Typography>
 
-                                  {/* Desglose Financiero */}
-                                  <Box sx={{ mb: 3 }}>
-                                    <Typography variant="h6" sx={{ 
-                                      color: darkProTokens.success,
-                                      fontWeight: 700,
-                                      mb: 3
-                                    }}>
-                                      💰 Desglose Financiero
-                                    </Typography>
-
-                                    <Grid container spacing={2}>
-                                      <Grid size={2.4}>
-                                        <Box sx={{ textAlign: 'center' }}>
-                                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                            Subtotal
-                                          </Typography>
-                                          <Typography variant="h6" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                                            {formatPrice(totals.subtotal)}
-                                          </Typography>
-                                        </Box>
-                                      </Grid>
-
-                                      <Grid size={2.4}>
-                                        <Box sx={{ textAlign: 'center' }}>
-                                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                            Impuestos
-                                          </Typography>
-                                          <Typography variant="h6" sx={{ fontWeight: 600, color: darkProTokens.info }}>
-                                            {formatPrice(totals.taxAmount)}
-                                          </Typography>
-                                        </Box>
-                                      </Grid>
-
-                                      <Grid size={2.4}>
-                                        <Box sx={{ textAlign: 'center' }}>
-                                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                            Descuentos
-                                          </Typography>
-                                          <Typography variant="h6" sx={{ fontWeight: 600, color: darkProTokens.error }}>
-                                            -{formatPrice(totals.discountAmount + totals.couponDiscount)}
-                                          </Typography>
-                                        </Box>
-                                      </Grid>
-
-                                      <Grid size={2.4}>
-                                        <Box sx={{ textAlign: 'center' }}>
-                                          <Typography variant="body2" sx={{ color: darkProTokens.warning }}>
-                                            Comisiones
-                                          </Typography>
-                                          <Typography variant="h6" sx={{ fontWeight: 600, color: darkProTokens.warning }}>
-                                            {commissionAmount > 0 ? `+${formatPrice(commissionAmount)}` : '$0.00'}
-                                          </Typography>
-                                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
-                                            Solo tarjetas
-                                          </Typography>
-                                        </Box>
-                                      </Grid>
-
-                                      <Grid size={2.4}>
-                                        <Box sx={{ 
-                                          textAlign: 'center',
-                                          background: `${darkProTokens.success}10`,
-                                          borderRadius: 2,
-                                          p: 2,
-                                          border: `1px solid ${darkProTokens.success}30`
-                                        }}>
-                                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                            TOTAL FINAL
-                                          </Typography>
-                                          <Typography variant="h4" sx={{ fontWeight: 800, color: darkProTokens.success }}>
-                                            {formatPrice(finalTotalAmount)}
-                                          </Typography>
-                                        </Box>
-                                      </Grid>
-                                    </Grid>
-                                  </Box>
-
-                                  {/* Información del Método de Pago */}
-                                  <Box sx={{ mb: 3 }}>
-                                    <Typography variant="h6" sx={{ 
-                                      color: darkProTokens.success,
-                                      fontWeight: 700,
-                                      mb: 2
-                                    }}>
-                                      💳 Método de Pago
-                                    </Typography>
-                                    
-                                    {isMixedPayment ? (
-                                      <Box>
-                                        <Typography variant="body1" sx={{ 
-                                          color: darkProTokens.textPrimary,
-                                          fontWeight: 600,
-                                          mb: 1
-                                        }}>
-                                          🔄 Pago Mixto
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ 
-                                          color: darkProTokens.textSecondary,
+                                  <Grid container spacing={3}>
+                                    {/* Información del Cliente */}
+                                    <Grid size={6}>
+                                      <Box sx={{
+                                        background: 'rgba(76, 175, 80, 0.05)',
+                                        border: '1px solid rgba(76, 175, 80, 0.2)',
+                                        borderRadius: 3,
+                                        p: 3
+                                      }}>
+                                        <Typography variant="h6" sx={{ 
+                                          color: '#4caf50',
+                                          fontWeight: 700,
                                           mb: 2
                                         }}>
-                                          {paymentDetails.length} método{paymentDetails.length !== 1 ? 's' : ''} configurado{paymentDetails.length !== 1 ? 's' : ''}
+                                          👤 Cliente
                                         </Typography>
                                         
-                                        {paymentDetails.map((detail, idx) => {
-                                          const methodConfig = paymentMethodsConfig.find(pm => pm.value === detail.method);
-                                          return (
-                                            <Chip 
-                                              key={detail.id}
-                                              label={`${methodConfig?.label}: ${formatPrice(detail.amount)}${detail.commission_amount > 0 ? ` + ${formatPrice(detail.commission_amount)} comisión` : ''}`}
-                                              size="small"
-                                              sx={{ 
-                                                mt: 1,
-                                                mr: 1,
-                                                backgroundColor: detail.commission_amount > 0 ? `${darkProTokens.warning}20` : `${darkProTokens.success}20`,
-                                                color: detail.commission_amount > 0 ? darkProTokens.warning : darkProTokens.success,
-                                                fontWeight: 600
-                                              }}
-                                            />
-                                          );
-                                        })}
-                                      </Box>
-                                    ) : (
-                                      <Box>
-                                        <Typography variant="body1" sx={{ 
-                                          color: darkProTokens.textPrimary,
-                                          fontWeight: 600
-                                        }}>
-                                          {paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.icon} {paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.label}
-                                        </Typography>
-                                        
-                                        {formData.paymentMethod === 'efectivo' && changeAmount > 0 && (
+                                        {customer ? (
+                                          <Box>
+                                            <Typography variant="body1" sx={{ 
+                                              color: '#FFFFFF',
+                                              fontWeight: 600
+                                            }}>
+                                              {customer.name}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ 
+                                              color: '#CCCCCC'
+                                            }}>
+                                              {customer.email || customer.whatsapp}
+                                            </Typography>
+                                            {customer.membership_type && (
+                                              <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                                                <Chip 
+                                                  label={customer.membership_type}
+                                                  size="small"
+                                                  sx={{ 
+                                                    backgroundColor: '#4caf50',
+                                                    color: '#FFFFFF',
+                                                    fontWeight: 600
+                                                  }}
+                                                />
+                                                <Chip 
+                                                  label={`+${Math.floor(totals.total / 100)} puntos`}
+                                                  size="small"
+                                                  sx={{ 
+                                                    backgroundColor: '#ff9800',
+                                                    color: '#FFFFFF',
+                                                    fontWeight: 600
+                                                  }}
+                                                />
+                                              </Box>
+                                            )}
+                                          </Box>
+                                        ) : (
                                           <Typography variant="body2" sx={{ 
-                                            color: darkProTokens.primary,
-                                            fontWeight: 600,
-                                            mt: 1
+                                            color: '#CCCCCC',
+                                            fontStyle: 'italic'
                                           }}>
-                                            💰 Cambio: {formatPrice(changeAmount)}
+                                            Venta sin cliente registrado
                                           </Typography>
                                         )}
+                                      </Box>
+                                    </Grid>
 
-                                        {commissionAmount > 0 && (
-                                          <Chip 
-                                            label={`Comisión: ${formatPrice(commissionAmount)}`}
-                                            size="small"
-                                            sx={{ 
-                                              mt: 1,
-                                              backgroundColor: darkProTokens.warning,
-                                              color: darkProTokens.textPrimary,
-                                              fontWeight: 600
-                                            }}
-                                          />
-                                        )}
+                                    {/* Información de la Venta */}
+                                    <Grid size={6}>
+                                      <Box sx={{
+                                        background: 'rgba(76, 175, 80, 0.05)',
+                                        border: '1px solid rgba(76, 175, 80, 0.2)',
+                                        borderRadius: 3,
+                                        p: 3
+                                      }}>
+                                        <Typography variant="h6" sx={{ 
+                                          color: '#4caf50',
+                                          fontWeight: 700,
+                                          mb: 2
+                                        }}>
+                                          🛒 Detalles de Venta
+                                        </Typography>
+                                        
+                                        <Box>
+                                          <Typography variant="body2" sx={{ 
+                                            color: '#CCCCCC',
+                                            mb: 1
+                                          }}>
+                                            Productos: {cart.length} artículo{cart.length !== 1 ? 's' : ''}
+                                          </Typography>
+                                          <Typography variant="body2" sx={{ 
+                                            color: '#CCCCCC',
+                                            mb: 1
+                                          }}>
+                                            Cantidad total: {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                                          </Typography>
+                                          
+                                          {coupon && (
+                                            <Box sx={{ mt: 2 }}>
+                                              <Chip 
+                                                icon={<CouponIcon />}
+                                                label={`Cupón: ${coupon.code}`}
+                                                size="small"
+                                                sx={{ 
+                                                  backgroundColor: '#e91e63',
+                                                  color: '#FFFFFF',
+                                                  fontWeight: 600
+                                                }}
+                                              />
+                                            </Box>
+                                          )}
+                                        </Box>
+                                      </Box>
+                                    </Grid>
 
-                                        {!paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.hasCommission && (
-                                          <Chip 
-                                            label="Sin comisión"
-                                            size="small"
-                                            sx={{ 
-                                              mt: 1,
-                                              backgroundColor: darkProTokens.success,
-                                              color: darkProTokens.textPrimary,
+                                    {/* Método de Pago */}
+                                    <Grid size={12}>
+                                      <Box sx={{
+                                        background: 'rgba(76, 175, 80, 0.05)',
+                                        border: '1px solid rgba(76, 175, 80, 0.2)',
+                                        borderRadius: 3,
+                                        p: 3
+                                      }}>
+                                        <Typography variant="h6" sx={{ 
+                                          color: '#4caf50',
+                                          fontWeight: 700,
+                                          mb: 2
+                                        }}>
+                                          💳 Método de Pago
+                                        </Typography>
+                                        
+                                        {isMixedPayment ? (
+                                          <Box>
+                                            <Typography variant="body1" sx={{ 
+                                              color: '#FFFFFF',
+                                              fontWeight: 600,
+                                              mb: 1
+                                            }}>
+                                              🔄 Pago Mixto
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ 
+                                              color: '#CCCCCC',
+                                              mb: 2
+                                            }}>
+                                              {paymentDetails.length} método{paymentDetails.length !== 1 ? 's' : ''} configurado{paymentDetails.length !== 1 ? 's' : ''}
+                                            </Typography>
+                                            
+                                            {paymentDetails.map((detail, idx) => {
+                                              const methodConfig = paymentMethodsConfig.find(pm => pm.value === detail.method);
+                                              return (
+                                                <Chip 
+                                                  key={detail.id}
+                                                  label={`${methodConfig?.label}: ${formatPrice(detail.amount)}${detail.commission_amount > 0 ? ` + ${formatPrice(detail.commission_amount)} comisión` : ' (sin comisión)'}`}
+                                                  size="small"
+                                                  sx={{ 
+                                                    mt: 1,
+                                                    mr: 1,
+                                                    backgroundColor: detail.commission_amount > 0 ? 'rgba(255, 152, 0, 0.2)' : 'rgba(76, 175, 80, 0.2)',
+                                                    color: detail.commission_amount > 0 ? '#ff9800' : '#4caf50',
+                                                    fontWeight: 600
+                                                  }}
+                                                />
+                                              );
+                                            })}
+                                          </Box>
+                                        ) : (
+                                          <Box>
+                                            <Typography variant="body1" sx={{ 
+                                              color: '#FFFFFF',
                                               fontWeight: 600
-                                            }}
-                                          />
+                                            }}>
+                                              {paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.icon} {paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.label}
+                                            </Typography>
+                                            
+                                            {formData.paymentMethod === 'efectivo' && changeAmount > 0 && (
+                                              <Typography variant="body2" sx={{ 
+                                                color: '#FFCC00',
+                                                fontWeight: 600,
+                                                mt: 1
+                                              }}>
+                                                💰 Cambio: {formatPrice(changeAmount)}
+                                              </Typography>
+                                            )}
+
+                                            {commissionAmount > 0 && (
+                                              <Chip 
+                                                label={`Comisión: ${formatPrice(commissionAmount)}`}
+                                                size="small"
+                                                sx={{ 
+                                                  mt: 1,
+                                                  backgroundColor: '#ff9800',
+                                                  color: '#FFFFFF',
+                                                  fontWeight: 600
+                                                }}
+                                              />
+                                            )}
+
+                                            {!paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.hasCommission && (
+                                              <Chip 
+                                                label="Sin comisión"
+                                                size="small"
+                                                sx={{ 
+                                                  mt: 1,
+                                                  backgroundColor: '#4caf50',
+                                                  color: '#FFFFFF',
+                                                  fontWeight: 600
+                                                }}
+                                              />
+                                            )}
+
+                                            {customCommissionRate !== null && (
+                                              <Chip 
+                                                label={`Comisión Global: ${customCommissionRate}%`}
+                                                size="small"
+                                                sx={{ 
+                                                  mt: 1,
+                                                  ml: 1,
+                                                  backgroundColor: '#ff9800',
+                                                  color: '#FFFFFF',
+                                                  fontWeight: 600
+                                                }}
+                                              />
+                                            )}
+                                          </Box>
                                         )}
                                       </Box>
-                                    )}
-                                  </Box>
+                                    </Grid>
 
-                                  {/* Alertas */}
+                                    {/* Totales Detallados */}
+                                    <Grid size={12}>
+                                      <Box sx={{
+                                        background: 'rgba(77, 77, 77, 0.05)',
+                                        border: '1px solid rgba(204, 204, 204, 0.2)',
+                                        borderRadius: 3,
+                                        p: 3
+                                      }}>
+                                        <Typography variant="h6" sx={{ 
+                                          color: '#4caf50',
+                                          fontWeight: 700,
+                                          mb: 3
+                                        }}>
+                                          💰 Desglose Financiero
+                                        </Typography>
+
+                                        <Grid container spacing={2}>
+                                          <Grid size={2.4}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                              <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                                Subtotal
+                                              </Typography>
+                                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#FFFFFF' }}>
+                                                {formatPrice(totals.subtotal)}
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
+
+                                          <Grid size={2.4}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                              <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                                Impuestos
+                                              </Typography>
+                                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2196f3' }}>
+                                                {formatPrice(totals.taxAmount)}
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
+
+                                          <Grid size={2.4}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                              <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                                Descuentos
+                                              </Typography>
+                                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#e91e63' }}>
+                                                -{formatPrice(totals.discountAmount + totals.couponDiscount)}
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
+
+                                          <Grid size={2.4}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                              <Typography variant="body2" sx={{ color: 'rgba(255, 152, 0, 0.8)' }}>
+                                                Comisiones
+                                              </Typography>
+                                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#ff9800' }}>
+                                                {commissionAmount > 0 ? `+${formatPrice(commissionAmount)}` : '$0.00'}
+                                              </Typography>
+                                              <Typography variant="caption" sx={{ color: '#CCCCCC', display: 'block' }}>
+                                                Solo tarjetas
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
+
+                                          <Grid size={2.4}>
+                                            <Box sx={{ 
+                                              textAlign: 'center',
+                                              background: 'rgba(76, 175, 80, 0.1)',
+                                              borderRadius: 2,
+                                              p: 2,
+                                              border: '1px solid rgba(76, 175, 80, 0.3)'
+                                            }}>
+                                              <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                                TOTAL FINAL
+                                              </Typography>
+                                              <Typography variant="h4" sx={{ fontWeight: 800, color: '#4caf50' }}>
+                                                {formatPrice(finalTotalAmount)}
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
+                                        </Grid>
+                                      </Box>
+                                    </Grid>
+                                  </Grid>
+
+                                  {/* Alertas y Notas */}
                                   {customCommissionRate !== null && (
                                     <Box sx={{ mt: 3 }}>
                                       <Alert 
                                         severity="info"
                                         sx={{
-                                          backgroundColor: `${darkProTokens.info}10`,
-                                          color: darkProTokens.textPrimary,
-                                          border: `1px solid ${darkProTokens.info}30`,
-                                          '& .MuiAlert-icon': { color: darkProTokens.info }
+                                          backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                                          color: '#FFFFFF',
+                                          border: '1px solid rgba(33, 150, 243, 0.3)',
+                                          '& .MuiAlert-icon': { color: '#2196f3' }
                                         }}
                                       >
                                         <Typography variant="body2">
@@ -2324,10 +2192,10 @@ export default function PaymentDialog({
                                       <Alert 
                                         severity="info"
                                         sx={{
-                                          backgroundColor: `${darkProTokens.success}10`,
-                                          color: darkProTokens.textPrimary,
-                                          border: `1px solid ${darkProTokens.success}30`,
-                                          '& .MuiAlert-icon': { color: darkProTokens.success }
+                                          backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                                          color: '#FFFFFF',
+                                          border: '1px solid rgba(76, 175, 80, 0.3)',
+                                          '& .MuiAlert-icon': { color: '#4caf50' }
                                         }}
                                       >
                                         <Typography variant="body2">
@@ -2336,20 +2204,81 @@ export default function PaymentDialog({
                                       </Alert>
                                     </Box>
                                   )}
+
+                                  {/* Opciones de impresión/envío */}
+                                  <Box sx={{ mt: 3 }}>
+                                    <Typography variant="h6" sx={{ 
+                                      color: '#4caf50',
+                                      fontWeight: 700,
+                                      mb: 2
+                                    }}>
+                                      📄 Opciones de Entrega
+                                    </Typography>
+                                    
+                                    <Grid container spacing={2}>
+                                      <Grid size={6}>
+                                        <Box sx={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center',
+                                          gap: 2,
+                                          p: 2,
+                                          background: formData.printReceipt ? 
+                                            'rgba(76, 175, 80, 0.1)' : 
+                                            'rgba(77, 77, 77, 0.05)',
+                                          border: formData.printReceipt ? 
+                                            '1px solid rgba(76, 175, 80, 0.3)' : 
+                                            '1px solid rgba(204, 204, 204, 0.2)',
+                                          borderRadius: 2
+                                        }}>
+                                          <ReceiptIcon sx={{ 
+                                            color: formData.printReceipt ? '#4caf50' : '#808080'
+                                          }} />
+                                          <Typography sx={{ 
+                                            color: formData.printReceipt ? '#FFFFFF' : '#CCCCCC'
+                                          }}>
+                                            {formData.printReceipt ? '✅ Imprimirá ticket' : '❌ No imprimirá ticket'}
+                                          </Typography>
+                                        </Box>
+                                      </Grid>
+
+                                      <Grid size={6}>
+                                        <Box sx={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center',
+                                          gap: 2,
+                                          p: 2,
+                                          background: formData.sendEmail ? 
+                                            'rgba(33, 150, 243, 0.1)' : 
+                                            'rgba(77, 77, 77, 0.05)',
+                                          border: formData.sendEmail ? 
+                                            '1px solid rgba(33, 150, 243, 0.3)' : 
+                                            '1px solid rgba(204, 204, 204, 0.2)',
+                                          borderRadius: 2
+                                        }}>
+                                          <Typography sx={{ fontSize: '1.5rem' }}>📧</Typography>
+                                          <Typography sx={{ 
+                                            color: formData.sendEmail ? '#FFFFFF' : '#CCCCCC'
+                                          }}>
+                                            {formData.sendEmail ? `✅ Enviará a ${customer?.email}` : '❌ No enviará email'}
+                                          </Typography>
+                                        </Box>
+                                      </Grid>
+                                    </Grid>
+                                  </Box>
                                 </CardContent>
                               </Card>
                             </Box>
                           )}
 
-                          {/* ✅ BOTONES DE NAVEGACIÓN CON DARK PRO SYSTEM */}
+                          {/* Botones de navegación */}
                           <Box sx={{ display: 'flex', gap: 3, mt: 4 }}>
                             <Button
                               disabled={activeStep === 0}
                               onClick={() => setActiveStep(prev => prev - 1)}
                               size="large"
                               sx={{ 
-                                color: darkProTokens.textSecondary,
-                                borderColor: `${darkProTokens.textSecondary}40`,
+                                color: '#CCCCCC',
+                                borderColor: 'rgba(204, 204, 204, 0.4)',
                                 px: 4,
                                 py: 1.5,
                                 borderRadius: 3
@@ -2367,17 +2296,17 @@ export default function PaymentDialog({
                                 size="large"
                                 startIcon={<PaymentIcon />}
                                 sx={{
-                                  background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-                                  color: darkProTokens.textPrimary,
+                                  background: 'linear-gradient(135deg, #4caf50, #388e3c)',
+                                  color: '#FFFFFF',
                                   fontWeight: 800,
                                   px: 4,
                                   py: 1.5,
                                   borderRadius: 3,
                                   fontSize: '1.1rem',
                                   '&:hover': {
-                                    background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
+                                    background: 'linear-gradient(135deg, #66bb6a, #4caf50)',
                                     transform: 'translateY(-2px)',
-                                    boxShadow: `0 6px 20px ${darkProTokens.success}40`
+                                    boxShadow: '0 6px 20px rgba(76, 175, 80, 0.4)'
                                   }
                                 }}
                               >
@@ -2390,15 +2319,15 @@ export default function PaymentDialog({
                                 disabled={!canProceedToNextStep()}
                                 size="large"
                                 sx={{
-                                  background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-                                  color: darkProTokens.textPrimary,
+                                  background: 'linear-gradient(135deg, #4caf50, #388e3c)',
+                                  color: '#FFFFFF',
                                   fontWeight: 800,
                                   px: 4,
                                   py: 1.5,
                                   borderRadius: 3,
                                   fontSize: '1.1rem',
                                   '&:hover': {
-                                    background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
+                                    background: 'linear-gradient(135deg, #66bb6a, #4caf50)',
                                     transform: 'translateY(-2px)'
                                   }
                                 }}
@@ -2414,19 +2343,19 @@ export default function PaymentDialog({
                 </Paper>
               </Grid>
 
-              {/* ✅ PANEL DERECHO - RESUMEN DE LA VENTA CON DARK PRO SYSTEM */}
+              {/* Panel derecho - Resumen de la Venta */}
               <Grid size={{ xs: 12, lg: 4 }}>
                 <Paper sx={{
                   p: 4,
-                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                  border: `2px solid ${darkProTokens.success}30`,
+                  background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
+                  border: '2px solid rgba(76, 175, 80, 0.3)',
                   borderRadius: 4,
                   position: 'sticky',
                   top: 20,
-                  color: darkProTokens.textPrimary
+                  color: '#FFFFFF'
                 }}>
                   <Typography variant="h5" sx={{ 
-                    color: darkProTokens.success, 
+                    color: '#4caf50', 
                     mb: 4, 
                     fontWeight: 800,
                     display: 'flex',
@@ -2441,26 +2370,26 @@ export default function PaymentDialog({
                   {customer && (
                     <Box sx={{ mb: 3 }}>
                       <Box sx={{
-                        background: `${darkProTokens.success}10`,
-                        border: `1px solid ${darkProTokens.success}30`,
+                        background: 'rgba(76, 175, 80, 0.1)',
+                        border: '1px solid rgba(76, 175, 80, 0.3)',
                         borderRadius: 3,
                         p: 3
                       }}>
                         <Typography variant="subtitle1" sx={{ 
-                          color: darkProTokens.textSecondary,
+                          color: '#CCCCCC',
                           mb: 1
                         }}>
                           Cliente:
                         </Typography>
                         <Typography variant="h6" sx={{ 
-                          color: darkProTokens.textPrimary, 
+                          color: '#FFFFFF', 
                           fontWeight: 700,
                           mb: 0.5
                         }}>
                           {customer.name}
                         </Typography>
                         <Typography variant="body2" sx={{ 
-                          color: darkProTokens.textSecondary
+                          color: '#CCCCCC'
                         }}>
                           {customer.email || customer.whatsapp}
                         </Typography>
@@ -2471,8 +2400,8 @@ export default function PaymentDialog({
                               label={customer.membership_type}
                               size="small"
                               sx={{
-                                backgroundColor: darkProTokens.success,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: '#4caf50',
+                                color: '#FFFFFF',
                                 fontWeight: 700
                               }}
                             />
@@ -2481,8 +2410,8 @@ export default function PaymentDialog({
                               label={`+${Math.floor(totals.total / 100)} pts`}
                               size="small"
                               sx={{
-                                backgroundColor: darkProTokens.warning,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: '#ff9800',
+                                color: '#FFFFFF',
                                 fontWeight: 700
                               }}
                             />
@@ -2495,7 +2424,7 @@ export default function PaymentDialog({
                   {/* Productos */}
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="subtitle1" sx={{ 
-                      color: darkProTokens.textSecondary,
+                      color: '#CCCCCC',
                       mb: 2
                     }}>
                       Productos ({cart.length}):
@@ -2508,23 +2437,23 @@ export default function PaymentDialog({
                           justifyContent: 'space-between',
                           alignItems: 'center',
                           py: 1,
-                          borderBottom: index < cart.length - 1 ? `1px solid ${darkProTokens.grayDark}` : 'none'
+                          borderBottom: index < cart.length - 1 ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'
                         }}>
                           <Box sx={{ flex: 1 }}>
                             <Typography variant="body2" sx={{ 
-                              color: darkProTokens.textPrimary,
+                              color: '#FFFFFF',
                               fontWeight: 600
                             }}>
                               {item.product.name}
                             </Typography>
                             <Typography variant="caption" sx={{ 
-                              color: darkProTokens.textSecondary
+                              color: '#CCCCCC'
                             }}>
                               {formatPrice(item.unit_price)} x {item.quantity}
                             </Typography>
                           </Box>
                           <Typography variant="body2" sx={{ 
-                            color: darkProTokens.success,
+                            color: '#4caf50',
                             fontWeight: 700
                           }}>
                             {formatPrice(item.total_price)}
@@ -2534,36 +2463,36 @@ export default function PaymentDialog({
                     </Box>
                   </Box>
 
-                  <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
+                  <Divider sx={{ borderColor: 'rgba(76, 175, 80, 0.3)', my: 3 }} />
 
                   {/* Totales */}
                   <Stack spacing={2}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ color: darkProTokens.textSecondary }}>Subtotal:</Typography>
-                      <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      <Typography sx={{ color: '#CCCCCC' }}>Subtotal:</Typography>
+                      <Typography sx={{ color: '#FFFFFF', fontWeight: 600 }}>
                         {formatPrice(totals.subtotal)}
                       </Typography>
                     </Box>
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ color: darkProTokens.textSecondary }}>Impuestos:</Typography>
-                      <Typography sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                      <Typography sx={{ color: '#CCCCCC' }}>Impuestos:</Typography>
+                      <Typography sx={{ color: '#2196f3', fontWeight: 600 }}>
                         {formatPrice(totals.taxAmount)}
                       </Typography>
                     </Box>
 
                     {(totals.discountAmount + totals.couponDiscount) > 0 && (
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography sx={{ color: darkProTokens.textSecondary }}>Descuentos:</Typography>
-                        <Typography sx={{ color: darkProTokens.error, fontWeight: 600 }}>
+                        <Typography sx={{ color: '#CCCCCC' }}>Descuentos:</Typography>
+                        <Typography sx={{ color: '#e91e63', fontWeight: 600 }}>
                           -{formatPrice(totals.discountAmount + totals.couponDiscount)}
                         </Typography>
                       </Box>
                     )}
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ color: darkProTokens.textSecondary }}>Total Base:</Typography>
-                      <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      <Typography sx={{ color: '#CCCCCC' }}>Total Base:</Typography>
+                      <Typography sx={{ color: '#FFFFFF', fontWeight: 600 }}>
                         {formatPrice(totals.total)}
                       </Typography>
                     </Box>
@@ -2571,7 +2500,7 @@ export default function PaymentDialog({
                     {commissionAmount > 0 && (
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                         <Typography sx={{ 
-                          color: darkProTokens.warning,
+                          color: '#ff9800',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 1
@@ -2579,31 +2508,40 @@ export default function PaymentDialog({
                           <InfoIcon fontSize="small" />
                           Comisiones:
                         </Typography>
-                        <Typography sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                        <Typography sx={{ color: '#ff9800', fontWeight: 700 }}>
                           +{formatPrice(commissionAmount)}
                         </Typography>
                       </Box>
                     )}
 
-                    <Divider sx={{ borderColor: darkProTokens.grayDark }} />
+                    {customCommissionRate !== null && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography sx={{ color: '#CCCCCC' }}>Comisión Global:</Typography>
+                        <Typography sx={{ color: '#ff9800', fontWeight: 600 }}>
+                          {customCommissionRate}% (Solo tarjetas)
+                        </Typography>
+                      </Box>
+                    )}
+
+                    <Divider sx={{ borderColor: 'rgba(76, 175, 80, 0.5)' }} />
 
                     <Box sx={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 
                       alignItems: 'center',
-                      background: `${darkProTokens.success}10`,
-                      border: `1px solid ${darkProTokens.success}30`,
+                      background: 'rgba(76, 175, 80, 0.1)',
+                      border: '1px solid rgba(76, 175, 80, 0.3)',
                       borderRadius: 3,
                       p: 3
                     }}>
                       <Typography variant="h6" sx={{ 
-                        color: darkProTokens.textPrimary, 
+                        color: '#FFFFFF', 
                         fontWeight: 800
                       }}>
                         TOTAL FINAL:
                       </Typography>
                       <Typography variant="h4" sx={{ 
-                        color: darkProTokens.success, 
+                        color: '#4caf50', 
                         fontWeight: 900
                       }}>
                         {formatPrice(finalTotalAmount)}
@@ -2614,7 +2552,7 @@ export default function PaymentDialog({
                     {(formData.paymentMethod || isMixedPayment) && (
                       <Box sx={{ mt: 3 }}>
                         <Typography variant="subtitle1" sx={{ 
-                          color: darkProTokens.textSecondary,
+                          color: '#CCCCCC',
                           mb: 2
                         }}>
                           Método de Pago:
@@ -2622,33 +2560,33 @@ export default function PaymentDialog({
                         
                         {isMixedPayment ? (
                           <Box sx={{
-                            background: `${darkProTokens.primary}10`,
-                            border: `1px solid ${darkProTokens.primary}30`,
+                            background: 'rgba(255, 221, 51, 0.1)',
+                            border: '1px solid rgba(255, 221, 51, 0.3)',
                             borderRadius: 3,
                             p: 2
                           }}>
                             <Typography variant="body1" sx={{ 
-                              color: darkProTokens.primary,
+                              color: '#FFDD33',
                               fontWeight: 600,
                               mb: 1
                             }}>
                               🔄 Pago Mixto
                             </Typography>
                             <Typography variant="body2" sx={{ 
-                              color: darkProTokens.textSecondary,
+                              color: '#CCCCCC',
                               mb: 1
                             }}>
                               {paymentDetails.length} método{paymentDetails.length !== 1 ? 's' : ''} configurado{paymentDetails.length !== 1 ? 's' : ''}
                             </Typography>
                             <Typography variant="body2" sx={{ 
-                              color: darkProTokens.warning,
+                              color: '#ff9800',
                               fontWeight: 600
                             }}>
                               Total: {formatPrice(paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0))}
                             </Typography>
                             {paymentDetails.some(detail => detail.commission_amount > 0) && (
                               <Typography variant="caption" sx={{ 
-                                color: darkProTokens.success,
+                                color: '#4caf50',
                                 display: 'block',
                                 mt: 1
                               }}>
@@ -2658,13 +2596,13 @@ export default function PaymentDialog({
                           </Box>
                         ) : (
                           <Box sx={{
-                            background: `${darkProTokens.surfaceLevel4}`,
-                            border: `1px solid ${darkProTokens.grayDark}`,
+                            background: 'rgba(77, 77, 77, 0.05)',
+                            border: '1px solid rgba(204, 204, 204, 0.2)',
                             borderRadius: 3,
                             p: 2
                           }}>
                             <Typography variant="body1" sx={{ 
-                              color: darkProTokens.textPrimary,
+                              color: '#FFFFFF',
                               fontWeight: 600
                             }}>
                               {paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.icon} {paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.label}
@@ -2672,7 +2610,7 @@ export default function PaymentDialog({
                             
                             {commissionAmount > 0 && (
                               <Typography variant="body2" sx={{ 
-                                color: darkProTokens.warning,
+                                color: '#ff9800',
                                 fontWeight: 600,
                                 mt: 1
                               }}>
@@ -2682,7 +2620,7 @@ export default function PaymentDialog({
 
                             {!paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.hasCommission && (
                               <Typography variant="body2" sx={{ 
-                                color: darkProTokens.success,
+                                color: '#4caf50',
                                 fontWeight: 600,
                                 mt: 1
                               }}>
@@ -2692,7 +2630,7 @@ export default function PaymentDialog({
 
                             {formData.paymentMethod === 'efectivo' && changeAmount > 0 && (
                               <Typography variant="body2" sx={{ 
-                                color: darkProTokens.primary,
+                                color: '#FFCC00',
                                 fontWeight: 600,
                                 mt: 1
                               }}>
@@ -2709,21 +2647,21 @@ export default function PaymentDialog({
             </Grid>
           </Box>
         ) : (
-          // ✅ CONFIRMACIÓN DE VENTA COMPLETADA CON DARK PRO SYSTEM
+          // ✅ CONFIRMACIÓN DE VENTA COMPLETADA
           <Box sx={{ p: 4, textAlign: 'center' }}>
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <CheckIcon sx={{ fontSize: 100, color: darkProTokens.success, mb: 3 }} />
-              <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.success }} gutterBottom>
+              <CheckIcon sx={{ fontSize: 100, color: '#4caf50', mb: 3 }} />
+              <Typography variant="h3" fontWeight="bold" color="#4caf50" gutterBottom>
                 ¡Venta Procesada Exitosamente!
               </Typography>
-              <Typography variant="h5" gutterBottom sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+              <Typography variant="h5" gutterBottom sx={{ color: '#4caf50', fontWeight: 700 }}>
                 #{saleNumber}
               </Typography>
-              <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 4 }}>
+              <Typography variant="h6" color="#CCCCCC" sx={{ mb: 4 }}>
                 Venta procesada el {formatDate(new Date().toISOString())}
               </Typography>
 
@@ -2732,13 +2670,13 @@ export default function PaymentDialog({
                   <Paper sx={{ 
                     p: 3, 
                     textAlign: 'center',
-                    background: `${darkProTokens.success}10`,
-                    border: `1px solid ${darkProTokens.success}30`
+                    background: 'rgba(76, 175, 80, 0.1)',
+                    border: '1px solid rgba(76, 175, 80, 0.3)'
                   }}>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                    <Typography variant="h4" fontWeight="bold" color="#4caf50">
                       {formatPrice(totals.total)}
                     </Typography>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                    <Typography variant="body1" color="#CCCCCC">
                       Total Base
                     </Typography>
                   </Paper>
@@ -2749,16 +2687,16 @@ export default function PaymentDialog({
                     <Paper sx={{ 
                       p: 3, 
                       textAlign: 'center',
-                      background: `${darkProTokens.warning}10`,
-                      border: `1px solid ${darkProTokens.warning}30`
+                      background: 'rgba(255, 152, 0, 0.1)',
+                      border: '1px solid rgba(255, 152, 0, 0.3)'
                     }}>
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                      <Typography variant="h4" fontWeight="bold" color="#ff9800">
                         {formatPrice(commissionAmount)}
                       </Typography>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="body1" color="#CCCCCC">
                         Comisiones
                       </Typography>
-                      <Typography variant="caption" sx={{ color: darkProTokens.success }}>
+                      <Typography variant="caption" color="#4caf50">
                         Solo tarjetas
                       </Typography>
                     </Paper>
@@ -2769,13 +2707,13 @@ export default function PaymentDialog({
                   <Paper sx={{ 
                     p: 3, 
                     textAlign: 'center',
-                    background: `${darkProTokens.primary}10`,
-                    border: `1px solid ${darkProTokens.primary}30`
+                    background: 'rgba(255, 204, 0, 0.1)',
+                    border: '1px solid rgba(255, 204, 0, 0.3)'
                   }}>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                    <Typography variant="h4" fontWeight="bold" color="#FFCC00">
                       {formatPrice(finalTotalAmount)}
                     </Typography>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                    <Typography variant="body1" color="#CCCCCC">
                       Total Cobrado
                     </Typography>
                   </Paper>
@@ -2786,13 +2724,13 @@ export default function PaymentDialog({
                     <Paper sx={{ 
                       p: 3, 
                       textAlign: 'center',
-                      background: `${darkProTokens.warning}10`,
-                      border: `1px solid ${darkProTokens.warning}30`
+                      background: 'rgba(255, 193, 7, 0.1)',
+                      border: '1px solid rgba(255, 193, 7, 0.3)'
                     }}>
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                      <Typography variant="h4" fontWeight="bold" color="#ffc107">
                         {formatPrice(changeAmount)}
                       </Typography>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="body1" color="#CCCCCC">
                         Cambio
                       </Typography>
                     </Paper>
@@ -2803,13 +2741,13 @@ export default function PaymentDialog({
                   <Paper sx={{ 
                     p: 3, 
                     textAlign: 'center',
-                    background: `${darkProTokens.info}10`,
-                    border: `1px solid ${darkProTokens.info}30`
+                    background: 'rgba(33, 150, 243, 0.1)',
+                    border: '1px solid rgba(33, 150, 243, 0.3)'
                   }}>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                    <Typography variant="h4" fontWeight="bold" color="#2196f3">
                       {cart.reduce((sum, item) => sum + item.quantity, 0)}
                     </Typography>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                    <Typography variant="body1" color="#CCCCCC">
                       Productos
                     </Typography>
                   </Paper>
@@ -2817,17 +2755,17 @@ export default function PaymentDialog({
               </Grid>
 
               {customer && (
-                <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                <Typography variant="body1" color="#CCCCCC" sx={{ mb: 2 }}>
                   👤 Cliente: {customer.name}
                   {customer.membership_type && (
-                    <span style={{ color: darkProTokens.warning, fontWeight: 600, marginLeft: 8 }}>
+                    <span style={{ color: '#ff9800', fontWeight: 600, marginLeft: 8 }}>
                       (+{Math.floor(totals.total / 100)} puntos ganados)
                     </span>
                   )}
                 </Typography>
               )}
 
-              <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mb: 2 }}>
+              <Typography variant="body2" color="#808080" sx={{ mb: 2 }}>
                 💳 Método: {isMixedPayment ? 'Pago Mixto' : paymentMethodsConfig.find(pm => pm.value === formData.paymentMethod)?.label}
               </Typography>
 
@@ -2837,8 +2775,8 @@ export default function PaymentDialog({
                     icon={<ReceiptIcon />}
                     label="Ticket impreso"
                     sx={{
-                      backgroundColor: darkProTokens.success,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: '#4caf50',
+                      color: '#FFFFFF',
                       fontWeight: 600
                     }}
                   />
@@ -2847,8 +2785,8 @@ export default function PaymentDialog({
                   <Chip 
                     label={`Email enviado a ${customer.email}`}
                     sx={{
-                      backgroundColor: darkProTokens.info,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: '#2196f3',
+                      color: '#FFFFFF',
                       fontWeight: 600
                     }}
                   />
@@ -2857,8 +2795,8 @@ export default function PaymentDialog({
                   <Chip 
                     label="Sin comisiones aplicadas"
                     sx={{
-                      backgroundColor: darkProTokens.success,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: '#4caf50',
+                      color: '#FFFFFF',
                       fontWeight: 600
                     }}
                   />
@@ -2872,7 +2810,7 @@ export default function PaymentDialog({
       <DialogActions sx={{ p: 3, pt: 0 }}>
         {!saleCompleted ? (
           <>
-            <Button onClick={onClose} disabled={processing} size="large" sx={{ color: darkProTokens.textSecondary }}>
+            <Button onClick={onClose} disabled={processing} size="large">
               Cancelar
             </Button>
           </>
@@ -2883,15 +2821,15 @@ export default function PaymentDialog({
             startIcon={<CheckIcon />}
             size="large"
             sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-              color: darkProTokens.textPrimary,
+              background: 'linear-gradient(135deg, #4caf50, #388e3c)',
+              color: '#FFFFFF',
               fontWeight: 'bold',
               px: 4,
               py: 1.5,
               borderRadius: 3,
               fontSize: '1.1rem',
               '&:hover': {
-                background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
+                background: 'linear-gradient(135deg, #66bb6a, #4caf50)',
                 transform: 'translateY(-2px)'
               }
             }}
@@ -2901,7 +2839,7 @@ export default function PaymentDialog({
         )}
       </DialogActions>
 
-      {/* ✅ DIALOG DE CONFIRMACIÓN FINAL CON DARK PRO SYSTEM */}
+      {/* ✅ DIALOG DE CONFIRMACIÓN FINAL */}
       <Dialog 
         open={confirmDialogOpen} 
         onClose={() => !processing && setConfirmDialogOpen(false)}
@@ -2909,15 +2847,15 @@ export default function PaymentDialog({
         fullWidth
         PaperProps={{
           sx: {
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.success}50`,
+            background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
+            border: '2px solid rgba(76, 175, 80, 0.5)',
             borderRadius: 4,
-            color: darkProTokens.textPrimary
+            color: '#FFFFFF'
           }
         }}
       >
         <DialogTitle sx={{ 
-          color: darkProTokens.success, 
+          color: '#4caf50', 
           fontWeight: 800,
           fontSize: '1.5rem',
           textAlign: 'center'
@@ -2929,7 +2867,7 @@ export default function PaymentDialog({
           <Typography variant="body1" sx={{ 
             mb: 3,
             textAlign: 'center',
-            color: darkProTokens.textSecondary
+            color: '#CCCCCC'
           }}>
             ¿Está seguro de procesar esta venta? Esta acción actualizará el inventario y procesará el pago.
           </Typography>
@@ -2937,26 +2875,26 @@ export default function PaymentDialog({
           <Grid container spacing={2}>
             <Grid size={6}>
               <Box sx={{
-                background: `${darkProTokens.success}10`,
-                border: `1px solid ${darkProTokens.success}30`,
+                background: 'rgba(76, 175, 80, 0.1)',
+                border: '1px solid rgba(76, 175, 80, 0.3)',
                 borderRadius: 3,
                 p: 3,
                 textAlign: 'center'
               }}>
                 <Typography variant="h4" sx={{ 
-                  color: darkProTokens.success,
+                  color: '#4caf50',
                   fontWeight: 800,
                   mb: 1
                 }}>
                   {formatPrice(finalTotalAmount)}
                 </Typography>
                 <Typography variant="body1" sx={{ 
-                  color: darkProTokens.textSecondary
+                  color: '#CCCCCC'
                 }}>
                   Total a cobrar
                   {commissionAmount > 0 && (
                     <Typography variant="caption" sx={{ 
-                      color: darkProTokens.warning,
+                      color: '#ff9800',
                       display: 'block'
                     }}>
                       (Incluye {formatPrice(commissionAmount)} comisiones solo en tarjetas)
@@ -2968,21 +2906,21 @@ export default function PaymentDialog({
 
             <Grid size={6}>
               <Box sx={{
-                background: `${darkProTokens.info}10`,
-                border: `1px solid ${darkProTokens.info}30`,
+                background: 'rgba(33, 150, 243, 0.1)',
+                border: '1px solid rgba(33, 150, 243, 0.3)',
                 borderRadius: 3,
                 p: 3,
                 textAlign: 'center'
               }}>
                 <Typography variant="h4" sx={{ 
-                  color: darkProTokens.info,
+                  color: '#2196f3',
                   fontWeight: 800,
                   mb: 1
                 }}>
                   {cart.reduce((sum, item) => sum + item.quantity, 0)}
                 </Typography>
                 <Typography variant="body1" sx={{ 
-                  color: darkProTokens.textSecondary
+                  color: '#CCCCCC'
                 }}>
                   Productos a procesar
                 </Typography>
@@ -2995,10 +2933,10 @@ export default function PaymentDialog({
               <Alert 
                 severity="warning"
                 sx={{
-                  backgroundColor: `${darkProTokens.warning}10`,
-                  color: darkProTokens.textPrimary,
-                  border: `1px solid ${darkProTokens.warning}30`,
-                  '& .MuiAlert-icon': { color: darkProTokens.warning }
+                  backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                  color: '#FFFFFF',
+                  border: '1px solid rgba(255, 193, 7, 0.3)',
+                  '& .MuiAlert-icon': { color: '#ffc107' }
                 }}
               >
                 💰 <strong>Cambio a entregar:</strong> {formatPrice(changeAmount)}
@@ -3011,10 +2949,10 @@ export default function PaymentDialog({
               <Alert 
                 severity="success"
                 sx={{
-                                    backgroundColor: `${darkProTokens.success}10`,
-                  color: darkProTokens.textPrimary,
-                  border: `1px solid ${darkProTokens.success}30`,
-                  '& .MuiAlert-icon': { color: darkProTokens.success }
+                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                  color: '#FFFFFF',
+                  border: '1px solid rgba(76, 175, 80, 0.3)',
+                  '& .MuiAlert-icon': { color: '#4caf50' }
                 }}
               >
                 ✅ <strong>Sin comisiones:</strong> Pago con efectivo{formData.paymentMethod === 'transferencia' ? ' y/o transferencia' : ''}
@@ -3023,16 +2961,7 @@ export default function PaymentDialog({
           )}
 
           {errors.payment && (
-            <Alert 
-              severity="error" 
-              sx={{ 
-                mt: 2,
-                backgroundColor: `${darkProTokens.error}10`,
-                color: darkProTokens.textPrimary,
-                border: `1px solid ${darkProTokens.error}30`,
-                '& .MuiAlert-icon': { color: darkProTokens.error }
-              }}
-            >
+            <Alert severity="error" sx={{ mt: 2 }}>
               {errors.payment}
             </Alert>
           )}
@@ -3044,8 +2973,8 @@ export default function PaymentDialog({
             disabled={processing}
             size="large"
             sx={{ 
-              color: darkProTokens.textSecondary,
-              borderColor: `${darkProTokens.textSecondary}40`,
+              color: '#CCCCCC',
+              borderColor: 'rgba(204, 204, 204, 0.4)',
               px: 4,
               py: 1.5,
               borderRadius: 3
@@ -3060,19 +2989,19 @@ export default function PaymentDialog({
             disabled={processing}
             variant="contained"
             size="large"
-            startIcon={processing ? <CircularProgress size={24} sx={{ color: darkProTokens.textPrimary }} /> : <PaymentIcon />}
+            startIcon={processing ? <CircularProgress size={24} sx={{ color: '#FFFFFF' }} /> : <PaymentIcon />}
             sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-              color: darkProTokens.textPrimary,
+              background: 'linear-gradient(135deg, #4caf50, #388e3c)',
+              color: '#FFFFFF',
               fontWeight: 800,
               px: 6,
               py: 1.5,
               borderRadius: 3,
               fontSize: '1.1rem',
               '&:hover': {
-                background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
+                background: 'linear-gradient(135deg, #66bb6a, #4caf50)',
                 transform: 'translateY(-2px)',
-                boxShadow: `0 8px 30px ${darkProTokens.success}40`
+                boxShadow: '0 8px 30px rgba(76, 175, 80, 0.4)'
               }
             }}
           >
@@ -3080,27 +3009,6 @@ export default function PaymentDialog({
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
-      <style jsx>{`
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: ${darkProTokens.surfaceLevel1};
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
-        }
-      `}</style>
     </Dialog>
   );
 }
