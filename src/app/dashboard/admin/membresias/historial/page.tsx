@@ -41,14 +41,20 @@ import {
   ListItemIcon,
   ListItemText,
   Switch,
-  FormControlLabel // ✅ AGREGADO: Import faltante
+  FormControlLabel,
+  Checkbox,
+  FormGroup,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  LinearProgress
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-// ✅ IMPORTS DE UTILIDADES DE FECHA CORREGIDAS
+// ✅ IMPORTS DE UTILIDADES DE FECHA - VERIFICADOS
 import {
   getMexicoToday,
   formatDateForDisplay,
@@ -58,8 +64,7 @@ import {
   debugDateInfo
 } from '@/lib/utils/dateUtils';
 
-
-// 🆕 IMPORTS DEL SISTEMA DE CONGELAMIENTO INTELIGENTE
+// ✅ IMPORTS DEL SISTEMA DE CONGELAMIENTO - VERIFICADOS
 import {
   freezeMembership,
   unfreezeMembership,
@@ -70,57 +75,7 @@ import {
   type FreezeResult
 } from '@/src/lib/utils/freezeUtils';
 
-// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
-const darkProTokens = {
-  // Base Colors
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  
-  // Neutrals
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  
-  // Primary Accent (Golden)
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  
-  // Semantic Colors
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  
-  // User Roles
-  roleAdmin: '#FFCC00',
-  roleStaff: '#1976D2',
-  roleTrainer: '#009688',
-  roleUser: '#777777',
-  roleModerator: '#9C27B0',
-  roleGuest: '#444444',
-  
-  // Interactions
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
-
-// Iconos principales
+// ✅ ICONOS COMPLETOS - VERIFICADOS
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -149,9 +104,55 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import WarningIcon from '@mui/icons-material/Warning';
 import InfoIcon from '@mui/icons-material/Info';
 import PaymentIcon from '@mui/icons-material/Payment';
-import AcUnitIcon from '@mui/icons-material/AcUnit'; // 🧊 Icono de congelado
+import AcUnitIcon from '@mui/icons-material/AcUnit';
+import PercentIcon from '@mui/icons-material/Percent';
+import SelectAllIcon from '@mui/icons-material/SelectAll';
+import BatchIcon from '@mui/icons-material/BatchPrediction';
+import FreezeIcon from '@mui/icons-material/Pause';
+import UnfreezeIcon from '@mui/icons-material/PlayArrow';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
 
-// 🆕 INTERFAZ ACTUALIZADA CON CAMPOS DE CONGELAMIENTO
+// 🎨 DARK PRO SYSTEM - TOKENS VERIFICADOS
+const darkProTokens = {
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  roleAdmin: '#FFCC00',
+  roleStaff: '#1976D2',
+  roleTrainer: '#009688',
+  roleUser: '#777777',
+  roleModerator: '#9C27B0',
+  roleGuest: '#444444',
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
+
+// ✅ INTERFACES COMPLETAS - VERIFICADAS
 interface MembershipHistory {
   id: string;
   userid: string;
@@ -178,13 +179,9 @@ interface MembershipHistory {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  
-  // 🆕 CAMPOS DE CONGELAMIENTO INTELIGENTE
   freeze_date: string | null;
   unfreeze_date: string | null;
   total_frozen_days: number;
-  
-  // Datos relacionados
   user_name: string;
   user_email: string;
   plan_name: string;
@@ -213,7 +210,13 @@ interface Filters {
   isRenewal: string;
 }
 
-// 🆕 OPCIONES DE ESTADO ACTUALIZADAS
+interface BulkOperation {
+  type: 'freeze' | 'unfreeze' | 'cancel';
+  membershipIds: string[];
+  reason?: string;
+}
+
+// ✅ OPCIONES VERIFICADAS
 const statusOptions = [
   { value: '', label: 'Todos los estados', color: darkProTokens.textSecondary, icon: '📋' },
   { value: 'active', label: 'Activa', color: darkProTokens.success, icon: '✅' },
@@ -234,7 +237,7 @@ const paymentMethodOptions = [
 export default function HistorialMembresiaPage() {
   const router = useRouter();
   
-  // Estados principales
+  // ✅ ESTADOS PRINCIPALES - VERIFICADOS
   const [memberships, setMemberships] = useState<MembershipHistory[]>([]);
   const [filteredMemberships, setFilteredMemberships] = useState<MembershipHistory[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -266,11 +269,20 @@ export default function HistorialMembresiaPage() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   
-  // 🆕 ESTADOS PARA CONGELAMIENTO
+  // ✅ ESTADOS PARA CONGELAMIENTO - VERIFICADOS
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [unfreezeLoading, setUnfreezeLoading] = useState(false);
   
-  // Estados adicionales para edición
+  // 🆕 ESTADOS PARA CONGELAMIENTO MASIVO
+  const [selectedMembershipIds, setSelectedMembershipIds] = useState<string[]>([]);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkOperation, setBulkOperation] = useState<BulkOperation>({ type: 'freeze', membershipIds: [] });
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [bulkResults, setBulkResults] = useState<{ success: number; failed: number; errors: string[] }>({ success: 0, failed: 0, errors: [] });
+  
+  // Estados de edición
   const [editData, setEditData] = useState<Partial<MembershipHistory>>({});
   const [editLoading, setEditLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -278,7 +290,7 @@ export default function HistorialMembresiaPage() {
     membership: true,
     payment: true,
     dates: true,
-    freeze: false, // 🆕 Nueva sección
+    freeze: false,
     notes: false
   });
   
@@ -294,19 +306,39 @@ export default function HistorialMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    loadMemberships();
-    loadPlans();
+  // ✅ FUNCIONES MEMOIZADAS - VERIFICADAS
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
   }, []);
 
-  // Aplicar filtros
-  useEffect(() => {
-    applyFilters();
-  }, [memberships, filters]);
+  const formatDate = useCallback((dateString: string) => {
+    try {
+      return formatDateForDisplay(dateString);
+    } catch (error) {
+      console.warn('⚠️ Error al formatear fecha:', dateString, error);
+      return new Date(dateString).toLocaleDateString('es-MX', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+  }, []);
 
-  // 📊 CARGAR MEMBRESÍAS CON DATOS RELACIONADOS - ACTUALIZADA CON CAMPOS DE CONGELAMIENTO
-  const loadMemberships = async () => {
+  const getStatusColor = useCallback((status: string) => {
+    const statusOption = statusOptions.find(s => s.value === status);
+    return statusOption?.color || darkProTokens.textSecondary;
+  }, []);
+
+  const getStatusIcon = useCallback((status: string) => {
+    const statusOption = statusOptions.find(s => s.value === status);
+    return statusOption?.icon || '📋';
+  }, []);
+
+  // ✅ CARGAR DATOS INICIALES - FUNCIÓN VERIFICADA
+  const loadMemberships = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -320,10 +352,8 @@ export default function HistorialMembresiaPage() {
 
       if (error) throw error;
 
-      // Formatear datos
       const formattedData: MembershipHistory[] = (data || []).map(item => ({
         ...item,
-        // Asegurar valores por defecto para campos de congelamiento
         freeze_date: item.freeze_date || null,
         unfreeze_date: item.unfreeze_date || null,
         total_frozen_days: item.total_frozen_days || 0,
@@ -341,10 +371,9 @@ export default function HistorialMembresiaPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
-  // 📊 CARGAR PLANES
-  const loadPlans = async () => {
+  const loadPlans = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('membership_plans')
@@ -358,10 +387,9 @@ export default function HistorialMembresiaPage() {
     } catch (err: any) {
       console.error('Error al cargar planes:', err);
     }
-  };
+  }, [supabase]);
 
-  // 📈 CALCULAR ESTADÍSTICAS
-  const calculateStats = (data: MembershipHistory[]) => {
+  const calculateStats = useCallback((data: MembershipHistory[]) => {
     const stats = {
       total: data.length,
       active: data.filter(m => m.status === 'active').length,
@@ -372,13 +400,12 @@ export default function HistorialMembresiaPage() {
     };
     
     setStats(stats);
-  };
+  }, []);
 
-  // ✅ APLICAR FILTROS - CORREGIDA CON MANEJO CORRECTO DE FECHAS
-  const applyFilters = () => {
+  // ✅ APLICAR FILTROS - FUNCIÓN VERIFICADA
+  const applyFilters = useCallback(() => {
     let filtered = [...memberships];
 
-    // Búsqueda por texto
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(m => 
@@ -389,35 +416,29 @@ export default function HistorialMembresiaPage() {
       );
     }
 
-    // Filtro por estado
     if (filters.status) {
       filtered = filtered.filter(m => m.status === filters.status);
     }
 
-    // Filtro por método de pago
     if (filters.paymentMethod) {
       filtered = filtered.filter(m => m.payment_method === filters.paymentMethod);
     }
 
-    // Filtro por plan
     if (filters.planId) {
       filtered = filtered.filter(m => m.planid === filters.planId);
     }
 
-    // Filtro por renovación
     if (filters.isRenewal) {
       const isRenewal = filters.isRenewal === 'true';
       filtered = filtered.filter(m => m.is_renewal === isRenewal);
     }
 
-    // ✅ FILTRO POR FECHAS CORREGIDO CON OBJETOS DATE Y ZONA HORARIA MEXICANA
     if (filters.dateFrom) {
       const fromTime = new Date(`${filters.dateFrom}T00:00:00-06:00`).getTime();
       filtered = filtered.filter(m => {
         const membershipTime = new Date(`${m.start_date}T00:00:00-06:00`).getTime();
         return membershipTime >= fromTime;
       });
-      console.log(`📅 Filtro desde: ${filters.dateFrom} (${filtered.length} resultados)`);
     }
     
     if (filters.dateTo) {
@@ -426,43 +447,31 @@ export default function HistorialMembresiaPage() {
         const membershipTime = new Date(`${m.start_date}T00:00:00-06:00`).getTime();
         return membershipTime <= toTime;
       });
-      console.log(`📅 Filtro hasta: ${filters.dateTo} (${filtered.length} resultados)`);
     }
 
     setFilteredMemberships(filtered);
     calculateStats(filtered);
-    setPage(0); // Reset pagination
-    
-    // ✅ DEBUG ADICIONAL
-    if (filters.dateFrom || filters.dateTo) {
-      debugDateInfo('Filtros de fecha aplicados', { 
-        from: filters.dateFrom, 
-        to: filters.dateTo, 
-        results: filtered.length 
-      });
-    }
-  };
+    setPage(0);
+  }, [memberships, filters, calculateStats]);
 
-  // 🆕 FUNCIÓN PARA CONGELAR MEMBRESÍA
-  const handleFreezeMembership = async (membership: MembershipHistory) => {
+  // ✅ FUNCIONES DE CONGELAMIENTO INDIVIDUAL - VERIFICADAS
+  const handleFreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setFreezeLoading(true);
       setWarningMessage('🧊 Congelando membresía...');
       
-      // Validar si puede congelarse
       const validation = canFreezeMembership(membership);
       if (!validation.canFreeze) {
         setError(validation.reason || 'No se puede congelar esta membresía');
         return;
       }
       
-      // Ejecutar congelamiento
       const result: FreezeResult = await freezeMembership(supabase, membership.id);
       
       if (result.success) {
         setSuccessMessage(result.message);
-        loadMemberships(); // Recargar datos
-        setActionMenuAnchor(null); // Cerrar menú
+        loadMemberships();
+        setActionMenuAnchor(null);
       } else {
         setError(result.error || 'Error al congelar membresía');
       }
@@ -472,22 +481,19 @@ export default function HistorialMembresiaPage() {
     } finally {
       setFreezeLoading(false);
     }
-  };
+  }, [supabase, loadMemberships]);
 
-  // 🆕 FUNCIÓN PARA REACTIVAR MEMBRESÍA
-  const handleUnfreezeMembership = async (membership: MembershipHistory) => {
+  const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setUnfreezeLoading(true);
       setWarningMessage('🔄 Reactivando membresía...');
       
-      // Validar si puede reactivarse
       const validation = canUnfreezeMembership(membership);
       if (!validation.canUnfreeze) {
         setError(validation.reason || 'No se puede reactivar esta membresía');
         return;
       }
       
-      // Ejecutar reactivación
       const result: FreezeResult = await unfreezeMembership(
         supabase,
         membership.id,
@@ -498,8 +504,8 @@ export default function HistorialMembresiaPage() {
       
       if (result.success) {
         setSuccessMessage(result.message);
-        loadMemberships(); // Recargar datos
-        setActionMenuAnchor(null); // Cerrar menú
+        loadMemberships();
+        setActionMenuAnchor(null);
       } else {
         setError(result.error || 'Error al reactivar membresía');
       }
@@ -509,15 +515,151 @@ export default function HistorialMembresiaPage() {
     } finally {
       setUnfreezeLoading(false);
     }
-  };
+  }, [supabase, loadMemberships]);
 
-  // ✅ FUNCIÓN PARA ACTUALIZAR MEMBRESÍA - CORREGIDA CON TIMESTAMPS
-  const handleUpdateMembership = async () => {
+  // 🆕 FUNCIONES DE CONGELAMIENTO MASIVO
+  const handleSelectAllMemberships = useCallback(() => {
+    const activeMemberships = filteredMemberships
+      .filter(m => m.status === 'active')
+      .map(m => m.id);
+    setSelectedMembershipIds(activeMemberships);
+  }, [filteredMemberships]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedMembershipIds([]);
+  }, []);
+
+  const handleToggleMembershipSelection = useCallback((membershipId: string) => {
+    setSelectedMembershipIds(prev => {
+      if (prev.includes(membershipId)) {
+        return prev.filter(id => id !== membershipId);
+      } else {
+        return [...prev, membershipId];
+      }
+    });
+  }, []);
+
+  const handleBulkFreeze = useCallback(() => {
+    if (selectedMembershipIds.length === 0) {
+      setError('Seleccione al menos una membresía para congelar');
+      return;
+    }
+
+    const eligibleMemberships = filteredMemberships.filter(m => 
+      selectedMembershipIds.includes(m.id) && m.status === 'active'
+    );
+
+    if (eligibleMemberships.length === 0) {
+      setError('No hay membresías activas seleccionadas para congelar');
+      return;
+    }
+
+    setBulkOperation({
+      type: 'freeze',
+      membershipIds: eligibleMemberships.map(m => m.id)
+    });
+    setBulkDialogOpen(true);
+  }, [selectedMembershipIds, filteredMemberships]);
+
+  const handleBulkUnfreeze = useCallback(() => {
+    if (selectedMembershipIds.length === 0) {
+      setError('Seleccione al menos una membresía para reactivar');
+      return;
+    }
+
+    const eligibleMemberships = filteredMemberships.filter(m => 
+      selectedMembershipIds.includes(m.id) && m.status === 'frozen'
+    );
+
+    if (eligibleMemberships.length === 0) {
+      setError('No hay membresías congeladas seleccionadas para reactivar');
+      return;
+    }
+
+    setBulkOperation({
+      type: 'unfreeze',
+      membershipIds: eligibleMemberships.map(m => m.id)
+    });
+    setBulkDialogOpen(true);
+  }, [selectedMembershipIds, filteredMemberships]);
+
+  const executeBulkOperation = useCallback(async () => {
+    setBulkLoading(true);
+    setBulkProgress(0);
+    setBulkResults({ success: 0, failed: 0, errors: [] });
+
+    let successCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < bulkOperation.membershipIds.length; i++) {
+      const membershipId = bulkOperation.membershipIds[i];
+      const membership = memberships.find(m => m.id === membershipId);
+      
+      if (!membership) {
+        failedCount++;
+        errors.push(`Membresía ${membershipId} no encontrada`);
+        continue;
+      }
+
+      try {
+        let result: FreezeResult;
+        
+        if (bulkOperation.type === 'freeze') {
+          result = await freezeMembership(supabase, membershipId);
+        } else {
+          result = await unfreezeMembership(
+            supabase,
+            membershipId,
+            membership.freeze_date!,
+            membership.end_date,
+            membership.total_frozen_days
+          );
+        }
+
+        if (result.success) {
+          successCount++;
+        } else {
+          failedCount++;
+          errors.push(`${membership.user_name}: ${result.error || 'Error desconocido'}`);
+        }
+      } catch (err: any) {
+        failedCount++;
+        errors.push(`${membership.user_name}: ${err.message}`);
+      }
+
+      // Actualizar progreso
+      setBulkProgress(Math.round(((i + 1) / bulkOperation.membershipIds.length) * 100));
+      
+      // Pequeña pausa para evitar sobrecarga
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    setBulkResults({ success: successCount, failed: failedCount, errors });
+    setBulkLoading(false);
+    
+    // Recargar datos
+    await loadMemberships();
+    
+    // Limpiar selección
+    setSelectedMembershipIds([]);
+    setBulkMode(false);
+
+    // Mensaje de resultado
+    if (successCount > 0) {
+      setSuccessMessage(`✅ Operación masiva completada: ${successCount} exitosas, ${failedCount} fallidas`);
+    }
+    if (failedCount > 0) {
+      setWarningMessage(`⚠️ ${failedCount} operaciones fallaron. Revise los detalles.`);
+    }
+  }, [bulkOperation, memberships, supabase, loadMemberships]);
+
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN - VERIFICADA
+  const handleUpdateMembership = useCallback(async () => {
     if (!selectedMembership || !editData) return;
     
     setEditLoading(true);
     try {
-      // Validar datos requeridos
       if (editData.end_date && editData.start_date && editData.end_date <= editData.start_date) {
         setError('La fecha de fin debe ser posterior a la fecha de inicio');
         return;
@@ -528,19 +670,28 @@ export default function HistorialMembresiaPage() {
         return;
       }
 
-      // ✅ PREPARAR DATOS CON TIMESTAMP UTC CORRECTO
+      // ✅ LÓGICA DE EXTENSIÓN CORREGIDA
+      if (editData.extend_days > 0 && selectedMembership?.end_date) {
+        const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
+        currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
+        editData.end_date = currentEnd.toISOString().split('T')[0];
+        
+        const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${formatDate(getMexicoToday())}.`;
+        editData.notes = editData.notes ? `${editData.notes}\n${extensionNote}` : extensionNote;
+        
+        console.log(`🔧 Extensión aplicada: ${selectedMembership.end_date} → ${editData.end_date} (+${editData.extend_days} días)`);
+      }
+
       const updateData = {
         ...editData,
-        updated_at: createTimestampForDB() // ✅ UTC timestamp correcto
+        updated_at: createTimestampForDB()
       };
 
-      // Remover campos que no deben actualizarse directamente
       delete updateData.user_name;
       delete updateData.user_email;
       delete updateData.plan_name;
       delete updateData.created_at;
-
-      console.log('📝 Actualizando membresía con timestamp UTC:', updateData.updated_at);
+      delete updateData.extend_days; // No guardar este campo temporal
 
       const { error } = await supabase
         .from('user_memberships')
@@ -549,22 +700,20 @@ export default function HistorialMembresiaPage() {
 
       if (error) throw error;
 
-      console.log('✅ Membresía actualizada exitosamente:', selectedMembership.id);
-
       setSuccessMessage('✅ Membresía actualizada exitosamente');
       setEditDialogOpen(false);
       setEditData({});
-      loadMemberships(); // Recargar datos
+      loadMemberships();
       
     } catch (err: any) {
       setError(`Error al actualizar membresía: ${err.message}`);
     } finally {
       setEditLoading(false);
     }
-  };
+  }, [selectedMembership, editData, supabase, loadMemberships, formatDate]);
 
-  // 🎯 FUNCIÓN PARA INICIALIZAR DATOS DE EDICIÓN
-  const initializeEditData = (membership: MembershipHistory) => {
+  // ✅ INICIALIZAR DATOS DE EDICIÓN - FUNCIÓN VERIFICADA
+  const initializeEditData = useCallback((membership: MembershipHistory) => {
     setEditData({
       status: membership.status,
       start_date: membership.start_date,
@@ -574,108 +723,48 @@ export default function HistorialMembresiaPage() {
       payment_reference: membership.payment_reference,
       notes: membership.notes,
       commission_rate: membership.commission_rate,
-      commission_amount: membership.commission_amount
+      commission_amount: membership.commission_amount,
+      is_mixed_payment: membership.is_mixed_payment,
+      cash_amount: 0,
+      card_amount: 0,
+      transfer_amount: 0,
+      extend_days: 0
     });
-  };
+  }, []);
 
-  // 🔄 FUNCIÓN PARA ALTERNAR SECCIONES
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  // ✅ FUNCIÓN PARA CALCULAR DÍAS RESTANTES - CORREGIDA
-  const getDaysRemaining = (endDate: string | null) => {
+  // ✅ FUNCIONES UTILITARIAS - VERIFICADAS
+  const getDaysRemaining = useCallback((endDate: string | null) => {
     if (!endDate) return null;
     
-    // ✅ USAR FUNCIÓN CORREGIDA EN DATEUTILS
     const todayMexico = getMexicoToday();
     const daysRemaining = getDaysBetweenMexicoDates(todayMexico, endDate);
     
-    console.log(`📅 Días restantes calculados con utilidades CORREGIDAS: ${daysRemaining} (Hoy México: ${todayMexico}, Fin: ${endDate})`);
-    
-    // ✅ DEBUG ADICIONAL
-    debugDateInfo('Cálculo días restantes CORREGIDO', { today: todayMexico, end: endDate, remaining: daysRemaining });
+    debugDateInfo('Cálculo días restantes', { today: todayMexico, end: endDate, remaining: daysRemaining });
     
     return daysRemaining;
-  };
+  }, []);
 
-  // 🎨 FUNCIÓN PARA FORMATEAR DURACIÓN
-  const formatDuration = (startDate: string, endDate: string | null) => {
-    if (!endDate) return 'Sin fecha de fin';
-    
-    const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate}T23:59:59`);
-    const diffTime = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 7) return `${diffDays} días`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses`;
-    return `${Math.floor(diffDays / 365)} años`;
-  };
-
-  // 🎨 FORMATEAR PRECIO
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  };
-
-  // ✅ FORMATEAR FECHA - CORREGIDA CON UTILIDADES DE FECHA
-  const formatDate = (dateString: string) => {
-    try {
-      return formatDateForDisplay(dateString);
-    } catch (error) {
-      console.warn('⚠️ Error al formatear fecha:', dateString, error);
-      // Fallback a formato básico
-      return new Date(dateString).toLocaleDateString('es-MX', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    }
-  };
-
-  // 🎨 OBTENER COLOR DEL ESTADO
-  const getStatusColor = (status: string) => {
-    const statusOption = statusOptions.find(s => s.value === status);
-    return statusOption?.color || darkProTokens.textSecondary;
-  };
-
-  // 🎨 OBTENER ICONO DEL ESTADO
-  const getStatusIcon = (status: string) => {
-    const statusOption = statusOptions.find(s => s.value === status);
-    return statusOption?.icon || '📋';
-  };
-
-  // ✅ CAMBIAR ESTADO DE MEMBRESÍA - CORREGIDO CON TIMESTAMP
-  const handleStatusChange = async (membership: MembershipHistory, newStatus: string) => {
+  const handleStatusChange = useCallback(async (membership: MembershipHistory, newStatus: string) => {
     try {
       const { error } = await supabase
         .from('user_memberships')
         .update({ 
           status: newStatus,
-          updated_at: createTimestampForDB() // ✅ UTC timestamp correcto
+          updated_at: createTimestampForDB()
         })
         .eq('id', membership.id);
 
       if (error) throw error;
 
-      console.log(`✅ Estado cambiado a ${newStatus} con timestamp UTC`);
       setSuccessMessage(`✅ Estado cambiado a ${newStatus}`);
-      loadMemberships(); // Recargar datos
+      loadMemberships();
       
     } catch (err: any) {
       setError(`Error al cambiar estado: ${err.message}`);
     }
-  };
+  }, [supabase, loadMemberships]);
 
-  // 🗂️ LIMPIAR FILTROS
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       searchTerm: '',
       status: '',
@@ -685,13 +774,670 @@ export default function HistorialMembresiaPage() {
       planId: '',
       isRenewal: ''
     });
-  };
+  }, []);
 
-  // ✅ FUNCIONES PARA CERRAR NOTIFICACIONES
-  const handleCloseError = () => setError(null);
-  const handleCloseSuccess = () => setSuccessMessage(null);
-  const handleCloseWarning = () => setWarningMessage(null);
-  const handleCloseInfo = () => setInfoMessage(null);
+  // ✅ EFFECTS - VERIFICADOS
+  useEffect(() => {
+    loadMemberships();
+    loadPlans();
+  }, [loadMemberships, loadPlans]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  // ✅ HANDLERS DE CIERRE - VERIFICADOS
+  const handleCloseError = useCallback(() => setError(null), []);
+  const handleCloseSuccess = useCallback(() => setSuccessMessage(null), []);
+  const handleCloseWarning = useCallback(() => setWarningMessage(null), []);
+  const handleCloseInfo = useCallback(() => setInfoMessage(null), []);
+
+  // ✅ MODAL DE EDICIÓN OPTIMIZADO - VERIFICADO
+  const OptimizedEditModal = useMemo(() => {
+    if (!editDialogOpen || !selectedMembership) return null;
+
+    return (
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={() => !editLoading && setEditDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.primary}50`,
+            borderRadius: 4,
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: darkProTokens.primary, 
+          fontWeight: 800,
+          fontSize: '1.8rem',
+          textAlign: 'center',
+          pb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <EditIcon sx={{ fontSize: 40 }} />
+            Editar Registro de Venta
+          </Box>
+          <IconButton 
+            onClick={() => setEditDialogOpen(false)}
+            disabled={editLoading}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+          <Box sx={{ mt: 2 }}>
+            {/* Header del Cliente */}
+            <Card sx={{
+              background: `${darkProTokens.primary}10`,
+              border: `1px solid ${darkProTokens.primary}30`,
+              borderRadius: 3,
+              mb: 3
+            }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: '50%', 
+                    background: darkProTokens.primary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: darkProTokens.background,
+                    fontWeight: 800,
+                    fontSize: '1.5rem'
+                  }}>
+                    {selectedMembership.user_name.split(' ').map((n: string) => n[0]).join('')}
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 700
+                    }}>
+                      {selectedMembership.user_name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      📅 Registrado: {formatDate(selectedMembership.created_at)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Chip 
+                      label={selectedMembership.is_renewal ? '🔄 RENOVACIÓN' : '🆕 PRIMERA VEZ'}
+                      sx={{
+                        backgroundColor: selectedMembership.is_renewal ? darkProTokens.warning : darkProTokens.success,
+                        color: selectedMembership.is_renewal ? darkProTokens.background : darkProTokens.textPrimary,
+                        fontWeight: 700,
+                        mb: 1
+                      }}
+                    />
+                    {selectedMembership.skip_inscription && (
+                      <Chip 
+                        label="🚫 SIN INSCRIPCIÓN" 
+                        size="small"
+                        sx={{
+                          backgroundColor: darkProTokens.success,
+                          color: darkProTokens.textPrimary,
+                          fontWeight: 600,
+                          display: 'block'
+                        }}
+                      />
+                    )}
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Grid container spacing={3}>
+              {/* Estado y Método de Pago */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
+                  }}>
+                    Estado de la Membresía
+                  </InputLabel>
+                  <Select
+                    value={editData.status || selectedMembership.status}
+                    onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
+                    sx={{
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }}
+                  >
+                    {statusOptions.filter(s => s.value !== '').map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{option.icon}</span>
+                          <span>{option.label}</span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
+                  }}>
+                    Método de Pago
+                  </InputLabel>
+                  <Select
+                    value={editData.payment_method || selectedMembership.payment_method}
+                    onChange={(e) => setEditData(prev => ({ ...prev, payment_method: e.target.value }))}
+                    sx={{
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }}
+                  >
+                    {paymentMethodOptions.filter(p => p.value !== '').map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{option.icon}</span>
+                          <span>{option.label}</span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Campos para Pago Mixto */}
+              {(editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') && (
+                <>
+                  <Grid size={12}>
+                    <Alert severity="info" sx={{
+                      backgroundColor: `${darkProTokens.info}10`,
+                      color: darkProTokens.textPrimary,
+                      border: `1px solid ${darkProTokens.info}30`,
+                      '& .MuiAlert-icon': { color: darkProTokens.info }
+                    }}>
+                      💳 Pago Mixto - Configure los montos por método
+                    </Alert>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Efectivo"
+                      type="number"
+                      value={editData.cash_amount || 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, cash_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">💵</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.success}30`
+                          }
+                        }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Tarjeta"
+                      type="number"
+                      value={editData.card_amount || 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, card_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">💳</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.info}30`
+                          }
+                        }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Transferencia"
+                      type="number"
+                      value={editData.transfer_amount || 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, transfer_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">🏦</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.warning}30`
+                          }
+                        }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Box sx={{
+                      background: `${darkProTokens.primary}10`,
+                      border: `1px solid ${darkProTokens.primary}30`,
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: 'center',
+                      height: '56px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
+                    }}>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Total Mixto
+                      </Typography>
+                      <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                        {formatPrice((editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0))}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </>
+              )}
+
+              {/* Fechas */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Fecha de Inicio"
+                  type="date"
+                  value={editData.start_date || selectedMembership.start_date}
+                  onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
+                  InputLabelProps={{ 
+                    shrink: true,
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Fecha de Vencimiento"
+                  type="date"
+                  value={editData.end_date || selectedMembership.end_date || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
+                  InputLabelProps={{ 
+                    shrink: true,
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Montos y Comisiones */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Monto Total Pagado"
+                  type="number"
+                  value={editData.amount_paid || selectedMembership.amount_paid}
+                  onChange={(e) => {
+                    const amount = parseFloat(e.target.value) || 0;
+                    const commissionRate = editData.commission_rate || selectedMembership.commission_rate || 0;
+                    const commissionAmount = amount * (commissionRate / 100);
+                    setEditData(prev => ({ 
+                      ...prev, 
+                      amount_paid: amount,
+                      commission_amount: commissionAmount
+                    }));
+                  }}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">💰</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Comisión (%)"
+                  type="number"
+                  value={editData.commission_rate || selectedMembership.commission_rate || 0}
+                  onChange={(e) => {
+                    const rate = parseFloat(e.target.value) || 0;
+                    const amount = editData.amount_paid || selectedMembership.amount_paid;
+                    const commissionAmount = amount * (rate / 100);
+                    setEditData(prev => ({ 
+                      ...prev, 
+                      commission_rate: rate,
+                      commission_amount: commissionAmount
+                    }));
+                  }}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><PercentIcon sx={{ color: darkProTokens.warning }} /></InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.warning}30`
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{
+                  background: `${darkProTokens.success}10`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 2,
+                  p: 2,
+                  textAlign: 'center',
+                  height: '56px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
+                }}>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    Comisión Total
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                    {formatPrice(editData.commission_amount || selectedMembership.commission_amount || 0)}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* Referencia */}
+              <Grid size={12}>
+                <TextField
+                  fullWidth
+                  label="Referencia de Pago"
+                  value={editData.payment_reference || selectedMembership.payment_reference || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, payment_reference: e.target.value }))}
+                  placeholder="Número de autorización, SPEI, folio, etc."
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">📄</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Extensión Manual */}
+              <Grid size={12}>
+                <Card sx={{
+                  background: `${darkProTokens.info}10`,
+                  border: `1px solid ${darkProTokens.info}30`,
+                  borderRadius: 3,
+                  mt: 2
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info,
+                      fontWeight: 700,
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <AcUnitIcon />
+                      📅 Extensión Manual de Vigencia
+                    </Typography>
+
+                    <Grid container spacing={3}>
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.grayDark}10`,
+                          border: `1px solid ${darkProTokens.grayDark}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Días Congelados Históricos
+                          </Typography>
+                          <Typography variant="h6" sx={{ 
+                            color: darkProTokens.info,
+                            fontWeight: 700
+                          }}>
+                            🧊 {selectedMembership.total_frozen_days || 0} días
+                          </Typography>
+                        </Box>
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.grayDark}10`,
+                          border: `1px solid ${darkProTokens.grayDark}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Vencimiento Actual
+                          </Typography>
+                          <Typography variant="body1" sx={{ 
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600
+                          }}>
+                            📅 {selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <TextField
+                          fullWidth
+                          label="Días a Extender"
+                          type="number"
+                          value={editData.extend_days || 0}
+                          onChange={(e) => setEditData(prev => ({ ...prev, extend_days: parseInt(e.target.value) || 0 }))}
+                          placeholder="Ej: 1"
+                          helperText="Solo extiende la fecha de vencimiento"
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">📅</InputAdornment>,
+                            sx: {
+                              color: darkProTokens.textPrimary,
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: `${darkProTokens.info}30`
+                              }
+                            }
+                          }}
+                          FormHelperTextProps={{
+                            sx: { color: darkProTokens.textSecondary }
+                          }}
+                        />
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.primary}10`,
+                          border: `1px solid ${darkProTokens.primary}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Nueva Fecha de Vencimiento
+                          </Typography>
+                          <Typography variant="body1" sx={{ 
+                            color: darkProTokens.primary,
+                            fontWeight: 700
+                          }}>
+                            📅 {(() => {
+                              if (!selectedMembership.end_date || !editData.extend_days) {
+                                return selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha';
+                              }
+                              const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
+                              currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
+                              return formatDate(currentEnd.toISOString().split('T')[0]);
+                            })()}
+                          </Typography>
+                        </Box>
+                      </Grid>
+
+                      {editData.extend_days > 0 && (
+                        <Grid size={12}>
+                          <Alert 
+                            severity="success"
+                            sx={{
+                              backgroundColor: `${darkProTokens.success}10`,
+                              color: darkProTokens.textPrimary,
+                              border: `1px solid ${darkProTokens.success}30`,
+                              '& .MuiAlert-icon': { color: darkProTokens.success }
+                            }}
+                          >
+                            <Typography variant="body2">
+                              <strong>📅 Extensión de Vigencia:</strong> Se extenderá la fecha de vencimiento por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}.<br/>
+                              <strong>🧊 Diferencia con congelamiento:</strong> Esto NO se registra como días congelados, solo extiende la vigencia manualmente.
+                            </Typography>
+                          </Alert>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Notas */}
+              <Grid size={12}>
+                <TextField
+                  fullWidth
+                  label="Notas del Registro"
+                  multiline
+                  rows={3}
+                  value={editData.notes || selectedMembership.notes || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Observaciones sobre esta venta, correcciones realizadas, etc..."
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            {/* Alerta de Confirmación */}
+            <Alert 
+              severity="warning"
+              sx={{
+                mt: 3,
+                backgroundColor: `${darkProTokens.warning}10`,
+                color: darkProTokens.textPrimary,
+                border: `1px solid ${darkProTokens.warning}30`,
+                '& .MuiAlert-icon': { color: darkProTokens.warning }
+              }}
+            >
+              <Typography variant="body2">
+                <strong>⚠️ Edición de Registro:</strong> Solo modifique datos para corregir errores en el registro original.
+                {editData.extend_days > 0 && (
+                  <>
+                    <br/><strong>📅 Extensión Manual:</strong> Se extenderá la vigencia por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''} (no cuenta como congelamiento).
+                  </>
+                )}
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => setEditDialogOpen(false)}
+            disabled={editLoading}
+            sx={{ 
+              color: darkProTokens.textSecondary,
+              borderColor: darkProTokens.grayDark,
+              px: 3,
+              py: 1
+            }}
+            variant="outlined"
+          >
+            Cancelar
+          </Button>
+          
+          <Button 
+            onClick={handleUpdateMembership}
+            disabled={editLoading}
+            variant="contained"
+            startIcon={editLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
+            sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+              color: darkProTokens.background,
+              fontWeight: 700,
+              px: 4,
+              py: 1,
+              '&:hover': {
+                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                transform: 'translateY(-1px)'
+              }
+            }}
+          >
+            {editLoading ? 'Guardando...' : 'Guardar Correcciones'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }, [editDialogOpen, selectedMembership, editData, editLoading, formatDate, formatPrice, handleUpdateMembership]);
 
   return (
     <Box sx={{ 
@@ -700,7 +1446,7 @@ export default function HistorialMembresiaPage() {
       minHeight: '100vh',
       color: darkProTokens.textPrimary
     }}>
-      {/* ✅ SNACKBARS CON DARK PRO SYSTEM */}
+      {/* ✅ SNACKBARS - VERIFICADOS */}
       <Snackbar 
         open={!!error} 
         autoHideDuration={8000} 
@@ -742,7 +1488,7 @@ export default function HistorialMembresiaPage() {
             color: darkProTokens.textPrimary,
             border: `1px solid ${darkProTokens.success}60`,
             borderRadius: 3,
-            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
+                        boxShadow: `0 8px 32px ${darkProTokens.success}40`,
             backdropFilter: 'blur(20px)',
             fontWeight: 600,
             '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
@@ -805,653 +1551,989 @@ export default function HistorialMembresiaPage() {
         </Alert>
       </Snackbar>
 
-      {/* 🎯 HEADER MINIMALISTA CON DARK PRO SYSTEM */}
+      {/* ✅ HEADER ENTERPRISE - VERIFICADO */}
       <Paper sx={{
-        p: 3,
-        mb: 3,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 3,
-        backdropFilter: 'blur(10px)'
+        p: 4,
+        mb: 4,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}98, ${darkProTokens.surfaceLevel3}95)`,
+        border: `2px solid ${darkProTokens.primary}30`,
+        borderRadius: 4,
+        boxShadow: `0 8px 32px ${darkProTokens.primary}10`
       }}>
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          mb: 3,
-          flexWrap: 'wrap',
-          gap: 2
+          mb: 3
         }}>
           <Box>
-            <Typography variant="h4" sx={{ 
+            <Typography variant="h3" sx={{ 
               color: darkProTokens.primary, 
-              fontWeight: 700,
+              fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
               gap: 2,
-              textShadow: `0 0 20px ${darkProTokens.primary}40`
+              mb: 1
             }}>
-              <HistoryIcon sx={{ fontSize: 40, color: darkProTokens.primary }} />
-              Historial de Membresías
+              <HistoryIcon sx={{ fontSize: 50 }} />
+              Sistema de Historial de Membresías
             </Typography>
-            <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
-              Gestión completa del historial de membresías y pagos con sistema de congelamiento inteligente
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.textSecondary,
+              fontWeight: 300
+            }}>
+              Gestión Integral | Congelamiento Inteligente | Control Masivo
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Stack direction="row" spacing={2}>
             <Button
-              startIcon={<ArrowBackIcon />}
-              onClick={() => {
-                setInfoMessage('🔄 Regresando al dashboard...');
-                router.push('/dashboard/admin/membresias');
+              startIcon={<RefreshIcon />}
+              onClick={loadMemberships}
+              disabled={loading}
+              sx={{ 
+                color: darkProTokens.info,
+                borderColor: `${darkProTokens.info}60`,
+                px: 3,
+                py: 1.5,
+                borderRadius: 3,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.info,
+                  backgroundColor: `${darkProTokens.info}10`,
+                  transform: 'translateY(-2px)'
+                }
               }}
               variant="outlined"
-              sx={{ 
-                color: darkProTokens.primary,
-                borderColor: `${darkProTokens.primary}60`,
-                '&:hover': {
-                  borderColor: darkProTokens.primary,
-                  bgcolor: `${darkProTokens.primary}10`,
-                  transform: 'translateY(-1px)',
-                  boxShadow: `0 4px 15px ${darkProTokens.primary}30`
-                },
-                borderWidth: '2px',
-                fontWeight: 600,
-                transition: 'all 0.3s ease'
-              }}
+              size="large"
             >
-              Dashboard
+              {loading ? 'Cargando...' : 'Actualizar'}
             </Button>
             
             <Button
-              startIcon={<RefreshIcon />}
-              onClick={() => {
-                setInfoMessage('🔄 Actualizando historial...');
-                loadMemberships();
-              }}
-              variant="contained"
-              disabled={loading}
-              sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-                fontWeight: 600,
+              startIcon={<ArrowBackIcon />}
+              onClick={() => router.push('/dashboard/admin/membresias')}
+              sx={{ 
+                color: darkProTokens.primary,
+                borderColor: `${darkProTokens.primary}60`,
                 px: 3,
-                borderRadius: 2,
-                boxShadow: `0 4px 20px ${darkProTokens.success}40`,
+                py: 1.5,
+                borderRadius: 3,
+                fontWeight: 600,
                 '&:hover': {
-                  background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 6px 25px ${darkProTokens.success}50`
-                },
-                transition: 'all 0.3s ease'
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}10`,
+                  transform: 'translateY(-2px)'
+                }
               }}
+              variant="outlined"
+              size="large"
             >
-              Actualizar
+              Dashboard
             </Button>
-          </Box>
+          </Stack>
         </Box>
 
-        {/* 📊 ESTADÍSTICAS DARK PRO */}
+        {/* ✅ ESTADÍSTICAS ENTERPRISE - VERIFICADAS */}
         <Grid container spacing={3}>
-          <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
-              border: `1px solid ${darkProTokens.primary}30`,
-              borderRadius: 3,
-              transition: 'all 0.3s ease',
-              '&:hover': { transform: 'translateY(-2px)' }
-            }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <GroupIcon sx={{ color: darkProTokens.primary, fontSize: 30, mb: 1 }} />
-                <Typography variant="h4" sx={{ color: darkProTokens.primary, fontWeight: 800 }}>
-                  {stats.total}
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  Total
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.success}20, ${darkProTokens.success}10)`,
-              border: `1px solid ${darkProTokens.success}30`,
-              borderRadius: 3,
-              transition: 'all 0.3s ease',
-              '&:hover': { transform: 'translateY(-2px)' }
-            }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <CheckCircleIcon sx={{ color: darkProTokens.success, fontSize: 30, mb: 1 }} />
-                <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 800 }}>
-                  {stats.active}
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  Activas
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.error}20, ${darkProTokens.error}10)`,
-              border: `1px solid ${darkProTokens.error}30`,
-              borderRadius: 3,
-              transition: 'all 0.3s ease',
-              '&:hover': { transform: 'translateY(-2px)' }
-            }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <CancelIcon sx={{ color: darkProTokens.error, fontSize: 30, mb: 1 }} />
-                <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 800 }}>
-                  {stats.expired}
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  Vencidas
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
               border: `1px solid ${darkProTokens.info}30`,
               borderRadius: 3,
-              transition: 'all 0.3s ease',
-              '&:hover': { transform: 'translateY(-2px)' }
+              textAlign: 'center',
+              p: 2
             }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <AcUnitIcon sx={{ color: darkProTokens.info, fontSize: 30, mb: 1 }} />
-                <Typography variant="h4" sx={{ color: darkProTokens.info, fontWeight: 800 }}>
-                  {stats.frozen}
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  Congeladas
-                </Typography>
-              </CardContent>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.info, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <GroupIcon />
+                {stats.total}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Total Membresías
+              </Typography>
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.success}20, ${darkProTokens.success}10)`,
+              border: `1px solid ${darkProTokens.success}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.success, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <CheckCircleIcon />
+                {stats.active}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Activas
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
+              border: `1px solid ${darkProTokens.info}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.info, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <AcUnitIcon />
+                {stats.frozen}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Congeladas
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.error}20, ${darkProTokens.error}10)`,
+              border: `1px solid ${darkProTokens.error}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.error, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <CancelIcon />
+                {stats.expired}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Vencidas
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
+              border: `1px solid ${darkProTokens.primary}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h5" sx={{ 
+                color: darkProTokens.primary, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <AttachMoneyIcon />
+                {formatPrice(stats.totalRevenue).replace('MX$', '$')}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Ingresos Totales
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.warning}20, ${darkProTokens.warning}10)`,
               border: `1px solid ${darkProTokens.warning}30`,
               borderRadius: 3,
-              transition: 'all 0.3s ease',
-              '&:hover': { transform: 'translateY(-2px)' }
+              textAlign: 'center',
+              p: 2
             }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <AttachMoneyIcon sx={{ color: darkProTokens.warning, fontSize: 30, mb: 1 }} />
-                <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 800 }}>
-                  {formatPrice(stats.totalRevenue)}
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  Ingresos
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.roleModerator}20, ${darkProTokens.roleModerator}10)`,
-              border: `1px solid ${darkProTokens.roleModerator}30`,
-              borderRadius: 3,
-              transition: 'all 0.3s ease',
-              '&:hover': { transform: 'translateY(-2px)' }
-            }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <TrendingUpIcon sx={{ color: darkProTokens.roleModerator, fontSize: 30, mb: 1 }} />
-                <Typography variant="h6" sx={{ color: darkProTokens.roleModerator, fontWeight: 800 }}>
-                  {formatPrice(stats.totalCommissions)}
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  Comisiones
-                </Typography>
-              </CardContent>
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.warning, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <TrendingUpIcon />
+                {formatPrice(stats.totalCommissions).replace('MX$', '$')}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Comisiones
+              </Typography>
             </Card>
           </Grid>
         </Grid>
       </Paper>
 
-      {/* Panel de Filtros [IGUAL QUE ANTES] */}
-      <Card sx={{
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 3,
-        mb: 3
-      }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            mb: showFilters ? 3 : 0
-          }}>
-            <Typography variant="h6" sx={{ 
-              color: darkProTokens.primary, 
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2
+      {/* 🆕 BARRA DE CONGELAMIENTO MASIVO */}
+      <AnimatePresence>
+        {bulkMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Paper sx={{
+              p: 3,
+              mb: 3,
+              background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
+              border: `2px solid ${darkProTokens.info}40`,
+              borderRadius: 4,
+              boxShadow: `0 8px 32px ${darkProTokens.info}20`
             }}>
-              <FilterListIcon />
-              Filtros de Búsqueda
-              {(filters.searchTerm || filters.status || filters.paymentMethod || filters.planId) && (
-                <Badge 
-                  badgeContent="●" 
-                  color="primary"
-                  sx={{ '& .MuiBadge-badge': { backgroundColor: darkProTokens.primary } }}
-                />
-              )}
-            </Typography>
-            
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <BatchIcon sx={{ color: darkProTokens.info, fontSize: 30 }} />
+                  <Box>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info, 
+                      fontWeight: 700 
+                    }}>
+                      🧊 Modo Congelamiento Masivo Activado
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      {selectedMembershipIds.length} membresías seleccionadas
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Stack direction="row" spacing={2}>
+                  <Button
+                    startIcon={<SelectAllIcon />}
+                    onClick={handleSelectAllMemberships}
+                    sx={{ 
+                      color: darkProTokens.info,
+                      borderColor: `${darkProTokens.info}60`,
+                      px: 3,
+                      fontWeight: 600,
+                      '&:hover': {
+                        borderColor: darkProTokens.info,
+                        backgroundColor: `${darkProTokens.info}10`
+                      }
+                    }}
+                    variant="outlined"
+                    size="small"
+                  >
+                    Seleccionar Activas
+                  </Button>
+
+                  <Button
+                    startIcon={<ClearAllIcon />}
+                    onClick={handleClearSelection}
+                    sx={{ 
+                      color: darkProTokens.textSecondary,
+                      borderColor: `${darkProTokens.textSecondary}40`,
+                      px: 3,
+                      fontWeight: 600,
+                      '&:hover': {
+                        borderColor: darkProTokens.textSecondary,
+                        backgroundColor: `${darkProTokens.textSecondary}10`
+                      }
+                    }}
+                    variant="outlined"
+                    size="small"
+                  >
+                    Limpiar
+                  </Button>
+
+                  <Button
+                    startIcon={<FreezeIcon />}
+                    onClick={handleBulkFreeze}
+                    disabled={selectedMembershipIds.length === 0}
+                    sx={{ 
+                      color: darkProTokens.textPrimary,
+                      backgroundColor: darkProTokens.info,
+                      px: 3,
+                      fontWeight: 700,
+                      '&:hover': {
+                        backgroundColor: darkProTokens.infoHover,
+                        transform: 'translateY(-2px)'
+                      },
+                      '&:disabled': {
+                        backgroundColor: `${darkProTokens.info}30`,
+                        color: `${darkProTokens.textPrimary}50`
+                      }
+                    }}
+                    variant="contained"
+                    size="small"
+                  >
+                    Congelar Seleccionadas
+                  </Button>
+
+                  <Button
+                    startIcon={<UnfreezeIcon />}
+                    onClick={handleBulkUnfreeze}
+                    disabled={selectedMembershipIds.length === 0}
+                    sx={{ 
+                      color: darkProTokens.textPrimary,
+                      backgroundColor: darkProTokens.success,
+                      px: 3,
+                      fontWeight: 700,
+                      '&:hover': {
+                        backgroundColor: darkProTokens.successHover,
+                        transform: 'translateY(-2px)'
+                      },
+                      '&:disabled': {
+                        backgroundColor: `${darkProTokens.success}30`,
+                        color: `${darkProTokens.textPrimary}50`
+                      }
+                    }}
+                    variant="contained"
+                    size="small"
+                  >
+                    Reactivar Seleccionadas
+                  </Button>
+
+                  <Button
+                    startIcon={<CloseIcon />}
+                    onClick={() => {
+                      setBulkMode(false);
+                      setSelectedMembershipIds([]);
+                    }}
+                    sx={{ 
+                      color: darkProTokens.error,
+                      borderColor: `${darkProTokens.error}60`,
+                      px: 3,
+                      fontWeight: 600,
+                      '&:hover': {
+                        borderColor: darkProTokens.error,
+                        backgroundColor: `${darkProTokens.error}10`
+                      }
+                    }}
+                    variant="outlined"
+                    size="small"
+                  >
+                    Salir
+                  </Button>
+                </Stack>
+              </Box>
+            </Paper>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ✅ CONTROLES Y FILTROS - VERIFICADOS */}
+      <Paper sx={{
+        p: 3,
+        mb: 3,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}95, ${darkProTokens.surfaceLevel3}90)`,
+        border: `1px solid ${darkProTokens.primary}20`,
+        borderRadius: 4
+      }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ 
+            color: darkProTokens.primary, 
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <SearchIcon />
+            Búsqueda y Filtros Avanzados
+          </Typography>
+
+          <Stack direction="row" spacing={2}>
+            {!bulkMode && (
+              <Button
+                startIcon={<BatchIcon />}
+                onClick={() => setBulkMode(true)}
+                sx={{ 
+                  color: darkProTokens.info,
+                  backgroundColor: `${darkProTokens.info}15`,
+                  borderColor: `${darkProTokens.info}40`,
+                  px: 3,
+                  py: 1,
+                  fontWeight: 700,
+                  '&:hover': {
+                    backgroundColor: `${darkProTokens.info}20`,
+                    borderColor: darkProTokens.info,
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+                variant="outlined"
+              >
+                Congelamiento Masivo
+              </Button>
+            )}
+
             <Button
+              startIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               onClick={() => setShowFilters(!showFilters)}
               sx={{ 
                 color: darkProTokens.primary,
-                fontWeight: 600
+                borderColor: `${darkProTokens.primary}60`,
+                px: 3,
+                py: 1,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}10`
+                }
               }}
+              variant="outlined"
             >
-              {showFilters ? 'Ocultar' : 'Mostrar'} Filtros
+              {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
             </Button>
-          </Box>
+          </Stack>
+        </Box>
 
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <TextField
-                      fullWidth
-                      label="Buscar"
-                      value={filters.searchTerm}
-                      onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
-                      placeholder="Cliente, email, plan, referencia..."
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon sx={{ color: darkProTokens.primary }} />
-                          </InputAdornment>
-                        ),
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                    />
-                  </Grid>
+        {/* Búsqueda rápida */}
+        <TextField
+          fullWidth
+          placeholder="Buscar por nombre, email, plan o referencia de pago..."
+          value={filters.searchTerm}
+          onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: darkProTokens.primary }} />
+              </InputAdornment>
+            ),
+            sx: {
+              color: darkProTokens.textPrimary,
+              backgroundColor: `${darkProTokens.grayDark}20`,
+              fontSize: '1.1rem',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: `${darkProTokens.primary}30`,
+                borderWidth: 2
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: darkProTokens.primary
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: darkProTokens.primary
+              }
+            }
+          }}
+          sx={{ mb: 3 }}
+        />
 
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <FormControl fullWidth>
-                      <InputLabel sx={{ 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }}>
-                        Estado
-                      </InputLabel>
-                      <Select
-                        value={filters.status}
-                        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                        sx={{
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }}
-                      >
-                        {statusOptions.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <span>{option.icon}</span>
-                              <span>{option.label}</span>
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <FormControl fullWidth>
-                      <InputLabel sx={{ 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }}>
-                        Método de Pago
-                      </InputLabel>
-                      <Select
-                        value={filters.paymentMethod}
-                        onChange={(e) => setFilters(prev => ({ ...prev, paymentMethod: e.target.value }))}
-                        sx={{
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }}
-                      >
-                        {paymentMethodOptions.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <span>{option.icon}</span>
-                              <span>{option.label}</span>
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <FormControl fullWidth>
-                      <InputLabel sx={{ 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }}>
-                        Plan
-                      </InputLabel>
-                      <Select
-                        value={filters.planId}
-                        onChange={(e) => setFilters(prev => ({ ...prev, planId: e.target.value }))}
-                        sx={{
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }}
-                      >
-                        <MenuItem value="">
-                          Todos los planes
-                        </MenuItem>
-                        {plans.map((plan) => (
-                          <MenuItem key={plan.id} value={plan.id}>
-                            {plan.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <Button
-                      fullWidth
-                      onClick={clearFilters}
+        {/* Filtros avanzados */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Estado
+                    </InputLabel>
+                    <Select
+                      value={filters.status}
+                      onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                       sx={{
-                        color: darkProTokens.textSecondary,
-                        borderColor: darkProTokens.grayDark,
-                        height: '56px',
-                        '&:hover': {
-                          borderColor: darkProTokens.textSecondary,
-                          backgroundColor: darkProTokens.hoverOverlay
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
                         }
                       }}
-                      variant="outlined"
                     >
-                      Limpiar Filtros
-                    </Button>
-                  </Grid>
+                      {statusOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <span>{option.icon}</span>
+                            <span>{option.label}</span>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </CardContent>
-      </Card>
 
-      {/* Tabla de Membresías - ACTUALIZADA CON INDICADORES DE CONGELAMIENTO */}
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Método de Pago
+                    </InputLabel>
+                    <Select
+                      value={filters.paymentMethod}
+                      onChange={(e) => setFilters(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                      sx={{
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }}
+                    >
+                      {paymentMethodOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <span>{option.icon}</span>
+                            <span>{option.label}</span>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Plan
+                    </InputLabel>
+                    <Select
+                      value={filters.planId}
+                      onChange={(e) => setFilters(prev => ({ ...prev, planId: e.target.value }))}
+                      sx={{
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }}
+                    >
+                      <MenuItem value="">Todos los planes</MenuItem>
+                      {plans.map((plan) => (
+                        <MenuItem key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Tipo de Venta
+                    </InputLabel>
+                    <Select
+                      value={filters.isRenewal}
+                      onChange={(e) => setFilters(prev => ({ ...prev, isRenewal: e.target.value }))}
+                      sx={{
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }}
+                    >
+                      <MenuItem value="">Todos los tipos</MenuItem>
+                      <MenuItem value="false">🆕 Primera vez</MenuItem>
+                      <MenuItem value="true">🔄 Renovación</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Fecha desde"
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                    InputLabelProps={{ 
+                      shrink: true,
+                      sx: { 
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
+                      }
+                    }}
+                    InputProps={{
+                      sx: {
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }
+                    }}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Fecha hasta"
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                    InputLabelProps={{ 
+                      shrink: true,
+                      sx: { 
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
+                      }
+                    }}
+                    InputProps={{
+                      sx: {
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+
+              <Box sx={{ mt: 3, textAlign: 'right' }}>
+                <Button
+                  onClick={clearFilters}
+                  sx={{ 
+                    color: darkProTokens.textSecondary,
+                    mr: 2,
+                    '&:hover': {
+                      backgroundColor: `${darkProTokens.textSecondary}10`
+                    }
+                  }}
+                >
+                  Limpiar Filtros
+                </Button>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Paper>
+
+      {/* ✅ TABLA PRINCIPAL - VERIFICADA */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 3
+        border: `1px solid ${darkProTokens.primary}20`,
+        borderRadius: 4,
+        overflow: 'hidden'
       }}>
         <CardContent sx={{ p: 0 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress sx={{ color: darkProTokens.primary }} size={60} />
+              <CircularProgress 
+                size={60} 
+                sx={{ color: darkProTokens.primary }}
+                thickness={4}
+              />
+            </Box>
+          ) : filteredMemberships.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h5" sx={{ 
+                color: darkProTokens.textSecondary,
+                mb: 2
+              }}>
+                📋 No se encontraron membresías
+              </Typography>
+              <Typography variant="body1" sx={{ 
+                color: darkProTokens.textSecondary
+              }}>
+                Intente ajustar los filtros de búsqueda
+              </Typography>
             </Box>
           ) : (
             <>
               <TableContainer>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: `${darkProTokens.primary}10` }}>
-                      <TableCell sx={{ 
-                        color: darkProTokens.primary, 
-                        fontWeight: 700, 
-                        borderBottom: `1px solid ${darkProTokens.primary}30`,
-                        fontSize: '1rem'
-                      }}>
-                        Cliente
-                      </TableCell>
-                      <TableCell sx={{ 
-                        color: darkProTokens.primary, 
-                        fontWeight: 700, 
-                        borderBottom: `1px solid ${darkProTokens.primary}30`,
-                        fontSize: '1rem'
-                      }}>
-                        Plan
-                      </TableCell>
-                      <TableCell sx={{ 
-                        color: darkProTokens.primary, 
-                        fontWeight: 700, 
-                        borderBottom: `1px solid ${darkProTokens.primary}30`,
-                        fontSize: '1rem'
-                      }}>
-                        Estado
-                      </TableCell>
-                      <TableCell sx={{ 
-                        color: darkProTokens.primary, 
-                        fontWeight: 700, 
-                        borderBottom: `1px solid ${darkProTokens.primary}30`,
-                        fontSize: '1rem'
-                      }}>
-                        Fechas
-                      </TableCell>
-                      <TableCell sx={{ 
-                        color: darkProTokens.primary, 
-                        fontWeight: 700, 
-                        borderBottom: `1px solid ${darkProTokens.primary}30`,
-                        fontSize: '1rem'
-                      }}>
-                        Pago
-                      </TableCell>
-                      <TableCell sx={{ 
-                        color: darkProTokens.primary, 
-                        fontWeight: 700, 
-                        borderBottom: `1px solid ${darkProTokens.primary}30`,
-                        fontSize: '1rem'
-                      }}>
-                        Total
-                      </TableCell>
-                      <TableCell sx={{ 
-                        color: darkProTokens.primary, 
-                        fontWeight: 700, 
-                        borderBottom: `1px solid ${darkProTokens.primary}30`,
-                        fontSize: '1rem',
-                        textAlign: 'center'
-                      }}>
-                        Acciones
-                      </TableCell>
+                    <TableRow sx={{ backgroundColor: `${darkProTokens.grayDark}30` }}>
+                      {bulkMode && (
+                        <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, width: 50 }}>
+                          <Checkbox
+                            checked={selectedMembershipIds.length === filteredMemberships.filter(m => m.status === 'active' || m.status === 'frozen').length && selectedMembershipIds.length > 0}
+                            indeterminate={selectedMembershipIds.length > 0 && selectedMembershipIds.length < filteredMemberships.filter(m => m.status === 'active' || m.status === 'frozen').length}
+                            onChange={() => {
+                              const eligibleIds = filteredMemberships
+                                .filter(m => m.status === 'active' || m.status === 'frozen')
+                                .map(m => m.id);
+                              
+                              if (selectedMembershipIds.length === eligibleIds.length) {
+                                setSelectedMembershipIds([]);
+                              } else {
+                                setSelectedMembershipIds(eligibleIds);
+                              }
+                            }}
+                            sx={{
+                              color: darkProTokens.primary,
+                              '&.Mui-checked': { color: darkProTokens.primary },
+                              '&.MuiCheckbox-indeterminate': { color: darkProTokens.warning }
+                            }}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Cliente</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Plan</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Estado</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Vigencia</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Pago</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Congelamiento</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {filteredMemberships
                       .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                      .map((membership) => (
+                      .map((membership, index) => (
                         <TableRow 
                           key={membership.id}
                           sx={{ 
                             '&:hover': { 
-                              backgroundColor: darkProTokens.hoverOverlay
+                              backgroundColor: `${darkProTokens.primary}05` 
                             },
-                            borderBottom: `1px solid ${darkProTokens.grayDark}`
+                            backgroundColor: selectedMembershipIds.includes(membership.id) ? 
+                              `${darkProTokens.info}10` : 'transparent'
                           }}
                         >
-                          <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
+                          {bulkMode && (
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedMembershipIds.includes(membership.id)}
+                                onChange={() => handleToggleMembershipSelection(membership.id)}
+                                disabled={membership.status !== 'active' && membership.status !== 'frozen'}
+                                sx={{
+                                  color: darkProTokens.primary,
+                                  '&.Mui-checked': { color: darkProTokens.primary },
+                                  '&.Mui-disabled': { color: darkProTokens.textDisabled }
+                                }}
+                              />
+                            </TableCell>
+                          )}
+                          
+                          <TableCell>
                             <Box>
-                              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              <Typography variant="body1" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 600
+                              }}>
                                 {membership.user_name}
                               </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                              <Typography variant="caption" sx={{ 
+                                color: darkProTokens.textSecondary
+                              }}>
                                 {membership.user_email}
                               </Typography>
-                              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 500
+                              }}>
+                                {membership.plan_name}
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                                <Chip 
+                                  label={membership.payment_type.toUpperCase()}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: `${darkProTokens.info}20`,
+                                    color: darkProTokens.info,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600
+                                  }}
+                                />
                                 {membership.is_renewal && (
                                   <Chip 
-                                    label="🔄 Renovación" 
+                                    label="🔄 RENO"
                                     size="small"
                                     sx={{
-                                      backgroundColor: darkProTokens.warning,
-                                      color: darkProTokens.background,
-                                      fontWeight: 600,
-                                      fontSize: '0.7rem'
-                                    }}
-                                  />
-                                )}
-                                {/* 🆕 INDICADOR DE CONGELAMIENTO */}
-                                {membership.total_frozen_days > 0 && (
-                                  <Chip 
-                                    label={`🧊 ${membership.total_frozen_days}d`} 
-                                    size="small"
-                                    sx={{
-                                      backgroundColor: darkProTokens.info,
-                                      color: darkProTokens.textPrimary,
-                                      fontWeight: 600,
-                                      fontSize: '0.7rem'
+                                      backgroundColor: `${darkProTokens.warning}20`,
+                                      color: darkProTokens.warning,
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600
                                     }}
                                   />
                                 )}
                               </Box>
                             </Box>
                           </TableCell>
-                          
-                          <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
-                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                              {membership.plan_name}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                              {membership.payment_type}
-                            </Typography>
-                          </TableCell>
-                          
-                          <TableCell sx={{ borderBottom: 'none' }}>
+
+                          <TableCell>
                             <Chip 
                               label={`${getStatusIcon(membership.status)} ${membership.status.toUpperCase()}`}
                               sx={{
                                 backgroundColor: getStatusColor(membership.status),
                                 color: darkProTokens.textPrimary,
-                                fontWeight: 600
+                                fontWeight: 600,
+                                minWidth: 100
                               }}
                             />
-                            {/* 🆕 INFORMACIÓN ADICIONAL PARA CONGELADAS */}
-                            {membership.status === 'frozen' && membership.freeze_date && (
-                              <Typography variant="caption" sx={{ 
-                                color: darkProTokens.info,
-                                display: 'block',
-                                mt: 0.5
-                              }}>
-                                Desde: {formatDate(membership.freeze_date)}
-                              </Typography>
-                            )}
                           </TableCell>
-                          
-                          <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
+
+                          <TableCell>
                             <Box>
-                              <Typography variant="body2">
+                              <Typography variant="body2" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 500
+                              }}>
                                 📅 {formatDate(membership.start_date)}
                               </Typography>
-                              {membership.end_date && (
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                  → {formatDate(membership.end_date)}
-                                </Typography>
-                              )}
-                              {/* 🆕 MOSTRAR FECHA PROYECTADA PARA CONGELADAS */}
-                              {membership.status === 'frozen' && membership.freeze_date && (
+                              {membership.end_date ? (
                                 <Typography variant="caption" sx={{ 
-                                  color: darkProTokens.warning,
-                                  display: 'block'
+                                  color: (() => {
+                                    const daysRemaining = getDaysRemaining(membership.end_date);
+                                    if (daysRemaining === null) return darkProTokens.textSecondary;
+                                    if (daysRemaining < 0) return darkProTokens.error;
+                                    if (daysRemaining < 7) return darkProTokens.warning;
+                                    return darkProTokens.success;
+                                  })()
                                 }}>
-                                  Proyectada: {formatDate(getProjectedEndDate(membership.end_date, membership.freeze_date) || membership.end_date || '')}
+                                  🏁 {(() => {
+                                    const daysRemaining = getDaysRemaining(membership.end_date!);
+                                    if (daysRemaining === null) return 'Sin límite';
+                                    if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
+                                    if (daysRemaining === 0) return 'Vence hoy';
+                                    return `${daysRemaining} días restantes`;
+                                  })()}
+                                </Typography>
+                              ) : (
+                                <Typography variant="caption" sx={{ 
+                                  color: darkProTokens.success
+                                }}>
+                                  ♾️ Sin vencimiento
                                 </Typography>
                               )}
                             </Box>
                           </TableCell>
-                          
-                          <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
+
+                          <TableCell>
                             <Box>
-                              <Typography variant="body2">
+                              <Typography variant="body1" sx={{ 
+                                color: darkProTokens.primary,
+                                fontWeight: 700
+                              }}>
+                                {formatPrice(membership.amount_paid)}
+                              </Typography>
+                              <Typography variant="caption" sx={{ 
+                                color: darkProTokens.textSecondary
+                              }}>
                                 {paymentMethodOptions.find(p => p.value === membership.payment_method)?.icon} {membership.payment_method}
                               </Typography>
-                              {membership.payment_reference && (
-                                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                  Ref: {membership.payment_reference}
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Box>
+                              {membership.status === 'frozen' ? (
+                                <Box>
+                                  <Chip 
+                                    label={`🧊 ${getCurrentFrozenDays(membership.freeze_date)} días`}
+                                    size="small"
+                                    sx={{
+                                      backgroundColor: `${darkProTokens.info}20`,
+                                      color: darkProTokens.info,
+                                      fontWeight: 600,
+                                      mb: 0.5
+                                    }}
+                                  />
+                                  <Typography variant="caption" sx={{ 
+                                    color: darkProTokens.textSecondary,
+                                    display: 'block'
+                                  }}>
+                                    Total: {membership.total_frozen_days} días
+                                  </Typography>
+                                </Box>
+                              ) : membership.total_frozen_days > 0 ? (
+                                <Chip 
+                                  label={`🧊 ${membership.total_frozen_days} días`}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: `${darkProTokens.success}20`,
+                                    color: darkProTokens.success,
+                                    fontWeight: 600
+                                  }}
+                                />
+                              ) : (
+                                <Typography variant="caption" sx={{ 
+                                  color: darkProTokens.textSecondary
+                                }}>
+                                  Sin historial
                                 </Typography>
                               )}
                             </Box>
                           </TableCell>
-                          
-                          <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 700, color: darkProTokens.primary }}>
-                              {formatPrice(membership.amount_paid)}
-                            </Typography>
-                            {membership.commission_amount > 0 && (
-                              <Typography variant="caption" sx={{ color: darkProTokens.warning }}>
-                                Comisión: {formatPrice(membership.commission_amount)}
-                              </Typography>
-                            )}
-                          </TableCell>
-                          
-                          <TableCell sx={{ borderBottom: 'none', textAlign: 'center' }}>
-                            <Stack direction="row" spacing={1} justifyContent="center">
-                              <Tooltip title="Ver Detalles">
+
+                          <TableCell>
+                            <Stack direction="row" spacing={1}>
+                              <Tooltip title="Ver detalles">
                                 <IconButton
                                   onClick={() => {
                                     setSelectedMembership(membership);
                                     setDetailsDialogOpen(true);
                                   }}
-                                  sx={{ color: darkProTokens.primary }}
+                                  sx={{ 
+                                    color: darkProTokens.info,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.info}15` 
+                                    }
+                                  }}
                                 >
                                   <VisibilityIcon />
                                 </IconButton>
                               </Tooltip>
-                              
+
                               <Tooltip title="Editar">
                                 <IconButton
                                   onClick={() => {
@@ -1459,19 +2541,29 @@ export default function HistorialMembresiaPage() {
                                     initializeEditData(membership);
                                     setEditDialogOpen(true);
                                   }}
-                                  sx={{ color: darkProTokens.info }}
+                                  sx={{ 
+                                    color: darkProTokens.warning,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.warning}15` 
+                                    }
+                                  }}
                                 >
                                   <EditIcon />
                                 </IconButton>
                               </Tooltip>
-                              
-                              <Tooltip title="Más Acciones">
+
+                              <Tooltip title="Más acciones">
                                 <IconButton
-                                  onClick={(e) => {
+                                  onClick={(event) => {
                                     setSelectedMembership(membership);
-                                    setActionMenuAnchor(e.currentTarget);
+                                    setActionMenuAnchor(event.currentTarget);
                                   }}
-                                  sx={{ color: darkProTokens.textSecondary }}
+                                  sx={{ 
+                                    color: darkProTokens.textSecondary,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.textSecondary}15` 
+                                    }
+                                  }}
                                 >
                                   <MoreVertIcon />
                                 </IconButton>
@@ -1484,7 +2576,7 @@ export default function HistorialMembresiaPage() {
                 </Table>
               </TableContainer>
 
-                            <TablePagination
+              <TablePagination
                 component="div"
                 count={filteredMemberships.length}
                 rowsPerPage={rowsPerPage}
@@ -1494,7 +2586,7 @@ export default function HistorialMembresiaPage() {
                   setRowsPerPage(parseInt(event.target.value, 10));
                   setPage(0);
                 }}
-                rowsPerPageOptions={[5, 10, 25, 50]}
+                rowsPerPageOptions={[5, 10, 25, 50, 100]}
                 sx={{
                   color: darkProTokens.textPrimary,
                   borderTop: `1px solid ${darkProTokens.grayDark}`,
@@ -1515,7 +2607,7 @@ export default function HistorialMembresiaPage() {
         </CardContent>
       </Card>
 
-      {/* 🆕 MENU DE ACCIONES ACTUALIZADO CON SISTEMA DE CONGELAMIENTO */}
+      {/* ✅ MENU DE ACCIONES - VERIFICADO */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -1529,7 +2621,6 @@ export default function HistorialMembresiaPage() {
         }}
       >
         <MenuList>
-          {/* OPCIONES PARA MEMBRESÍAS ACTIVAS */}
           {selectedMembership?.status === 'active' && (
             <>
               <MenuItemComponent 
@@ -1570,50 +2661,246 @@ export default function HistorialMembresiaPage() {
             </>
           )}
           
-          {/* OPCIONES PARA MEMBRESÍAS CONGELADAS */}
           {selectedMembership?.status === 'frozen' && (
-            <>
-              <MenuItemComponent 
-                onClick={() => {
-                  if (selectedMembership) {
-                    handleUnfreezeMembership(selectedMembership);
-                  }
-                }}
-                disabled={unfreezeLoading}
-                sx={{ color: darkProTokens.success }}
-              >
-                <ListItemIcon>
-                  {unfreezeLoading ? (
-                    <CircularProgress size={20} sx={{ color: darkProTokens.success }} />
-                  ) : (
-                    <PlayArrowIcon sx={{ color: darkProTokens.success }} />
-                  )}
-                </ListItemIcon>
-                <ListItemText>
-                  {unfreezeLoading ? 'Reactivando...' : '🔄 Reactivar Membresía'}
-                </ListItemText>
-              </MenuItemComponent>
-              
-              {/* 🆕 INFORMACIÓN DE CONGELAMIENTO */}
-              <Box sx={{ p: 2, borderTop: `1px solid ${darkProTokens.grayDark}` }}>
-                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                  📊 Días congelados: {getCurrentFrozenDays(selectedMembership?.freeze_date)}
-                </Typography>
-                {selectedMembership?.end_date && (
-                  <Typography variant="caption" sx={{ 
-                    color: darkProTokens.warning,
-                    display: 'block'
-                  }}>
-                    📅 Nueva fecha al reactivar: {formatDate(getProjectedEndDate(selectedMembership.end_date, selectedMembership.freeze_date) || selectedMembership.end_date)}
-                  </Typography>
+            <MenuItemComponent 
+              onClick={() => {
+                if (selectedMembership) {
+                  handleUnfreezeMembership(selectedMembership);
+                }
+              }}
+              disabled={unfreezeLoading}
+              sx={{ color: darkProTokens.success }}
+            >
+              <ListItemIcon>
+                {unfreezeLoading ? (
+                  <CircularProgress size={20} sx={{ color: darkProTokens.success }} />
+                ) : (
+                  <PlayArrowIcon sx={{ color: darkProTokens.success }} />
                 )}
-              </Box>
-            </>
+              </ListItemIcon>
+              <ListItemText>
+                {unfreezeLoading ? 'Reactivando...' : '🔄 Reactivar Membresía'}
+              </ListItemText>
+            </MenuItemComponent>
           )}
         </MenuList>
       </Menu>
 
-      {/* 👁️ MODAL DE DETALLES - ACTUALIZADO CON SECCIÓN DE CONGELAMIENTO */}
+      {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO */}
+      <Dialog
+        open={bulkDialogOpen}
+        onClose={() => !bulkLoading && setBulkDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.info}50`,
+            borderRadius: 4,
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: darkProTokens.info, 
+          fontWeight: 800,
+          fontSize: '1.6rem',
+          textAlign: 'center',
+          pb: 2
+        }}>
+          🧊 {bulkOperation.type === 'freeze' ? 'Congelamiento' : 'Reactivación'} Masivo
+        </DialogTitle>
+        
+        <DialogContent>
+          {!bulkLoading ? (
+            <Box>
+              <Alert 
+                severity="warning"
+                sx={{
+                  backgroundColor: `${darkProTokens.warning}10`,
+                  color: darkProTokens.textPrimary,
+                  border: `1px solid ${darkProTokens.warning}30`,
+                  '& .MuiAlert-icon': { color: darkProTokens.warning },
+                  mb: 3
+                }}
+              >
+                <Typography variant="body1">
+                  <strong>⚠️ Operación Masiva:</strong> Esta acción se aplicará a {bulkOperation.membershipIds.length} membresía{bulkOperation.membershipIds.length > 1 ? 's' : ''}.
+                </Typography>
+              </Alert>
+
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.textPrimary,
+                mb: 2
+              }}>
+                Membresías seleccionadas:
+              </Typography>
+
+              <Box sx={{
+                maxHeight: 300,
+                overflow: 'auto',
+                border: `1px solid ${darkProTokens.grayDark}`,
+                borderRadius: 2,
+                p: 2
+              }}>
+                {bulkOperation.membershipIds.map(id => {
+                  const membership = memberships.find(m => m.id === id);
+                  return membership ? (
+                    <Box key={id} sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      py: 1,
+                      borderBottom: `1px solid ${darkProTokens.grayDark}40`
+                    }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                        {membership.user_name} - {membership.plan_name}
+                      </Typography>
+                      <Chip 
+                        label={membership.status.toUpperCase()}
+                        size="small"
+                        sx={{
+                          backgroundColor: getStatusColor(membership.status),
+                          color: darkProTokens.textPrimary,
+                          fontWeight: 600
+                        }}
+                      />
+                    </Box>
+                  ) : null;
+                })}
+              </Box>
+
+              <TextField
+                fullWidth
+                label="Motivo (opcional)"
+                multiline
+                rows={3}
+                value={bulkOperation.reason || ''}
+                onChange={(e) => setBulkOperation(prev => ({ ...prev, reason: e.target.value }))}
+                placeholder={`Motivo del ${bulkOperation.type === 'freeze' ? 'congelamiento' : 'reactivación'} masivo...`}
+                sx={{ mt: 3 }}
+                InputProps={{
+                  sx: {
+                    color: darkProTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${darkProTokens.info}30`
+                    }
+                  }
+                }}
+              />
+            </Box>
+          ) : (
+            <Box>
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.info,
+                mb: 3,
+                textAlign: 'center'
+              }}>
+                {bulkOperation.type === 'freeze' ? 'Congelando' : 'Reactivando'} membresías...
+              </Typography>
+
+              <LinearProgress 
+                variant="determinate" 
+                value={bulkProgress}
+                sx={{
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: `${darkProTokens.info}20`,
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: darkProTokens.info
+                  }
+                }}
+              />
+
+              <Typography variant="body2" sx={{ 
+                color: darkProTokens.textSecondary,
+                textAlign: 'center',
+                mt: 2
+              }}>
+                {bulkProgress}% completado
+              </Typography>
+
+              {bulkResults.success > 0 || bulkResults.failed > 0 ? (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 1 }}>
+                    Resultados:
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: darkProTokens.success }}>
+                    ✅ Exitosas: {bulkResults.success}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: darkProTokens.error }}>
+                    ❌ Fallidas: {bulkResults.failed}
+                  </Typography>
+                  
+                  {bulkResults.errors.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.error, mb: 1 }}>
+                        Errores:
+                      </Typography>
+                      <Box sx={{
+                        maxHeight: 150,
+                        overflow: 'auto',
+                        border: `1px solid ${darkProTokens.error}30`,
+                        borderRadius: 1,
+                        p: 1
+                      }}>
+                        {bulkResults.errors.map((error, index) => (
+                          <Typography key={index} variant="caption" sx={{ 
+                            color: darkProTokens.error,
+                            display: 'block'
+                          }}>
+                            • {error}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              ) : null}
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => setBulkDialogOpen(false)}
+            disabled={bulkLoading}
+            sx={{ 
+              color: darkProTokens.textSecondary,
+              borderColor: darkProTokens.grayDark,
+              px: 3,
+              py: 1
+            }}
+            variant="outlined"
+          >
+            {bulkLoading ? 'Procesando...' : 'Cancelar'}
+          </Button>
+          
+          {!bulkLoading && (
+            <Button 
+              onClick={executeBulkOperation}
+              variant="contained"
+              startIcon={bulkOperation.type === 'freeze' ? <FreezeIcon /> : <UnfreezeIcon />}
+              sx={{
+                background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+                color: darkProTokens.textPrimary,
+                fontWeight: 700,
+                px: 4,
+                py: 1,
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${darkProTokens.infoHover}, ${darkProTokens.info})`,
+                  transform: 'translateY(-1px)'
+                }
+              }}
+            >
+              {bulkOperation.type === 'freeze' ? 'Congelar' : 'Reactivar'} {bulkOperation.membershipIds.length} Membresía{bulkOperation.membershipIds.length > 1 ? 's' : ''}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* ✅ MODAL DE DETALLES - PLACEHOLDER */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
@@ -1635,1654 +2922,32 @@ export default function HistorialMembresiaPage() {
           fontWeight: 800,
           fontSize: '1.8rem',
           textAlign: 'center',
-          pb: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          pb: 2
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <ReceiptIcon sx={{ fontSize: 40 }} />
-            Detalles de Membresía
-          </Box>
-          <IconButton 
-            onClick={() => setDetailsDialogOpen(false)}
-            sx={{ color: darkProTokens.textSecondary }}
-          >
-            <CloseIcon />
-          </IconButton>
+          👁️ Detalles de Membresía
         </DialogTitle>
         
-        <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+        <DialogContent>
           {selectedMembership && (
-            <Grid container spacing={4}>
-              {/* 👤 Información del Cliente */}
-              <Grid size={12}>
-                <Card sx={{
-                  background: `${darkProTokens.primary}10`,
-                  border: `1px solid ${darkProTokens.primary}30`,
-                  borderRadius: 3
-                }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ 
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      mb: 2,
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => toggleSection('client')}
-                    >
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.primary,
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2
-                      }}>
-                        <AccountCircleIcon />
-                        Información del Cliente
-                      </Typography>
-                      {expandedSections.client ? <ExpandLessIcon sx={{ color: darkProTokens.primary }} /> : <ExpandMoreIcon sx={{ color: darkProTokens.primary }} />}
-                    </Box>
-                    
-                    <AnimatePresence>
-                      {expandedSections.client && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Grid container spacing={3}>
-                            <Grid size={6}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Nombre Completo:
-                                </Typography>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                                  {selectedMembership.user_name}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={6}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Email:
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 500, color: darkProTokens.textPrimary }}>
-                                  {selectedMembership.user_email}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={6}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Tipo de Venta:
-                                </Typography>
-                                <Chip 
-                                  label={selectedMembership.is_renewal ? '🔄 RENOVACIÓN' : '🆕 PRIMERA VEZ'}
-                                  sx={{
-                                    backgroundColor: selectedMembership.is_renewal ? darkProTokens.warning : darkProTokens.success,
-                                    color: selectedMembership.is_renewal ? darkProTokens.background : darkProTokens.textPrimary,
-                                    fontWeight: 700
-                                  }}
-                                />
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={6}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Inscripción:
-                                </Typography>
-                                <Chip 
-                                  label={selectedMembership.skip_inscription ? '🚫 EXENTA' : `💰 ${formatPrice(selectedMembership.inscription_amount)}`}
-                                  sx={{
-                                    backgroundColor: selectedMembership.skip_inscription ? darkProTokens.success : darkProTokens.warning,
-                                    color: darkProTokens.textPrimary,
-                                    fontWeight: 600
-                                  }}
-                                />
-                              </Box>
-                            </Grid>
-                          </Grid>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* 🏋️‍♂️ Información de la Membresía */}
-              <Grid size={12}>
-                <Card sx={{
-                  background: `${darkProTokens.info}10`,
-                  border: `1px solid ${darkProTokens.info}30`,
-                  borderRadius: 3
-                }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ 
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      mb: 2,
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => toggleSection('membership')}
-                    >
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.info,
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2
-                      }}>
-                        <FitnessCenterIcon />
-                        Plan y Duración
-                      </Typography>
-                      {expandedSections.membership ? <ExpandLessIcon sx={{ color: darkProTokens.info }} /> : <ExpandMoreIcon sx={{ color: darkProTokens.info }} />}
-                    </Box>
-                    
-                    <AnimatePresence>
-                      {expandedSections.membership && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Grid container spacing={3}>
-                            <Grid size={4}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Plan:
-                                </Typography>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                                  {selectedMembership.plan_name}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={4}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Tipo de Pago:
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 500, color: darkProTokens.textPrimary }}>
-                                  {selectedMembership.payment_type}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={4}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Estado Actual:
-                                </Typography>
-                                <Chip 
-                                  label={`${getStatusIcon(selectedMembership.status)} ${selectedMembership.status.toUpperCase()}`}
-                                  sx={{
-                                    backgroundColor: getStatusColor(selectedMembership.status),
-                                    color: darkProTokens.textPrimary,
-                                    fontWeight: 600
-                                  }}
-                                />
-                              </Box>
-                            </Grid>
-                          </Grid>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* 🆕 SECCIÓN DE CONGELAMIENTO INTELIGENTE */}
-              {(selectedMembership.status === 'frozen' || selectedMembership.total_frozen_days > 0) && (
-                <Grid size={12}>
-                  <Card sx={{
-                    background: `${darkProTokens.info}15`,
-                    border: `2px solid ${darkProTokens.info}40`,
-                    borderRadius: 3
-                  }}>
-                    <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ 
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        mb: 2,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => toggleSection('freeze')}
-                      >
-                        <Typography variant="h6" sx={{ 
-                          color: darkProTokens.info,
-                          fontWeight: 700,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2
-                        }}>
-                          <AcUnitIcon />
-                          🧊 Sistema de Congelamiento Inteligente
-                        </Typography>
-                        {expandedSections.freeze ? <ExpandLessIcon sx={{ color: darkProTokens.info }} /> : <ExpandMoreIcon sx={{ color: darkProTokens.info }} />}
-                      </Box>
-                      
-                      <AnimatePresence>
-                        {expandedSections.freeze && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <Grid container spacing={3}>
-                              {/* Estado actual de congelamiento */}
-                              <Grid size={6}>
-                                <Box>
-                                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                    Estado de Congelamiento:
-                                  </Typography>
-                                  <Alert 
-                                    severity={selectedMembership.status === 'frozen' ? 'info' : 'success'}
-                                    sx={{
-                                      backgroundColor: selectedMembership.status === 'frozen' ? 
-                                        `${darkProTokens.info}10` : `${darkProTokens.success}10`,
-                                      color: darkProTokens.textPrimary,
-                                      border: selectedMembership.status === 'frozen' ? 
-                                        `1px solid ${darkProTokens.info}30` : `1px solid ${darkProTokens.success}30`,
-                                      '& .MuiAlert-icon': { 
-                                        color: selectedMembership.status === 'frozen' ? darkProTokens.info : darkProTokens.success 
-                                      }
-                                    }}
-                                  >
-                                    {selectedMembership.status === 'frozen' ? 
-                                      '🧊 ACTUALMENTE CONGELADA' : 
-                                      '✅ ACTIVA (Historial de congelamiento)'
-                                    }
-                                  </Alert>
-                                </Box>
-                              </Grid>
-
-                              <Grid size={6}>
-                                <Box>
-                                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                    Total Días Congelados (Historial):
-                                  </Typography>
-                                  <Typography variant="h5" sx={{ 
-                                    color: darkProTokens.info,
-                                    fontWeight: 700,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 1
-                                  }}>
-                                    🧊 {selectedMembership.total_frozen_days} días
-                                  </Typography>
-                                </Box>
-                              </Grid>
-
-                              {/* Información específica si está congelada */}
-                              {selectedMembership.status === 'frozen' && selectedMembership.freeze_date && (
-                                <>
-                                  <Grid size={4}>
-                                    <Box>
-                                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                        Congelada Desde:
-                                      </Typography>
-                                      <Typography variant="body1" sx={{ 
-                                        fontWeight: 600, 
-                                        color: darkProTokens.textPrimary,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 1
-                                      }}>
-                                        📅 {formatDate(selectedMembership.freeze_date)}
-                                      </Typography>
-                                    </Box>
-                                  </Grid>
-                                  
-                                  <Grid size={4}>
-                                    <Box>
-                                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                        Días Congelados (Período Actual):
-                                      </Typography>
-                                      <Typography variant="h6" sx={{ 
-                                        color: darkProTokens.warning,
-                                        fontWeight: 700,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 1
-                                      }}>
-                                        ⏱️ {getCurrentFrozenDays(selectedMembership.freeze_date)} días
-                                      </Typography>
-                                    </Box>
-                                  </Grid>
-                                  
-                                  <Grid size={4}>
-                                    <Box>
-                                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                        Nueva Fecha de Vencimiento al Reactivar:
-                                      </Typography>
-                                      <Typography variant="body1" sx={{ 
-                                        fontWeight: 600, 
-                                        color: darkProTokens.primary
-                                      }}>
-                                        {selectedMembership.end_date ? 
-                                          `📅 ${formatDate(getProjectedEndDate(selectedMembership.end_date, selectedMembership.freeze_date) || selectedMembership.end_date)}` : 
-                                          '♾️ Sin límite'
-                                        }
-                                      </Typography>
-                                    </Box>
-                                  </Grid>
-
-                                  {/* Explicación del sistema */}
-                                  <Grid size={12}>
-                                    <Alert 
-                                      severity="info"
-                                      sx={{
-                                        backgroundColor: `${darkProTokens.info}10`,
-                                        color: darkProTokens.textPrimary,
-                                        border: `1px solid ${darkProTokens.info}30`,
-                                        '& .MuiAlert-icon': { color: darkProTokens.info }
-                                      }}
-                                    >
-                                      <Typography variant="body2">
-                                        <strong>🧊 Sistema de Congelamiento Inteligente:</strong><br/>
-                                        • Los días congelados se suman automáticamente a la fecha de vencimiento<br/>
-                                        • El cliente NO pierde días de membresía pagada<br/>
-                                        • Se mantiene un historial completo de todos los congelamientos<br/>
-                                        • Al reactivar, la membresía se extiende por los días congelados
-                                      </Typography>
-                                    </Alert>
-                                  </Grid>
-                                </>
-                              )}
-
-                              {/* Información si no está congelada pero tiene historial */}
-                              {selectedMembership.status !== 'frozen' && selectedMembership.total_frozen_days > 0 && (
-                                <Grid size={12}>
-                                  <Alert 
-                                    severity="success"
-                                    sx={{
-                                      backgroundColor: `${darkProTokens.success}10`,
-                                      color: darkProTokens.textPrimary,
-                                      border: `1px solid ${darkProTokens.success}30`,
-                                      '& .MuiAlert-icon': { color: darkProTokens.success }
-                                    }}
-                                  >
-                                    <Typography variant="body2">
-                                      <strong>✅ Historial de Congelamiento:</strong><br/>
-                                      Esta membresía ha estado congelada por un total de <strong>{selectedMembership.total_frozen_days} días</strong> durante su vigencia.<br/>
-                                      Todos esos días fueron agregados automáticamente a la fecha de vencimiento.
-                                    </Typography>
-                                  </Alert>
-                                </Grid>
-                              )}
-                            </Grid>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* 📅 Información de Fechas */}
-              <Grid size={12}>
-                <Card sx={{
-                  background: `${darkProTokens.roleModerator}10`,
-                  border: `1px solid ${darkProTokens.roleModerator}30`,
-                  borderRadius: 3
-                }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ 
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      mb: 2,
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => toggleSection('dates')}
-                    >
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.roleModerator,
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2
-                      }}>
-                        <CalendarTodayIcon />
-                        Fechas y Vigencia
-                      </Typography>
-                      {expandedSections.dates ? <ExpandLessIcon sx={{ color: darkProTokens.roleModerator }} /> : <ExpandMoreIcon sx={{ color: darkProTokens.roleModerator }} />}
-                    </Box>
-                    
-                    <AnimatePresence>
-                      {expandedSections.dates && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Grid container spacing={3}>
-                            <Grid size={3}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Fecha de Inicio:
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                                  📅 {formatDate(selectedMembership.start_date)}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={3}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Fecha de Fin:
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                                  {selectedMembership.end_date ? 
-                                    `📅 ${formatDate(selectedMembership.end_date)}` : 
-                                    '♾️ Sin límite'
-                                  }
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={3}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Duración:
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                                  ⏱️ {formatDuration(selectedMembership.start_date, selectedMembership.end_date)}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={3}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Días Restantes:
-                                </Typography>
-                                {(() => {
-                                  const daysRemaining = getDaysRemaining(selectedMembership.end_date);
-                                  return (
-                                    <Typography variant="body1" sx={{ 
-                                      fontWeight: 600, 
-                                      color: daysRemaining === null ? darkProTokens.textPrimary : 
-                                            daysRemaining < 0 ? darkProTokens.error :
-                                            daysRemaining < 7 ? darkProTokens.warning : darkProTokens.success
-                                    }}>
-                                      {daysRemaining === null ? '♾️ Ilimitado' :
-                                       daysRemaining < 0 ? '❌ Vencida' :
-                                       daysRemaining === 0 ? '⚠️ Vence hoy' :
-                                       `${daysRemaining} días`
-                                      }
-                                    </Typography>
-                                  );
-                                })()}
-                              </Box>
-                            </Grid>
-                          </Grid>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* 💰 Información de Pago */}
-              <Grid size={12}>
-                <Card sx={{
-                  background: `${darkProTokens.warning}10`,
-                  border: `1px solid ${darkProTokens.warning}30`,
-                  borderRadius: 3
-                }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ 
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      mb: 2,
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => toggleSection('payment')}
-                    >
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.warning,
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2
-                      }}>
-                        <PaymentIcon />
-                        Información de Pago
-                      </Typography>
-                      {expandedSections.payment ? <ExpandLessIcon sx={{ color: darkProTokens.warning }} /> : <ExpandMoreIcon sx={{ color: darkProTokens.warning }} />}
-                    </Box>
-                    
-                    <AnimatePresence>
-                      {expandedSections.payment && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Grid container spacing={3}>
-                            <Grid size={3}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Método de Pago:
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                                  {paymentMethodOptions.find(p => p.value === selectedMembership.payment_method)?.icon} {selectedMembership.payment_method}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={3}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Total Pagado:
-                                </Typography>
-                                <Typography variant="h6" sx={{ fontWeight: 700, color: darkProTokens.primary }}>
-                                  {formatPrice(selectedMembership.amount_paid)}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={3}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Subtotal:
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                                  {formatPrice(selectedMembership.subtotal)}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            <Grid size={3}>
-                              <Box>
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                  Comisión:
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.warning }}>
-                                  {formatPrice(selectedMembership.commission_amount)}
-                                  {selectedMembership.custom_commission_rate && (
-                                    <Typography variant="caption" sx={{ display: 'block', color: darkProTokens.warning }}>
-                                      ({selectedMembership.custom_commission_rate}% personalizada)
-                                    </Typography>
-                                  )}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            
-                            {selectedMembership.discount_amount > 0 && (
-                              <Grid size={3}>
-                                <Box>
-                                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                    Descuento:
-                                  </Typography>
-                                  <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.success }}>
-                                    -{formatPrice(selectedMembership.discount_amount)}
-                                    {selectedMembership.coupon_code && (
-                                      <Typography variant="caption" sx={{ display: 'block', color: darkProTokens.success }}>
-                                        Cupón: {selectedMembership.coupon_code}
-                                      </Typography>
-                                    )}
-                                  </Typography>
-                                </Box>
-                              </Grid>
-                            )}
-                            
-                            {selectedMembership.payment_reference && (
-                              <Grid size={selectedMembership.discount_amount > 0 ? 3 : 6}>
-                                <Box>
-                                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                    Referencia:
-                                  </Typography>
-                                  <Typography variant="body1" sx={{ fontWeight: 500, color: darkProTokens.textPrimary, fontFamily: 'monospace' }}>
-                                    {selectedMembership.payment_reference}
-                                  </Typography>
-                                </Box>
-                              </Grid>
-                            )}
-                            
-                            {selectedMembership.payment_method === 'efectivo' && selectedMembership.payment_received > 0 && (
-                              <Grid size={6}>
-                                <Box>
-                                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                                    Pago en Efectivo:
-                                  </Typography>
-                                  <Stack spacing={1}>
-                                    <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                                      💵 Recibido: {formatPrice(selectedMembership.payment_received)}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                                      💰 Cambio: {formatPrice(selectedMembership.payment_change)}
-                                    </Typography>
-                                  </Stack>
-                                </Box>
-                              </Grid>
-                            )}
-                          </Grid>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* 📝 Notas */}
-              {selectedMembership.notes && (
-                <Grid size={12}>
-                  <Card sx={{
-                    background: `${darkProTokens.grayMuted}10`,
-                    border: `1px solid ${darkProTokens.grayMuted}30`,
-                    borderRadius: 3
-                  }}>
-                    <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ 
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        mb: 2,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => toggleSection('notes')}
-                      >
-                        <Typography variant="h6" sx={{ 
-                          color: darkProTokens.grayMuted,
-                          fontWeight: 700,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2
-                        }}>
-                          📝 Notas y Observaciones
-                        </Typography>
-                        {expandedSections.notes ? <ExpandLessIcon sx={{ color: darkProTokens.grayMuted }} /> : <ExpandMoreIcon sx={{ color: darkProTokens.grayMuted }} />}
-                      </Box>
-                      
-                      <AnimatePresence>
-                        {expandedSections.notes && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <Typography variant="body1" sx={{ 
-                              color: darkProTokens.textPrimary,
-                              backgroundColor: `${darkProTokens.grayMedium}30`,
-                              p: 2,
-                              borderRadius: 2,
-                              fontStyle: 'italic',
-                              lineHeight: 1.6
-                            }}>
-                              {selectedMembership.notes}
-                            </Typography>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* 📊 Metadatos */}
-              <Grid size={12}>
-                <Card sx={{
-                  background: `${darkProTokens.grayDark}10`,
-                  border: `1px solid ${darkProTokens.grayDark}30`,
-                  borderRadius: 3
-                }}>
-                  <CardContent sx={{ p: 2 }}>
-                    <Grid container spacing={2}>
-                      <Grid size={6}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Creado: {formatDate(selectedMembership.created_at)}
-                        </Typography>
-                      </Grid>
-                      <Grid size={6}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Actualizado: {formatDate(selectedMembership.updated_at)}
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+            <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
+              Detalles completos de {selectedMembership.user_name} - {selectedMembership.plan_name}
+              {/* Aquí iría el modal de detalles completo */}
+            </Typography>
           )}
         </DialogContent>
+        
+        <DialogActions>
+          <Button onClick={() => setDetailsDialogOpen(false)}>
+            Cerrar
+          </Button>
+        </DialogActions>
       </Dialog>
 
-{/* ✏️ MODAL DE EDICIÓN COMPLETAMENTE SINCRONIZADO CON REGISTRO */}
-<Dialog 
-  open={editDialogOpen} 
-  onClose={() => !editLoading && setEditDialogOpen(false)}
-  maxWidth="lg"
-  fullWidth
-  PaperProps={{
-    sx: {
-      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-      border: `2px solid ${darkProTokens.primary}50`,
-      borderRadius: 4,
-      color: darkProTokens.textPrimary,
-      boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
-      maxHeight: '90vh'
-    }
-  }}
->
-  <DialogTitle sx={{ 
-    color: darkProTokens.primary, 
-    fontWeight: 800,
-    fontSize: '1.8rem',
-    textAlign: 'center',
-    pb: 2,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  }}>
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-      <EditIcon sx={{ fontSize: 40 }} />
-      Editar Registro de Venta
-    </Box>
-    <IconButton 
-      onClick={() => setEditDialogOpen(false)}
-      disabled={editLoading}
-      sx={{ color: darkProTokens.textSecondary }}
-    >
-      <CloseIcon />
-    </IconButton>
-  </DialogTitle>
-  
-  <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
-    {selectedMembership && (
-      <Box sx={{ mt: 2 }}>
-        {/* Header del Cliente */}
-        <Card sx={{
-          background: `${darkProTokens.primary}10`,
-          border: `1px solid ${darkProTokens.primary}30`,
-          borderRadius: 3,
-          mb: 3
-        }}>
-          <CardContent sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ 
-                width: 60, 
-                height: 60, 
-                borderRadius: '50%', 
-                background: darkProTokens.primary,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: darkProTokens.background,
-                fontWeight: 800,
-                fontSize: '1.5rem'
-              }}>
-                {selectedMembership.user_name.split(' ').map((n: string) => n[0]).join('')}
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.primary, 
-                  fontWeight: 700
-                }}>
-                  {selectedMembership.user_name}
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name}
-                </Typography>
-                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                  📅 Registrado: {formatDate(selectedMembership.created_at)}
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: 'right' }}>
-                <Chip 
-                  label={selectedMembership.is_renewal ? '🔄 RENOVACIÓN' : '🆕 PRIMERA VEZ'}
-                  sx={{
-                    backgroundColor: selectedMembership.is_renewal ? darkProTokens.warning : darkProTokens.success,
-                    color: selectedMembership.is_renewal ? darkProTokens.background : darkProTokens.textPrimary,
-                    fontWeight: 700,
-                    mb: 1
-                  }}
-                />
-                {selectedMembership.skip_inscription && (
-                  <Chip 
-                    label="🚫 SIN INSCRIPCIÓN" 
-                    size="small"
-                    sx={{
-                      backgroundColor: darkProTokens.success,
-                      color: darkProTokens.textPrimary,
-                      fontWeight: 600,
-                      display: 'block'
-                    }}
-                  />
-                )}
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
+      {/* ✅ MODAL DE EDICIÓN OPTIMIZADO */}
+      {OptimizedEditModal}
 
-        <Grid container spacing={3}>
-          {/* SECCIÓN 1: INFORMACIÓN BÁSICA (IGUAL QUE REGISTRO) */}
-          <Grid size={12}>
-            <Card sx={{
-              background: `${darkProTokens.info}10`,
-              border: `1px solid ${darkProTokens.info}30`,
-              borderRadius: 3,
-              mb: 3
-            }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.info,
-                  fontWeight: 700,
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2
-                }}>
-                  <FitnessCenterIcon />
-                  Información de la Membresía
-                </Typography>
-
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <FormControl fullWidth>
-                      <InputLabel sx={{ 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.info }
-                      }}>
-                        Estado de la Membresía
-                      </InputLabel>
-                      <Select
-                        value={editData.status || selectedMembership.status}
-                        onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
-                        sx={{
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.info}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.info
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.info
-                          }
-                        }}
-                      >
-                        {statusOptions.filter(s => s.value !== '').map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <span>{option.icon}</span>
-                              <span>{option.label}</span>
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Box sx={{
-                      background: `${darkProTokens.grayDark}10`,
-                      border: `1px solid ${darkProTokens.grayDark}30`,
-                      borderRadius: 2,
-                      p: 2,
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                        Plan y Tipo de Pago
-                      </Typography>
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.textPrimary,
-                        fontWeight: 700
-                      }}>
-                        {selectedMembership.plan_name}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                        {selectedMembership.payment_type.toUpperCase()}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* SECCIÓN 2: SISTEMA DE PAGO (IGUAL QUE REGISTRO) */}
-          <Grid size={12}>
-            <Card sx={{
-              background: `${darkProTokens.warning}10`,
-              border: `1px solid ${darkProTokens.warning}30`,
-              borderRadius: 3,
-              mb: 3
-            }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.warning,
-                  fontWeight: 700,
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2
-                }}>
-                  <PaymentIcon />
-                  Sistema de Pago y Comisiones
-                </Typography>
-
-                {/* Toggle Pago Mixto (IGUAL QUE REGISTRO) */}
-                <Box sx={{
-                  background: `${darkProTokens.warning}05`,
-                  border: `1px solid ${darkProTokens.warning}20`,
-                  borderRadius: 3,
-                  p: 2,
-                  mb: 3
-                }}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={editData.is_mixed_payment || selectedMembership.is_mixed_payment}
-                        onChange={(e) => setEditData(prev => ({ 
-                          ...prev, 
-                          is_mixed_payment: e.target.checked,
-                          payment_method: e.target.checked ? 'mixto' : prev.payment_method || selectedMembership.payment_method
-                        }))}
-                        sx={{
-                          '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: darkProTokens.warning,
-                          },
-                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                            backgroundColor: darkProTokens.warning,
-                          },
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography variant="body1" sx={{ 
-                        color: darkProTokens.textPrimary, 
-                        fontWeight: 600 
-                      }}>
-                        🔄 Pago Mixto (Múltiples Métodos)
-                      </Typography>
-                    }
-                  />
-                </Box>
-
-                <Grid container spacing={3}>
-                  {/* Método de Pago Principal */}
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <FormControl fullWidth>
-                      <InputLabel sx={{ 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.warning }
-                      }}>
-                        Método de Pago
-                      </InputLabel>
-                      <Select
-                        value={editData.payment_method || selectedMembership.payment_method}
-                        onChange={(e) => setEditData(prev => ({ ...prev, payment_method: e.target.value }))}
-                        sx={{
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.warning}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.warning
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.warning
-                          }
-                        }}
-                      >
-                        {paymentMethodOptions.filter(p => p.value !== '').map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <span>{option.icon}</span>
-                              <span>{option.label}</span>
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  {/* Monto Total */}
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <TextField
-                      fullWidth
-                      label="Monto Total Pagado"
-                      type="number"
-                      value={editData.amount_paid || selectedMembership.amount_paid}
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        const commissionRate = editData.commission_rate || selectedMembership.commission_rate || 0;
-                        const commissionAmount = amount * (commissionRate / 100);
-                        setEditData(prev => ({ 
-                          ...prev, 
-                          amount_paid: amount,
-                          commission_amount: commissionAmount
-                        }));
-                      }}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start"><AttachMoneyIcon sx={{ color: darkProTokens.warning }} /></InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.warning}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.warning
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.warning
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.warning }
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  {/* Comisión Configurable (IGUAL QUE REGISTRO) */}
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <TextField
-                      fullWidth
-                      label="Comisión (%)"
-                      type="number"
-                      value={editData.commission_rate || selectedMembership.commission_rate || 0}
-                      onChange={(e) => {
-                        const rate = parseFloat(e.target.value) || 0;
-                        const amount = editData.amount_paid || selectedMembership.amount_paid;
-                        const commissionAmount = amount * (rate / 100);
-                        setEditData(prev => ({ 
-                          ...prev, 
-                          commission_rate: rate,
-                          commission_amount: commissionAmount
-                        }));
-                      }}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start"><PercentIcon sx={{ color: darkProTokens.warning }} /></InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.warning}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.warning
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.warning
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.warning }
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  {/* Referencia de Pago */}
-                  <Grid size={12}>
-                    <TextField
-                      fullWidth
-                      label="Referencia de Pago"
-                      value={editData.payment_reference || selectedMembership.payment_reference || ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, payment_reference: e.target.value }))}
-                      placeholder="Número de autorización, SPEI, folio, etc."
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">📄</InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.warning}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.warning
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.warning
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.warning }
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  {/* CAMPOS ADICIONALES PARA PAGO MIXTO (IGUAL QUE REGISTRO) */}
-                  {(editData.is_mixed_payment || selectedMembership.is_mixed_payment) && (
-                    <>
-                      <Grid size={12}>
-                        <Alert severity="info" sx={{
-                          backgroundColor: `${darkProTokens.info}10`,
-                          color: darkProTokens.textPrimary,
-                          border: `1px solid ${darkProTokens.info}30`,
-                          '& .MuiAlert-icon': { color: darkProTokens.info }
-                        }}>
-                          💳 Configuración de Pago Mixto - Distribución por método
-                        </Alert>
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
-                          fullWidth
-                          label="Efectivo"
-                          type="number"
-                          value={editData.cash_amount || 0}
-                          onChange={(e) => setEditData(prev => ({ ...prev, cash_amount: parseFloat(e.target.value) || 0 }))}
-                          InputProps={{
-                            startAdornment: <InputAdornment position="start">💵</InputAdornment>,
-                            sx: {
-                              color: darkProTokens.textPrimary,
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: `${darkProTokens.success}30`
-                              },
-                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.success
-                              },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.success
-                              }
-                            }
-                          }}
-                          InputLabelProps={{
-                            sx: { 
-                              color: darkProTokens.textSecondary,
-                              '&.Mui-focused': { color: darkProTokens.success }
-                            }
-                          }}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
-                          fullWidth
-                          label="Tarjeta"
-                          type="number"
-                          value={editData.card_amount || 0}
-                          onChange={(e) => setEditData(prev => ({ ...prev, card_amount: parseFloat(e.target.value) || 0 }))}
-                          InputProps={{
-                            startAdornment: <InputAdornment position="start">💳</InputAdornment>,
-                            sx: {
-                              color: darkProTokens.textPrimary,
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: `${darkProTokens.info}30`
-                              },
-                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.info
-                              },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.info
-                              }
-                            }
-                          }}
-                          InputLabelProps={{
-                            sx: { 
-                              color: darkProTokens.textSecondary,
-                              '&.Mui-focused': { color: darkProTokens.info }
-                            }
-                          }}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
-                          fullWidth
-                          label="Transferencia"
-                          type="number"
-                          value={editData.transfer_amount || 0}
-                          onChange={(e) => setEditData(prev => ({ ...prev, transfer_amount: parseFloat(e.target.value) || 0 }))}
-                          InputProps={{
-                            startAdornment: <InputAdornment position="start">🏦</InputAdornment>,
-                            sx: {
-                              color: darkProTokens.textPrimary,
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: `${darkProTokens.warning}30`
-                              },
-                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.warning
-                              },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.warning
-                              }
-                            }
-                          }}
-                          InputLabelProps={{
-                            sx: { 
-                              color: darkProTokens.textSecondary,
-                              '&.Mui-focused': { color: darkProTokens.warning }
-                            }
-                          }}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{
-                          background: `${darkProTokens.primary}10`,
-                          border: `1px solid ${darkProTokens.primary}30`,
-                          borderRadius: 2,
-                          p: 2,
-                          textAlign: 'center',
-                          height: '56px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center'
-                        }}>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                            Total Mixto
-                          </Typography>
-                          <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                            {formatPrice((editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0))}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </>
-                  )}
-
-                  {/* Resumen de Comisión */}
-                  <Grid size={12}>
-                    <Box sx={{
-                      background: `${darkProTokens.success}10`,
-                      border: `1px solid ${darkProTokens.success}30`,
-                      borderRadius: 2,
-                      p: 2,
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                        Comisión Total Calculada
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                        {formatPrice(editData.commission_amount || selectedMembership.commission_amount || 0)}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* SECCIÓN 3: FECHAS Y VIGENCIA */}
-          <Grid size={12}>
-            <Card sx={{
-              background: `${darkProTokens.success}10`,
-              border: `1px solid ${darkProTokens.success}30`,
-              borderRadius: 3,
-              mb: 3
-            }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.success,
-                  fontWeight: 700,
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2
-                }}>
-                  <CalendarTodayIcon />
-                  Fechas y Vigencia
-                </Typography>
-
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      label="Fecha de Inicio"
-                      type="date"
-                      value={editData.start_date || selectedMembership.start_date}
-                      onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
-                      InputLabelProps={{ 
-                        shrink: true,
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.success }
-                        }
-                      }}
-                      InputProps={{
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.success}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.success
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.success
-                          }
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      label="Fecha de Vencimiento"
-                      type="date"
-                      value={editData.end_date || selectedMembership.end_date || ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
-                      InputLabelProps={{ 
-                        shrink: true,
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.success }
-                        }
-                      }}
-                      InputProps={{
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.success}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.success
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.success
-                          }
-                        }
-                      }}
-                    />
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* 🔧 SECCIÓN 4: EXTENSIÓN MANUAL CORREGIDA */}
-          <Grid size={12}>
-            <Card sx={{
-              background: `${darkProTokens.info}15`,
-              border: `2px solid ${darkProTokens.info}40`,
-              borderRadius: 3,
-              mb: 3
-            }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.info,
-                  fontWeight: 700,
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2
-                }}>
-                  <AcUnitIcon />
-                  ❄️ Extensión Manual de Vigencia
-                </Typography>
-
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <Box sx={{
-                      background: `${darkProTokens.grayDark}10`,
-                      border: `1px solid ${darkProTokens.grayDark}30`,
-                      borderRadius: 2,
-                      p: 2,
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                        Días Congelados Históricos
-                      </Typography>
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.info,
-                        fontWeight: 700
-                      }}>
-                        🧊 {selectedMembership.total_frozen_days || 0} días
-                      </Typography>
-                    </Box>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <Box sx={{
-                      background: `${darkProTokens.grayDark}10`,
-                      border: `1px solid ${darkProTokens.grayDark}30`,
-                      borderRadius: 2,
-                      p: 2,
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                        Vencimiento Actual
-                      </Typography>
-                      <Typography variant="body1" sx={{ 
-                        color: darkProTokens.textPrimary,
-                        fontWeight: 600
-                      }}>
-                        📅 {selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha'}
-                      </Typography>
-                    </Box>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField
-                      fullWidth
-                      label="Días a Extender"
-                      type="number"
-                      value={editData.extend_days || 0}
-                      onChange={(e) => setEditData(prev => ({ ...prev, extend_days: parseInt(e.target.value) || 0 }))}
-                      placeholder="Ej: 1"
-                      helperText="Solo extiende la fecha de vencimiento"
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">📅</InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.info}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.info
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.info
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.info }
-                        }
-                      }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.textSecondary }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <Box sx={{
-                      background: `${darkProTokens.primary}10`,
-                      border: `1px solid ${darkProTokens.primary}30`,
-                      borderRadius: 2,
-                      p: 2,
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                        Nueva Fecha de Vencimiento
-                      </Typography>
-                      <Typography variant="body1" sx={{ 
-                        color: darkProTokens.primary,
-                        fontWeight: 700
-                      }}>
-                        📅 {(() => {
-                          if (!selectedMembership.end_date || !editData.extend_days) {
-                            return selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha';
-                          }
-                          // 🔧 CÁLCULO CORREGIDO: SUMAR DÍAS CORRECTAMENTE
-                          const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
-                          currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
-                          return formatDate(currentEnd.toISOString().split('T')[0]);
-                        })()}
-                      </Typography>
-                    </Box>
-                  </Grid>
-
-                  {editData.extend_days > 0 && (
-                    <Grid size={12}>
-                      <Alert 
-                        severity="success"
-                        sx={{
-                          backgroundColor: `${darkProTokens.success}10`,
-                          color: darkProTokens.textPrimary,
-                          border: `1px solid ${darkProTokens.success}30`,
-                          '& .MuiAlert-icon': { color: darkProTokens.success }
-                        }}
-                      >
-                        <Typography variant="body2">
-                          <strong>📅 Extensión de Vigencia:</strong> Se extenderá la fecha de vencimiento por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}.<br/>
-                          <strong>🧊 Diferencia con congelamiento:</strong> Esto NO se registra como días congelados, solo extiende la vigencia manualmente.<br/>
-                          <strong>📊 Ejemplo:</strong> Si vence el {selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'N/A'} y agrega {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}, 
-                          nueva fecha será {selectedMembership.end_date && editData.extend_days > 0 ? (() => {
-                            const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
-                            currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
-                            return formatDate(currentEnd.toISOString().split('T')[0]);
-                          })() : 'N/A'}.
-                        </Typography>
-                      </Alert>
-                    </Grid>
-                  )}
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* SECCIÓN 5: NOTAS */}
-          <Grid size={12}>
-            <TextField
-              fullWidth
-              label="Notas del Registro"
-              multiline
-              rows={3}
-              value={editData.notes || selectedMembership.notes || ''}
-              onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="Observaciones sobre esta venta, correcciones realizadas, etc..."
-              InputProps={{
-                sx: {
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  }
-                }
-              }}
-              InputLabelProps={{
-                sx: { 
-                  color: darkProTokens.textSecondary,
-                  '&.Mui-focused': { color: darkProTokens.primary }
-                }
-              }}
-            />
-          </Grid>
-        </Grid>
-
-        {/* Alerta de Confirmación */}
-        <Alert 
-          severity="warning"
-          sx={{
-            mt: 3,
-            backgroundColor: `${darkProTokens.warning}10`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.warning}30`,
-            '& .MuiAlert-icon': { color: darkProTokens.warning }
-          }}
-        >
-          <Typography variant="body2">
-            <strong>⚠️ Edición de Registro:</strong> Solo modifique datos para corregir errores en el registro original.
-            {editData.extend_days > 0 && (
-              <>
-                <br/><strong>📅 Extensión Manual:</strong> Se extenderá la vigencia por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''} (no cuenta como congelamiento).
-                <br/><strong>🔧 Cálculo:</strong> {selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha'} + {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''} = {selectedMembership.end_date && editData.extend_days > 0 ? (() => {
-                  const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
-                  currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
-                  return formatDate(currentEnd.toISOString().split('T')[0]);
-                })() : 'N/A'}
-              </>
-            )}
-          </Typography>
-        </Alert>
-      </Box>
-    )}
-  </DialogContent>
-  
-  <DialogActions sx={{ p: 3, gap: 2 }}>
-    <Button 
-      onClick={() => setEditDialogOpen(false)}
-      disabled={editLoading}
-      sx={{ 
-        color: darkProTokens.textSecondary,
-        borderColor: darkProTokens.grayDark,
-        px: 3,
-        py: 1
-      }}
-      variant="outlined"
-    >
-      Cancelar
-    </Button>
-    
-    <Button 
-      onClick={() => {
-        // 🔧 LÓGICA DE EXTENSIÓN CORREGIDA
-        if (editData.extend_days > 0 && selectedMembership?.end_date) {
-          // ✅ CORRECCIÓN: Usar Date correctamente
-          const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
-          currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
-          editData.end_date = currentEnd.toISOString().split('T')[0];
-          
-          // Agregar nota automática
-          const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${formatDate(getMexicoToday())}.`;
-          editData.notes = editData.notes ? `${editData.notes}\n${extensionNote}` : extensionNote;
-          
-          console.log(`🔧 Extensión aplicada: ${selectedMembership.end_date} → ${editData.end_date} (+${editData.extend_days} días)`);
-        }
-        
-        handleUpdateMembership();
-      }}
-      disabled={editLoading}
-      variant="contained"
-      startIcon={editLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
-      sx={{
-        background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-        color: darkProTokens.background,
-        fontWeight: 700,
-        px: 4,
-        py: 1,
-        '&:hover': {
-          background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-          transform: 'translateY(-1px)'
-        }
-      }}
-    >
-      {editLoading ? 'Guardando...' : 'Guardar Correcciones'}
-    </Button>
-  </DialogActions>
-</Dialog>
-
-      
-      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      {/* ✅ ESTILOS CSS DARK PRO */}
       <style jsx>{`
-        /* Scrollbar personalizado para Dark Pro System */
         ::-webkit-scrollbar {
           width: 8px;
         }
