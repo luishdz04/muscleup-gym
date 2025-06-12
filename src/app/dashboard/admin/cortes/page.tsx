@@ -121,7 +121,7 @@ export default function CortesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
-  const [selectedDate, setSelectedDate] = useState('2025-06-12');
+const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // ✅ FUNCIÓN PARA CARGAR DATOS DEL DÍA
   const loadDailyData = useCallback(async (date: string = selectedDate) => {
@@ -533,7 +533,11 @@ export default function CortesPage() {
                         fullWidth
                         variant="outlined"
                         startIcon={<TodayIcon />}
-                        onClick={() => loadDailyData('2025-06-11')} // Día anterior
+                       onClick={() => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  loadDailyData(yesterday.toISOString().split('T')[0]);
+}}
                         sx={{
                           borderColor: darkProTokens.info,
                           color: darkProTokens.info,
