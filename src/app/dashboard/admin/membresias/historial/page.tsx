@@ -430,21 +430,23 @@ export default function HistorialMembresiaPage() {
   }, [supabase]);
 
   // ✅ CARGAR DATOS INICIALES - FUNCIÓN VERIFICADA
-  const loadMemberships = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('user_memberships')
-        .select(`
-          *,
-          Users!userid (firstName, lastName, email),
-          membership_plans!planid (name, description)
-        `)
-        .order('created_at', { ascending: false });
+ // ✅ FUNCIÓN DE CARGA CON DEBUGGING - CORREGIDA
+const loadMemberships = useCallback(async () => {
+  setLoading(true);
+  try {
+    const { data, error } = await supabase
+      .from('user_memberships')
+      .select(`
+        *,
+        Users!userid (firstName, lastName, email),
+        membership_plans!planid (name, description)
+      `)
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const formattedData: MembershipHistory[] = (data || []).map(item => ({
+    const formattedData: MembershipHistory[] = (data || []).map(item => {
+      const membership = {
         ...item,
         freeze_date: item.freeze_date || null,
         unfreeze_date: item.unfreeze_date || null,
@@ -453,18 +455,51 @@ export default function HistorialMembresiaPage() {
         user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
         user_email: item.Users?.email || '',
         plan_name: item.membership_plans?.name || 'Plan Desconocido'
-      }));
-
-      setMemberships(formattedData);
-      calculateStats(formattedData);
-      setInfoMessage(`📊 ${formattedData.length} membresías cargadas`);
+      };
       
-    } catch (err: any) {
-      setError(`Error al cargar membresías: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase]);
+      // ✅ DEBUG ESPECÍFICO PARA VERIFICAR FECHAS
+      if (item.Users?.firstName === 'Erick' || item.Users?.lastName?.includes('Luna')) {
+        console.log(`🔍 DEBUGGING ERICK LUNA:`, {
+          id: item.id,
+          user_name: membership.user_name,
+          plan_name: membership.plan_name,
+          payment_type: item.payment_type,
+          start_date: item.start_date,
+          end_date: item.end_date,
+          status: item.status,
+          raw_data: item
+        });
+      }
+      
+      return membership;
+    });
+
+    setMemberships(formattedData);
+    calculateStats(formattedData);
+    
+    // ✅ MOSTRAR DEBUGGING GENERAL
+    const todayMexico = getMexicoCurrentDate();
+    console.log(`📊 MEMBRESÍAS CARGADAS:`, {
+      total: formattedData.length,
+      fecha_mexico_actual: todayMexico,
+      muestra_datos: formattedData.slice(0, 2).map(m => ({
+        nombre: m.user_name,
+        plan: m.plan_name,
+        tipo_pago: m.payment_type,
+        inicio: m.start_date,
+        fin: m.end_date,
+        dias_restantes: getDaysRemaining(m.end_date)
+      }))
+    });
+    
+    setInfoMessage(`📊 ${formattedData.length} membresías cargadas correctamente`);
+    
+  } catch (err: any) {
+    setError(`Error al cargar membresías: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+}, [supabase, calculateStats, getDaysRemaining, getMexicoCurrentDate]);
 
   const loadPlans = useCallback(async () => {
     try {
@@ -985,19 +1020,88 @@ export default function HistorialMembresiaPage() {
     });
   }, []);
 
-  // ✅ CALCULAR DÍAS RESTANTES CORREGIDO - VERIFICADO
-  const getDaysRemaining = useCallback((endDate: string | null) => {
-    if (!endDate) return null;
-    
-    // ✅ USAR FECHA ACTUAL DE MÉXICO EN LUGAR DE UTC
-    const todayMexico = getMexicoToday();
-    const daysRemaining = getDaysBetweenMexicoDates(todayMexico, endDate);
-    
-    console.log(`📅 Calculando días restantes: Hoy=${todayMexico}, Vence=${endDate}, Restantes=${daysRemaining}`);
-    
-    return daysRemaining;
-  }, []);
+// ✅ FUNCIÓN CORREGIDA PARA CALCULAR DÍAS RESTANTES
+const getDaysRemaining = useCallback((endDate: string | null) => {
+  if (!endDate) return null;
+  
+  // ✅ OBTENER FECHA ACTUAL EN ZONA HORARIA DE MÉXICO
+  const mexicoNow = new Date();
+  const mexicoOffset = -6; // UTC-6 (CST México)
+  const utc = mexicoNow.getTime() + (mexicoNow.getTimezoneOffset() * 60000);
+  const mexicoTime = new Date(utc + (mexicoOffset * 3600000));
+  
+  // ✅ FORMATEAR FECHA ACTUAL DE MÉXICO COMO STRING (YYYY-MM-DD)
+  const todayMexico = mexicoTime.toISOString().split('T')[0];
+  
+  // ✅ CREAR OBJETOS DATE PARA COMPARACIÓN SIN COMPONENTE DE HORA
+  const today = new Date(todayMexico + 'T00:00:00');
+  const endDateObj = new Date(endDate + 'T00:00:00');
+  
+  // ✅ CALCULAR DIFERENCIA EN MILISEGUNDOS Y CONVERTIR A DÍAS
+  const diffTime = endDateObj.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  console.log(`📅 CÁLCULO DÍAS - Hoy México: ${todayMexico}, Vence: ${endDate}, Diferencia: ${diffDays} días`);
+  
+  return diffDays;
+}, []);
 
+// ✅ FUNCIÓN MEJORADA PARA FORMATEAR FECHAS DE DISPLAY
+const formatDate = useCallback((dateString: string) => {
+  try {
+    if (!dateString) return 'Sin fecha';
+    
+    // ✅ ASEGURAR QUE ES UNA FECHA VÁLIDA
+    const date = new Date(dateString + 'T00:00:00');
+    
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Fecha inválida:', dateString);
+      return 'Fecha inválida';
+    }
+    
+    // ✅ FORMATEAR EN ESPAÑOL CON ZONA HORARIA DE MÉXICO
+    return date.toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'America/Mexico_City'
+    });
+  } catch (error) {
+    console.error('❌ Error al formatear fecha:', dateString, error);
+    return 'Error de fecha';
+  }
+}, []);
+
+// ✅ FUNCIÓN PARA OBTENER FECHA ACTUAL DE MÉXICO
+const getMexicoCurrentDate = useCallback(() => {
+  const mexicoNow = new Date();
+  const mexicoOffset = -6; // UTC-6 (CST México)
+  const utc = mexicoNow.getTime() + (mexicoNow.getTimezoneOffset() * 60000);
+  const mexicoTime = new Date(utc + (mexicoOffset * 3600000));
+  
+  return mexicoTime.toISOString().split('T')[0]; // YYYY-MM-DD
+}, []);
+
+// ✅ FUNCIÓN PARA DEBUGGING DE FECHAS
+const debugMembershipDates = useCallback((membership: MembershipHistory) => {
+  const today = getMexicoCurrentDate();
+  const daysRemaining = getDaysRemaining(membership.end_date);
+  
+  console.log(`🔍 DEBUG MEMBRESÍA ${membership.user_name}:`, {
+    id: membership.id,
+    plan: membership.plan_name,
+    payment_type: membership.payment_type,
+    start_date: membership.start_date,
+    end_date: membership.end_date,
+    status: membership.status,
+    today_mexico: today,
+    days_remaining: daysRemaining,
+    formatted_end: membership.end_date ? formatDate(membership.end_date) : 'Sin fecha'
+  });
+  
+  return { today, daysRemaining };
+}, [getDaysRemaining, getMexicoCurrentDate, formatDate]);
   // ✅ FUNCIONES UTILITARIAS - VERIFICADAS
   const handleStatusChange = useCallback(async (membership: MembershipHistory, newStatus: string) => {
     try {
@@ -2866,41 +2970,65 @@ export default function HistorialMembresiaPage() {
                             />
                           </TableCell>
 
-                          <TableCell>
-                            <Box>
-                              <Typography variant="body2" sx={{ 
-                                color: darkProTokens.textPrimary,
-                                fontWeight: 500
-                              }}>
-                                📅 {formatDate(membership.start_date)}
-                              </Typography>
-                              {membership.end_date ? (
-                                <Typography variant="caption" sx={{ 
-                                  color: (() => {
-                                    const daysRemaining = getDaysRemaining(membership.end_date);
-                                    if (daysRemaining === null) return darkProTokens.textSecondary;
-                                    if (daysRemaining < 0) return darkProTokens.error;
-                                    if (daysRemaining < 7) return darkProTokens.warning;
-                                    return darkProTokens.success;
-                                  })()
-                                }}>
-                                  🏁 {(() => {
-                                    const daysRemaining = getDaysRemaining(membership.end_date!);
-                                    if (daysRemaining === null) return 'Sin límite';
-                                    if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
-                                    if (daysRemaining === 0) return 'Vence hoy';
-                                    return `${daysRemaining} días restantes`;
-                                  })()}
-                                </Typography>
-                              ) : (
-                                <Typography variant="caption" sx={{ 
-                                  color: darkProTokens.success
-                                }}>
-                                  ♾️ Sin vencimiento
-                                </Typography>
-                              )}
-                            </Box>
-                          </TableCell>
+                          // ✅ EN LA COLUMNA DE VIGENCIA DE LA TABLA - CORREGIDA
+<TableCell>
+  <Box>
+    <Typography variant="body2" sx={{ 
+      color: darkProTokens.textPrimary,
+      fontWeight: 500
+    }}>
+      📅 Inicio: {formatDate(membership.start_date)}
+    </Typography>
+    {membership.end_date ? (
+      <>
+        <Typography variant="body2" sx={{ 
+          color: darkProTokens.textPrimary,
+          fontWeight: 600,
+          mb: 0.5
+        }}>
+          🏁 Vence: {formatDate(membership.end_date)}
+        </Typography>
+        <Typography variant="caption" sx={{ 
+          color: (() => {
+            const daysRemaining = getDaysRemaining(membership.end_date);
+            if (daysRemaining === null) return darkProTokens.textSecondary;
+            if (daysRemaining < 0) return darkProTokens.error;
+            if (daysRemaining < 7) return darkProTokens.warning;
+            return darkProTokens.success;
+          })()
+        }}>
+          ⏰ {(() => {
+            const daysRemaining = getDaysRemaining(membership.end_date!);
+            if (daysRemaining === null) return 'Sin límite';
+            if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
+            if (daysRemaining === 0) return 'Vence hoy';
+            return `${daysRemaining} días restantes`;
+          })()}
+        </Typography>
+        
+        {/* 🆕 BOTÓN DE DEBUG TEMPORAL */}
+        <Button
+          size="small"
+          onClick={() => debugMembershipDates(membership)}
+          sx={{ 
+            fontSize: '0.7rem',
+            color: darkProTokens.info,
+            p: 0,
+            minWidth: 'auto'
+          }}
+        >
+          🔍 Debug
+        </Button>
+      </>
+    ) : (
+      <Typography variant="caption" sx={{ 
+        color: darkProTokens.success
+      }}>
+        ♾️ Sin vencimiento
+      </Typography>
+    )}
+  </Box>
+</TableCell>
 
                           <TableCell>
                             <Box>
