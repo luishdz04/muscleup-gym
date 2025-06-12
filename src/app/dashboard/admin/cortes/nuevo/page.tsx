@@ -195,7 +195,7 @@ export default function NuevoCorte() {
   const [success, setSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState(true); // ✅ EMPEZAR EN MODO EDICIÓN
   const [hasChanges, setHasChanges] = useState(false);
   const [existingCut, setExistingCut] = useState<any>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -338,7 +338,7 @@ export default function NuevoCorte() {
           abonos_commissions: data.abonos.commissions
         }));
         
-        setHasChanges(false);
+        setHasChanges(true); // ✅ Marcar como modificado para permitir guardar
       } else {
         setError('Error al cargar datos del día');
       }
@@ -382,7 +382,7 @@ export default function NuevoCorte() {
         expenses_amount: 0,
         notes: ''
       }));
-      setHasChanges(false);
+      setHasChanges(true);
       setValidationErrors([]);
       setSnackbarMessage('Datos restablecidos a los valores originales');
       setShowSnackbar(true);
@@ -523,13 +523,12 @@ export default function NuevoCorte() {
         label={label}
         type={type}
         value={value}
-        disabled={disabled || (!editMode && type === 'number')}
+        disabled={disabled}
         error={hasError}
         helperText={hasError ? errorMessage : ''}
         onChange={(e) => handleFieldChange(field, type === 'number' ? Number(e.target.value) || 0 : e.target.value)}
         InputProps={{
           startAdornment: startAdornment,
-          readOnly: !editMode && type === 'number'
         }}
         sx={{
           '& .MuiOutlinedInput-root': {
@@ -537,7 +536,7 @@ export default function NuevoCorte() {
               borderColor: hasError ? darkProTokens.error : darkProTokens.grayMedium,
             },
             '&:hover fieldset': {
-              borderColor: hasError ? darkProTokens.errorHover : (editMode ? darkProTokens.primary : darkProTokens.grayMedium),
+              borderColor: hasError ? darkProTokens.errorHover : darkProTokens.primary,
             },
             '&.Mui-focused fieldset': {
               borderColor: hasError ? darkProTokens.error : darkProTokens.primary,
@@ -595,15 +594,6 @@ export default function NuevoCorte() {
               sx={{ color: darkProTokens.info }}
             >
               <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title={editMode ? "Bloquear edición" : "Permitir edición manual"}>
-            <IconButton
-              onClick={() => setEditMode(!editMode)}
-              sx={{ color: editMode ? darkProTokens.warning : darkProTokens.grayMuted }}
-            >
-              {editMode ? <LockOpenIcon /> : <LockIcon />}
             </IconButton>
           </Tooltip>
           
@@ -757,17 +747,15 @@ export default function NuevoCorte() {
                           fontWeight: 600
                         }}
                       />
-                      {editMode && (
-                        <Chip
-                          icon={<EditIcon />}
-                          label="Modo de edición activo"
-                          sx={{
-                            backgroundColor: `${darkProTokens.warning}20`,
-                            color: darkProTokens.warning,
-                            fontWeight: 600
-                          }}
-                        />
-                      )}
+                      <Chip
+                        icon={<EditIcon />}
+                        label="Listo para editar"
+                        sx={{
+                          backgroundColor: `${darkProTokens.success}20`,
+                          color: darkProTokens.success,
+                          fontWeight: 600
+                        }}
+                      />
                     </Box>
                   </Box>
                   
@@ -839,12 +827,265 @@ export default function NuevoCorte() {
             </motion.div>
           </Grid>
 
+          {/* 🏪 DESGLOSE DETALLADO (ACORDEONES) */}
+          <Grid xs={12}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: darkProTokens.textPrimary }}>
+                🏪 Desglose Detallado por Fuente de Ingresos
+              </Typography>
+
+              {/* PUNTO DE VENTA */}
+              <Accordion defaultExpanded sx={{ 
+                mb: 2,
+                backgroundColor: darkProTokens.surfaceLevel2,
+                '&:before': { display: 'none' }
+              }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textPrimary }} />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <ReceiptIcon sx={{ color: darkProTokens.info }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.info }}>
+                      Punto de Venta
+                    </Typography>
+                    <Box sx={{ ml: 'auto', mr: 3 }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                        {formatPrice(formData.pos_efectivo + formData.pos_transferencia + formData.pos_debito + formData.pos_credito + formData.pos_mixto)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Efectivo POS"
+                        value={formData.pos_efectivo}
+                        field="pos_efectivo"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Transferencia POS"
+                        value={formData.pos_transferencia}
+                        field="pos_transferencia"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Débito POS"
+                        value={formData.pos_debito}
+                        field="pos_debito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Crédito POS"
+                        value={formData.pos_credito}
+                        field="pos_credito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Mixto POS"
+                        value={formData.pos_mixto}
+                        field="pos_mixto"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Transacciones POS"
+                        value={formData.pos_transactions}
+                        field="pos_transactions"
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Comisiones POS"
+                        value={formData.pos_commissions}
+                        field="pos_commissions"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+
+              {/* ABONOS */}
+              <Accordion sx={{ 
+                mb: 2,
+                backgroundColor: darkProTokens.surfaceLevel2,
+                '&:before': { display: 'none' }
+              }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textPrimary }} />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <MoneyIcon sx={{ color: darkProTokens.warning }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.warning }}>
+                      Abonos
+                    </Typography>
+                    <Box sx={{ ml: 'auto', mr: 3 }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                        {formatPrice(formData.abonos_efectivo + formData.abonos_transferencia + formData.abonos_debito + formData.abonos_credito + formData.abonos_mixto)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Efectivo Abonos"
+                        value={formData.abonos_efectivo}
+                        field="abonos_efectivo"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Transferencia Abonos"
+                        value={formData.abonos_transferencia}
+                        field="abonos_transferencia"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Débito Abonos"
+                        value={formData.abonos_debito}
+                        field="abonos_debito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Crédito Abonos"
+                        value={formData.abonos_credito}
+                        field="abonos_credito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Mixto Abonos"
+                        value={formData.abonos_mixto}
+                        field="abonos_mixto"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Transacciones Abonos"
+                        value={formData.abonos_transactions}
+                        field="abonos_transactions"
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Comisiones Abonos"
+                        value={formData.abonos_commissions}
+                        field="abonos_commissions"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+
+              {/* MEMBRESÍAS */}
+              <Accordion sx={{ 
+                mb: 2,
+                backgroundColor: darkProTokens.surfaceLevel2,
+                '&:before': { display: 'none' }
+              }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textPrimary }} />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <CheckCircleIcon sx={{ color: darkProTokens.success }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.success }}>
+                      Membresías
+                    </Typography>
+                    <Box sx={{ ml: 'auto', mr: 3 }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                        {formatPrice(formData.membership_efectivo + formData.membership_transferencia + formData.membership_debito + formData.membership_credito + formData.membership_mixto)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Efectivo Membresías"
+                        value={formData.membership_efectivo}
+                        field="membership_efectivo"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Transferencia Membresías"
+                        value={formData.membership_transferencia}
+                        field="membership_transferencia"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Débito Membresías"
+                        value={formData.membership_debito}
+                        field="membership_debito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Crédito Membresías"
+                        value={formData.membership_credito}
+                        field="membership_credito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Mixto Membresías"
+                        value={formData.membership_mixto}
+                        field="membership_mixto"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Transacciones Membresías"
+                        value={formData.membership_transactions}
+                        field="membership_transactions"
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Comisiones Membresías"
+                        value={formData.membership_commissions}
+                        field="membership_commissions"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            </motion.div>
+          </Grid>
+
           {/* 💸 GASTOS Y NOTAS */}
           <Grid xs={12} md={6}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
             >
               <Card sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -864,11 +1105,33 @@ export default function NuevoCorte() {
                   />
                   
                   <Box sx={{ mt: 2 }}>
-                    <EditableField
+                    <TextField
+                      fullWidth
                       label="Notas y Observaciones"
+                      multiline
+                      rows={4}
                       value={formData.notes}
-                      field="notes"
-                      type="text"
+                      onChange={(e) => handleFieldChange('notes', e.target.value)}
+                      placeholder="Describe los gastos del día, observaciones especiales, etc..."
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': {
+                            borderColor: darkProTokens.grayMedium,
+                          },
+                          '&:hover fieldset': {
+                            borderColor: darkProTokens.primary,
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: darkProTokens.primary,
+                          },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkProTokens.textSecondary,
+                        },
+                        '& .MuiInputBase-input': {
+                          color: darkProTokens.textPrimary,
+                        },
+                      }}
                     />
                   </Box>
                 </CardContent>
@@ -881,7 +1144,7 @@ export default function NuevoCorte() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
             >
               <Card sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -939,11 +1202,11 @@ export default function NuevoCorte() {
                         Estado:
                       </Typography>
                       <Chip
-                        label={hasChanges ? "Modificado" : "Sin cambios"}
+                        label={hasChanges ? "Listo para guardar" : "Sin cambios"}
                         size="small"
                         sx={{
-                          backgroundColor: hasChanges ? `${darkProTokens.warning}20` : `${darkProTokens.success}20`,
-                          color: hasChanges ? darkProTokens.warning : darkProTokens.success,
+                          backgroundColor: hasChanges ? `${darkProTokens.success}20` : `${darkProTokens.grayMuted}20`,
+                          color: hasChanges ? darkProTokens.success : darkProTokens.grayMuted,
                           fontWeight: 600
                         }}
                       />
@@ -952,19 +1215,17 @@ export default function NuevoCorte() {
                     <Divider sx={{ backgroundColor: darkProTokens.grayMedium }} />
                     
                     <Alert 
-                      severity="info" 
+                      severity="success" 
                       sx={{ 
-                        backgroundColor: `${darkProTokens.info}20`,
-                        border: `1px solid ${darkProTokens.info}30`,
+                        backgroundColor: `${darkProTokens.success}20`,
+                        border: `1px solid ${darkProTokens.success}30`,
                         '& .MuiAlert-message': {
                           color: darkProTokens.textPrimary
                         }
                       }}
                     >
-                      {editMode 
-                        ? "🔓 Modo de edición activo. Puedes modificar cualquier valor antes de guardar."
-                        : "🔒 Los datos están bloqueados. Activa el modo de edición para modificar valores."
-                      }
+                      ✅ Los datos se cargaron automáticamente desde las transacciones del día. 
+                      Puedes ajustar cualquier valor antes de guardar.
                     </Alert>
                   </Stack>
                 </CardContent>
