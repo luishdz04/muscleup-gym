@@ -6,7 +6,7 @@ import {
   Paper,
   Typography,
   Button,
-  Grid as Grid,
+  Grid,
   Card,
   CardContent,
   TextField,
@@ -23,7 +23,9 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  CircularProgress,
+  Snackbar
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -41,14 +43,62 @@ import {
   Refresh as RefreshIcon,
   Receipt as ReceiptIcon,
   Star as StarIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
-import { Product, Coupon, User, CartItem, SalesStats } from '@/types';
-import { corporateColors, getGradient } from '@/theme/colors';
+import { useRouter } from 'next/navigation';
+
+// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // User Roles
+  roleAdmin: '#FFCC00',
+  roleStaff: '#1976D2',
+  roleTrainer: '#009688',
+  roleUser: '#777777',
+  roleModerator: '#9C27B0',
+  roleGuest: '#444444',
+  
+  // Interactions
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
 
 // Importar componentes del POS
 import CustomerSelector from '@/components/pos/CustomerSelector';
@@ -56,12 +106,65 @@ import PaymentDialog from '@/components/pos/PaymentDialog';
 import LayawayDialog from '@/components/pos/LayawayDialog-DEBUG';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
-interface Customer extends User {
+interface Product {
+  id: string;
   name: string;
+  sku?: string;
+  barcode?: string;
+  brand?: string;
+  category: string;
+  current_stock: number;
+  min_stock: number;
+  unit: string;
+  cost_price: number;
+  sale_price: number;
+  image_url?: string;
+  is_active?: boolean;
+  is_taxable?: boolean;
+  tax_rate?: number;
+  suppliers?: {
+    company_name: string;
+    contact_person: string;
+  };
+}
+
+interface CartItem {
+  product: Product;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  discount_amount: number;
+  tax_amount: number;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  email?: string;
   whatsapp?: string;
   membership_type?: string;
   points_balance?: number;
   total_purchases?: number;
+}
+
+interface Coupon {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  min_amount?: number;
+  max_uses?: number;
+  current_uses?: number;
+  start_date?: string;
+  end_date?: string;
+  is_active: boolean;
+}
+
+interface SalesStats {
+  dailySales: number;
+  dailyTransactions: number;
+  avgTicket: number;
+  topProducts: any[];
 }
 
 const CATEGORIES = [
@@ -79,6 +182,8 @@ const CATEGORIES = [
 ];
 
 export default function POSPage() {
+  const router = useRouter();
+  
   // Estados principales
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -105,7 +210,31 @@ export default function POSPage() {
     topProducts: []
   });
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ Formatear precio
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  };
+
+  // ✅ Mostrar notificación
+  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  };
 
   // ✅ MEMOIZAR OBJETOS ESTABLES PARA EVITAR RE-RENDERS
   const stableCart = useMemo(() => cart.map(item => ({
@@ -399,11 +528,16 @@ export default function POSPage() {
           sx={{
             height: '100%',
             cursor: 'pointer',
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            color: darkProTokens.textPrimary,
             '&:hover': {
-              boxShadow: 6,
-              borderColor: corporateColors.primary.main
+              boxShadow: `0 8px 32px ${darkProTokens.primary}30`,
+              borderColor: darkProTokens.primary,
+              transform: 'translateY(-2px)'
             },
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            borderRadius: 3
           }}
           onClick={() => addToCart(product)}
         >
@@ -412,11 +546,11 @@ export default function POSPage() {
               height: 120,
               background: product.image_url
                 ? `url(${product.image_url}) center/cover`
-                : getGradient('primary'),
+                : `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'white',
+              color: darkProTokens.background,
               position: 'relative'
             }}
           >
@@ -429,32 +563,51 @@ export default function POSPage() {
             <Chip
               label={`${product.current_stock} ${product.unit}`}
               size="small"
-              color={product.current_stock <= product.min_stock ? 'warning' : 'success'}
               sx={{
                 position: 'absolute',
                 top: 8,
                 right: 8,
-                fontWeight: 'bold'
+                fontWeight: 'bold',
+                backgroundColor: product.current_stock <= product.min_stock ? darkProTokens.warning : darkProTokens.success,
+                color: darkProTokens.textPrimary
               }}
             />
           </Box>
 
           <CardContent sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" noWrap fontWeight="bold" gutterBottom>
+            <Typography variant="h6" noWrap fontWeight="bold" gutterBottom sx={{ color: darkProTokens.textPrimary }}>
               {product.name}
             </Typography>
             {product.brand && (
-              <Typography variant="body2" color="text.secondary" gutterBottom>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }} gutterBottom>
                 {product.brand}
               </Typography>
             )}
-            <Chip label={product.category} size="small" variant="outlined" sx={{ mb: 1 }} />
+            <Chip 
+              label={product.category} 
+              size="small" 
+              sx={{ 
+                mb: 1,
+                backgroundColor: `${darkProTokens.info}20`,
+                color: darkProTokens.info,
+                border: `1px solid ${darkProTokens.info}40`
+              }} 
+            />
             <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
-              <Typography variant="h6" color="primary" fontWeight="bold">
+              <Typography variant="h6" sx={{ color: darkProTokens.primary }} fontWeight="bold">
                 {formatPrice(product.sale_price)}
               </Typography>
               {product.current_stock <= product.min_stock && (
-                <Chip icon={<WarningIcon />} label="Stock Bajo" size="small" color="warning" />
+                <Chip 
+                  icon={<WarningIcon />} 
+                  label="Stock Bajo" 
+                  size="small" 
+                  sx={{
+                    backgroundColor: `${darkProTokens.warning}20`,
+                    color: darkProTokens.warning,
+                    border: `1px solid ${darkProTokens.warning}40`
+                  }}
+                />
               )}
             </Box>
           </CardContent>
@@ -464,114 +617,221 @@ export default function POSPage() {
   };
 
   // ✅ DEBUG LOGGING
-console.log('🔍 POSPage Render:', {
-  cartLength: cart.length,
-  customerName: selectedCustomer?.name,
-  layawayDialogOpen,
-  totalsTotal: totals.total,
-  timestamp: new Date().toISOString()
-});
-
+  console.log('🔍 POSPage Render:', {
+    cartLength: cart.length,
+    customerName: selectedCustomer?.name,
+    layawayDialogOpen,
+    totalsTotal: totals.total,
+    timestamp: new Date().toISOString()
+  });
 
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        bgcolor: corporateColors.background.default,
-        color: corporateColors.text.primary,
+        background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+        color: darkProTokens.textPrimary,
         p: 2
       }}
     >
+      {/* ✅ SNACKBAR CON DARK PRO SYSTEM */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       <Grid container spacing={3}>
         {/* Panel izquierdo - Productos */}
         <Grid size={{ xs: 12, lg: 8 }}>
-          {/* Header */}
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography
-              variant="h4"
-              component="h1"
-              fontWeight="bold"
-              sx={{ color: corporateColors.text.primary }}
-            >
-              🛒 Punto de Venta
-            </Typography>
-            <Box>
-              <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={loadProducts}
-                sx={{
-                  borderColor: corporateColors.primary.main,
-                  color: corporateColors.primary.main
-                }}
-              >
-                Actualizar
-              </Button>
+          {/* ✅ HEADER CON DARK PRO SYSTEM */}
+          <Paper sx={{
+            p: 4,
+            mb: 4,
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.primary}30`,
+            borderRadius: 4,
+            boxShadow: `0 8px 32px ${darkProTokens.primary}10`
+          }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Box>
+                <Typography
+                  variant="h3"
+                  component="h1"
+                  sx={{
+                    fontWeight: 800,
+                    color: darkProTokens.primary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    mb: 1
+                  }}
+                >
+                  <CartIcon sx={{ fontSize: 50 }} />
+                  Punto de Venta
+                </Typography>
+                <Typography variant="h6" sx={{ 
+                  color: darkProTokens.textSecondary,
+                  fontWeight: 300
+                }}>
+                  Sistema de Ventas | Gestión de Transacciones
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  startIcon={<ArrowBackIcon />}
+                  onClick={() => router.push('/dashboard/admin')}
+                  sx={{ 
+                    color: darkProTokens.primary,
+                    borderColor: `${darkProTokens.primary}60`,
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 3,
+                    fontWeight: 600,
+                    '&:hover': {
+                      borderColor: darkProTokens.primary,
+                      backgroundColor: `${darkProTokens.primary}10`,
+                      transform: 'translateY(-2px)'
+                    }
+                  }}
+                  variant="outlined"
+                >
+                  Dashboard
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={loadProducts}
+                  disabled={loading}
+                  sx={{
+                    color: darkProTokens.textSecondary,
+                    borderColor: `${darkProTokens.textSecondary}60`,
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 3,
+                    fontWeight: 600,
+                    '&:hover': {
+                      borderColor: darkProTokens.textSecondary,
+                      backgroundColor: `${darkProTokens.textSecondary}10`,
+                      transform: 'translateY(-2px)'
+                    }
+                  }}
+                >
+                  Actualizar
+                </Button>
+              </Box>
             </Box>
-          </Box>
 
-          {/* Estadísticas */}
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Card sx={{ background: getGradient('success') }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h5" fontWeight="bold" color="white">
-                        {formatPrice(salesStats.dailySales)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
-                        Ventas del día
-                      </Typography>
+            {/* ✅ ESTADÍSTICAS CON DARK PRO SYSTEM */}
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Card sx={{ 
+                  background: `${darkProTokens.success}10`, 
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 3,
+                  color: darkProTokens.textPrimary
+                }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                          {formatPrice(salesStats.dailySales)}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Ventas del día
+                        </Typography>
+                      </Box>
+                      <ReceiptIcon sx={{ fontSize: 40, color: darkProTokens.success, opacity: 0.8 }} />
                     </Box>
-                    <ReceiptIcon sx={{ fontSize: 40, color: 'white', opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Card sx={{ background: getGradient('info') }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h5" fontWeight="bold" color="white">
-                        {salesStats.dailyTransactions}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
-                        Transacciones
-                      </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Card sx={{ 
+                  background: `${darkProTokens.info}10`, 
+                  border: `1px solid ${darkProTokens.info}30`,
+                  borderRadius: 3,
+                  color: darkProTokens.textPrimary
+                }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                          {salesStats.dailyTransactions}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Transacciones
+                        </Typography>
+                      </Box>
+                      <CartIcon sx={{ fontSize: 40, color: darkProTokens.info, opacity: 0.8 }} />
                     </Box>
-                    <CartIcon sx={{ fontSize: 40, color: 'white', opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Card sx={{ background: getGradient('warning') }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h5" fontWeight="bold" color="white">
-                        {formatPrice(salesStats.avgTicket)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
-                        Ticket promedio
-                      </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Card sx={{ 
+                  background: `${darkProTokens.warning}10`, 
+                  border: `1px solid ${darkProTokens.warning}30`,
+                  borderRadius: 3,
+                  color: darkProTokens.textPrimary
+                }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                          {formatPrice(salesStats.avgTicket)}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Ticket promedio
+                        </Typography>
+                      </Box>
+                      <StarIcon sx={{ fontSize: 40, color: darkProTokens.warning, opacity: 0.8 }} />
                     </Box>
-                    <StarIcon sx={{ fontSize: 40, color: 'white', opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
-          </Grid>
+          </Paper>
 
-          {/* Filtros */}
+          {/* ✅ FILTROS CON DARK PRO SYSTEM */}
           <Paper
             sx={{
-              p: 2,
+              p: 3,
               mb: 3,
-              bgcolor: corporateColors.background.paper,
-              color: corporateColors.text.onWhite
+              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3,
+              color: darkProTokens.textPrimary
             }}
           >
             <Grid container spacing={2}>
@@ -584,26 +844,55 @@ console.log('🔍 POSPage Render:', {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <SearchIcon />
+                        <SearchIcon sx={{ color: darkProTokens.primary }} />
                       </InputAdornment>
                     ),
                     endAdornment: searchTerm && (
                       <InputAdornment position="end">
                         <IconButton size="small" onClick={() => setSearchTerm('')}>
-                          <ClearIcon />
+                          <ClearIcon sx={{ color: darkProTokens.textSecondary }} />
                         </IconButton>
                       </InputAdornment>
-                    )
+                    ),
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }
                   }}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth>
-                  <InputLabel>Categoría</InputLabel>
+                  <InputLabel sx={{ 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
+                  }}>
+                    Categoría
+                  </InputLabel>
                   <Select
                     value={categoryFilter}
                     label="Categoría"
                     onChange={e => setCategoryFilter(e.target.value)}
+                    sx={{
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }}
                   >
                     <MenuItem value="">Todas las categorías</MenuItem>
                     {CATEGORIES.map(category => (
@@ -615,32 +904,38 @@ console.log('🔍 POSPage Render:', {
                 </FormControl>
               </Grid>
               <Grid size={{ xs: 12, md: 2 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ pt: 2 }}>
+                <Typography variant="body2" sx={{ 
+                  color: darkProTokens.textSecondary, 
+                  pt: 2,
+                  textAlign: 'center'
+                }}>
                   {filteredProducts.length} productos
                 </Typography>
               </Grid>
             </Grid>
           </Paper>
 
-          {/* Grid de productos */}
+          {/* ✅ GRID DE PRODUCTOS CON DARK PRO SYSTEM */}
           <Paper
             sx={{
-              p: 2,
-              bgcolor: corporateColors.background.paper,
-              color: corporateColors.text.onWhite
+              p: 3,
+              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3,
+              color: darkProTokens.textPrimary
             }}
           >
             {loading ? (
               <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
-                <Typography>Cargando productos...</Typography>
+                <CircularProgress sx={{ color: darkProTokens.primary }} size={60} thickness={4} />
               </Box>
             ) : filteredProducts.length === 0 ? (
               <Box textAlign="center" py={4}>
-                <CategoryIcon sx={{ fontSize: 80, color: 'grey.400', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary" gutterBottom>
+                <CategoryIcon sx={{ fontSize: 80, color: darkProTokens.textSecondary, mb: 2 }} />
+                <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }} gutterBottom>
                   No se encontraron productos
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                   {products.length === 0
                     ? 'No hay productos disponibles'
                     : 'Intenta ajustar los filtros de búsqueda'
@@ -659,14 +954,16 @@ console.log('🔍 POSPage Render:', {
           </Paper>
         </Grid>
 
-        {/* Panel derecho - Carrito */}
+        {/* ✅ PANEL DERECHO - CARRITO CON DARK PRO SYSTEM */}
         <Grid size={{ xs: 12, lg: 4 }}>
           <Paper
             sx={{
               p: 3,
               height: 'fit-content',
-              bgcolor: corporateColors.background.paper,
-              color: corporateColors.text.onWhite,
+              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3,
+              color: darkProTokens.textPrimary,
               position: 'sticky',
               top: 20
             }}
@@ -676,13 +973,18 @@ console.log('🔍 POSPage Render:', {
               <Typography
                 variant="h6"
                 fontWeight="bold"
-                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  color: darkProTokens.textPrimary
+                }}
               >
-                <CartIcon color="primary" />
+                <CartIcon sx={{ color: darkProTokens.primary }} />
                 Carrito ({cart.length})
               </Typography>
               {cart.length > 0 && (
-                <IconButton onClick={clearCart} color="error">
+                <IconButton onClick={clearCart} sx={{ color: darkProTokens.error }}>
                   <DeleteIcon />
                 </IconButton>
               )}
@@ -694,28 +996,31 @@ console.log('🔍 POSPage Render:', {
                 <Paper
                   sx={{
                     p: 2,
-                    bgcolor: corporateColors.success.main + '20',
-                    border: `1px solid ${corporateColors.success.main}`
+                    background: `${darkProTokens.success}20`,
+                    border: `1px solid ${darkProTokens.success}`
                   }}
                 >
                   <Box display="flex" alignItems="center" justifyContent="space-between">
                     <Box display="flex" alignItems="center" gap={2}>
-                      <Avatar sx={{ bgcolor: corporateColors.success.main }}>
+                      <Avatar sx={{ bgcolor: darkProTokens.success }}>
                         <PersonIcon />
                       </Avatar>
                       <Box>
-                        <Typography variant="subtitle2" fontWeight="bold">
+                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
                           {selectedCustomer.name}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                           {selectedCustomer.email || selectedCustomer.whatsapp}
                         </Typography>
                         {selectedCustomer.membership_type && (
                           <Chip
                             label={selectedCustomer.membership_type}
                             size="small"
-                            color="primary"
-                            sx={{ ml: 1 }}
+                            sx={{ 
+                              ml: 1,
+                              backgroundColor: `${darkProTokens.primary}20`,
+                              color: darkProTokens.primary
+                            }}
                           />
                         )}
                       </Box>
@@ -723,7 +1028,7 @@ console.log('🔍 POSPage Render:', {
                     <IconButton
                       size="small"
                       onClick={() => setSelectedCustomer(null)}
-                      color="error"
+                      sx={{ color: darkProTokens.error }}
                     >
                       <ClearIcon />
                     </IconButton>
@@ -736,10 +1041,11 @@ console.log('🔍 POSPage Render:', {
                   startIcon={<PersonIcon />}
                   onClick={() => setCustomerSelectorOpen(true)}
                   sx={{
-                    borderColor: corporateColors.primary.main,
-                    color: corporateColors.primary.main,
+                    borderColor: darkProTokens.primary,
+                    color: darkProTokens.primary,
                     '&:hover': {
-                      bgcolor: corporateColors.primary.main + '20'
+                      bgcolor: `${darkProTokens.primary}20`,
+                      borderColor: darkProTokens.primary
                     }
                   }}
                 >
@@ -754,25 +1060,25 @@ console.log('🔍 POSPage Render:', {
                 <Paper
                   sx={{
                     p: 2,
-                    bgcolor: corporateColors.warning.main + '20',
-                    border: `1px solid ${corporateColors.warning.main}`
+                    background: `${darkProTokens.warning}20`,
+                    border: `1px solid ${darkProTokens.warning}`
                   }}
                 >
                   <Box display="flex" alignItems="center" justifyContent="space-between">
                     <Box display="flex" alignItems="center" gap={2}>
-                      <Avatar sx={{ bgcolor: corporateColors.warning.main }}>
+                      <Avatar sx={{ bgcolor: darkProTokens.warning }}>
                         <CouponIcon />
                       </Avatar>
                       <Box>
-                        <Typography variant="subtitle2" fontWeight="bold">
+                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
                           {appliedCoupon.code}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                           -{formatPrice(totals.couponDiscount)}
                         </Typography>
                       </Box>
                     </Box>
-                    <IconButton size="small" onClick={removeCoupon} color="error">
+                    <IconButton size="small" onClick={removeCoupon} sx={{ color: darkProTokens.error }}>
                       <ClearIcon />
                     </IconButton>
                   </Box>
@@ -789,9 +1095,21 @@ console.log('🔍 POSPage Render:', {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <CouponIcon />
+                          <CouponIcon sx={{ color: darkProTokens.primary }} />
                         </InputAdornment>
-                      )
+                      ),
+                      sx: {
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }
                     }}
                   />
                   <Button
@@ -799,8 +1117,9 @@ console.log('🔍 POSPage Render:', {
                     onClick={applyCoupon}
                     disabled={!couponCode.trim()}
                     sx={{
-                      background: getGradient('primary'),
-                      color: corporateColors.text.onPrimary
+                      background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                      color: darkProTokens.background,
+                      fontWeight: 700
                     }}
                   >
                     Aplicar
@@ -813,11 +1132,11 @@ console.log('🔍 POSPage Render:', {
             <Box sx={{ mb: 3, maxHeight: 300, overflow: 'auto' }}>
               {cart.length === 0 ? (
                 <Box textAlign="center" py={4}>
-                  <CartIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
-                  <Typography variant="body2" color="text.secondary">
+                  <CartIcon sx={{ fontSize: 60, color: darkProTokens.textSecondary, mb: 2 }} />
+                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                     El carrito está vacío
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                     Selecciona productos para agregar
                   </Typography>
                 </Box>
@@ -834,11 +1153,10 @@ console.log('🔍 POSPage Render:', {
                       >
                         <ListItem
                           sx={{
-                            border: 1,
-                            borderColor: 'grey.200',
+                            border: `1px solid ${darkProTokens.grayDark}`,
                             borderRadius: 1,
                             mb: 1,
-                            bgcolor: 'background.default',
+                            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
                             position: 'relative',
                             minHeight: 70,
                             pr: 14 // Espacio para botones
@@ -851,13 +1169,14 @@ console.log('🔍 POSPage Render:', {
                               variant: 'subtitle2',
                               fontWeight: 'bold',
                               noWrap: true,
-                              component: 'div'
+                              component: 'div',
+                              sx: { color: darkProTokens.textPrimary }
                             }}
                             secondaryTypographyProps={{
                               variant: 'body2',
                               component: 'div',
                               sx: {
-                                color: 'primary.main',
+                                color: darkProTokens.primary,
                                 fontWeight: 'bold'
                               }
                             }}
@@ -880,13 +1199,18 @@ console.log('🔍 POSPage Render:', {
                                 updateCartItemQuantity(item.product.id, item.quantity - 1)
                               }
                               disabled={item.quantity <= 1}
+                              sx={{ color: darkProTokens.textSecondary }}
                             >
                               <RemoveIcon />
                             </IconButton>
                             <Typography
                               variant="body2"
                               fontWeight="bold"
-                              sx={{ minWidth: 20, textAlign: 'center' }}
+                              sx={{ 
+                                minWidth: 20, 
+                                textAlign: 'center',
+                                color: darkProTokens.textPrimary
+                              }}
                             >
                               {item.quantity}
                             </Typography>
@@ -896,13 +1220,14 @@ console.log('🔍 POSPage Render:', {
                                 updateCartItemQuantity(item.product.id, item.quantity + 1)
                               }
                               disabled={item.quantity >= item.product.current_stock}
+                              sx={{ color: darkProTokens.textSecondary }}
                             >
                               <AddIcon />
                             </IconButton>
                             <IconButton
                               size="small"
                               onClick={() => removeFromCart(item.product.id)}
-                              color="error"
+                              sx={{ color: darkProTokens.error }}
                             >
                               <DeleteIcon />
                             </IconButton>
@@ -916,7 +1241,7 @@ console.log('🔍 POSPage Render:', {
                               bottom: 8
                             }}
                           >
-                            <Typography variant="body2" fontWeight="bold" color="primary">
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
                               {formatPrice(item.total_price)}
                             </Typography>
                           </Box>
@@ -931,31 +1256,31 @@ console.log('🔍 POSPage Render:', {
             {/* Totales */}
             {cart.length > 0 && (
               <Box>
-                <Divider sx={{ mb: 2 }} />
+                <Divider sx={{ mb: 2, borderColor: darkProTokens.grayDark }} />
                 <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
-                  <Typography>Subtotal:</Typography>
-                  <Typography>{formatPrice(totals.subtotal)}</Typography>
+                  <Typography sx={{ color: darkProTokens.textSecondary }}>Subtotal:</Typography>
+                  <Typography sx={{ color: darkProTokens.textPrimary }}>{formatPrice(totals.subtotal)}</Typography>
                 </Box>
                 {totals.taxAmount > 0 && (
                   <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
-                    <Typography>IVA:</Typography>
-                    <Typography>{formatPrice(totals.taxAmount)}</Typography>
+                    <Typography sx={{ color: darkProTokens.textSecondary }}>IVA:</Typography>
+                    <Typography sx={{ color: darkProTokens.textPrimary }}>{formatPrice(totals.taxAmount)}</Typography>
                   </Box>
                 )}
                 {(totals.discountAmount + totals.couponDiscount) > 0 && (
                   <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
-                    <Typography color="error">Descuentos:</Typography>
-                    <Typography color="error">
+                    <Typography sx={{ color: darkProTokens.error }}>Descuentos:</Typography>
+                    <Typography sx={{ color: darkProTokens.error }}>
                       -{formatPrice(totals.discountAmount + totals.couponDiscount)}
                     </Typography>
                   </Box>
                 )}
-                <Divider sx={{ my: 1 }} />
+                <Divider sx={{ my: 1, borderColor: darkProTokens.grayDark }} />
                 <Box display="flex" justifyContent="space-between" sx={{ mb: 3 }}>
-                  <Typography variant="h6" fontWeight="bold">
+                  <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
                     TOTAL:
                   </Typography>
-                  <Typography variant="h6" fontWeight="bold" color="primary">
+                  <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
                     {formatPrice(totals.total)}
                   </Typography>
                 </Box>
@@ -970,10 +1295,11 @@ console.log('🔍 POSPage Render:', {
                       onClick={() => setLayawayDialogOpen(true)}
                       disabled={!selectedCustomer}
                       sx={{
-                        borderColor: corporateColors.warning.main,
-                        color: corporateColors.warning.main,
+                        borderColor: darkProTokens.warning,
+                        color: darkProTokens.warning,
                         '&:hover': {
-                          bgcolor: corporateColors.warning.main + '20'
+                          bgcolor: `${darkProTokens.warning}20`,
+                          borderColor: darkProTokens.warning
                         }
                       }}
                     >
@@ -987,8 +1313,8 @@ console.log('🔍 POSPage Render:', {
                       startIcon={<PaymentIcon />}
                       onClick={() => setPaymentDialogOpen(true)}
                       sx={{
-                        background: getGradient('success'),
-                        color: 'white',
+                        background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+                        color: darkProTokens.textPrimary,
                         fontWeight: 'bold'
                       }}
                     >
@@ -998,7 +1324,16 @@ console.log('🔍 POSPage Render:', {
                 </Grid>
 
                 {!selectedCustomer && (
-                  <Alert severity="info" sx={{ mt: 2 }}>
+                  <Alert 
+                    severity="info" 
+                    sx={{ 
+                      mt: 2,
+                      backgroundColor: `${darkProTokens.info}10`,
+                      color: darkProTokens.textPrimary,
+                      border: `1px solid ${darkProTokens.info}30`,
+                      '& .MuiAlert-icon': { color: darkProTokens.info }
+                    }}
+                  >
                     <Typography variant="body2">
                       💡 Para crear apartados, primero selecciona un cliente
                     </Typography>
@@ -1030,40 +1365,61 @@ console.log('🔍 POSPage Render:', {
         onSuccess={handleSaleSuccess}
       />
 
-<LayawayDialog
-  open={layawayDialogOpen}
-  onClose={() => {
-    console.log('🔐 Cerrando LayawayDialog');
-    setLayawayDialogOpen(false);
-  }}
-  cart={stableCart}
-  customer={stableCustomer}
-  coupon={stableCoupon}
-  totals={totals}
-  onSuccess={() => {
-    console.log('✅ LayawayDialog Success');
-    handleSaleSuccess();
-  }}
-/>
+      <LayawayDialog
+        open={layawayDialogOpen}
+        onClose={() => {
+          console.log('🔐 Cerrando LayawayDialog');
+          setLayawayDialogOpen(false);
+        }}
+        cart={stableCart}
+        customer={stableCustomer}
+        coupon={stableCoupon}
+        totals={totals}
+        onSuccess={() => {
+          console.log('✅ LayawayDialog Success');
+          handleSaleSuccess();
+        }}
+      />
 
       {/* FAB para scanner */}
       <Fab
-        color="primary"
         aria-label="scanner"
         sx={{
           position: 'fixed',
           bottom: 24,
           left: 24,
-          background: getGradient('primary'),
-          color: corporateColors.text.onPrimary,
+          background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+          color: darkProTokens.background,
           '&:hover': {
-            background: getGradient('primaryDark')
+            background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+            transform: 'scale(1.1)'
           }
         }}
         onClick={() => showNotification('Scanner en desarrollo', 'info')}
       >
         <ScannerIcon />
       </Fab>
+
+      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+        }
+      `}</style>
     </Box>
   );
 }
