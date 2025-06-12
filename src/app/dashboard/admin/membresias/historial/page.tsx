@@ -1414,7 +1414,7 @@ export default function HistorialMembresiaPage() {
                           }
                         }
                       }}
-                                            InputLabelProps={{
+                      InputLabelProps={{
                         sx: { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.info }
@@ -1430,7 +1430,7 @@ export default function HistorialMembresiaPage() {
                       type="number"
                       value={editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0}
                       onChange={(e) => setEditData(prev => ({ ...prev, transfer_amount: parseFloat(e.target.value) || 0 }))}
-                      InputProps={{
+                                            InputProps={{
                         startAdornment: <InputAdornment position="start">🏦</InputAdornment>,
                         sx: {
                           color: darkProTokens.textPrimary,
@@ -1918,7 +1918,7 @@ export default function HistorialMembresiaPage() {
       minHeight: '100vh',
       color: darkProTokens.textPrimary
     }}>
-      {/* ✅ SNACKBARS - IGUAL QUE ANTES */}
+      {/* ✅ SNACKBARS */}
       <Snackbar 
         open={!!error} 
         autoHideDuration={8000} 
@@ -2293,7 +2293,7 @@ export default function HistorialMembresiaPage() {
         </Grid>
       </Paper>
 
-      {/* ✅ BARRA DE CONGELAMIENTO MASIVO - IGUAL QUE ANTES */}
+      {/* ✅ BARRA DE CONGELAMIENTO MASIVO */}
       <AnimatePresence>
         {bulkMode && (
           <motion.div
@@ -2536,7 +2536,7 @@ export default function HistorialMembresiaPage() {
         )}
       </AnimatePresence>
 
-      {/* ✅ CONTROLES Y FILTROS - IGUAL QUE ANTES */}
+      {/* ✅ CONTROLES Y FILTROS */}
       <Paper sx={{
         p: 3,
         mb: 3,
@@ -2859,7 +2859,7 @@ export default function HistorialMembresiaPage() {
         </AnimatePresence>
       </Paper>
 
-      {/* ✅ TABLA PRINCIPAL CON FECHAS CORREGIDAS - IGUAL QUE ANTES */}
+      {/* ✅ TABLA PRINCIPAL CON FECHAS CORREGIDAS */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
         border: `1px solid ${darkProTokens.primary}20`,
@@ -2928,7 +2928,7 @@ export default function HistorialMembresiaPage() {
                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
-                                    <TableBody>
+                  <TableBody>
                     {filteredMemberships
                       .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                       .map((membership, index) => (
@@ -2947,7 +2947,7 @@ export default function HistorialMembresiaPage() {
                               <Checkbox
                                 checked={selectedMembershipIds.includes(membership.id)}
                                 onChange={() => handleToggleMembershipSelection(membership.id)}
-                                disabled={membership.status !== 'active' && membership.status !== 'frozen'}
+                                                                disabled={membership.status !== 'active' && membership.status !== 'frozen'}
                                 sx={{
                                   color: darkProTokens.primary,
                                   '&.Mui-checked': { color: darkProTokens.primary },
@@ -3231,7 +3231,7 @@ export default function HistorialMembresiaPage() {
         </CardContent>
       </Card>
 
-      {/* ✅ MENU DE ACCIONES - VERIFICADO */}
+      {/* ✅ MENU DE ACCIONES */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -3365,7 +3365,7 @@ export default function HistorialMembresiaPage() {
                 }}
               >
                 <Typography variant="body1">
-                  <strong>⚠️ Operación Masiva {bulkOperation.mode === 'manual' ? 'Manual' : 'Automática'}:</strong> Esta acción {/* ✅ CORREGIDO */}
+                  <strong>⚠️ Operación Masiva {bulkOperation.mode === 'manual' ? 'Manual' : 'Automática'}:</strong> Esta acción{' '}
                   {bulkOperation.action === 'freeze' ? 
                     `congelará ${bulkOperation.membershipIds.length} membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
                     `reactivará ${bulkOperation.membershipIds.length} membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
@@ -3543,8 +3543,7 @@ export default function HistorialMembresiaPage() {
                       color: darkProTokens.textSecondary,
                       mb: 2
                     }}>
-                      Se procesarán {bulkPreview.length} membresías para {/* ✅ CORREGIDO */}
-                      {bulkOperation.action === 'freeze' ? 'congelamiento' : 'reactivación'}. 
+                      Se procesarán {bulkPreview.length} membresías para {bulkOperation.action === 'freeze' ? 'congelamiento' : 'reactivación'}. 
                       Aquí se muestran algunos ejemplos:
                     </Typography>
 
@@ -3601,7 +3600,6 @@ export default function HistorialMembresiaPage() {
                                     )}
                                   </Typography>
                                 )}
-                                {/* ✅ NUEVO: Descripción clara de la acción */}
                                 <Typography variant="caption" sx={{ 
                                   color: darkProTokens.info,
                                   fontStyle: 'italic',
@@ -3686,7 +3684,7 @@ export default function HistorialMembresiaPage() {
                 rows={3}
                 value={bulkOperation.reason || ''}
                 onChange={(e) => setBulkOperation(prev => ({ ...prev, reason: e.target.value }))}
-                placeholder={`Motivo de la ${bulkOperation.action === 'freeze' ? 'congelación' : 'reactivación'} masiva...`} {/* ✅ CORREGIDO */}
+                placeholder={`Motivo de la ${bulkOperation.action === 'freeze' ? 'congelación' : 'reactivación'} masiva...`}
                 sx={{ mt: 3 }}
                 InputProps={{
                   sx: {
@@ -3857,7 +3855,6 @@ export default function HistorialMembresiaPage() {
                 }
               }}
             >
-              {/* ✅ BOTÓN PRINCIPAL CORREGIDO */}
               {bulkOperation.action === 'freeze' ? 
                 `🧊 Congelar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
                 `🔄 Reactivar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
@@ -3872,7 +3869,7 @@ export default function HistorialMembresiaPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL DE DETALLES COMPLETO - IGUAL QUE ANTES */}
+      {/* ✅ MODAL DE DETALLES COMPLETO */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
@@ -4379,7 +4376,7 @@ export default function HistorialMembresiaPage() {
                     height: '100%'
                   }}>
                     <CardContent sx={{ p: 3 }}>
-                                            <Typography variant="h6" sx={{ 
+                      <Typography variant="h6" sx={{ 
                         color: darkProTokens.textSecondary,
                         fontWeight: 700,
                         mb: 3,
@@ -4409,7 +4406,7 @@ export default function HistorialMembresiaPage() {
                         </Typography>
                       </Box>
                     </CardContent>
-                  </Card>
+                                   </Card>
                 </Grid>
               </Grid>
             </Box>
@@ -4487,4 +4484,3 @@ export default function HistorialMembresiaPage() {
     </Box>
   );
 }
-                
