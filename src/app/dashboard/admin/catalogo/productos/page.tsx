@@ -6,6 +6,7 @@ import {
   Paper,
   Typography,
   Button,
+  Grid,
   Card,
   CardContent,
   CardMedia,
@@ -33,7 +34,6 @@ import {
   CircularProgress,
   Snackbar
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -57,6 +57,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import ProductFormDialog from '@/components/catalogo/ProductFormDialog';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
@@ -604,6 +605,41 @@ export default function ProductosPage() {
       color: darkProTokens.textPrimary,
       p: 3
     }}>
+      {/* ✅ SNACKBAR CON DARK PRO SYSTEM */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       {/* ✅ HEADER CON DARK PRO SYSTEM */}
       <Paper sx={{
         p: 4,
@@ -1124,6 +1160,17 @@ export default function ProductosPage() {
         </MenuItem>
       </Menu>
 
+      {/* Dialog de formulario */}
+      <ProductFormDialog
+        open={formDialogOpen}
+        onClose={() => setFormDialogOpen(false)}
+        product={selectedProduct}
+        onSave={() => {
+          setFormDialogOpen(false);
+          loadProducts();
+        }}
+      />
+
       {/* ✅ DIALOG DE CONFIRMACIÓN CON DARK PRO SYSTEM */}
       <Dialog 
         open={deleteDialogOpen} 
@@ -1201,41 +1248,6 @@ export default function ProductosPage() {
       >
         <AddIcon />
       </Fab>
-
-      {/* ✅ SNACKBAR CON DARK PRO SYSTEM */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          severity={notification.severity}
-          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-          sx={{
-            background: notification.severity === 'success' ? 
-              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
-              notification.severity === 'error' ?
-              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
-              notification.severity === 'warning' ?
-              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
-              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${
-              notification.severity === 'success' ? darkProTokens.success :
-              notification.severity === 'error' ? darkProTokens.error :
-              notification.severity === 'warning' ? darkProTokens.warning :
-              darkProTokens.info
-            }60`,
-            borderRadius: 3,
-            fontWeight: 600,
-            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
-            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
-          }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
 
       {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
       <style jsx>{`
