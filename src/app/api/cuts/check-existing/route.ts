@@ -28,6 +28,12 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+    console.log('✅ Verificación de corte existente:', {
+      date,
+      exists: !!existingCut,
+      cut_number: existingCut?.cut_number
+    });
+
     return NextResponse.json({
       success: true,
       exists: !!existingCut,
@@ -35,10 +41,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error en API check-existing:', error);
+    console.error('💥 Error en API check-existing:', error);
     return NextResponse.json(
       { error: 'Error al verificar corte existente', success: false },
       { status: 500 }
     );
   }
+}
 }
