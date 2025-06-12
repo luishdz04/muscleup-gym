@@ -34,7 +34,7 @@ import {
   FormControlLabel
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -138,8 +138,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoIcon from '@mui/icons-material/Info';
 import CloseIcon from '@mui/icons-material/Close';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import WarningIcon from '@mui/icons-material/Warning';
 
-// ✅ INTERFAZ CORREGIDA - INCLUYE TODOS LOS CAMPOS DEL ESQUEMA
+// ✅ INTERFAZ COMPLETA
 interface MembershipPlan {
   id: string;
   name: string;
@@ -198,8 +199,13 @@ export default function PlanesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  
+  // ✅ ESTADOS PARA ELIMINACIÓN
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<MembershipPlan | null>(null);
+  const [deletingPlan, setDeletingPlan] = useState(false);
 
-  // ✅ CARGAR PLANES CON QUERY COMPLETO
+  // Cargar planes
   useEffect(() => {
     loadPlans();
   }, []);
@@ -253,6 +259,62 @@ export default function PlanesPage() {
       setSuccessMessage(`Plan ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`);
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  // ✅ FUNCIÓN PARA ABRIR DIÁLOGO DE ELIMINACIÓN
+  const handleDeleteClick = (plan: MembershipPlan) => {
+    setPlanToDelete(plan);
+    setDeleteDialogOpen(true);
+  };
+
+  // ✅ FUNCIÓN PARA CERRAR DIÁLOGO DE ELIMINACIÓN
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setPlanToDelete(null);
+  };
+
+  // ✅ FUNCIÓN PRINCIPAL DE ELIMINACIÓN
+  const handleDeleteConfirm = async () => {
+    if (!planToDelete) return;
+
+    try {
+      console.log('🗑️ [DELETE] Iniciando eliminación de plan:', planToDelete.name);
+      setDeletingPlan(true);
+      setError(null);
+
+      const supabase = createBrowserSupabaseClient();
+      
+      // ✅ ELIMINAR DE SUPABASE
+      const { error: deleteError } = await supabase
+        .from('membership_plans')
+        .delete()
+        .eq('id', planToDelete.id);
+
+      if (deleteError) {
+        console.error('❌ Error eliminando plan:', deleteError);
+        throw new Error(`Error al eliminar el plan: ${deleteError.message}`);
+      }
+
+      console.log('✅ Plan eliminado exitosamente de la base de datos');
+
+      // ✅ ACTUALIZAR ESTADO LOCAL
+      setPlans(prevPlans => prevPlans.filter(plan => plan.id !== planToDelete.id));
+      
+      // ✅ MOSTRAR MENSAJE DE ÉXITO
+      setSuccessMessage(`🗑️ Plan "${planToDelete.name}" eliminado exitosamente`);
+      
+      // ✅ CERRAR DIÁLOGO
+      setDeleteDialogOpen(false);
+      setPlanToDelete(null);
+
+      console.log('✅ Eliminación completada correctamente');
+
+    } catch (err: any) {
+      console.error('💥 Error durante eliminación:', err);
+      setError(err.message || 'Error inesperado al eliminar el plan');
+    } finally {
+      setDeletingPlan(false);
     }
   };
 
@@ -1014,9 +1076,14 @@ export default function PlanesPage() {
                         </IconButton>
                       </Tooltip>
                       
+                      {/* ✅ BOTÓN DE ELIMINAR CON FUNCIONALIDAD */}
                       <Tooltip title="Eliminar plan">
                         <IconButton 
                           size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(plan);
+                          }}
                           sx={{ 
                             color: darkProTokens.error,
                             '&:hover': {
@@ -1038,7 +1105,7 @@ export default function PlanesPage() {
         </Table>
       </TableContainer>
 
-      {/* 👁️ MODAL DE DETALLES CON DARK PRO SYSTEM - MEJORADO */}
+      {/* 👁️ MODAL DE DETALLES CON DARK PRO SYSTEM */}
       <Dialog 
         open={viewDialogOpen} 
         onClose={() => setViewDialogOpen(false)}
@@ -1246,9 +1313,160 @@ export default function PlanesPage() {
         </DialogActions>
       </Dialog>
 
+      {/* ✅ MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.error}40`,
+            borderRadius: 4,
+            color: darkProTokens.textPrimary,
+            backdropFilter: 'blur(20px)',
+            boxShadow: `0 25px 80px rgba(0, 0, 0, 0.4), 0 0 0 1px ${darkProTokens.error}20`
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          bgcolor: `${darkProTokens.error}15`,
+          borderBottom: `1px solid ${darkProTokens.error}30`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <WarningIcon sx={{ color: darkProTokens.error, fontSize: 32 }} />
+          <Typography variant="h5" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
+            ⚠️ Confirmar Eliminación
+          </Typography>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 4 }}>
+          {planToDelete && (
+            <Box>
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.textPrimary, 
+                mb: 2, 
+                fontWeight: 600
+              }}>
+                ¿Estás seguro de que deseas eliminar el plan?
+              </Typography>
+              
+              <Box sx={{
+                p: 3,
+                bgcolor: `${darkProTokens.error}10`,
+                border: `2px solid ${darkProTokens.error}30`,
+                borderRadius: 3,
+                mb: 3
+              }}>
+                <Typography variant="h5" sx={{ 
+                  color: darkProTokens.primary, 
+                  fontWeight: 700,
+                  mb: 1
+                }}>
+                  📋 {planToDelete.name}
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: darkProTokens.textSecondary,
+                  mb: 2
+                }}>
+                  {planToDelete.description}
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Chip 
+                    label={planToDelete.is_active ? 'ACTIVO' : 'INACTIVO'}
+                    size="small"
+                    sx={{
+                      bgcolor: planToDelete.is_active ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
+                      color: planToDelete.is_active ? darkProTokens.success : darkProTokens.error,
+                      border: `1px solid ${planToDelete.is_active ? darkProTokens.success : darkProTokens.error}40`
+                    }}
+                  />
+                  {getBestPrice(planToDelete) > 0 && (
+                    <Chip 
+                      label={`${formatPrice(getBestPrice(planToDelete))} ${getBestPriceLabel(planToDelete)}`}
+                      size="small"
+                      sx={{
+                        bgcolor: `${darkProTokens.primary}20`,
+                        color: darkProTokens.primary,
+                        border: `1px solid ${darkProTokens.primary}40`
+                      }}
+                    />
+                  )}
+                </Box>
+              </Box>
+              
+              <Alert 
+                severity="error"
+                sx={{ 
+                  bgcolor: `${darkProTokens.error}20`,
+                  color: darkProTokens.textPrimary,
+                  border: `1px solid ${darkProTokens.error}40`,
+                  '& .MuiAlert-icon': { color: darkProTokens.error }
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  ⚠️ Esta acción no se puede deshacer
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                  El plan será eliminado permanentemente de la base de datos
+                </Typography>
+              </Alert>
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions sx={{ 
+          p: 3, 
+          borderTop: `1px solid ${darkProTokens.grayDark}`,
+          gap: 2
+        }}>
+          <Button
+            onClick={handleDeleteCancel}
+            variant="outlined"
+            disabled={deletingPlan}
+            sx={{
+              borderColor: darkProTokens.grayDark,
+              color: darkProTokens.textSecondary,
+              '&:hover': {
+                borderColor: darkProTokens.textSecondary,
+                bgcolor: darkProTokens.hoverOverlay
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          
+          <Button
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            disabled={deletingPlan}
+            startIcon={deletingPlan ? <CircularProgress size={20} /> : <DeleteIcon />}
+            sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+              color: darkProTokens.textPrimary,
+              fontWeight: 700,
+              '&:hover': {
+                background: `linear-gradient(135deg, ${darkProTokens.errorHover}, ${darkProTokens.error})`,
+                transform: 'translateY(-1px)'
+              },
+              '&:disabled': {
+                bgcolor: darkProTokens.grayMedium,
+                color: darkProTokens.textDisabled
+              }
+            }}
+          >
+            {deletingPlan ? 'Eliminando...' : '🗑️ Eliminar Plan'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* 🎨 ESTILOS CSS DARK PRO */}
       <style jsx>{`
-        @keyframes pulse {
+                @keyframes pulse {
           0%, 100% { 
             opacity: 1; 
             transform: scale(1);
