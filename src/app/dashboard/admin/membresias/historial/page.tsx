@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -40,7 +40,8 @@ import {
   MenuList,
   ListItemIcon,
   ListItemText,
-  FormControlLabel
+  Switch,
+  FormControlLabel // ✅ AGREGADO: Import faltante
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
