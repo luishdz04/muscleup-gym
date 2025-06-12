@@ -59,10 +59,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-// ✅ IMPORTS DE UTILIDADES - SOLO LAS QUE NECESITAMOS
+// ✅ IMPORTS DE UTILIDADES - VERIFICADOS
 import {
   createTimestampForDB,
-  addDaysToMexicoDate
+  addDaysToMexicoDate,
+  formatTimestampForDisplay
 } from '@/lib/utils/dateUtils';
 
 // ✅ IMPORTS DEL SISTEMA DE CONGELAMIENTO - VERIFICADOS
@@ -343,7 +344,7 @@ export default function HistorialMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES DE FECHAS CORREGIDAS - ANÁLISIS INTEGRAL
+  // ✅ FUNCIONES DE FECHAS OPTIMIZADAS - VERIFICADAS
   
   // 🇲🇽 OBTENER FECHA ACTUAL DE MÉXICO
   const getMexicoCurrentDate = useCallback((): string => {
@@ -402,21 +403,12 @@ export default function HistorialMembresiaPage() {
       const diffTime = endDateObj.getTime() - todayDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
-      // Debug específico para Erick
-      console.log(`📊 CÁLCULO DÍAS [${endDate}]:`, {
-        fecha_fin: endDate,
-        fecha_hoy_mexico: today,
-        diferencia_ms: diffTime,
-        dias_restantes: diffDays,
-        formatted_end: formatDisplayDate(endDate)
-      });
-      
       return diffDays;
     } catch (error) {
       console.error('❌ Error calculando días restantes:', error);
       return null;
     }
-  }, [getMexicoCurrentDate, formatDisplayDate]);
+  }, [getMexicoCurrentDate]);
 
   // 🧪 FUNCIÓN DE DEBUG PARA MEMBRESÍAS ESPECÍFICAS
   const debugMembership = useCallback((membership: MembershipHistory) => {
@@ -508,36 +500,12 @@ export default function HistorialMembresiaPage() {
           plan_name: item.membership_plans?.name || 'Plan Desconocido'
         };
         
-        // Debug específico para usuarios de prueba
-        if (membership.user_name.toLowerCase().includes('erick') || 
-            membership.user_name.toLowerCase().includes('luna')) {
-          console.log(`🎯 DATOS RAW ERICK:`, {
-            id: item.id,
-            user_name: membership.user_name,
-            plan_name: membership.plan_name,
-            payment_type: item.payment_type,
-            start_date: item.start_date,
-            end_date: item.end_date,
-            status: item.status,
-            raw_supabase_data: item
-          });
-        }
-        
         return membership;
       });
 
       console.log('✅ Membresías recargadas exitosamente:', {
         total: formattedData.length,
-        fecha_mexico_actual: getMexicoCurrentDate(),
-        muestra_erick: formattedData
-          .filter(m => m.user_name.toLowerCase().includes('erick'))
-          .map(m => ({
-            nombre: m.user_name,
-            plan: m.plan_name,
-            inicio: m.start_date,
-            fin: m.end_date,
-            dias_calc: calculateDaysRemaining(m.end_date)
-          }))
+        fecha_mexico_actual: getMexicoCurrentDate()
       });
       
       setMemberships(formattedData);
@@ -549,9 +517,9 @@ export default function HistorialMembresiaPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, getMexicoCurrentDate, calculateDaysRemaining]);
+  }, [supabase, getMexicoCurrentDate]);
 
-  // ✅ CARGAR DATOS INICIALES CON DEBUGGING
+  // ✅ CARGAR DATOS INICIALES
   const loadMemberships = useCallback(async () => {
     setLoading(true);
     try {
@@ -584,13 +552,9 @@ export default function HistorialMembresiaPage() {
       setMemberships(formattedData);
       calculateStats(formattedData);
       
-      // Debug inicial
       console.log('📊 CARGA INICIAL COMPLETADA:', {
         total_memberships: formattedData.length,
-        fecha_actual_mexico: getMexicoCurrentDate(),
-        usuarios_erick: formattedData
-          .filter(m => m.user_name.toLowerCase().includes('erick'))
-          .length
+        fecha_actual_mexico: getMexicoCurrentDate()
       });
       
       setInfoMessage(`📊 ${formattedData.length} membresías cargadas`);
@@ -631,7 +595,7 @@ export default function HistorialMembresiaPage() {
     setStats(stats);
   }, []);
 
-  // ✅ APLICAR FILTROS - FUNCIÓN VERIFICADA
+  // ✅ APLICAR FILTROS
   const applyFilters = useCallback(() => {
     let filtered = [...memberships];
 
@@ -683,7 +647,7 @@ export default function HistorialMembresiaPage() {
     setPage(0);
   }, [memberships, filters, calculateStats]);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO INDIVIDUAL - VERIFICADAS
+  // ✅ FUNCIONES DE CONGELAMIENTO INDIVIDUAL
   const handleFreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setFreezeLoading(true);
@@ -746,7 +710,7 @@ export default function HistorialMembresiaPage() {
     }
   }, [supabase, forceReloadMemberships]);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO - VERIFICADAS
+  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO
   const handleSelectAllMemberships = useCallback(() => {
     const eligibleMemberships = filteredMemberships
       .filter(m => m.status === 'active' || m.status === 'frozen')
@@ -982,6 +946,7 @@ export default function HistorialMembresiaPage() {
     }
   }, [bulkOperation, memberships, supabase, formatDisplayDate, forceReloadMemberships, getMexicoCurrentDate]);
 
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN DE MEMBRESÍA
   const handleUpdateMembership = useCallback(async () => {
     if (!selectedMembership || !editData) return;
     
@@ -1125,6 +1090,729 @@ export default function HistorialMembresiaPage() {
       isRenewal: ''
     });
   }, []);
+
+  // ✅ MODAL DE EDICIÓN OPTIMIZADO
+  const OptimizedEditModal = useMemo(() => {
+    if (!editDialogOpen || !selectedMembership) return null;
+
+    const paymentDetailsFromDB = selectedMembership.payment_details || {};
+    const showMixedPaymentFields = editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto';
+
+    return (
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={() => !editLoading && setEditDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.primary}50`,
+            borderRadius: 4,
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: darkProTokens.primary, 
+          fontWeight: 800,
+          fontSize: '1.8rem',
+          textAlign: 'center',
+          pb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <EditIcon sx={{ fontSize: 40 }} />
+            Editar Registro de Venta
+          </Box>
+          <IconButton 
+            onClick={() => setEditDialogOpen(false)}
+            disabled={editLoading}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+          <Box sx={{ mt: 2 }}>
+            {/* Header del Cliente */}
+            <Card sx={{
+              background: `${darkProTokens.primary}10`,
+              border: `1px solid ${darkProTokens.primary}30`,
+              borderRadius: 3,
+              mb: 3
+            }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: '50%', 
+                    background: darkProTokens.primary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: darkProTokens.background,
+                    fontWeight: 800,
+                    fontSize: '1.5rem'
+                  }}>
+                    {selectedMembership.user_name.split(' ').map((n: string) => n[0]).join('')}
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 700
+                    }}>
+                      {selectedMembership.user_name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      📅 Registrado: {formatDisplayDate(selectedMembership.created_at)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Chip 
+                      label={selectedMembership.is_renewal ? '🔄 RENOVACIÓN' : '🆕 PRIMERA VEZ'}
+                      sx={{
+                        backgroundColor: selectedMembership.is_renewal ? darkProTokens.warning : darkProTokens.success,
+                        color: selectedMembership.is_renewal ? darkProTokens.background : darkProTokens.textPrimary,
+                        fontWeight: 700,
+                        mb: 1
+                      }}
+                    />
+                    {selectedMembership.skip_inscription && (
+                      <Chip 
+                        label="🚫 SIN INSCRIPCIÓN" 
+                        size="small"
+                        sx={{
+                          backgroundColor: darkProTokens.success,
+                          color: darkProTokens.textPrimary,
+                          fontWeight: 600,
+                          display: 'block'
+                        }}
+                      />
+                    )}
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Grid container spacing={3}>
+              {/* Estado y Método de Pago */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
+                  }}>
+                    Estado de la Membresía
+                  </InputLabel>
+                  <Select
+                    value={editData.status || selectedMembership.status}
+                    onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
+                    sx={{
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }}
+                  >
+                    {statusOptions.filter(s => s.value !== '').map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{option.icon}</span>
+                          <span>{option.label}</span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
+                  }}>
+                    Método de Pago
+                  </InputLabel>
+                  <Select
+                    value={editData.payment_method || selectedMembership.payment_method}
+                    onChange={(e) => {
+                      const newMethod = e.target.value;
+                      setEditData(prev => ({ 
+                        ...prev, 
+                        payment_method: newMethod,
+                        cash_amount: newMethod === 'mixto' ? (prev.cash_amount || paymentDetailsFromDB.cash_amount || 0) : 0,
+                        card_amount: newMethod === 'mixto' ? (prev.card_amount || paymentDetailsFromDB.card_amount || 0) : 0,
+                        transfer_amount: newMethod === 'mixto' ? (prev.transfer_amount || paymentDetailsFromDB.transfer_amount || 0) : 0
+                      }));
+                    }}
+                    sx={{
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }}
+                  >
+                    {paymentMethodOptions.filter(p => p.value !== '').map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{option.icon}</span>
+                          <span>{option.label}</span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Campos para pago mixto */}
+              {showMixedPaymentFields && (
+                <>
+                  <Grid size={12}>
+                    <Alert severity="info" sx={{
+                      backgroundColor: `${darkProTokens.info}10`,
+                      color: darkProTokens.textPrimary,
+                      border: `1px solid ${darkProTokens.info}30`,
+                      '& .MuiAlert-icon': { color: darkProTokens.info }
+                    }}>
+                      💳 Pago Mixto - Los cambios se guardarán en el historial de la membresía
+                    </Alert>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Efectivo"
+                      type="number"
+                      value={editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, cash_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">💵</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.success}30`
+                          }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.success }
+                        }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Tarjeta"
+                      type="number"
+                      value={editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, card_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">💳</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.info}30`
+                          }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.info }
+                        }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Transferencia"
+                      type="number"
+                      value={editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, transfer_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">🏦</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.warning}30`
+                          }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.warning }
+                        }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Box sx={{
+                      background: `${darkProTokens.primary}10`,
+                      border: `1px solid ${darkProTokens.primary}30`,
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: 'center',
+                      height: '56px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
+                    }}>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Total Mixto
+                      </Typography>
+                      <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                        {formatPrice(
+                          (editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0) + 
+                          (editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0) + 
+                          (editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0)
+                        )}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </>
+              )}
+
+              {/* Fechas */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Fecha de Inicio"
+                  type="date"
+                  value={editData.start_date || selectedMembership.start_date}
+                  onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
+                  InputLabelProps={{ 
+                    shrink: true,
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Fecha de Vencimiento"
+                  type="date"
+                  value={editData.end_date || selectedMembership.end_date || ''}
+                                    onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
+                  InputLabelProps={{ 
+                    shrink: true,
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Montos y Comisiones */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Monto Total Pagado"
+                  type="number"
+                  value={editData.amount_paid || selectedMembership.amount_paid}
+                  onChange={(e) => {
+                    const amount = parseFloat(e.target.value) || 0;
+                    const commissionRate = editData.commission_rate || selectedMembership.commission_rate || 0;
+                    const commissionAmount = amount * (commissionRate / 100);
+                    setEditData(prev => ({ 
+                      ...prev, 
+                      amount_paid: amount,
+                      commission_amount: commissionAmount
+                    }));
+                  }}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">💰</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Comisión (%)"
+                  type="number"
+                  value={editData.commission_rate || selectedMembership.commission_rate || 0}
+                  onChange={(e) => {
+                    const rate = parseFloat(e.target.value) || 0;
+                    const amount = editData.amount_paid || selectedMembership.amount_paid;
+                    const commissionAmount = amount * (rate / 100);
+                    setEditData(prev => ({ 
+                      ...prev, 
+                      commission_rate: rate,
+                      commission_amount: commissionAmount
+                    }));
+                  }}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><PercentIcon sx={{ color: darkProTokens.warning }} /></InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.warning}30`
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.warning }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{
+                  background: `${darkProTokens.success}10`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 2,
+                  p: 2,
+                  textAlign: 'center',
+                  height: '56px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
+                }}>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    Comisión Total
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                    {formatPrice(editData.commission_amount || selectedMembership.commission_amount || 0)}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* Referencia de Pago */}
+              <Grid size={12}>
+                <TextField
+                  fullWidth
+                  label="Referencia de Pago"
+                  value={editData.payment_reference || selectedMembership.payment_reference || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, payment_reference: e.target.value }))}
+                  placeholder="Número de autorización, SPEI, folio, etc."
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">📄</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Extensión Manual */}
+              <Grid size={12}>
+                <Card sx={{
+                  background: `${darkProTokens.info}10`,
+                  border: `1px solid ${darkProTokens.info}30`,
+                  borderRadius: 3,
+                  mt: 2
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info,
+                      fontWeight: 700,
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <AcUnitIcon />
+                      📅 Extensión Manual de Vigencia
+                    </Typography>
+
+                    <Grid container spacing={3}>
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.grayDark}10`,
+                          border: `1px solid ${darkProTokens.grayDark}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Días Congelados Históricos
+                          </Typography>
+                          <Typography variant="h6" sx={{ 
+                            color: darkProTokens.info,
+                            fontWeight: 700
+                          }}>
+                            🧊 {selectedMembership.total_frozen_days || 0} días
+                          </Typography>
+                        </Box>
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.grayDark}10`,
+                          border: `1px solid ${darkProTokens.grayDark}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Vencimiento Actual
+                          </Typography>
+                          <Typography variant="body1" sx={{ 
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600
+                          }}>
+                            📅 {selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) : 'Sin fecha'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <TextField
+                          fullWidth
+                          label="Días a Extender"
+                          type="number"
+                          value={editData.extend_days || 0}
+                          onChange={(e) => setEditData(prev => ({ ...prev, extend_days: parseInt(e.target.value) || 0 }))}
+                          placeholder="Ej: 1"
+                          helperText="Solo extiende la fecha de vencimiento"
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">📅</InputAdornment>,
+                            sx: {
+                              color: darkProTokens.textPrimary,
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: `${darkProTokens.info}30`
+                              }
+                            }
+                          }}
+                          FormHelperTextProps={{
+                            sx: { color: darkProTokens.textSecondary }
+                          }}
+                        />
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.primary}10`,
+                          border: `1px solid ${darkProTokens.primary}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Nueva Fecha de Vencimiento
+                          </Typography>
+                          <Typography variant="body1" sx={{ 
+                            color: darkProTokens.primary,
+                            fontWeight: 700
+                          }}>
+                            📅 {(() => {
+                              if (!selectedMembership.end_date || !editData.extend_days) {
+                                return selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) : 'Sin fecha';
+                              }
+                              const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
+                              currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
+                              return formatDisplayDate(currentEnd.toISOString().split('T')[0]);
+                            })()}
+                          </Typography>
+                        </Box>
+                      </Grid>
+
+                      {editData.extend_days > 0 && (
+                        <Grid size={12}>
+                          <Alert 
+                            severity="success"
+                            sx={{
+                              backgroundColor: `${darkProTokens.success}10`,
+                              color: darkProTokens.textPrimary,
+                              border: `1px solid ${darkProTokens.success}30`,
+                              '& .MuiAlert-icon': { color: darkProTokens.success }
+                            }}
+                          >
+                            <Typography variant="body2">
+                              <strong>📅 Extensión de Vigencia:</strong> Se extenderá la fecha de vencimiento por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}.<br/>
+                              <strong>🧊 Diferencia con congelamiento:</strong> Esto NO se registra como días congelados, solo extiende la vigencia manualmente.
+                            </Typography>
+                          </Alert>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Notas */}
+              <Grid size={12}>
+                <TextField
+                  fullWidth
+                  label="Notas del Registro"
+                  multiline
+                  rows={3}
+                  value={editData.notes || selectedMembership.notes || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Observaciones sobre esta venta, correcciones realizadas, etc..."
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            {/* Alerta de Confirmación */}
+            <Alert 
+              severity="warning"
+              sx={{
+                mt: 3,
+                backgroundColor: `${darkProTokens.warning}10`,
+                color: darkProTokens.textPrimary,
+                border: `1px solid ${darkProTokens.warning}30`,
+                '& .MuiAlert-icon': { color: darkProTokens.warning }
+              }}
+            >
+              <Typography variant="body2">
+                <strong>⚠️ Edición de Registro:</strong> Solo modifique datos para corregir errores en el registro original.
+                {editData.extend_days > 0 && (
+                  <>
+                    <br/><strong>📅 Extensión Manual:</strong> Se extenderá la vigencia por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''} (no cuenta como congelamiento).
+                  </>
+                )}
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => setEditDialogOpen(false)}
+            disabled={editLoading}
+            sx={{ 
+              color: darkProTokens.textSecondary,
+              borderColor: darkProTokens.grayDark,
+              px: 3,
+              py: 1
+            }}
+            variant="outlined"
+          >
+            Cancelar
+          </Button>
+          
+          <Button 
+            onClick={handleUpdateMembership}
+            disabled={editLoading}
+            variant="contained"
+            startIcon={editLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
+            sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+              color: darkProTokens.background,
+              fontWeight: 700,
+              px: 4,
+              py: 1,
+              '&:hover': {
+                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                transform: 'translateY(-1px)'
+              }
+            }}
+          >
+            {editLoading ? 'Guardando...' : 'Guardar Correcciones'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }, [editDialogOpen, selectedMembership, editData, editLoading, formatDisplayDate, formatPrice, handleUpdateMembership]);
 
   // ✅ EFFECTS
   useEffect(() => {
@@ -1299,7 +1987,6 @@ export default function HistorialMembresiaPage() {
           </Box>
           
           <Stack direction="row" spacing={2}>
-            {/* 🧪 BOTÓN DE DEBUG TEMPORAL */}
             <Button
               startIcon={<InfoIcon />}
               onClick={() => {
@@ -1307,9 +1994,9 @@ export default function HistorialMembresiaPage() {
                 const hoy = getMexicoCurrentDate();
                 console.log('📅 Fecha México actual:', hoy);
                 
-                // Debug específico para Erick
+                // Debug específico para todos los usuarios
                 filteredMemberships
-                  .filter(m => m.user_name.toLowerCase().includes('erick'))
+                  .slice(0, 5) // Primeros 5 para evitar spam
                   .forEach(membership => {
                     debugMembership(membership);
                   });
@@ -1491,7 +2178,7 @@ export default function HistorialMembresiaPage() {
               p: 2
             }}>
               <Typography variant="h5" sx={{ 
-                                color: darkProTokens.primary, 
+                color: darkProTokens.primary, 
                 fontWeight: 800,
                 display: 'flex',
                 alignItems: 'center',
@@ -2280,7 +2967,7 @@ export default function HistorialMembresiaPage() {
                                     🏁 Vence: {formatDisplayDate(membership.end_date)}
                                   </Typography>
                                   <Typography variant="caption" sx={{ 
-                                    color: (() => {
+                                                                        color: (() => {
                                       const daysRemaining = calculateDaysRemaining(membership.end_date);
                                       if (daysRemaining === null) return darkProTokens.textSecondary;
                                       if (daysRemaining < 0) return darkProTokens.error;
@@ -2472,8 +3159,7 @@ export default function HistorialMembresiaPage() {
         </CardContent>
       </Card>
 
-      {/* ✅ RESTO DE COMPONENTES (MENUS, DIALOGS, ETC.) - Siguen igual */}
-      {/* Menu de acciones */}
+      {/* ✅ MENU DE ACCIONES - VERIFICADO */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -2552,7 +3238,7 @@ export default function HistorialMembresiaPage() {
         </MenuList>
       </Menu>
 
-    {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO AVANZADO - VERIFICADO */}
+      {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO AVANZADO - COMPLETO */}
       <Dialog
         open={bulkDialogOpen}
         onClose={() => !bulkLoading && setBulkDialogOpen(false)}
@@ -2581,7 +3267,7 @@ export default function HistorialMembresiaPage() {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {bulkOperation.isManual ? <ManualIcon sx={{ fontSize: 40 }} /> : <AutoIcon sx={{ fontSize: 40 }} />}
-            {getBulkOperationTitle()} {/* ✅ TÍTULO DINÁMICO CORREGIDO */}
+            {getBulkOperationTitle()}
           </Box>
           <IconButton 
             onClick={() => setBulkDialogOpen(false)}
@@ -2615,7 +3301,7 @@ export default function HistorialMembresiaPage() {
                 </Typography>
               </Alert>
 
-              {/* 🆕 CONFIGURACIÓN PARA CONGELAMIENTO MANUAL - VERIFICADA */}
+              {/* Configuración para congelamiento manual */}
               {bulkOperation.isManual && bulkOperation.type === 'manual_freeze' && (
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
@@ -2712,7 +3398,7 @@ export default function HistorialMembresiaPage() {
                 </Card>
               )}
 
-              {/* 🆕 VISTA PREVIA DE CAMBIOS - VERIFICADA */}
+              {/* Vista previa de cambios */}
               {showPreview && bulkPreview.length > 0 && (
                 <Card sx={{
                   background: `${darkProTokens.success}10`,
@@ -2778,14 +3464,14 @@ export default function HistorialMembresiaPage() {
                                 <Typography variant="body2" sx={{ 
                                   color: darkProTokens.textSecondary
                                 }}>
-                                  📅 Actual: {preview.currentEndDate ? formatDate(preview.currentEndDate) : 'Sin fecha'}
+                                  📅 Actual: {preview.currentEndDate ? formatDisplayDate(preview.currentEndDate) : 'Sin fecha'}
                                 </Typography>
                                 {preview.newEndDate && preview.newEndDate !== preview.currentEndDate && (
                                   <Typography variant="body2" sx={{ 
                                     color: darkProTokens.success,
                                     fontWeight: 600
                                   }}>
-                                    📅 Nueva: {formatDate(preview.newEndDate)} 
+                                    📅 Nueva: {formatDisplayDate(preview.newEndDate)} 
                                     {preview.daysToAdd > 0 && (
                                       <span style={{ color: darkProTokens.info }}>
                                         {' '}(+{preview.daysToAdd} días)
@@ -2844,7 +3530,7 @@ export default function HistorialMembresiaPage() {
                           {membership.user_name}
                         </Typography>
                         <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          {membership.plan_name} • Vence: {membership.end_date ? formatDate(membership.end_date) : 'Sin fecha'}
+                          {membership.plan_name} • Vence: {membership.end_date ? formatDisplayDate(membership.end_date) : 'Sin fecha'}
                         </Typography>
                       </Box>
                       <Chip 
@@ -3263,7 +3949,7 @@ export default function HistorialMembresiaPage() {
                             Fecha de Inicio:
                           </Typography>
                           <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                            {formatDate(selectedMembership.start_date)}
+                            {formatDisplayDate(selectedMembership.start_date)}
                           </Typography>
                         </Box>
 
@@ -3275,7 +3961,7 @@ export default function HistorialMembresiaPage() {
                             color: selectedMembership.end_date ? darkProTokens.textPrimary : darkProTokens.textSecondary,
                             fontWeight: 700 
                           }}>
-                            {selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin vencimiento'}
+                            {selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) : 'Sin vencimiento'}
                           </Typography>
                         </Box>
 
@@ -3286,7 +3972,7 @@ export default function HistorialMembresiaPage() {
                             </Typography>
                             <Typography variant="h6" sx={{ 
                               color: (() => {
-                                const daysRemaining = getDaysRemaining(selectedMembership.end_date);
+                                const daysRemaining = calculateDaysRemaining(selectedMembership.end_date);
                                 if (daysRemaining === null) return darkProTokens.textSecondary;
                                 if (daysRemaining < 0) return darkProTokens.error;
                                 if (daysRemaining < 7) return darkProTokens.warning;
@@ -3295,7 +3981,7 @@ export default function HistorialMembresiaPage() {
                               fontWeight: 700
                             }}>
                               {(() => {
-                                const daysRemaining = getDaysRemaining(selectedMembership.end_date!);
+                                const daysRemaining = calculateDaysRemaining(selectedMembership.end_date!);
                                 if (daysRemaining === null) return 'Sin límite';
                                 if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
                                 if (daysRemaining === 0) return 'Vence hoy';
@@ -3461,7 +4147,7 @@ export default function HistorialMembresiaPage() {
                               Congelada desde:
                             </Typography>
                             <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                              {formatDate(selectedMembership.freeze_date)} ({getCurrentFrozenDays(selectedMembership.freeze_date)} días)
+                              {formatDisplayDate(selectedMembership.freeze_date)} ({getCurrentFrozenDays(selectedMembership.freeze_date)} días)
                             </Typography>
                           </Box>
                         )}
@@ -3481,7 +4167,7 @@ export default function HistorialMembresiaPage() {
                               Última Reactivación:
                             </Typography>
                             <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                              {formatDate(selectedMembership.unfreeze_date)}
+                              {formatDisplayDate(selectedMembership.unfreeze_date)}
                             </Typography>
                           </Box>
                         )}
@@ -3535,7 +4221,7 @@ export default function HistorialMembresiaPage() {
                             Fecha Actual del Sistema (México):
                           </Typography>
                           <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                            {formatDate(getMexicoToday())}
+                            {formatDisplayDate(getMexicoCurrentDate())}
                           </Typography>
                         </Box>
                       </Stack>
@@ -3634,7 +4320,10 @@ export default function HistorialMembresiaPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ ESTILOS CSS */}
+      {/* ✅ MODAL DE EDICIÓN OPTIMIZADO */}
+      {OptimizedEditModal}
+
+      {/* ✅ ESTILOS CSS DARK PRO */}
       <style jsx>{`
         ::-webkit-scrollbar {
           width: 8px;
@@ -3657,3 +4346,4 @@ export default function HistorialMembresiaPage() {
     </Box>
   );
 }
+                                
