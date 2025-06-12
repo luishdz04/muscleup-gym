@@ -29,18 +29,16 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  FormControlLabel
+  FormControlLabel,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-// ✅ REACT TOASTIFY INLINE - SIN ARCHIVOS EXTERNOS
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-
-// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
+// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
   // Base Colors
   background: '#000000',
@@ -142,129 +140,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import WarningIcon from '@mui/icons-material/Warning';
 
-// ✅ FUNCIONES DE TOAST INLINE - DARK PRO SYSTEM
-const showSuccessToast = (message: string) => {
-  toast.success(message, {
-    position: "top-right",
-    autoClose: 5000,
-    hideProgressBar: false,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true,
-    style: {
-      background: 'linear-gradient(135deg, #388E3C15, #388E3C08)',
-      color: '#FFFFFF',
-      border: '1px solid #388E3C40',
-      borderRadius: '12px',
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-      fontSize: '14px',
-      fontWeight: 500,
-      boxShadow: '0 10px 40px rgba(56, 142, 60, 0.25), 0 0 0 1px #388E3C40',
-      backdropFilter: 'blur(20px)',
-    },
-    progressStyle: {
-      background: '#388E3C',
-      boxShadow: '0 0 10px #388E3C80',
-    },
-  });
-};
-
-const showErrorToast = (message: string) => {
-  toast.error(message, {
-    position: "top-right",
-    autoClose: 7000,
-    hideProgressBar: false,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true,
-    style: {
-      background: 'linear-gradient(135deg, #D32F2F15, #D32F2F08)',
-      color: '#FFFFFF',
-      border: '1px solid #D32F2F40',
-      borderRadius: '12px',
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-      fontSize: '14px',
-      fontWeight: 500,
-      boxShadow: '0 10px 40px rgba(211, 47, 47, 0.25), 0 0 0 1px #D32F2F40',
-      backdropFilter: 'blur(20px)',
-    },
-    progressStyle: {
-      background: '#D32F2F',
-      boxShadow: '0 0 10px #D32F2F80',
-    },
-  });
-};
-
-const showWarningToast = (message: string) => {
-  toast.warn(message, {
-    position: "top-right",
-    autoClose: 6000,
-    hideProgressBar: false,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true,
-    style: {
-      background: 'linear-gradient(135deg, #FFB30015, #FFB30008)',
-      color: '#FFFFFF',
-      border: '1px solid #FFB30040',
-      borderRadius: '12px',
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-      fontSize: '14px',
-      fontWeight: 500,
-      boxShadow: '0 10px 40px rgba(255, 179, 0, 0.25), 0 0 0 1px #FFB30040',
-      backdropFilter: 'blur(20px)',
-    },
-    progressStyle: {
-      background: '#FFB300',
-      boxShadow: '0 0 10px #FFB30080',
-    },
-  });
-};
-
-const showInfoToast = (message: string) => {
-  toast.info(message, {
-    position: "top-right",
-    autoClose: 4000,
-    hideProgressBar: false,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true,
-    style: {
-      background: 'linear-gradient(135deg, #1976D215, #1976D208)',
-      color: '#FFFFFF',
-      border: '1px solid #1976D240',
-      borderRadius: '12px',
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-      fontSize: '14px',
-      fontWeight: 500,
-      boxShadow: '0 10px 40px rgba(25, 118, 210, 0.25), 0 0 0 1px #1976D240',
-      backdropFilter: 'blur(20px)',
-    },
-    progressStyle: {
-      background: '#1976D2',
-      boxShadow: '0 0 10px #1976D280',
-    },
-  });
-};
-
-const showLoadingToast = (message: string) => {
-  return toast.loading(message, {
-    position: "top-right",
-    closeOnClick: false,
-    style: {
-      background: 'linear-gradient(135deg, #FFCC0015, #FFCC0008)',
-      color: '#FFFFFF',
-      border: '1px solid #FFCC0040',
-      borderRadius: '12px',
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-      fontSize: '14px',
-      fontWeight: 500,
-      boxShadow: '0 10px 40px rgba(255, 204, 0, 0.25), 0 0 0 1px #FFCC0040',
-      backdropFilter: 'blur(20px)',
-    },
-  });
-};
-
 // ✅ INTERFAZ COMPLETA
 interface MembershipPlan {
   id: string;
@@ -320,6 +195,13 @@ export default function PlanesPage() {
   const router = useRouter();
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // ✅ ESTADOS PARA NOTIFICACIONES DARK PRO
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   
@@ -352,17 +234,17 @@ export default function PlanesPage() {
       console.log('✅ Planes cargados:', data);
       setPlans(data || []);
       
-      // ✅ TOASTIFY: Mostrar éxito al cargar planes
+      // ✅ NOTIFICACIÓN: Mostrar éxito al cargar planes
       if (data && data.length > 0) {
-        showInfoToast(`📊 ${data.length} planes cargados correctamente`);
+        setInfoMessage(`📊 ${data.length} planes cargados correctamente`);
       } else {
-        showWarningToast('📋 No hay planes configurados aún');
+        setWarningMessage('📋 No hay planes configurados aún');
       }
       
     } catch (err: any) {
       console.error('💥 Error en loadPlans:', err);
-      // ✅ TOASTIFY: Mostrar error
-      showErrorToast(`❌ Error cargando planes: ${err.message}`);
+      // ✅ NOTIFICACIÓN: Mostrar error
+      setError(`❌ Error cargando planes: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -389,14 +271,14 @@ export default function PlanesPage() {
       
       const planName = plans.find(p => p.id === planId)?.name || 'Plan';
       
-      // ✅ TOASTIFY: Mostrar éxito
-      showSuccessToast(
+      // ✅ NOTIFICACIÓN: Mostrar éxito
+      setSuccessMessage(
         `${!currentStatus ? '✅' : '⏸️'} Plan "${planName}" ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`
       );
       
     } catch (err: any) {
-      // ✅ TOASTIFY: Mostrar error
-      showErrorToast(`❌ Error actualizando estado del plan: ${err.message}`);
+      // ✅ NOTIFICACIÓN: Mostrar error
+      setError(`❌ Error actualizando estado del plan: ${err.message}`);
     }
   };
 
@@ -405,8 +287,8 @@ export default function PlanesPage() {
     setPlanToDelete(plan);
     setDeleteDialogOpen(true);
     
-    // ✅ TOASTIFY: Advertencia
-    showWarningToast(`⚠️ Vas a eliminar el plan "${plan.name}". Confirma en el diálogo.`);
+    // ✅ NOTIFICACIÓN: Advertencia
+    setWarningMessage(`⚠️ Vas a eliminar el plan "${plan.name}". Confirma en el diálogo.`);
   };
 
   // ✅ FUNCIÓN PARA CERRAR DIÁLOGO DE ELIMINACIÓN
@@ -415,16 +297,13 @@ export default function PlanesPage() {
     const planName = planToDelete?.name || 'Plan';
     setPlanToDelete(null);
     
-    // ✅ TOASTIFY: Información de cancelación
-    showInfoToast(`🔄 Eliminación de "${planName}" cancelada`);
+    // ✅ NOTIFICACIÓN: Información de cancelación
+    setInfoMessage(`🔄 Eliminación de "${planName}" cancelada`);
   };
 
   // ✅ FUNCIÓN PRINCIPAL DE ELIMINACIÓN
   const handleDeleteConfirm = async () => {
     if (!planToDelete) return;
-
-    // ✅ TOASTIFY: Mostrar loading toast
-    const loadingToastId = showLoadingToast(`🗑️ Eliminando plan "${planToDelete.name}"...`);
 
     try {
       console.log('🗑️ [DELETE] Iniciando eliminación de plan:', planToDelete.name);
@@ -453,18 +332,16 @@ export default function PlanesPage() {
       const deletedPlanName = planToDelete.name;
       setPlanToDelete(null);
 
-      // ✅ TOASTIFY: Cerrar loading y mostrar éxito
-      toast.dismiss(loadingToastId);
-      showSuccessToast(`🗑️ Plan "${deletedPlanName}" eliminado exitosamente`);
+      // ✅ NOTIFICACIÓN: Mostrar éxito
+      setSuccessMessage(`🗑️ Plan "${deletedPlanName}" eliminado exitosamente`);
 
       console.log('✅ Eliminación completada correctamente');
 
     } catch (err: any) {
       console.error('💥 Error durante eliminación:', err);
       
-      // ✅ TOASTIFY: Cerrar loading y mostrar error
-      toast.dismiss(loadingToastId);
-      showErrorToast(`💥 Error eliminando plan: ${err.message}`);
+      // ✅ NOTIFICACIÓN: Mostrar error
+      setError(`💥 Error eliminando plan: ${err.message}`);
     } finally {
       setDeletingPlan(false);
     }
@@ -516,8 +393,8 @@ export default function PlanesPage() {
     setSelectedPlan(plan);
     setViewDialogOpen(true);
     
-    // ✅ TOASTIFY: Información
-    showInfoToast(`👁️ Visualizando detalles de "${plan.name}"`);
+    // ✅ NOTIFICACIÓN: Información
+    setInfoMessage(`👁️ Visualizando detalles de "${plan.name}"`);
   };
 
   // ✅ FUNCIÓN MEJORADA PARA COLOR DE PLAN
@@ -539,6 +416,12 @@ export default function PlanesPage() {
     if (plan.features && plan.features.length > 3) score += 10;
     return Math.min(score, 100);
   };
+
+  // ✅ FUNCIONES PARA CERRAR NOTIFICACIONES
+  const handleCloseError = () => setError(null);
+  const handleCloseSuccess = () => setSuccessMessage(null);
+  const handleCloseWarning = () => setWarningMessage(null);
+  const handleCloseInfo = () => setInfoMessage(null);
 
   if (loading) {
     return (
@@ -576,20 +459,127 @@ export default function PlanesPage() {
       minHeight: '100vh',
       color: darkProTokens.textPrimary
     }}>
-      {/* ✅ REACT TOASTIFY CONTAINER INLINE */}
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-        style={{ zIndex: 9999 }}
-      />
+      
+      {/* ✅ SNACKBARS CON DARK PRO SYSTEM */}
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={8000} 
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseError} 
+          severity="error" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.error}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.error}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': {
+              color: darkProTokens.textPrimary
+            },
+            '& .MuiAlert-action': {
+              color: darkProTokens.textPrimary
+            }
+          }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar 
+        open={!!successMessage} 
+        autoHideDuration={5000} 
+        onClose={handleCloseSuccess}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseSuccess} 
+          severity="success" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.success}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': {
+              color: darkProTokens.textPrimary
+            },
+            '& .MuiAlert-action': {
+              color: darkProTokens.textPrimary
+            }
+          }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar 
+        open={!!warningMessage} 
+        autoHideDuration={6000} 
+        onClose={handleCloseWarning}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseWarning} 
+          severity="warning" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+            color: darkProTokens.background,
+            border: `1px solid ${darkProTokens.warning}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.warning}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': {
+              color: darkProTokens.background
+            },
+            '& .MuiAlert-action': {
+              color: darkProTokens.background
+            }
+          }}
+        >
+          {warningMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar 
+        open={!!infoMessage} 
+        autoHideDuration={4000} 
+        onClose={handleCloseInfo}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseInfo} 
+          severity="info" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.info}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.info}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': {
+              color: darkProTokens.textPrimary
+            },
+            '& .MuiAlert-action': {
+              color: darkProTokens.textPrimary
+            }
+          }}
+        >
+          {infoMessage}
+        </Alert>
+      </Snackbar>
 
       {/* 🎯 HEADER PRINCIPAL CON DARK PRO SYSTEM */}
       <Paper sx={{
@@ -643,7 +633,7 @@ export default function PlanesPage() {
               size="small"
               startIcon={<RefreshIcon />}
               onClick={() => {
-                showInfoToast('🔄 Actualizando lista de planes...');
+                setInfoMessage('🔄 Actualizando lista de planes...');
                 loadPlans();
               }}
               variant="outlined"
@@ -668,7 +658,7 @@ export default function PlanesPage() {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => {
-                showInfoToast('➕ Redirigiendo a crear nuevo plan...');
+                setInfoMessage('➕ Redirigiendo a crear nuevo plan...');
                 router.push('/dashboard/admin/planes/crear');
               }}
               sx={{
@@ -1196,7 +1186,7 @@ export default function PlanesPage() {
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            showInfoToast(`✏️ Redirigiendo a editar "${plan.name}"...`);
+                            setInfoMessage(`✏️ Redirigiendo a editar "${plan.name}"...`);
                             router.push(`/dashboard/admin/planes/${plan.id}/editar`);
                           }}
                           sx={{ 
@@ -1431,7 +1421,7 @@ export default function PlanesPage() {
             variant="contained"
             onClick={() => {
               if (selectedPlan) {
-                showInfoToast(`✏️ Redirigiendo a editar "${selectedPlan.name}"...`);
+                setInfoMessage(`✏️ Redirigiendo a editar "${selectedPlan.name}"...`);
                 router.push(`/dashboard/admin/planes/${selectedPlan.id}/editar`);
               }
             }}
@@ -1440,7 +1430,7 @@ export default function PlanesPage() {
               color: darkProTokens.background,
               fontWeight: 600,
               '&:hover': {
-                              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
                 transform: 'translateY(-1px)'
               }
             }}
@@ -1463,7 +1453,7 @@ export default function PlanesPage() {
             borderRadius: 4,
             color: darkProTokens.textPrimary,
             backdropFilter: 'blur(20px)',
-            boxShadow: `0 25px 80px rgba(0, 0, 0, 0.4), 0 0 0 1px ${darkProTokens.error}20`
+                        boxShadow: `0 25px 80px rgba(0, 0, 0, 0.4), 0 0 0 1px ${darkProTokens.error}20`
           }
         }}
       >
@@ -1599,55 +1589,29 @@ export default function PlanesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* 🎨 ESTILOS CSS DARK PRO GLOBALES PARA TOASTIFY */}
-      <style jsx global>{`
-        /* Personalización global de Toastify para Dark Pro System */
-        .Toastify__toast-container {
-          width: 400px !important;
-          max-width: 95vw !important;
-        }
-        
-        .Toastify__toast {
-          animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-          backdrop-filter: blur(20px) !important;
-        }
-        
-        @keyframes slideInRight {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
+      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { 
+            opacity: 1; 
+            transform: scale(1);
           }
-          to {
-            transform: translateX(0);
-            opacity: 1;
+          50% { 
+            opacity: 0.8; 
+            transform: scale(1.02);
           }
         }
         
-        .Toastify__toast:hover {
-          transform: translateY(-2px) !important;
-          transition: transform 0.2s ease !important;
+        @keyframes glow {
+          0%, 100% {
+            box-shadow: 0 0 5px ${darkProTokens.primary}40;
+          }
+          50% {
+            box-shadow: 0 0 20px ${darkProTokens.primary}60, 0 0 30px ${darkProTokens.primary}40;
+          }
         }
         
-        .Toastify__close-button {
-          color: #CCCCCC !important;
-          opacity: 0.7 !important;
-          transition: all 0.3s ease !important;
-        }
-        
-        .Toastify__close-button:hover {
-          opacity: 1 !important;
-          transform: scale(1.1) !important;
-          color: #FFFFFF !important;
-        }
-        
-        .Toastify__spinner {
-          border: 2px solid #FFCC0040 !important;
-          border-top: 2px solid #FFCC00 !important;
-          width: 20px !important;
-          height: 20px !important;
-        }
-        
-        /* Scrollbar personalizado para el componente */
+        /* Scrollbar personalizado para Dark Pro System */
         ::-webkit-scrollbar {
           width: 8px;
         }
@@ -1664,6 +1628,25 @@ export default function PlanesPage() {
         
         ::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+        }
+        
+        /* Animaciones para hovers */
+        .hover-lift:hover {
+          transform: translateY(-2px) !important;
+          transition: transform 0.2s ease !important;
+        }
+        
+        /* Efectos de brillo para elementos activos */
+        .glow-primary {
+          box-shadow: 0 0 20px ${darkProTokens.primary}30 !important;
+        }
+        
+        .glow-success {
+          box-shadow: 0 0 20px ${darkProTokens.success}30 !important;
+        }
+        
+        .glow-error {
+          box-shadow: 0 0 20px ${darkProTokens.error}30 !important;
         }
       `}</style>
     </Box>
