@@ -2363,10 +2363,11 @@ export default function HistorialMembresiaPage() {
       </Dialog>
 
 {/* ✏️ MODAL DE EDICIÓN SIMPLE - SOLO CORRECCIONES */}
+{/* ✏️ MODAL DE EDICIÓN CORREGIDO - CONSISTENTE CON REGISTRO */}
 <Dialog 
   open={editDialogOpen} 
   onClose={() => !editLoading && setEditDialogOpen(false)}
-  maxWidth="md"
+  maxWidth="lg"
   fullWidth
   PaperProps={{
     sx: {
@@ -2374,7 +2375,8 @@ export default function HistorialMembresiaPage() {
       border: `2px solid ${darkProTokens.primary}50`,
       borderRadius: 4,
       color: darkProTokens.textPrimary,
-      boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
+      boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
+      maxHeight: '90vh'
     }
   }}
 >
@@ -2401,10 +2403,10 @@ export default function HistorialMembresiaPage() {
     </IconButton>
   </DialogTitle>
   
-  <DialogContent>
+  <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
     {selectedMembership && (
       <Box sx={{ mt: 2 }}>
-        {/* Información del Cliente (Solo lectura) */}
+        {/* Header del Cliente */}
         <Card sx={{
           background: `${darkProTokens.primary}10`,
           border: `1px solid ${darkProTokens.primary}30`,
@@ -2412,26 +2414,41 @@ export default function HistorialMembresiaPage() {
           mb: 3
         }}>
           <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ 
-              color: darkProTokens.primary,
-              fontWeight: 700,
-              mb: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2
-            }}>
-              <AccountCircleIcon />
-              Cliente: {selectedMembership.user_name}
-            </Typography>
-            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-              📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name} | 
-              📅 Registrado: {formatDate(selectedMembership.created_at)}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ 
+                width: 60, 
+                height: 60, 
+                borderRadius: '50%', 
+                background: darkProTokens.primary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: darkProTokens.background,
+                fontWeight: 800,
+                fontSize: '1.5rem'
+              }}>
+                {selectedMembership.user_name.split(' ').map((n: string) => n[0]).join('')}
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" sx={{ 
+                  color: darkProTokens.primary, 
+                  fontWeight: 700
+                }}>
+                  {selectedMembership.user_name}
+                </Typography>
+                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                  📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name}
+                </Typography>
+                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                  📅 Registrado: {formatDate(selectedMembership.created_at)}
+                </Typography>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
 
         <Grid container spacing={3}>
-          {/* Estado de la Membresía */}
+          {/* Estado */}
           <Grid size={{ xs: 12, md: 6 }}>
             <FormControl fullWidth>
               <InputLabel sx={{ 
@@ -2468,14 +2485,14 @@ export default function HistorialMembresiaPage() {
             </FormControl>
           </Grid>
 
-          {/* Método de Pago del Registro */}
+          {/* Método de Pago */}
           <Grid size={{ xs: 12, md: 6 }}>
             <FormControl fullWidth>
               <InputLabel sx={{ 
                 color: darkProTokens.textSecondary,
                 '&.Mui-focused': { color: darkProTokens.primary }
               }}>
-                Método de Pago (Registro)
+                Método de Pago
               </InputLabel>
               <Select
                 value={editData.payment_method || selectedMembership.payment_method}
@@ -2505,11 +2522,141 @@ export default function HistorialMembresiaPage() {
             </FormControl>
           </Grid>
 
-          {/* Fecha de Inicio */}
+          {/* 🆕 CAMPOS ADICIONALES PARA PAGO MIXTO (IGUAL QUE EN REGISTRO) */}
+          {(editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') && (
+            <>
+              <Grid size={12}>
+                <Alert severity="info" sx={{
+                  backgroundColor: `${darkProTokens.info}10`,
+                  color: darkProTokens.textPrimary,
+                  border: `1px solid ${darkProTokens.info}30`,
+                  '& .MuiAlert-icon': { color: darkProTokens.info }
+                }}>
+                  💳 Pago Mixto - Configure los montos por método
+                </Alert>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Efectivo"
+                  type="number"
+                  value={editData.cash_amount || 0}
+                  onChange={(e) => setEditData(prev => ({ ...prev, cash_amount: parseFloat(e.target.value) || 0 }))}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">💵</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.success}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.success
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.success
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.success }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Tarjeta"
+                  type="number"
+                  value={editData.card_amount || 0}
+                  onChange={(e) => setEditData(prev => ({ ...prev, card_amount: parseFloat(e.target.value) || 0 }))}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">💳</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.info}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.info
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.info
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.info }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Transferencia"
+                  type="number"
+                  value={editData.transfer_amount || 0}
+                  onChange={(e) => setEditData(prev => ({ ...prev, transfer_amount: parseFloat(e.target.value) || 0 }))}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">🏦</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.warning}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.warning
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.warning
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.warning }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 3 }}>
+                <Box sx={{
+                  background: `${darkProTokens.primary}10`,
+                  border: `1px solid ${darkProTokens.primary}30`,
+                  borderRadius: 2,
+                  p: 2,
+                  textAlign: 'center',
+                  height: '56px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
+                }}>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    Total Mixto
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                    {formatPrice((editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0))}
+                  </Typography>
+                </Box>
+              </Grid>
+            </>
+          )}
+
+          {/* Fechas */}
           <Grid size={{ xs: 12, md: 6 }}>
             <TextField
               fullWidth
-              label="Fecha de Inicio de Membresía"
+              label="Fecha de Inicio"
               type="date"
               value={editData.start_date || selectedMembership.start_date}
               onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
@@ -2537,7 +2684,6 @@ export default function HistorialMembresiaPage() {
             />
           </Grid>
 
-          {/* Fecha de Vencimiento */}
           <Grid size={{ xs: 12, md: 6 }}>
             <TextField
               fullWidth
@@ -2569,16 +2715,25 @@ export default function HistorialMembresiaPage() {
             />
           </Grid>
 
-          {/* Monto Pagado */}
-          <Grid size={{ xs: 12, md: 6 }}>
+          {/* Montos y Comisiones */}
+          <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth
               label="Monto Total Pagado"
               type="number"
               value={editData.amount_paid || selectedMembership.amount_paid}
-              onChange={(e) => setEditData(prev => ({ ...prev, amount_paid: parseFloat(e.target.value) || 0 }))}
+              onChange={(e) => {
+                const amount = parseFloat(e.target.value) || 0;
+                const commissionRate = editData.commission_rate || selectedMembership.commission_rate || 0;
+                const commissionAmount = amount * (commissionRate / 100);
+                setEditData(prev => ({ 
+                  ...prev, 
+                  amount_paid: amount,
+                  commission_amount: commissionAmount
+                }));
+              }}
               InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                startAdornment: <InputAdornment position="start">💰</InputAdornment>,
                 sx: {
                   color: darkProTokens.textPrimary,
                   '& .MuiOutlinedInput-notchedOutline': {
@@ -2601,15 +2756,78 @@ export default function HistorialMembresiaPage() {
             />
           </Grid>
 
+          {/* 🆕 COMISIÓN CONFIGURABLE (IGUAL QUE EN REGISTRO) */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Comisión (%)"
+              type="number"
+              value={editData.commission_rate || selectedMembership.commission_rate || 0}
+              onChange={(e) => {
+                const rate = parseFloat(e.target.value) || 0;
+                const amount = editData.amount_paid || selectedMembership.amount_paid;
+                const commissionAmount = amount * (rate / 100);
+                setEditData(prev => ({ 
+                  ...prev, 
+                  commission_rate: rate,
+                  commission_amount: commissionAmount
+                }));
+              }}
+              InputProps={{
+                startAdornment: <InputAdornment position="start">📊</InputAdornment>,
+                sx: {
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.warning}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.warning
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.warning
+                  }
+                }
+              }}
+              InputLabelProps={{
+                sx: { 
+                  color: darkProTokens.textSecondary,
+                  '&.Mui-focused': { color: darkProTokens.warning }
+                }
+              }}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Box sx={{
+              background: `${darkProTokens.success}10`,
+              border: `1px solid ${darkProTokens.success}30`,
+              borderRadius: 2,
+              p: 2,
+              textAlign: 'center',
+              height: '56px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
+              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                Comisión Total
+              </Typography>
+              <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                {formatPrice(editData.commission_amount || selectedMembership.commission_amount || 0)}
+              </Typography>
+            </Box>
+          </Grid>
+
           {/* Referencia de Pago */}
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Grid size={12}>
             <TextField
               fullWidth
               label="Referencia de Pago"
               value={editData.payment_reference || selectedMembership.payment_reference || ''}
               onChange={(e) => setEditData(prev => ({ ...prev, payment_reference: e.target.value }))}
-              placeholder="Número de autorización, SPEI, etc."
+              placeholder="Número de autorización, SPEI, folio, etc."
               InputProps={{
+                startAdornment: <InputAdornment position="start">📄</InputAdornment>,
                 sx: {
                   color: darkProTokens.textPrimary,
                   '& .MuiOutlinedInput-notchedOutline': {
@@ -2632,7 +2850,7 @@ export default function HistorialMembresiaPage() {
             />
           </Grid>
 
-          {/* 🆕 DÍAS CONGELADOS MANUALES */}
+          {/* 🔧 DÍAS CONGELADOS CORREGIDOS */}
           <Grid size={12}>
             <Card sx={{
               background: `${darkProTokens.info}10`,
@@ -2650,11 +2868,11 @@ export default function HistorialMembresiaPage() {
                   gap: 2
                 }}>
                   <AcUnitIcon />
-                  Ajuste Manual de Congelamiento
+                  🧊 Extensión Manual de Vigencia
                 </Typography>
 
                 <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <Box sx={{
                       background: `${darkProTokens.grayDark}10`,
                       border: `1px solid ${darkProTokens.grayDark}30`,
@@ -2663,9 +2881,9 @@ export default function HistorialMembresiaPage() {
                       textAlign: 'center'
                     }}>
                       <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                        Días Congelados Actuales
+                        Días Congelados Históricos
                       </Typography>
-                      <Typography variant="h5" sx={{ 
+                      <Typography variant="h6" sx={{ 
                         color: darkProTokens.info,
                         fontWeight: 700
                       }}>
@@ -2674,17 +2892,37 @@ export default function HistorialMembresiaPage() {
                     </Box>
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Box sx={{
+                      background: `${darkProTokens.grayDark}10`,
+                      border: `1px solid ${darkProTokens.grayDark}30`,
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        Vencimiento Actual
+                      </Typography>
+                      <Typography variant="body1" sx={{ 
+                        color: darkProTokens.textPrimary,
+                        fontWeight: 600
+                      }}>
+                        📅 {selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <TextField
                       fullWidth
-                      label="Agregar Días Congelados"
+                      label="Días a Extender"
                       type="number"
-                      value={editData.manual_frozen_days || 0}
-                      onChange={(e) => setEditData(prev => ({ ...prev, manual_frozen_days: parseInt(e.target.value) || 0 }))}
-                      placeholder="Ej: 15"
-                      helperText="Se sumarán a los días existentes"
+                      value={editData.extend_days || 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, extend_days: parseInt(e.target.value) || 0 }))}
+                      placeholder="Ej: 5"
+                      helperText="Solo extiende la fecha de vencimiento"
                       InputProps={{
-                        startAdornment: <InputAdornment position="start">🧊</InputAdornment>,
+                        startAdornment: <InputAdornment position="start">📅</InputAdornment>,
                         sx: {
                           color: darkProTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
@@ -2710,7 +2948,7 @@ export default function HistorialMembresiaPage() {
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <Box sx={{
                       background: `${darkProTokens.primary}10`,
                       border: `1px solid ${darkProTokens.primary}30`,
@@ -2719,35 +2957,38 @@ export default function HistorialMembresiaPage() {
                       textAlign: 'center'
                     }}>
                       <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                        Total Después del Ajuste
+                        Nueva Fecha de Vencimiento
                       </Typography>
-                      <Typography variant="h5" sx={{ 
+                      <Typography variant="body1" sx={{ 
                         color: darkProTokens.primary,
                         fontWeight: 700
                       }}>
-                        🧊 {(selectedMembership.total_frozen_days || 0) + (editData.manual_frozen_days || 0)} días
+                        📅 {(() => {
+                          if (!selectedMembership.end_date || !editData.extend_days) {
+                            return selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin fecha';
+                          }
+                          const currentEnd = new Date(`${selectedMembership.end_date}T23:59:59`);
+                          currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
+                          return formatDate(currentEnd.toISOString().split('T')[0]);
+                        })()}
                       </Typography>
                     </Box>
                   </Grid>
 
-                  {editData.manual_frozen_days > 0 && (
+                  {editData.extend_days > 0 && (
                     <Grid size={12}>
                       <Alert 
-                        severity="info"
+                        severity="success"
                         sx={{
-                          backgroundColor: `${darkProTokens.info}10`,
+                          backgroundColor: `${darkProTokens.success}10`,
                           color: darkProTokens.textPrimary,
-                          border: `1px solid ${darkProTokens.info}30`,
-                          '& .MuiAlert-icon': { color: darkProTokens.info }
+                          border: `1px solid ${darkProTokens.success}30`,
+                          '& .MuiAlert-icon': { color: darkProTokens.success }
                         }}
                       >
                         <Typography variant="body2">
-                          <strong>🧊 Ajuste Manual:</strong> Se agregarán {editData.manual_frozen_days} días al historial de congelamiento.<br/>
-                          <strong>📅 Impacto:</strong> {editData.end_date ? `La fecha de vencimiento se extenderá hasta ${(() => {
-                            const endDate = new Date(`${editData.end_date}T23:59:59`);
-                            endDate.setDate(endDate.getDate() + (editData.manual_frozen_days || 0));
-                            return formatDate(endDate.toISOString().split('T')[0]);
-                          })()}` : 'Sin fecha de vencimiento definida'}
+                          <strong>📅 Extensión de Vigencia:</strong> Se extenderá la fecha de vencimiento por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}.<br/>
+                          <strong>🧊 Diferencia con congelamiento:</strong> Esto NO se registra como días congelados, solo extiende la vigencia manualmente.
                         </Typography>
                       </Alert>
                     </Grid>
@@ -2804,9 +3045,9 @@ export default function HistorialMembresiaPage() {
         >
           <Typography variant="body2">
             <strong>⚠️ Edición de Registro:</strong> Solo modifique datos para corregir errores en el registro original.
-            {editData.manual_frozen_days > 0 && (
+            {editData.extend_days > 0 && (
               <>
-                <br/><strong>🧊 Ajuste de congelamiento:</strong> Los días se aplicarán al historial y extenderán la vigencia automáticamente.
+                <br/><strong>📅 Extensión:</strong> Se extenderá la vigencia por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''} (no cuenta como congelamiento).
               </>
             )}
           </Typography>
@@ -2832,17 +3073,17 @@ export default function HistorialMembresiaPage() {
     
     <Button 
       onClick={() => {
-        // Actualizar función para manejar días manuales
-        if (editData.manual_frozen_days > 0) {
-          editData.total_frozen_days = (selectedMembership?.total_frozen_days || 0) + editData.manual_frozen_days;
+        // 🔧 LÓGICA CORREGIDA PARA EXTENSIÓN
+        if (editData.extend_days > 0 && selectedMembership?.end_date) {
+          const currentEnd = new Date(`${selectedMembership.end_date}T23:59:59`);
+          currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
+          editData.end_date = currentEnd.toISOString().split('T')[0];
           
-          // Extender fecha si se agregaron días
-          if (editData.end_date) {
-            const endDate = new Date(`${editData.end_date}T23:59:59`);
-            endDate.setDate(endDate.getDate() + editData.manual_frozen_days);
-            editData.end_date = endDate.toISOString().split('T')[0];
-          }
+          // Agregar nota automática
+          const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente.`;
+          editData.notes = editData.notes ? `${editData.notes}\n${extensionNote}` : extensionNote;
         }
+        
         handleUpdateMembership();
       }}
       disabled={editLoading}
