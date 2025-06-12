@@ -57,6 +57,56 @@ import {
   isValidDateString
 } from '@/lib/utils/dateUtils';
 
+// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // User Roles
+  roleAdmin: '#FFCC00',
+  roleStaff: '#1976D2',
+  roleTrainer: '#009688',
+  roleUser: '#777777',
+  roleModerator: '#9C27B0',
+  roleGuest: '#444444',
+  
+  // Interactions
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
+
 // Iconos principales
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import AddIcon from '@mui/icons-material/Add';
@@ -139,11 +189,11 @@ interface FormData {
 }
 
 const statusOptions = [
-  { value: '', label: 'Todos los estados', color: '#808080', icon: '📋' },
-  { value: 'active', label: 'Activos', color: '#4caf50', icon: '✅' },
-  { value: 'expired', label: 'Vencidos', color: '#f44336', icon: '❌' },
-  { value: 'inactive', label: 'Inactivos', color: '#9e9e9e', icon: '⏸️' },
-  { value: 'exhausted', label: 'Agotados', color: '#ff9800', icon: '🔚' }
+  { value: '', label: 'Todos los estados', color: darkProTokens.textSecondary, icon: '📋' },
+  { value: 'active', label: 'Activos', color: darkProTokens.success, icon: '✅' },
+  { value: 'expired', label: 'Vencidos', color: darkProTokens.error, icon: '❌' },
+  { value: 'inactive', label: 'Inactivos', color: darkProTokens.grayMuted, icon: '⏸️' },
+  { value: 'exhausted', label: 'Agotados', color: darkProTokens.warning, icon: '🔚' }
 ];
 
 const discountTypeOptions = [
@@ -368,7 +418,7 @@ export default function CuponesPage() {
         const newCouponData = {
           ...couponData,
           created_at: createTimestampForDB(),
-          created_by: null // TODO: Agregar ID del usuario logueado
+          created_by: 'luishdz04' // ✅ Usuario actual del sistema
         };
 
         const { error } = await supabase
@@ -467,18 +517,18 @@ export default function CuponesPage() {
     const today = getMexicoToday();
     
     if (coupon.end_date < today) {
-      return { status: 'expired', label: 'Vencido', color: '#f44336', icon: '❌' };
+      return { status: 'expired', label: 'Vencido', color: darkProTokens.error, icon: '❌' };
     }
     
     if (!coupon.is_active) {
-      return { status: 'inactive', label: 'Inactivo', color: '#9e9e9e', icon: '⏸️' };
+      return { status: 'inactive', label: 'Inactivo', color: darkProTokens.grayMuted, icon: '⏸️' };
     }
     
     if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
-      return { status: 'exhausted', label: 'Agotado', color: '#ff9800', icon: '🔚' };
+      return { status: 'exhausted', label: 'Agotado', color: darkProTokens.warning, icon: '🔚' };
     }
     
-    return { status: 'active', label: 'Activo', color: '#4caf50', icon: '✅' };
+    return { status: 'active', label: 'Activo', color: darkProTokens.success, icon: '✅' };
   };
 
   // 🎨 FORMATEAR PRECIO
@@ -526,21 +576,78 @@ export default function CuponesPage() {
     setEditDialogOpen(true);
   };
 
+  // ✅ FUNCIONES PARA CERRAR NOTIFICACIONES
+  const handleCloseError = () => setError(null);
+  const handleCloseSuccess = () => setSuccessMessage(null);
+
   return (
     <Box sx={{ 
       p: 3, 
-      background: 'linear-gradient(135deg, #000000, #1A1A1A)',
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
       minHeight: '100vh',
-      color: '#FFFFFF'
+      color: darkProTokens.textPrimary
     }}>
-      {/* Header Enterprise */}
+      {/* ✅ SNACKBARS CON DARK PRO SYSTEM */}
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={8000} 
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseError} 
+          severity="error" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.error}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.error}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar 
+        open={!!successMessage} 
+        autoHideDuration={5000} 
+        onClose={handleCloseSuccess}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseSuccess} 
+          severity="success" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.success}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* ✅ HEADER ENTERPRISE CON DARK PRO SYSTEM */}
       <Paper sx={{
         p: 4,
         mb: 4,
-        background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-        border: '2px solid rgba(255, 204, 0, 0.3)',
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}98, ${darkProTokens.surfaceLevel3}95)`,
+        border: `2px solid ${darkProTokens.primary}30`,
         borderRadius: 4,
-        boxShadow: '0 8px 32px rgba(255, 204, 0, 0.1)'
+        boxShadow: `0 8px 32px ${darkProTokens.primary}10`
       }}>
         <Box sx={{ 
           display: 'flex', 
@@ -550,7 +657,7 @@ export default function CuponesPage() {
         }}>
           <Box>
             <Typography variant="h3" sx={{ 
-              color: '#FFCC00', 
+              color: darkProTokens.primary, 
               fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
@@ -561,7 +668,7 @@ export default function CuponesPage() {
               Cupones y Descuentos
             </Typography>
             <Typography variant="h6" sx={{ 
-              color: '#CCCCCC',
+              color: darkProTokens.textSecondary,
               fontWeight: 300
             }}>
               Sistema de Promociones | Gestión Completa de Descuentos
@@ -573,15 +680,15 @@ export default function CuponesPage() {
               startIcon={<ArrowBackIcon />}
               onClick={() => router.push('/dashboard/admin/membresias')}
               sx={{ 
-                color: '#FFCC00',
-                borderColor: 'rgba(255, 204, 0, 0.6)',
+                color: darkProTokens.primary,
+                borderColor: `${darkProTokens.primary}60`,
                 px: 3,
                 py: 1.5,
                 borderRadius: 3,
                 fontWeight: 600,
                 '&:hover': {
-                  borderColor: '#FFE066',
-                  backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}10`,
                   transform: 'translateY(-2px)'
                 }
               }}
@@ -596,15 +703,15 @@ export default function CuponesPage() {
               onClick={loadCoupons}
               disabled={loading}
               sx={{
-                color: '#CCCCCC',
-                borderColor: 'rgba(204, 204, 204, 0.6)',
+                color: darkProTokens.textSecondary,
+                borderColor: `${darkProTokens.textSecondary}60`,
                 px: 3,
                 py: 1.5,
                 borderRadius: 3,
                 fontWeight: 600,
                 '&:hover': {
-                  borderColor: '#CCCCCC',
-                  backgroundColor: 'rgba(204, 204, 204, 0.1)',
+                  borderColor: darkProTokens.textSecondary,
+                  backgroundColor: `${darkProTokens.textSecondary}10`,
                   transform: 'translateY(-2px)'
                 }
               }}
@@ -621,14 +728,14 @@ export default function CuponesPage() {
                 setCreateDialogOpen(true);
               }}
               sx={{
-                background: 'linear-gradient(135deg, #FFCC00, #FFB300)',
-                color: '#000000',
+                background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                color: darkProTokens.background,
                 fontWeight: 700,
                 px: 4,
                 py: 1.5,
                 borderRadius: 3,
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #FFE066, #FFCC00)',
+                  background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
                   transform: 'translateY(-2px)'
                 }
               }}
@@ -640,122 +747,122 @@ export default function CuponesPage() {
           </Stack>
         </Box>
 
-        {/* Estadísticas Dashboard */}
+        {/* ✅ ESTADÍSTICAS DASHBOARD CON DARK PRO SYSTEM */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: 'rgba(255, 204, 0, 0.1)',
-              border: '1px solid rgba(255, 204, 0, 0.3)',
-              borderRadius: 3
+              background: `${darkProTokens.primary}10`,
+              border: `1px solid ${darkProTokens.primary}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
             }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <LocalOfferIcon sx={{ color: '#FFCC00', fontSize: 30, mb: 1 }} />
-                <Typography variant="h4" sx={{ color: '#FFCC00', fontWeight: 800 }}>
-                  {stats.total}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                  Total Cupones
-                </Typography>
-              </CardContent>
+              <LocalOfferIcon sx={{ color: darkProTokens.primary, fontSize: 30, mb: 1 }} />
+              <Typography variant="h4" sx={{ color: darkProTokens.primary, fontWeight: 800 }}>
+                {stats.total}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Total Cupones
+              </Typography>
             </Card>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: 'rgba(76, 175, 80, 0.1)',
-              border: '1px solid rgba(76, 175, 80, 0.3)',
-              borderRadius: 3
+              background: `${darkProTokens.success}10`,
+              border: `1px solid ${darkProTokens.success}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
             }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 30, mb: 1 }} />
-                <Typography variant="h4" sx={{ color: '#4caf50', fontWeight: 800 }}>
-                  {stats.active}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                  Activos
-                </Typography>
-              </CardContent>
+              <CheckCircleIcon sx={{ color: darkProTokens.success, fontSize: 30, mb: 1 }} />
+              <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 800 }}>
+                {stats.active}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Activos
+              </Typography>
             </Card>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: 'rgba(244, 67, 54, 0.1)',
-              border: '1px solid rgba(244, 67, 54, 0.3)',
-              borderRadius: 3
+              background: `${darkProTokens.error}10`,
+              border: `1px solid ${darkProTokens.error}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
             }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <AccessTimeIcon sx={{ color: '#f44336', fontSize: 30, mb: 1 }} />
-                <Typography variant="h4" sx={{ color: '#f44336', fontWeight: 800 }}>
-                  {stats.expired}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                  Vencidos
-                </Typography>
-              </CardContent>
+              <AccessTimeIcon sx={{ color: darkProTokens.error, fontSize: 30, mb: 1 }} />
+              <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 800 }}>
+                {stats.expired}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Vencidos
+              </Typography>
             </Card>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: 'rgba(33, 150, 243, 0.1)',
-              border: '1px solid rgba(33, 150, 243, 0.3)',
-              borderRadius: 3
+              background: `${darkProTokens.info}10`,
+              border: `1px solid ${darkProTokens.info}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
             }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <TrendingUpIcon sx={{ color: '#2196f3', fontSize: 30, mb: 1 }} />
-                <Typography variant="h4" sx={{ color: '#2196f3', fontWeight: 800 }}>
-                  {stats.totalUsages}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                  Total Usos
-                </Typography>
-              </CardContent>
+              <TrendingUpIcon sx={{ color: darkProTokens.info, fontSize: 30, mb: 1 }} />
+              <Typography variant="h4" sx={{ color: darkProTokens.info, fontWeight: 800 }}>
+                {stats.totalUsages}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Total Usos
+              </Typography>
             </Card>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: 'rgba(255, 152, 0, 0.1)',
-              border: '1px solid rgba(255, 152, 0, 0.3)',
-              borderRadius: 3
+              background: `${darkProTokens.warning}10`,
+              border: `1px solid ${darkProTokens.warning}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
             }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <AttachMoneyIcon sx={{ color: '#ff9800', fontSize: 30, mb: 1 }} />
-                <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 800 }}>
-                  {formatPrice(stats.totalDiscounts)}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                  Descuentos
-                </Typography>
-              </CardContent>
+              <AttachMoneyIcon sx={{ color: darkProTokens.warning, fontSize: 30, mb: 1 }} />
+              <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 800 }}>
+                {formatPrice(stats.totalDiscounts)}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Descuentos
+              </Typography>
             </Card>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: 'rgba(156, 39, 176, 0.1)',
-              border: '1px solid rgba(156, 39, 176, 0.3)',
-              borderRadius: 3
+              background: `${darkProTokens.roleModerator}10`,
+              border: `1px solid ${darkProTokens.roleModerator}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
             }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <PercentIcon sx={{ color: '#9c27b0', fontSize: 30, mb: 1 }} />
-                <Typography variant="h6" sx={{ color: '#9c27b0', fontWeight: 800 }}>
-                  {stats.averageDiscount.toFixed(1)}%
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
-                  Promedio
-                </Typography>
-              </CardContent>
+              <PercentIcon sx={{ color: darkProTokens.roleModerator, fontSize: 30, mb: 1 }} />
+              <Typography variant="h6" sx={{ color: darkProTokens.roleModerator, fontWeight: 800 }}>
+                {stats.averageDiscount.toFixed(1)}%
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Promedio
+              </Typography>
             </Card>
           </Grid>
         </Grid>
       </Paper>
 
-      {/* Panel de Filtros */}
+      {/* ✅ PANEL DE FILTROS CON DARK PRO SYSTEM */}
       <Card sx={{
-        background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-        border: '1px solid rgba(255, 204, 0, 0.2)',
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}95, ${darkProTokens.surfaceLevel3}90)`,
+        border: `1px solid ${darkProTokens.primary}20`,
         borderRadius: 4,
         mb: 3
       }}>
@@ -767,7 +874,7 @@ export default function CuponesPage() {
             mb: showFilters ? 3 : 0
           }}>
             <Typography variant="h6" sx={{ 
-              color: '#FFCC00', 
+              color: darkProTokens.primary, 
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
@@ -779,7 +886,7 @@ export default function CuponesPage() {
                 <Badge 
                   badgeContent="●" 
                   color="primary"
-                  sx={{ '& .MuiBadge-badge': { backgroundColor: '#FFCC00' } }}
+                  sx={{ '& .MuiBadge-badge': { backgroundColor: darkProTokens.primary } }}
                 />
               )}
             </Typography>
@@ -787,7 +894,7 @@ export default function CuponesPage() {
             <Button
               onClick={() => setShowFilters(!showFilters)}
               sx={{ 
-                color: '#FFCC00',
+                color: darkProTokens.primary,
                 fontWeight: 600
               }}
             >
@@ -814,26 +921,26 @@ export default function CuponesPage() {
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <SearchIcon sx={{ color: '#FFCC00' }} />
+                            <SearchIcon sx={{ color: darkProTokens.primary }} />
                           </InputAdornment>
                         ),
                         sx: {
-                          color: '#FFFFFF',
+                          color: darkProTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 204, 0, 0.3)'
+                            borderColor: `${darkProTokens.primary}30`
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFCC00'
+                            borderColor: darkProTokens.primary
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFCC00'
+                            borderColor: darkProTokens.primary
                           }
                         }
                       }}
                       InputLabelProps={{
                         sx: { 
-                          color: '#CCCCCC',
-                          '&.Mui-focused': { color: '#FFCC00' }
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
                     />
@@ -842,8 +949,8 @@ export default function CuponesPage() {
                   <Grid size={{ xs: 12, md: 2 }}>
                     <FormControl fullWidth>
                       <InputLabel sx={{ 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }}>
                         Estado
                       </InputLabel>
@@ -851,15 +958,15 @@ export default function CuponesPage() {
                         value={filters.status}
                         onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                         sx={{
-                          color: '#FFFFFF',
+                          color: darkProTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 204, 0, 0.3)'
+                            borderColor: `${darkProTokens.primary}30`
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFCC00'
+                            borderColor: darkProTokens.primary
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFCC00'
+                            borderColor: darkProTokens.primary
                           }
                         }}
                       >
@@ -878,8 +985,8 @@ export default function CuponesPage() {
                   <Grid size={{ xs: 12, md: 2 }}>
                     <FormControl fullWidth>
                       <InputLabel sx={{ 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }}>
                         Tipo
                       </InputLabel>
@@ -887,15 +994,15 @@ export default function CuponesPage() {
                         value={filters.discountType}
                         onChange={(e) => setFilters(prev => ({ ...prev, discountType: e.target.value }))}
                         sx={{
-                          color: '#FFFFFF',
+                          color: darkProTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 204, 0, 0.3)'
+                            borderColor: `${darkProTokens.primary}30`
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFCC00'
+                            borderColor: darkProTokens.primary
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFCC00'
+                            borderColor: darkProTokens.primary
                           }
                         }}
                       >
@@ -921,21 +1028,21 @@ export default function CuponesPage() {
                       InputLabelProps={{ 
                         shrink: true,
                         sx: { 
-                          color: '#CCCCCC',
-                          '&.Mui-focused': { color: '#FFCC00' }
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
                       InputProps={{
                         sx: {
-                          color: '#FFFFFF',
+                          color: darkProTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 204, 0, 0.3)'
+                            borderColor: `${darkProTokens.primary}30`
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFCC00'
+                            borderColor: darkProTokens.primary
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFCC00'
+                            borderColor: darkProTokens.primary
                           }
                         }
                       }}
@@ -947,12 +1054,12 @@ export default function CuponesPage() {
                       fullWidth
                       onClick={clearFilters}
                       sx={{
-                        color: '#CCCCCC',
-                        borderColor: 'rgba(204, 204, 204, 0.3)',
+                        color: darkProTokens.textSecondary,
+                        borderColor: `${darkProTokens.textSecondary}30`,
                         height: '56px',
                         '&:hover': {
-                          borderColor: '#CCCCCC',
-                          backgroundColor: 'rgba(204, 204, 204, 0.05)'
+                          borderColor: darkProTokens.textSecondary,
+                          backgroundColor: `${darkProTokens.textSecondary}05`
                         }
                       }}
                       variant="outlined"
@@ -967,42 +1074,61 @@ export default function CuponesPage() {
         </CardContent>
       </Card>
 
-      {/* Tabla de Cupones */}
+      {/* ✅ TABLA DE CUPONES CON DARK PRO SYSTEM */}
       <Card sx={{
-        background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-        border: '1px solid rgba(255, 204, 0, 0.2)',
-        borderRadius: 4
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.primary}20`,
+        borderRadius: 4,
+        overflow: 'hidden'
       }}>
         <CardContent sx={{ p: 0 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress sx={{ color: '#FFCC00' }} size={60} />
+              <CircularProgress 
+                sx={{ color: darkProTokens.primary }} 
+                size={60} 
+                thickness={4}
+              />
+            </Box>
+          ) : filteredCoupons.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h5" sx={{ 
+                color: darkProTokens.textSecondary,
+                mb: 2
+              }}>
+                🎟️ No se encontraron cupones
+              </Typography>
+              <Typography variant="body1" sx={{ 
+                color: darkProTokens.textSecondary
+              }}>
+                Intente ajustar los filtros de búsqueda
+              </Typography>
             </Box>
           ) : (
             <>
               <TableContainer>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: 'rgba(255, 204, 0, 0.1)' }}>
-                      <TableCell sx={{ color: '#FFCC00', fontWeight: 700, borderBottom: '1px solid rgba(255, 204, 0, 0.3)' }}>
+                    <TableRow sx={{ backgroundColor: `${darkProTokens.grayDark}30` }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
                         Código
                       </TableCell>
-                      <TableCell sx={{ color: '#FFCC00', fontWeight: 700, borderBottom: '1px solid rgba(255, 204, 0, 0.3)' }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
                         Descripción
                       </TableCell>
-                      <TableCell sx={{ color: '#FFCC00', fontWeight: 700, borderBottom: '1px solid rgba(255, 204, 0, 0.3)' }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
                         Descuento
                       </TableCell>
-                      <TableCell sx={{ color: '#FFCC00', fontWeight: 700, borderBottom: '1px solid rgba(255, 204, 0, 0.3)' }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
                         Estado
                       </TableCell>
-                      <TableCell sx={{ color: '#FFCC00', fontWeight: 700, borderBottom: '1px solid rgba(255, 204, 0, 0.3)' }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
                         Uso
                       </TableCell>
-                      <TableCell sx={{ color: '#FFCC00', fontWeight: 700, borderBottom: '1px solid rgba(255, 204, 0, 0.3)' }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
                         Vigencia
                       </TableCell>
-                      <TableCell sx={{ color: '#FFCC00', fontWeight: 700, borderBottom: '1px solid rgba(255, 204, 0, 0.3)', textAlign: 'center' }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, textAlign: 'center' }}>
                         Acciones
                       </TableCell>
                     </TableRow>
@@ -1017,17 +1143,16 @@ export default function CuponesPage() {
                             key={coupon.id}
                             sx={{ 
                               '&:hover': { 
-                                backgroundColor: 'rgba(255, 204, 0, 0.05)' 
-                              },
-                              borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                                backgroundColor: `${darkProTokens.primary}05` 
+                              }
                             }}
                           >
-                            <TableCell sx={{ color: '#FFFFFF', borderBottom: 'none' }}>
+                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Typography variant="body1" sx={{ 
                                   fontWeight: 700,
                                   fontFamily: 'monospace',
-                                  color: '#FFCC00'
+                                  color: darkProTokens.primary
                                 }}>
                                   {coupon.code}
                                 </Typography>
@@ -1035,7 +1160,7 @@ export default function CuponesPage() {
                                   <IconButton
                                     size="small"
                                     onClick={() => handleCopyCode(coupon.code)}
-                                    sx={{ color: '#CCCCCC' }}
+                                    sx={{ color: darkProTokens.textSecondary }}
                                   >
                                     <ContentCopyIcon fontSize="small" />
                                   </IconButton>
@@ -1043,7 +1168,7 @@ export default function CuponesPage() {
                               </Box>
                             </TableCell>
                             
-                            <TableCell sx={{ color: '#FFFFFF', borderBottom: 'none' }}>
+                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
                               <Typography variant="body1" sx={{ 
                                 maxWidth: 200,
                                 overflow: 'hidden',
@@ -1054,41 +1179,41 @@ export default function CuponesPage() {
                               </Typography>
                             </TableCell>
                             
-                            <TableCell sx={{ borderBottom: 'none' }}>
+                            <TableCell>
                               <Box>
                                 <Typography variant="h6" sx={{ 
-                                  color: '#FFCC00',
+                                  color: darkProTokens.primary,
                                   fontWeight: 700
                                 }}>
                                   {formatDiscount(coupon)}
                                 </Typography>
                                 {coupon.min_amount > 0 && (
-                                  <Typography variant="caption" sx={{ color: '#CCCCCC' }}>
+                                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                                     Min: {formatPrice(coupon.min_amount)}
                                   </Typography>
                                 )}
                               </Box>
                             </TableCell>
                             
-                            <TableCell sx={{ borderBottom: 'none' }}>
+                            <TableCell>
                               <Chip 
                                 label={`${status.icon} ${status.label}`}
                                 sx={{
                                   backgroundColor: status.color,
-                                  color: '#FFFFFF',
+                                  color: darkProTokens.textPrimary,
                                   fontWeight: 600
                                 }}
                               />
                             </TableCell>
                             
-                            <TableCell sx={{ color: '#FFFFFF', borderBottom: 'none' }}>
+                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
                               <Box>
                                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
                                   {coupon.current_uses}{coupon.max_uses ? `/${coupon.max_uses}` : ''}
                                 </Typography>
                                 {coupon.max_uses && (
                                   <Typography variant="caption" sx={{ 
-                                    color: coupon.usage_percentage! > 80 ? '#ff9800' : '#CCCCCC'
+                                    color: coupon.usage_percentage! > 80 ? darkProTokens.warning : darkProTokens.textSecondary
                                   }}>
                                     {coupon.usage_percentage!.toFixed(1)}% usado
                                   </Typography>
@@ -1096,26 +1221,25 @@ export default function CuponesPage() {
                               </Box>
                             </TableCell>
                             
-                            <TableCell sx={{ color: '#FFFFFF', borderBottom: 'none' }}>
+                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
                               <Box>
                                 <Typography variant="body2">
                                   📅 {formatDateForDisplay(coupon.start_date)}
                                 </Typography>
-                                <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                                   → {formatDateForDisplay(coupon.end_date)}
                                 </Typography>
                                 {coupon.days_remaining !== null && coupon.days_remaining !== undefined && coupon.days_remaining >= 0 && (
-  <Typography variant="caption" sx={{ 
-    color: coupon.days_remaining < 7 ? '#ff9800' : '#4caf50'
-  }}>
-    {coupon.days_remaining} días restantes
-  </Typography>
-)}
-
+                                  <Typography variant="caption" sx={{ 
+                                    color: coupon.days_remaining < 7 ? darkProTokens.warning : darkProTokens.success
+                                  }}>
+                                    {coupon.days_remaining} días restantes
+                                  </Typography>
+                                )}
                               </Box>
                             </TableCell>
                             
-                            <TableCell sx={{ borderBottom: 'none', textAlign: 'center' }}>
+                            <TableCell sx={{ textAlign: 'center' }}>
                               <Stack direction="row" spacing={1} justifyContent="center">
                                 <Tooltip title="Ver Detalles">
                                   <IconButton
@@ -1123,7 +1247,7 @@ export default function CuponesPage() {
                                       setSelectedCoupon(coupon);
                                       setDetailsDialogOpen(true);
                                     }}
-                                    sx={{ color: '#FFCC00' }}
+                                    sx={{ color: darkProTokens.primary }}
                                   >
                                     <VisibilityIcon />
                                   </IconButton>
@@ -1132,7 +1256,7 @@ export default function CuponesPage() {
                                 <Tooltip title="Editar">
                                   <IconButton
                                     onClick={() => initializeEdit(coupon)}
-                                    sx={{ color: '#2196f3' }}
+                                    sx={{ color: darkProTokens.info }}
                                   >
                                     <EditIcon />
                                   </IconButton>
@@ -1144,7 +1268,7 @@ export default function CuponesPage() {
                                       setSelectedCoupon(coupon);
                                       setActionMenuAnchor(e.currentTarget);
                                     }}
-                                    sx={{ color: '#CCCCCC' }}
+                                    sx={{ color: darkProTokens.textSecondary }}
                                   >
                                     <MoreVertIcon />
                                   </IconButton>
@@ -1170,13 +1294,13 @@ export default function CuponesPage() {
                 }}
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 sx={{
-                  color: '#FFFFFF',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: darkProTokens.textPrimary,
+                  borderTop: `1px solid ${darkProTokens.grayDark}`,
                   '& .MuiTablePagination-actions button': {
-                    color: '#FFCC00'
+                    color: darkProTokens.primary
                   },
                   '& .MuiTablePagination-select': {
-                    color: '#FFFFFF'
+                    color: darkProTokens.textPrimary
                   }
                 }}
                 labelRowsPerPage="Filas por página:"
@@ -1189,15 +1313,15 @@ export default function CuponesPage() {
         </CardContent>
       </Card>
 
-      {/* Menu de Acciones */}
+      {/* ✅ MENU DE ACCIONES CON DARK PRO SYSTEM */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
         onClose={() => setActionMenuAnchor(null)}
         PaperProps={{
           sx: {
-            background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-            border: '1px solid rgba(255, 204, 0, 0.3)',
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.primary}30`,
             borderRadius: 2
           }
         }}
@@ -1210,13 +1334,13 @@ export default function CuponesPage() {
                   handleToggleActive(selectedCoupon);
                   setActionMenuAnchor(null);
                 }}
-                sx={{ color: selectedCoupon.is_active ? '#ff9800' : '#4caf50' }}
+                sx={{ color: selectedCoupon.is_active ? darkProTokens.warning : darkProTokens.success }}
               >
                 <ListItemIcon>
                   {selectedCoupon.is_active ? (
-                    <ToggleOffIcon sx={{ color: '#ff9800' }} />
+                    <ToggleOffIcon sx={{ color: darkProTokens.warning }} />
                   ) : (
-                    <ToggleOnIcon sx={{ color: '#4caf50' }} />
+                    <ToggleOnIcon sx={{ color: darkProTokens.success }} />
                   )}
                 </ListItemIcon>
                 <ListItemText>
@@ -1229,10 +1353,10 @@ export default function CuponesPage() {
                   handleCopyCode(selectedCoupon.code);
                   setActionMenuAnchor(null);
                 }}
-                sx={{ color: '#2196f3' }}
+                sx={{ color: darkProTokens.info }}
               >
                 <ListItemIcon>
-                  <ContentCopyIcon sx={{ color: '#2196f3' }} />
+                  <ContentCopyIcon sx={{ color: darkProTokens.info }} />
                 </ListItemIcon>
                 <ListItemText>Copiar Código</ListItemText>
               </MenuItemComponent>
@@ -1242,10 +1366,10 @@ export default function CuponesPage() {
                   handleDeleteCoupon(selectedCoupon);
                   setActionMenuAnchor(null);
                 }}
-                sx={{ color: '#f44336' }}
+                sx={{ color: darkProTokens.error }}
               >
                 <ListItemIcon>
-                  <DeleteIcon sx={{ color: '#f44336' }} />
+                  <DeleteIcon sx={{ color: darkProTokens.error }} />
                 </ListItemIcon>
                 <ListItemText>Eliminar</ListItemText>
               </MenuItemComponent>
@@ -1254,7 +1378,7 @@ export default function CuponesPage() {
         </MenuList>
       </Menu>
 
-      {/* 🆕 MODAL CREAR CUPÓN */}
+      {/* 🆕 MODAL CREAR CUPÓN - CON DARK PRO SYSTEM */}
       <Dialog 
         open={createDialogOpen} 
         onClose={() => !formLoading && setCreateDialogOpen(false)}
@@ -1262,16 +1386,16 @@ export default function CuponesPage() {
         fullWidth
         PaperProps={{
           sx: {
-            background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-            border: '2px solid rgba(255, 204, 0, 0.5)',
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.primary}50`,
             borderRadius: 4,
-            color: '#FFFFFF',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
           }
         }}
       >
         <DialogTitle sx={{ 
-          color: '#FFCC00', 
+          color: darkProTokens.primary, 
           fontWeight: 800,
           fontSize: '1.6rem',
           textAlign: 'center',
@@ -1287,7 +1411,7 @@ export default function CuponesPage() {
           <IconButton 
             onClick={() => setCreateDialogOpen(false)}
             disabled={formLoading}
-            sx={{ color: '#CCCCCC' }}
+            sx={{ color: darkProTokens.textSecondary }}
           >
             <CloseIcon />
           </IconButton>
@@ -1309,24 +1433,24 @@ export default function CuponesPage() {
                   placeholder="Ej: DESC20, PROMO50"
                   InputProps={{
                     sx: {
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       fontFamily: 'monospace',
                       fontWeight: 700,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 204, 0, 0.3)'
+                        borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
                   InputLabelProps={{
                     sx: { 
-                      color: '#CCCCCC',
-                      '&.Mui-focused': { color: '#FFCC00' }
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }
                   }}
                 />
@@ -1336,8 +1460,8 @@ export default function CuponesPage() {
               <Grid size={6}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    color: '#CCCCCC',
-                    '&.Mui-focused': { color: '#FFCC00' }
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
                   }}>
                     Tipo de Descuento
                   </InputLabel>
@@ -1348,15 +1472,15 @@ export default function CuponesPage() {
                       discount_type: e.target.value as 'percentage' | 'fixed'
                     }))}
                     sx={{
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 204, 0, 0.3)'
+                        borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       }
                     }}
                   >
@@ -1394,22 +1518,22 @@ export default function CuponesPage() {
                       </InputAdornment>
                     ),
                     sx: {
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 204, 0, 0.3)'
+                        borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
                   InputLabelProps={{
                     sx: { 
-                      color: '#CCCCCC',
-                      '&.Mui-focused': { color: '#FFCC00' }
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }
                   }}
                 />
@@ -1429,22 +1553,22 @@ export default function CuponesPage() {
                   InputProps={{
                     startAdornment: <InputAdornment position="start">$</InputAdornment>,
                     sx: {
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 204, 0, 0.3)'
+                        borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
                   InputLabelProps={{
                     sx: { 
-                      color: '#CCCCCC',
-                      '&.Mui-focused': { color: '#FFCC00' }
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }
                   }}
                 />
@@ -1457,29 +1581,29 @@ export default function CuponesPage() {
                   label="Límite de Usos"
                   type="number"
                   value={formData.max_uses || ''}
-                  onChange={(e) => setFormData(prev => ({ 
+                                    onChange={(e) => setFormData(prev => ({ 
                     ...prev, 
                     max_uses: e.target.value ? parseInt(e.target.value) : null 
                   }))}
                   placeholder="Ilimitado si está vacío"
                   InputProps={{
                     sx: {
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 204, 0, 0.3)'
+                        borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
                   InputLabelProps={{
                     sx: { 
-                      color: '#CCCCCC',
-                      '&.Mui-focused': { color: '#FFCC00' }
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }
                   }}
                 />
@@ -1496,21 +1620,21 @@ export default function CuponesPage() {
                   InputLabelProps={{ 
                     shrink: true,
                     sx: { 
-                      color: '#CCCCCC',
-                      '&.Mui-focused': { color: '#FFCC00' }
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }
                   }}
                   InputProps={{
                     sx: {
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 204, 0, 0.3)'
+                        borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
@@ -1528,21 +1652,21 @@ export default function CuponesPage() {
                   InputLabelProps={{ 
                     shrink: true,
                     sx: { 
-                      color: '#CCCCCC',
-                      '&.Mui-focused': { color: '#FFCC00' }
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }
                   }}
                   InputProps={{
                     sx: {
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 204, 0, 0.3)'
+                        borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
@@ -1561,22 +1685,22 @@ export default function CuponesPage() {
                   placeholder="Descripción detallada del cupón y sus condiciones..."
                   InputProps={{
                     sx: {
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 204, 0, 0.3)'
+                        borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFCC00'
+                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
                   InputLabelProps={{
                     sx: { 
-                      color: '#CCCCCC',
-                      '&.Mui-focused': { color: '#FFCC00' }
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }
                   }}
                 />
@@ -1591,17 +1715,17 @@ export default function CuponesPage() {
                       onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                       sx={{
                         '& .MuiSwitch-switchBase.Mui-checked': {
-                          color: '#FFCC00',
+                          color: darkProTokens.primary,
                         },
                         '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                          backgroundColor: '#FFCC00',
+                          backgroundColor: darkProTokens.primary,
                         },
                       }}
                     />
                   }
                   label={
                     <Typography variant="body1" sx={{ 
-                      color: '#FFFFFF', 
+                      color: darkProTokens.textPrimary, 
                       fontWeight: 600 
                     }}>
                       ✅ Cupón Activo (disponible para uso inmediato)
@@ -1614,7 +1738,7 @@ export default function CuponesPage() {
             {/* Vista Previa del Cupón */}
             <Box sx={{ mt: 4 }}>
               <Typography variant="h6" sx={{ 
-                color: '#FFCC00',
+                color: darkProTokens.primary,
                 fontWeight: 700,
                 mb: 2
               }}>
@@ -1622,18 +1746,18 @@ export default function CuponesPage() {
               </Typography>
               
               <Card sx={{
-                background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.15), rgba(255, 204, 0, 0.05))',
-                border: '2px solid rgba(255, 204, 0, 0.5)',
+                background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}05)`,
+                border: `2px solid ${darkProTokens.primary}50`,
                 borderRadius: 3,
                 p: 3
               }}>
                 <Grid container spacing={2}>
                   <Grid size={6}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       Código:
                     </Typography>
                     <Typography variant="h6" sx={{ 
-                      color: '#FFCC00',
+                      color: darkProTokens.primary,
                       fontFamily: 'monospace',
                       fontWeight: 700
                     }}>
@@ -1642,11 +1766,11 @@ export default function CuponesPage() {
                   </Grid>
                   
                   <Grid size={6}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       Descuento:
                     </Typography>
                     <Typography variant="h6" sx={{ 
-                      color: '#4caf50',
+                      color: darkProTokens.success,
                       fontWeight: 700
                     }}>
                       {formData.discount_type === 'percentage' 
@@ -1657,28 +1781,28 @@ export default function CuponesPage() {
                   </Grid>
                   
                   <Grid size={12}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       Descripción:
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#FFFFFF' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
                       {formData.description || 'Sin descripción'}
                     </Typography>
                   </Grid>
                   
                   <Grid size={6}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       Vigencia:
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#FFFFFF' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
                       {formatDateForDisplay(formData.start_date)} → {formatDateForDisplay(formData.end_date)}
                     </Typography>
                   </Grid>
                   
                   <Grid size={6}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       Límite:
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#FFFFFF' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
                       {formData.max_uses ? `${formData.max_uses} usos` : 'Ilimitado'}
                     </Typography>
                   </Grid>
@@ -1693,8 +1817,8 @@ export default function CuponesPage() {
             onClick={() => setCreateDialogOpen(false)}
             disabled={formLoading}
             sx={{ 
-              color: '#CCCCCC',
-              borderColor: 'rgba(204, 204, 204, 0.4)',
+              color: darkProTokens.textSecondary,
+              borderColor: `${darkProTokens.textSecondary}40`,
               px: 3,
               py: 1
             }}
@@ -1707,20 +1831,20 @@ export default function CuponesPage() {
             onClick={handleSaveCoupon}
             disabled={formLoading || !formData.code.trim()}
             variant="contained"
-            startIcon={formLoading ? <CircularProgress size={20} sx={{ color: '#000000' }} /> : <SaveIcon />}
+            startIcon={formLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
             sx={{
-              background: 'linear-gradient(135deg, #FFCC00, #FFB300)',
-              color: '#000000',
+              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+              color: darkProTokens.background,
               fontWeight: 700,
               px: 4,
               py: 1,
               '&:hover': {
-                background: 'linear-gradient(135deg, #FFE066, #FFCC00)',
+                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
                 transform: 'translateY(-1px)'
               },
               '&:disabled': {
-                background: 'rgba(77, 77, 77, 0.12)',
-                color: 'rgba(204, 204, 204, 0.3)'
+                background: darkProTokens.grayMedium,
+                color: darkProTokens.textDisabled
               }
             }}
           >
@@ -1729,7 +1853,7 @@ export default function CuponesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ✏️ MODAL EDITAR CUPÓN */}
+      {/* ✏️ MODAL EDITAR CUPÓN - CON DARK PRO SYSTEM */}
       <Dialog 
         open={editDialogOpen} 
         onClose={() => !formLoading && setEditDialogOpen(false)}
@@ -1737,16 +1861,16 @@ export default function CuponesPage() {
         fullWidth
         PaperProps={{
           sx: {
-            background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-            border: '2px solid rgba(255, 204, 0, 0.5)',
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.primary}50`,
             borderRadius: 4,
-            color: '#FFFFFF',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
           }
         }}
       >
         <DialogTitle sx={{ 
-          color: '#FFCC00', 
+          color: darkProTokens.primary, 
           fontWeight: 800,
           fontSize: '1.6rem',
           textAlign: 'center',
@@ -1762,7 +1886,7 @@ export default function CuponesPage() {
           <IconButton 
             onClick={() => setEditDialogOpen(false)}
             disabled={formLoading}
-            sx={{ color: '#CCCCCC' }}
+            sx={{ color: darkProTokens.textSecondary }}
           >
             <CloseIcon />
           </IconButton>
@@ -1773,14 +1897,14 @@ export default function CuponesPage() {
             <Box sx={{ mt: 2 }}>
               {/* Información del cupón actual */}
               <Card sx={{
-                background: 'rgba(255, 204, 0, 0.1)',
-                border: '1px solid rgba(255, 204, 0, 0.3)',
+                background: `${darkProTokens.primary}10`,
+                border: `1px solid ${darkProTokens.primary}30`,
                 borderRadius: 3,
                 p: 3,
                 mb: 3
               }}>
                 <Typography variant="h6" sx={{ 
-                  color: '#FFCC00',
+                  color: darkProTokens.primary,
                   fontWeight: 700,
                   mb: 2
                 }}>
@@ -1789,16 +1913,16 @@ export default function CuponesPage() {
                 
                 <Grid container spacing={2}>
                   <Grid size={3}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       Usos:
                     </Typography>
-                    <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
                       {selectedCoupon.current_uses}{selectedCoupon.max_uses ? `/${selectedCoupon.max_uses}` : ''}
                     </Typography>
                   </Grid>
                   
                   <Grid size={3}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       Estado:
                     </Typography>
                     <Chip 
@@ -1806,27 +1930,27 @@ export default function CuponesPage() {
                       size="small"
                       sx={{
                         backgroundColor: getCouponStatus(selectedCoupon).color,
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         fontWeight: 600
                       }}
                     />
                   </Grid>
                   
                   <Grid size={3}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       Creado:
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#FFFFFF' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
                       {formatDateForDisplay(selectedCoupon.created_at)}
                     </Typography>
                   </Grid>
                   
                   <Grid size={3}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                       ID:
                     </Typography>
                     <Typography variant="caption" sx={{ 
-                      color: '#CCCCCC',
+                      color: darkProTokens.textSecondary,
                       fontFamily: 'monospace'
                     }}>
                       {selectedCoupon.id.substring(0, 8)}...
@@ -1835,7 +1959,7 @@ export default function CuponesPage() {
                 </Grid>
               </Card>
 
-              {/* Formulario de edición (mismo que crear) */}
+              {/* Formulario de edición (mismo que crear pero reutilizado) */}
               <Grid container spacing={3}>
                 {/* Código */}
                 <Grid size={6}>
@@ -1849,24 +1973,24 @@ export default function CuponesPage() {
                     }))}
                     InputProps={{
                       sx: {
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         fontFamily: 'monospace',
                         fontWeight: 700,
                         '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 204, 0, 0.3)'
+                          borderColor: `${darkProTokens.primary}30`
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
                     InputLabelProps={{
                       sx: { 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }
                     }}
                   />
@@ -1876,8 +2000,8 @@ export default function CuponesPage() {
                 <Grid size={6}>
                   <FormControl fullWidth>
                     <InputLabel sx={{ 
-                      color: '#CCCCCC',
-                      '&.Mui-focused': { color: '#FFCC00' }
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
                     }}>
                       Tipo de Descuento
                     </InputLabel>
@@ -1888,15 +2012,15 @@ export default function CuponesPage() {
                         discount_type: e.target.value as 'percentage' | 'fixed'
                       }))}
                       sx={{
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 204, 0, 0.3)'
+                          borderColor: `${darkProTokens.primary}30`
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         }
                       }}
                     >
@@ -1934,22 +2058,22 @@ export default function CuponesPage() {
                         </InputAdornment>
                       ),
                       sx: {
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 204, 0, 0.3)'
+                          borderColor: `${darkProTokens.primary}30`
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
                     InputLabelProps={{
                       sx: { 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }
                     }}
                   />
@@ -1969,22 +2093,22 @@ export default function CuponesPage() {
                     InputProps={{
                       startAdornment: <InputAdornment position="start">$</InputAdornment>,
                       sx: {
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 204, 0, 0.3)'
+                          borderColor: `${darkProTokens.primary}30`
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
                     InputLabelProps={{
                       sx: { 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }
                     }}
                   />
@@ -2004,22 +2128,22 @@ export default function CuponesPage() {
                     placeholder="Ilimitado si está vacío"
                     InputProps={{
                       sx: {
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 204, 0, 0.3)'
+                          borderColor: `${darkProTokens.primary}30`
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
                     InputLabelProps={{
                       sx: { 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }
                     }}
                   />
@@ -2036,21 +2160,21 @@ export default function CuponesPage() {
                     InputLabelProps={{ 
                       shrink: true,
                       sx: { 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }
                     }}
                     InputProps={{
                       sx: {
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 204, 0, 0.3)'
+                          borderColor: `${darkProTokens.primary}30`
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
@@ -2068,21 +2192,21 @@ export default function CuponesPage() {
                     InputLabelProps={{ 
                       shrink: true,
                       sx: { 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }
                     }}
                     InputProps={{
                       sx: {
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 204, 0, 0.3)'
+                          borderColor: `${darkProTokens.primary}30`
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
@@ -2100,22 +2224,22 @@ export default function CuponesPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     InputProps={{
                       sx: {
-                        color: '#FFFFFF',
+                        color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 204, 0, 0.3)'
+                          borderColor: `${darkProTokens.primary}30`
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFCC00'
+                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
                     InputLabelProps={{
                       sx: { 
-                        color: '#CCCCCC',
-                        '&.Mui-focused': { color: '#FFCC00' }
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }
                     }}
                   />
@@ -2130,17 +2254,17 @@ export default function CuponesPage() {
                         onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                         sx={{
                           '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: '#FFCC00',
+                            color: darkProTokens.primary,
                           },
                           '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                            backgroundColor: '#FFCC00',
+                            backgroundColor: darkProTokens.primary,
                           },
                         }}
                       />
                     }
                     label={
                       <Typography variant="body1" sx={{ 
-                        color: '#FFFFFF', 
+                        color: darkProTokens.textPrimary, 
                         fontWeight: 600 
                       }}>
                         ✅ Cupón Activo
@@ -2156,10 +2280,10 @@ export default function CuponesPage() {
                   severity="warning"
                   sx={{
                     mt: 3,
-                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                    color: '#FFFFFF',
-                    border: '1px solid rgba(255, 152, 0, 0.3)',
-                    '& .MuiAlert-icon': { color: '#ff9800' }
+                    backgroundColor: `${darkProTokens.warning}10`,
+                    color: darkProTokens.textPrimary,
+                    border: `1px solid ${darkProTokens.warning}30`,
+                    '& .MuiAlert-icon': { color: darkProTokens.warning }
                   }}
                 >
                   <Typography variant="body2">
@@ -2177,8 +2301,8 @@ export default function CuponesPage() {
             onClick={() => setEditDialogOpen(false)}
             disabled={formLoading}
             sx={{ 
-              color: '#CCCCCC',
-              borderColor: 'rgba(204, 204, 204, 0.4)',
+              color: darkProTokens.textSecondary,
+              borderColor: `${darkProTokens.textSecondary}40`,
               px: 3,
               py: 1
             }}
@@ -2191,20 +2315,20 @@ export default function CuponesPage() {
             onClick={handleSaveCoupon}
             disabled={formLoading || !formData.code.trim()}
             variant="contained"
-            startIcon={formLoading ? <CircularProgress size={20} sx={{ color: '#000000' }} /> : <SaveIcon />}
+            startIcon={formLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
             sx={{
-              background: 'linear-gradient(135deg, #FFCC00, #FFB300)',
-              color: '#000000',
+              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+              color: darkProTokens.background,
               fontWeight: 700,
               px: 4,
               py: 1,
               '&:hover': {
-                background: 'linear-gradient(135deg, #FFE066, #FFCC00)',
+                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
                 transform: 'translateY(-1px)'
               },
               '&:disabled': {
-                background: 'rgba(77, 77, 77, 0.12)',
-                color: 'rgba(204, 204, 204, 0.3)'
+                background: darkProTokens.grayMedium,
+                color: darkProTokens.textDisabled
               }
             }}
           >
@@ -2213,7 +2337,7 @@ export default function CuponesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* 👁️ MODAL DE DETALLES */}
+      {/* 👁️ MODAL DE DETALLES - CON DARK PRO SYSTEM */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
@@ -2221,17 +2345,17 @@ export default function CuponesPage() {
         fullWidth
         PaperProps={{
           sx: {
-            background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-            border: '2px solid rgba(255, 204, 0, 0.5)',
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.primary}50`,
             borderRadius: 4,
-            color: '#FFFFFF',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
             maxHeight: '90vh'
           }
         }}
       >
         <DialogTitle sx={{ 
-          color: '#FFCC00', 
+          color: darkProTokens.primary, 
           fontWeight: 800,
           fontSize: '1.8rem',
           textAlign: 'center',
@@ -2246,7 +2370,7 @@ export default function CuponesPage() {
           </Box>
           <IconButton 
             onClick={() => setDetailsDialogOpen(false)}
-            sx={{ color: '#CCCCCC' }}
+            sx={{ color: darkProTokens.textSecondary }}
           >
             <CloseIcon />
           </IconButton>
@@ -2258,14 +2382,14 @@ export default function CuponesPage() {
               {/* 🎟️ Información Principal */}
               <Grid size={12}>
                 <Card sx={{
-                  background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.15), rgba(255, 204, 0, 0.05))',
-                  border: '2px solid rgba(255, 204, 0, 0.5)',
+                  background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}05)`,
+                  border: `2px solid ${darkProTokens.primary}50`,
                   borderRadius: 4,
                   p: 4,
                   textAlign: 'center'
                 }}>
                   <Typography variant="h3" sx={{ 
-                    color: '#FFCC00',
+                    color: darkProTokens.primary,
                     fontFamily: 'monospace',
                     fontWeight: 800,
                     mb: 2,
@@ -2275,7 +2399,7 @@ export default function CuponesPage() {
                   </Typography>
                   
                   <Typography variant="h4" sx={{ 
-                    color: '#4caf50',
+                    color: darkProTokens.success,
                     fontWeight: 700,
                     mb: 1
                   }}>
@@ -2283,7 +2407,7 @@ export default function CuponesPage() {
                   </Typography>
                   
                   <Typography variant="h6" sx={{ 
-                    color: '#FFFFFF',
+                    color: darkProTokens.textPrimary,
                     mb: 2
                   }}>
                     {selectedCoupon.description}
@@ -2293,7 +2417,7 @@ export default function CuponesPage() {
                     label={`${getCouponStatus(selectedCoupon).icon} ${getCouponStatus(selectedCoupon).label}`}
                     sx={{
                       backgroundColor: getCouponStatus(selectedCoupon).color,
-                      color: '#FFFFFF',
+                      color: darkProTokens.textPrimary,
                       fontWeight: 700,
                       fontSize: '1rem',
                       px: 2,
@@ -2306,8 +2430,8 @@ export default function CuponesPage() {
                       startIcon={<ContentCopyIcon />}
                       onClick={() => handleCopyCode(selectedCoupon.code)}
                       sx={{
-                        background: 'linear-gradient(135deg, #2196f3, #1976d2)',
-                        color: '#FFFFFF',
+                        background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+                        color: darkProTokens.textPrimary,
                         fontWeight: 600
                       }}
                     >
@@ -2317,8 +2441,8 @@ export default function CuponesPage() {
                     <Button
                       startIcon={<QrCodeIcon />}
                       sx={{
-                        background: 'linear-gradient(135deg, #9c27b0, #7b1fa2)',
-                        color: '#FFFFFF',
+                        background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, #7b1fa2)`,
+                        color: darkProTokens.textPrimary,
                         fontWeight: 600
                       }}
                     >
@@ -2328,8 +2452,8 @@ export default function CuponesPage() {
                     <Button
                       startIcon={<ShareIcon />}
                       sx={{
-                        background: 'linear-gradient(135deg, #ff9800, #f57c00)',
-                        color: '#FFFFFF',
+                        background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+                        color: darkProTokens.background,
                         fontWeight: 600
                       }}
                     >
@@ -2342,13 +2466,13 @@ export default function CuponesPage() {
               {/* 📊 Estadísticas de Uso */}
               <Grid size={6}>
                 <Card sx={{
-                  background: 'rgba(33, 150, 243, 0.1)',
-                  border: '1px solid rgba(33, 150, 243, 0.3)',
+                  background: `${darkProTokens.info}10`,
+                  border: `1px solid ${darkProTokens.info}30`,
                   borderRadius: 3
                 }}>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" sx={{ 
-                      color: '#2196f3',
+                      color: darkProTokens.info,
                       fontWeight: 700,
                       mb: 3,
                       display: 'flex',
@@ -2363,12 +2487,12 @@ export default function CuponesPage() {
                       <Grid size={6}>
                         <Box sx={{ textAlign: 'center' }}>
                           <Typography variant="h4" sx={{ 
-                            color: '#2196f3',
+                            color: darkProTokens.info,
                             fontWeight: 800
                           }}>
                             {selectedCoupon.current_uses}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                             Usos Totales
                           </Typography>
                         </Box>
@@ -2377,12 +2501,12 @@ export default function CuponesPage() {
                       <Grid size={6}>
                         <Box sx={{ textAlign: 'center' }}>
                           <Typography variant="h4" sx={{ 
-                            color: selectedCoupon.max_uses ? '#FFFFFF' : '#4caf50',
+                            color: selectedCoupon.max_uses ? darkProTokens.textPrimary : darkProTokens.success,
                             fontWeight: 800
                           }}>
                             {selectedCoupon.max_uses || '∞'}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                             Límite Máximo
                           </Typography>
                         </Box>
@@ -2393,12 +2517,12 @@ export default function CuponesPage() {
                           <Grid size={6}>
                             <Box sx={{ textAlign: 'center' }}>
                               <Typography variant="h5" sx={{ 
-                                color: '#ff9800',
+                                color: darkProTokens.warning,
                                 fontWeight: 700
                               }}>
                                 {selectedCoupon.usage_percentage!.toFixed(1)}%
                               </Typography>
-                              <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                                 Porcentaje Usado
                               </Typography>
                             </Box>
@@ -2407,12 +2531,12 @@ export default function CuponesPage() {
                           <Grid size={6}>
                             <Box sx={{ textAlign: 'center' }}>
                               <Typography variant="h5" sx={{ 
-                                color: '#4caf50',
+                                color: darkProTokens.success,
                                 fontWeight: 700
                               }}>
                                 {selectedCoupon.max_uses - selectedCoupon.current_uses}
                               </Typography>
-                              <Typography variant="body2" sx={{ color: '#CCCCCC' }}>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                                 Usos Restantes
                               </Typography>
                             </Box>
@@ -2427,13 +2551,13 @@ export default function CuponesPage() {
               {/* 📅 Información de Vigencia */}
               <Grid size={6}>
                 <Card sx={{
-                  background: 'rgba(156, 39, 176, 0.1)',
-                  border: '1px solid rgba(156, 39, 176, 0.3)',
+                  background: `${darkProTokens.roleModerator}10`,
+                  border: `1px solid ${darkProTokens.roleModerator}30`,
                   borderRadius: 3
                 }}>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" sx={{ 
-                      color: '#9c27b0',
+                      color: darkProTokens.roleModerator,
                       fontWeight: 700,
                       mb: 3,
                       display: 'flex',
@@ -2446,42 +2570,42 @@ export default function CuponesPage() {
                     
                     <Stack spacing={2}>
                       <Box>
-                        <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
                           Fecha de Inicio:
                         </Typography>
-                        <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                           📅 {formatDateForDisplay(selectedCoupon.start_date)}
                         </Typography>
                       </Box>
                       
                       <Box>
-                        <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
                           Fecha de Fin:
                         </Typography>
-                        <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                           📅 {formatDateForDisplay(selectedCoupon.end_date)}
                         </Typography>
                       </Box>
                       
                       <Box>
-                        <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
                           Estado de Vigencia:
                         </Typography>
                         {selectedCoupon.days_remaining !== null && selectedCoupon.days_remaining !== undefined && selectedCoupon.days_remaining >= 0 ? (
-  <Typography variant="h6" sx={{ 
-    color: selectedCoupon.days_remaining < 7 ? '#ff9800' : '#4caf50',
-    fontWeight: 700
-  }}>
-    ⏰ {selectedCoupon.days_remaining} días restantes
-  </Typography>
-) : (
-  <Typography variant="h6" sx={{ 
-    color: '#f44336',
-    fontWeight: 700
-  }}>
-    ❌ Vencido
-  </Typography>
-)}
+                          <Typography variant="h6" sx={{ 
+                            color: selectedCoupon.days_remaining < 7 ? darkProTokens.warning : darkProTokens.success,
+                            fontWeight: 700
+                          }}>
+                            ⏰ {selectedCoupon.days_remaining} días restantes
+                          </Typography>
+                        ) : (
+                          <Typography variant="h6" sx={{ 
+                            color: darkProTokens.error,
+                            fontWeight: 700
+                          }}>
+                            ❌ Vencido
+                          </Typography>
+                        )}
                       </Box>
                     </Stack>
                   </CardContent>
@@ -2491,13 +2615,13 @@ export default function CuponesPage() {
               {/* 💰 Condiciones y Restricciones */}
               <Grid size={12}>
                 <Card sx={{
-                  background: 'rgba(255, 152, 0, 0.1)',
-                  border: '1px solid rgba(255, 152, 0, 0.3)',
+                  background: `${darkProTokens.warning}10`,
+                  border: `1px solid ${darkProTokens.warning}30`,
                   borderRadius: 3
                 }}>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" sx={{ 
-                      color: '#ff9800',
+                      color: darkProTokens.warning,
                       fontWeight: 700,
                       mb: 3,
                       display: 'flex',
@@ -2511,14 +2635,14 @@ export default function CuponesPage() {
                     <Grid container spacing={3}>
                       <Grid size={3}>
                         <Box>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
                             Tipo de Descuento:
                           </Typography>
                           <Chip 
                             label={selectedCoupon.discount_type === 'percentage' ? '📊 Porcentaje' : '💰 Monto Fijo'}
                             sx={{
-                              backgroundColor: '#ff9800',
-                              color: '#FFFFFF',
+                              backgroundColor: darkProTokens.warning,
+                              color: darkProTokens.background,
                               fontWeight: 600
                             }}
                           />
@@ -2527,10 +2651,10 @@ export default function CuponesPage() {
                       
                       <Grid size={3}>
                         <Box>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
                             Valor del Descuento:
                           </Typography>
-                          <Typography variant="h6" sx={{ color: '#4caf50', fontWeight: 700 }}>
+                          <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
                             {formatDiscount(selectedCoupon)}
                           </Typography>
                         </Box>
@@ -2538,10 +2662,10 @@ export default function CuponesPage() {
                       
                       <Grid size={3}>
                         <Box>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
                             Monto Mínimo:
                           </Typography>
-                          <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                             {selectedCoupon.min_amount > 0 ? formatPrice(selectedCoupon.min_amount) : 'Sin mínimo'}
                           </Typography>
                         </Box>
@@ -2549,14 +2673,14 @@ export default function CuponesPage() {
                       
                       <Grid size={3}>
                         <Box>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
                             Estado:
                           </Typography>
                           <Chip 
                             label={selectedCoupon.is_active ? '✅ Activo' : '⏸️ Inactivo'}
                             sx={{
-                              backgroundColor: selectedCoupon.is_active ? '#4caf50' : '#9e9e9e',
-                              color: '#FFFFFF',
+                              backgroundColor: selectedCoupon.is_active ? darkProTokens.success : darkProTokens.grayMuted,
+                              color: darkProTokens.textPrimary,
                               fontWeight: 600
                             }}
                           />
@@ -2570,21 +2694,21 @@ export default function CuponesPage() {
               {/* 📊 Metadatos */}
               <Grid size={12}>
                 <Card sx={{
-                  background: 'rgba(96, 125, 139, 0.1)',
-                  border: '1px solid rgba(96, 125, 139, 0.3)',
+                  background: `${darkProTokens.grayDark}10`,
+                  border: `1px solid ${darkProTokens.grayDark}30`,
                   borderRadius: 3
                 }}>
                   <CardContent sx={{ p: 2 }}>
                     <Typography variant="body2" sx={{ 
-                      color: '#CCCCCC',
+                      color: darkProTokens.textSecondary,
                       mb: 1
                     }}>
                       🆔 ID: {selectedCoupon.id}
                     </Typography>
                     <Typography variant="body2" sx={{ 
-                      color: '#CCCCCC'
+                      color: darkProTokens.textSecondary
                     }}>
-                      📅 Creado: {formatDateForDisplay(selectedCoupon.created_at)}
+                      📅 Creado: {formatDateForDisplay(selectedCoupon.created_at)} por {selectedCoupon.created_by || 'Sistema'}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -2594,44 +2718,28 @@ export default function CuponesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Snackbars */}
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity="error" 
-          onClose={() => setError(null)}
-          sx={{
-            backgroundColor: 'rgba(211, 47, 47, 0.95)',
-            color: '#FFFFFF',
-            '& .MuiAlert-icon': { color: '#FFFFFF' }
-          }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar
-        open={!!successMessage}
-        autoHideDuration={4000}
-        onClose={() => setSuccessMessage(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity="success" 
-          onClose={() => setSuccessMessage(null)}
-          sx={{
-            backgroundColor: 'rgba(46, 125, 50, 0.95)',
-            color: '#FFFFFF',
-            '& .MuiAlert-icon': { color: '#FFFFFF' }
-          }}
-        >
-          {successMessage}
-        </Alert>
-      </Snackbar>
+      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        /* Scrollbar personalizado para Dark Pro System */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+        }
+      `}</style>
     </Box>
   );
 }
+                    
