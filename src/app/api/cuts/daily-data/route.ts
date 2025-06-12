@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // 🇲🇽 Obtener fecha actual en Monterrey (UTC-6)
+    // 🇲🇽 Fecha en Monterrey (UTC-6)
     const requestedDate = searchParams.get('date');
     let targetDate: string;
     
@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
       targetDate = requestedDate;
     } else {
       const now = new Date();
-      const monterreyTime = new Date(now.getTime() - (6 * 60 * 60 * 1000)); // UTC-6
+      const monterreyTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
       targetDate = monterreyTime.toISOString().split('T')[0];
     }
     
     const supabase = createServerSupabaseClient();
 
-    // 📊 1. CONSULTAR VENTAS DIRECTAS (sale_type = 'sale')
+    // 📊 1. VENTAS DIRECTAS DEL DÍA (sale_type = 'sale' AND status = 'completed')
     const { data: directSalesData, error: directSalesError } = await supabase
       .from('sales')
       .select(`
@@ -28,8 +28,6 @@ export async function GET(request: NextRequest) {
         sale_type,
         total_amount,
         is_mixed_payment,
-        payment_received,
-        change_amount,
         commission_amount,
         status,
         created_at,
@@ -45,25 +43,20 @@ export async function GET(request: NextRequest) {
       .eq('sale_type', 'sale')
       .eq('status', 'completed');
 
-    if (directSalesError) {
-      console.error('Error consultando ventas directas:', directSalesError);
-      throw directSalesError;
-    }
+    if (directSalesError) throw directSalesError;
 
-    // 🏪 2. CONSULTAR APARTADOS (sale_type = 'layaway')
-    const { data: layawayData, error: layawayError } = await supabase
+    // 🏪 2. APARTADOS COMPLETADOS HOY (sale_type = 'layaway' AND status = 'completed' AND completed_at es hoy)
+    const { data: completedLayawaysData, error: completedLayawaysError } = await supabase
       .from('sales')
       .select(`
         id,
         sale_number,
         sale_type,
         total_amount,
-        paid_amount,
-        pending_amount,
         is_mixed_payment,
         commission_amount,
         status,
-        created_at,
+        completed_at,
         sale_payment_details (
           payment_method,
           amount,
@@ -71,18 +64,15 @@ export async function GET(request: NextRequest) {
           is_partial_payment
         )
       `)
-      .gte('created_at', `${targetDate}T06:00:00.000Z`)
-      .lt('created_at', `${getNextDay(targetDate)}T06:00:00.000Z`)
+      .gte('completed_at', `${targetDate}T06:00:00.000Z`)
+      .lt('completed_at', `${getNextDay(targetDate)}T06:00:00.000Z`)
       .eq('sale_type', 'layaway')
-      .in('status', ['pending', 'completed']);
+      .eq('status', 'completed');
 
-    if (layawayError) {
-      console.error('Error consultando apartados:', layawayError);
-      throw layawayError;
-    }
+    if (completedLayawaysError) throw completedLayawaysError;
 
-    // 💰 3. CONSULTAR ABONOS (pagos parciales de apartados)
-    const { data: partialPaymentsData, error: partialPaymentsError } = await supabase
+    // 💰 3. TODOS LOS PAGOS DEL DÍA (incluyendo enganches y abonos)
+    const { data: allPaymentsData, error: allPaymentsError } = await supabase
       .from('sale_payment_details')
       .select(`
         id,
@@ -95,19 +85,17 @@ export async function GET(request: NextRequest) {
         created_at,
         sales!inner (
           sale_number,
-          sale_type
+          sale_type,
+          status,
+          created_at as sale_created_at
         )
       `)
       .gte('payment_date', `${targetDate}T06:00:00.000Z`)
-      .lt('payment_date', `${getNextDay(targetDate)}T06:00:00.000Z`)
-      .eq('is_partial_payment', true);
+      .lt('payment_date', `${getNextDay(targetDate)}T06:00:00.000Z`);
 
-    if (partialPaymentsError) {
-      console.error('Error consultando abonos:', partialPaymentsError);
-      throw partialPaymentsError;
-    }
+    if (allPaymentsError) throw allPaymentsError;
 
-    // 💪 4. CONSULTAR MEMBRESÍAS
+    // 💪 4. MEMBRESÍAS DEL DÍA
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('user_memberships')
       .select(`
@@ -128,18 +116,27 @@ export async function GET(request: NextRequest) {
       .lt('created_at', `${getNextDay(targetDate)}T06:00:00.000Z`)
       .eq('status', 'active');
 
-    if (membershipsError) {
-      console.error('Error consultando membresías:', membershipsError);
-      throw membershipsError;
-    }
+    if (membershipsError) throw membershipsError;
 
     // 🧮 PROCESAR VENTAS DIRECTAS
-    const directSalesStats = processPaymentData(directSalesData, 'sale');
+    const directSalesStats = processStandardSales(directSalesData);
 
-    // 🧮 PROCESAR APARTADOS (SOLO LOS CREADOS HOY)
-    const layawayStats = processPaymentData(layawayData, 'layaway');
+    // 🧮 PROCESAR APARTADOS COMPLETADOS
+    const completedLayawaysStats = processStandardSales(completedLayawaysData);
 
-    // 🧮 PROCESAR ABONOS (PAGOS REALIZADOS HOY)
+    // 🧮 CONSOLIDAR VENTAS POS (directas + apartados completados)
+    const posStats = {
+      efectivo: directSalesStats.efectivo + completedLayawaysStats.efectivo,
+      transferencia: directSalesStats.transferencia + completedLayawaysStats.transferencia,
+      debito: directSalesStats.debito + completedLayawaysStats.debito,
+      credito: directSalesStats.credito + completedLayawaysStats.credito,
+      mixto: directSalesStats.mixto + completedLayawaysStats.mixto,
+      total: directSalesStats.total + completedLayawaysStats.total,
+      transactions: directSalesStats.transactions + completedLayawaysStats.transactions,
+      commissions: directSalesStats.commissions + completedLayawaysStats.commissions
+    };
+
+    // 🧮 PROCESAR ABONOS (TODOS los pagos que NO sean de ventas directas completadas hoy)
     const abonosStats = {
       efectivo: 0,
       transferencia: 0,
@@ -151,60 +148,28 @@ export async function GET(request: NextRequest) {
       commissions: 0
     };
 
-    partialPaymentsData?.forEach(payment => {
-      abonosStats.transactions++;
-      const amount = Number(payment.amount) || 0;
-      abonosStats.total += amount;
-      abonosStats.commissions += Number(payment.commission_amount) || 0;
+    // IDs de ventas directas procesadas para evitar doble conteo
+    const directSaleIds = directSalesData?.map(sale => sale.id) || [];
+    const completedLayawayIds = completedLayawaysData?.map(sale => sale.id) || [];
+    const processedSaleIds = [...directSaleIds, ...completedLayawayIds];
 
-      const method = payment.payment_method;
-      if (method && ['efectivo', 'transferencia', 'debito', 'credito'].includes(method)) {
-        abonosStats[method as keyof typeof abonosStats] += amount;
-      }
-    });
+    allPaymentsData?.forEach(payment => {
+      // Solo contar pagos que NO sean de ventas ya procesadas en POS
+      if (!processedSaleIds.includes(payment.sale_id)) {
+        abonosStats.transactions++;
+        const amount = Number(payment.amount) || 0;
+        abonosStats.total += amount;
+        abonosStats.commissions += Number(payment.commission_amount) || 0;
 
-    // 🧮 PROCESAR MEMBRESÍAS
-    const membershipsStats = {
-      efectivo: 0,
-      transferencia: 0,
-      debito: 0,
-      credito: 0,
-      mixto: 0,
-      total: 0,
-      transactions: 0,
-      commissions: 0
-    };
-
-    membershipsData?.forEach(membership => {
-      membershipsStats.transactions++;
-      const amount = Number(membership.amount_paid) || 0;
-      membershipsStats.total += amount;
-      membershipsStats.commissions += Number(membership.commission_amount) || 0;
-
-      if (membership.is_mixed_payment && membership.membership_payment_details?.length > 0) {
-        membershipsStats.mixto += amount;
-      } else {
-        const payment = membership.membership_payment_details?.[0];
-        if (payment) {
-          const method = payment.payment_method;
-          if (method && ['efectivo', 'transferencia', 'debito', 'credito'].includes(method)) {
-            membershipsStats[method as keyof typeof membershipsStats] += Number(payment.amount) || 0;
-          }
+        const method = payment.payment_method;
+        if (method && ['efectivo', 'transferencia', 'debito', 'credito'].includes(method)) {
+          abonosStats[method as keyof typeof abonosStats] += amount;
         }
       }
     });
 
-    // 📈 CONSOLIDAR VENTAS POS (directas + apartados creados hoy)
-    const posStats = {
-      efectivo: directSalesStats.efectivo + layawayStats.efectivo,
-      transferencia: directSalesStats.transferencia + layawayStats.transferencia,
-      debito: directSalesStats.debito + layawayStats.debito,
-      credito: directSalesStats.credito + layawayStats.credito,
-      mixto: directSalesStats.mixto + layawayStats.mixto,
-      total: directSalesStats.total + layawayStats.total,
-      transactions: directSalesStats.transactions + layawayStats.transactions,
-      commissions: directSalesStats.commissions + layawayStats.commissions
-    };
+    // 🧮 PROCESAR MEMBRESÍAS
+    const membershipsStats = processMemberships(membershipsData);
 
     // 📈 TOTALES CONSOLIDADOS
     const totals = {
@@ -230,9 +195,11 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
       debug: {
         directSalesCount: directSalesData?.length || 0,
-        layawayCount: layawayData?.length || 0,
-        abonosCount: partialPaymentsData?.length || 0,
+        completedLayawaysCount: completedLayawaysData?.length || 0,
+        totalPaymentsCount: allPaymentsData?.length || 0,
+        abonosCount: abonosStats.transactions,
         membershipsCount: membershipsData?.length || 0,
+        processedSaleIds: processedSaleIds,
         dateRange: `${targetDate}T06:00:00.000Z to ${getNextDay(targetDate)}T06:00:00.000Z`
       }
     });
@@ -246,8 +213,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 🔧 Función auxiliar para procesar datos de pagos
-function processPaymentData(salesData: any[], saleType: string) {
+// 🔧 Función para procesar ventas estándar (directas y apartados completados)
+function processStandardSales(salesData: any[]) {
   const stats = {
     efectivo: 0,
     transferencia: 0,
@@ -268,12 +235,46 @@ function processPaymentData(salesData: any[], saleType: string) {
     if (sale.is_mixed_payment && sale.sale_payment_details?.length > 1) {
       stats.mixto += amount;
     } else {
-      // Obtener el primer pago no parcial
-      const payment = sale.sale_payment_details?.find((p: any) => !p.is_partial_payment);
+      const payment = sale.sale_payment_details?.[0];
       if (payment) {
         const method = payment.payment_method;
         if (method && ['efectivo', 'transferencia', 'debito', 'credito'].includes(method)) {
           stats[method as keyof typeof stats] += amount;
+        }
+      }
+    }
+  });
+
+  return stats;
+}
+
+// 🔧 Función para procesar membresías
+function processMemberships(membershipsData: any[]) {
+  const stats = {
+    efectivo: 0,
+    transferencia: 0,
+    debito: 0,
+    credito: 0,
+    mixto: 0,
+    total: 0,
+    transactions: 0,
+    commissions: 0
+  };
+
+  membershipsData?.forEach(membership => {
+    stats.transactions++;
+    const amount = Number(membership.amount_paid) || 0;
+    stats.total += amount;
+    stats.commissions += Number(membership.commission_amount) || 0;
+
+    if (membership.is_mixed_payment && membership.membership_payment_details?.length > 1) {
+      stats.mixto += amount;
+    } else {
+      const payment = membership.membership_payment_details?.[0];
+      if (payment) {
+        const method = payment.payment_method;
+        if (method && ['efectivo', 'transferencia', 'debito', 'credito'].includes(method)) {
+          stats[method as keyof typeof stats] += Number(payment.amount) || 0;
         }
       }
     }
