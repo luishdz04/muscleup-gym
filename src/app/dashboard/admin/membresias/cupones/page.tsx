@@ -247,6 +247,9 @@ export default function CuponesPage() {
   });
   const [formLoading, setFormLoading] = useState(false);
   
+  // Estado para el usuario actual
+const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
   // Estados de estadísticas
   const [stats, setStats] = useState({
     total: 0,
@@ -259,10 +262,30 @@ export default function CuponesPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    loadCoupons();
-  }, []);
+ // Cargar usuario actual
+useEffect(() => {
+  const getCurrentUser = async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error('Error obteniendo usuario:', error);
+        return;
+      }
+      if (user) {
+        setCurrentUserId(user.id);
+        console.log('Usuario actual obtenido:', user.id, 'Email:', user.email);
+      }
+    } catch (err) {
+      console.error('Error crítico obteniendo usuario:', err);
+    }
+  };
+  getCurrentUser();
+}, []);
+
+// Cargar datos iniciales
+useEffect(() => {
+  loadCoupons();
+}, []);
 
   // Aplicar filtros
   useEffect(() => {
@@ -418,7 +441,7 @@ export default function CuponesPage() {
         const newCouponData = {
           ...couponData,
           created_at: createTimestampForDB(),
-          created_by: 'luishdz04' // ✅ Usuario actual del sistema
+          created_by: currentUserId // ✅ Usuario actual del sistema
         };
 
         const { error } = await supabase
@@ -2708,7 +2731,7 @@ export default function CuponesPage() {
                     <Typography variant="body2" sx={{ 
                       color: darkProTokens.textSecondary
                     }}>
-                      📅 Creado: {formatDateForDisplay(selectedCoupon.created_at)} por {selectedCoupon.created_by || 'Sistema'}
+                      📅 Creado: {formatDateForDisplay(selectedCoupon.created_at)} por {selectedCoupon.created_by ? 'Usuario' : 'Sistema'}
                     </Typography>
                   </CardContent>
                 </Card>
