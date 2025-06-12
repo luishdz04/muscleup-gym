@@ -16,10 +16,18 @@ import {
   Avatar,
   Stack,
   Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Switch,
+  FormControlLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Tooltip,
+  IconButton,
+  Snackbar
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -27,10 +35,18 @@ import {
   Receipt as ReceiptIcon,
   AttachMoney as MoneyIcon,
   Warning as WarningIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Edit as EditIcon,
+  Lock as LockIcon,
+  LockOpen as LockOpenIcon,
+  ExpandMore as ExpandMoreIcon,
+  Info as InfoIcon,
+  Refresh as RefreshIcon,
+  Error as ErrorIcon
 } from '@mui/icons-material';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useSupabase } from '@/hooks/useSupabase';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -80,6 +96,18 @@ function formatDate(dateString: string): string {
   const month = months[date.getMonth()];
   const year = date.getFullYear();
   return `${day} de ${month} de ${year}`;
+}
+
+// 🕒 Función para formatear fecha y hora
+function formatDateTime(dateString: string): string {
+  return new Date(dateString).toLocaleString('es-MX', {
+    timeZone: 'America/Monterrey',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 interface DailyData {
@@ -157,13 +185,27 @@ interface CutFormData {
   notes: string;
 }
 
+interface ValidationError {
+  field: string;
+  message: string;
+}
+
 export default function NuevoCorte() {
   const router = useRouter();
+  const { user } = useSupabase();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
+  const [originalData, setOriginalData] = useState<DailyData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [existingCut, setExistingCut] = useState<any>(null);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   
   // 📅 Fecha actual en Monterrey
   const [selectedDate] = useState(() => {
@@ -202,61 +244,197 @@ export default function NuevoCorte() {
     notes: ''
   });
 
-  // ✅ CARGAR DATOS DEL DÍA
-  useEffect(() => {
-    const loadDailyData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`);
-        const data = await response.json();
-        
-        if (data.success) {
-          setDailyData(data);
-          
-          // Pre-llenar formulario con datos del día
-          setFormData(prev => ({
-            ...prev,
-            pos_efectivo: data.pos.efectivo,
-            pos_transferencia: data.pos.transferencia,
-            pos_debito: data.pos.debito,
-            pos_credito: data.pos.credito,
-            pos_mixto: data.pos.mixto,
-            pos_total: data.pos.total,
-            pos_transactions: data.pos.transactions,
-            pos_commissions: data.pos.commissions,
-            membership_efectivo: data.memberships.efectivo,
-            membership_transferencia: data.memberships.transferencia,
-            membership_debito: data.memberships.debito,
-            membership_credito: data.memberships.credito,
-            membership_mixto: data.memberships.mixto,
-            membership_total: data.memberships.total,
-            membership_transactions: data.memberships.transactions,
-            membership_commissions: data.memberships.commissions,
-            abonos_efectivo: data.abonos.efectivo,
-            abonos_transferencia: data.abonos.transferencia,
-            abonos_debito: data.abonos.debito,
-            abonos_credito: data.abonos.credito,
-            abonos_mixto: data.abonos.mixto,
-            abonos_total: data.abonos.total,
-            abonos_transactions: data.abonos.transactions,
-            abonos_commissions: data.abonos.commissions
-          }));
-        } else {
-          setError('Error al cargar datos del día');
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        setError('Error al cargar datos del día');
-      } finally {
-        setLoading(false);
+  // ✅ VALIDACIONES COMPLETAS
+  const validateForm = (): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    // Validar que no haya valores negativos
+    Object.entries(formData).forEach(([key, value]) => {
+      if (typeof value === 'number' && value < 0) {
+        errors.push({
+          field: key,
+          message: `${key.replace(/_/g, ' ')} no puede ser negativo`
+        });
       }
-    };
+    });
 
-    loadDailyData();
-  }, [selectedDate]);
+    // Validar que los totales coincidan
+    const posTotal = formData.pos_efectivo + formData.pos_transferencia + 
+                    formData.pos_debito + formData.pos_credito + formData.pos_mixto;
+    
+    if (Math.abs(posTotal - formData.pos_total) > 0.01) {
+      errors.push({
+        field: 'pos_total',
+        message: 'El total de POS no coincide con la suma de los métodos de pago'
+      });
+    }
 
-  // 💾 GUARDAR CORTE
+    // Validar transacciones
+    if (formData.pos_transactions < 0 || formData.membership_transactions < 0 || formData.abonos_transactions < 0) {
+      errors.push({
+        field: 'transactions',
+        message: 'El número de transacciones debe ser mayor o igual a 0'
+      });
+    }
+
+    // Validar notas (opcional pero si existe, mínimo 10 caracteres)
+    if (formData.notes && formData.notes.length < 10) {
+      errors.push({
+        field: 'notes',
+        message: 'Las notas deben tener al menos 10 caracteres'
+      });
+    }
+
+    return errors;
+  };
+
+  // 🔍 VERIFICAR SI YA EXISTE UN CORTE PARA ESTA FECHA
+  const checkExistingCut = async (date: string) => {
+    try {
+      const response = await fetch(`/api/cuts/check-existing?date=${date}`);
+      const result = await response.json();
+      
+      if (result.exists) {
+        setExistingCut(result.cut);
+        setSnackbarMessage(`Ya existe un corte para ${formatDate(date)}`);
+        setShowSnackbar(true);
+      } else {
+        setExistingCut(null);
+      }
+    } catch (error) {
+      console.error('Error verificando corte existente:', error);
+    }
+  };
+
+  // ✅ CARGAR DATOS DEL DÍA
+  const loadDailyData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setDailyData(data);
+        setOriginalData(data);
+        
+        // Pre-llenar formulario con datos del día
+        setFormData(prev => ({
+          ...prev,
+          pos_efectivo: data.pos.efectivo,
+          pos_transferencia: data.pos.transferencia,
+          pos_debito: data.pos.debito,
+          pos_credito: data.pos.credito,
+          pos_mixto: data.pos.mixto,
+          pos_total: data.pos.total,
+          pos_transactions: data.pos.transactions,
+          pos_commissions: data.pos.commissions,
+          membership_efectivo: data.memberships.efectivo,
+          membership_transferencia: data.memberships.transferencia,
+          membership_debito: data.memberships.debito,
+          membership_credito: data.memberships.credito,
+          membership_mixto: data.memberships.mixto,
+          membership_total: data.memberships.total,
+          membership_transactions: data.memberships.transactions,
+          membership_commissions: data.memberships.commissions,
+          abonos_efectivo: data.abonos.efectivo,
+          abonos_transferencia: data.abonos.transferencia,
+          abonos_debito: data.abonos.debito,
+          abonos_credito: data.abonos.credito,
+          abonos_mixto: data.abonos.mixto,
+          abonos_total: data.abonos.total,
+          abonos_transactions: data.abonos.transactions,
+          abonos_commissions: data.abonos.commissions
+        }));
+        
+        setHasChanges(false);
+      } else {
+        setError('Error al cargar datos del día');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Error al cargar datos del día');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔄 RESTABLECER DATOS ORIGINALES
+  const resetToOriginal = () => {
+    if (originalData) {
+      setFormData(prev => ({
+        ...prev,
+        pos_efectivo: originalData.pos.efectivo,
+        pos_transferencia: originalData.pos.transferencia,
+        pos_debito: originalData.pos.debito,
+        pos_credito: originalData.pos.credito,
+        pos_mixto: originalData.pos.mixto,
+        pos_total: originalData.pos.total,
+        pos_transactions: originalData.pos.transactions,
+        pos_commissions: originalData.pos.commissions,
+        membership_efectivo: originalData.memberships.efectivo,
+        membership_transferencia: originalData.memberships.transferencia,
+        membership_debito: originalData.memberships.debito,
+        membership_credito: originalData.memberships.credito,
+        membership_mixto: originalData.memberships.mixto,
+        membership_total: originalData.memberships.total,
+        membership_transactions: originalData.memberships.transactions,
+        membership_commissions: originalData.memberships.commissions,
+        abonos_efectivo: originalData.abonos.efectivo,
+        abonos_transferencia: originalData.abonos.transferencia,
+        abonos_debito: originalData.abonos.debito,
+        abonos_credito: originalData.abonos.credito,
+        abonos_mixto: originalData.abonos.mixto,
+        abonos_total: originalData.abonos.total,
+        abonos_transactions: originalData.abonos.transactions,
+        abonos_commissions: originalData.abonos.commissions,
+        expenses_amount: 0,
+        notes: ''
+      }));
+      setHasChanges(false);
+      setValidationErrors([]);
+      setSnackbarMessage('Datos restablecidos a los valores originales');
+      setShowSnackbar(true);
+    }
+  };
+
+  // 📝 MANEJAR CAMBIOS EN CAMPOS
+  const handleFieldChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+    
+    // Limpiar errores de validación del campo específico
+    setValidationErrors(prev => prev.filter(error => error.field !== field));
+  };
+
+  // 💾 GUARDAR CORTE CON VALIDACIONES
   const handleSave = async () => {
+    try {
+      // Validar formulario
+      const errors = validateForm();
+      setValidationErrors(errors);
+      
+      if (errors.length > 0) {
+        setError('Por favor corrige los errores antes de guardar');
+        return;
+      }
+
+      // Si ya existe un corte, mostrar advertencia
+      if (existingCut) {
+        setShowConfirmDialog(true);
+        return;
+      }
+
+      await savecut();
+    } catch (error) {
+      console.error('Error en validación:', error);
+      setError('Error en la validación del formulario');
+    }
+  };
+
+  // 💾 GUARDAR CORTE (FUNCIÓN INTERNA)
+  const savecut = async () => {
     try {
       setSaving(true);
       setError(null);
@@ -266,13 +444,20 @@ export default function NuevoCorte() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          user_id: user?.id,
+          created_by_name: user?.email || 'luishdz04'
+        }),
       });
 
       const result = await response.json();
 
       if (result.success) {
         setSuccess(true);
+        setSnackbarMessage('¡Corte guardado exitosamente!');
+        setShowSnackbar(true);
+        
         setTimeout(() => {
           router.push('/dashboard/admin/cortes');
         }, 2000);
@@ -284,6 +469,7 @@ export default function NuevoCorte() {
       setError('Error al guardar el corte');
     } finally {
       setSaving(false);
+      setShowConfirmDialog(false);
     }
   };
 
@@ -316,6 +502,74 @@ export default function NuevoCorte() {
 
   const totals = calculateTotals();
 
+  // ⚡ EFECTOS
+  useEffect(() => {
+    loadDailyData();
+    checkExistingCut(selectedDate);
+  }, [selectedDate]);
+
+  // 🎨 COMPONENTE DE CAMPO EDITABLE
+  const EditableField = ({ 
+    label, 
+    value, 
+    field, 
+    type = 'number',
+    disabled = false,
+    startAdornment = null 
+  }: {
+    label: string;
+    value: any;
+    field: string;
+    type?: string;
+    disabled?: boolean;
+    startAdornment?: any;
+  }) => {
+    const hasError = validationErrors.some(error => error.field === field);
+    const errorMessage = validationErrors.find(error => error.field === field)?.message;
+
+    return (
+      <TextField
+        fullWidth
+        label={label}
+        type={type}
+        value={value}
+        disabled={disabled || (!editMode && type === 'number')}
+        error={hasError}
+        helperText={hasError ? errorMessage : ''}
+        onChange={(e) => handleFieldChange(field, type === 'number' ? Number(e.target.value) || 0 : e.target.value)}
+        InputProps={{
+          startAdornment: startAdornment,
+          readOnly: !editMode && type === 'number'
+        }}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            '& fieldset': {
+              borderColor: hasError ? darkProTokens.error : darkProTokens.grayMedium,
+            },
+            '&:hover fieldset': {
+              borderColor: hasError ? darkProTokens.errorHover : (editMode ? darkProTokens.primary : darkProTokens.grayMedium),
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: hasError ? darkProTokens.error : darkProTokens.primary,
+            },
+            '&.Mui-disabled fieldset': {
+              borderColor: darkProTokens.grayDark,
+            },
+          },
+          '& .MuiInputLabel-root': {
+            color: hasError ? darkProTokens.error : darkProTokens.textSecondary,
+          },
+          '& .MuiInputBase-input': {
+            color: disabled ? darkProTokens.textDisabled : darkProTokens.textPrimary,
+          },
+          '& .MuiFormHelperText-root': {
+            color: darkProTokens.error,
+          },
+        }}
+      />
+    );
+  };
+
   return (
     <Box sx={{ 
       minHeight: '100vh',
@@ -344,6 +598,42 @@ export default function NuevoCorte() {
         </Box>
         
         <Box sx={{ display: 'flex', gap: 2 }}>
+          <Tooltip title="Recargar datos del día">
+            <IconButton
+              onClick={loadDailyData}
+              disabled={loading}
+              sx={{ color: darkProTokens.info }}
+            >
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+          
+          <Tooltip title={editMode ? "Bloquear edición" : "Permitir edición manual"}>
+            <IconButton
+              onClick={() => setEditMode(!editMode)}
+              sx={{ color: editMode ? darkProTokens.warning : darkProTokens.grayMuted }}
+            >
+              {editMode ? <LockOpenIcon /> : <LockIcon />}
+            </IconButton>
+          </Tooltip>
+          
+          {hasChanges && (
+            <Button
+              variant="outlined"
+              onClick={resetToOriginal}
+              sx={{
+                borderColor: darkProTokens.warning,
+                color: darkProTokens.warning,
+                '&:hover': {
+                  borderColor: darkProTokens.warningHover,
+                  backgroundColor: `${darkProTokens.warning}20`
+                }
+              }}
+            >
+              Restablecer
+            </Button>
+          )}
+          
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
@@ -364,7 +654,7 @@ export default function NuevoCorte() {
             variant="contained"
             startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
             onClick={handleSave}
-            disabled={saving || loading}
+            disabled={saving || loading || !hasChanges}
             sx={{
               background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
               color: darkProTokens.textPrimary,
@@ -377,26 +667,78 @@ export default function NuevoCorte() {
         </Box>
       </Box>
 
-      {/* 🔄 ESTADOS */}
+      {/* 🚨 ALERTAS Y ESTADOS */}
+      <AnimatePresence>
+        {existingCut && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography>
+                  ⚠️ Ya existe un corte para esta fecha (#{existingCut.cut_number}) creado el {formatDateTime(existingCut.created_at)}
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={() => router.push(`/dashboard/admin/cortes/${existingCut.id}`)}
+                  sx={{ color: darkProTokens.warning }}
+                >
+                  Ver Corte
+                </Button>
+              </Box>
+            </Alert>
+          </motion.div>
+        )}
+
+        {validationErrors.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Alert severity="error" sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>Errores de validación:</Typography>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error.message}</li>
+                ))}
+              </ul>
+            </Alert>
+          </motion.div>
+        )}
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          </motion.div>
+        )}
+
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Alert severity="success" sx={{ mb: 3 }}>
+              ✅ Corte guardado exitosamente. Redirigiendo...
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔄 LOADING STATE */}
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress size={40} sx={{ color: darkProTokens.roleAdmin }} />
         </Box>
       )}
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          ✅ Corte guardado exitosamente. Redirigiendo...
-        </Alert>
-      )}
-
-      {/* 📊 FORMULARIO PRINCIPAL */}
+      {/* 📊 CONTENIDO PRINCIPAL */}
       {!loading && dailyData && (
         <Grid container spacing={4}>
           {/* 📈 RESUMEN CONSOLIDADO */}
@@ -412,9 +754,32 @@ export default function NuevoCorte() {
                 borderRadius: 4
               }}>
                 <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin, mb: 3 }}>
-                    💰 Resumen Consolidado
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin }}>
+                      💰 Resumen Consolidado
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Chip
+                        label={`${totals.totalTransactions} transacciones`}
+                        sx={{
+                          backgroundColor: `${darkProTokens.info}20`,
+                          color: darkProTokens.info,
+                          fontWeight: 600
+                        }}
+                      />
+                      {editMode && (
+                        <Chip
+                          icon={<EditIcon />}
+                          label="Modo de edición activo"
+                          sx={{
+                            backgroundColor: `${darkProTokens.warning}20`,
+                            color: darkProTokens.warning,
+                            fontWeight: 600
+                          }}
+                        />
+                      )}
+                    </Box>
+                  </Box>
                   
                   <Grid container spacing={3}>
                     <Grid xs={12} md={2.4}>
@@ -471,6 +836,11 @@ export default function NuevoCorte() {
                         <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
                           Balance Final
                         </Typography>
+                        {totals.finalBalance < 0 && (
+                          <Tooltip title="El balance final es negativo">
+                            <WarningIcon sx={{ color: darkProTokens.error, fontSize: 16, ml: 1 }} />
+                          </Tooltip>
+                        )}
                       </Box>
                     </Grid>
                   </Grid>
@@ -479,12 +849,265 @@ export default function NuevoCorte() {
             </motion.div>
           </Grid>
 
-          {/* 💸 GASTOS DEL DÍA */}
-          <Grid xs={12} md={6}>
+          {/* 🏪 DESGLOSE DETALLADO (ACORDEONES) */}
+          <Grid xs={12}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: darkProTokens.textPrimary }}>
+                🏪 Desglose Detallado por Fuente de Ingresos
+              </Typography>
+
+              {/* PUNTO DE VENTA */}
+              <Accordion sx={{ 
+                mb: 2,
+                backgroundColor: darkProTokens.surfaceLevel2,
+                '&:before': { display: 'none' }
+              }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textPrimary }} />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <ReceiptIcon sx={{ color: darkProTokens.info }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.info }}>
+                      Punto de Venta
+                    </Typography>
+                    <Box sx={{ ml: 'auto', mr: 3 }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                        {formatPrice(formData.pos_total)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Efectivo POS"
+                        value={formData.pos_efectivo}
+                        field="pos_efectivo"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Transferencia POS"
+                        value={formData.pos_transferencia}
+                        field="pos_transferencia"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Débito POS"
+                        value={formData.pos_debito}
+                        field="pos_debito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Crédito POS"
+                        value={formData.pos_credito}
+                        field="pos_credito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Mixto POS"
+                        value={formData.pos_mixto}
+                        field="pos_mixto"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Transacciones POS"
+                        value={formData.pos_transactions}
+                        field="pos_transactions"
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Comisiones POS"
+                        value={formData.pos_commissions}
+                        field="pos_commissions"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+
+              {/* ABONOS */}
+              <Accordion sx={{ 
+                mb: 2,
+                backgroundColor: darkProTokens.surfaceLevel2,
+                '&:before': { display: 'none' }
+              }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textPrimary }} />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <MoneyIcon sx={{ color: darkProTokens.warning }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.warning }}>
+                      Abonos
+                    </Typography>
+                    <Box sx={{ ml: 'auto', mr: 3 }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                        {formatPrice(formData.abonos_total)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Efectivo Abonos"
+                        value={formData.abonos_efectivo}
+                        field="abonos_efectivo"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Transferencia Abonos"
+                        value={formData.abonos_transferencia}
+                        field="abonos_transferencia"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Débito Abonos"
+                        value={formData.abonos_debito}
+                        field="abonos_debito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Crédito Abonos"
+                        value={formData.abonos_credito}
+                        field="abonos_credito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Mixto Abonos"
+                        value={formData.abonos_mixto}
+                        field="abonos_mixto"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Transacciones Abonos"
+                        value={formData.abonos_transactions}
+                        field="abonos_transactions"
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Comisiones Abonos"
+                        value={formData.abonos_commissions}
+                        field="abonos_commissions"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+
+              {/* MEMBRESÍAS */}
+              <Accordion sx={{ 
+                mb: 2,
+                backgroundColor: darkProTokens.surfaceLevel2,
+                '&:before': { display: 'none' }
+              }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textPrimary }} />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <CheckCircleIcon sx={{ color: darkProTokens.success }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.success }}>
+                      Membresías
+                    </Typography>
+                    <Box sx={{ ml: 'auto', mr: 3 }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                        {formatPrice(formData.membership_total)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Efectivo Membresías"
+                        value={formData.membership_efectivo}
+                        field="membership_efectivo"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Transferencia Membresías"
+                        value={formData.membership_transferencia}
+                        field="membership_transferencia"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Débito Membresías"
+                        value={formData.membership_debito}
+                        field="membership_debito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Crédito Membresías"
+                        value={formData.membership_credito}
+                        field="membership_credito"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={2.4}>
+                      <EditableField
+                        label="Mixto Membresías"
+                        value={formData.membership_mixto}
+                        field="membership_mixto"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Transacciones Membresías"
+                        value={formData.membership_transactions}
+                        field="membership_transactions"
+                      />
+                    </Grid>
+                    <Grid xs={12} md={6}>
+                      <EditableField
+                        label="Comisiones Membresías"
+                        value={formData.membership_commissions}
+                        field="membership_commissions"
+                        startAdornment={<InputAdornment position="start">$</InputAdornment>}
+                      />
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            </motion.div>
+          </Grid>
+
+          {/* 💸 GASTOS Y NOTAS */}
+          <Grid xs={12} md={6}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
             >
               <Card sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -496,79 +1119,32 @@ export default function NuevoCorte() {
                     💸 Gastos del Día
                   </Typography>
                   
-                  <TextField
-                    fullWidth
+                  <EditableField
                     label="Monto de Gastos"
-                    type="number"
                     value={formData.expenses_amount}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      expenses_amount: Number(e.target.value) || 0 
-                    }))}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                    }}
-                    sx={{
-                      mb: 2,
-                      '& .MuiOutlinedInput-root': {
-                        '& fieldset': {
-                          borderColor: darkProTokens.grayMedium,
-                        },
-                        '&:hover fieldset': {
-                          borderColor: darkProTokens.error,
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: darkProTokens.error,
-                        },
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: darkProTokens.textSecondary,
-                      },
-                      '& .MuiInputBase-input': {
-                        color: darkProTokens.textPrimary,
-                      },
-                    }}
+                    field="expenses_amount"
+                    startAdornment={<InputAdornment position="start">$</InputAdornment>}
                   />
                   
-                  <TextField
-                    fullWidth
-                    label="Notas y Observaciones"
-                    multiline
-                    rows={4}
-                    value={formData.notes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Describe los gastos del día, observaciones especiales, etc..."
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '& fieldset': {
-                          borderColor: darkProTokens.grayMedium,
-                        },
-                        '&:hover fieldset': {
-                          borderColor: darkProTokens.primary,
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: darkProTokens.primary,
-                        },
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: darkProTokens.textSecondary,
-                      },
-                      '& .MuiInputBase-input': {
-                        color: darkProTokens.textPrimary,
-                      },
-                    }}
-                  />
+                  <Box sx={{ mt: 2 }}>
+                    <EditableField
+                      label="Notas y Observaciones"
+                      value={formData.notes}
+                      field="notes"
+                      type="text"
+                    />
+                  </Box>
                 </CardContent>
               </Card>
             </motion.div>
           </Grid>
 
-          {/* ℹ️ INFORMACIÓN ADICIONAL */}
+          {/* ℹ️ INFORMACIÓN DEL CORTE */}
           <Grid xs={12} md={6}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
             >
               <Card sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -604,7 +1180,7 @@ export default function NuevoCorte() {
                         Usuario:
                       </Typography>
                       <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        luishdz04
+                        {user?.email || 'luishdz04'}
                       </Typography>
                     </Box>
                     
@@ -613,8 +1189,27 @@ export default function NuevoCorte() {
                         Hora de creación:
                       </Typography>
                       <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        {new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date().toLocaleTimeString('es-MX', { 
+                          timeZone: 'America/Monterrey',
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
                       </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Estado:
+                      </Typography>
+                      <Chip
+                        label={hasChanges ? "Modificado" : "Sin cambios"}
+                        size="small"
+                        sx={{
+                          backgroundColor: hasChanges ? `${darkProTokens.warning}20` : `${darkProTokens.success}20`,
+                          color: hasChanges ? darkProTokens.warning : darkProTokens.success,
+                          fontWeight: 600
+                        }}
+                      />
                     </Box>
                     
                     <Divider sx={{ backgroundColor: darkProTokens.grayMedium }} />
@@ -629,8 +1224,10 @@ export default function NuevoCorte() {
                         }
                       }}
                     >
-                      Los datos se han cargado automáticamente desde las transacciones del día. 
-                      Puedes ajustar cualquier valor antes de guardar.
+                      {editMode 
+                        ? "🔓 Modo de edición activo. Puedes modificar cualquier valor antes de guardar."
+                        : "🔒 Los datos están bloqueados. Activa el modo de edición para modificar valores."
+                      }
                     </Alert>
                   </Stack>
                 </CardContent>
@@ -639,6 +1236,83 @@ export default function NuevoCorte() {
           </Grid>
         </Grid>
       )}
+
+      {/* 🔔 DIALOG DE CONFIRMACIÓN */}
+      <Dialog
+        open={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: darkProTokens.surfaceLevel2,
+            color: darkProTokens.textPrimary
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 2,
+          color: darkProTokens.warning
+        }}>
+          <WarningIcon />
+          Confirmar Creación de Corte
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Ya existe un corte para la fecha {formatDate(selectedDate)}:
+          </Typography>
+          <Box sx={{ 
+            p: 2, 
+            backgroundColor: darkProTokens.surfaceLevel3, 
+            borderRadius: 2,
+            mb: 2
+          }}>
+            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+              Corte #{existingCut?.cut_number}
+            </Typography>
+            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+              Creado: {existingCut && formatDateTime(existingCut.created_at)}
+            </Typography>
+          </Box>
+          <Typography>
+            ¿Estás seguro de que quieres crear un nuevo corte para esta fecha?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setShowConfirmDialog(false)}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={savecut}
+            variant="contained"
+            sx={{
+              backgroundColor: darkProTokens.warning,
+              color: darkProTokens.textPrimary
+            }}
+          >
+            Crear Corte
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 🍞 SNACKBAR */}
+      <Snackbar
+        open={showSnackbar}
+        autoHideDuration={4000}
+        onClose={() => setShowSnackbar(false)}
+        message={snackbarMessage}
+        sx={{
+          '& .MuiSnackbarContent-root': {
+            backgroundColor: darkProTokens.surfaceLevel3,
+            color: darkProTokens.textPrimary
+          }
+        }}
+      />
     </Box>
   );
 }
