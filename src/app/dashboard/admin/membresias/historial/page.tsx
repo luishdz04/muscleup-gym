@@ -216,12 +216,16 @@ interface Filters {
   isRenewal: string;
 }
 
+// ✅ INTERFACE CORREGIDA PARA OPERACIONES MASIVAS
 interface BulkFreezeOperation {
   type: 'freeze' | 'unfreeze' | 'manual_freeze' | 'manual_unfreeze';
   membershipIds: string[];
   reason?: string;
   freezeDays?: number;
   isManual?: boolean;
+  // ✅ NUEVOS CAMPOS PARA CLARIDAD
+  action: 'freeze' | 'unfreeze'; // Acción real a realizar
+  mode: 'auto' | 'manual'; // Modo de operación
 }
 
 interface BulkPreview {
@@ -232,6 +236,7 @@ interface BulkPreview {
   currentEndDate: string | null;
   newEndDate: string | null;
   daysToAdd: number;
+  actionDescription: string; // ✅ NUEVO: Descripción clara de la acción
 }
 
 interface EditData {
@@ -308,7 +313,7 @@ export default function HistorialMembresiaPage() {
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [unfreezeLoading, setUnfreezeLoading] = useState(false);
   
-  // Estados para congelamiento masivo
+  // ✅ ESTADOS CORREGIDOS PARA CONGELAMIENTO MASIVO
   const [selectedMembershipIds, setSelectedMembershipIds] = useState<string[]>([]);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -316,7 +321,9 @@ export default function HistorialMembresiaPage() {
     type: 'freeze', 
     membershipIds: [],
     isManual: false,
-    freezeDays: 7
+    freezeDays: 7,
+    action: 'freeze',
+    mode: 'auto'
   });
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
@@ -710,7 +717,7 @@ export default function HistorialMembresiaPage() {
     }
   }, [supabase, forceReloadMemberships]);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO
+  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO - COMPLETAMENTE CORREGIDAS
   const handleSelectAllMemberships = useCallback(() => {
     const eligibleMemberships = filteredMemberships
       .filter(m => m.status === 'active' || m.status === 'frozen')
@@ -732,7 +739,10 @@ export default function HistorialMembresiaPage() {
     });
   }, []);
 
+  // ✅ FUNCIÓN CORREGIDA PARA CONGELAMIENTO MASIVO
   const handleBulkFreeze = useCallback((isManual: boolean = false) => {
+    console.log('🧊 Iniciando congelamiento masivo:', { isManual, selectedIds: selectedMembershipIds.length });
+    
     if (selectedMembershipIds.length === 0) {
       setError('Seleccione al menos una membresía para congelar');
       return;
@@ -747,18 +757,24 @@ export default function HistorialMembresiaPage() {
       return;
     }
 
+    // ✅ CONFIGURACIÓN CORREGIDA
     setBulkOperation({
       type: isManual ? 'manual_freeze' : 'freeze',
       membershipIds: eligibleMemberships.map(m => m.id),
       isManual,
-      freezeDays: isManual ? 7 : undefined
+      freezeDays: isManual ? 7 : undefined,
+      action: 'freeze', // ✅ SIEMPRE freeze para congelar
+      mode: isManual ? 'manual' : 'auto'
     });
     
     generateBulkPreview(eligibleMemberships, isManual ? 'manual_freeze' : 'freeze');
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
 
+  // ✅ FUNCIÓN CORREGIDA PARA REACTIVACIÓN MASIVA
   const handleBulkUnfreeze = useCallback((isManual: boolean = false) => {
+    console.log('🔄 Iniciando reactivación masiva:', { isManual, selectedIds: selectedMembershipIds.length });
+    
     if (selectedMembershipIds.length === 0) {
       setError('Seleccione al menos una membresía para reactivar');
       return;
@@ -773,55 +789,101 @@ export default function HistorialMembresiaPage() {
       return;
     }
 
+    // ✅ CONFIGURACIÓN CORREGIDA
     setBulkOperation({
       type: isManual ? 'manual_unfreeze' : 'unfreeze',
       membershipIds: eligibleMemberships.map(m => m.id),
-      isManual
+      isManual,
+      freezeDays: undefined, // ✅ No se usa para unfreeze
+      action: 'unfreeze', // ✅ SIEMPRE unfreeze para reactivar
+      mode: isManual ? 'manual' : 'auto'
     });
     
     generateBulkPreview(eligibleMemberships, isManual ? 'manual_unfreeze' : 'unfreeze');
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
-const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
-  const preview: BulkPreview[] = eligibleMemberships.map(membership => {
-    let newEndDate = membership.end_date;
-    let daysToAdd = 0;
 
-    if (operationType === 'manual_freeze' && bulkOperation.freezeDays && membership.end_date) {
-      // Congelamiento manual: agregar días específicos
-      daysToAdd = bulkOperation.freezeDays;
-      newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
-    } else if (operationType === 'manual_unfreeze' && membership.end_date) {
-      // ✅ CORRECCIÓN: Reactivación manual - agregar días congelados actuales
-      const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
-      daysToAdd = currentFrozenDays;
-      if (currentFrozenDays > 0) {
-        newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+  // ✅ FUNCIÓN GENERATEBULKPREVIEW COMPLETAMENTE CORREGIDA
+  const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
+    console.log('📋 Generando preview para:', { operationType, count: eligibleMemberships.length });
+    
+    const preview: BulkPreview[] = eligibleMemberships.map(membership => {
+      let newEndDate = membership.end_date;
+      let daysToAdd = 0;
+      let actionDescription = '';
+
+      if (operationType === 'freeze') {
+        // ✅ CONGELAMIENTO AUTOMÁTICO
+        actionDescription = 'Se congelará automáticamente';
+        // No se calcula nueva fecha en automático, el sistema lo maneja
+      } else if (operationType === 'manual_freeze') {
+        // ✅ CONGELAMIENTO MANUAL
+        if (bulkOperation.freezeDays && membership.end_date) {
+          daysToAdd = bulkOperation.freezeDays;
+          newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+          actionDescription = `Se congelará y se agregarán ${daysToAdd} días a la fecha de vencimiento`;
+        } else {
+          actionDescription = 'Se congelará manualmente';
+        }
+      } else if (operationType === 'unfreeze') {
+        // ✅ REACTIVACIÓN AUTOMÁTICA
+        if (membership.freeze_date && membership.end_date) {
+          const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
+          daysToAdd = currentFrozenDays;
+          if (currentFrozenDays > 0) {
+            newEndDate = addDaysToMexicoDate(membership.end_date, currentFrozenDays);
+            actionDescription = `Se reactivará automáticamente y se agregarán ${currentFrozenDays} días congelados`;
+          } else {
+            actionDescription = 'Se reactivará automáticamente';
+          }
+        } else {
+          actionDescription = 'Se reactivará automáticamente';
+        }
+      } else if (operationType === 'manual_unfreeze') {
+        // ✅ REACTIVACIÓN MANUAL
+        if (membership.freeze_date && membership.end_date) {
+          const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
+          daysToAdd = currentFrozenDays;
+          if (currentFrozenDays > 0) {
+            newEndDate = addDaysToMexicoDate(membership.end_date, currentFrozenDays);
+            actionDescription = `Se reactivará manualmente y se agregarán ${currentFrozenDays} días congelados`;
+          } else {
+            actionDescription = 'Se reactivará manualmente';
+          }
+        } else {
+          actionDescription = 'Se reactivará manualmente';
+        }
       }
-    }
 
-    return {
-      membershipId: membership.id,
-      userName: membership.user_name,
-      planName: membership.plan_name,
-      currentStatus: membership.status,
-      currentEndDate: membership.end_date,
-      newEndDate,
-      daysToAdd
-    };
-  });
+      return {
+        membershipId: membership.id,
+        userName: membership.user_name,
+        planName: membership.plan_name,
+        currentStatus: membership.status,
+        currentEndDate: membership.end_date,
+        newEndDate,
+        daysToAdd,
+        actionDescription // ✅ NUEVO: descripción clara
+      };
+    });
 
-  setBulkPreview(preview);
-  setShowPreview(true);
-}, [bulkOperation.freezeDays]);
+    console.log('📋 Preview generado:', preview);
+    setBulkPreview(preview);
+    setShowPreview(true);
+  }, [bulkOperation.freezeDays]);
 
+  // ✅ FUNCIÓN DE TÍTULO CORREGIDA
   const getBulkOperationTitle = useCallback(() => {
-    const baseTitle = bulkOperation.type.includes('freeze') ? 'Congelamiento' : 'Reactivación';
-    const modeTitle = bulkOperation.isManual ? 'Manual' : 'Automático';
-    return `🧊 ${baseTitle} Masivo ${modeTitle}`;
-  }, [bulkOperation.type, bulkOperation.isManual]);
+    const actionText = bulkOperation.action === 'freeze' ? 'Congelamiento' : 'Reactivación';
+    const modeText = bulkOperation.mode === 'manual' ? 'Manual' : 'Automático';
+    const icon = bulkOperation.action === 'freeze' ? '🧊' : '🔄';
+    return `${icon} ${actionText} Masivo ${modeText}`;
+  }, [bulkOperation.action, bulkOperation.mode]);
 
+  // ✅ FUNCIÓN DE EJECUCIÓN MASIVA CORREGIDA
   const executeBulkOperation = useCallback(async () => {
+    console.log('🚀 Ejecutando operación masiva:', bulkOperation);
+    
     setBulkLoading(true);
     setBulkProgress(0);
     setBulkResults({ success: 0, failed: 0, errors: [] });
@@ -843,8 +905,11 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
       try {
         let result: any;
         
-        if (bulkOperation.type === 'freeze' || bulkOperation.type === 'manual_freeze') {
-          if (bulkOperation.isManual && bulkOperation.freezeDays) {
+        // ✅ LÓGICA CORREGIDA BASADA EN ACTION
+        if (bulkOperation.action === 'freeze') {
+          // ✅ CONGELAMIENTO (Manual o Automático)
+          if (bulkOperation.mode === 'manual' && bulkOperation.freezeDays) {
+            // Congelamiento manual con días específicos
             const freezeDate = getMexicoCurrentDate();
             let newEndDate = membership.end_date;
             
@@ -869,10 +934,13 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
             if (error) throw error;
             result = { success: true };
           } else {
+            // Congelamiento automático
             result = await freezeMembership(supabase, membershipId);
           }
         } else {
-          if (bulkOperation.isManual) {
+          // ✅ REACTIVACIÓN (Manual o Automática)
+          if (bulkOperation.mode === 'manual') {
+            // Reactivación manual: agregar días congelados actuales
             const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
             let newEndDate = membership.end_date;
             
@@ -889,8 +957,8 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                 end_date: newEndDate,
                 total_frozen_days: (membership.total_frozen_days || 0) + currentFrozenDays,
                 notes: membership.notes ? 
-                  `${membership.notes}\nDescongelado manualmente el ${formatDisplayDate(getMexicoCurrentDate())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}` :
-                  `Descongelado manualmente el ${formatDisplayDate(getMexicoCurrentDate())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}`,
+                  `${membership.notes}\nReactivado manualmente el ${formatDisplayDate(getMexicoCurrentDate())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}` :
+                  `Reactivado manualmente el ${formatDisplayDate(getMexicoCurrentDate())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}`,
                 updated_at: createTimestampForDB()
               })
               .eq('id', membershipId);
@@ -898,6 +966,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
             if (error) throw error;
             result = { success: true };
           } else {
+            // Reactivación automática
             result = await unfreezeMembership(
               supabase,
               membershipId,
@@ -940,8 +1009,8 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
     }, 2000);
 
     if (successCount > 0) {
-      const operationName = bulkOperation.type.includes('freeze') ? 'congelamiento' : 'reactivación';
-      const manualText = bulkOperation.isManual ? 'manual' : 'automático';
+      const operationName = bulkOperation.action === 'freeze' ? 'congelamiento' : 'reactivación';
+      const manualText = bulkOperation.mode === 'manual' ? 'manual' : 'automático';
       setSuccessMessage(`✅ ${operationName.charAt(0).toUpperCase() + operationName.slice(1)} ${manualText} completado: ${successCount} exitosas, ${failedCount} fallidas`);
     }
     if (failedCount > 0) {
@@ -949,7 +1018,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
     }
   }, [bulkOperation, memberships, supabase, formatDisplayDate, forceReloadMemberships, getMexicoCurrentDate]);
 
-  // ✅ FUNCIÓN DE ACTUALIZACIÓN DE MEMBRESÍA
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN DE MEMBRESÍA (SIN CAMBIOS)
   const handleUpdateMembership = useCallback(async () => {
     if (!selectedMembership || !editData) return;
     
@@ -1094,7 +1163,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
     });
   }, []);
 
-  // ✅ MODAL DE EDICIÓN OPTIMIZADO
+  // ✅ MODAL DE EDICIÓN OPTIMIZADO (SIN CAMBIOS)
   const OptimizedEditModal = useMemo(() => {
     if (!editDialogOpen || !selectedMembership) return null;
 
@@ -1345,7 +1414,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                           }
                         }
                       }}
-                      InputLabelProps={{
+                                            InputLabelProps={{
                         sx: { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.info }
@@ -1444,7 +1513,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                   label="Fecha de Vencimiento"
                   type="date"
                   value={editData.end_date || selectedMembership.end_date || ''}
-                                    onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
+                  onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
                   InputLabelProps={{ 
                     shrink: true,
                     sx: { 
@@ -1828,13 +1897,13 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
   }, [applyFilters]);
 
   useEffect(() => {
-    if (showPreview && bulkOperation.type === 'manual_freeze') {
+    if (showPreview && bulkOperation.action === 'freeze' && bulkOperation.mode === 'manual') {
       const eligibleMemberships = filteredMemberships.filter(m => 
         bulkOperation.membershipIds.includes(m.id)
       );
       generateBulkPreview(eligibleMemberships, 'manual_freeze');
     }
-  }, [bulkOperation.freezeDays, bulkOperation.membershipIds, filteredMemberships, generateBulkPreview, showPreview, bulkOperation.type]);
+  }, [bulkOperation.freezeDays, bulkOperation.membershipIds, filteredMemberships, generateBulkPreview, showPreview, bulkOperation.action, bulkOperation.mode]);
 
   // ✅ HANDLERS DE CIERRE
   const handleCloseError = useCallback(() => setError(null), []);
@@ -1849,7 +1918,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
       minHeight: '100vh',
       color: darkProTokens.textPrimary
     }}>
-      {/* ✅ SNACKBARS */}
+      {/* ✅ SNACKBARS - IGUAL QUE ANTES */}
       <Snackbar 
         open={!!error} 
         autoHideDuration={8000} 
@@ -2224,7 +2293,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
         </Grid>
       </Paper>
 
-      {/* ✅ BARRA DE CONGELAMIENTO MASIVO */}
+      {/* ✅ BARRA DE CONGELAMIENTO MASIVO - IGUAL QUE ANTES */}
       <AnimatePresence>
         {bulkMode && (
           <motion.div
@@ -2467,7 +2536,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
         )}
       </AnimatePresence>
 
-      {/* ✅ CONTROLES Y FILTROS */}
+      {/* ✅ CONTROLES Y FILTROS - IGUAL QUE ANTES */}
       <Paper sx={{
         p: 3,
         mb: 3,
@@ -2790,7 +2859,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
         </AnimatePresence>
       </Paper>
 
-      {/* ✅ TABLA PRINCIPAL CON FECHAS CORREGIDAS */}
+      {/* ✅ TABLA PRINCIPAL CON FECHAS CORREGIDAS - IGUAL QUE ANTES */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
         border: `1px solid ${darkProTokens.primary}20`,
@@ -2859,7 +2928,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
-                  <TableBody>
+                                    <TableBody>
                     {filteredMemberships
                       .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                       .map((membership, index) => (
@@ -2970,7 +3039,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                                     🏁 Vence: {formatDisplayDate(membership.end_date)}
                                   </Typography>
                                   <Typography variant="caption" sx={{ 
-                                                                        color: (() => {
+                                    color: (() => {
                                       const daysRemaining = calculateDaysRemaining(membership.end_date);
                                       if (daysRemaining === null) return darkProTokens.textSecondary;
                                       if (daysRemaining < 0) return darkProTokens.error;
@@ -3241,7 +3310,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
         </MenuList>
       </Menu>
 
-      {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO AVANZADO - COMPLETO */}
+      {/* ✅ DIALOG DE CONGELAMIENTO MASIVO COMPLETAMENTE CORREGIDO */}
       <Dialog
         open={bulkDialogOpen}
         onClose={() => !bulkLoading && setBulkDialogOpen(false)}
@@ -3250,7 +3319,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
         PaperProps={{
           sx: {
             background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.info}50`,
+            border: `2px solid ${bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}50`,
             borderRadius: 4,
             color: darkProTokens.textPrimary,
             boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
@@ -3259,7 +3328,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
         }}
       >
         <DialogTitle sx={{ 
-          color: darkProTokens.info, 
+          color: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success, 
           fontWeight: 800,
           fontSize: '1.8rem',
           textAlign: 'center',
@@ -3269,7 +3338,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
           justifyContent: 'space-between'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {bulkOperation.isManual ? <ManualIcon sx={{ fontSize: 40 }} /> : <AutoIcon sx={{ fontSize: 40 }} />}
+            {bulkOperation.mode === 'manual' ? <ManualIcon sx={{ fontSize: 40 }} /> : <AutoIcon sx={{ fontSize: 40 }} />}
             {getBulkOperationTitle()}
           </Box>
           <IconButton 
@@ -3284,6 +3353,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
         <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
           {!bulkLoading ? (
             <Box>
+              {/* ✅ ALERT CORREGIDO CON LÓGICA CLARA */}
               <Alert 
                 severity="warning"
                 sx={{
@@ -3295,17 +3365,21 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                 }}
               >
                 <Typography variant="body1">
-                  <strong>⚠️ Operación Masiva {bulkOperation.isManual ? 'Manual' : 'Automática'}:</strong> Esta acción se aplicará a {bulkOperation.membershipIds.length} membresía{bulkOperation.membershipIds.length > 1 ? 's' : ''}.
-                  {bulkOperation.isManual && (
+                  <strong>⚠️ Operación Masiva {bulkOperation.mode === 'manual' ? 'Manual' : 'Automática'}:</strong> Esta acción {/* ✅ CORREGIDO */}
+                  {bulkOperation.action === 'freeze' ? 
+                    `congelará ${bulkOperation.membershipIds.length} membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
+                    `reactivará ${bulkOperation.membershipIds.length} membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
+                  }.
+                  {bulkOperation.mode === 'manual' && (
                     <>
-                      <br/><strong>⚙️ Modo Manual:</strong> Usted define los días específicos y el sistema actualiza las fechas automáticamente.
+                      <br/><strong>⚙️ Modo Manual:</strong> Usted define los {bulkOperation.action === 'freeze' ? 'días a congelar' : 'días a agregar'} y el sistema actualiza las fechas automáticamente.
                     </>
                   )}
                 </Typography>
               </Alert>
 
-              {/* Configuración para congelamiento manual */}
-              {bulkOperation.isManual && bulkOperation.type === 'manual_freeze' && (
+              {/* ✅ CONFIGURACIÓN PARA CONGELAMIENTO MANUAL */}
+              {bulkOperation.mode === 'manual' && bulkOperation.action === 'freeze' && (
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
                   border: `1px solid ${darkProTokens.info}30`,
@@ -3401,7 +3475,50 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                 </Card>
               )}
 
-              {/* Vista previa de cambios */}
+              {/* ✅ CONFIGURACIÓN PARA REACTIVACIÓN MANUAL */}
+              {bulkOperation.mode === 'manual' && bulkOperation.action === 'unfreeze' && (
+                <Card sx={{
+                  background: `${darkProTokens.success}10`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 3,
+                  mb: 3
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.success,
+                      fontWeight: 700,
+                      mb: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <PlayArrowIcon />
+                      🔄 Configuración de Reactivación Manual
+                    </Typography>
+
+                    <Alert 
+                      severity="success"
+                      sx={{
+                        backgroundColor: `${darkProTokens.success}05`,
+                        color: darkProTokens.textPrimary,
+                        border: `1px solid ${darkProTokens.success}20`,
+                        '& .MuiAlert-icon': { color: darkProTokens.success }
+                      }}
+                    >
+                      <Typography variant="body2">
+                        <strong>💡 ¿Cómo funciona la reactivación manual?</strong><br/>
+                        • Las membresías se marcarán como "activas"<br/>
+                        • Se calcularán automáticamente los días congelados actuales<br/>
+                        • Esos días se agregarán a la fecha de vencimiento<br/>
+                        • Se registrará en el historial de la membresía<br/>
+                        • El proceso conserva todo el historial de congelamiento
+                      </Typography>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ✅ VISTA PREVIA DE CAMBIOS CORREGIDA */}
               {showPreview && bulkPreview.length > 0 && (
                 <Card sx={{
                   background: `${darkProTokens.success}10`,
@@ -3422,14 +3539,14 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                       👁️ Vista Previa de Cambios
                     </Typography>
 
-                  <Typography variant="body2" sx={{ 
-  color: darkProTokens.textSecondary,
-  mb: 2
-}}>
-  Se procesarán {bulkPreview.length} membresías para {/* ✅ CORREGIDO */}
-  {bulkOperation.type.includes('freeze') ? 'congelamiento' : 'reactivación'}. 
-  Aquí se muestran algunos ejemplos:
-</Typography>
+                    <Typography variant="body2" sx={{ 
+                      color: darkProTokens.textSecondary,
+                      mb: 2
+                    }}>
+                      Se procesarán {bulkPreview.length} membresías para {/* ✅ CORREGIDO */}
+                      {bulkOperation.action === 'freeze' ? 'congelamiento' : 'reactivación'}. 
+                      Aquí se muestran algunos ejemplos:
+                    </Typography>
 
                     <Box sx={{
                       maxHeight: 300,
@@ -3484,6 +3601,15 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                                     )}
                                   </Typography>
                                 )}
+                                {/* ✅ NUEVO: Descripción clara de la acción */}
+                                <Typography variant="caption" sx={{ 
+                                  color: darkProTokens.info,
+                                  fontStyle: 'italic',
+                                  display: 'block',
+                                  mt: 0.5
+                                }}>
+                                  ℹ️ {preview.actionDescription}
+                                </Typography>
                               </Box>
                             </Box>
                           </ListItem>
@@ -3552,7 +3678,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                 })}
               </Box>
 
-              {/* Motivo/Razón */}
+              {/* ✅ MOTIVO CORREGIDO */}
               <TextField
                 fullWidth
                 label="Motivo (opcional)"
@@ -3560,38 +3686,39 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                 rows={3}
                 value={bulkOperation.reason || ''}
                 onChange={(e) => setBulkOperation(prev => ({ ...prev, reason: e.target.value }))}
-                placeholder={`Motivo del ${bulkOperation.type.includes('freeze') ? 'congelamiento' : 'reactivación'} masivo...`}
+                placeholder={`Motivo de la ${bulkOperation.action === 'freeze' ? 'congelación' : 'reactivación'} masiva...`} {/* ✅ CORREGIDO */}
                 sx={{ mt: 3 }}
                 InputProps={{
                   sx: {
                     color: darkProTokens.textPrimary,
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: `${darkProTokens.info}30`
+                      borderColor: `${bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}30`
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.info
+                      borderColor: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.info
+                      borderColor: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
                     }
                   }
                 }}
                 InputLabelProps={{
                   sx: { 
                     color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.info }
+                    '&.Mui-focused': { color: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success }
                   }
                 }}
               />
             </Box>
           ) : (
             <Box>
+              {/* ✅ LOADING STATE CORREGIDO */}
               <Typography variant="h6" sx={{ 
-                color: darkProTokens.info,
+                color: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success,
                 mb: 3,
                 textAlign: 'center'
               }}>
-                {bulkOperation.type.includes('freeze') ? 'Congelando' : 'Reactivando'} membresías{bulkOperation.isManual ? ' manualmente' : ''}...
+                {bulkOperation.action === 'freeze' ? 'Congelando' : 'Reactivando'} membresías{bulkOperation.mode === 'manual' ? ' manualmente' : ''}...
               </Typography>
 
               <LinearProgress 
@@ -3600,9 +3727,9 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                 sx={{
                   height: 10,
                   borderRadius: 5,
-                  backgroundColor: `${darkProTokens.info}20`,
+                  backgroundColor: `${bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}20`,
                   '& .MuiLinearProgress-bar': {
-                    backgroundColor: darkProTokens.info
+                    backgroundColor: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
                   }
                 }}
               />
@@ -3706,27 +3833,36 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
               onClick={executeBulkOperation}
               variant="contained"
               startIcon={
-                bulkOperation.type.includes('freeze') ? 
-                  (bulkOperation.isManual ? <ManualIcon /> : <FreezeIcon />) : 
-                  (bulkOperation.isManual ? <ManualIcon /> : <UnfreezeIcon />)
+                bulkOperation.action === 'freeze' ? 
+                  (bulkOperation.mode === 'manual' ? <ManualIcon /> : <FreezeIcon />) : 
+                  (bulkOperation.mode === 'manual' ? <ManualIcon /> : <UnfreezeIcon />)
               }
               sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+                background: `linear-gradient(135deg, ${
+                  bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                }, ${
+                  bulkOperation.action === 'freeze' ? darkProTokens.infoHover : darkProTokens.successHover
+                })`,
                 color: darkProTokens.textPrimary,
                 fontWeight: 700,
                 px: 4,
                 py: 1,
                 '&:hover': {
-                  background: `linear-gradient(135deg, ${darkProTokens.infoHover}, ${darkProTokens.info})`,
+                  background: `linear-gradient(135deg, ${
+                    bulkOperation.action === 'freeze' ? darkProTokens.infoHover : darkProTokens.successHover
+                  }, ${
+                    bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                  })`,
                   transform: 'translateY(-1px)'
                 }
               }}
             >
-              {bulkOperation.type.includes('freeze') ? 
+              {/* ✅ BOTÓN PRINCIPAL CORREGIDO */}
+              {bulkOperation.action === 'freeze' ? 
                 `🧊 Congelar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
                 `🔄 Reactivar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
               }
-              {bulkOperation.isManual && bulkOperation.freezeDays && (
+              {bulkOperation.mode === 'manual' && bulkOperation.action === 'freeze' && bulkOperation.freezeDays && (
                 <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>
                   {' '}({bulkOperation.freezeDays} días)
                 </span>
@@ -3736,7 +3872,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL DE DETALLES COMPLETO - VERIFICADO */}
+      {/* ✅ MODAL DE DETALLES COMPLETO - IGUAL QUE ANTES */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
@@ -4243,7 +4379,7 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
                     height: '100%'
                   }}>
                     <CardContent sx={{ p: 3 }}>
-                      <Typography variant="h6" sx={{ 
+                                            <Typography variant="h6" sx={{ 
                         color: darkProTokens.textSecondary,
                         fontWeight: 700,
                         mb: 3,
@@ -4351,4 +4487,4 @@ const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[
     </Box>
   );
 }
-                                
+                
