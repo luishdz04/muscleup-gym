@@ -121,8 +121,11 @@ export default function CortesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
-const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-
+const [selectedDate, setSelectedDate] = useState(() => {
+  const now = new Date();
+  const monterreyTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  return monterreyTime.toISOString().split('T')[0];
+});
   // ✅ FUNCIÓN PARA CARGAR DATOS DEL DÍA
   const loadDailyData = useCallback(async (date: string = selectedDate) => {
     try {
@@ -533,10 +536,11 @@ const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split(
                         fullWidth
                         variant="outlined"
                         startIcon={<TodayIcon />}
-                       onClick={() => {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  loadDailyData(yesterday.toISOString().split('T')[0]);
+    onClick={() => {
+  const now = new Date();
+  const monterreyTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  monterreyTime.setDate(monterreyTime.getDate() - 1);
+  loadDailyData(monterreyTime.toISOString().split('T')[0]);
 }}
                         sx={{
                           borderColor: darkProTokens.info,
