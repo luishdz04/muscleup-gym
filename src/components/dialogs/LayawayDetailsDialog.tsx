@@ -27,9 +27,10 @@ import {
   AccordionSummary,
   AccordionDetails,
   CircularProgress,
-  Alert
+  Alert,
+  IconButton
 } from '@mui/material';
-import Grid from '@mui/material/Grid'; // ✅ GRID2 HÍBRIDO
+import Grid from '@mui/material/Grid';
 import {
   Timeline,
   TimelineItem,
@@ -54,15 +55,57 @@ import {
   ExpandMore as ExpandMoreIcon,
   Inventory as InventoryIcon,
   Info as InfoIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Visibility as VisibilityIcon,
+  CreditCard as CreditCardIcon,
+  AccountBalance as BankIcon,
+  LocalAtm as CashIcon
 } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { formatPrice, formatDate } from '@/utils/formatUtils';
+
+// 🎨 DARK PRO SYSTEM - TOKENS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // User Roles
+  roleModerator: '#9C27B0'
+};
 
 interface LayawayDetailsDialogProps {
   open: boolean;
   onClose: () => void;
-  layaway: any; // ✅ TIPO FLEXIBLE HÍBRIDO
+  layaway: any;
 }
 
 interface LayawayDetails {
@@ -84,14 +127,12 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIÓN HÍBRIDA PARA CARGAR DETALLES (useCallback con dependencias controladas)
+  // ✅ FUNCIÓN HÍBRIDA PARA CARGAR DETALLES
   const loadLayawayDetails = useCallback(async () => {
     if (!layaway?.id || !open) return;
 
     setLoading(true);
     try {
-      console.log('🔍 Cargando detalles completos para apartado:', layaway.sale_number, '- 2025-06-11 08:30:29 UTC - luishdz04');
-
       // ✅ CARGAR ITEMS DEL APARTADO
       const { data: items, error: itemsError } = await supabase
         .from('sale_items')
@@ -100,7 +141,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
         .order('created_at', { ascending: true });
 
       if (itemsError) {
-        console.error('❌ Error cargando items:', itemsError);
+        console.error('Error cargando items:', itemsError);
       }
 
       // ✅ CARGAR HISTORIAL DE PAGOS
@@ -111,7 +152,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
         .order('payment_date', { ascending: false });
 
       if (paymentsError) {
-        console.error('❌ Error cargando pagos:', paymentsError);
+        console.error('Error cargando pagos:', paymentsError);
       }
 
       // ✅ CARGAR HISTORIAL DE ESTADOS
@@ -122,7 +163,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
         .order('created_at', { ascending: false });
 
       if (historyError) {
-        console.error('❌ Error cargando historial:', historyError);
+        console.error('Error cargando historial:', historyError);
       }
 
       // ✅ CARGAR DATOS DEL CLIENTE SI EXISTE
@@ -146,32 +187,23 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
         customer
       });
 
-      console.log('✅ Detalles cargados exitosamente:', {
-        items: items?.length || 0,
-        payments: payments?.length || 0,
-        history: history?.length || 0,
-        customer: !!customer
-      });
-
     } catch (error) {
-      console.error('💥 Error cargando detalles:', error);
+      console.error('Error cargando detalles:', error);
     } finally {
       setLoading(false);
     }
-  }, [layaway?.id, open, supabase]); // ✅ DEPENDENCIAS ESPECÍFICAS HÍBRIDAS
+  }, [layaway?.id, open, supabase]);
 
   // ✅ FUNCIÓN HÍBRIDA PARA REFRESCAR DATOS
   const refreshData = useCallback(async () => {
     if (!layaway?.id) return;
     
     setRefreshing(true);
-    console.log('🔄 Refrescando datos del apartado... - 2025-06-11 08:30:29 UTC - luishdz04');
     
     try {
       await loadLayawayDetails();
-      console.log('✅ Datos refrescados exitosamente');
     } catch (error) {
-      console.error('❌ Error refrescando datos:', error);
+      console.error('Error refrescando datos:', error);
     } finally {
       setRefreshing(false);
     }
@@ -185,7 +217,6 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
 
   // ✅ FUNCIÓN DE CIERRE HÍBRIDA
   const handleClose = useCallback(() => {
-    console.log('🔒 Cerrando dialog de detalles - 2025-06-11 08:30:29 UTC - luishdz04');
     onClose();
   }, [onClose]);
 
@@ -223,536 +254,636 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     (details.customer.name || `${details.customer.firstName || ''} ${details.customer.lastName || ''}`.trim() || 'Cliente General') :
     (safeLayaway.customer_name || 'Cliente General');
 
+  // ✅ FUNCIÓN PARA OBTENER ICONO DE MÉTODO DE PAGO
+  const getPaymentMethodIcon = (method: string) => {
+    switch (method?.toLowerCase()) {
+      case 'efectivo': return <CashIcon sx={{ color: darkProTokens.primary }} />;
+      case 'debito': 
+      case 'credito': return <CreditCardIcon sx={{ color: darkProTokens.info }} />;
+      case 'transferencia': return <BankIcon sx={{ color: darkProTokens.roleTrainer }} />;
+      case 'vales': return <ReceiptIcon sx={{ color: darkProTokens.warning }} />;
+      default: return <PaymentIcon sx={{ color: darkProTokens.grayMuted }} />;
+    }
+  };
+
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xl" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={handleClose} 
+      maxWidth="xl" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `2px solid ${darkProTokens.roleModerator}50`,
+          color: darkProTokens.textPrimary,
+          borderRadius: 4,
+          maxHeight: '95vh'
+        }
+      }}
+    >
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #4caf50, #388e3c)',
-        color: '#FFFFFF'
+        background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+        color: darkProTokens.textPrimary,
+        borderRadius: '16px 16px 0 0'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <CartIcon />
-          <Typography variant="h6" fontWeight="bold">
-            📦 Detalles del Apartado #{safeLayaway.sale_number}
-          </Typography>
-          {(loading || refreshing) && <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />}
+          <Avatar sx={{ 
+            bgcolor: darkProTokens.background, 
+            color: darkProTokens.roleModerator,
+            width: 50,
+            height: 50
+          }}>
+            <VisibilityIcon sx={{ fontSize: 28 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h5" fontWeight="bold">
+              📦 Detalles del Apartado
+            </Typography>
+            <Typography variant="h6" sx={{ opacity: 0.9 }}>
+              #{safeLayaway.sale_number}
+            </Typography>
+          </Box>
+          {(loading || refreshing) && (
+            <CircularProgress size={24} sx={{ color: darkProTokens.textPrimary }} />
+          )}
         </Box>
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Button
+          <IconButton
             onClick={refreshData}
             disabled={refreshing || loading}
-            startIcon={refreshing ? <CircularProgress size={16} sx={{ color: '#FFFFFF' }} /> : <RefreshIcon />}
             sx={{ 
-              color: 'inherit', 
-              minWidth: 'auto',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+              color: darkProTokens.textPrimary,
+              '&:hover': { bgcolor: `${darkProTokens.background}20` }
             }}
           >
-            {refreshing ? 'Refrescando...' : 'Refrescar'}
-          </Button>
-          <Button onClick={handleClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
+            {refreshing ? <CircularProgress size={20} sx={{ color: darkProTokens.textPrimary }} /> : <RefreshIcon />}
+          </IconButton>
+          <IconButton 
+            onClick={handleClose} 
+            sx={{ 
+              color: darkProTokens.textPrimary,
+              '&:hover': { bgcolor: `${darkProTokens.background}20` }
+            }}
+          >
             <CloseIcon />
-          </Button>
+          </IconButton>
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
-        {/* ✅ INDICADOR DE ACTUALIZACIÓN HÍBRIDA */}
-        <Alert severity="info" sx={{ mb: 3 }}>
-          📊 Detalles del apartado - Actualizado: 2025-06-11 08:30:29 UTC por luishdz04 - Solución híbrida sin loops infinitos
-        </Alert>
-
-        {/* ✅ GRID2 HÍBRIDO CORREGIDO */}
-        <Grid container spacing={3}>
-          {/* Información del cliente */}
-          <Grid xs={12} md={4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
-                  👤 Información del Cliente
-                </Typography>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <Avatar sx={{ 
-                    width: 56, 
-                    height: 56, 
-                    bgcolor: customerName === 'Cliente General' ? '#ff9800' : '#4caf50' 
-                  }}>
-                    <PersonIcon />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6" fontWeight="600">
-                      {customerName}
+      <DialogContent sx={{ p: 0 }}>
+        <Box sx={{ p: 4 }}>
+          <Grid container spacing={4}>
+            {/* ✅ INFORMACIÓN DEL CLIENTE */}
+            <Grid xs={12} md={4}>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Card sx={{
+                  height: '100%',
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `1px solid ${darkProTokens.info}30`,
+                  borderRadius: 4
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: darkProTokens.info, fontWeight: 700 }}>
+                      👤 Información del Cliente
                     </Typography>
-                    {details.customer?.email && (
-                      <Typography variant="body2" color="textSecondary">
-                        📧 {details.customer.email}
-                      </Typography>
-                    )}
-                    {details.customer?.whatsapp && (
-                      <Typography variant="body2" color="textSecondary">
-                        📱 {details.customer.whatsapp}
-                      </Typography>
-                    )}
-                    {safeLayaway.id && (
-                      <Typography variant="caption" color="textSecondary">
-                        ID: {safeLayaway.id.slice(0, 8)}...
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                      <Avatar sx={{ 
+                        width: 64, 
+                        height: 64, 
+                        bgcolor: customerName === 'Cliente General' ? darkProTokens.warning : darkProTokens.success,
+                        color: darkProTokens.textPrimary
+                      }}>
+                        <PersonIcon sx={{ fontSize: 32 }} />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6" fontWeight="700" sx={{ color: darkProTokens.textPrimary }}>
+                          {customerName}
+                        </Typography>
+                        {details.customer?.email && (
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            📧 {details.customer.email}
+                          </Typography>
+                        )}
+                        {details.customer?.whatsapp && (
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            📱 {details.customer.whatsapp}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
 
-                <Divider sx={{ my: 2 }} />
+                    <Divider sx={{ my: 2, borderColor: darkProTokens.grayDark }} />
 
-                <Stack spacing={2}>
-                  <Box>
-                    <Typography variant="body2" color="textSecondary">Fecha de Apartado:</Typography>
-                    <Typography variant="body1" fontWeight="600">
-                      {formatDate(safeLayaway.created_at)}
+                    <Stack spacing={3}>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Fecha de Apartado:
+                        </Typography>
+                        <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
+                          {formatDate(safeLayaway.created_at)}
+                        </Typography>
+                      </Box>
+
+                      <Box>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Fecha de Vencimiento:
+                        </Typography>
+                        <Typography 
+                          variant="body1" 
+                          fontWeight="600" 
+                          sx={{ 
+                            color: daysLeft < 0 ? darkProTokens.error : 
+                                   daysLeft < 7 ? darkProTokens.warning : 
+                                   darkProTokens.success
+                          }}
+                        >
+                          {expirationDate ? formatDate(expirationDate) : 'Sin fecha'}
+                        </Typography>
+                        {expirationDate && (
+                          <Chip 
+                            label={
+                              daysLeft > 0 ? `${daysLeft} días restantes` : 
+                              daysLeft === 0 ? 'Vence hoy' : 
+                              `Vencido hace ${Math.abs(daysLeft)} días`
+                            }
+                            size="small"
+                            sx={{
+                              mt: 1,
+                              backgroundColor: daysLeft < 0 ? darkProTokens.error : 
+                                              daysLeft < 7 ? darkProTokens.warning : 
+                                              darkProTokens.success,
+                              color: darkProTokens.textPrimary,
+                              fontWeight: 600
+                            }}
+                          />
+                        )}
+                      </Box>
+
+                      {safeLayaway.notes && (
+                        <Box sx={{
+                          p: 2,
+                          background: `${darkProTokens.warning}10`,
+                          borderRadius: 2,
+                          border: `1px solid ${darkProTokens.warning}30`
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            📝 Notas:
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
+                            {safeLayaway.notes}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+
+            {/* ✅ ESTADO FINANCIERO */}
+            <Grid xs={12} md={4}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                <Card sx={{
+                  height: '100%',
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 4
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: darkProTokens.success, fontWeight: 700 }}>
+                      💰 Estado Financiero
                     </Typography>
-                  </Box>
 
-                  <Box>
-                    <Typography variant="body2" color="textSecondary">Fecha de Vencimiento:</Typography>
-                    <Typography variant="body1" fontWeight="600" color={daysLeft < 0 ? 'error.main' : daysLeft < 7 ? 'warning.main' : 'success.main'}>
-                      {expirationDate ? formatDate(expirationDate) : 'Sin fecha'}
-                    </Typography>
-                    {expirationDate && (
-                      <Chip 
-                        label={
-                          daysLeft > 0 ? `${daysLeft} días restantes` : 
-                          daysLeft === 0 ? 'Vence hoy' : 
-                          `Vencido hace ${Math.abs(daysLeft)} días`
-                        }
-                        size="small"
-                        color={daysLeft < 0 ? 'error' : daysLeft < 7 ? 'warning' : 'success'}
-                        sx={{ mt: 1 }}
+                    {/* Progreso visual */}
+                    <Box sx={{ mb: 4 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Progreso de Pago
+                        </Typography>
+                        <Typography variant="body1" fontWeight="700" sx={{ color: darkProTokens.textPrimary }}>
+                          {Math.round(progressPercentage)}%
+                        </Typography>
+                      </Box>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={progressPercentage} 
+                        sx={{ 
+                          height: 12, 
+                          borderRadius: 6,
+                          backgroundColor: darkProTokens.grayDark,
+                          '& .MuiLinearProgress-bar': {
+                            backgroundColor: progressPercentage >= 100 ? darkProTokens.success : 
+                                           progressPercentage >= 50 ? darkProTokens.warning : 
+                                           darkProTokens.error
+                          }
+                        }}
                       />
-                    )}
-                  </Box>
-
-                  {safeLayaway.notes && (
-                    <Box>
-                      <Typography variant="body2" color="textSecondary">Notas:</Typography>
-                      <Typography variant="body1">
-                        {safeLayaway.notes}
-                      </Typography>
                     </Box>
-                  )}
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
 
-          {/* Estado financiero */}
-          <Grid  xs={12} md={4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
-                  💰 Estado Financiero
-                </Typography>
-
-                {/* Progreso visual */}
-                <Box sx={{ mb: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" color="textSecondary">Progreso de Pago</Typography>
-                    <Typography variant="body2" fontWeight="600">{Math.round(progressPercentage)}%</Typography>
-                  </Box>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={progressPercentage} 
-                    sx={{ 
-                      height: 12, 
-                      borderRadius: 6,
-                      '& .MuiLinearProgress-bar': {
-                        backgroundColor: progressPercentage >= 100 ? '#4caf50' : progressPercentage >= 50 ? '#ff9800' : '#f44336'
-                      }
-                    }}
-                  />
-                </Box>
-
-                <Stack spacing={3}>
-                  <Box sx={{
-                    p: 3,
-                    background: 'rgba(33, 150, 243, 0.1)',
-                    borderRadius: 3,
-                    border: '1px solid rgba(33, 150, 243, 0.3)',
-                    textAlign: 'center'
-                  }}>
-                    <Typography variant="body2" color="textSecondary">Total del Apartado</Typography>
-                    <Typography variant="h4" fontWeight="800" color="primary">
-                      {formatPrice(safeLayaway.total_amount)}
-                    </Typography>
-                  </Box>
-
-                  {/* ✅ GRID2 ANIDADO HÍBRIDO */}
-                  <Grid container spacing={2}>
-                    <Grid xs={6}>
+                    <Stack spacing={3}>
                       <Box sx={{
-                        p: 2,
-                        background: 'rgba(76, 175, 80, 0.1)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(76, 175, 80, 0.3)',
+                        p: 3,
+                        background: `${darkProTokens.primary}20`,
+                        borderRadius: 3,
+                        border: `2px solid ${darkProTokens.primary}50`,
                         textAlign: 'center'
                       }}>
-                        <Typography variant="body2" color="textSecondary">Pagado</Typography>
-                        <Typography variant="h6" fontWeight="700" color="success.main">
-                          {formatPrice(safeLayaway.paid_amount)}
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Total del Apartado
+                        </Typography>
+                        <Typography variant="h3" fontWeight="800" sx={{ color: darkProTokens.primary }}>
+                          {formatPrice(safeLayaway.total_amount)}
                         </Typography>
                       </Box>
-                    </Grid>
 
-                    <Grid xs={6}>
-                      <Box sx={{
-                        p: 2,
-                        background: 'rgba(255, 152, 0, 0.1)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(255, 152, 0, 0.3)',
-                        textAlign: 'center'
-                      }}>
-                        <Typography variant="body2" color="textSecondary">Pendiente</Typography>
-                        <Typography variant="h6" fontWeight="700" color="warning.main">
-                          {formatPrice(safeLayaway.pending_amount)}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
-
-                  <Box sx={{
-                    p: 2,
-                    background: progressPercentage >= 100 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 193, 7, 0.1)',
-                    borderRadius: 2,
-                    border: progressPercentage >= 100 ? '1px solid rgba(76, 175, 80, 0.3)' : '1px solid rgba(255, 193, 7, 0.3)',
-                    textAlign: 'center'
-                  }}>
-                    <Typography variant="body2" color="textSecondary">Estado</Typography>
-                    <Chip 
-                      label={safeLayaway.status === 'completed' ? 'Completado' : safeLayaway.status === 'pending' ? 'Activo' : safeLayaway.status}
-                      color={safeLayaway.status === 'completed' ? 'success' : safeLayaway.status === 'pending' ? 'warning' : 'error'}
-                      sx={{ fontWeight: 600 }}
-                    />
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Historial de pagos */}
-          <Grid xs={12} md={4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
-                  📋 Historial de Pagos ({details.payments.length})
-                </Typography>
-
-                {details.payments.length > 0 ? (
-                  <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                    <Timeline sx={{ p: 0, m: 0 }}>
-                      {details.payments.map((payment: any, index: number) => (
-                        <TimelineItem key={payment.id || index}>
-                          <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
-                            <Typography variant="caption" color="textSecondary">
-                              {formatDate(payment.payment_date)}
+                      <Grid container spacing={2}>
+                        <Grid xs={6}>
+                          <Box sx={{
+                            p: 2,
+                            background: `${darkProTokens.success}20`,
+                            borderRadius: 2,
+                            border: `1px solid ${darkProTokens.success}30`,
+                            textAlign: 'center'
+                          }}>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Pagado
                             </Typography>
-                          </TimelineOppositeContent>
-                          <TimelineSeparator>
-                            <TimelineDot sx={{ 
-                              bgcolor: payment.payment_method === 'efectivo' ? '#4caf50' : '#2196f3',
-                              width: 32,
-                              height: 32
-                            }}>
-                              <PaymentIcon fontSize="small" />
-                            </TimelineDot>
-                            {index < details.payments.length - 1 && <TimelineConnector />}
-                          </TimelineSeparator>
-                          <TimelineContent sx={{ px: 2, pb: 2 }}>
-                            <Box>
-                              <Typography variant="body1" fontWeight="600">
-                                {formatPrice(payment.amount || 0)}
-                              </Typography>
-                              <Typography variant="body2" color="textSecondary">
-                                {payment.payment_method === 'efectivo' && '💵 Efectivo'}
-                                {payment.payment_method === 'debito' && '💳 Débito'}
-                                {payment.payment_method === 'credito' && '💳 Crédito'}
-                                {payment.payment_method === 'transferencia' && '🏦 Transferencia'}
-                                {payment.payment_method === 'vales' && '🎫 Vales'}
-                              </Typography>
-                              {(payment.commission_amount || 0) > 0 && (
-                                <Typography variant="caption" color="warning.main">
-                                  Comisión: {formatPrice(payment.commission_amount)}
-                                </Typography>
-                              )}
-                              {payment.payment_reference && (
-                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
-                                  Ref: {payment.payment_reference}
-                                </Typography>
-                              )}
-                              {payment.notes && (
-                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontStyle: 'italic' }}>
-                                  {payment.notes}
-                                </Typography>
-                              )}
-                            </Box>
-                          </TimelineContent>
-                        </TimelineItem>
-                      ))}
-                    </Timeline>
-                  </Box>
-                ) : (
-                  <Box sx={{
-                    textAlign: 'center',
-                    py: 4,
-                    color: 'text.secondary'
-                  }}>
-                    <PaymentIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
-                    <Typography variant="body2">
-                      {loading ? 'Cargando pagos...' : 'No hay pagos registrados'}
+                            <Typography variant="h6" fontWeight="700" sx={{ color: darkProTokens.success }}>
+                              {formatPrice(safeLayaway.paid_amount)}
+                            </Typography>
+                          </Box>
+                        </Grid>
+
+                        <Grid xs={6}>
+                          <Box sx={{
+                            p: 2,
+                            background: `${darkProTokens.warning}20`,
+                            borderRadius: 2,
+                            border: `1px solid ${darkProTokens.warning}30`,
+                            textAlign: 'center'
+                          }}>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Pendiente
+                            </Typography>
+                            <Typography variant="h6" fontWeight="700" sx={{ color: darkProTokens.warning }}>
+                              {formatPrice(safeLayaway.pending_amount)}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      </Grid>
+
+                      <Box sx={{
+                        p: 2,
+                        background: progressPercentage >= 100 ? `${darkProTokens.success}20` : `${darkProTokens.info}20`,
+                        borderRadius: 2,
+                        border: progressPercentage >= 100 ? `1px solid ${darkProTokens.success}30` : `1px solid ${darkProTokens.info}30`,
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Estado
+                        </Typography>
+                        <Chip 
+                          label={safeLayaway.status === 'completed' ? 'Completado' : 
+                                 safeLayaway.status === 'pending' ? 'Activo' : 
+                                 safeLayaway.status}
+                          sx={{
+                            backgroundColor: safeLayaway.status === 'completed' ? darkProTokens.success : 
+                                           safeLayaway.status === 'pending' ? darkProTokens.warning : 
+                                           darkProTokens.error,
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 700
+                          }}
+                        />
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+
+            {/* ✅ HISTORIAL DE PAGOS */}
+            <Grid xs={12} md={4}>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <Card sx={{
+                  height: '100%',
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `1px solid ${darkProTokens.warning}30`,
+                  borderRadius: 4
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: darkProTokens.warning, fontWeight: 700 }}>
+                      📋 Historial de Pagos ({details.payments.length})
                     </Typography>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
 
-          {/* Productos del apartado */}
-          <Grid xs={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', fontWeight: 700 }}>
-                  🛍️ Productos en el Apartado ({details.items.length})
-                </Typography>
-
-                {details.items.length > 0 ? (
-                  <TableContainer component={Paper} sx={{ mt: 2 }}>
-                    <Table>
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: 'rgba(76, 175, 80, 0.1)' }}>
-                          <TableCell><strong>Producto</strong></TableCell>
-                          <TableCell align="center"><strong>Cantidad</strong></TableCell>
-                          <TableCell align="right"><strong>Precio Unit.</strong></TableCell>
-                          <TableCell align="right"><strong>Descuento</strong></TableCell>
-                          <TableCell align="right"><strong>Subtotal</strong></TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {details.items.map((item: any, index: number) => (
-                          <TableRow key={index} hover>
-                            <TableCell>
-                              <Box>
-                                <Typography variant="body1" fontWeight="600">
-                                  {item.product_name}
+                    {details.payments.length > 0 ? (
+                      <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                        <Timeline sx={{ p: 0, m: 0 }}>
+                          {details.payments.map((payment: any, index: number) => (
+                            <TimelineItem key={payment.id || index}>
+                              <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
+                                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                  {formatDate(payment.payment_date)}
                                 </Typography>
-                                {item.product_sku && (
-                                  <Typography variant="caption" color="textSecondary">
-                                    SKU: {item.product_sku}
-                                  </Typography>
+                              </TimelineOppositeContent>
+                              <TimelineSeparator>
+                                <TimelineDot sx={{ 
+                                  bgcolor: payment.payment_method === 'efectivo' ? darkProTokens.success : darkProTokens.info,
+                                  width: 40,
+                                  height: 40,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}>
+                                  {getPaymentMethodIcon(payment.payment_method)}
+                                </TimelineDot>
+                                {index < details.payments.length - 1 && (
+                                  <TimelineConnector sx={{ bgcolor: darkProTokens.grayDark }} />
                                 )}
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Chip 
-                                label={item.quantity}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              <Typography variant="body1" fontWeight="600">
-                                {formatPrice(item.unit_price || 0)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="right">
-                              {(item.discount_amount || 0) > 0 ? (
-                                <Typography variant="body1" color="success.main" fontWeight="600">
-                                  -{formatPrice(item.discount_amount)}
+                              </TimelineSeparator>
+                              <TimelineContent sx={{ px: 2, pb: 3 }}>
+                                <Box>
+                                  <Typography variant="h6" fontWeight="700" sx={{ color: darkProTokens.textPrimary }}>
+                                    {formatPrice(payment.amount || 0)}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                    {payment.payment_method === 'efectivo' && '💵 Efectivo'}
+                                    {payment.payment_method === 'debito' && '💳 Débito'}
+                                    {payment.payment_method === 'credito' && '💳 Crédito'}
+                                    {payment.payment_method === 'transferencia' && '🏦 Transferencia'}
+                                    {payment.payment_method === 'vales' && '🎫 Vales'}
+                                  </Typography>
+                                  {(payment.commission_amount || 0) > 0 && (
+                                    <Typography variant="caption" sx={{ color: darkProTokens.warning }}>
+                                      Comisión: {formatPrice(payment.commission_amount)}
+                                    </Typography>
+                                  )}
+                                  {payment.payment_reference && (
+                                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
+                                      Ref: {payment.payment_reference}
+                                    </Typography>
+                                  )}
+                                  {payment.notes && (
+                                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block', fontStyle: 'italic' }}>
+                                      {payment.notes}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </TimelineContent>
+                            </TimelineItem>
+                          ))}
+                        </Timeline>
+                      </Box>
+                    ) : (
+                      <Box sx={{
+                        textAlign: 'center',
+                        py: 4,
+                        color: darkProTokens.textSecondary
+                      }}>
+                        <PaymentIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                        <Typography variant="body2">
+                          {loading ? 'Cargando pagos...' : 'No hay pagos registrados'}
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+
+            {/* ✅ PRODUCTOS DEL APARTADO */}
+            <Grid xs={12}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <Card sx={{
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `1px solid ${darkProTokens.roleTrainer}30`,
+                  borderRadius: 4
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: darkProTokens.roleTrainer, fontWeight: 700 }}>
+                      🛍️ Productos en el Apartado ({details.items.length})
+                    </Typography>
+
+                    {details.items.length > 0 ? (
+                      <TableContainer component={Paper} sx={{
+                        background: darkProTokens.surfaceLevel1,
+                        border: `1px solid ${darkProTokens.grayDark}`,
+                        borderRadius: 2
+                      }}>
+                        <Table>
+                          <TableHead>
+                            <TableRow sx={{ 
+                              background: `linear-gradient(135deg, ${darkProTokens.roleTrainer}, ${darkProTokens.roleTrainer}CC)`
+                            }}>
+                              <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                Producto
+                              </TableCell>
+                              <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                Cantidad
+                              </TableCell>
+                              <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                Precio Unit.
+                              </TableCell>
+                              <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                Descuento
+                              </TableCell>
+                              <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                Subtotal
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {details.items.map((item: any, index: number) => (
+                              <TableRow key={index} sx={{
+                                '&:hover': { backgroundColor: `${darkProTokens.primary}10` },
+                                '&:nth-of-type(even)': { backgroundColor: `${darkProTokens.surfaceLevel2}40` }
+                              }}>
+                                <TableCell>
+                                  <Box>
+                                    <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
+                                      {item.product_name}
+                                    </Typography>
+                                    {item.product_sku && (
+                                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                        SKU: {item.product_sku}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </TableCell>
+                                <TableCell align="center">
+                                  <Chip 
+                                    label={item.quantity}
+                                    size="small"
+                                    sx={{
+                                      backgroundColor: darkProTokens.primary,
+                                      color: darkProTokens.background,
+                                      fontWeight: 700
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
+                                    {formatPrice(item.unit_price || 0)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                  {(item.discount_amount || 0) > 0 ? (
+                                    <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.success }}>
+                                      -{formatPrice(item.discount_amount)}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                      Sin descuento
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body1" fontWeight="700" sx={{ color: darkProTokens.primary }}>
+                                    {formatPrice(item.total_price || 0)}
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            
+                            {/* Totales */}
+                            <TableRow sx={{ 
+                              background: `linear-gradient(135deg, ${darkProTokens.success}20, ${darkProTokens.success}10)`
+                            }}>
+                              <TableCell colSpan={4}>
+                                <Typography variant="h6" fontWeight="700" sx={{ color: darkProTokens.textPrimary }}>
+                                  💎 TOTAL APARTADO:
                                 </Typography>
-                              ) : (
-                                <Typography variant="body2" color="textSecondary">
-                                  Sin descuento
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="h5" fontWeight="800" sx={{ color: darkProTokens.success }}>
+                                  {formatPrice(safeLayaway.total_amount)}
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Box sx={{
+                        textAlign: 'center',
+                        py: 4,
+                        color: darkProTokens.textSecondary
+                      }}>
+                        <InventoryIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                        <Typography variant="body2">
+                          {loading ? 'Cargando productos...' : 'No hay productos en este apartado'}
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+
+            {/* ✅ INFORMACIÓN ADICIONAL EN ACCORDIONS */}
+            <Grid xs={12}>
+              <Stack spacing={2}>
+                {/* Historial de cambios de estado */}
+                {details.history.length > 0 && (
+                  <Accordion sx={{
+                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                    border: `1px solid ${darkProTokens.grayDark}`,
+                    borderRadius: 3,
+                    '&:before': { display: 'none' }
+                  }}>
+                    <AccordionSummary 
+                      expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textPrimary }} />}
+                      sx={{ 
+                        background: `${darkProTokens.grayDark}60`,
+                        borderRadius: '12px 12px 0 0'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <HistoryIcon sx={{ color: darkProTokens.info }} />
+                        <Typography variant="h6" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
+                          📈 Historial de Estados ({details.history.length})
+                        </Typography>
+                      </Box>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ background: darkProTokens.surfaceLevel2 }}>
+                      <Timeline sx={{ m: 0, p: 0 }}>
+                        {details.history.map((history: any, index: number) => (
+                          <TimelineItem key={history.id || index}>
+                            <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
+                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                {formatDate(history.created_at)}
+                              </Typography>
+                            </TimelineOppositeContent>
+                            <TimelineSeparator>
+                              <TimelineDot sx={{ bgcolor: darkProTokens.info }}>
+                                <InfoIcon fontSize="small" />
+                              </TimelineDot>
+                              {index < details.history.length - 1 && (
+                                <TimelineConnector sx={{ bgcolor: darkProTokens.grayDark }} />
+                              )}
+                            </TimelineSeparator>
+                            <TimelineContent sx={{ px: 2, pb: 2 }}>
+                              <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
+                                {history.previous_status || 'Nuevo'} → {history.new_status}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                {history.reason}
+                              </Typography>
+                              {history.previous_paid_amount !== history.new_paid_amount && (
+                                <Typography variant="caption" sx={{ color: darkProTokens.success }}>
+                                  Pago: {formatPrice(history.previous_paid_amount || 0)} → {formatPrice(history.new_paid_amount || 0)}
                                 </Typography>
                               )}
-                            </TableCell>
-                            <TableCell align="right">
-                              <Typography variant="body1" fontWeight="700" color="primary">
-                                {formatPrice(item.total_price || 0)}
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
+                            </TimelineContent>
+                          </TimelineItem>
                         ))}
-                        
-                        {/* Totales */}
-                        <TableRow sx={{ bgcolor: 'rgba(76, 175, 80, 0.1)' }}>
-                          <TableCell colSpan={4}>
-                            <Typography variant="h6" fontWeight="700">
-                              TOTAL APARTADO:
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="h6" fontWeight="800" color="primary">
-                              {formatPrice(safeLayaway.total_amount)}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                ) : (
-                  <Box sx={{
-                    textAlign: 'center',
-                    py: 4,
-                    color: 'text.secondary'
-                  }}>
-                    <InventoryIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
-                    <Typography variant="body2">
-                      {loading ? 'Cargando productos...' : 'No hay productos en este apartado'}
-                    </Typography>
-                  </Box>
+                      </Timeline>
+                    </AccordionDetails>
+                  </Accordion>
                 )}
-              </CardContent>
-            </Card>
+              </Stack>
+            </Grid>
           </Grid>
-
-          {/* Información adicional en accordions */}
-          <Grid xs={12}>
-            <Stack spacing={2}>
-              {/* Historial de cambios de estado */}
-              {details.history.length > 0 && (
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <HistoryIcon />
-                      <Typography variant="h6" fontWeight="600">
-                        📈 Historial de Estados ({details.history.length})
-                      </Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Timeline sx={{ m: 0, p: 0 }}>
-                      {details.history.map((history: any, index: number) => (
-                        <TimelineItem key={history.id || index}>
-                          <TimelineOppositeContent sx={{ flex: 0.3, px: 1 }}>
-                            <Typography variant="caption" color="textSecondary">
-                              {formatDate(history.created_at)}
-                            </Typography>
-                          </TimelineOppositeContent>
-                          <TimelineSeparator>
-                            <TimelineDot color="primary">
-                              <InfoIcon fontSize="small" />
-                            </TimelineDot>
-                            {index < details.history.length - 1 && <TimelineConnector />}
-                          </TimelineSeparator>
-                          <TimelineContent sx={{ px: 2, pb: 2 }}>
-                            <Typography variant="body1" fontWeight="600">
-                              {history.previous_status || 'Nuevo'} → {history.new_status}
-                            </Typography>
-                            <Typography variant="body2" color="textSecondary">
-                              {history.reason}
-                            </Typography>
-                            {history.previous_paid_amount !== history.new_paid_amount && (
-                              <Typography variant="caption" color="success.main">
-                                Pago: {formatPrice(history.previous_paid_amount || 0)} → {formatPrice(history.new_paid_amount || 0)}
-                              </Typography>
-                            )}
-                          </TimelineContent>
-                        </TimelineItem>
-                      ))}
-                    </Timeline>
-                  </AccordionDetails>
-                </Accordion>
-              )}
-
-              {/* Información del sistema */}
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <InfoIcon />
-                    <Typography variant="h6" fontWeight="600">
-                      ⚙️ Información del Sistema - Solución Híbrida
-                    </Typography>
-                  </Box>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Grid container spacing={2}>
-                    <Grid xs={6}>
-                      <Stack spacing={1}>
-                        <Box>
-                          <Typography variant="body2" color="textSecondary">ID del Apartado:</Typography>
-                          <Typography variant="body1" fontFamily="monospace">
-                            {safeLayaway.id}
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" color="textSecondary">Creado:</Typography>
-                          <Typography variant="body1">
-                            {formatDate(safeLayaway.created_at)}
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" color="textSecondary">Solución Aplicada:</Typography>
-                          <Chip 
-                            label="✅ Híbrida sin loops"
-                            size="small"
-                            color="success"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </Box>
-                      </Stack>
-                    </Grid>
-                    <Grid xs={6}>
-                      <Stack spacing={1}>
-                        <Box>
-                          <Typography variant="body2" color="textSecondary">Última carga de datos:</Typography>
-                          <Typography variant="body1">
-                            2025-06-11 08:30:29 UTC por luishdz04
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" color="textSecondary">Número de Pagos:</Typography>
-                          <Typography variant="body1">
-                            {details.payments.length} pagos realizados
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" color="textSecondary">Items del Apartado:</Typography>
-                          <Typography variant="body1">
-                            {details.items.length} productos apartados
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" color="textSecondary">useCallback Híbrido:</Typography>
-                          <Chip 
-                            label="✅ Dependencias controladas"
-                            size="small"
-                            color="info"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </Box>
-                      </Stack>
-                    </Grid>
-                  </Grid>
-                </AccordionDetails>
-              </Accordion>
-            </Stack>
-          </Grid>
-        </Grid>
+        </Box>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3 }}>
+      <DialogActions sx={{ 
+        p: 3,
+        background: darkProTokens.surfaceLevel1,
+        borderTop: `1px solid ${darkProTokens.grayDark}`
+      }}>
         <Button
           onClick={refreshData}
           disabled={refreshing || loading}
           startIcon={refreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
           variant="outlined"
           sx={{ 
-            borderColor: 'rgba(76, 175, 80, 0.5)',
-            color: '#4caf50',
+            borderColor: darkProTokens.roleTrainer,
+            color: darkProTokens.roleTrainer,
             '&:hover': {
-              borderColor: '#4caf50',
-              bgcolor: 'rgba(76, 175, 80, 0.1)'
+              borderColor: darkProTokens.roleTrainer,
+              bgcolor: `${darkProTokens.roleTrainer}20`
             }
           }}
         >
@@ -762,13 +893,38 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
           onClick={handleClose} 
           variant="contained" 
           sx={{ 
-            background: 'linear-gradient(135deg, #4caf50, #388e3c)',
-            fontWeight: 'bold'
+            background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+            color: darkProTokens.textPrimary,
+            fontWeight: 'bold',
+            px: 4,
+            py: 1.5,
+            borderRadius: 3
           }}
         >
           Cerrar
         </Button>
       </DialogActions>
+
+      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC);
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.roleModerator}CC, ${darkProTokens.roleModerator});
+        }
+      `}</style>
     </Dialog>
   );
 }
