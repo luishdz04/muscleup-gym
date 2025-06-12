@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date') || '2025-06-12'; // Fecha actual por defecto
+const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
     
     const supabase = createServerSupabaseClient();
 
