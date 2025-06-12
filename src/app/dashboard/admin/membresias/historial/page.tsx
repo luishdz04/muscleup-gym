@@ -47,13 +47,15 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
 // ✅ IMPORTS DE UTILIDADES DE FECHA CORREGIDAS
-import { 
-  getMexicoToday, 
-  getDaysBetweenMexicoDates, 
-  formatDateForDB, 
+import {
+  getMexicoToday,
+  formatDateForDisplay,
+  formatTimestampForDisplay,
   createTimestampForDB,
+  getDaysBetweenMexicoDates,
   debugDateInfo
-} from '../../../lib/utils/dateUtils';
+} from '@/lib/utils/dateUtils';
+
 
 // 🆕 IMPORTS DEL SISTEMA DE CONGELAMIENTO INTELIGENTE
 import {
@@ -64,7 +66,7 @@ import {
   canFreezeMembership,
   canUnfreezeMembership,
   type FreezeResult
-} from '@/lib/utils/freezeUtils';
+} from '@/src/lib/utils/freezeUtils';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
