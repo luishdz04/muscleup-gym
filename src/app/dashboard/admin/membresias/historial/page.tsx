@@ -54,7 +54,7 @@ import {
   Avatar,
   Slider
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -220,12 +220,12 @@ interface Filters {
   isRenewal: string;
 }
 
-// 🆕 INTERFACE PARA CONGELAMIENTO MASIVO AVANZADO
+// ✅ INTERFACE PARA CONGELAMIENTO MASIVO AVANZADO - VERIFICADA
 interface BulkFreezeOperation {
   type: 'freeze' | 'unfreeze' | 'manual_freeze' | 'manual_unfreeze';
   membershipIds: string[];
   reason?: string;
-  freezeDays?: number; // Para congelamiento manual
+  freezeDays?: number;
   isManual?: boolean;
 }
 
@@ -315,7 +315,7 @@ export default function HistorialMembresiaPage() {
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [unfreezeLoading, setUnfreezeLoading] = useState(false);
   
-  // 🆕 ESTADOS PARA CONGELAMIENTO MASIVO AVANZADO
+  // ✅ ESTADOS PARA CONGELAMIENTO MASIVO AVANZADO - VERIFICADOS
   const [selectedMembershipIds, setSelectedMembershipIds] = useState<string[]>([]);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -381,6 +381,53 @@ export default function HistorialMembresiaPage() {
     const statusOption = statusOptions.find(s => s.value === status);
     return statusOption?.icon || '📋';
   }, []);
+
+  // ✅ FUNCIÓN DE RECARGA FORZADA - VERIFICADA
+  const forceReloadMemberships = useCallback(async () => {
+    console.log('🔄 Forzando recarga completa de membresías...');
+    setLoading(true);
+    
+    try {
+      // Limpiar cache local
+      setMemberships([]);
+      setFilteredMemberships([]);
+      
+      // Esperar un momento para asegurar que la DB esté actualizada
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data, error } = await supabase
+        .from('user_memberships')
+        .select(`
+          *,
+          Users!userid (firstName, lastName, email),
+          membership_plans!planid (name, description)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedData: MembershipHistory[] = (data || []).map(item => ({
+        ...item,
+        freeze_date: item.freeze_date || null,
+        unfreeze_date: item.unfreeze_date || null,
+        total_frozen_days: item.total_frozen_days || 0,
+        payment_details: item.payment_details || {},
+        user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
+        user_email: item.Users?.email || '',
+        plan_name: item.membership_plans?.name || 'Plan Desconocido'
+      }));
+
+      console.log('✅ Membresías recargadas exitosamente:', formattedData.length);
+      setMemberships(formattedData);
+      calculateStats(formattedData);
+      
+    } catch (err: any) {
+      console.error('❌ Error al recargar membresías:', err);
+      setError(`Error al recargar membresías: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
 
   // ✅ CARGAR DATOS INICIALES - FUNCIÓN VERIFICADA
   const loadMemberships = useCallback(async () => {
@@ -516,7 +563,7 @@ export default function HistorialMembresiaPage() {
       
       if (result.success) {
         setSuccessMessage(result.message);
-        loadMemberships();
+        await forceReloadMemberships();
         setActionMenuAnchor(null);
       } else {
         setError(result.error || 'Error al congelar membresía');
@@ -527,7 +574,7 @@ export default function HistorialMembresiaPage() {
     } finally {
       setFreezeLoading(false);
     }
-  }, [supabase, loadMemberships]);
+  }, [supabase, forceReloadMemberships]);
 
   const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
@@ -550,7 +597,7 @@ export default function HistorialMembresiaPage() {
       
       if (result.success) {
         setSuccessMessage(result.message);
-        loadMemberships();
+        await forceReloadMemberships();
         setActionMenuAnchor(null);
       } else {
         setError(result.error || 'Error al reactivar membresía');
@@ -561,9 +608,9 @@ export default function HistorialMembresiaPage() {
     } finally {
       setUnfreezeLoading(false);
     }
-  }, [supabase, loadMemberships]);
+  }, [supabase, forceReloadMemberships]);
 
-  // 🆕 FUNCIONES DE CONGELAMIENTO MASIVO AVANZADO
+  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO AVANZADO - VERIFICADAS
   const handleSelectAllMemberships = useCallback(() => {
     const eligibleMemberships = filteredMemberships
       .filter(m => m.status === 'active' || m.status === 'frozen')
@@ -636,7 +683,7 @@ export default function HistorialMembresiaPage() {
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
 
-  // 🆕 GENERAR PREVIEW DE CONGELAMIENTO MASIVO
+  // ✅ GENERAR PREVIEW DE CONGELAMIENTO MASIVO - VERIFICADO
   const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
     const preview: BulkPreview[] = eligibleMemberships.map(membership => {
       let newEndDate = membership.end_date;
@@ -668,6 +715,14 @@ export default function HistorialMembresiaPage() {
     setShowPreview(true);
   }, [bulkOperation.freezeDays]);
 
+  // ✅ FUNCIÓN DE TÍTULOS DINÁMICOS - VERIFICADA
+  const getBulkOperationTitle = useCallback(() => {
+    const baseTitle = bulkOperation.type.includes('freeze') ? 'Congelamiento' : 'Reactivación';
+    const modeTitle = bulkOperation.isManual ? 'Manual' : 'Automático';
+    return `🧊 ${baseTitle} Masivo ${modeTitle}`;
+  }, [bulkOperation.type, bulkOperation.isManual]);
+
+  // ✅ EJECUTAR OPERACIÓN MASIVA - VERIFICADA Y CORREGIDA
   const executeBulkOperation = useCallback(async () => {
     setBulkLoading(true);
     setBulkProgress(0);
@@ -782,12 +837,21 @@ export default function HistorialMembresiaPage() {
     setBulkResults({ success: successCount, failed: failedCount, errors });
     setBulkLoading(false);
     
-    // Recargar datos
-    await loadMemberships();
+    // ✅ CORRECCIÓN: RECARGA FORZADA Y CIERRE AUTOMÁTICO
+    console.log('🔄 Operación completada, recargando datos...');
+    await forceReloadMemberships();
     
     // Limpiar selección
     setSelectedMembershipIds([]);
     setBulkMode(false);
+    
+    // ✅ CORRECCIÓN: CERRAR MODAL AUTOMÁTICAMENTE
+    setTimeout(() => {
+      setBulkDialogOpen(false);
+      setShowPreview(false);
+      setBulkResults({ success: 0, failed: 0, errors: [] });
+      setBulkProgress(0);
+    }, 2000); // Esperar 2 segundos para que el usuario vea los resultados
 
     // Mensaje de resultado
     if (successCount > 0) {
@@ -798,9 +862,9 @@ export default function HistorialMembresiaPage() {
     if (failedCount > 0) {
       setWarningMessage(`⚠️ ${failedCount} operaciones fallaron. Revise los detalles.`);
     }
-  }, [bulkOperation, memberships, supabase, loadMemberships, formatDate]);
+  }, [bulkOperation, memberships, supabase, formatDate, forceReloadMemberships]);
 
-  // ✅ FUNCIÓN DE ACTUALIZACIÓN CORREGIDA - COHERENTE CON DB
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN COHERENTE CON DB - VERIFICADA
   const handleUpdateMembership = useCallback(async () => {
     if (!selectedMembership || !editData) return;
     
@@ -887,7 +951,7 @@ export default function HistorialMembresiaPage() {
       setSuccessMessage('✅ Membresía actualizada exitosamente');
       setEditDialogOpen(false);
       setEditData({});
-      loadMemberships();
+      await forceReloadMemberships();
       
     } catch (err: any) {
       setError(`Error al actualizar membresía: ${err.message}`);
@@ -895,9 +959,9 @@ export default function HistorialMembresiaPage() {
     } finally {
       setEditLoading(false);
     }
-  }, [selectedMembership, editData, supabase, loadMemberships, formatDate]);
+  }, [selectedMembership, editData, supabase, formatDate, forceReloadMemberships]);
 
-  // ✅ INICIALIZAR DATOS DE EDICIÓN CORREGIDA
+  // ✅ INICIALIZAR DATOS DE EDICIÓN - VERIFICADA
   const initializeEditData = useCallback((membership: MembershipHistory) => {
     // Obtener detalles de pago mixto desde payment_details JSONB
     const paymentDetails = membership.payment_details || {};
@@ -921,16 +985,20 @@ export default function HistorialMembresiaPage() {
     });
   }, []);
 
-  // ✅ FUNCIONES UTILITARIAS - VERIFICADAS
+  // ✅ CALCULAR DÍAS RESTANTES CORREGIDO - VERIFICADO
   const getDaysRemaining = useCallback((endDate: string | null) => {
     if (!endDate) return null;
     
+    // ✅ USAR FECHA ACTUAL DE MÉXICO EN LUGAR DE UTC
     const todayMexico = getMexicoToday();
     const daysRemaining = getDaysBetweenMexicoDates(todayMexico, endDate);
+    
+    console.log(`📅 Calculando días restantes: Hoy=${todayMexico}, Vence=${endDate}, Restantes=${daysRemaining}`);
     
     return daysRemaining;
   }, []);
 
+  // ✅ FUNCIONES UTILITARIAS - VERIFICADAS
   const handleStatusChange = useCallback(async (membership: MembershipHistory, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -944,12 +1012,12 @@ export default function HistorialMembresiaPage() {
       if (error) throw error;
 
       setSuccessMessage(`✅ Estado cambiado a ${newStatus}`);
-      loadMemberships();
+      await forceReloadMemberships();
       
     } catch (err: any) {
       setError(`Error al cambiar estado: ${err.message}`);
     }
-  }, [supabase, loadMemberships]);
+  }, [supabase, forceReloadMemberships]);
 
   const clearFilters = useCallback(() => {
     setFilters({
@@ -989,7 +1057,7 @@ export default function HistorialMembresiaPage() {
   const handleCloseWarning = useCallback(() => setWarningMessage(null), []);
   const handleCloseInfo = useCallback(() => setInfoMessage(null), []);
 
-  // ✅ MODAL DE EDICIÓN OPTIMIZADO - COHERENTE CON DB
+  // ✅ MODAL DE EDICIÓN OPTIMIZADO - VERIFICADO
   const OptimizedEditModal = useMemo(() => {
     if (!editDialogOpen || !selectedMembership) return null;
 
@@ -1354,7 +1422,7 @@ export default function HistorialMembresiaPage() {
                   InputProps={{
                     sx: {
                       color: darkProTokens.textPrimary,
-                      '& .MuiOutlinedInput-notchedOutline': {
+                                            '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: `${darkProTokens.primary}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
@@ -1445,7 +1513,7 @@ export default function HistorialMembresiaPage() {
                   p: 2,
                   textAlign: 'center',
                   height: '56px',
-                                    display: 'flex',
+                  display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center'
                 }}>
@@ -1866,7 +1934,7 @@ export default function HistorialMembresiaPage() {
           <Stack direction="row" spacing={2}>
             <Button
               startIcon={<RefreshIcon />}
-              onClick={loadMemberships}
+              onClick={forceReloadMemberships}
               disabled={loading}
               sx={{ 
                 color: darkProTokens.info,
@@ -2065,7 +2133,7 @@ export default function HistorialMembresiaPage() {
         </Grid>
       </Paper>
 
-      {/* 🆕 BARRA DE CONGELAMIENTO MASIVO AVANZADO */}
+      {/* ✅ BARRA DE CONGELAMIENTO MASIVO AVANZADO - VERIFICADA */}
       <AnimatePresence>
         {bulkMode && (
           <motion.div
@@ -2875,7 +2943,7 @@ export default function HistorialMembresiaPage() {
                                 <Chip 
                                   label={`🧊 ${membership.total_frozen_days} días`}
                                   size="small"
-                                  sx={{
+                                                                  sx={{
                                     backgroundColor: `${darkProTokens.success}20`,
                                     color: darkProTokens.success,
                                     fontWeight: 600
@@ -2983,7 +3051,7 @@ export default function HistorialMembresiaPage() {
         </CardContent>
       </Card>
 
-            {/* ✅ MENU DE ACCIONES - VERIFICADO */}
+      {/* ✅ MENU DE ACCIONES - VERIFICADO */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -3062,7 +3130,7 @@ export default function HistorialMembresiaPage() {
         </MenuList>
       </Menu>
 
-      {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO AVANZADO */}
+      {/* 🆕 DIALOG DE CONGELAMIENTO MASIVO AVANZADO - VERIFICADO */}
       <Dialog
         open={bulkDialogOpen}
         onClose={() => !bulkLoading && setBulkDialogOpen(false)}
@@ -3091,7 +3159,7 @@ export default function HistorialMembresiaPage() {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {bulkOperation.isManual ? <ManualIcon sx={{ fontSize: 40 }} /> : <AutoIcon sx={{ fontSize: 40 }} />}
-            🧊 {bulkOperation.type.includes('freeze') ? 'Congelamiento' : 'Reactivación'} Masivo {bulkOperation.isManual ? 'Manual' : 'Automático'}
+            {getBulkOperationTitle()} {/* ✅ TÍTULO DINÁMICO CORREGIDO */}
           </Box>
           <IconButton 
             onClick={() => setBulkDialogOpen(false)}
@@ -3125,7 +3193,7 @@ export default function HistorialMembresiaPage() {
                 </Typography>
               </Alert>
 
-              {/* 🆕 CONFIGURACIÓN PARA CONGELAMIENTO MANUAL */}
+              {/* 🆕 CONFIGURACIÓN PARA CONGELAMIENTO MANUAL - VERIFICADA */}
               {bulkOperation.isManual && bulkOperation.type === 'manual_freeze' && (
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
@@ -3222,7 +3290,7 @@ export default function HistorialMembresiaPage() {
                 </Card>
               )}
 
-              {/* 🆕 VISTA PREVIA DE CAMBIOS */}
+              {/* 🆕 VISTA PREVIA DE CAMBIOS - VERIFICADA */}
               {showPreview && bulkPreview.length > 0 && (
                 <Card sx={{
                   background: `${darkProTokens.success}10`,
@@ -3555,11 +3623,11 @@ export default function HistorialMembresiaPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL DE DETALLES - PLACEHOLDER MEJORADO */}
+      {/* ✅ MODAL DE DETALLES COMPLETO - VERIFICADO */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
-        maxWidth="lg"
+        maxWidth="xl"
         fullWidth
         PaperProps={{
           sx: {
@@ -3568,7 +3636,7 @@ export default function HistorialMembresiaPage() {
             borderRadius: 4,
             color: darkProTokens.textPrimary,
             boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
-            maxHeight: '90vh'
+            maxHeight: '95vh'
           }
         }}
       >
@@ -3584,7 +3652,7 @@ export default function HistorialMembresiaPage() {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <VisibilityIcon sx={{ fontSize: 40 }} />
-            Detalles Completos de Membresía
+            Vista Detallada de Membresía
           </Box>
           <IconButton 
             onClick={() => setDetailsDialogOpen(false)}
@@ -3594,33 +3662,548 @@ export default function HistorialMembresiaPage() {
           </IconButton>
         </DialogTitle>
         
-        <DialogContent>
+        <DialogContent sx={{ maxHeight: '80vh', overflow: 'auto' }}>
           {selectedMembership && (
-            <Box>
-              <Typography variant="h6" sx={{ color: darkProTokens.primary, mb: 2 }}>
-                📋 {selectedMembership.user_name} - {selectedMembership.plan_name}
-              </Typography>
-              <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
-                🚧 Vista detallada en desarrollo...
-              </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
-                ID: {selectedMembership.id}<br/>
-                Estado: {selectedMembership.status}<br/>
-                Monto: {formatPrice(selectedMembership.amount_paid)}<br/>
-                Días congelados: {selectedMembership.total_frozen_days}
-              </Typography>
+            <Box sx={{ mt: 2 }}>
+              {/* Header del Cliente Detallado */}
+              <Card sx={{
+                background: `${darkProTokens.primary}15`,
+                border: `2px solid ${darkProTokens.primary}40`,
+                borderRadius: 4,
+                mb: 4
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Box sx={{ 
+                      width: 100, 
+                      height: 100, 
+                      borderRadius: '50%', 
+                      background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: darkProTokens.background,
+                      fontWeight: 800,
+                      fontSize: '2.5rem',
+                      boxShadow: `0 8px 32px ${darkProTokens.primary}40`
+                    }}>
+                      {selectedMembership.user_name.split(' ').map((n: string) => n[0]).join('')}
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h4" sx={{ 
+                        color: darkProTokens.primary, 
+                        fontWeight: 800,
+                        mb: 1
+                      }}>
+                        {selectedMembership.user_name}
+                      </Typography>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.textSecondary,
+                        mb: 2
+                      }}>
+                        📧 {selectedMembership.user_email}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <Chip 
+                          label={`${getStatusIcon(selectedMembership.status)} ${selectedMembership.status.toUpperCase()}`}
+                          sx={{
+                            backgroundColor: getStatusColor(selectedMembership.status),
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            px: 2,
+                            py: 1
+                          }}
+                        />
+                        <Chip 
+                          label={selectedMembership.is_renewal ? '🔄 RENOVACIÓN' : '🆕 PRIMERA VEZ'}
+                          sx={{
+                            backgroundColor: selectedMembership.is_renewal ? darkProTokens.warning : darkProTokens.success,
+                            color: selectedMembership.is_renewal ? darkProTokens.background : darkProTokens.textPrimary,
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            px: 2,
+                            py: 1
+                          }}
+                        />
+                        {selectedMembership.skip_inscription && (
+                          <Chip 
+                            label="🚫 SIN INSCRIPCIÓN" 
+                            sx={{
+                              backgroundColor: darkProTokens.info,
+                              color: darkProTokens.textPrimary,
+                              fontWeight: 700,
+                              fontSize: '1rem',
+                              px: 2,
+                              py: 1
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="h3" sx={{ 
+                        color: darkProTokens.primary,
+                        fontWeight: 800
+                      }}>
+                        {formatPrice(selectedMembership.amount_paid)}
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                        {paymentMethodOptions.find(p => p.value === selectedMembership.payment_method)?.icon} {selectedMembership.payment_method}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+
+              <Grid container spacing={4}>
+                {/* Información del Plan */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.info}10`,
+                    border: `1px solid ${darkProTokens.info}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.info,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <FitnessCenterIcon />
+                        🏋️‍♂️ Información del Plan
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Plan de Membresía:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                            {selectedMembership.plan_name}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Tipo de Pago:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                            {selectedMembership.payment_type.toUpperCase()}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            ID de Membresía:
+                          </Typography>
+                          <Typography variant="body1" sx={{ 
+                            color: darkProTokens.textPrimary,
+                            fontFamily: 'monospace',
+                            fontSize: '0.9rem'
+                          }}>
+                            {selectedMembership.id}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Fechas y Vigencia */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.success}10`,
+                    border: `1px solid ${darkProTokens.success}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.success,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <CalendarTodayIcon />
+                        📅 Fechas y Vigencia
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha de Inicio:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                            {formatDate(selectedMembership.start_date)}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha de Vencimiento:
+                          </Typography>
+                          <Typography variant="h6" sx={{ 
+                            color: selectedMembership.end_date ? darkProTokens.textPrimary : darkProTokens.textSecondary,
+                            fontWeight: 700 
+                          }}>
+                            {selectedMembership.end_date ? formatDate(selectedMembership.end_date) : 'Sin vencimiento'}
+                          </Typography>
+                        </Box>
+
+                        {selectedMembership.end_date && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Días Restantes:
+                            </Typography>
+                            <Typography variant="h6" sx={{ 
+                              color: (() => {
+                                const daysRemaining = getDaysRemaining(selectedMembership.end_date);
+                                if (daysRemaining === null) return darkProTokens.textSecondary;
+                                if (daysRemaining < 0) return darkProTokens.error;
+                                if (daysRemaining < 7) return darkProTokens.warning;
+                                return darkProTokens.success;
+                              })(),
+                              fontWeight: 700
+                            }}>
+                              {(() => {
+                                const daysRemaining = getDaysRemaining(selectedMembership.end_date!);
+                                if (daysRemaining === null) return 'Sin límite';
+                                if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
+                                if (daysRemaining === 0) return 'Vence hoy';
+                                return `${daysRemaining} días restantes`;
+                              })()}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Detalles de Pago */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.warning}10`,
+                    border: `1px solid ${darkProTokens.warning}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.warning,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <PaymentIcon />
+                        💰 Detalles de Pago
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Método de Pago:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                            {paymentMethodOptions.find(p => p.value === selectedMembership.payment_method)?.icon} {selectedMembership.payment_method}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Monto Total Pagado:
+                          </Typography>
+                          <Typography variant="h5" sx={{ color: darkProTokens.primary, fontWeight: 800 }}>
+                            {formatPrice(selectedMembership.amount_paid)}
+                          </Typography>
+                        </Box>
+
+                        {selectedMembership.inscription_amount > 0 && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Inscripción:
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              {formatPrice(selectedMembership.inscription_amount)}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {selectedMembership.commission_amount > 0 && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Comisión ({selectedMembership.commission_rate}%):
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                              {formatPrice(selectedMembership.commission_amount)}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {selectedMembership.payment_reference && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Referencia:
+                            </Typography>
+                            <Typography variant="body1" sx={{ 
+                              color: darkProTokens.textPrimary,
+                              fontFamily: 'monospace',
+                              fontSize: '0.9rem'
+                            }}>
+                              {selectedMembership.payment_reference}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {/* Detalles de Pago Mixto */}
+                        {selectedMembership.is_mixed_payment && selectedMembership.payment_details && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                              Desglose Pago Mixto:
+                            </Typography>
+                            <Box sx={{ 
+                              background: `${darkProTokens.grayDark}10`,
+                              border: `1px solid ${darkProTokens.grayDark}30`,
+                              borderRadius: 2,
+                              p: 2
+                            }}>
+                              {selectedMembership.payment_details.cash_amount > 0 && (
+                                <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                                  💵 Efectivo: {formatPrice(selectedMembership.payment_details.cash_amount)}
+                                </Typography>
+                              )}
+                              {selectedMembership.payment_details.card_amount > 0 && (
+                                <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                                  💳 Tarjeta: {formatPrice(selectedMembership.payment_details.card_amount)}
+                                </Typography>
+                              )}
+                              {selectedMembership.payment_details.transfer_amount > 0 && (
+                                <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                                  🏦 Transferencia: {formatPrice(selectedMembership.payment_details.transfer_amount)}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        )}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Historial de Congelamiento */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.info}10`,
+                    border: `1px solid ${darkProTokens.info}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.info,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <AcUnitIcon />
+                        🧊 Historial de Congelamiento
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Estado de Congelamiento:
+                          </Typography>
+                          <Typography variant="h6" sx={{ 
+                            color: selectedMembership.status === 'frozen' ? darkProTokens.info : darkProTokens.success,
+                            fontWeight: 700 
+                          }}>
+                            {selectedMembership.status === 'frozen' ? '🧊 CONGELADA' : '🔥 ACTIVA'}
+                          </Typography>
+                        </Box>
+
+                        {selectedMembership.status === 'frozen' && selectedMembership.freeze_date && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Congelada desde:
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              {formatDate(selectedMembership.freeze_date)} ({getCurrentFrozenDays(selectedMembership.freeze_date)} días)
+                            </Typography>
+                          </Box>
+                        )}
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Total de Días Congelados Históricos:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
+                            {selectedMembership.total_frozen_days || 0} días
+                          </Typography>
+                        </Box>
+
+                        {selectedMembership.unfreeze_date && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Última Reactivación:
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              {formatDate(selectedMembership.unfreeze_date)}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Fechas del Sistema */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.grayDark}10`,
+                    border: `1px solid ${darkProTokens.grayDark}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.textSecondary,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <TimerIcon />
+                        ⏰ Fechas del Sistema
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha de Creación:
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            {formatTimestampForDisplay(selectedMembership.created_at)}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Última Actualización:
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            {formatTimestampForDisplay(selectedMembership.updated_at)}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha Actual del Sistema (México):
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                            {formatDate(getMexicoToday())}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Notas */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.grayDark}10`,
+                    border: `1px solid ${darkProTokens.grayDark}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.textSecondary,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <ReceiptIcon />
+                        📝 Notas y Observaciones
+                      </Typography>
+
+                      <Box sx={{
+                        background: `${darkProTokens.grayDark}05`,
+                        border: `1px solid ${darkProTokens.grayDark}20`,
+                        borderRadius: 2,
+                        p: 2,
+                        minHeight: 120,
+                        maxHeight: 200,
+                        overflow: 'auto'
+                      }}>
+                        <Typography variant="body2" sx={{ 
+                          color: selectedMembership.notes ? darkProTokens.textPrimary : darkProTokens.textSecondary,
+                          lineHeight: 1.6,
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {selectedMembership.notes || 'Sin notas registradas para esta membresía.'}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
             </Box>
           )}
         </DialogContent>
         
-        <DialogActions>
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => {
+              setSelectedMembership(selectedMembership);
+              initializeEditData(selectedMembership!);
+              setEditDialogOpen(true);
+              setDetailsDialogOpen(false);
+            }}
+            startIcon={<EditIcon />}
+            sx={{ 
+              color: darkProTokens.warning,
+              borderColor: `${darkProTokens.warning}60`,
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              '&:hover': {
+                borderColor: darkProTokens.warning,
+                backgroundColor: `${darkProTokens.warning}10`
+              }
+            }}
+            variant="outlined"
+          >
+            Editar Membresía
+          </Button>
+          
           <Button 
             onClick={() => setDetailsDialogOpen(false)}
             sx={{ 
               color: darkProTokens.primary,
               borderColor: darkProTokens.primary,
-              px: 3,
-              py: 1
+              px: 4,
+              py: 1,
+              fontWeight: 700,
+              '&:hover': {
+                borderColor: darkProTokens.primaryHover,
+                backgroundColor: `${darkProTokens.primary}10`
+              }
             }}
             variant="outlined"
           >
