@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -91,7 +90,7 @@ export async function POST(request: NextRequest) {
         total_debito,
         total_credito,
         total_mixto,
-                grand_total,
+        grand_total,
         total_transactions,
         total_commissions,
         net_amount,
