@@ -6,7 +6,6 @@ import {
   Paper,
   Typography,
   Button,
-  Grid as Grid,
   Card,
   CardContent,
   CardMedia,
@@ -30,8 +29,11 @@ import {
   Tooltip,
   Menu,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  CircularProgress,
+  Snackbar
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -48,15 +50,63 @@ import {
   LocalOffer as LocalOfferIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
-  RestoreFromTrash as RestoreIcon
+  RestoreFromTrash as RestoreIcon,
+  ArrowBack as ArrowBackIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
-import ProductFormDialog from '@/components/catalogo/ProductFormDialog';
-import { Product, InventoryStats } from '@/types';
-import { corporateColors, getGradient } from '@/theme/colors';
+import { useRouter } from 'next/navigation';
+
+// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // User Roles
+  roleAdmin: '#FFCC00',
+  roleStaff: '#1976D2',
+  roleTrainer: '#009688',
+  roleUser: '#777777',
+  roleModerator: '#9C27B0',
+  roleGuest: '#444444',
+  
+  // Interactions
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
 
 const CATEGORIES = [
   'Suplementos',
@@ -72,7 +122,42 @@ const CATEGORIES = [
   'Otros'
 ];
 
+interface Product {
+  id: string;
+  name: string;
+  sku?: string;
+  barcode?: string;
+  brand?: string;
+  category: string;
+  description?: string;
+  cost_price: number;
+  sale_price: number;
+  current_stock: number;
+  min_stock: number;
+  max_stock?: number;
+  unit: string;
+  supplier_id?: string;
+  image_url?: string;
+  is_active?: boolean;
+  created_at: string;
+  updated_at: string;
+  suppliers?: {
+    company_name: string;
+    contact_person: string;
+  };
+}
+
+interface InventoryStats {
+  totalProducts: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
+  totalValue: number;
+  recentMovements: number;
+  totalMovements: number;
+}
+
 export default function ProductosPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<InventoryStats>({
@@ -102,7 +187,31 @@ export default function ProductosPage() {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuProduct, setMenuProduct] = useState<Product | null>(null);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ Formatear precio
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  };
+
+  // ✅ Mostrar notificación
+  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  };
 
   // ✅ Cargar productos
   const loadProducts = async () => {
@@ -269,7 +378,7 @@ export default function ProductosPage() {
   };
 
   // Obtener color de stock
-  const getStockColor = (product: Product) => {
+  const getStockColor = (product: Product): 'error' | 'warning' | 'success' => {
     if (product.current_stock === 0) return 'error';
     if (product.current_stock <= product.min_stock) return 'warning';
     return 'success';
@@ -298,13 +407,18 @@ export default function ProductosPage() {
       <Card sx={{ 
         height: '100%',
         opacity: product.is_active === false ? 0.6 : 1,
-        border: product.is_active === false ? '1px dashed red' : 'none',
-        background: product.is_active === false ? '#fafafa' : 'white',
+        border: product.is_active === false ? `1px dashed ${darkProTokens.error}` : `1px solid ${darkProTokens.grayDark}`,
+        background: product.is_active === false 
+          ? `${darkProTokens.surfaceLevel2}80` 
+          : `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        color: darkProTokens.textPrimary,
         '&:hover': { 
-          boxShadow: 6,
-          transform: 'translateY(-2px)'
+          boxShadow: `0 8px 32px ${darkProTokens.primary}20`,
+          transform: 'translateY(-4px)',
+          borderColor: darkProTokens.primary
         },
-        transition: 'all 0.3s ease'
+        transition: 'all 0.3s ease',
+        borderRadius: 3
       }}>
         <CardMedia
           component="div"
@@ -312,12 +426,12 @@ export default function ProductosPage() {
             height: 200,
             background: product.image_url
               ? `url(${product.image_url}) center/cover`
-              : 'linear-gradient(45deg, #f0f0f0 25%, transparent 25%)',
+              : `linear-gradient(45deg, ${darkProTokens.grayDark} 25%, transparent 25%)`,
             backgroundSize: product.image_url ? 'cover' : '20px 20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#999',
+            color: darkProTokens.textSecondary,
             position: 'relative'
           }}
         >
@@ -332,20 +446,21 @@ export default function ProductosPage() {
               position: 'absolute',
               top: 8,
               right: 8,
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              color: darkProTokens.textPrimary
             }}
           />
 
           {product.is_active === false && (
             <Chip
               label="INACTIVO"
-              color="error"
-              size="small"
               sx={{
                 position: 'absolute',
                 top: 8,
                 left: 8,
-                fontWeight: 'bold'
+                fontWeight: 'bold',
+                backgroundColor: darkProTokens.error,
+                color: darkProTokens.textPrimary
               }}
             />
           )}
@@ -353,23 +468,29 @@ export default function ProductosPage() {
         
         <CardContent sx={{ flexGrow: 1 }}>
           <Box display="flex" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
-            <Typography variant="h6" component="h2" noWrap sx={{ flex: 1, mr: 1 }}>
+            <Typography variant="h6" component="h2" noWrap sx={{ 
+              flex: 1, 
+              mr: 1,
+              color: darkProTokens.textPrimary,
+              fontWeight: 700
+            }}>
               {product.name}
             </Typography>
             <IconButton 
               size="small"
               onClick={(e) => handleMenuOpen(e, product)}
+              sx={{ color: darkProTokens.textSecondary }}
             >
               <MoreVertIcon />
             </IconButton>
           </Box>
           
-          <Typography variant="body2" color="text.secondary" gutterBottom noWrap>
+          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }} gutterBottom noWrap>
             SKU: {product.sku || 'Sin SKU'}
           </Typography>
           
           {product.brand && (
-            <Typography variant="body2" color="text.secondary" gutterBottom>
+            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }} gutterBottom>
               {product.brand}
             </Typography>
           )}
@@ -378,35 +499,49 @@ export default function ProductosPage() {
             <Chip 
               label={product.category} 
               size="small" 
-              color="primary" 
-              variant="outlined"
+              sx={{
+                backgroundColor: `${darkProTokens.primary}20`,
+                color: darkProTokens.primary,
+                fontWeight: 600
+              }}
             />
             {product.suppliers && (
               <Chip 
                 label={product.suppliers.company_name} 
                 size="small" 
-                variant="outlined"
+                sx={{
+                  backgroundColor: `${darkProTokens.info}20`,
+                  color: darkProTokens.info,
+                  fontWeight: 600
+                }}
               />
             )}
           </Box>
           
           <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
             <Box>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                 Costo: {formatPrice(product.cost_price)}
               </Typography>
-              <Typography variant="h6" color="primary" fontWeight="bold">
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.primary, 
+                fontWeight: 'bold' 
+              }}>
                 {formatPrice(product.sale_price)}
               </Typography>
             </Box>
             <Box textAlign="right">
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                 Stock mín: {product.min_stock}
               </Typography>
               <Typography 
                 variant="body2" 
-                color={getStockColor(product)}
-                fontWeight="bold"
+                sx={{ 
+                  color: getStockColor(product) === 'error' ? darkProTokens.error :
+                         getStockColor(product) === 'warning' ? darkProTokens.warning :
+                         darkProTokens.success,
+                  fontWeight: 'bold'
+                }}
               >
                 Actual: {product.current_stock}
               </Typography>
@@ -420,7 +555,10 @@ export default function ProductosPage() {
               size="small" 
               startIcon={<RestoreIcon />}
               onClick={() => handleRestoreProduct(product)}
-              color="success"
+              sx={{ 
+                color: darkProTokens.success,
+                fontWeight: 600
+              }}
             >
               Restaurar
             </Button>
@@ -432,7 +570,10 @@ export default function ProductosPage() {
                 setSelectedProduct(product);
                 setFormDialogOpen(true);
               }}
-              sx={{ color: corporateColors.primary.main }}
+              sx={{ 
+                color: darkProTokens.primary,
+                fontWeight: 600
+              }}
             >
               Editar
             </Button>
@@ -443,6 +584,10 @@ export default function ProductosPage() {
             startIcon={<VisibilityIcon />}
             onClick={() => {
               // TODO: Ver detalles
+            }}
+            sx={{ 
+              color: darkProTokens.info,
+              fontWeight: 600
             }}
           >
             Ver
@@ -455,121 +600,217 @@ export default function ProductosPage() {
   return (
     <Box sx={{ 
       minHeight: '100vh',
-      bgcolor: corporateColors.background.default,
-      color: corporateColors.text.primary,
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+      color: darkProTokens.textPrimary,
       p: 3
     }}>
-      {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          fontWeight="bold"
-          sx={{ color: corporateColors.text.primary }}
-        >
-          🛍️ Gestión de Productos
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setSelectedProduct(null);
-            setFormDialogOpen(true);
-          }}
-          sx={{
-            background: getGradient('primary'),
-            color: corporateColors.text.onPrimary,
-            fontWeight: 'bold',
-            '&:hover': {
-              background: getGradient('primaryDark'),
-            }
-          }}
-        >
-          Nuevo Producto
-        </Button>
-      </Box>
+      {/* ✅ HEADER CON DARK PRO SYSTEM */}
+      <Paper sx={{
+        p: 4,
+        mb: 4,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `2px solid ${darkProTokens.primary}30`,
+        borderRadius: 4,
+        boxShadow: `0 8px 32px ${darkProTokens.primary}10`
+      }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Box>
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              sx={{
+                fontWeight: 800,
+                color: darkProTokens.primary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                mb: 1
+              }}
+            >
+              <InventoryIcon sx={{ fontSize: 50 }} />
+              Gestión de Productos
+            </Typography>
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.textSecondary,
+              fontWeight: 300
+            }}>
+              Inventario y Catálogo | Control Total de Stock
+            </Typography>
+          </Box>
+          
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => router.push('/dashboard/admin/catalogo')}
+              sx={{ 
+                color: darkProTokens.primary,
+                borderColor: `${darkProTokens.primary}60`,
+                px: 3,
+                py: 1.5,
+                borderRadius: 3,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}10`,
+                  transform: 'translateY(-2px)'
+                }
+              }}
+              variant="outlined"
+            >
+              Catálogo
+            </Button>
+            
+            <Button
+              startIcon={<RefreshIcon />}
+              onClick={loadProducts}
+              disabled={loading}
+              sx={{
+                color: darkProTokens.textSecondary,
+                borderColor: `${darkProTokens.textSecondary}60`,
+                px: 3,
+                py: 1.5,
+                borderRadius: 3,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.textSecondary,
+                  backgroundColor: `${darkProTokens.textSecondary}10`,
+                  transform: 'translateY(-2px)'
+                }
+              }}
+              variant="outlined"
+            >
+              Actualizar
+            </Button>
 
-      {/* Estadísticas */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ background: getGradient('info'), color: 'white' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">
-                    {stats.totalProducts}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                    Total Productos Activos
-                  </Typography>
-                </Box>
-                <InventoryIcon sx={{ fontSize: 40, opacity: 0.8 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ background: getGradient('warning'), color: 'white' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">
-                    {stats.lowStockProducts}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                    Stock Bajo
-                  </Typography>
-                </Box>
-                <TrendingDownIcon sx={{ fontSize: 40, opacity: 0.8 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ background: getGradient('error'), color: 'white' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">
-                    {stats.outOfStockProducts}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                    Sin Stock
-                  </Typography>
-                </Box>
-                <WarningIcon sx={{ fontSize: 40, opacity: 0.8 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ background: getGradient('success'), color: 'white' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">
-                    {formatPrice(stats.totalValue)}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                    Valor Inventario
-                  </Typography>
-                </Box>
-                <MoneyIcon sx={{ fontSize: 40, opacity: 0.8 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setSelectedProduct(null);
+                setFormDialogOpen(true);
+              }}
+              sx={{
+                background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                color: darkProTokens.background,
+                fontWeight: 700,
+                px: 4,
+                py: 1.5,
+                borderRadius: 3,
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                  transform: 'translateY(-2px)'
+                }
+              }}
+            >
+              Nuevo Producto
+            </Button>
+          </Box>
+        </Box>
 
-      {/* Filtros */}
+        {/* ✅ ESTADÍSTICAS CON DARK PRO SYSTEM */}
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.info}10`, 
+              border: `1px solid ${darkProTokens.info}30`,
+              borderRadius: 3,
+              color: darkProTokens.textPrimary
+            }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                      {stats.totalProducts}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Total Productos Activos
+                    </Typography>
+                  </Box>
+                  <InventoryIcon sx={{ fontSize: 40, color: darkProTokens.info, opacity: 0.8 }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.warning}10`, 
+              border: `1px solid ${darkProTokens.warning}30`,
+              borderRadius: 3,
+              color: darkProTokens.textPrimary
+            }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                      {stats.lowStockProducts}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Stock Bajo
+                    </Typography>
+                  </Box>
+                  <TrendingDownIcon sx={{ fontSize: 40, color: darkProTokens.warning, opacity: 0.8 }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.error}10`, 
+              border: `1px solid ${darkProTokens.error}30`,
+              borderRadius: 3,
+              color: darkProTokens.textPrimary
+            }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                      {stats.outOfStockProducts}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Sin Stock
+                    </Typography>
+                  </Box>
+                  <WarningIcon sx={{ fontSize: 40, color: darkProTokens.error, opacity: 0.8 }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.success}10`, 
+              border: `1px solid ${darkProTokens.success}30`,
+              borderRadius: 3,
+              color: darkProTokens.textPrimary
+            }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Box>
+                    <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                      {formatPrice(stats.totalValue)}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Valor Inventario
+                    </Typography>
+                  </Box>
+                  <MoneyIcon sx={{ fontSize: 40, color: darkProTokens.success, opacity: 0.8 }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* ✅ FILTROS CON DARK PRO SYSTEM */}
       <Paper sx={{ 
         p: 3, 
         mb: 3,
-        bgcolor: corporateColors.background.paper,
-        color: corporateColors.text.onWhite
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 3,
+        color: darkProTokens.textPrimary
       }}>
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 3 }}>
@@ -581,20 +822,55 @@ export default function ProductosPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon />
+                    <SearchIcon sx={{ color: darkProTokens.primary }} />
                   </InputAdornment>
                 ),
+                sx: {
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }
+              }}
+              InputLabelProps={{
+                sx: { 
+                  color: darkProTokens.textSecondary,
+                  '&.Mui-focused': { color: darkProTokens.primary }
+                }
               }}
             />
           </Grid>
           
           <Grid size={{ xs: 12, md: 2 }}>
             <FormControl fullWidth>
-              <InputLabel>Categoría</InputLabel>
+              <InputLabel sx={{ 
+                color: darkProTokens.textSecondary,
+                '&.Mui-focused': { color: darkProTokens.primary }
+              }}>
+                Categoría
+              </InputLabel>
               <Select
                 value={categoryFilter}
                 label="Categoría"
                 onChange={(e) => setCategoryFilter(e.target.value)}
+                sx={{
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }}
               >
                 <MenuItem value="">Todas</MenuItem>
                 {CATEGORIES.map((category) => (
@@ -608,11 +884,28 @@ export default function ProductosPage() {
           
           <Grid size={{ xs: 12, md: 2 }}>
             <FormControl fullWidth>
-              <InputLabel>Stock</InputLabel>
+              <InputLabel sx={{ 
+                color: darkProTokens.textSecondary,
+                '&.Mui-focused': { color: darkProTokens.primary }
+              }}>
+                Stock
+              </InputLabel>
               <Select
                 value={stockFilter}
                 label="Stock"
                 onChange={(e) => setStockFilter(e.target.value)}
+                sx={{
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }}
               >
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value="available">Disponible</MenuItem>
@@ -624,11 +917,28 @@ export default function ProductosPage() {
 
           <Grid size={{ xs: 12, md: 2 }}>
             <FormControl fullWidth>
-              <InputLabel>Estado</InputLabel>
+              <InputLabel sx={{ 
+                color: darkProTokens.textSecondary,
+                '&.Mui-focused': { color: darkProTokens.primary }
+              }}>
+                Estado
+              </InputLabel>
               <Select
                 value={statusFilter}
                 label="Estado"
                 onChange={(e) => setStatusFilter(e.target.value)}
+                sx={{
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkProTokens.primary
+                  }
+                }}
               >
                 <MenuItem value="active">✅ Activos</MenuItem>
                 <MenuItem value="inactive">❌ Inactivos</MenuItem>
@@ -638,7 +948,11 @@ export default function ProductosPage() {
           </Grid>
           
           <Grid size={{ xs: 12, md: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ pt: 2 }}>
+            <Typography variant="body2" sx={{ 
+              color: darkProTokens.textSecondary, 
+              pt: 2,
+              textAlign: 'center'
+            }}>
               {filteredProducts.length} de {products.length}
             </Typography>
           </Grid>
@@ -655,6 +969,14 @@ export default function ProductosPage() {
                 setSupplierFilter('');
                 setStatusFilter('active');
               }}
+              sx={{
+                color: darkProTokens.textSecondary,
+                borderColor: `${darkProTokens.textSecondary}40`,
+                '&:hover': {
+                  borderColor: darkProTokens.textSecondary,
+                  backgroundColor: `${darkProTokens.textSecondary}10`
+                }
+              }}
             >
               Limpiar
             </Button>
@@ -662,7 +984,7 @@ export default function ProductosPage() {
         </Grid>
       </Paper>
 
-      {/* Grid de productos */}
+      {/* ✅ GRID DE PRODUCTOS CON DARK PRO SYSTEM */}
       <AnimatePresence mode="wait">
         {loading ? (
           <Box 
@@ -670,22 +992,24 @@ export default function ProductosPage() {
             justifyContent="center" 
             alignItems="center" 
             minHeight="40vh"
-            sx={{ color: corporateColors.text.primary }}
+            sx={{ color: darkProTokens.textPrimary }}
           >
-            <Typography>Cargando productos...</Typography>
+            <CircularProgress sx={{ color: darkProTokens.primary }} size={60} thickness={4} />
           </Box>
         ) : filteredProducts.length === 0 ? (
           <Paper sx={{ 
             p: 8, 
             textAlign: 'center',
-            bgcolor: corporateColors.background.paper,
-            color: corporateColors.text.onWhite
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3,
+            color: darkProTokens.textPrimary
           }}>
-            <InventoryIcon sx={{ fontSize: 80, color: 'grey.400', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
+            <InventoryIcon sx={{ fontSize: 80, color: darkProTokens.textSecondary, mb: 2 }} />
+            <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }} gutterBottom>
               No se encontraron productos
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
               {products.length === 0 
                 ? 'Comienza agregando tu primer producto al inventario'
                 : 'Intenta ajustar los filtros de búsqueda'
@@ -699,8 +1023,9 @@ export default function ProductosPage() {
                 setFormDialogOpen(true);
               }}
               sx={{
-                background: getGradient('primary'),
-                color: corporateColors.text.onPrimary
+                background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                color: darkProTokens.background,
+                fontWeight: 700
               }}
             >
               {products.length === 0 ? 'Agregar Primer Producto' : 'Agregar Producto'}
@@ -717,11 +1042,19 @@ export default function ProductosPage() {
         )}
       </AnimatePresence>
 
-      {/* Menú de acciones */}
+      {/* ✅ MENÚ DE ACCIONES CON DARK PRO SYSTEM */}
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.primary}30`,
+            borderRadius: 2,
+            color: darkProTokens.textPrimary
+          }
+        }}
       >
         {menuProduct?.is_active === false ? (
           <MenuItem onClick={() => {
@@ -729,7 +1062,7 @@ export default function ProductosPage() {
             handleMenuClose();
           }}>
             <ListItemIcon>
-              <RestoreIcon color="success" />
+              <RestoreIcon sx={{ color: darkProTokens.success }} />
             </ListItemIcon>
             <ListItemText>Restaurar Producto</ListItemText>
           </MenuItem>
@@ -742,7 +1075,7 @@ export default function ProductosPage() {
             handleMenuClose();
           }}>
             <ListItemIcon>
-              <EditIcon />
+              <EditIcon sx={{ color: darkProTokens.primary }} />
             </ListItemIcon>
             <ListItemText>Editar</ListItemText>
           </MenuItem>
@@ -755,7 +1088,7 @@ export default function ProductosPage() {
           handleMenuClose();
         }}>
           <ListItemIcon>
-            <VisibilityIcon />
+            <VisibilityIcon sx={{ color: darkProTokens.info }} />
           </ListItemIcon>
           <ListItemText>Ver Detalles</ListItemText>
         </MenuItem>
@@ -767,7 +1100,7 @@ export default function ProductosPage() {
           handleMenuClose();
         }}>
           <ListItemIcon>
-            <InventoryIcon />
+            <InventoryIcon sx={{ color: darkProTokens.warning }} />
           </ListItemIcon>
           <ListItemText>Gestionar Stock</ListItemText>
         </MenuItem>
@@ -780,10 +1113,10 @@ export default function ProductosPage() {
             }
             handleMenuClose();
           }}
-          sx={{ color: 'error.main' }}
+          sx={{ color: darkProTokens.error }}
         >
           <ListItemIcon>
-            <DeleteIcon color="error" />
+            <DeleteIcon sx={{ color: darkProTokens.error }} />
           </ListItemIcon>
           <ListItemText>
             {menuProduct?.is_active === false ? 'Eliminar Permanente' : 'Eliminar'}
@@ -791,50 +1124,55 @@ export default function ProductosPage() {
         </MenuItem>
       </Menu>
 
-      {/* Dialog de formulario */}
-      <ProductFormDialog
-        open={formDialogOpen}
-        onClose={() => setFormDialogOpen(false)}
-        product={selectedProduct}
-        onSave={() => {
-          setFormDialogOpen(false);
-          loadProducts();
-        }}
-      />
-
-      {/* Dialog de confirmación de eliminación */}
+      {/* ✅ DIALOG DE CONFIRMACIÓN CON DARK PRO SYSTEM */}
       <Dialog 
         open={deleteDialogOpen} 
         onClose={() => setDeleteDialogOpen(false)}
         PaperProps={{
           sx: {
-            bgcolor: corporateColors.background.paper,
-            color: corporateColors.text.onWhite
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.error}50`,
+            borderRadius: 4,
+            color: darkProTokens.textPrimary
           }
         }}
       >
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogTitle sx={{ color: darkProTokens.error, fontWeight: 700 }}>
+          Confirmar Eliminación
+        </DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
             ¿Estás seguro de que deseas eliminar el producto "{productToDelete?.name}"?
           </Typography>
-          <Alert severity="warning" sx={{ mt: 2 }}>
+          <Alert 
+            severity="warning" 
+            sx={{
+              backgroundColor: `${darkProTokens.warning}10`,
+              color: darkProTokens.textPrimary,
+              border: `1px solid ${darkProTokens.warning}30`,
+              '& .MuiAlert-icon': { color: darkProTokens.warning }
+            }}
+          >
             {productToDelete?.is_active === false 
               ? 'Esta acción eliminará permanentemente el producto de la base de datos.'
               : 'Esta acción no se puede deshacer. El producto será eliminado o desactivado si tiene referencias.'
             }
           </Alert>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setDeleteDialogOpen(false)}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
             Cancelar
           </Button>
           <Button 
             onClick={handleDeleteProduct} 
-            color="error" 
             variant="contained"
             sx={{
-              background: getGradient('error')
+              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+              color: darkProTokens.textPrimary,
+              fontWeight: 700
             }}
           >
             {productToDelete?.is_active === false ? 'Eliminar Permanente' : 'Eliminar'}
@@ -842,18 +1180,18 @@ export default function ProductosPage() {
         </DialogActions>
       </Dialog>
 
-      {/* FAB para agregar producto */}
+      {/* ✅ FAB CON DARK PRO SYSTEM */}
       <Fab
-        color="primary"
         aria-label="add"
         sx={{
           position: 'fixed',
           bottom: 24,
           right: 24,
-          background: getGradient('primary'),
-          color: corporateColors.text.onPrimary,
+          background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+          color: darkProTokens.background,
           '&:hover': {
-            background: getGradient('primaryDark'),
+            background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+            transform: 'scale(1.1)'
           }
         }}
         onClick={() => {
@@ -863,6 +1201,62 @@ export default function ProductosPage() {
       >
         <AddIcon />
       </Fab>
+
+      {/* ✅ SNACKBAR CON DARK PRO SYSTEM */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
+      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+        }
+      `}</style>
     </Box>
   );
 }
