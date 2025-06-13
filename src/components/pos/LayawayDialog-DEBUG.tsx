@@ -411,7 +411,7 @@ export default function LayawayDialog({
       extensionFee: advancedConfig.extensionFee,
       maxExtensions: advancedConfig.maxExtensions
     };
-  }, [
+    }, [
     totals?.total, 
     depositPercentage, 
     paymentDetails,
@@ -425,6 +425,13 @@ export default function LayawayDialog({
     paymentMethods,
     getMexicoDate // ✅ AGREGAR DEPENDENCIA
   ]);
+
+  // ✅ CREAR TIMESTAMP MÉXICO - MOVER AQUÍ (FUERA DE FUNCIONES)
+  const createTimestampForDB = useCallback((): string => {
+    const now = new Date();
+    const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+    return mexicoTime.toISOString();
+  }, []);
 
   // 🚀 FUNCIONES OPTIMIZADAS PARA PAGOS MIXTOS
   const addPaymentDetail = useCallback(() => {
@@ -510,7 +517,7 @@ export default function LayawayDialog({
     return notes;
   }, [calculations, isMixedPayment, paymentDetails, advancedConfig, customerNotes, formatMexicoDate]);
 
-  // ✅ PROCESAMIENTO FINAL HÍBRIDO OPTIMIZADO (CORREGIDO UTC)
+  // ✅ PROCESAMIENTO FINAL HÍBRIDO OPTIMIZADO (CORREGIDO)
   const handleCreateLayaway = useCallback(async () => {
     if (!customer) {
       showNotification('Se requiere un cliente para apartados', 'error');
@@ -533,14 +540,8 @@ export default function LayawayDialog({
       const userId = userData.user.id;
       const layawayNumber = await generateLayawayNumber();
 
-  // ✅ USAR HORA MÉXICO PARA BD (CONSISTENTE CON MEMBRESÍAS)
-const createTimestampForDB = useCallback((): string => {
-  const now = new Date();
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return mexicoTime.toISOString();
-}, []);
-
-const nowUTC = createTimestampForDB();
+      // ✅ USAR FUNCIÓN YA DEFINIDA ARRIBA
+      const nowUTC = createTimestampForDB();
 
       // 🔥 DATOS FINALES OPTIMIZADOS
       const layawayData = {
@@ -569,11 +570,11 @@ const nowUTC = createTimestampForDB();
         custom_commission_rate: null,
         skip_inscription: false,
         notes: generateCleanNotes(),
-        created_at: nowUTC, // ✅ UTC
-        updated_at: nowUTC, // ✅ UTC
+        created_at: nowUTC, // ✅ HORA MÉXICO
+        updated_at: nowUTC, // ✅ HORA MÉXICO
         initial_payment: calculations.totalToCollect,
         expiration_date: calculations.expirationDate.toISOString().split('T')[0], // ✅ Solo fecha
-        last_payment_date: nowUTC // ✅ UTC
+        last_payment_date: nowUTC // ✅ HORA MÉXICO
       };
 
       // ✅ INSERTAR VENTA PRINCIPAL
@@ -597,7 +598,7 @@ const nowUTC = createTimestampForDB();
         discount_amount: item.discount_amount || 0,
         tax_rate: item.product.tax_rate || 16,
         tax_amount: item.tax_amount || 0,
-        created_at: nowUTC // ✅ UTC
+        created_at: nowUTC // ✅ HORA MÉXICO
       }));
 
       const { error: itemsError } = await supabase
@@ -617,8 +618,8 @@ const nowUTC = createTimestampForDB();
           commission_rate: payment.commission,
           commission_amount: payment.commissionAmount,
           sequence_order: payment.sequence,
-          payment_date: nowUTC, // ✅ UTC
-          created_at: nowUTC, // ✅ UTC
+          payment_date: nowUTC, // ✅ HORA MÉXICO
+          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: index + 1,
@@ -640,8 +641,8 @@ const nowUTC = createTimestampForDB();
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === currentPaymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.totalCommission,
           sequence_order: 1,
-          payment_date: nowUTC, // ✅ UTC
-          created_at: nowUTC, // ✅ UTC
+          payment_date: nowUTC, // ✅ HORA MÉXICO
+          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: 1,
@@ -661,7 +662,7 @@ const nowUTC = createTimestampForDB();
           .from('products')
           .update({ 
             current_stock: item.product.current_stock - item.quantity,
-            updated_at: nowUTC, // ✅ UTC
+            updated_at: nowUTC, // ✅ HORA MÉXICO
             updated_by: userId
           })
           .eq('id', item.product.id);
@@ -682,7 +683,7 @@ const nowUTC = createTimestampForDB();
             reason: 'Apartado',
             reference_id: layaway.id,
             notes: `Apartado #${layaway.sale_number} - ${calculations.durationDays} días`,
-            created_at: nowUTC, // ✅ UTC
+            created_at: nowUTC, // ✅ HORA MÉXICO
             created_by: userId
           }]);
       }
@@ -697,7 +698,7 @@ const nowUTC = createTimestampForDB();
           previous_paid_amount: 0,
           new_paid_amount: calculations.totalToCollect,
           reason: 'Apartado creado',
-          created_at: nowUTC, // ✅ UTC
+          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId
         }]);
 
@@ -707,7 +708,7 @@ const nowUTC = createTimestampForDB();
           .from('coupons')
           .update({ 
             current_uses: (coupon.current_uses || 0) + 1,
-            updated_at: nowUTC // ✅ UTC
+            updated_at: nowUTC // ✅ HORA MÉXICO
           })
           .eq('id', coupon.id);
       }
@@ -740,9 +741,9 @@ const nowUTC = createTimestampForDB();
     advancedConfig,
     paymentMethods,
     showNotification,
-    generateCleanNotes
+    generateCleanNotes,
+    createTimestampForDB // ✅ AGREGAR DEPENDENCIA
   ]);
-
   // ✅ RESET HÍBRIDO AL CERRAR
   const handleClose = useCallback(() => {
     if (completed) {
