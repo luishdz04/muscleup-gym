@@ -533,8 +533,14 @@ export default function LayawayDialog({
       const userId = userData.user.id;
       const layawayNumber = await generateLayawayNumber();
 
-      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
-      const nowUTC = new Date().toISOString();
+  // ✅ USAR HORA MÉXICO PARA BD (CONSISTENTE CON MEMBRESÍAS)
+const createTimestampForDB = useCallback((): string => {
+  const now = new Date();
+  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  return mexicoTime.toISOString();
+}, []);
+
+const nowUTC = createTimestampForDB();
 
       // 🔥 DATOS FINALES OPTIMIZADOS
       const layawayData = {
