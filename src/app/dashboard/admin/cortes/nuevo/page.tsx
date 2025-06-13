@@ -153,7 +153,6 @@ interface EditableData {
   pos_debito: number;
   pos_credito: number;
   pos_transactions: number;
-  pos_commissions: number;
   
   // ABONOS
   abonos_efectivo: number;
@@ -161,7 +160,6 @@ interface EditableData {
   abonos_debito: number;
   abonos_credito: number;
   abonos_transactions: number;
-  abonos_commissions: number;
   
   // MEMBERSHIPS
   membership_efectivo: number;
@@ -169,7 +167,6 @@ interface EditableData {
   membership_debito: number;
   membership_credito: number;
   membership_transactions: number;
-  membership_commissions: number;
   
   // GASTOS
   expenses_amount: number;
@@ -220,37 +217,35 @@ export default function NuevoCorteePage() {
   const [dataHasContent, setDataHasContent] = useState(false);
 
   // 🧮 CALCULAR TOTALES DINÁMICAMENTE - ACTUALIZADO CON ABONOS
-  const calculateTotals = () => {
-    const pos_total = editableData.pos_efectivo + editableData.pos_transferencia + editableData.pos_debito + editableData.pos_credito;
-    const abonos_total = editableData.abonos_efectivo + editableData.abonos_transferencia + editableData.abonos_debito + editableData.abonos_credito;
-    const membership_total = editableData.membership_efectivo + editableData.membership_transferencia + editableData.membership_debito + editableData.membership_credito;
-    
-    const total_efectivo = editableData.pos_efectivo + editableData.abonos_efectivo + editableData.membership_efectivo;
-    const total_transferencia = editableData.pos_transferencia + editableData.abonos_transferencia + editableData.membership_transferencia;
-    const total_debito = editableData.pos_debito + editableData.abonos_debito + editableData.membership_debito;
-    const total_credito = editableData.pos_credito + editableData.abonos_credito + editableData.membership_credito;
-    
-    const grand_total = pos_total + abonos_total + membership_total;
-    const total_transactions = editableData.pos_transactions + editableData.abonos_transactions + editableData.membership_transactions;
-    const total_commissions = editableData.pos_commissions + editableData.abonos_commissions + editableData.membership_commissions;
-    const net_amount = grand_total - total_commissions;
-    const final_balance = net_amount - editableData.expenses_amount;
-    
-    return {
-      pos_total,
-      abonos_total,
-      membership_total,
-      total_efectivo,
-      total_transferencia,
-      total_debito,
-      total_credito,
-      grand_total,
-      total_transactions,
-      total_commissions,
-      net_amount,
-      final_balance
-    };
+const calculateTotals = () => {
+  const pos_total = editableData.pos_efectivo + editableData.pos_transferencia + editableData.pos_debito + editableData.pos_credito;
+  const abonos_total = editableData.abonos_efectivo + editableData.abonos_transferencia + editableData.abonos_debito + editableData.abonos_credito;
+  const membership_total = editableData.membership_efectivo + editableData.membership_transferencia + editableData.membership_debito + editableData.membership_credito;
+  
+  const total_efectivo = editableData.pos_efectivo + editableData.abonos_efectivo + editableData.membership_efectivo;
+  const total_transferencia = editableData.pos_transferencia + editableData.abonos_transferencia + editableData.membership_transferencia;
+  const total_debito = editableData.pos_debito + editableData.abonos_debito + editableData.membership_debito;
+  const total_credito = editableData.pos_credito + editableData.abonos_credito + editableData.membership_credito;
+  
+  const grand_total = pos_total + abonos_total + membership_total;
+  const total_transactions = editableData.pos_transactions + editableData.abonos_transactions + editableData.membership_transactions;
+  
+  // ✅ BALANCE FINAL CORREGIDO: Solo Total Bruto - Gastos
+  const final_balance = grand_total - editableData.expenses_amount;
+  
+  return {
+    pos_total,
+    abonos_total,
+    membership_total,
+    total_efectivo,
+    total_transferencia,
+    total_debito,
+    total_credito,
+    grand_total,
+    total_transactions,
+    final_balance
   };
+};
 
   // 🔍 CARGAR DATOS DEL DÍA SELECCIONADO - ACTUALIZADO CON ABONOS
   const loadDailyData = async (date: Date) => {
@@ -771,45 +766,37 @@ export default function NuevoCorteePage() {
 
                   {/* TOTALES CALCULADOS */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
-                      🧮 Resumen Calculado
-                    </Typography>
-                    <Stack spacing={1}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
-                          Total Bruto:
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
-                          {formatPrice(totals.grand_total)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
-                          Comisiones:
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                          -{formatPrice(totals.total_commissions)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
-                          Gastos:
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
-                          -{formatPrice(editableData.expenses_amount)}
-                        </Typography>
-                      </Box>
-                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium }} />
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                          Balance Final:
-                        </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                          {formatPrice(totals.final_balance)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </Box>
+  <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+    🧮 Resumen Calculado
+  </Typography>
+  <Stack spacing={1}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+        Total Bruto:
+      </Typography>
+      <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+        {formatPrice(totals.grand_total)}
+      </Typography>
+    </Box>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+        Gastos:
+      </Typography>
+      <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
+        -{formatPrice(editableData.expenses_amount)}
+      </Typography>
+    </Box>
+    <Divider sx={{ backgroundColor: darkProTokens.grayMedium }} />
+    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+        Balance Final:
+      </Typography>
+      <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+        {formatPrice(totals.final_balance)}
+      </Typography>
+    </Box>
+  </Stack>
+</Box>
 
                   {/* BOTONES DE ACCIÓN */}
                   <Stack direction="row" spacing={2}>
