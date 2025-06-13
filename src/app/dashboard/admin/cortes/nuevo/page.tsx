@@ -349,12 +349,10 @@ const calculateTotals = () => {
       const dateString = selectedDate.toISOString().split('T')[0];
       const totals = calculateTotals();
       
-      const cutData = {
-        const cutData = {
+  const cutData = {
   cut_date: dateString,
-        notes: observations.trim(),
-        is_manual: isManualMode,
-        
+  notes: observations.trim(),
+  is_manual: isManualMode,
         // POS
         pos_efectivo: editableData.pos_efectivo,
         pos_transferencia: editableData.pos_transferencia,
