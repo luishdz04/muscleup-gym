@@ -17,21 +17,18 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerSupabaseClient();
 
-    // 📅 CALCULAR RANGO UTC CORRECTO PARA FECHA MÉXICO
-    // México está en UTC-6 (6 horas ATRÁS de UTC)
-    // 00:00 México = 06:00 UTC
-    // 23:59:59 México = 05:59:59 UTC del día siguiente
+    // 📅 CALCULAR RANGO UTC CORRECTO
+    // Los datos se guardan en UTC con el timestamp real de México
+    // Para el 13 de junio México, necesitamos desde 00:00 UTC del 13 hasta 23:59 UTC del 13
     
-    const mexicoStartUTC = new Date(`${date}T06:00:00.000Z`); // 00:00 México = 06:00 UTC
-    const mexicoEndUTC = new Date(mexicoStartUTC);
-    mexicoEndUTC.setDate(mexicoEndUTC.getDate() + 1); // Día siguiente
-    mexicoEndUTC.setMilliseconds(-1); // 05:59:59.999 UTC del día siguiente
+    const startOfDayUTC = new Date(`${date}T00:00:00.000Z`);
+    const endOfDayUTC = new Date(`${date}T23:59:59.999Z`);
 
-    console.log('⏰ Rango UTC calculado para México:', {
-      fecha_mexico: date,
-      inicio_utc: mexicoStartUTC.toISOString(),
-      fin_utc: mexicoEndUTC.toISOString(),
-      nota: 'México UTC-6: 00:00-23:59 México = 06:00-05:59 UTC (día siguiente)'
+    console.log('⏰ Rango UTC corregido:', {
+      fecha_mexico_solicitada: date,
+      inicio_utc: startOfDayUTC.toISOString(),
+      fin_utc: endOfDayUTC.toISOString(),
+      nota: 'Buscando datos UTC del día completo'
     });
 
     // 🏪 1. VENTAS POS (sales con sale_type = 'sale')
@@ -50,8 +47,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('sale_type', 'sale')
       .eq('status', 'completed')
-      .gte('created_at', mexicoStartUTC.toISOString())
-      .lt('created_at', mexicoEndUTC.toISOString());
+      .gte('created_at', startOfDayUTC.toISOString())
+      .lte('created_at', endOfDayUTC.toISOString());
 
     if (salesError) {
       console.error('❌ Error consultando ventas:', salesError);
@@ -73,8 +70,8 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('is_partial_payment', true)
-      .gte('payment_date', mexicoStartUTC.toISOString())
-      .lt('payment_date', mexicoEndUTC.toISOString());
+      .gte('payment_date', startOfDayUTC.toISOString())
+      .lte('payment_date', endOfDayUTC.toISOString());
 
     if (abonosError) {
       console.error('❌ Error consultando abonos:', abonosError);
@@ -94,8 +91,8 @@ export async function GET(request: NextRequest) {
           commission_amount
         )
       `)
-      .gte('created_at', mexicoStartUTC.toISOString())
-      .lt('created_at', mexicoEndUTC.toISOString());
+      .gte('created_at', startOfDayUTC.toISOString())
+      .lte('created_at', endOfDayUTC.toISOString());
 
     if (membershipsError) {
       console.error('❌ Error consultando membresías:', membershipsError);
@@ -208,7 +205,7 @@ export async function GET(request: NextRequest) {
     membershipsData?.forEach(membership => {
       memberships.transactions++;
       
-      // ✅ USAR amount_paid DIRECTAMENTE (YA INCLUYE TODO)
+      // ✅ USAR amount_paid DIRECTAMENTE (YA INCLUYE TODO - los $700 que mencionas)
       const totalMembership = parseFloat(membership.amount_paid || '0');
       memberships.total += totalMembership;
       
@@ -256,14 +253,14 @@ export async function GET(request: NextRequest) {
       timezone_info: {
         mexico_date: date,
         utc_range: {
-          start: mexicoStartUTC.toISOString(),
-          end: mexicoEndUTC.toISOString()
+          start: startOfDayUTC.toISOString(),
+          end: endOfDayUTC.toISOString()
         },
-        note: "México UTC-6: Datos filtrados correctamente por fecha México"
+        note: "Datos UTC del día completo"
       },
       debug_info: {
-        consulta_inicio: mexicoStartUTC.toISOString(),
-        consulta_fin: mexicoEndUTC.toISOString(),
+        consulta_inicio: startOfDayUTC.toISOString(),
+        consulta_fin: endOfDayUTC.toISOString(),
         registros_encontrados: {
           ventas: salesData?.length || 0,
           abonos: abonosData?.length || 0,
@@ -276,7 +273,7 @@ export async function GET(request: NextRequest) {
       totals
     };
 
-    console.log('✅ Respuesta final con debug:', response);
+    console.log('✅ Respuesta final corregida:', response);
     return NextResponse.json(response);
 
   } catch (error) {
