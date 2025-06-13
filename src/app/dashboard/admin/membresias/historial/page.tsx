@@ -395,10 +395,9 @@ const formatTimestampForDisplay = useCallback((timestamp: string): string => {
       return 'Timestamp inválido';
     }
     
-    // ✅ CONVERSIÓN MANUAL CORRECTA A MÉXICO (UTC-6)
-    const mexicoDate = new Date(date.getTime() - (6 * 60 * 60 * 1000));
-    
-    return mexicoDate.toLocaleString('es-MX', {
+    // ✅ USAR timeZone COMO PaymentDialog (NO CONVERSIÓN MANUAL)
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey', // ✅ ESTO SÍ FUNCIONA para display
       weekday: 'long',
       year: 'numeric',
       month: 'long',
