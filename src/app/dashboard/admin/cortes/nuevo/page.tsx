@@ -36,7 +36,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Edit as EditIcon,
   AutoMode as AutoModeIcon,
-  Build as BuildIcon
+  Build as BuildIcon,
+  Savings as SavingsIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -144,7 +145,7 @@ interface DailyData {
   };
 }
 
-// 📊 INTERFACE PARA DATOS EDITABLES
+// 📊 INTERFACE PARA DATOS EDITABLES - ACTUALIZADA CON ABONOS
 interface EditableData {
   // POS
   pos_efectivo: number;
@@ -153,6 +154,14 @@ interface EditableData {
   pos_credito: number;
   pos_transactions: number;
   pos_commissions: number;
+  
+  // ABONOS
+  abonos_efectivo: number;
+  abonos_transferencia: number;
+  abonos_debito: number;
+  abonos_credito: number;
+  abonos_transactions: number;
+  abonos_commissions: number;
   
   // MEMBERSHIPS
   membership_efectivo: number;
@@ -186,6 +195,12 @@ export default function NuevoCorteePage() {
     pos_credito: 0,
     pos_transactions: 0,
     pos_commissions: 0,
+    abonos_efectivo: 0,
+    abonos_transferencia: 0,
+    abonos_debito: 0,
+    abonos_credito: 0,
+    abonos_transactions: 0,
+    abonos_commissions: 0,
     membership_efectivo: 0,
     membership_transferencia: 0,
     membership_debito: 0,
@@ -204,24 +219,26 @@ export default function NuevoCorteePage() {
   const [isManualMode, setIsManualMode] = useState(false);
   const [dataHasContent, setDataHasContent] = useState(false);
 
-  // 🧮 CALCULAR TOTALES DINÁMICAMENTE
+  // 🧮 CALCULAR TOTALES DINÁMICAMENTE - ACTUALIZADO CON ABONOS
   const calculateTotals = () => {
     const pos_total = editableData.pos_efectivo + editableData.pos_transferencia + editableData.pos_debito + editableData.pos_credito;
+    const abonos_total = editableData.abonos_efectivo + editableData.abonos_transferencia + editableData.abonos_debito + editableData.abonos_credito;
     const membership_total = editableData.membership_efectivo + editableData.membership_transferencia + editableData.membership_debito + editableData.membership_credito;
     
-    const total_efectivo = editableData.pos_efectivo + editableData.membership_efectivo;
-    const total_transferencia = editableData.pos_transferencia + editableData.membership_transferencia;
-    const total_debito = editableData.pos_debito + editableData.membership_debito;
-    const total_credito = editableData.pos_credito + editableData.membership_credito;
+    const total_efectivo = editableData.pos_efectivo + editableData.abonos_efectivo + editableData.membership_efectivo;
+    const total_transferencia = editableData.pos_transferencia + editableData.abonos_transferencia + editableData.membership_transferencia;
+    const total_debito = editableData.pos_debito + editableData.abonos_debito + editableData.membership_debito;
+    const total_credito = editableData.pos_credito + editableData.abonos_credito + editableData.membership_credito;
     
-    const grand_total = pos_total + membership_total;
-    const total_transactions = editableData.pos_transactions + editableData.membership_transactions;
-    const total_commissions = editableData.pos_commissions + editableData.membership_commissions;
+    const grand_total = pos_total + abonos_total + membership_total;
+    const total_transactions = editableData.pos_transactions + editableData.abonos_transactions + editableData.membership_transactions;
+    const total_commissions = editableData.pos_commissions + editableData.abonos_commissions + editableData.membership_commissions;
     const net_amount = grand_total - total_commissions;
     const final_balance = net_amount - editableData.expenses_amount;
     
     return {
       pos_total,
+      abonos_total,
       membership_total,
       total_efectivo,
       total_transferencia,
@@ -235,7 +252,7 @@ export default function NuevoCorteePage() {
     };
   };
 
-  // 🔍 CARGAR DATOS DEL DÍA SELECCIONADO
+  // 🔍 CARGAR DATOS DEL DÍA SELECCIONADO - ACTUALIZADO CON ABONOS
   const loadDailyData = async (date: Date) => {
     try {
       setLoading(true);
@@ -255,7 +272,7 @@ export default function NuevoCorteePage() {
         setDataHasContent(hasData);
         
         if (hasData) {
-          // ✅ HAY DATOS - LLENAR CAMPOS EDITABLES
+          // ✅ HAY DATOS - LLENAR CAMPOS EDITABLES INCLUYENDO ABONOS
           setEditableData({
             pos_efectivo: data.pos.efectivo || 0,
             pos_transferencia: data.pos.transferencia || 0,
@@ -263,6 +280,12 @@ export default function NuevoCorteePage() {
             pos_credito: data.pos.credito || 0,
             pos_transactions: data.pos.transactions || 0,
             pos_commissions: data.pos.commissions || 0,
+            abonos_efectivo: data.abonos.efectivo || 0,
+            abonos_transferencia: data.abonos.transferencia || 0,
+            abonos_debito: data.abonos.debito || 0,
+            abonos_credito: data.abonos.credito || 0,
+            abonos_transactions: data.abonos.transactions || 0,
+            abonos_commissions: data.abonos.commissions || 0,
             membership_efectivo: data.memberships.efectivo || 0,
             membership_transferencia: data.memberships.transferencia || 0,
             membership_debito: data.memberships.debito || 0,
@@ -282,6 +305,12 @@ export default function NuevoCorteePage() {
             pos_credito: 0,
             pos_transactions: 0,
             pos_commissions: 0,
+            abonos_efectivo: 0,
+            abonos_transferencia: 0,
+            abonos_debito: 0,
+            abonos_credito: 0,
+            abonos_transactions: 0,
+            abonos_commissions: 0,
             membership_efectivo: 0,
             membership_transferencia: 0,
             membership_debito: 0,
@@ -316,7 +345,7 @@ export default function NuevoCorteePage() {
     }
   };
 
-  // 💾 CREAR CORTE
+  // 💾 CREAR CORTE - ACTUALIZADO CON ABONOS
   const handleCreateCut = async () => {
     try {
       setCreating(true);
@@ -339,6 +368,15 @@ export default function NuevoCorteePage() {
         pos_total: totals.pos_total,
         pos_transactions: editableData.pos_transactions,
         pos_commissions: editableData.pos_commissions,
+        
+        // ABONOS (Para el schema de cash_cuts no hay campos específicos, pero los podemos incluir como metadatos)
+        abonos_efectivo: editableData.abonos_efectivo,
+        abonos_transferencia: editableData.abonos_transferencia,
+        abonos_debito: editableData.abonos_debito,
+        abonos_credito: editableData.abonos_credito,
+        abonos_total: totals.abonos_total,
+        abonos_transactions: editableData.abonos_transactions,
+        abonos_commissions: editableData.abonos_commissions,
         
         // MEMBERSHIPS
         membership_efectivo: editableData.membership_efectivo,
@@ -972,6 +1010,164 @@ export default function NuevoCorteePage() {
                             type="number"
                             value={editableData.pos_commissions}
                             onChange={(e) => handleEditableChange('pos_commissions', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.warning,
+                              },
+                            }}
+                          />
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+
+                  {/* 💰 SECCIÓN ABONOS - ¡NUEVA! */}
+                  <Card sx={{
+                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                    border: `2px solid ${darkProTokens.warning}40`,
+                    borderRadius: 4
+                  }}>
+                    <CardContent sx={{ p: 4 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                        <Avatar sx={{ bgcolor: darkProTokens.warning }}>
+                          <SavingsIcon />
+                        </Avatar>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                          💰 Abonos / Apartados
+                        </Typography>
+                        <Chip
+                          label={formatPrice(totals.abonos_total)}
+                          sx={{
+                            backgroundColor: `${darkProTokens.warning}20`,
+                            color: darkProTokens.warning,
+                            fontWeight: 700,
+                            fontSize: '1rem'
+                          }}
+                        />
+                      </Box>
+                      
+                      <Grid container spacing={3}>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Efectivo"
+                            type="number"
+                            value={editableData.abonos_efectivo}
+                            onChange={(e) => handleEditableChange('abonos_efectivo', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.primary,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Transferencia"
+                            type="number"
+                            value={editableData.abonos_transferencia}
+                            onChange={(e) => handleEditableChange('abonos_transferencia', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.info,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Tarjeta Débito"
+                            type="number"
+                            value={editableData.abonos_debito}
+                            onChange={(e) => handleEditableChange('abonos_debito', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.success,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Tarjeta Crédito"
+                            type="number"
+                            value={editableData.abonos_credito}
+                            onChange={(e) => handleEditableChange('abonos_credito', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.error,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Transacciones"
+                            type="number"
+                            value={editableData.abonos_transactions}
+                            onChange={(e) => handleEditableChange('abonos_transactions', e.target.value)}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.textSecondary,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Comisiones"
+                            type="number"
+                            value={editableData.abonos_commissions}
+                            onChange={(e) => handleEditableChange('abonos_commissions', e.target.value)}
                             InputProps={{
                               startAdornment: <InputAdornment position="start">$</InputAdornment>,
                             }}
