@@ -383,21 +383,24 @@ export default function HistorialMembresiaPage() {
     }
   }, []);
 
- // ✅ FUNCIÓN CORREGIDA:
+// ✅ ESTO CONVIERTE CORRECTAMENTE UTC → MÉXICO:
 const formatTimestampForDisplay = useCallback((timestamp: string): string => {
   if (!timestamp) return 'Sin fecha';
   
   try {
-    const date = new Date(timestamp);
+    const date = new Date(timestamp); // ← Lee UTC: 2025-06-13T06:47:59Z
     
     if (isNaN(date.getTime())) {
       console.warn('⚠️ Timestamp inválido:', timestamp);
       return 'Timestamp inválido';
     }
     
-    // ✅ USAR timeZone COMO PaymentDialog (NO CONVERSIÓN MANUAL)
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Monterrey', // ✅ ESTO SÍ FUNCIONA para display
+    // ✅ CONVERSIÓN MANUAL UTC → MÉXICO
+    const mexicoOffset = -6; // México es UTC-6
+    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+    const mexicoTime = new Date(utcTime + (mexicoOffset * 3600000));
+    
+    return mexicoTime.toLocaleString('es-MX', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
