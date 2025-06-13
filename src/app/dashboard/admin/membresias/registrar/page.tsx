@@ -323,79 +323,113 @@ export default function RegistrarMembresiaPage() {
     }).format(price);
   }, []);
 
- const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
+const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
   console.log(`📅 Calculando período: ${startDate} + ${periodType}`);
   
   try {
-    // ✅ CREAR FECHA CORRECTAMENTE
+    // ✅ PARSEAR FECHA MANUALMENTE PARA EVITAR PROBLEMAS DE TIMEZONE
     const [year, month, day] = startDate.split('-').map(Number);
-    const date = new Date(year, month - 1, day); // month - 1 porque JS usa 0-indexado
     
-    // ✅ AGREGAR PERÍODOS CORRECTAMENTE
+    let targetYear = year;
+    let targetMonth = month; // Mantener 1-indexado
+    let targetDay = day;
+    
+    // ✅ AGREGAR PERÍODOS SIN USAR setMonth() QUE CAUSA PROBLEMAS
     switch (periodType) {
       case 'weekly':
-        date.setDate(date.getDate() + 7);
+        // Para semanas, es seguro usar días
+        const weekDate = new Date(year, month - 1, day);
+        weekDate.setDate(weekDate.getDate() + 7);
+        targetYear = weekDate.getFullYear();
+        targetMonth = weekDate.getMonth() + 1;
+        targetDay = weekDate.getDate();
         break;
+        
       case 'biweekly':
-        date.setDate(date.getDate() + 14);
+        const biweekDate = new Date(year, month - 1, day);
+        biweekDate.setDate(biweekDate.getDate() + 14);
+        targetYear = biweekDate.getFullYear();
+        targetMonth = biweekDate.getMonth() + 1;
+        targetDay = biweekDate.getDate();
         break;
+        
       case 'monthly':
-        // ✅ MÉTODO CORRECTO PARA MESES - MANTENER EL MISMO DÍA
-        const targetMonth = date.getMonth() + 1;
-        const targetYear = date.getFullYear() + Math.floor(targetMonth / 12);
-        const finalMonth = targetMonth % 12;
-        
-        // ✅ VERIFICAR SI EL DÍA EXISTE EN EL MES DESTINO
-        const lastDayOfTargetMonth = new Date(targetYear, finalMonth + 1, 0).getDate();
-        const dayToSet = Math.min(day, lastDayOfTargetMonth);
-        
-        date.setFullYear(targetYear, finalMonth, dayToSet);
+        // ✅ CÁLCULO MANUAL PARA EVITAR setMonth()
+        targetMonth = month + 1;
+        if (targetMonth > 12) {
+          targetYear = year + 1;
+          targetMonth = 1;
+        }
+        // Verificar si el día existe en el mes destino
+        const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+        if (day > daysInTargetMonth) {
+          targetDay = daysInTargetMonth; // Último día del mes
+        }
         break;
+        
       case 'bimonthly':
-        const targetMonth2 = date.getMonth() + 2;
-        const targetYear2 = date.getFullYear() + Math.floor(targetMonth2 / 12);
-        const finalMonth2 = targetMonth2 % 12;
-        
-        const lastDayOfTargetMonth2 = new Date(targetYear2, finalMonth2 + 1, 0).getDate();
-        const dayToSet2 = Math.min(day, lastDayOfTargetMonth2);
-        
-        date.setFullYear(targetYear2, finalMonth2, dayToSet2);
+        targetMonth = month + 2;
+        while (targetMonth > 12) {
+          targetYear++;
+          targetMonth -= 12;
+        }
+        const daysInTargetMonth2 = new Date(targetYear, targetMonth, 0).getDate();
+        if (day > daysInTargetMonth2) {
+          targetDay = daysInTargetMonth2;
+        }
         break;
+        
       case 'quarterly':
-        const targetMonth3 = date.getMonth() + 3;
-        const targetYear3 = date.getFullYear() + Math.floor(targetMonth3 / 12);
-        const finalMonth3 = targetMonth3 % 12;
-        
-        const lastDayOfTargetMonth3 = new Date(targetYear3, finalMonth3 + 1, 0).getDate();
-        const dayToSet3 = Math.min(day, lastDayOfTargetMonth3);
-        
-        date.setFullYear(targetYear3, finalMonth3, dayToSet3);
+        targetMonth = month + 3;
+        while (targetMonth > 12) {
+          targetYear++;
+          targetMonth -= 12;
+        }
+        const daysInTargetMonth3 = new Date(targetYear, targetMonth, 0).getDate();
+        if (day > daysInTargetMonth3) {
+          targetDay = daysInTargetMonth3;
+        }
         break;
+        
       case 'semester':
-        const targetMonth6 = date.getMonth() + 6;
-        const targetYear6 = date.getFullYear() + Math.floor(targetMonth6 / 12);
-        const finalMonth6 = targetMonth6 % 12;
-        
-        const lastDayOfTargetMonth6 = new Date(targetYear6, finalMonth6 + 1, 0).getDate();
-        const dayToSet6 = Math.min(day, lastDayOfTargetMonth6);
-        
-        date.setFullYear(targetYear6, finalMonth6, dayToSet6);
+        targetMonth = month + 6;
+        while (targetMonth > 12) {
+          targetYear++;
+          targetMonth -= 12;
+        }
+        const daysInTargetMonth6 = new Date(targetYear, targetMonth, 0).getDate();
+        if (day > daysInTargetMonth6) {
+          targetDay = daysInTargetMonth6;
+        }
         break;
+        
       case 'annual':
-        date.setFullYear(date.getFullYear() + 1);
+        targetYear = year + 1;
+        // Para febrero 29 en años no bisiestos
+        if (month === 2 && day === 29) {
+          const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
+          if (!isLeapYear) {
+            targetDay = 28;
+          }
+        }
         break;
+        
       default:
-        date.setMonth(date.getMonth() + 1); // fallback
+        // Fallback a mensual
+        targetMonth = month + 1;
+        if (targetMonth > 12) {
+          targetYear = year + 1;
+          targetMonth = 1;
+        }
         break;
     }
     
-    // ✅ CONVERTIR DE VUELTA A STRING YYYY-MM-DD
-    const resultYear = date.getFullYear();
-    const resultMonth = String(date.getMonth() + 1).padStart(2, '0');
-    const resultDay = String(date.getDate()).padStart(2, '0');
+    // ✅ FORMATEAR RESULTADO MANUALMENTE
+    const result = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
     
-    const result = `${resultYear}-${resultMonth}-${resultDay}`;
-    console.log(`📅 Resultado corregido: ${startDate} → ${result}`);
+    console.log(`📅 Resultado corregido manual: ${startDate} → ${result}`);
+    console.log(`   🔢 Entrada: ${year}-${month}-${day}`);
+    console.log(`   🎯 Salida: ${targetYear}-${targetMonth}-${targetDay}`);
     
     return result;
     
