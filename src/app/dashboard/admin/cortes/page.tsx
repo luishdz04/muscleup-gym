@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -8,67 +8,40 @@ import {
   Card,
   CardContent,
   Button,
-  IconButton,
-  Chip,
   Alert,
   CircularProgress,
+  Chip,
+  IconButton,
+  Tooltip,
   Divider,
   Avatar,
   Stack,
-  LinearProgress
+  LinearProgress,
+  Paper
 } from '@mui/material';
 import {
-  BarChart as BarChartIcon,
   Add as AddIcon,
-  Refresh as RefreshIcon,
-  TrendingUp as TrendingUpIcon,
-  AttachMoney as MoneyIcon,
   Receipt as ReceiptIcon,
+  TrendingUp as TrendingUpIcon,
+  AccountBalance as AccountBalanceIcon,
   CreditCard as CreditCardIcon,
-  AccountBalance as BankIcon,
-  LocalAtm as CashIcon,
-  History as HistoryIcon,
-  Today as TodayIcon,
-  Payment as PaymentIcon
+  MonetizationOn as MonetizationOnIcon,
+  SwapHoriz as SwapHorizIcon,
+  Refresh as RefreshIcon,
+  CalendarToday as CalendarIcon,
+  Assessment as AssessmentIcon,
+  AttachMoney as AttachMoneyIcon
 } from '@mui/icons-material';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-
-// 💰 Función para formatear precios en pesos mexicanos
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
-  }).format(amount);
-}
-
-// 📅 Función para formatear fechas en español mexicano
-function formatDate(dateString: string): string {
-  const date = new Date(dateString + 'T12:00:00'); // Evitar problemas de zona horaria
-  
-  const months = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-  ];
-  
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  
-  return `${day} de ${month} de ${year}`;
-}
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
-  // Base Colors
   background: '#000000',
   surfaceLevel1: '#121212',
   surfaceLevel2: '#1E1E1E',
   surfaceLevel3: '#252525',
   surfaceLevel4: '#2E2E2E',
-  
-  // Neutrals
   grayDark: '#333333',
   grayMedium: '#444444',
   grayLight: '#555555',
@@ -76,13 +49,9 @@ const darkProTokens = {
   textPrimary: '#FFFFFF',
   textSecondary: '#CCCCCC',
   textDisabled: '#888888',
-  
-  // Primary Accent (Golden)
   primary: '#FFCC00',
   primaryHover: '#E6B800',
   primaryActive: '#CCAA00',
-  
-  // Semantic Colors
   success: '#388E3C',
   successHover: '#2E7D32',
   error: '#D32F2F',
@@ -91,10 +60,42 @@ const darkProTokens = {
   warningHover: '#E6A700',
   info: '#1976D2',
   infoHover: '#1565C0',
-  
-  // User Roles
   roleAdmin: '#E91E63'
 };
+
+// 💰 Función para formatear precios
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2
+  }).format(amount);
+}
+
+// 📅 Función para formatear fechas
+function formatDate(dateString: string): string {
+  const date = new Date(dateString + 'T12:00:00');
+  const months = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+  ];
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day} de ${month} de ${year}`;
+}
+
+// 🕒 Función para formatear fecha y hora
+function formatDateTime(dateString: string): string {
+  return new Date(dateString).toLocaleString('es-MX', {
+    timeZone: 'America/Monterrey',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
 
 interface DailyData {
   date: string;
@@ -103,7 +104,6 @@ interface DailyData {
     transferencia: number;
     debito: number;
     credito: number;
-    mixto: number;
     total: number;
     transactions: number;
     commissions: number;
@@ -113,7 +113,6 @@ interface DailyData {
     transferencia: number;
     debito: number;
     credito: number;
-    mixto: number;
     total: number;
     transactions: number;
     commissions: number;
@@ -123,7 +122,6 @@ interface DailyData {
     transferencia: number;
     debito: number;
     credito: number;
-    mixto: number;
     total: number;
     transactions: number;
     commissions: number;
@@ -133,66 +131,82 @@ interface DailyData {
     transferencia: number;
     debito: number;
     credito: number;
-    mixto: number;
     total: number;
     transactions: number;
     commissions: number;
     net_amount: number;
   };
-  success: boolean;
-  timestamp: string;
 }
-
-const paymentMethods = [
-  { key: 'efectivo', label: 'Efectivo', icon: CashIcon, color: darkProTokens.primary },
-  { key: 'transferencia', label: 'Transferencia', icon: BankIcon, color: darkProTokens.info },
-  { key: 'debito', label: 'Tarjeta Débito', icon: CreditCardIcon, color: darkProTokens.success },
-  { key: 'credito', label: 'Tarjeta Crédito', icon: CreditCardIcon, color: darkProTokens.error },
-  { key: 'mixto', label: 'Pago Mixto', icon: ReceiptIcon, color: darkProTokens.warning }
-];
 
 export default function CortesPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
-  const [selectedDate, setSelectedDate] = useState(() => {
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // 📅 Fecha actual en Monterrey
+  const [selectedDate] = useState(() => {
     const now = new Date();
-    const monterreyTime = new Date(now.getTime() - (6 * 60 * 60 * 1000)); // UTC-6
+    const monterreyTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
     return monterreyTime.toISOString().split('T')[0];
   });
 
-  // ✅ FUNCIÓN PARA CARGAR DATOS DEL DÍA
-  const loadDailyData = useCallback(async (date: string = selectedDate) => {
+  // ✅ CARGAR DATOS DEL DÍA
+  const loadDailyData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/cuts/daily-data?date=${date}`);
+      setError(null);
+      
+      const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`);
       const data = await response.json();
       
       if (data.success) {
         setDailyData(data);
-        console.log('Datos cargados:', data.debug);
       } else {
-        console.error('Error cargando datos:', data.error);
+        setError('Error al cargar datos del día');
       }
     } catch (error) {
       console.error('Error:', error);
+      setError('Error al cargar datos del día');
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
+  };
 
-  // ✅ FUNCIÓN PARA REFRESCAR DATOS
-  const refreshData = useCallback(async () => {
+  // 🔄 REFRESCAR DATOS
+  const handleRefresh = async () => {
     setRefreshing(true);
     await loadDailyData();
     setRefreshing(false);
-  }, [loadDailyData]);
+  };
 
-  // ✅ CARGAR DATOS AL MONTAR
+  // ⚡ EFECTOS
   useEffect(() => {
     loadDailyData();
-  }, [loadDailyData]);
+  }, [selectedDate]);
+
+  // 📊 CALCULAR PORCENTAJES PARA MÉTODOS DE PAGO
+  const calculatePaymentMethodPercentages = () => {
+    if (!dailyData || dailyData.totals.total === 0) {
+      return {
+        efectivo: 0,
+        transferencia: 0,
+        debito: 0,
+        credito: 0
+      };
+    }
+
+    const total = dailyData.totals.total;
+    return {
+      efectivo: (dailyData.totals.efectivo / total) * 100,
+      transferencia: (dailyData.totals.transferencia / total) * 100,
+      debito: (dailyData.totals.debito / total) * 100,
+      credito: (dailyData.totals.credito / total) * 100
+    };
+  };
+
+  const percentages = calculatePaymentMethodPercentages();
 
   return (
     <Box sx={{ 
@@ -206,82 +220,86 @@ export default function CortesPage() {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{ 
             bgcolor: darkProTokens.roleAdmin, 
-            width: 50, 
-            height: 50 
+            width: 60, 
+            height: 60 
           }}>
-            <BarChartIcon sx={{ fontSize: 28 }} />
+            <ReceiptIcon sx={{ fontSize: 32 }} />
           </Avatar>
           <Box>
-            <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-              Dashboard de Cortes
+            <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+              Cortes de Caja
             </Typography>
             <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-              📅 {formatDate(selectedDate)} • Gestión de cortes de caja
+              📅 {formatDate(selectedDate)} • Gestión de cortes diarios
             </Typography>
           </Box>
         </Box>
         
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={refreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
-            onClick={refreshData}
-            disabled={refreshing}
-            sx={{
-              borderColor: darkProTokens.info,
-              color: darkProTokens.info,
-              '&:hover': {
-                borderColor: darkProTokens.infoHover,
-                backgroundColor: `${darkProTokens.info}20`
-              }
-            }}
-          >
-            Actualizar
-          </Button>
+          <Tooltip title="Refrescar datos">
+            <IconButton
+              onClick={handleRefresh}
+              disabled={refreshing}
+              sx={{ 
+                color: darkProTokens.info,
+                bgcolor: `${darkProTokens.info}20`,
+                '&:hover': { bgcolor: `${darkProTokens.info}30` }
+              }}
+            >
+              <RefreshIcon sx={{ 
+                animation: refreshing ? 'spin 1s linear infinite' : 'none',
+                '@keyframes spin': {
+                  '0%': { transform: 'rotate(0deg)' },
+                  '100%': { transform: 'rotate(360deg)' }
+                }
+              }} />
+            </IconButton>
+          </Tooltip>
           
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => router.push('/dashboard/admin/cortes/nuevo')}
             sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.roleAdmin}CC)`,
+              background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.primaryHover})`,
               color: darkProTokens.textPrimary,
               fontWeight: 700,
-              px: 3
+              px: 3,
+              py: 1.5,
+              fontSize: '1.1rem'
             }}
           >
-            Nuevo Corte
-          </Button>
-          
-          <Button
-            variant="outlined"
-            startIcon={<HistoryIcon />}
-            onClick={() => router.push('/dashboard/admin/cortes/historial')}
-            sx={{
-              borderColor: darkProTokens.warning,
-              color: darkProTokens.warning,
-              '&:hover': {
-                borderColor: darkProTokens.warningHover,
-                backgroundColor: `${darkProTokens.warning}20`
-              }
-            }}
-          >
-            Historial
+            Crear Nuevo Corte
           </Button>
         </Box>
       </Box>
 
+      {/* 🚨 ESTADOS DE ERROR */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 🔄 LOADING STATE */}
       {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress size={40} sx={{ color: darkProTokens.roleAdmin }} />
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 8 }}>
+          <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin }} />
         </Box>
       )}
 
       {/* 📊 CONTENIDO PRINCIPAL */}
       {!loading && dailyData && (
         <Grid container spacing={4}>
-          {/* 📈 RESUMEN GENERAL */}
+          {/* 💰 RESUMEN PRINCIPAL */}
           <Grid xs={12}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -290,23 +308,14 @@ export default function CortesPage() {
             >
               <Card sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                border: `1px solid ${darkProTokens.roleAdmin}30`,
-                borderRadius: 4
+                border: `2px solid ${darkProTokens.roleAdmin}40`,
+                borderRadius: 4,
+                overflow: 'hidden'
               }}>
                 <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin }}>
-                      💰 Resumen del Día
-                    </Typography>
-                    <Chip
-                      label={`${dailyData.totals.transactions} transacciones`}
-                      sx={{
-                        backgroundColor: `${darkProTokens.roleAdmin}20`,
-                        color: darkProTokens.roleAdmin,
-                        fontWeight: 600
-                      }}
-                    />
-                  </Box>
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin, mb: 3 }}>
+                    💰 Resumen del Día
+                  </Typography>
                   
                   <Grid container spacing={3}>
                     <Grid xs={12} md={3}>
@@ -314,9 +323,19 @@ export default function CortesPage() {
                         <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.success }}>
                           {formatPrice(dailyData.totals.total)}
                         </Typography>
-                        <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
                           Ingresos Totales
                         </Typography>
+                        <Chip
+                          icon={<TrendingUpIcon />}
+                          label={`${dailyData.totals.transactions} transacciones`}
+                          sx={{
+                            mt: 1,
+                            backgroundColor: `${darkProTokens.success}20`,
+                            color: darkProTokens.success,
+                            fontWeight: 600
+                          }}
+                        />
                       </Box>
                     </Grid>
                     
@@ -325,8 +344,11 @@ export default function CortesPage() {
                         <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
                           {formatPrice(dailyData.totals.commissions)}
                         </Typography>
-                        <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
                           Comisiones
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                          {((dailyData.totals.commissions / dailyData.totals.total) * 100).toFixed(1)}% del total
                         </Typography>
                       </Box>
                     </Grid>
@@ -336,8 +358,11 @@ export default function CortesPage() {
                         <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
                           {formatPrice(dailyData.totals.net_amount)}
                         </Typography>
-                        <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
                           Monto Neto
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                          Después de comisiones
                         </Typography>
                       </Box>
                     </Grid>
@@ -345,11 +370,16 @@ export default function CortesPage() {
                     <Grid xs={12} md={3}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.info }}>
-                          {dailyData.totals.transactions}
+                          {dailyData.pos.transactions + dailyData.memberships.transactions + dailyData.abonos.transactions}
                         </Typography>
-                        <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
-                          Transacciones
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                          Operaciones
                         </Typography>
+                        <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mt: 1 }}>
+                          <Chip label={`${dailyData.pos.transactions} POS`} size="small" />
+                          <Chip label={`${dailyData.abonos.transactions} Abonos`} size="small" />
+                          <Chip label={`${dailyData.memberships.transactions} Membresías`} size="small" />
+                        </Stack>
                       </Box>
                     </Grid>
                   </Grid>
@@ -358,100 +388,218 @@ export default function CortesPage() {
             </motion.div>
           </Grid>
 
-          {/* 💳 DESGLOSE POR MÉTODOS DE PAGO */}
+          {/* 💳 DESGLOSE POR MÉTODOS DE PAGO (SIN MIXTO) */}
           <Grid xs={12}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: darkProTokens.textPrimary }}>
-                💳 Desglose por Métodos de Pago
-              </Typography>
-              
-              <Grid container spacing={3}>
-                {paymentMethods.map((method, index) => {
-                  const Icon = method.icon;
-                  const amount = dailyData.totals[method.key as keyof typeof dailyData.totals] as number;
-                  const percentage = dailyData.totals.total > 0 ? (amount / dailyData.totals.total) * 100 : 0;
+              <Card sx={{
+                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                border: `1px solid ${darkProTokens.grayMedium}`,
+                borderRadius: 4
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+                    💳 Desglose por Métodos de Pago
+                  </Typography>
                   
-                  return (
-                    <Grid xs={12} sm={6} md={2.4} key={method.key}>
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.3, delay: index * 0.1 }}
-                      >
-                        <Card sx={{
-                          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                          border: `1px solid ${method.color}30`,
-                          borderRadius: 3,
-                          height: '140px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: `0 8px 25px ${method.color}30`
-                          },
-                          transition: 'all 0.3s ease'
-                        }}>
-                          <CardContent sx={{ textAlign: 'center', p: 2 }}>
-                            <Icon sx={{ fontSize: 32, color: method.color, mb: 1 }} />
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 0.5 }}>
-                              {formatPrice(amount)}
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                              {method.label}
-                            </Typography>
-                            <LinearProgress
-                              variant="determinate"
-                              value={percentage}
-                              sx={{
-                                height: 4,
-                                borderRadius: 2,
-                                backgroundColor: `${method.color}20`,
-                                '& .MuiLinearProgress-bar': {
-                                  backgroundColor: method.color
-                                }
-                              }}
-                            />
-                            <Typography variant="caption" sx={{ color: method.color, fontWeight: 600 }}>
-                              {percentage.toFixed(1)}%
-                            </Typography>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
+                  <Grid container spacing={3}>
+                    {/* EFECTIVO */}
+                    <Grid xs={12} md={3}>
+                      <Paper sx={{ 
+                        p: 3, 
+                        textAlign: 'center',
+                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                        border: `2px solid ${darkProTokens.primary}40`,
+                        borderRadius: 3
+                      }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                          <Avatar sx={{ 
+                            bgcolor: darkProTokens.primary, 
+                            width: 48, 
+                            height: 48 
+                          }}>
+                            <AttachMoneyIcon sx={{ fontSize: 24 }} />
+                          </Avatar>
+                        </Box>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                          {formatPrice(dailyData.totals.efectivo)}
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                          Efectivo
+                        </Typography>
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={percentages.efectivo} 
+                          sx={{ 
+                            height: 8, 
+                            borderRadius: 4,
+                            backgroundColor: `${darkProTokens.primary}20`,
+                            '& .MuiLinearProgress-bar': {
+                              backgroundColor: darkProTokens.primary
+                            }
+                          }} 
+                        />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                          {percentages.efectivo.toFixed(1)}%
+                        </Typography>
+                      </Paper>
                     </Grid>
-                  );
-                })}
-              </Grid>
+
+                    {/* TRANSFERENCIA */}
+                    <Grid xs={12} md={3}>
+                      <Paper sx={{ 
+                        p: 3, 
+                        textAlign: 'center',
+                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                        border: `2px solid ${darkProTokens.info}40`,
+                        borderRadius: 3
+                      }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                          <Avatar sx={{ 
+                            bgcolor: darkProTokens.info, 
+                            width: 48, 
+                            height: 48 
+                          }}>
+                            <AccountBalanceIcon sx={{ fontSize: 24 }} />
+                          </Avatar>
+                        </Box>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                          {formatPrice(dailyData.totals.transferencia)}
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                          Transferencia
+                        </Typography>
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={percentages.transferencia} 
+                          sx={{ 
+                            height: 8, 
+                            borderRadius: 4,
+                            backgroundColor: `${darkProTokens.info}20`,
+                            '& .MuiLinearProgress-bar': {
+                              backgroundColor: darkProTokens.info
+                            }
+                          }} 
+                        />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                          {percentages.transferencia.toFixed(1)}%
+                        </Typography>
+                      </Paper>
+                    </Grid>
+
+                    {/* TARJETA DÉBITO */}
+                    <Grid xs={12} md={3}>
+                      <Paper sx={{ 
+                        p: 3, 
+                        textAlign: 'center',
+                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                        border: `2px solid ${darkProTokens.success}40`,
+                        borderRadius: 3
+                      }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                          <Avatar sx={{ 
+                            bgcolor: darkProTokens.success, 
+                            width: 48, 
+                            height: 48 
+                          }}>
+                            <CreditCardIcon sx={{ fontSize: 24 }} />
+                          </Avatar>
+                        </Box>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                          {formatPrice(dailyData.totals.debito)}
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                          Tarjeta Débito
+                        </Typography>
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={percentages.debito} 
+                          sx={{ 
+                            height: 8, 
+                            borderRadius: 4,
+                            backgroundColor: `${darkProTokens.success}20`,
+                            '& .MuiLinearProgress-bar': {
+                              backgroundColor: darkProTokens.success
+                            }
+                          }} 
+                        />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                          {percentages.debito.toFixed(1)}%
+                        </Typography>
+                      </Paper>
+                    </Grid>
+
+                    {/* TARJETA CRÉDITO */}
+                    <Grid xs={12} md={3}>
+                      <Paper sx={{ 
+                        p: 3, 
+                        textAlign: 'center',
+                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                        border: `2px solid ${darkProTokens.error}40`,
+                        borderRadius: 3
+                      }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                          <Avatar sx={{ 
+                            bgcolor: darkProTokens.error, 
+                            width: 48, 
+                            height: 48 
+                          }}>
+                            <CreditCardIcon sx={{ fontSize: 24 }} />
+                          </Avatar>
+                        </Box>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                          {formatPrice(dailyData.totals.credito)}
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                          Tarjeta Crédito
+                        </Typography>
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={percentages.credito} 
+                          sx={{ 
+                            height: 8, 
+                            borderRadius: 4,
+                            backgroundColor: `${darkProTokens.error}20`,
+                            '& .MuiLinearProgress-bar': {
+                              backgroundColor: darkProTokens.error
+                            }
+                          }} 
+                        />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                          {percentages.credito.toFixed(1)}%
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
             </motion.div>
           </Grid>
 
-          {/* 🏪 DESGLOSE POR FUENTE DE INGRESOS */}
+          {/* 📈 DESGLOSE POR FUENTE DE INGRESOS */}
           <Grid xs={12}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: darkProTokens.textPrimary }}>
-                🏪 Desglose por Fuente de Ingresos
-              </Typography>
-              
               <Grid container spacing={3}>
-                {/* VENTAS POS */}
+                {/* PUNTO DE VENTA */}
                 <Grid xs={12} md={4}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                     border: `1px solid ${darkProTokens.info}30`,
-                    borderRadius: 4
+                    borderRadius: 4,
+                    height: '100%'
                   }}>
                     <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <ReceiptIcon sx={{ color: darkProTokens.info, mr: 1 }} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Avatar sx={{ bgcolor: darkProTokens.info }}>
+                          <ReceiptIcon />
+                        </Avatar>
                         <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.info }}>
                           Punto de Venta
                         </Typography>
@@ -461,20 +609,61 @@ export default function CortesPage() {
                         {formatPrice(dailyData.pos.total)}
                       </Typography>
                       
-                      <Stack spacing={1}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Transacciones:</Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            {dailyData.pos.transactions}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisiones:</Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                            {formatPrice(dailyData.pos.commissions)}
-                          </Typography>
-                        </Box>
-                      </Stack>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Efectivo:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.pos.efectivo)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Transferencia:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.pos.transferencia)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Débito:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.pos.debito)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Crédito:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.pos.credito)}
+                        </Typography>
+                      </Box>
+                      
+                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 2 }} />
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Transacciones:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {dailyData.pos.transactions}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Comisiones:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                          {formatPrice(dailyData.pos.commissions)}
+                        </Typography>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -484,11 +673,14 @@ export default function CortesPage() {
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                     border: `1px solid ${darkProTokens.warning}30`,
-                    borderRadius: 4
+                    borderRadius: 4,
+                    height: '100%'
                   }}>
                     <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <PaymentIcon sx={{ color: darkProTokens.warning, mr: 1 }} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Avatar sx={{ bgcolor: darkProTokens.warning }}>
+                          <MonetizationOnIcon />
+                        </Avatar>
                         <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
                           Abonos
                         </Typography>
@@ -498,20 +690,61 @@ export default function CortesPage() {
                         {formatPrice(dailyData.abonos.total)}
                       </Typography>
                       
-                      <Stack spacing={1}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Transacciones:</Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            {dailyData.abonos.transactions}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisiones:</Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                            {formatPrice(dailyData.abonos.commissions)}
-                          </Typography>
-                        </Box>
-                      </Stack>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Efectivo:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.abonos.efectivo)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Transferencia:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.abonos.transferencia)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Débito:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.abonos.debito)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Crédito:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.abonos.credito)}
+                        </Typography>
+                      </Box>
+                      
+                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 2 }} />
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Transacciones:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {dailyData.abonos.transactions}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Comisiones:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                          {formatPrice(dailyData.abonos.commissions)}
+                        </Typography>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -521,11 +754,14 @@ export default function CortesPage() {
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                     border: `1px solid ${darkProTokens.success}30`,
-                    borderRadius: 4
+                    borderRadius: 4,
+                    height: '100%'
                   }}>
                     <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <TrendingUpIcon sx={{ color: darkProTokens.success, mr: 1 }} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Avatar sx={{ bgcolor: darkProTokens.success }}>
+                          <AssessmentIcon />
+                        </Avatar>
                         <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
                           Membresías
                         </Typography>
@@ -535,20 +771,61 @@ export default function CortesPage() {
                         {formatPrice(dailyData.memberships.total)}
                       </Typography>
                       
-                      <Stack spacing={1}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Transacciones:</Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            {dailyData.memberships.transactions}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisiones:</Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                            {formatPrice(dailyData.memberships.commissions)}
-                          </Typography>
-                        </Box>
-                      </Stack>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Efectivo:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.memberships.efectivo)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Transferencia:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.memberships.transferencia)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Débito:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.memberships.debito)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Crédito:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.memberships.credito)}
+                        </Typography>
+                      </Box>
+                      
+                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 2 }} />
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Transacciones:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {dailyData.memberships.transactions}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Comisiones:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                          {formatPrice(dailyData.memberships.commissions)}
+                        </Typography>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -556,7 +833,7 @@ export default function CortesPage() {
             </motion.div>
           </Grid>
 
-          {/* 📋 ACCIONES RÁPIDAS */}
+          {/* 🎯 ACCIONES RÁPIDAS */}
           <Grid xs={12}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -565,79 +842,73 @@ export default function CortesPage() {
             >
               <Card sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                border: `1px solid ${darkProTokens.primary}30`,
+                border: `1px solid ${darkProTokens.grayMedium}`,
                 borderRadius: 4
               }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: darkProTokens.primary }}>
-                    🚀 Acciones Rápidas
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+                    🎯 Acciones Rápidas
                   </Typography>
                   
                   <Grid container spacing={2}>
-                    <Grid xs={12} sm={6} md={3}>
+                    <Grid xs={12} md={4}>
                       <Button
                         fullWidth
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={() => router.push('/dashboard/admin/cortes/nuevo')}
                         sx={{
-                          background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.roleAdmin}CC)`,
-                          py: 1.5
+                          background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.primaryHover})`,
+                          color: darkProTokens.textPrimary,
+                          py: 2,
+                          fontSize: '1rem',
+                          fontWeight: 600
                         }}
                       >
-                        Crear Corte
+                        Crear Nuevo Corte
                       </Button>
                     </Grid>
                     
-                    <Grid xs={12} sm={6} md={3}>
+                    <Grid xs={12} md={4}>
                       <Button
                         fullWidth
                         variant="outlined"
-                        startIcon={<HistoryIcon />}
+                        startIcon={<CalendarIcon />}
                         onClick={() => router.push('/dashboard/admin/cortes/historial')}
                         sx={{
-                          borderColor: darkProTokens.warning,
-                          color: darkProTokens.warning,
-                          py: 1.5
+                          borderColor: darkProTokens.info,
+                          color: darkProTokens.info,
+                          py: 2,
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: darkProTokens.infoHover,
+                            backgroundColor: `${darkProTokens.info}20`
+                          }
                         }}
                       >
                         Ver Historial
                       </Button>
                     </Grid>
                     
-                    <Grid xs={12} sm={6} md={3}>
+                    <Grid xs={12} md={4}>
                       <Button
                         fullWidth
                         variant="outlined"
-                        startIcon={<TodayIcon />}
-                        onClick={() => {
-                          const now = new Date();
-                          const yesterday = new Date(now.getTime() - (6 * 60 * 60 * 1000) - (24 * 60 * 60 * 1000)); // UTC-6 - 1 día
-                          loadDailyData(yesterday.toISOString().split('T')[0]);
-                        }}
-                        sx={{
-                          borderColor: darkProTokens.info,
-                          color: darkProTokens.info,
-                          py: 1.5
-                        }}
-                      >
-                        Día Anterior
-                      </Button>
-                    </Grid>
-                    
-                    <Grid xs={12} sm={6} md={3}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<RefreshIcon />}
-                        onClick={refreshData}
+                        startIcon={<AssessmentIcon />}
                         sx={{
                           borderColor: darkProTokens.success,
                           color: darkProTokens.success,
-                          py: 1.5
+                          py: 2,
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: darkProTokens.successHover,
+                            backgroundColor: `${darkProTokens.success}20`
+                          }
                         }}
                       >
-                        Actualizar
+                        Reportes
                       </Button>
                     </Grid>
                   </Grid>
@@ -646,13 +917,6 @@ export default function CortesPage() {
             </motion.div>
           </Grid>
         </Grid>
-      )}
-
-      {/* ❌ ERROR STATE */}
-      {!loading && !dailyData && (
-        <Alert severity="error" sx={{ mt: 3 }}>
-          Error al cargar los datos del día. Por favor, intenta nuevamente.
-        </Alert>
       )}
     </Box>
   );
