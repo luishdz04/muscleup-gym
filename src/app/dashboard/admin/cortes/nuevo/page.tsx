@@ -189,7 +189,7 @@ export default function NuevoCorteePage() {
   // 🔍 VERIFICAR SI YA EXISTE CORTE
   const checkExistingCut = async (dateString: string) => {
     try {
-      const response = await fetch(`/api/cuts/check-exists?date=${dateString}`);
+      const response = await fetch(`/api/cuts/check-existing?date=${dateString}`);
       const data = await response.json();
       setCutExists(data.exists);
     } catch (error) {
@@ -239,7 +239,7 @@ export default function NuevoCorteePage() {
       
       console.log('📊 Creando corte con datos:', cutData);
       
-      const response = await fetch('/api/cuts/create', {
+      const  = await fetch('/api/cuts/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
