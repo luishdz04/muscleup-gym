@@ -14,36 +14,29 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createServerSupabaseClient();
-
-    const { data: existingCut, error } = await supabase
-      .from('cash_cuts')
-      .select('*')
+    
+    // 🔍 VERIFICAR SI EXISTE CORTE PARA ESA FECHA
+    const { data: existingCuts, error } = await supabase
+      .from('daily_cuts')
+      .select('id, cut_name, created_at')
       .eq('cut_date', date)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
     if (error) {
-      console.error('Error verificando corte existente:', error);
+      console.error('Error verificando cortes existentes:', error);
       throw error;
     }
 
-    console.log('✅ Verificación de corte existente:', {
-      date,
-      exists: !!existingCut,
-      cut_number: existingCut?.cut_number
-    });
-
     return NextResponse.json({
       success: true,
-      exists: !!existingCut,
-      cut: existingCut
+      exists: existingCuts && existingCuts.length > 0,
+      existing_cut: existingCuts?.[0] || null
     });
 
   } catch (error) {
-    console.error('💥 Error en API check-existing:', error);
+    console.error('Error en API check-exists:', error);
     return NextResponse.json(
-      { error: 'Error al verificar corte existente', success: false },
+      { error: 'Error al verificar cortes existentes', success: false },
       { status: 500 }
     );
   }
