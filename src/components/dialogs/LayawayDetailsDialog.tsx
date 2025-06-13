@@ -70,10 +70,11 @@ const darkProTokens = {
   roleModerator: '#9C27B0'
 };
 
-interface SaleDetailsDialogProps {
+// ✅ POR ESTO:
+interface LayawayDetailsDialogProps {
   open: boolean;
   onClose: () => void;
-  sale: any;
+  layaway: any;
 }
 
 export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDialogProps) {
