@@ -358,8 +358,14 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
       const totals = calculateTotals();
 
-      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
-      const nowUTC = new Date().toISOString();
+// ✅ CORRECTO - HORA MÉXICO PARA BD:
+const createTimestampForDB = useCallback((): string => {
+  const now = new Date();
+  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  return mexicoTime.toISOString();
+}, []);
+
+const nowUTC = createTimestampForDB();
 
       // ✅ ACTUALIZAR VENTA PRINCIPAL
       const { error: saleError } = await supabase
