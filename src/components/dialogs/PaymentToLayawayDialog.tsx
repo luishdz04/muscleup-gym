@@ -407,8 +407,13 @@ export default function PaymentToLayawayDialog({
 
       const userId = userData.user.id;
 
-      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
-      const nowUTC = new Date().toISOString();
+      const createTimestampForDB = useCallback((): string => {
+  const now = new Date();
+  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  return mexicoTime.toISOString();
+}, []);
+
+const nowUTC = createTimestampForDB();
 
       // ✅ CREAR DETALLES DE PAGO
       if (isMixedPayment && paymentDetails.length > 0) {
