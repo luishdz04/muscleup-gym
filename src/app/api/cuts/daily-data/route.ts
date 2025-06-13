@@ -46,37 +46,39 @@ export async function GET(request: NextRequest) {
       throw salesError;
     }
 
-    // 💰 PROCESAR VENTAS POS - LÓGICA SIMPLE Y CORRECTA
+    // 💰 INICIALIZAR DATOS DE POS
     const posData = {
       efectivo: 0,
       transferencia: 0,
       debito: 0,
       credito: 0,
-      total: 0,
+      total: 0,          // 🎯 ESTE ES EL QUE CORREGIREMOS
       transactions: 0,
       commissions: 0
     };
 
     console.log('🏪 Procesando', salesData?.length || 0, 'ventas POS...');
 
+    // 📝 PASO 1: PROCESAR CADA VENTA POS
     salesData?.forEach((sale: any) => {
       posData.transactions += 1;
       
-      // ✅ SUMAR AL TOTAL EL MONTO DE LA VENTA
+      // ✅ LÍNEA 1: Sumar el monto base de la venta al total
       posData.total += Number(sale.total_amount);
 
-      // Procesar detalles de pago
+      // ✅ LÍNEA 2: Procesar cada detalle de pago de la venta
       if (sale.sale_payment_details && sale.sale_payment_details.length > 0) {
         sale.sale_payment_details.forEach((payment: any) => {
           const amount = Number(payment.amount);
           const commission = Number(payment.commission_amount || 0);
 
-          // ✅ SUMAR COMISIONES
+          // ✅ LÍNEA 3: Acumular comisiones del POS
           posData.commissions += commission;
 
-          // ✅ SUMAR MONTO + COMISIÓN AL MÉTODO CORRESPONDIENTE
+          // ✅ LÍNEA 4: Calcular monto + comisión para cada método
           const totalAmountWithCommission = amount + commission;
 
+          // ✅ LÍNEA 5: Asignar a cada método de pago (CON comisión incluida)
           switch (payment.payment_method.toLowerCase()) {
             case 'efectivo':
               posData.efectivo += totalAmountWithCommission;
@@ -102,6 +104,17 @@ export async function GET(request: NextRequest) {
         total: sale.total_amount,
         mixto: sale.is_mixed_payment
       });
+    });
+
+    // 🔥 PASO 2: AGREGAR COMISIONES AL TOTAL DE POS (CLAVE!)
+    posData.total += posData.commissions;
+
+    console.log('✅ POS FINAL:', {
+      total_con_comisiones: posData.total,     // Debería ser $1,610
+      total_sin_comisiones: posData.total - posData.commissions, // $1,600
+      efectivo: posData.efectivo,              // $1,200
+      debito: posData.debito,                  // $410
+      comisiones: posData.commissions          // $10
     });
 
     // 📋 ABONOS DEL DÍA (SOLO PAGOS HECHOS HOY)
@@ -133,7 +146,7 @@ export async function GET(request: NextRequest) {
       throw abonosError;
     }
 
-    // 💰 PROCESAR ABONOS
+    // 💰 INICIALIZAR DATOS DE ABONOS
     const abonosProcessed = {
       efectivo: 0,
       transferencia: 0,
@@ -148,19 +161,23 @@ export async function GET(request: NextRequest) {
 
     console.log('📋 Procesando', abonosData?.length || 0, 'abonos...');
 
+    // 📝 PASO 3: PROCESAR CADA ABONO
     abonosData?.forEach((abono: any) => {
       const amount = Number(abono.amount);
       const commission = Number(abono.commission_amount || 0);
 
-      // ✅ SUMAR AL TOTAL EL MONTO DEL ABONO
+      // ✅ LÍNEA 6: Sumar monto base al total de abonos
       abonosProcessed.total += amount;
+      
+      // ✅ LÍNEA 7: Acumular comisiones de abonos
       abonosProcessed.commissions += commission;
 
       uniqueAbonos.add(abono.sale_id);
 
-      // ✅ SUMAR MONTO + COMISIÓN AL MÉTODO CORRESPONDIENTE
+      // ✅ LÍNEA 8: Calcular monto + comisión para cada método
       const totalAmountWithCommission = amount + commission;
 
+      // ✅ LÍNEA 9: Asignar a cada método de pago (CON comisión incluida)
       switch (abono.payment_method.toLowerCase()) {
         case 'efectivo':
           abonosProcessed.efectivo += totalAmountWithCommission;
@@ -187,6 +204,16 @@ export async function GET(request: NextRequest) {
     });
 
     abonosProcessed.transactions = uniqueAbonos.size;
+
+    // 🔥 PASO 4: AGREGAR COMISIONES AL TOTAL DE ABONOS
+    abonosProcessed.total += abonosProcessed.commissions;
+
+    console.log('✅ ABONOS FINAL:', {
+      total_con_comisiones: abonosProcessed.total, // Debería ser $600
+      efectivo: abonosProcessed.efectivo,          // $400
+      transferencia: abonosProcessed.transferencia, // $200
+      comisiones: abonosProcessed.commissions      // $0 (no hay comisiones en abonos)
+    });
 
     // 🎫 MEMBRESÍAS DEL DÍA
     const { data: membershipsData, error: membershipsError } = await supabase
@@ -215,7 +242,7 @@ export async function GET(request: NextRequest) {
       throw membershipsError;
     }
 
-    // 💰 PROCESAR MEMBRESÍAS
+    // 💰 INICIALIZAR DATOS DE MEMBRESÍAS
     const membershipsProcessed = {
       efectivo: 0,
       transferencia: 0,
@@ -228,9 +255,12 @@ export async function GET(request: NextRequest) {
 
     console.log('🎫 Procesando', membershipsData?.length || 0, 'membresías...');
 
+    // 📝 PASO 5: PROCESAR CADA MEMBRESÍA
     membershipsData?.forEach((membership: any) => {
       membershipsProcessed.transactions += 1;
       const totalAmount = Number(membership.amount_paid) + Number(membership.inscription_amount || 0);
+      
+      // ✅ LÍNEA 10: Sumar monto base al total de membresías
       membershipsProcessed.total += totalAmount;
 
       if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
@@ -238,10 +268,13 @@ export async function GET(request: NextRequest) {
           const amount = Number(payment.amount);
           const commission = Number(payment.commission_amount || 0);
 
+          // ✅ LÍNEA 11: Acumular comisiones de membresías
           membershipsProcessed.commissions += commission;
 
+          // ✅ LÍNEA 12: Calcular monto + comisión para cada método
           const totalAmountWithCommission = amount + commission;
 
+          // ✅ LÍNEA 13: Asignar a cada método de pago (CON comisión incluida)
           switch (payment.payment_method.toLowerCase()) {
             case 'efectivo':
               membershipsProcessed.efectivo += totalAmountWithCommission;
@@ -263,40 +296,35 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // 🧮 CALCULAR TOTALES CONSOLIDADOS
+    // 🔥 PASO 6: AGREGAR COMISIONES AL TOTAL DE MEMBRESÍAS
+    membershipsProcessed.total += membershipsProcessed.commissions;
+
+    console.log('✅ MEMBRESÍAS FINAL:', {
+      total_con_comisiones: membershipsProcessed.total, // Debería ser $0
+      comisiones: membershipsProcessed.commissions      // $0
+    });
+
+    // 🧮 PASO 7: CALCULAR TOTALES CONSOLIDADOS FINALES
     const totals = {
       efectivo: posData.efectivo + membershipsProcessed.efectivo + abonosProcessed.efectivo,
       transferencia: posData.transferencia + membershipsProcessed.transferencia + abonosProcessed.transferencia,
       debito: posData.debito + membershipsProcessed.debito + abonosProcessed.debito,
       credito: posData.credito + membershipsProcessed.credito + abonosProcessed.credito,
-      total: posData.total + membershipsProcessed.total + abonosProcessed.total,
+      total: posData.total + membershipsProcessed.total + abonosProcessed.total, // 🔥 YA INCLUYE COMISIONES
       transactions: posData.transactions + membershipsProcessed.transactions + abonosProcessed.transactions,
       commissions: posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions,
       net_amount: (posData.total + membershipsProcessed.total + abonosProcessed.total) - (posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions)
     };
 
-    console.log('✅ Resumen CORREGIDO:', {
+    console.log('🎯 TOTALES CONSOLIDADOS FINALES:', {
       fecha: date,
-      pos: {
-        total: posData.total, // Debería ser $1,600
-        efectivo: posData.efectivo, // Debería ser $1,200 ($800 + $400)
-        debito: posData.debito, // Debería ser $410 ($400 + $10 comisión)
-        comisiones: posData.commissions, // Debería ser $10
-        transacciones: posData.transactions // Debería ser 2
-      },
-      abonos: {
-        total: abonosProcessed.total, // Debería ser $600
-        efectivo: abonosProcessed.efectivo, // Debería ser $400
-        transferencia: abonosProcessed.transferencia, // Debería ser $200
-        transacciones: abonosProcessed.transactions // Debería ser 2
-      },
-      consolidado: {
-        total_final: totals.total, // Debería ser $2,200
-        efectivo_total: totals.efectivo, // Debería ser $1,600
-        transferencia_total: totals.transferencia, // Debería ser $200
-        debito_total: totals.debito, // Debería ser $410
-        comisiones_totales: totals.commissions // Debería ser $10
-      }
+      ingresos_totales: totals.total,           // Debería ser $2,210
+      efectivo_total: totals.efectivo,          // Debería ser $1,600
+      transferencia_total: totals.transferencia, // Debería ser $200
+      debito_total: totals.debito,              // Debería ser $410
+      comisiones_totales: totals.commissions,   // Debería ser $10
+      monto_neto: totals.net_amount,            // Debería ser $2,200
+      transacciones_totales: totals.transactions // Debería ser 3
     });
 
     return NextResponse.json({
