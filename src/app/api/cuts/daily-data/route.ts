@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
+// 🔧 FUNCIÓN HELPER PARA ZONA HORARIA MÉXICO
+function getMexicoDateRangeUTC(mexicoDateString: string) {
+  // Fecha México 00:00:00 (CST/CDT = UTC-6)
+  const startOfDayMexico = new Date(`${mexicoDateString}T00:00:00-06:00`);
+  // Fecha México 23:59:59.999
+  const endOfDayMexico = new Date(`${mexicoDateString}T23:59:59.999-06:00`);
+  
+  console.log(`🇲🇽 Fecha solicitada México: ${mexicoDateString}`);
+  console.log(`🌍 Rango UTC equivalente: ${startOfDayMexico.toISOString()} → ${endOfDayMexico.toISOString()}`);
+  
+  return {
+    start: startOfDayMexico.toISOString(),
+    end: endOfDayMexico.toISOString()
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,11 +29,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Obteniendo datos para fecha:', date);
+    console.log('🔍 Obteniendo datos para fecha México:', date);
 
     const supabase = createServerSupabaseClient();
+    
+    // 🔧 CALCULAR RANGO UTC PARA FECHA MÉXICO
+    const dateRange = getMexicoDateRangeUTC(date);
 
-    // 🏪 VENTAS POS COMPLETAS DEL DÍA
+    // 🏪 VENTAS POS COMPLETAS DEL DÍA (CON ZONA HORARIA CORREGIDA)
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
       .select(`
@@ -37,8 +56,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('sale_type', 'sale')
       .eq('status', 'completed')
-      .gte('created_at', `${date}T00:00:00`)
-      .lt('created_at', `${date}T23:59:59.999`)
+      .gte('created_at', dateRange.start)
+      .lte('created_at', dateRange.end)
       .order('created_at', { ascending: false });
 
     if (salesError) {
@@ -46,39 +65,31 @@ export async function GET(request: NextRequest) {
       throw salesError;
     }
 
-    // 💰 INICIALIZAR DATOS DE POS
+    // 💰 PROCESAR VENTAS POS
     const posData = {
       efectivo: 0,
       transferencia: 0,
       debito: 0,
       credito: 0,
-      total: 0,          // 🎯 ESTE ES EL QUE CORREGIREMOS
+      total: 0,
       transactions: 0,
       commissions: 0
     };
 
     console.log('🏪 Procesando', salesData?.length || 0, 'ventas POS...');
 
-    // 📝 PASO 1: PROCESAR CADA VENTA POS
     salesData?.forEach((sale: any) => {
       posData.transactions += 1;
-      
-      // ✅ LÍNEA 1: Sumar el monto base de la venta al total
       posData.total += Number(sale.total_amount);
 
-      // ✅ LÍNEA 2: Procesar cada detalle de pago de la venta
       if (sale.sale_payment_details && sale.sale_payment_details.length > 0) {
         sale.sale_payment_details.forEach((payment: any) => {
           const amount = Number(payment.amount);
           const commission = Number(payment.commission_amount || 0);
 
-          // ✅ LÍNEA 3: Acumular comisiones del POS
           posData.commissions += commission;
-
-          // ✅ LÍNEA 4: Calcular monto + comisión para cada método
           const totalAmountWithCommission = amount + commission;
 
-          // ✅ LÍNEA 5: Asignar a cada método de pago (CON comisión incluida)
           switch (payment.payment_method.toLowerCase()) {
             case 'efectivo':
               posData.efectivo += totalAmountWithCommission;
@@ -106,18 +117,17 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 🔥 PASO 2: AGREGAR COMISIONES AL TOTAL DE POS (CLAVE!)
+    // 🔥 AGREGAR COMISIONES AL TOTAL DE POS
     posData.total += posData.commissions;
 
     console.log('✅ POS FINAL:', {
-      total_con_comisiones: posData.total,     // Debería ser $1,610
-      total_sin_comisiones: posData.total - posData.commissions, // $1,600
-      efectivo: posData.efectivo,              // $1,200
-      debito: posData.debito,                  // $410
-      comisiones: posData.commissions          // $10
+      total_con_comisiones: posData.total,
+      efectivo: posData.efectivo,
+      debito: posData.debito,
+      comisiones: posData.commissions
     });
 
-    // 📋 ABONOS DEL DÍA (SOLO PAGOS HECHOS HOY)
+    // 📋 ABONOS DEL DÍA (CON ZONA HORARIA CORREGIDA)
     const { data: abonosData, error: abonosError } = await supabase
       .from('sale_payment_details')
       .select(`
@@ -136,8 +146,8 @@ export async function GET(request: NextRequest) {
           status
         )
       `)
-      .gte('payment_date', `${date}T00:00:00`)
-      .lt('payment_date', `${date}T23:59:59.999`)
+      .gte('payment_date', dateRange.start)
+      .lte('payment_date', dateRange.end)
       .eq('is_partial_payment', true)
       .order('payment_date', { ascending: false });
 
@@ -146,7 +156,7 @@ export async function GET(request: NextRequest) {
       throw abonosError;
     }
 
-    // 💰 INICIALIZAR DATOS DE ABONOS
+    // 💰 PROCESAR ABONOS
     const abonosProcessed = {
       efectivo: 0,
       transferencia: 0,
@@ -158,26 +168,20 @@ export async function GET(request: NextRequest) {
     };
 
     const uniqueAbonos = new Set();
+    let totalAbonosBase = 0;
 
     console.log('📋 Procesando', abonosData?.length || 0, 'abonos...');
 
-    // 📝 PASO 3: PROCESAR CADA ABONO
     abonosData?.forEach((abono: any) => {
       const amount = Number(abono.amount);
       const commission = Number(abono.commission_amount || 0);
-
-      // ✅ LÍNEA 6: Sumar monto base al total de abonos
-      abonosProcessed.total += amount;
       
-      // ✅ LÍNEA 7: Acumular comisiones de abonos
-      abonosProcessed.commissions += commission;
-
-      uniqueAbonos.add(abono.sale_id);
-
-      // ✅ LÍNEA 8: Calcular monto + comisión para cada método
       const totalAmountWithCommission = amount + commission;
 
-      // ✅ LÍNEA 9: Asignar a cada método de pago (CON comisión incluida)
+      totalAbonosBase += amount;
+      abonosProcessed.commissions += commission;
+      uniqueAbonos.add(abono.sale_id);
+
       switch (abono.payment_method.toLowerCase()) {
         case 'efectivo':
           abonosProcessed.efectivo += totalAmountWithCommission;
@@ -203,19 +207,17 @@ export async function GET(request: NextRequest) {
       });
     });
 
+    abonosProcessed.total = totalAbonosBase + abonosProcessed.commissions;
     abonosProcessed.transactions = uniqueAbonos.size;
 
-    // 🔥 PASO 4: AGREGAR COMISIONES AL TOTAL DE ABONOS
-    abonosProcessed.total += abonosProcessed.commissions;
-
     console.log('✅ ABONOS FINAL:', {
-      total_con_comisiones: abonosProcessed.total, // Debería ser $600
-      efectivo: abonosProcessed.efectivo,          // $400
-      transferencia: abonosProcessed.transferencia, // $200
-      comisiones: abonosProcessed.commissions      // $0 (no hay comisiones en abonos)
+      total_con_comisiones: abonosProcessed.total,
+      efectivo: abonosProcessed.efectivo,
+      transferencia: abonosProcessed.transferencia,
+      comisiones: abonosProcessed.commissions
     });
 
-    // 🎫 MEMBRESÍAS DEL DÍA
+    // 🎫 MEMBRESÍAS DEL DÍA (CON ZONA HORARIA CORREGIDA)
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('user_memberships')
       .select(`
@@ -233,8 +235,8 @@ export async function GET(request: NextRequest) {
           sequence_order
         )
       `)
-      .gte('created_at', `${date}T00:00:00`)
-      .lt('created_at', `${date}T23:59:59.999`)
+      .gte('created_at', dateRange.start)
+      .lte('created_at', dateRange.end)
       .order('created_at', { ascending: false });
 
     if (membershipsError) {
@@ -242,7 +244,7 @@ export async function GET(request: NextRequest) {
       throw membershipsError;
     }
 
-    // 💰 INICIALIZAR DATOS DE MEMBRESÍAS
+    // 💰 PROCESAR MEMBRESÍAS
     const membershipsProcessed = {
       efectivo: 0,
       transferencia: 0,
@@ -253,28 +255,39 @@ export async function GET(request: NextRequest) {
       commissions: 0
     };
 
+    let totalMembershipsBase = 0;
+
     console.log('🎫 Procesando', membershipsData?.length || 0, 'membresías...');
 
-    // 📝 PASO 5: PROCESAR CADA MEMBRESÍA
     membershipsData?.forEach((membership: any) => {
       membershipsProcessed.transactions += 1;
       const totalAmount = Number(membership.amount_paid) + Number(membership.inscription_amount || 0);
-      
-      // ✅ LÍNEA 10: Sumar monto base al total de membresías
-      membershipsProcessed.total += totalAmount;
+      totalMembershipsBase += totalAmount;
+
+      console.log('🎫 Membresía encontrada:', {
+        id: membership.id,
+        amount_paid: membership.amount_paid,
+        inscription_amount: membership.inscription_amount,
+        total: totalAmount,
+        is_mixed: membership.is_mixed_payment,
+        created_at: membership.created_at
+      });
 
       if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
         membership.membership_payment_details.forEach((payment: any) => {
           const amount = Number(payment.amount);
           const commission = Number(payment.commission_amount || 0);
-
-          // ✅ LÍNEA 11: Acumular comisiones de membresías
+          
+          const totalAmountWithCommission = amount + commission;
           membershipsProcessed.commissions += commission;
 
-          // ✅ LÍNEA 12: Calcular monto + comisión para cada método
-          const totalAmountWithCommission = amount + commission;
+          console.log('💳 Detalle de pago membresía:', {
+            method: payment.payment_method,
+            amount: amount,
+            commission: commission,
+            total_with_commission: totalAmountWithCommission
+          });
 
-          // ✅ LÍNEA 13: Asignar a cada método de pago (CON comisión incluida)
           switch (payment.payment_method.toLowerCase()) {
             case 'efectivo':
               membershipsProcessed.efectivo += totalAmountWithCommission;
@@ -293,43 +306,57 @@ export async function GET(request: NextRequest) {
               membershipsProcessed.efectivo += totalAmountWithCommission;
           }
         });
+      } else {
+        console.warn('⚠️ Membresía sin detalles de pago:', membership.id);
+        // Si no hay detalles de pago, asumimos efectivo
+        membershipsProcessed.efectivo += totalAmount;
       }
     });
 
-    // 🔥 PASO 6: AGREGAR COMISIONES AL TOTAL DE MEMBRESÍAS
-    membershipsProcessed.total += membershipsProcessed.commissions;
+    membershipsProcessed.total = totalMembershipsBase + membershipsProcessed.commissions;
 
     console.log('✅ MEMBRESÍAS FINAL:', {
-      total_con_comisiones: membershipsProcessed.total, // Debería ser $0
-      comisiones: membershipsProcessed.commissions      // $0
+      total_con_comisiones: membershipsProcessed.total,
+      total_base: totalMembershipsBase,
+      efectivo: membershipsProcessed.efectivo,
+      transferencia: membershipsProcessed.transferencia,
+      debito: membershipsProcessed.debito,
+      credito: membershipsProcessed.credito,
+      comisiones: membershipsProcessed.commissions,
+      transacciones: membershipsProcessed.transactions
     });
 
-    // 🧮 PASO 7: CALCULAR TOTALES CONSOLIDADOS FINALES
+    // 🧮 CALCULAR TOTALES CONSOLIDADOS FINALES
     const totals = {
       efectivo: posData.efectivo + membershipsProcessed.efectivo + abonosProcessed.efectivo,
       transferencia: posData.transferencia + membershipsProcessed.transferencia + abonosProcessed.transferencia,
       debito: posData.debito + membershipsProcessed.debito + abonosProcessed.debito,
       credito: posData.credito + membershipsProcessed.credito + abonosProcessed.credito,
-      total: posData.total + membershipsProcessed.total + abonosProcessed.total, // 🔥 YA INCLUYE COMISIONES
+      total: posData.total + membershipsProcessed.total + abonosProcessed.total,
       transactions: posData.transactions + membershipsProcessed.transactions + abonosProcessed.transactions,
       commissions: posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions,
       net_amount: (posData.total + membershipsProcessed.total + abonosProcessed.total) - (posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions)
     };
 
-    console.log('🎯 TOTALES CONSOLIDADOS FINALES:', {
-      fecha: date,
-      ingresos_totales: totals.total,           // Debería ser $2,210
-      efectivo_total: totals.efectivo,          // Debería ser $1,600
-      transferencia_total: totals.transferencia, // Debería ser $200
-      debito_total: totals.debito,              // Debería ser $410
-      comisiones_totales: totals.commissions,   // Debería ser $10
-      monto_neto: totals.net_amount,            // Debería ser $2,200
-      transacciones_totales: totals.transactions // Debería ser 3
+    console.log('🎯 TOTALES CONSOLIDADOS CON ZONA HORARIA CORREGIDA:', {
+      fecha_mexico: date,
+      rango_utc: `${dateRange.start} → ${dateRange.end}`,
+      pos_encontradas: posData.transactions,
+      abonos_encontrados: abonosProcessed.transactions,
+      membresias_encontradas: membershipsProcessed.transactions,
+      ingresos_totales: totals.total,
+      comisiones_totales: totals.commissions,
+      monto_neto: totals.net_amount
     });
 
     return NextResponse.json({
       success: true,
       date,
+      timezone_info: {
+        mexico_date: date,
+        utc_range: dateRange,
+        note: 'Fechas convertidas correctamente a zona horaria México (UTC-6)'
+      },
       pos: posData,
       memberships: membershipsProcessed,
       abonos: abonosProcessed,
