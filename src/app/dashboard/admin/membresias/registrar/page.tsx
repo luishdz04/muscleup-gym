@@ -443,24 +443,23 @@ export default function RegistrarMembresiaPage() {
     }
   }, [supabase]);
 
-  // ✅ CARGAR HISTORIAL DE USUARIO OPTIMIZADO - LA BD YA MANEJA FECHAS CORRECTAS
-  const loadUserHistory = useCallback(async (userId: string) => {
-    try {
-      console.log('🔍 Iniciando carga de historial para usuario:', userId);
-      
-      // ✅ CONSULTA OPTIMIZADA - LA BD YA ESTÁ EN HORA MÉXICO
-      const { data: memberships, error: membershipsError } = await supabase
-        .from('user_memberships')
-        .select('id, created_at, status, planid, start_date, end_date')
-        .eq('userid', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+const loadUserHistory = useCallback(async (userId: string) => {
+  try {
+    console.log('🔍 Iniciando carga de historial para usuario:', userId);
+    
+    // ✅ CONSULTA SIMPLE - LA BD YA ESTÁ EN HORA MÉXICO
+    const { data: memberships, error: membershipsError } = await supabase
+      .from('user_memberships')
+      .select('id, created_at, status, planid, start_date, end_date')
+      .eq('userid', userId)
+      .order('created_at', { ascending: false })
+      .limit(10);
 
-      if (membershipsError) {
-        console.error('❌ Error en consulta de membresías:', membershipsError);
-        setUserHistory([]);
-        return;
-      }
+    if (membershipsError) {
+      console.error('❌ Error en consulta de membresías:', membershipsError);
+      setUserHistory([]);
+      return;
+    }
 
       console.log(`📊 Membresías encontradas: ${memberships?.length || 0}`);
 
@@ -504,23 +503,16 @@ export default function RegistrarMembresiaPage() {
       console.log(`✅ Historial procesado exitosamente: ${formattedHistory.length} registros`);
       setUserHistory(formattedHistory);
 
-      // ✅ AUTO-DETECCIÓN INTELIGENTE - LA BD YA MANEJA FECHAS MÉXICO
-      // Usar SQL nativo para comparar fechas en hora local de la BD
-      const { data: activeMemberships, error: activeError } = await supabase
-        .from('user_memberships')
-        .select('end_date')
-        .eq('userid', userId)
-        .eq('status', 'active')
-        .not('end_date', 'is', null)
-        .gte('end_date', supabase.sql`CURRENT_DATE`) // ✅ Fecha actual en BD (México)
-        .order('end_date', { ascending: false });
-
-      if (activeError) {
-        console.warn('⚠️ Error verificando membresías activas:', activeError);
-      }
-
-      const hasActiveMemberships = (activeMemberships?.length || 0) > 0;
-      const hasPreviousMemberships = formattedHistory.length > 0;
+     // ✅ AUTO-DETECCIÓN SIMPLE
+    const today = new Date().toISOString().split('T')[0];
+    
+    const activeMemberships = formattedHistory.filter(h => {
+      if (h.status !== 'active' || !h.end_date) return false;
+      return h.end_date >= today;
+    });
+    
+    const hasActiveMemberships = activeMemberships.length > 0;
+    const hasPreviousMemberships = formattedHistory.length > 0;
       
       console.log(`🔄 Auto-detección: Activas=${hasActiveMemberships}, Previas=${hasPreviousMemberships}`);
       
@@ -601,50 +593,62 @@ export default function RegistrarMembresiaPage() {
     loadInitialData();
   }, [supabase]);
 
-  // ✅ VALIDAR CUPÓN SIMPLIFICADO - LA BD YA MANEJA FECHAS MÉXICO
-  const validateCoupon = useCallback(async (code: string) => {
-    if (!code.trim()) {
+ const validateCoupon = useCallback(async (code: string) => {
+  if (!code.trim()) {
+    setAppliedCoupon(null);
+    return;
+  }
+
+  try {
+    // ✅ CONSULTA SIMPLE SIN SQL NATIVO PROBLEMÁTICO
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', code.toUpperCase())
+      .eq('is_active', true)
+      .single();
+
+    if (error || !data) {
+      setError('Cupón no válido o no encontrado');
       setAppliedCoupon(null);
       return;
     }
 
-    try {
-      // ✅ CONSULTA CON VALIDACIÓN DE FECHAS EN BD (México)
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('code', code.toUpperCase())
-        .eq('is_active', true)
-        .lte('start_date', supabase.sql`CURRENT_DATE`) // ✅ Fecha actual en BD (México)
-        .gte('end_date', supabase.sql`CURRENT_DATE`)   // ✅ Fecha actual en BD (México)
-        .single();
-
-      if (error || !data) {
-        setError('Cupón no válido, expirado o no encontrado');
-        setAppliedCoupon(null);
-        return;
-      }
-
-      if (data.max_uses && data.current_uses >= data.max_uses) {
-        setError('El cupón ha alcanzado su límite de usos');
-        setAppliedCoupon(null);
-        return;
-      }
-
-      if (data.min_amount && subtotal < data.min_amount) {
-        setError(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}`);
-        setAppliedCoupon(null);
-        return;
-      }
-
-      setAppliedCoupon(data);
-      setSuccessMessage('🎟️ Cupón aplicado exitosamente');
-      setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    // ✅ VALIDAR FECHAS CON JAVASCRIPT (la BD ya está en México)
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (data.start_date && today < data.start_date) {
+      setError('El cupón no está vigente aún');
       setAppliedCoupon(null);
+      return;
     }
-  }, [supabase, subtotal, formatPrice]);
+
+    if (data.end_date && today > data.end_date) {
+      setError('El cupón ha expirado');
+      setAppliedCoupon(null);
+      return;
+    }
+
+    if (data.max_uses && data.current_uses >= data.max_uses) {
+      setError('El cupón ha alcanzado su límite de usos');
+      setAppliedCoupon(null);
+      return;
+    }
+
+    if (data.min_amount && subtotal < data.min_amount) {
+      setError(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}`);
+      setAppliedCoupon(null);
+      return;
+    }
+
+    setAppliedCoupon(data);
+    setSuccessMessage('🎟️ Cupón aplicado exitosamente');
+    setError(null);
+  } catch (err: any) {
+    setError(err.message);
+    setAppliedCoupon(null);
+  }
+}, [supabase, subtotal, formatPrice]);
 
   // 🔥 CALCULAR COMISIÓN CORREGIDA - SOLO TARJETAS
   const calculateCommission = useCallback((method: string, amount: number): { rate: number; amount: number } => {
@@ -841,188 +845,186 @@ export default function RegistrarMembresiaPage() {
     return true;
   }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formData.paymentMethod, formData.paymentReceived, formatPrice]);
 
-  // ✅ SUBMIT PRINCIPAL OPTIMIZADO - LA BD MANEJA FECHAS AUTOMÁTICAMENTE
-  const handleSubmit = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+// ✅ SUBMIT PRINCIPAL CORREGIDO
+const handleSubmit = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
-      const { data: { session } } = await supabase.auth.getSession();
+    // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
+    const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session) {
-        setError('No hay sesión activa');
-        return;
-      }
-
-      console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
-
-      if (!selectedUser || !selectedPlan || !formData.paymentType) {
-        setError('Por favor complete todos los campos requeridos');
-        return;
-      }
-
-      if (!formData.isMixedPayment && !formData.paymentMethod) {
-        setError('Seleccione un método de pago');
-        return;
-      }
-
-      if (!validatePayment()) {
-        return;
-      }
-
-      // ✅ FECHAS SIMPLIFICADAS - LA BD CALCULA AUTOMÁTICAMENTE EN HORA MÉXICO
-      let startDate: string;
-      let endDate: string | null = null;
-
-      if (formData.isRenewal && formData.latestEndDate) {
-        // ✅ RENOVACIÓN: Desde fecha de vencimiento actual
-        startDate = formData.latestEndDate;
-        console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
-        
-        // ✅ CALCULAR FECHA DE FIN CON FUNCIÓN SQL EN LA BD
-        endDate = addPeriodToDate(startDate, formData.paymentType);
-        
-        console.log(`📅 Fechas de renovación:`);
-        console.log(`   📅 Desde: ${startDate}`);
-        console.log(`   🔄 Tipo: ${formData.paymentType}`);
-        console.log(`   📅 Hasta: ${endDate}`);
-      } else {
-        // ✅ PRIMERA VEZ: La BD calculará automáticamente desde NOW() en hora México
-        startDate = supabase.sql`CURRENT_DATE`; // ✅ Fecha actual en BD (México)
-        console.log(`🆕 Primera venta: Iniciando desde fecha actual de BD (México)`);
-        
-        // ✅ CALCULAR FECHA DE VENCIMIENTO
-        const calculatedEndDate = calculateEndDate();
-        if (calculatedEndDate) {
-          endDate = calculatedEndDate.toISOString().split('T')[0];
-        }
-        
-        console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
-      }
-
-      const totalVisits = formData.paymentType === 'visit' ? 1 : null;
-      const remainingVisits = totalVisits;
-
-      console.log(`📅 Fechas finales: ${startDate} → ${endDate}`);
-
-      // ✅ PASO ADICIONAL: SI ES RENOVACIÓN, DESACTIVAR MEMBRESÍAS ACTIVAS
-      if (formData.isRenewal) {
-        console.log('🔄 Procesando renovación: Desactivando membresías activas...');
-        
-        // ✅ USAR NOW() DE LA BD PARA TIMESTAMP
-        const { error: updateError } = await supabase
-          .from('user_memberships')
-          .update({ 
-            status: 'expired',
-            updated_at: supabase.sql`NOW()` // ✅ Timestamp automático en hora de BD (México)
-          })
-          .eq('userid', selectedUser.id)
-          .eq('status', 'active');
-
-        if (updateError) {
-          console.warn('⚠️ Error al desactivar membresías activas:', updateError);
-        } else {
-          console.log('✅ Membresías activas desactivadas correctamente');
-        }
-      }
-
-      // ✅ DATOS DE LA MEMBRESÍA OPTIMIZADOS
-      const membershipData = {
-        userid: selectedUser.id,
-        planid: selectedPlan.id,
-        payment_type: formData.paymentType,
-        amount_paid: finalAmount,
-        inscription_amount: inscriptionAmount,
-        start_date: typeof startDate === 'string' ? startDate : supabase.sql`CURRENT_DATE`,
-        end_date: endDate,
-        status: 'active',
-        total_visits: totalVisits,
-        remaining_visits: remainingVisits,
-        payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
-        payment_reference: formData.paymentReference || null,
-        discount_amount: discountAmount,
-        coupon_code: appliedCoupon?.code || null,
-        subtotal: subtotal,
-        commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
-        commission_amount: commissionAmount,
-        payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
-        payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
-        is_mixed_payment: formData.isMixedPayment,
-        payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
-        is_renewal: formData.isRenewal,
-        skip_inscription: formData.skipInscription,
-        custom_commission_rate: formData.customCommissionRate,
-        notes: formData.notes || null,
-        // ✅ TIMESTAMPS AUTOMÁTICOS CON BD EN HORA MÉXICO
-        created_at: supabase.sql`NOW()`,
-        updated_at: supabase.sql`NOW()`,
-        created_by: session.user.id // ✅ UUID correcto del usuario autenticado
-      };
-
-      console.log('💾 Guardando nueva membresía:', membershipData);
-
-      const { data: membership, error: membershipError } = await supabase
-        .from('user_memberships')
-        .insert([membershipData])
-        .select()
-        .single();
-
-      if (membershipError) throw membershipError;
-
-      console.log('✅ Membresía creada exitosamente:', membership.id);
-
-      // Si es pago mixto, guardar detalles
-      if (formData.isMixedPayment) {
-        const paymentDetailsData = formData.paymentDetails.map(detail => ({
-          membership_id: membership.id,
-          payment_method: detail.method,
-          amount: detail.amount,
-          commission_rate: detail.commission_rate,
-          commission_amount: detail.commission_amount,
-          payment_reference: detail.reference,
-          sequence_order: detail.sequence
-        }));
-
-        const { error: detailsError } = await supabase
-          .from('membership_payment_details')
-          .insert(paymentDetailsData);
-
-        if (detailsError) {
-          console.warn('Error al guardar detalles de pago:', detailsError);
-        }
-      }
-
-      // Actualizar uso del cupón
-      if (appliedCoupon) {
-        await supabase
-          .from('coupons')
-          .update({ current_uses: appliedCoupon.current_uses + 1 })
-          .eq('id', appliedCoupon.id);
-      }
-
-      const successMsg = formData.isRenewal 
-        ? `¡Renovación exitosa! Membresía extendida hasta ${endDate}`
-        : '¡Membresía registrada exitosamente!';
-      
-      setSuccessMessage(successMsg);
-      
-      setTimeout(() => {
-        router.push('/dashboard/admin/membresias');
-      }, 3000);
-
-    } catch (err: any) {
-      setError(`Error procesando venta: ${err.message}`);
-    } finally {
-      setLoading(false);
-      setConfirmDialogOpen(false);
+    if (!session) {
+      setError('No hay sesión activa');
+      return;
     }
-  }, [
-    supabase, selectedUser, selectedPlan, formData, validatePayment, 
-    addPeriodToDate, calculateEndDate, finalAmount, inscriptionAmount, 
-    discountAmount, subtotal, commissionAmount, calculateCommission, 
-    totalAmount, appliedCoupon, router
-  ]);
+
+    console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
+
+    if (!selectedUser || !selectedPlan || !formData.paymentType) {
+      setError('Por favor complete todos los campos requeridos');
+      return;
+    }
+
+    if (!formData.isMixedPayment && !formData.paymentMethod) {
+      setError('Seleccione un método de pago');
+      return;
+    }
+
+    if (!validatePayment()) {
+      return;
+    }
+
+    // ✅ FECHAS CORREGIDAS - LA BD CALCULA AUTOMÁTICAMENTE EN HORA MÉXICO
+    let startDate: string;
+    let endDate: string | null = null;
+
+    if (formData.isRenewal && formData.latestEndDate) {
+      // ✅ RENOVACIÓN: Desde fecha de vencimiento actual
+      startDate = formData.latestEndDate;
+      console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
+      
+      // ✅ CALCULAR FECHA DE FIN 
+      endDate = addPeriodToDate(startDate, formData.paymentType);
+      
+      console.log(`📅 Fechas de renovación:`);
+      console.log(`   📅 Desde: ${startDate}`);
+      console.log(`   🔄 Tipo: ${formData.paymentType}`);
+      console.log(`   📅 Hasta: ${endDate}`);
+    } else {
+      // ✅ PRIMERA VEZ: Fecha actual (la BD la convertirá a México automáticamente)
+      const today = new Date().toISOString().split('T')[0];
+      startDate = today;
+      console.log(`🆕 Primera venta: Iniciando desde ${startDate}`);
+      
+      // ✅ CALCULAR FECHA DE VENCIMIENTO
+      const calculatedEndDate = calculateEndDate();
+      if (calculatedEndDate) {
+        endDate = calculatedEndDate.toISOString().split('T')[0];
+      }
+      
+      console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
+    }
+
+    const totalVisits = formData.paymentType === 'visit' ? 1 : null;
+    const remainingVisits = totalVisits;
+
+    console.log(`📅 Fechas finales: ${startDate} → ${endDate}`);
+
+    // ✅ PASO ADICIONAL: SI ES RENOVACIÓN, DESACTIVAR MEMBRESÍAS ACTIVAS
+    if (formData.isRenewal) {
+      console.log('🔄 Procesando renovación: Desactivando membresías activas...');
+      
+      const { error: updateError } = await supabase
+        .from('user_memberships')
+        .update({ 
+          status: 'expired'
+          // ✅ updated_at se actualizará automáticamente si tienes trigger en la BD
+        })
+        .eq('userid', selectedUser.id)
+        .eq('status', 'active');
+
+      if (updateError) {
+        console.warn('⚠️ Error al desactivar membresías activas:', updateError);
+      } else {
+        console.log('✅ Membresías activas desactivadas correctamente');
+      }
+    }
+
+    // ✅ DATOS DE LA MEMBRESÍA CORREGIDOS
+    const membershipData = {
+      userid: selectedUser.id,
+      planid: selectedPlan.id,
+      payment_type: formData.paymentType,
+      amount_paid: finalAmount,
+      inscription_amount: inscriptionAmount,
+      start_date: startDate,
+      end_date: endDate,
+      status: 'active',
+      total_visits: totalVisits,
+      remaining_visits: remainingVisits,
+      payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
+      payment_reference: formData.paymentReference || null,
+      discount_amount: discountAmount,
+      coupon_code: appliedCoupon?.code || null,
+      subtotal: subtotal,
+      commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
+      commission_amount: commissionAmount,
+      payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
+      payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
+      is_mixed_payment: formData.isMixedPayment,
+      payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
+      is_renewal: formData.isRenewal,
+      skip_inscription: formData.skipInscription,
+      custom_commission_rate: formData.customCommissionRate,
+      notes: formData.notes || null,
+      created_by: session.user.id
+      // ✅ created_at y updated_at se manejarán automáticamente por la BD
+    };
+
+    console.log('💾 Guardando nueva membresía:', membershipData);
+
+    const { data: membership, error: membershipError } = await supabase
+      .from('user_memberships')
+      .insert([membershipData])
+      .select()
+      .single();
+
+    if (membershipError) throw membershipError;
+
+    console.log('✅ Membresía creada exitosamente:', membership.id);
+
+    // Si es pago mixto, guardar detalles
+    if (formData.isMixedPayment) {
+      const paymentDetailsData = formData.paymentDetails.map(detail => ({
+        membership_id: membership.id,
+        payment_method: detail.method,
+        amount: detail.amount,
+        commission_rate: detail.commission_rate,
+        commission_amount: detail.commission_amount,
+        payment_reference: detail.reference,
+        sequence_order: detail.sequence
+      }));
+
+      const { error: detailsError } = await supabase
+        .from('membership_payment_details')
+        .insert(paymentDetailsData);
+
+      if (detailsError) {
+        console.warn('Error al guardar detalles de pago:', detailsError);
+      }
+    }
+
+    // Actualizar uso del cupón
+    if (appliedCoupon) {
+      await supabase
+        .from('coupons')
+        .update({ current_uses: appliedCoupon.current_uses + 1 })
+        .eq('id', appliedCoupon.id);
+    }
+
+    const successMsg = formData.isRenewal 
+      ? `¡Renovación exitosa! Membresía extendida hasta ${endDate}`
+      : '¡Membresía registrada exitosamente!';
+    
+    setSuccessMessage(successMsg);
+    
+    setTimeout(() => {
+      router.push('/dashboard/admin/membresias');
+    }, 3000);
+
+  } catch (err: any) {
+    setError(`Error procesando venta: ${err.message}`);
+  } finally {
+    setLoading(false);
+    setConfirmDialogOpen(false);
+  }
+}, [
+  supabase, selectedUser, selectedPlan, formData, validatePayment, 
+  addPeriodToDate, calculateEndDate, finalAmount, inscriptionAmount, 
+  discountAmount, subtotal, commissionAmount, calculateCommission, 
+  totalAmount, appliedCoupon, router
+]);
 
   const steps = [
     { label: 'Cliente', description: 'Seleccionar cliente' },
