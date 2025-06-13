@@ -25,16 +25,14 @@ export async function POST(request: NextRequest) {
       pos_credito,
       pos_total,
       pos_transactions,
-      pos_commissions,
       
-      // ABONOS
+      // ABONOS ✅ NUEVOS CAMPOS
       abonos_efectivo,
       abonos_transferencia,
       abonos_debito,
       abonos_credito,
       abonos_total,
       abonos_transactions,
-      abonos_commissions,
       
       // MEMBERSHIPS
       membership_efectivo,
@@ -43,7 +41,6 @@ export async function POST(request: NextRequest) {
       membership_credito,
       membership_total,
       membership_transactions,
-      membership_commissions,
       
       // TOTALES
       total_efectivo,
@@ -52,8 +49,6 @@ export async function POST(request: NextRequest) {
       total_credito,
       grand_total,
       total_transactions,
-      total_commissions,
-      net_amount,
       expenses_amount = 0,
       final_balance
     } = body;
@@ -117,9 +112,9 @@ export async function POST(request: NextRequest) {
         pos_mixto: 0,
         pos_total: parseFloat(pos_total) || 0,
         pos_transactions: parseInt(pos_transactions) || 0,
-        pos_commissions: parseFloat(pos_commissions) || 0,
+        pos_commissions: 0,
         
-        // ABONOS
+        // ABONOS ✅ CAMPOS ESPECÍFICOS
         abonos_efectivo: parseFloat(abonos_efectivo) || 0,
         abonos_transferencia: parseFloat(abonos_transferencia) || 0,
         abonos_debito: parseFloat(abonos_debito) || 0,
@@ -127,7 +122,7 @@ export async function POST(request: NextRequest) {
         abonos_mixto: 0,
         abonos_total: parseFloat(abonos_total) || 0,
         abonos_transactions: parseInt(abonos_transactions) || 0,
-        abonos_commissions: parseFloat(abonos_commissions) || 0,
+        abonos_commissions: 0,
         
         // MEMBERSHIPS
         membership_efectivo: parseFloat(membership_efectivo) || 0,
@@ -137,7 +132,7 @@ export async function POST(request: NextRequest) {
         membership_mixto: 0,
         membership_total: parseFloat(membership_total) || 0,
         membership_transactions: parseInt(membership_transactions) || 0,
-        membership_commissions: parseFloat(membership_commissions) || 0,
+        membership_commissions: 0,
         
         // TOTALES
         total_efectivo: parseFloat(total_efectivo) || 0,
@@ -147,8 +142,8 @@ export async function POST(request: NextRequest) {
         total_mixto: 0,
         grand_total: parseFloat(grand_total) || 0,
         total_transactions: parseInt(total_transactions) || 0,
-        total_commissions: parseFloat(total_commissions) || 0,
-        net_amount: parseFloat(net_amount) || 0,
+        total_commissions: 0,
+        net_amount: parseFloat(grand_total) || 0,
         expenses_amount: parseFloat(expenses_amount) || 0,
         final_balance: parseFloat(final_balance) || 0,
         
