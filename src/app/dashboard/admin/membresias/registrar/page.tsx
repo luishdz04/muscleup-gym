@@ -323,46 +323,15 @@ export default function RegistrarMembresiaPage() {
     }).format(price);
   }, []);
 
-  // ✅ FUNCIÓN CRÍTICA SIMPLIFICADA: AGREGAR PERÍODOS USANDO SQL NATIVO
-  const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
-    console.log(`📅 Calculando período: ${startDate} + ${periodType}`);
+ const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
+  console.log(`📅 Calculando período: ${startDate} + ${periodType}`);
+  
+  try {
+    // ✅ CREAR FECHA CORRECTAMENTE
+    const [year, month, day] = startDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month - 1 porque JS usa 0-indexado
     
-    // ✅ LA BD YA MANEJA LOS PERÍODOS CORRECTAMENTE CON SQL NATIVO
-    // Solo necesitamos determinar el tipo de intervalo para SQL
-    let interval: string;
-    
-    switch (periodType) {
-      case 'weekly':
-        interval = '7 days';
-        break;
-      case 'biweekly':
-        interval = '14 days';
-        break;
-      case 'monthly':
-        interval = '1 month';
-        break;
-      case 'bimonthly':
-        interval = '2 months';
-        break;
-      case 'quarterly':
-        interval = '3 months';
-        break;
-      case 'semester':
-        interval = '6 months';
-        break;
-      case 'annual':
-        interval = '1 year';
-        break;
-      default:
-        interval = '1 month'; // fallback
-        break;
-    }
-    
-    console.log(`📅 Período SQL: ${startDate} + ${interval}`);
-    
-    // ✅ CÁLCULO MANUAL TEMPORAL PARA PREVIEW (la BD calculará el real)
-    const date = new Date(startDate + 'T00:00:00');
-    
+    // ✅ AGREGAR PERÍODOS CORRECTAMENTE
     switch (periodType) {
       case 'weekly':
         date.setDate(date.getDate() + 7);
@@ -371,27 +340,70 @@ export default function RegistrarMembresiaPage() {
         date.setDate(date.getDate() + 14);
         break;
       case 'monthly':
-        date.setMonth(date.getMonth() + 1);
+        // ✅ MÉTODO CORRECTO PARA MESES - MANTENER EL MISMO DÍA
+        const targetMonth = date.getMonth() + 1;
+        const targetYear = date.getFullYear() + Math.floor(targetMonth / 12);
+        const finalMonth = targetMonth % 12;
+        
+        // ✅ VERIFICAR SI EL DÍA EXISTE EN EL MES DESTINO
+        const lastDayOfTargetMonth = new Date(targetYear, finalMonth + 1, 0).getDate();
+        const dayToSet = Math.min(day, lastDayOfTargetMonth);
+        
+        date.setFullYear(targetYear, finalMonth, dayToSet);
         break;
       case 'bimonthly':
-        date.setMonth(date.getMonth() + 2);
+        const targetMonth2 = date.getMonth() + 2;
+        const targetYear2 = date.getFullYear() + Math.floor(targetMonth2 / 12);
+        const finalMonth2 = targetMonth2 % 12;
+        
+        const lastDayOfTargetMonth2 = new Date(targetYear2, finalMonth2 + 1, 0).getDate();
+        const dayToSet2 = Math.min(day, lastDayOfTargetMonth2);
+        
+        date.setFullYear(targetYear2, finalMonth2, dayToSet2);
         break;
       case 'quarterly':
-        date.setMonth(date.getMonth() + 3);
+        const targetMonth3 = date.getMonth() + 3;
+        const targetYear3 = date.getFullYear() + Math.floor(targetMonth3 / 12);
+        const finalMonth3 = targetMonth3 % 12;
+        
+        const lastDayOfTargetMonth3 = new Date(targetYear3, finalMonth3 + 1, 0).getDate();
+        const dayToSet3 = Math.min(day, lastDayOfTargetMonth3);
+        
+        date.setFullYear(targetYear3, finalMonth3, dayToSet3);
         break;
       case 'semester':
-        date.setMonth(date.getMonth() + 6);
+        const targetMonth6 = date.getMonth() + 6;
+        const targetYear6 = date.getFullYear() + Math.floor(targetMonth6 / 12);
+        const finalMonth6 = targetMonth6 % 12;
+        
+        const lastDayOfTargetMonth6 = new Date(targetYear6, finalMonth6 + 1, 0).getDate();
+        const dayToSet6 = Math.min(day, lastDayOfTargetMonth6);
+        
+        date.setFullYear(targetYear6, finalMonth6, dayToSet6);
         break;
       case 'annual':
         date.setFullYear(date.getFullYear() + 1);
         break;
+      default:
+        date.setMonth(date.getMonth() + 1); // fallback
+        break;
     }
     
-    const result = date.toISOString().split('T')[0];
-    console.log(`📅 Resultado calculado: ${result}`);
+    // ✅ CONVERTIR DE VUELTA A STRING YYYY-MM-DD
+    const resultYear = date.getFullYear();
+    const resultMonth = String(date.getMonth() + 1).padStart(2, '0');
+    const resultDay = String(date.getDate()).padStart(2, '0');
+    
+    const result = `${resultYear}-${resultMonth}-${resultDay}`;
+    console.log(`📅 Resultado corregido: ${startDate} → ${result}`);
     
     return result;
-  }, []);
+    
+  } catch (error) {
+    console.error('❌ Error en cálculo de fecha:', error);
+    return startDate; // fallback
+  }
+}, []);
 
   // 🔧 BÚSQUEDA DE USUARIOS
   const loadUsers = useCallback(async (searchTerm: string = '') => {
