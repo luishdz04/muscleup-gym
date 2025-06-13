@@ -17,18 +17,13 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerSupabaseClient();
 
-    // 📅 CALCULAR RANGO UTC CORRECTO
-    // Los datos se guardan en UTC con el timestamp real de México
-    // Para el 13 de junio México, necesitamos desde 00:00 UTC del 13 hasta 23:59 UTC del 13
-    
+    // 📅 RANGO SIMPLE - TODO EL DÍA UTC (CORREGIDO)
     const startOfDayUTC = new Date(`${date}T00:00:00.000Z`);
     const endOfDayUTC = new Date(`${date}T23:59:59.999Z`);
 
     console.log('⏰ Rango UTC corregido:', {
-      fecha_mexico_solicitada: date,
-      inicio_utc: startOfDayUTC.toISOString(),
-      fin_utc: endOfDayUTC.toISOString(),
-      nota: 'Buscando datos UTC del día completo'
+      inicio: startOfDayUTC.toISOString(),
+      fin: endOfDayUTC.toISOString()
     });
 
     // 🏪 1. VENTAS POS (sales con sale_type = 'sale')
@@ -37,7 +32,6 @@ export async function GET(request: NextRequest) {
       .select(`
         id,
         total_amount,
-        created_at,
         sale_payment_details (
           payment_method,
           amount,
@@ -62,7 +56,6 @@ export async function GET(request: NextRequest) {
         payment_method,
         amount,
         commission_amount,
-        payment_date,
         sale_id,
         sales!inner (
           sale_type,
@@ -84,7 +77,6 @@ export async function GET(request: NextRequest) {
       .select(`
         amount_paid,
         inscription_amount,
-        created_at,
         membership_payment_details (
           payment_method,
           amount,
@@ -102,10 +94,7 @@ export async function GET(request: NextRequest) {
     console.log('📊 Datos crudos obtenidos:', {
       ventas: salesData?.length || 0,
       abonos: abonosData?.length || 0,
-      membresias: membershipsData?.length || 0,
-      fechas_ventas: salesData?.map(s => s.created_at).slice(0, 3),
-      fechas_abonos: abonosData?.map(a => a.payment_date).slice(0, 3),
-      fechas_membresias: membershipsData?.map(m => m.created_at).slice(0, 3)
+      membresias: membershipsData?.length || 0
     });
 
     // 🧮 PROCESAR VENTAS POS
@@ -205,7 +194,7 @@ export async function GET(request: NextRequest) {
     membershipsData?.forEach(membership => {
       memberships.transactions++;
       
-      // ✅ USAR amount_paid DIRECTAMENTE (YA INCLUYE TODO - los $700 que mencionas)
+      // ✅ USAR amount_paid DIRECTAMENTE (YA INCLUYE TODO)
       const totalMembership = parseFloat(membership.amount_paid || '0');
       memberships.total += totalMembership;
       
@@ -256,16 +245,7 @@ export async function GET(request: NextRequest) {
           start: startOfDayUTC.toISOString(),
           end: endOfDayUTC.toISOString()
         },
-        note: "Datos UTC del día completo"
-      },
-      debug_info: {
-        consulta_inicio: startOfDayUTC.toISOString(),
-        consulta_fin: endOfDayUTC.toISOString(),
-        registros_encontrados: {
-          ventas: salesData?.length || 0,
-          abonos: abonosData?.length || 0,
-          membresias: membershipsData?.length || 0
-        }
+        note: "Datos filtrados por fecha UTC completa"
       },
       pos,
       abonos,
@@ -273,7 +253,7 @@ export async function GET(request: NextRequest) {
       totals
     };
 
-    console.log('✅ Respuesta final corregida:', response);
+    console.log('✅ Respuesta final:', response);
     return NextResponse.json(response);
 
   } catch (error) {
