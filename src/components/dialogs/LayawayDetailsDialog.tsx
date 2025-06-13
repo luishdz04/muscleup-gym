@@ -28,7 +28,8 @@ import {
   AccordionDetails,
   CircularProgress,
   Alert,
-  IconButton
+  IconButton,
+  Snackbar
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -63,7 +64,6 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -125,7 +125,54 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     customer: null
   });
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  const formatMexicoDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
+
+  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDate(dateString);
+  }, [formatMexicoDate]);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
   // ✅ FUNCIÓN HÍBRIDA PARA CARGAR DETALLES
   const loadLayawayDetails = useCallback(async () => {
@@ -189,10 +236,11 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
 
     } catch (error) {
       console.error('Error cargando detalles:', error);
+      showNotification('Error al cargar los detalles del apartado', 'error');
     } finally {
       setLoading(false);
     }
-  }, [layaway?.id, open, supabase]);
+  }, [layaway?.id, open, supabase, showNotification]);
 
   // ✅ FUNCIÓN HÍBRIDA PARA REFRESCAR DATOS
   const refreshData = useCallback(async () => {
@@ -202,12 +250,14 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     
     try {
       await loadLayawayDetails();
+      showNotification('Datos actualizados correctamente', 'success');
     } catch (error) {
       console.error('Error refrescando datos:', error);
+      showNotification('Error al actualizar los datos', 'error');
     } finally {
       setRefreshing(false);
     }
-  }, [layaway?.id, loadLayawayDetails]);
+  }, [layaway?.id, loadLayawayDetails, showNotification]);
 
   // ✅ useEffect HÍBRIDO CON GUARD CLAUSE
   useEffect(() => {
@@ -240,14 +290,26 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     notes: layaway.notes || ''
   };
 
-  // ✅ CÁLCULOS SEGUROS HÍBRIDOS
+  // ✅ CÁLCULOS SEGUROS HÍBRIDOS CON FECHA MÉXICO
   const progressPercentage = safeLayaway.total_amount > 0 ? 
     ((safeLayaway.paid_amount || 0) / safeLayaway.total_amount) * 100 : 0;
   
   const expirationDate = safeLayaway.layaway_expires_at;
-  const daysLeft = expirationDate ? 
-    Math.ceil((new Date(expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 
-    0;
+  
+  // ✅ CÁLCULO DE DÍAS RESTANTES CON FECHA MÉXICO
+  const daysLeft = useCallback(() => {
+    if (!expirationDate) return 0;
+    
+    // ✅ USAR FECHA MÉXICO PARA CÁLCULOS
+    const mexicoNow = getMexicoDate();
+    const expDate = new Date(expirationDate);
+    
+    // Normalizar fechas a medianoche para comparación correcta
+    const nowDate = new Date(mexicoNow.getFullYear(), mexicoNow.getMonth(), mexicoNow.getDate());
+    const expDateNormalized = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+    
+    return Math.ceil((expDateNormalized.getTime() - nowDate.getTime()) / (1000 * 60 * 60 * 24));
+  }, [expirationDate, getMexicoDate])();
 
   // ✅ NOMBRE DEL CLIENTE HÍBRIDO
   const customerName = details.customer ? 
@@ -282,6 +344,41 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
         }
       }}
     >
+      {/* SNACKBAR */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
