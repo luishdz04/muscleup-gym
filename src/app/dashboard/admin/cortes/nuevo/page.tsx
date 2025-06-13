@@ -350,8 +350,8 @@ const calculateTotals = () => {
       const totals = calculateTotals();
       
       const cutData = {
-        cut_date: dateString,
-        created_by: 'luishdz04',
+        const cutData = {
+  cut_date: dateString,
         notes: observations.trim(),
         is_manual: isManualMode,
         
