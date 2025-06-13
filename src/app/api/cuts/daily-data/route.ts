@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       throw salesError;
     }
 
-    // 💰 PROCESAR VENTAS POS - LÓGICA BASE
+    // 💰 PROCESAR VENTAS POS
     const posData = {
       efectivo: 0,
       transferencia: 0,
@@ -80,20 +80,14 @@ export async function GET(request: NextRequest) {
 
     salesData?.forEach((sale: any) => {
       posData.transactions += 1;
-      
-      // ✅ PASO 1: SUMAR MONTO BASE AL TOTAL
       posData.total += Number(sale.total_amount);
 
-      // ✅ PASO 2: PROCESAR CADA DETALLE DE PAGO
       if (sale.sale_payment_details && sale.sale_payment_details.length > 0) {
         sale.sale_payment_details.forEach((payment: any) => {
           const amount = Number(payment.amount);
           const commission = Number(payment.commission_amount || 0);
 
-          // ✅ PASO 3: ACUMULAR COMISIONES
           posData.commissions += commission;
-
-          // ✅ PASO 4: SUMAR MONTO + COMISIÓN AL MÉTODO
           const totalAmountWithCommission = amount + commission;
 
           switch (payment.payment_method.toLowerCase()) {
@@ -115,20 +109,13 @@ export async function GET(request: NextRequest) {
           }
         });
       }
-
-      console.log('🏪 Venta POS procesada:', {
-        numero: sale.sale_number,
-        total: sale.total_amount,
-        mixto: sale.is_mixed_payment
-      });
     });
 
-    // ✅ PASO 5: AGREGAR COMISIONES AL TOTAL DE POS
+    // 🔥 AGREGAR COMISIONES AL TOTAL DE POS
     posData.total += posData.commissions;
 
     console.log('✅ POS FINAL:', {
       total_con_comisiones: posData.total,
-      total_sin_comisiones: posData.total - posData.commissions,
       efectivo: posData.efectivo,
       transferencia: posData.transferencia,
       debito: posData.debito,
@@ -137,7 +124,7 @@ export async function GET(request: NextRequest) {
       transacciones: posData.transactions
     });
 
-    // 📋 ABONOS DEL DÍA (CON ZONA HORARIA CORREGIDA) - LÓGICA UNIFICADA
+    // 📋 ABONOS DEL DÍA (CON ZONA HORARIA CORREGIDA)
     const { data: abonosData, error: abonosError } = await supabase
       .from('sale_payment_details')
       .select(`
@@ -166,7 +153,7 @@ export async function GET(request: NextRequest) {
       throw abonosError;
     }
 
-    // 💰 PROCESAR ABONOS - LÓGICA IDÉNTICA A VENTAS
+    // 💰 PROCESAR ABONOS
     const abonosProcessed = {
       efectivo: 0,
       transferencia: 0,
@@ -184,16 +171,11 @@ export async function GET(request: NextRequest) {
     abonosData?.forEach((abono: any) => {
       const amount = Number(abono.amount);
       const commission = Number(abono.commission_amount || 0);
-
-      // ✅ PASO 1: SUMAR MONTO BASE AL TOTAL (IDÉNTICO A VENTAS)
-      abonosProcessed.total += amount;
       
-      // ✅ PASO 2: ACUMULAR COMISIONES (IDÉNTICO A VENTAS)
+      abonosProcessed.total += amount;
       abonosProcessed.commissions += commission;
-
       uniqueAbonos.add(abono.sale_id);
 
-      // ✅ PASO 3: SUMAR MONTO + COMISIÓN AL MÉTODO (IDÉNTICO A VENTAS)
       const totalAmountWithCommission = amount + commission;
 
       switch (abono.payment_method.toLowerCase()) {
@@ -213,23 +195,13 @@ export async function GET(request: NextRequest) {
           console.warn('⚠️ Método de pago no reconocido en abono:', abono.payment_method);
           abonosProcessed.efectivo += totalAmountWithCommission;
       }
-
-      console.log('💰 Abono procesado:', {
-        sale_number: abono.sales?.sale_number,
-        method: abono.payment_method,
-        amount: amount,
-        commission: commission
-      });
     });
 
     abonosProcessed.transactions = uniqueAbonos.size;
-
-    // ✅ PASO 4: AGREGAR COMISIONES AL TOTAL (IDÉNTICO A VENTAS)
     abonosProcessed.total += abonosProcessed.commissions;
 
-    console.log('✅ ABONOS FINAL (LÓGICA UNIFICADA):', {
+    console.log('✅ ABONOS FINAL:', {
       total_con_comisiones: abonosProcessed.total,
-      total_sin_comisiones: abonosProcessed.total - abonosProcessed.commissions,
       efectivo: abonosProcessed.efectivo,
       transferencia: abonosProcessed.transferencia,
       debito: abonosProcessed.debito,
@@ -238,7 +210,7 @@ export async function GET(request: NextRequest) {
       transacciones: abonosProcessed.transactions
     });
 
-    // 🎫 MEMBRESÍAS DEL DÍA (CON ZONA HORARIA CORREGIDA) - LÓGICA UNIFICADA
+    // 🎫 MEMBRESÍAS DEL DÍA (CON ZONA HORARIA CORREGIDA) - CORRECCIÓN APLICADA
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('user_memberships')
       .select(`
@@ -265,13 +237,13 @@ export async function GET(request: NextRequest) {
       throw membershipsError;
     }
 
-    // 💰 PROCESAR MEMBRESÍAS - LÓGICA IDÉNTICA A VENTAS
+    // 💰 PROCESAR MEMBRESÍAS - ✅ CORRECCIÓN APLICADA SIN DOBLE SUMA
     const membershipsProcessed = {
       efectivo: 0,
       transferencia: 0,
       debito: 0,
       credito: 0,
-      total: 0,
+      total: 0, // ✅ SE CALCULARÁ AL FINAL COMO SUMA DE MÉTODOS
       transactions: 0,
       commissions: 0
     };
@@ -281,29 +253,24 @@ export async function GET(request: NextRequest) {
     membershipsData?.forEach((membership: any) => {
       membershipsProcessed.transactions += 1;
       
-      // ✅ PASO 1: SUMAR MONTO BASE AL TOTAL (IDÉNTICO A VENTAS)
-      const totalAmount = Number(membership.amount_paid) + Number(membership.inscription_amount || 0);
-      membershipsProcessed.total += totalAmount;
-
       console.log('🎫 Membresía encontrada:', {
         id: membership.id,
         amount_paid: membership.amount_paid,
         inscription_amount: membership.inscription_amount,
-        total_amount: totalAmount,
         is_mixed: membership.is_mixed_payment,
         created_at: membership.created_at
       });
 
-      // ✅ PASO 2: PROCESAR DETALLES DE PAGO (IDÉNTICO A VENTAS)
+      // ✅ SOLO PROCESAR DETALLES DE PAGO (SIN SUMA ANTICIPADA DE TOTAL)
       if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
         membership.membership_payment_details.forEach((payment: any) => {
           const amount = Number(payment.amount);
           const commission = Number(payment.commission_amount || 0);
 
-          // ✅ PASO 3: ACUMULAR COMISIONES (IDÉNTICO A VENTAS)
+          // ✅ ACUMULAR COMISIONES
           membershipsProcessed.commissions += commission;
 
-          // ✅ PASO 4: SUMAR MONTO + COMISIÓN AL MÉTODO (IDÉNTICO A VENTAS)
+          // ✅ SUMAR MONTO + COMISIÓN AL MÉTODO
           const totalAmountWithCommission = amount + commission;
 
           console.log('💳 Detalle de pago membresía:', {
@@ -332,30 +299,29 @@ export async function GET(request: NextRequest) {
           }
         });
       } else {
-        // Si no hay detalles, asumimos efectivo
+        // ✅ SI NO HAY DETALLES, USAR amount_paid + inscription_amount COMO EFECTIVO
+        const totalAmount = Number(membership.amount_paid) + Number(membership.inscription_amount || 0);
         console.warn('⚠️ Membresía sin detalles de pago, asumiendo efectivo:', membership.id);
         membershipsProcessed.efectivo += totalAmount;
       }
-
-      console.log('🎫 Membresía procesada:', {
-        id: membership.id,
-        total_amount: totalAmount,
-        is_mixed: membership.is_mixed_payment
-      });
     });
 
-    // ✅ PASO 5: AGREGAR COMISIONES AL TOTAL (IDÉNTICO A VENTAS)
-    membershipsProcessed.total += membershipsProcessed.commissions;
+    // ✅ CALCULAR TOTAL COMO SUMA DE TODOS LOS MÉTODOS (SIN DUPLICAR)
+    membershipsProcessed.total = membershipsProcessed.efectivo + 
+                                membershipsProcessed.transferencia + 
+                                membershipsProcessed.debito + 
+                                membershipsProcessed.credito;
 
-    console.log('✅ MEMBRESÍAS FINAL (LÓGICA UNIFICADA):', {
-      total_con_comisiones: membershipsProcessed.total,      // Ahora será $707
-      total_sin_comisiones: membershipsProcessed.total - membershipsProcessed.commissions, // $700
-      efectivo: membershipsProcessed.efectivo,               // $500
-      transferencia: membershipsProcessed.transferencia,     // $0
-      debito: membershipsProcessed.debito,                   // $0
-      credito: membershipsProcessed.credito,                 // $207 ($200 + $7)
-      comisiones: membershipsProcessed.commissions,          // $7 (solo informativo)
-      transacciones: membershipsProcessed.transactions       // 1
+    console.log('✅ MEMBRESÍAS FINAL CORREGIDO (SIN DOBLE SUMA):', {
+      total_calculado: membershipsProcessed.total,        // Debería ser exactamente $707
+      efectivo: membershipsProcessed.efectivo,            // $500
+      transferencia: membershipsProcessed.transferencia,  // $0
+      debito: membershipsProcessed.debito,                // $0
+      credito: membershipsProcessed.credito,              // $207
+      comisiones: membershipsProcessed.commissions,       // $7 (solo informativo)
+      transacciones: membershipsProcessed.transactions,   // 1
+      verificacion_matematica: `$${membershipsProcessed.efectivo} + $${membershipsProcessed.transferencia} + $${membershipsProcessed.debito} + $${membershipsProcessed.credito} = $${membershipsProcessed.total}`,
+      nota: 'CORRECCIÓN APLICADA: Total calculado como suma directa de métodos, sin duplicar montos'
     });
 
     // 🧮 CALCULAR TOTALES CONSOLIDADOS FINALES
@@ -364,13 +330,13 @@ export async function GET(request: NextRequest) {
       transferencia: posData.transferencia + membershipsProcessed.transferencia + abonosProcessed.transferencia,
       debito: posData.debito + membershipsProcessed.debito + abonosProcessed.debito,
       credito: posData.credito + membershipsProcessed.credito + abonosProcessed.credito,
-      total: posData.total + membershipsProcessed.total + abonosProcessed.total, // ✅ YA INCLUYE COMISIONES
+      total: posData.total + membershipsProcessed.total + abonosProcessed.total,
       transactions: posData.transactions + membershipsProcessed.transactions + abonosProcessed.transactions,
       commissions: posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions,
       net_amount: (posData.total + membershipsProcessed.total + abonosProcessed.total) - (posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions)
     };
 
-    console.log('🎯 TOTALES CONSOLIDADOS CON LÓGICA UNIFICADA:', {
+    console.log('🎯 TOTALES CONSOLIDADOS FINALES:', {
       fecha_mexico: date,
       rango_utc: `${dateRange.start} → ${dateRange.end}`,
       pos_encontradas: posData.transactions,
@@ -379,18 +345,12 @@ export async function GET(request: NextRequest) {
       ingresos_totales: totals.total,
       comisiones_totales: totals.commissions,
       monto_neto: totals.net_amount,
-      // ✅ VERIFICACIÓN DE LÓGICA UNIFICADA
-      verificacion: {
-        pos_efectivo: posData.efectivo,
-        pos_total: posData.total,
-        pos_comisiones: posData.commissions,
-        abonos_efectivo: abonosProcessed.efectivo,
-        abonos_total: abonosProcessed.total,
-        abonos_comisiones: abonosProcessed.commissions,
-        membresias_efectivo: membershipsProcessed.efectivo,
-        membresias_credito: membershipsProcessed.credito,
-        membresias_total: membershipsProcessed.total,
-        membresias_comisiones: membershipsProcessed.commissions
+      // ✅ VERIFICACIÓN ESPECÍFICA DE MEMBRESÍAS
+      membresias_verificacion: {
+        efectivo: membershipsProcessed.efectivo,     // $500
+        credito: membershipsProcessed.credito,       // $207 
+        total_membresias: membershipsProcessed.total, // $707 (NO $864)
+        comisiones: membershipsProcessed.commissions  // $7
       }
     });
 
