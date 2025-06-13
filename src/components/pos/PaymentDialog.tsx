@@ -176,9 +176,6 @@ interface PaymentCommission {
   commission_value: number;
   min_amount: number;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
 }
 
 interface PaymentDetail {
@@ -316,14 +313,14 @@ export default function PaymentDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-// ✅ FUNCIONES SIMPLIFICADAS - SIN CONVERSIONES PROBLEMÁTICAS
-const getMexicoDate = useCallback(() => {
-  return new Date();
-}, []);
+  // ✅ FUNCIONES UTILITARIAS SIMPLIFICADAS - LA BD YA ESTÁ EN HORA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
+  }, []);
 
-const getMexicoDateString = useCallback(() => {
-  return new Date().toISOString().split('T')[0];
-}, []);
+  const getMexicoDateString = useCallback(() => {
+    return new Date().toISOString().split('T')[0];
+  }, []);
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -332,16 +329,16 @@ const getMexicoDateString = useCallback(() => {
     }).format(price);
   }, []);
 
-const formatMexicoDate = useCallback((dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleString('es-MX', {
-    day: '2-digit',
-    month: '2-digit', 
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}, []);
+  const formatMexicoDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
@@ -388,10 +385,7 @@ const formatMexicoDate = useCallback((dateString: string) => {
             commission_type: 'percentage' as const,
             commission_value: pm.value === 'debito' ? 2.5 : 3.5,
             min_amount: 0,
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            created_by: ''
+            is_active: true
           }));
         setPaymentCommissions(defaultCommissions);
       }
@@ -501,7 +495,7 @@ const formatMexicoDate = useCallback((dateString: string) => {
       finalTotalAmount: newFinalAmount,
       changeAmount: newChangeAmount
     };
-    }, [
+  }, [
     totals?.total,
     formData.paymentMethod,
     isMixedPayment,
@@ -509,11 +503,6 @@ const formatMexicoDate = useCallback((dateString: string) => {
     calculateCommission,
     cashReceived
   ]);
-
-// ✅ CREAR TIMESTAMP SIMPLIFICADO
-const createTimestampForDB = useCallback((): string => {
-  return new Date().toISOString();
-}, []);
 
   // ✅ VALIDAR VENTA - MEMOIZADO Y OPTIMIZADO
   const validateSale = useCallback((): boolean => {
@@ -570,12 +559,12 @@ const createTimestampForDB = useCallback((): string => {
     formatPrice
   ]);
 
-// ✅ GENERAR NÚMERO DE VENTA SIMPLIFICADO
-const generateSaleNumber = useCallback(async (): Promise<string> => {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
+  // ✅ GENERAR NÚMERO DE VENTA - SIMPLIFICADO
+  const generateSaleNumber = useCallback(async (): Promise<string> => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
     
     try {
       const { data, error } = await supabase
@@ -602,9 +591,9 @@ const generateSaleNumber = useCallback(async (): Promise<string> => {
       console.error('Error generating sale number:', error);
       return `VE${year}${month}${day}${Date.now().toString().slice(-6)}`;
     }
-  }, [supabase, getMexicoDate]);
+  }, [supabase]);
 
-  // ✅ PROCESAR VENTA - OPTIMIZADO
+  // ✅ PROCESAR VENTA - OPTIMIZADO (LA BD MANEJA TIMESTAMPS AUTOMÁTICAMENTE)
   const processSale = useCallback(async () => {
     if (!validateSale()) return;
 
@@ -635,9 +624,7 @@ const generateSaleNumber = useCallback(async (): Promise<string> => {
         totalPaidAmount = totals.total + totalCommissionAmount;
       }
 
-// ✅ TIMESTAMP SIMPLIFICADO
-const nowUTC = new Date().toISOString();
-      
+      // ✅ LA BD MANEJA created_at/updated_at AUTOMÁTICAMENTE
       const saleData = {
         sale_number: saleNumber,
         customer_id: customer?.id || null,
@@ -660,13 +647,11 @@ const nowUTC = new Date().toISOString();
         commission_amount: totalCommissionAmount,
         custom_commission_rate: customCommissionRate,
         skip_inscription: false,
-        payment_date: nowUTC,
+        payment_date: new Date().toISOString(),
         notes: formData.notes.trim() || null,
         receipt_printed: formData.printReceipt,
         email_sent: formData.sendEmail,
-        created_at: nowUTC,
-        completed_at: nowUTC,
-        updated_at: nowUTC
+        completed_at: new Date().toISOString()
       };
 
       const { data: sale, error: saleError } = await supabase
@@ -687,8 +672,7 @@ const nowUTC = new Date().toISOString();
         total_price: item.total_price,
         discount_amount: item.discount_amount,
         tax_rate: item.product.tax_rate || 16,
-        tax_amount: item.tax_amount,
-        created_at: nowUTC
+        tax_amount: item.tax_amount
       }));
 
       const { error: itemsError } = await supabase
@@ -706,8 +690,7 @@ const nowUTC = new Date().toISOString();
           commission_rate: payment.commission_rate,
           commission_amount: payment.commission_amount,
           sequence_order: payment.sequence,
-          payment_date: nowUTC,
-          created_at: nowUTC,
+          payment_date: new Date().toISOString(),
           created_by: userId
         }));
 
@@ -727,20 +710,19 @@ const nowUTC = new Date().toISOString();
             commission_rate: calculateCommission(formData.paymentMethod, totals.total).rate,
             commission_amount: totalCommissionAmount,
             sequence_order: 1,
-            payment_date: nowUTC,
-            created_at: nowUTC,
+            payment_date: new Date().toISOString(),
             created_by: userId
           }]);
 
         if (paymentError) throw paymentError;
       }
 
+      // ✅ ACTUALIZAR STOCK - LA BD MANEJA updated_at AUTOMÁTICAMENTE
       for (const item of cart) {
         const { error: stockError } = await supabase
           .from('products')
           .update({ 
             current_stock: item.product.current_stock - item.quantity,
-            updated_at: nowUTC,
             updated_by: userId
           })
           .eq('id', item.product.id);
@@ -760,21 +742,21 @@ const nowUTC = new Date().toISOString();
             reason: 'Venta',
             reference_id: sale.id,
             notes: `Venta #${sale.sale_number}`,
-            created_at: nowUTC,
             created_by: userId
           }]);
       }
 
+      // ✅ ACTUALIZAR CUPÓN - LA BD MANEJA updated_at AUTOMÁTICAMENTE
       if (coupon) {
         await supabase
           .from('coupons')
           .update({ 
-            current_uses: (coupon.current_uses || 0) + 1,
-            updated_at: nowUTC
+            current_uses: (coupon.current_uses || 0) + 1
           })
           .eq('id', coupon.id);
       }
 
+      // ✅ ACTUALIZAR CLIENTE - LA BD MANEJA updated_at AUTOMÁTICAMENTE
       if (customer && customer.membership_type) {
         const pointsEarned = Math.floor(totals.total / 100);
         
@@ -782,8 +764,7 @@ const nowUTC = new Date().toISOString();
           .from('Users')
           .update({
             points_balance: (customer.points_balance || 0) + pointsEarned,
-            total_purchases: (customer.total_purchases || 0) + totals.total,
-            updated_at: nowUTC
+            total_purchases: (customer.total_purchases || 0) + totals.total
           })
           .eq('id', customer.id);
       }
@@ -1557,7 +1538,7 @@ const nowUTC = new Date().toISOString();
                                                       fontWeight: 700
                                                     }}>
                                                       {formatPrice(calculatedValues.finalTotalAmount)}
-                                                                                                    </Typography>
+                                                    </Typography>
                                                     {calculatedValues.commissionAmount > 0 && (
                                                       <Typography variant="caption" sx={{ 
                                                         color: darkProTokens.warning
@@ -1577,7 +1558,7 @@ const nowUTC = new Date().toISOString();
                                           <Card sx={{
                                             background: `${darkProTokens.roleTrainer}15`,
                                             border: `2px solid ${darkProTokens.roleTrainer}50`,
-                                            borderRadius: 4
+                                                                            borderRadius: 4
                                           }}>
                                             <CardContent>
                                               <Typography variant="h6" sx={{ 
@@ -2772,8 +2753,7 @@ const nowUTC = new Date().toISOString();
                 #{saleNumber}
               </Typography>
               <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 4 }}>
-                {/* ✅ USAR FORMATEO MÉXICO CORREGIDO */}
-Venta procesada el {formatMexicoDate(new Date().toISOString())}
+                Venta procesada el {formatMexicoDate(new Date().toISOString())}
               </Typography>
 
               <Grid container spacing={3} justifyContent="center" sx={{ mb: 4 }}>
@@ -2997,7 +2977,7 @@ Venta procesada el {formatMexicoDate(new Date().toISOString())}
                   fontWeight: 800,
                   mb: 1
                 }}>
-                                    {formatPrice(calculatedValues.finalTotalAmount)}
+                  {formatPrice(calculatedValues.finalTotalAmount)}
                 </Typography>
                 <Typography variant="body1" sx={{ 
                   color: darkProTokens.textSecondary
@@ -3024,7 +3004,7 @@ Venta procesada el {formatMexicoDate(new Date().toISOString())}
                 textAlign: 'center'
               }}>
                 <Typography variant="h4" sx={{ 
-                  color: darkProTokens.info,
+                                    color: darkProTokens.info,
                   fontWeight: 800,
                   mb: 1
                 }}>
