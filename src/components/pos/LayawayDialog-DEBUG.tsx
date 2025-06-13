@@ -257,20 +257,14 @@ export default function LayawayDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
-  const getMexicoDate = useCallback(() => {
-    const now = new Date();
-    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
-  }, []);
+// ✅ FUNCIONES SIMPLIFICADAS - SIN CONVERSIONES PROBLEMÁTICAS
+const getMexicoDate = useCallback(() => {
+  return new Date();
+}, []);
 
-  const getMexicoDateString = useCallback(() => {
-    const mexicoDate = getMexicoDate();
-    const year = mexicoDate.getFullYear();
-    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = mexicoDate.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }, [getMexicoDate]);
+const getMexicoDateString = useCallback(() => {
+  return new Date().toISOString().split('T')[0];
+}, []);
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -279,18 +273,17 @@ export default function LayawayDialog({
     }).format(price);
   }, []);
 
-  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
-  const formatMexicoDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }, []);
+// ✅ FORMATEO SIMPLIFICADO SIN TIMEZONE PROBLEMÁTICA
+const formatMexicoDate = useCallback((dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('es-MX', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}, []);
 
   // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD TEMPORAL
   const formatDate = useCallback((dateString: string) => {
@@ -423,15 +416,12 @@ export default function LayawayDialog({
     useCustomDuration,
     advancedConfig,
     paymentMethods,
-    getMexicoDate // ✅ AGREGAR DEPENDENCIA
   ]);
 
-  // ✅ CREAR TIMESTAMP MÉXICO - MOVER AQUÍ (FUERA DE FUNCIONES)
-  const createTimestampForDB = useCallback((): string => {
-    const now = new Date();
-    const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-    return mexicoTime.toISOString();
-  }, []);
+// ✅ TIMESTAMP SIMPLIFICADO
+const createTimestampForDB = useCallback((): string => {
+  return new Date().toISOString();
+}, []);
 
   // 🚀 FUNCIONES OPTIMIZADAS PARA PAGOS MIXTOS
   const addPaymentDetail = useCallback(() => {
@@ -486,17 +476,16 @@ export default function LayawayDialog({
     }
   }, [paymentDetails, removePaymentDetail]);
 
-  // ✅ GENERAR NÚMERO DE APARTADO CORREGIDO CON FECHA MÉXICO
-  const generateLayawayNumber = useCallback(async (): Promise<string> => {
-    // ✅ USAR FECHA MÉXICO CONSISTENTE
-    const mexicoDate = getMexicoDate();
-    const year = mexicoDate.getFullYear().toString().slice(-2);
-    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = mexicoDate.getDate().toString().padStart(2, '0');
-    const timestamp = Date.now().toString().slice(-6);
-    
-    return `AP${year}${month}${day}${timestamp}`;
-  }, [getMexicoDate]);
+// ✅ GENERAR NÚMERO SIMPLIFICADO
+const generateLayawayNumber = useCallback(async (): Promise<string> => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const day = now.getDate().toString().padStart(2, '0');
+  const timestamp = Date.now().toString().slice(-6);
+  
+  return `AP${year}${month}${day}${timestamp}`;
+}, []);
 
   // 🔥 FUNCIÓN HÍBRIDA PARA GENERAR NOTAS (CORREGIDO)
   const generateCleanNotes = useCallback(() => {
@@ -540,8 +529,8 @@ export default function LayawayDialog({
       const userId = userData.user.id;
       const layawayNumber = await generateLayawayNumber();
 
-      // ✅ USAR FUNCIÓN YA DEFINIDA ARRIBA
-      const nowUTC = createTimestampForDB();
+   // ✅ TIMESTAMP SIMPLIFICADO
+const nowUTC = new Date().toISOString();
 
       // 🔥 DATOS FINALES OPTIMIZADOS
       const layawayData = {
@@ -742,7 +731,6 @@ export default function LayawayDialog({
     paymentMethods,
     showNotification,
     generateCleanNotes,
-    createTimestampForDB // ✅ AGREGAR DEPENDENCIA
   ]);
   // ✅ RESET HÍBRIDO AL CERRAR
   const handleClose = useCallback(() => {
@@ -2391,7 +2379,7 @@ export default function LayawayDialog({
               
               <Typography variant="h6" color={darkProTokens.textSecondary} sx={{ mb: 4 }}>
                 {/* ✅ USAR FORMATEO MÉXICO CORREGIDO */}
-                Apartado guardado exitosamente - {formatMexicoDate(new Date().toISOString())}
+Apartado guardado exitosamente - {formatMexicoDate(new Date().toISOString())}
               </Typography>
               
               <Grid container spacing={2} sx={{ maxWidth: 800, mx: 'auto', mb: 4 }}>
