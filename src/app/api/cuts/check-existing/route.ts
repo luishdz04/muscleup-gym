@@ -15,11 +15,12 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerSupabaseClient();
     
-    // 🔍 VERIFICAR SI EXISTE CORTE PARA ESA FECHA
+    // 🔍 VERIFICAR SI EXISTE CORTE PARA ESA FECHA - TABLA CORREGIDA
     const { data: existingCuts, error } = await supabase
-      .from('daily_cuts')
-      .select('id, cut_name, created_at')
+      .from('cash_cuts')
+      .select('id, cut_number, status, created_at, created_by, is_manual')
       .eq('cut_date', date)
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (error) {
@@ -27,10 +28,16 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+    const existingCut = existingCuts && existingCuts.length > 0 ? existingCuts[0] : null;
+
     return NextResponse.json({
       success: true,
-      exists: existingCuts && existingCuts.length > 0,
-      existing_cut: existingCuts?.[0] || null
+      exists: !!existingCut,
+      existing_cut: existingCut,
+      can_create_new: true, // Siempre permitir crear nuevos cortes
+      message: existingCut 
+        ? `Ya existe corte: ${existingCut.cut_number} (${existingCut.is_manual ? 'Manual' : 'Automático'})`
+        : 'No hay cortes para esta fecha'
     });
 
   } catch (error) {
