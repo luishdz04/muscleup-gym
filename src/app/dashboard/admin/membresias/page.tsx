@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -100,12 +100,34 @@ export default function MembresiasPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Cargar datos
-  useEffect(() => {
-    loadData();
+  // ✅ FUNCIONES UTILITARIAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
   }, []);
 
-  const loadData = async () => {
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FUNCIÓN PARA OBTENER PRIMER DÍA DEL MES EN MÉXICO
+  const getFirstDayOfMonthMexico = useCallback(() => {
+    const mexicoDate = getMexicoDate();
+    return new Date(mexicoDate.getFullYear(), mexicoDate.getMonth(), 1);
+  }, [getMexicoDate]);
+
+  // ✅ FUNCIÓN PARA OBTENER FECHA EN 7 DÍAS EN MÉXICO
+  const getIn7DaysMexico = useCallback(() => {
+    const mexicoDate = getMexicoDate();
+    return new Date(mexicoDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+  }, [getMexicoDate]);
+
+  // ✅ CARGAR DATOS CORREGIDO CON ZONA HORARIA MÉXICO
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -118,10 +140,10 @@ export default function MembresiasPage() {
 
       if (statsError) throw statsError;
 
-      // Calcular estadísticas
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      // ✅ CALCULAR ESTADÍSTICAS CON FECHA MÉXICO
+      const mexicoNow = getMexicoDate();
+      const firstDayOfMonth = getFirstDayOfMonthMexico();
+      const in7Days = getIn7DaysMexico();
 
       const calculatedStats: MembershipStats = {
         total: allMemberships?.length || 0,
@@ -134,7 +156,12 @@ export default function MembresiasPage() {
         new_this_month: allMemberships
           ?.filter(m => new Date(m.created_at) >= firstDayOfMonth).length || 0,
         expiring_soon: allMemberships
-          ?.filter(m => m.end_date && new Date(m.end_date) <= in7Days && m.status === 'active').length || 0
+          ?.filter(m => {
+            if (!m.end_date || m.status !== 'active') return false;
+            const endDate = new Date(m.end_date);
+            // ✅ COMPARAR CON FECHA MÉXICO
+            return endDate <= in7Days && endDate >= mexicoNow;
+          }).length || 0
       };
 
       setStats(calculatedStats);
@@ -144,15 +171,12 @@ export default function MembresiasPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getMexicoDate, getFirstDayOfMonthMexico, getIn7DaysMexico]);
 
-  // Formatear precio
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  };
+  // Cargar datos al inicializar
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return (
