@@ -69,37 +69,42 @@ export async function GET(request: NextRequest) {
         sale.sale_payment_details.forEach((payment: any) => {
           const amount = Number(payment.amount);
           const commission = Number(payment.commission_amount || 0);
+          
+          // 🔥 INCLUIR COMISIÓN EN EL MONTO MOSTRADO
+          const totalAmountWithCommission = amount + commission;
 
+          // Sumar comisiones para tracking separado
           posData.commissions += commission;
 
           switch (payment.payment_method.toLowerCase()) {
             case 'efectivo':
-              posData.efectivo += amount;
+              posData.efectivo += totalAmountWithCommission; // Efectivo + comisión (normalmente 0)
               break;
             case 'transferencia':
-              posData.transferencia += amount;
+              posData.transferencia += totalAmountWithCommission; // Transferencia + comisión
               break;
             case 'debito':
-              posData.debito += amount;
+              posData.debito += totalAmountWithCommission; // Débito + comisión ✅
               break;
             case 'credito':
-              posData.credito += amount;
+              posData.credito += totalAmountWithCommission; // Crédito + comisión ✅
               break;
             default:
               console.warn('⚠️ Método de pago no reconocido:', payment.payment_method);
-              posData.efectivo += amount;
+              posData.efectivo += totalAmountWithCommission;
           }
+
+          console.log('💳 Pago procesado:', {
+            metodo: payment.payment_method,
+            monto_base: amount,
+            comision: commission,
+            monto_total_mostrado: totalAmountWithCommission
+          });
         });
       }
-
-      console.log('📊 Venta procesada:', {
-        numero: sale.sale_number,
-        total: sale.total_amount,
-        mixto: sale.is_mixed_payment
-      });
     });
 
-    // 📋 ABONOS DEL DÍA (SOLO PAGOS HECHOS HOY, NO APARTADOS CREADOS HOY)
+    // 📋 ABONOS DEL DÍA (SOLO PAGOS HECHOS HOY)
     const { data: abonosData, error: abonosError } = await supabase
       .from('sale_payment_details')
       .select(`
@@ -140,7 +145,6 @@ export async function GET(request: NextRequest) {
       commissions: 0
     };
 
-    // Agrupar abonos por sale_id para contar transacciones correctamente
     const uniqueAbonos = new Set();
 
     console.log('📋 Procesando', abonosData?.length || 0, 'abonos...');
@@ -148,35 +152,39 @@ export async function GET(request: NextRequest) {
     abonosData?.forEach((abono: any) => {
       const amount = Number(abono.amount);
       const commission = Number(abono.commission_amount || 0);
+      
+      // 🔥 INCLUIR COMISIÓN EN EL MONTO MOSTRADO
+      const totalAmountWithCommission = amount + commission;
 
-      abonosProcessed.total += amount;
+      abonosProcessed.total += amount; // El total real sigue siendo sin comisión
       abonosProcessed.commissions += commission;
 
-      // Contar transacciones únicas
       uniqueAbonos.add(abono.sale_id);
 
       switch (abono.payment_method.toLowerCase()) {
         case 'efectivo':
-          abonosProcessed.efectivo += amount;
+          abonosProcessed.efectivo += totalAmountWithCommission;
           break;
         case 'transferencia':
-          abonosProcessed.transferencia += amount;
+          abonosProcessed.transferencia += totalAmountWithCommission;
           break;
         case 'debito':
-          abonosProcessed.debito += amount;
+          abonosProcessed.debito += totalAmountWithCommission; // Débito + comisión ✅
           break;
         case 'credito':
-          abonosProcessed.credito += amount;
+          abonosProcessed.credito += totalAmountWithCommission; // Crédito + comisión ✅
           break;
         default:
           console.warn('⚠️ Método de pago no reconocido en abono:', abono.payment_method);
-          abonosProcessed.efectivo += amount;
+          abonosProcessed.efectivo += totalAmountWithCommission;
       }
 
       console.log('💰 Abono procesado:', {
         sale_number: abono.sales?.sale_number,
-        method: abono.payment_method,
-        amount: amount
+        metodo: abono.payment_method,
+        monto_base: amount,
+        comision: commission,
+        monto_total_mostrado: totalAmountWithCommission
       });
     });
 
@@ -232,25 +240,28 @@ export async function GET(request: NextRequest) {
         membership.membership_payment_details.forEach((payment: any) => {
           const amount = Number(payment.amount);
           const commission = Number(payment.commission_amount || 0);
+          
+          // 🔥 INCLUIR COMISIÓN EN EL MONTO MOSTRADO
+          const totalAmountWithCommission = amount + commission;
 
           membershipsProcessed.commissions += commission;
 
           switch (payment.payment_method.toLowerCase()) {
             case 'efectivo':
-              membershipsProcessed.efectivo += amount;
+              membershipsProcessed.efectivo += totalAmountWithCommission;
               break;
             case 'transferencia':
-              membershipsProcessed.transferencia += amount;
+              membershipsProcessed.transferencia += totalAmountWithCommission;
               break;
             case 'debito':
-              membershipsProcessed.debito += amount;
+              membershipsProcessed.debito += totalAmountWithCommission; // Débito + comisión ✅
               break;
             case 'credito':
-              membershipsProcessed.credito += amount;
+              membershipsProcessed.credito += totalAmountWithCommission; // Crédito + comisión ✅
               break;
             default:
               console.warn('⚠️ Método de pago no reconocido en membresía:', payment.payment_method);
-              membershipsProcessed.efectivo += amount;
+              membershipsProcessed.efectivo += totalAmountWithCommission;
           }
         });
       }
@@ -269,30 +280,14 @@ export async function GET(request: NextRequest) {
       net_amount: (posData.total + membershipsProcessed.total + abonosProcessed.total) - (posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions)
     };
 
-    console.log('✅ Resumen final del día:', {
+    console.log('✅ Resumen final CORREGIDO:', {
       fecha: date,
-      pos: {
-        efectivo: posData.efectivo,
-        transferencia: posData.transferencia,
-        total: posData.total,
-        transacciones: posData.transactions
-      },
-      abonos: {
-        efectivo: abonosProcessed.efectivo,
-        transferencia: abonosProcessed.transferencia,
-        total: abonosProcessed.total,
-        transacciones: abonosProcessed.transactions
-      },
-      memberships: {
-        total: membershipsProcessed.total,
-        transacciones: membershipsProcessed.transactions
-      },
-      consolidado: {
-        efectivo_total: totals.efectivo,
-        transferencia_total: totals.transferencia,
-        gran_total: totals.total,
-        comisiones: totals.commissions
-      }
+      efectivo_total: totals.efectivo, // Debería ser $1,600
+      transferencia_total: totals.transferencia, // Debería ser $200
+      debito_total: totals.debito, // Debería ser $400 + comisión
+      credito_total: totals.credito,
+      gran_total: totals.total,
+      comisiones_tracking: totals.commissions
     });
 
     return NextResponse.json({
