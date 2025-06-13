@@ -55,21 +55,17 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerSupabaseClient();
     
-    // 👤 OBTENER USUARIO ACTUAL (más profesional que hardcodear)
-    const { data: userData, error: userError } = await supabase
-      .from('Users')
-      .select('id')
-      .eq('login', 'luishdz04')
-      .single();
+// ✅ CÓDIGO CORREGIDO (detecta sesión actual)
+const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (userError || !userData) {
-      return NextResponse.json(
-        { error: 'Usuario no encontrado', success: false },
-        { status: 401 }
-      );
-    }
+if (authError || !user) {
+  return NextResponse.json(
+    { error: 'Usuario no autenticado', success: false },
+    { status: 401 }
+  );
+}
 
-    const userId = userData.id;
+const userId = user.id;
     
     // 🔢 GENERAR NÚMERO DE CORTE ÚNICO (más profesional)
     const dateStr = cut_date.replace(/-/g, '');
