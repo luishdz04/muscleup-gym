@@ -460,10 +460,12 @@ const formatTimestampForDisplay = useCallback((timestamp: string): string => {
     }
   }, []);
 
-  // ✅ CREAR TIMESTAMP UTC PARA BD
-  const createTimestampForDB = useCallback((): string => {
-    return new Date().toISOString();
-  }, []);
+// ✅ CAMBIAR A:
+const createTimestampForDB = useCallback((): string => {
+  const now = new Date();
+  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  return mexicoTime.toISOString();
+}, []);
 
   // ✅ OBTENER DÍAS CONGELADOS ACTUALES - CORREGIDO
   const getCurrentFrozenDays = useCallback((freezeDate: string | null): number => {
