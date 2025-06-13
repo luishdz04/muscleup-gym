@@ -257,7 +257,21 @@ export default function LayawayDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS ESTABLES
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    const mexicoDate = getMexicoDate();
+    const year = mexicoDate.getFullYear();
+    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = mexicoDate.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, [getMexicoDate]);
+
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -265,9 +279,11 @@ export default function LayawayDialog({
     }).format(price);
   }, []);
 
-  const formatDate = useCallback((dateString: string) => {
+  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  const formatMexicoDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -275,6 +291,11 @@ export default function LayawayDialog({
       minute: '2-digit'
     });
   }, []);
+
+  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD TEMPORAL
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDate(dateString);
+  }, [formatMexicoDate]);
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
@@ -345,7 +366,7 @@ export default function LayawayDialog({
     }
   }, [isMixedPayment]);
 
-  // ✅ CÁLCULOS OPTIMIZADOS CON USEMEMO
+  // ✅ CÁLCULOS OPTIMIZADOS CON USEMEMO (CORREGIDO)
   const calculations = useMemo(() => {
     const total = totals?.total || 0;
     const baseDeposit = total * (depositPercentage / 100);
@@ -370,7 +391,10 @@ export default function LayawayDialog({
     }
 
     const finalDuration = useCustomDuration ? customDays : durationDays;
-    const expirationDate = new Date();
+    
+    // ✅ USAR FECHA MÉXICO PARA CALCULAR EXPIRACIÓN
+    const mexicoNow = getMexicoDate();
+    const expirationDate = new Date(mexicoNow);
     expirationDate.setDate(expirationDate.getDate() + finalDuration);
 
     return {
@@ -398,7 +422,8 @@ export default function LayawayDialog({
     customDays, 
     useCustomDuration,
     advancedConfig,
-    paymentMethods
+    paymentMethods,
+    getMexicoDate // ✅ AGREGAR DEPENDENCIA
   ]);
 
   // 🚀 FUNCIONES OPTIMIZADAS PARA PAGOS MIXTOS
@@ -454,18 +479,38 @@ export default function LayawayDialog({
     }
   }, [paymentDetails, removePaymentDetail]);
 
-  // ✅ GENERAR NÚMERO DE APARTADO OPTIMIZADO
+  // ✅ GENERAR NÚMERO DE APARTADO CORREGIDO CON FECHA MÉXICO
   const generateLayawayNumber = useCallback(async (): Promise<string> => {
-    const today = new Date();
-    const year = today.getFullYear().toString().slice(-2);
-    const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    const day = today.getDate().toString().padStart(2, '0');
+    // ✅ USAR FECHA MÉXICO CONSISTENTE
+    const mexicoDate = getMexicoDate();
+    const year = mexicoDate.getFullYear().toString().slice(-2);
+    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = mexicoDate.getDate().toString().padStart(2, '0');
     const timestamp = Date.now().toString().slice(-6);
     
     return `AP${year}${month}${day}${timestamp}`;
-  }, []);
+  }, [getMexicoDate]);
 
-  // 🚀 PROCESAMIENTO FINAL HÍBRIDO OPTIMIZADO
+  // 🔥 FUNCIÓN HÍBRIDA PARA GENERAR NOTAS (CORREGIDO)
+  const generateCleanNotes = useCallback(() => {
+    let notes = `Apartado por ${calculations.durationDays} días - Vence: ${formatMexicoDate(calculations.expirationDate.toISOString())}`;
+    
+    if (isMixedPayment) {
+      notes += ` | Pago mixto: ${paymentDetails.length} métodos`;
+    }
+    
+    if (advancedConfig.allowExtensions) {
+      notes += ` | Extensiones permitidas: ${advancedConfig.maxExtensions}`;
+    }
+    
+    if (customerNotes) {
+      notes += ` | Notas: ${customerNotes}`;
+    }
+    
+    return notes;
+  }, [calculations, isMixedPayment, paymentDetails, advancedConfig, customerNotes, formatMexicoDate]);
+
+  // ✅ PROCESAMIENTO FINAL HÍBRIDO OPTIMIZADO (CORREGIDO UTC)
   const handleCreateLayaway = useCallback(async () => {
     if (!customer) {
       showNotification('Se requiere un cliente para apartados', 'error');
@@ -488,6 +533,9 @@ export default function LayawayDialog({
       const userId = userData.user.id;
       const layawayNumber = await generateLayawayNumber();
 
+      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
+      const nowUTC = new Date().toISOString();
+
       // 🔥 DATOS FINALES OPTIMIZADOS
       const layawayData = {
         sale_number: layawayNumber,
@@ -504,7 +552,7 @@ export default function LayawayDialog({
         paid_amount: calculations.baseDeposit,
         pending_amount: calculations.remainingAmount,
         deposit_percentage: depositPercentage,
-        layaway_expires_at: calculations.expirationDate.toISOString(),
+        layaway_expires_at: calculations.expirationDate.toISOString(), // ✅ UTC para BD
         status: 'pending',
         payment_status: 'partial',
         is_mixed_payment: isMixedPayment,
@@ -515,11 +563,11 @@ export default function LayawayDialog({
         custom_commission_rate: null,
         skip_inscription: false,
         notes: generateCleanNotes(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: nowUTC, // ✅ UTC
+        updated_at: nowUTC, // ✅ UTC
         initial_payment: calculations.totalToCollect,
-        expiration_date: calculations.expirationDate.toISOString().split('T')[0],
-        last_payment_date: new Date().toISOString()
+        expiration_date: calculations.expirationDate.toISOString().split('T')[0], // ✅ Solo fecha
+        last_payment_date: nowUTC // ✅ UTC
       };
 
       // ✅ INSERTAR VENTA PRINCIPAL
@@ -543,7 +591,7 @@ export default function LayawayDialog({
         discount_amount: item.discount_amount || 0,
         tax_rate: item.product.tax_rate || 16,
         tax_amount: item.tax_amount || 0,
-        created_at: new Date().toISOString()
+        created_at: nowUTC // ✅ UTC
       }));
 
       const { error: itemsError } = await supabase
@@ -563,8 +611,8 @@ export default function LayawayDialog({
           commission_rate: payment.commission,
           commission_amount: payment.commissionAmount,
           sequence_order: payment.sequence,
-          payment_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          payment_date: nowUTC, // ✅ UTC
+          created_at: nowUTC, // ✅ UTC
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: index + 1,
@@ -586,8 +634,8 @@ export default function LayawayDialog({
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === currentPaymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.totalCommission,
           sequence_order: 1,
-          payment_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          payment_date: nowUTC, // ✅ UTC
+          created_at: nowUTC, // ✅ UTC
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: 1,
@@ -607,7 +655,7 @@ export default function LayawayDialog({
           .from('products')
           .update({ 
             current_stock: item.product.current_stock - item.quantity,
-            updated_at: new Date().toISOString(),
+            updated_at: nowUTC, // ✅ UTC
             updated_by: userId
           })
           .eq('id', item.product.id);
@@ -628,7 +676,7 @@ export default function LayawayDialog({
             reason: 'Apartado',
             reference_id: layaway.id,
             notes: `Apartado #${layaway.sale_number} - ${calculations.durationDays} días`,
-            created_at: new Date().toISOString(),
+            created_at: nowUTC, // ✅ UTC
             created_by: userId
           }]);
       }
@@ -643,7 +691,7 @@ export default function LayawayDialog({
           previous_paid_amount: 0,
           new_paid_amount: calculations.totalToCollect,
           reason: 'Apartado creado',
-          created_at: new Date().toISOString(),
+          created_at: nowUTC, // ✅ UTC
           created_by: userId
         }]);
 
@@ -653,7 +701,7 @@ export default function LayawayDialog({
           .from('coupons')
           .update({ 
             current_uses: (coupon.current_uses || 0) + 1,
-            updated_at: new Date().toISOString()
+            updated_at: nowUTC // ✅ UTC
           })
           .eq('id', coupon.id);
       }
@@ -685,27 +733,9 @@ export default function LayawayDialog({
     paymentDetails,
     advancedConfig,
     paymentMethods,
-    showNotification
+    showNotification,
+    generateCleanNotes
   ]);
-
-  // 🔥 FUNCIÓN HÍBRIDA PARA GENERAR NOTAS
-  const generateCleanNotes = useCallback(() => {
-    let notes = `Apartado por ${calculations.durationDays} días - Vence: ${formatDate(calculations.expirationDate.toISOString())}`;
-    
-    if (isMixedPayment) {
-      notes += ` | Pago mixto: ${paymentDetails.length} métodos`;
-    }
-    
-    if (advancedConfig.allowExtensions) {
-      notes += ` | Extensiones permitidas: ${advancedConfig.maxExtensions}`;
-    }
-    
-    if (customerNotes) {
-      notes += ` | Notas: ${customerNotes}`;
-    }
-    
-    return notes;
-  }, [calculations, isMixedPayment, paymentDetails, advancedConfig, customerNotes, formatDate]);
 
   // ✅ RESET HÍBRIDO AL CERRAR
   const handleClose = useCallback(() => {
@@ -1459,7 +1489,7 @@ export default function LayawayDialog({
                                           border: `1px solid ${darkProTokens.grayDark}`
                                         }}>
                                           <Table size="small">
-                                            <TableHead>
+                                                                                        <TableHead>
                                               <TableRow>
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Método</TableCell>
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Monto</TableCell>
@@ -1482,7 +1512,7 @@ export default function LayawayDialog({
                                                     {payment.commission}% ({formatPrice(payment.commissionAmount)})
                                                   </TableCell>
                                                   <TableCell sx={{ color: darkProTokens.success, fontWeight: 'bold' }}>
-                                                                                                        {formatPrice(payment.amount + payment.commissionAmount)}
+                                                    {formatPrice(payment.amount + payment.commissionAmount)}
                                                   </TableCell>
                                                   <TableCell>
                                                     <Tooltip title="Editar">
@@ -2353,7 +2383,8 @@ export default function LayawayDialog({
               </Typography>
               
               <Typography variant="h6" color={darkProTokens.textSecondary} sx={{ mb: 4 }}>
-                Apartado guardado exitosamente - {formatDate(new Date().toISOString())}
+                {/* ✅ USAR FORMATEO MÉXICO CORREGIDO */}
+                Apartado guardado exitosamente - {formatMexicoDate(new Date().toISOString())}
               </Typography>
               
               <Grid container spacing={2} sx={{ maxWidth: 800, mx: 'auto', mb: 4 }}>
@@ -2476,4 +2507,3 @@ export default function LayawayDialog({
     </Dialog>
   );
 }
-                                
