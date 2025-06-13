@@ -30,7 +30,8 @@ import {
   Stack,
   Divider,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Snackbar
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -44,8 +45,6 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -129,7 +128,54 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [confirmChanges, setConfirmChanges] = useState(false);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  const formatMexicoDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
+
+  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDate(dateString);
+  }, [formatMexicoDate]);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
   // ✅ INICIALIZAR DATOS
   useEffect(() => {
@@ -288,7 +334,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
     return saleChanged || itemsChanged;
   }, [editedSale, editedItems, sale]);
 
-  // ✅ GUARDAR CAMBIOS
+  // ✅ GUARDAR CAMBIOS (CORREGIDO CON UTC)
   const handleSave = async () => {
     if (!validateChanges()) return;
     if (!hasChanges()) {
@@ -312,6 +358,9 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
       const totals = calculateTotals();
 
+      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
+      const nowUTC = new Date().toISOString();
+
       // ✅ ACTUALIZAR VENTA PRINCIPAL
       const { error: saleError } = await supabase
         .from('sales')
@@ -327,7 +376,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           commission_amount: editedSale.commission_amount,
           total_amount: totals.total,
           paid_amount: totals.finalTotal,
-          updated_at: new Date().toISOString(),
+          updated_at: nowUTC, // ✅ UTC
           updated_by: userId
         })
         .eq('id', sale.id);
@@ -356,7 +405,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
               total_price: item.total_price,
               discount_amount: item.discount_amount,
               tax_amount: item.tax_amount,
-              created_at: new Date().toISOString()
+              created_at: nowUTC // ✅ UTC
             }]);
           
           if (error) throw error;
@@ -371,7 +420,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
               total_price: item.total_price,
               discount_amount: item.discount_amount,
               tax_amount: item.tax_amount,
-              updated_at: new Date().toISOString()
+              updated_at: nowUTC // ✅ UTC
             })
             .eq('id', item.id);
           
@@ -389,7 +438,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           previous_total: sale.total_amount,
           new_total: totals.total,
           edit_reason: 'Manual edit from admin panel',
-          created_at: new Date().toISOString()
+          created_at: nowUTC // ✅ UTC
         }]);
 
       showNotification('Venta actualizada exitosamente', 'success');
@@ -420,6 +469,41 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         }
       }}
     >
+      {/* SNACKBAR */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
