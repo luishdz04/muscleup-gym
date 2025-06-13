@@ -13,18 +13,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Consultando datos para fecha:', date);
+    console.log('🔍 Consultando datos para fecha México:', date);
 
     const supabase = createServerSupabaseClient();
 
-    // 📅 CALCULAR RANGO UTC PARA FECHA MÉXICO
+    // 📅 CALCULAR RANGO UTC CORRECTO PARA FECHA MÉXICO
+    // México está en UTC-6 (6 horas ATRÁS de UTC)
+    // 00:00 México = 06:00 UTC
+    // 23:59:59 México = 05:59:59 UTC del día siguiente
+    
     const mexicoStartUTC = new Date(`${date}T06:00:00.000Z`); // 00:00 México = 06:00 UTC
-    const mexicoEndUTC = new Date(`${date}T05:59:59.999Z`);   // 23:59 México = 05:59 UTC (día siguiente)
-    mexicoEndUTC.setDate(mexicoEndUTC.getDate() + 1);
+    const mexicoEndUTC = new Date(mexicoStartUTC);
+    mexicoEndUTC.setDate(mexicoEndUTC.getDate() + 1); // Día siguiente
+    mexicoEndUTC.setMilliseconds(-1); // 05:59:59.999 UTC del día siguiente
 
-    console.log('⏰ Rango UTC calculado:', {
-      inicio: mexicoStartUTC.toISOString(),
-      fin: mexicoEndUTC.toISOString()
+    console.log('⏰ Rango UTC calculado para México:', {
+      fecha_mexico: date,
+      inicio_utc: mexicoStartUTC.toISOString(),
+      fin_utc: mexicoEndUTC.toISOString(),
+      nota: 'México UTC-6: 00:00-23:59 México = 06:00-05:59 UTC (día siguiente)'
     });
 
     // 🏪 1. VENTAS POS (sales con sale_type = 'sale')
@@ -33,6 +40,7 @@ export async function GET(request: NextRequest) {
       .select(`
         id,
         total_amount,
+        created_at,
         sale_payment_details (
           payment_method,
           amount,
@@ -57,6 +65,7 @@ export async function GET(request: NextRequest) {
         payment_method,
         amount,
         commission_amount,
+        payment_date,
         sale_id,
         sales!inner (
           sale_type,
@@ -78,6 +87,7 @@ export async function GET(request: NextRequest) {
       .select(`
         amount_paid,
         inscription_amount,
+        created_at,
         membership_payment_details (
           payment_method,
           amount,
@@ -95,7 +105,10 @@ export async function GET(request: NextRequest) {
     console.log('📊 Datos crudos obtenidos:', {
       ventas: salesData?.length || 0,
       abonos: abonosData?.length || 0,
-      membresias: membershipsData?.length || 0
+      membresias: membershipsData?.length || 0,
+      fechas_ventas: salesData?.map(s => s.created_at).slice(0, 3),
+      fechas_abonos: abonosData?.map(a => a.payment_date).slice(0, 3),
+      fechas_membresias: membershipsData?.map(m => m.created_at).slice(0, 3)
     });
 
     // 🧮 PROCESAR VENTAS POS
@@ -246,7 +259,16 @@ export async function GET(request: NextRequest) {
           start: mexicoStartUTC.toISOString(),
           end: mexicoEndUTC.toISOString()
         },
-        note: "Datos filtrados por fecha México (UTC-6)"
+        note: "México UTC-6: Datos filtrados correctamente por fecha México"
+      },
+      debug_info: {
+        consulta_inicio: mexicoStartUTC.toISOString(),
+        consulta_fin: mexicoEndUTC.toISOString(),
+        registros_encontrados: {
+          ventas: salesData?.length || 0,
+          abonos: abonosData?.length || 0,
+          membresias: membershipsData?.length || 0
+        }
       },
       pos,
       abonos,
@@ -254,7 +276,7 @@ export async function GET(request: NextRequest) {
       totals
     };
 
-    console.log('✅ Respuesta final:', response);
+    console.log('✅ Respuesta final con debug:', response);
     return NextResponse.json(response);
 
   } catch (error) {
