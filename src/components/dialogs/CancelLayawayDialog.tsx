@@ -40,7 +40,8 @@ import {
   LinearProgress,
   Stack,
   Avatar,
-  Slider
+  Slider,
+  Snackbar
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { 
@@ -61,8 +62,6 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -164,7 +163,54 @@ export default function CancelLayawayDialog({
   // ✅ ESTADOS DE DATOS HÍBRIDOS
   const [refundDetails, setRefundDetails] = useState<RefundDetail[]>([]);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  const formatMexicoDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
+
+  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDate(dateString);
+  }, [formatMexicoDate]);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
   // ✅ DATOS SEGUROS HÍBRIDOS
   const safeLayaway = useMemo(() => {
@@ -262,7 +308,7 @@ export default function CancelLayawayDialog({
     };
   }, [safeLayaway, refundPercentage, applyPenalty, penaltyAmount, refundDetails]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CANCELACIÓN
+  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CANCELACIÓN (CORREGIDA CON UTC)
   const processCancellation = useCallback(async () => {
     if (!safeLayaway || !calculations) return;
 
@@ -276,11 +322,14 @@ export default function CancelLayawayDialog({
 
       const userId = userData.user.id;
 
+      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
+      const nowUTC = new Date().toISOString();
+
       // ✅ ACTUALIZAR APARTADO A CANCELADO
       const updateData = {
         status: 'cancelled',
         payment_status: 'refunded',
-        cancelled_at: new Date().toISOString(),
+        cancelled_at: nowUTC, // ✅ UTC
         cancelled_by: userId,
         cancel_reason: cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label,
         refund_amount: processRefund ? calculations.finalRefund : 0,
@@ -288,7 +337,7 @@ export default function CancelLayawayDialog({
         refund_reference: refundReference || null,
         penalty_amount: calculations.penalty,
         notes: notes || null,
-        updated_at: new Date().toISOString()
+        updated_at: nowUTC // ✅ UTC
       };
 
       const { error: updateError } = await supabase
@@ -309,8 +358,8 @@ export default function CancelLayawayDialog({
           refund_reference: refundReference || null,
           penalty_amount: calculations.penalty,
           commission_refund: calculations.totalCommissionRefund,
-          refund_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          refund_date: nowUTC, // ✅ UTC
+          created_at: nowUTC, // ✅ UTC
           created_by: userId,
           reason: cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label,
           notes: notes || null
@@ -344,7 +393,7 @@ export default function CancelLayawayDialog({
               .from('products')
               .update({ 
                 current_stock: newStock,
-                updated_at: new Date().toISOString(),
+                updated_at: nowUTC, // ✅ UTC
                 updated_by: userId
               })
               .eq('id', item.product_id);
@@ -367,7 +416,7 @@ export default function CancelLayawayDialog({
                 reason: 'Cancelación de apartado',
                 reference_id: safeLayaway.id,
                 notes: `Cancelación apartado #${safeLayaway.sale_number} - ${partialRestore ? 'Restauración parcial' : 'Restauración completa'}`,
-                created_at: new Date().toISOString(),
+                created_at: nowUTC, // ✅ UTC
                 created_by: userId
               }]);
           }
@@ -384,7 +433,7 @@ export default function CancelLayawayDialog({
           previous_paid_amount: safeLayaway.paid_amount,
           new_paid_amount: safeLayaway.paid_amount,
           reason: `Cancelado: ${cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label}`,
-          created_at: new Date().toISOString(),
+          created_at: nowUTC, // ✅ UTC
           created_by: userId
         }]);
 
@@ -397,7 +446,7 @@ export default function CancelLayawayDialog({
     } finally {
       setProcessing(false);
     }
-  }, [safeLayaway, calculations, supabase, cancelReason, customReason, notes, processRefund, refundMethod, refundReference, restoreStock, partialRestore]);
+  }, [safeLayaway, calculations, supabase, cancelReason, customReason, notes, processRefund, refundMethod, refundReference, restoreStock, partialRestore, showNotification]);
 
   // ✅ FUNCIÓN HÍBRIDA PARA CERRAR
   const handleClose = useCallback(() => {
@@ -445,6 +494,41 @@ export default function CancelLayawayDialog({
         }
       }}
     >
+      {/* SNACKBAR */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       <DialogTitle sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
