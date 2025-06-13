@@ -891,32 +891,28 @@ const handleSubmit = useCallback(async () => {
     let startDate: string;
     let endDate: string | null = null;
 
-    if (formData.isRenewal && formData.latestEndDate) {
-      // ✅ RENOVACIÓN: Desde fecha de vencimiento actual
-      startDate = formData.latestEndDate;
-      console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
-      
-      // ✅ CALCULAR FECHA DE FIN 
-      endDate = addPeriodToDate(startDate, formData.paymentType);
-      
-      console.log(`📅 Fechas de renovación:`);
-      console.log(`   📅 Desde: ${startDate}`);
-      console.log(`   🔄 Tipo: ${formData.paymentType}`);
-      console.log(`   📅 Hasta: ${endDate}`);
-    } else {
-      // ✅ PRIMERA VEZ: Fecha actual (la BD la convertirá a México automáticamente)
-      const today = new Date().toISOString().split('T')[0];
-      startDate = today;
-      console.log(`🆕 Primera venta: Iniciando desde ${startDate}`);
-      
-      // ✅ CALCULAR FECHA DE VENCIMIENTO
-      const calculatedEndDate = calculateEndDate();
-      if (calculatedEndDate) {
-        endDate = calculatedEndDate.toISOString().split('T')[0];
-      }
-      
-      console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
-    }
+   if (formData.isRenewal && formData.latestEndDate) {
+  // ✅ RENOVACIÓN: Desde fecha de vencimiento actual
+  startDate = formData.latestEndDate;
+  console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
+  
+  // ✅ USAR LA FUNCIÓN CORREGIDA
+  endDate = addPeriodToDate(startDate, formData.paymentType);
+  
+  console.log(`📅 Fechas de renovación:`);
+  console.log(`   📅 Desde: ${startDate}`);
+  console.log(`   🔄 Tipo: ${formData.paymentType}`);
+  console.log(`   📅 Hasta: ${endDate}`);
+} else {
+  // ✅ PRIMERA VEZ: Usar fecha actual
+  startDate = new Date().toISOString().split('T')[0];
+  console.log(`🆕 Primera venta: Iniciando desde ${startDate}`);
+  
+  // ✅ USAR LA FUNCIÓN CORREGIDA TAMBIÉN AQUÍ
+  endDate = addPeriodToDate(startDate, formData.paymentType);
+  
+  console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
+}
 
     const totalVisits = formData.paymentType === 'visit' ? 1 : null;
     const remainingVisits = totalVisits;
