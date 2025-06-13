@@ -638,8 +638,14 @@ export default function PaymentDialog({
         totalPaidAmount = totals.total + totalCommissionAmount;
       }
 
-      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
-      const nowUTC = new Date().toISOString();
+     // ✅ USAR HORA MÉXICO PARA BD (CONSISTENTE CON MEMBRESÍAS)
+const createTimestampForDB = useCallback((): string => {
+  const now = new Date();
+  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  return mexicoTime.toISOString();
+}, []);
+
+const nowUTC = createTimestampForDB();
 
       const saleData = {
         sale_number: saleNumber,
