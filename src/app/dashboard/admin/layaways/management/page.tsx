@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -30,7 +31,8 @@ import {
   Stack,
   Avatar,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  Snackbar
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -53,8 +55,6 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -156,7 +156,54 @@ export default function LayawayManagementPage() {
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  const formatMexicoDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
+
+  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDate(dateString);
+  }, [formatMexicoDate]);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
   // ✅ MEMOIZACIÓN ESTABLE PARA TABS
   const tabsData = useMemo(() => [
@@ -190,7 +237,7 @@ export default function LayawayManagementPage() {
     }
   ], [stats]);
 
-  // ✅ FUNCIÓN PARA CARGAR ESTADÍSTICAS
+  // ✅ FUNCIÓN PARA CARGAR ESTADÍSTICAS CORREGIDA CON FECHA MÉXICO
   const loadStats = useCallback(async () => {
     if (!mounted) return;
 
@@ -206,26 +253,27 @@ export default function LayawayManagementPage() {
       }
 
       if (allLayaways) {
-        const today = new Date();
-        const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        // ✅ USAR FECHA MÉXICO PARA CÁLCULOS
+        const mexicoToday = getMexicoDate();
+        const weekFromNow = new Date(mexicoToday.getTime() + 7 * 24 * 60 * 60 * 1000);
 
         const active = allLayaways.filter(l => 
           l.status === 'pending' && 
           l.layaway_expires_at && 
-          new Date(l.layaway_expires_at) >= today
+          new Date(l.layaway_expires_at) >= mexicoToday
         );
         
         const expiring = allLayaways.filter(l => 
           l.status === 'pending' && 
           l.layaway_expires_at &&
-          new Date(l.layaway_expires_at) >= today &&
+          new Date(l.layaway_expires_at) >= mexicoToday &&
           new Date(l.layaway_expires_at) <= weekFromNow
         );
         
         const expired = allLayaways.filter(l => 
           l.status === 'pending' && 
           l.layaway_expires_at &&
-          new Date(l.layaway_expires_at) < today
+          new Date(l.layaway_expires_at) < mexicoToday
         );
         
         const completed = allLayaways.filter(l => l.status === 'completed');
@@ -244,9 +292,9 @@ export default function LayawayManagementPage() {
     } catch (error) {
       console.error('Error en estadísticas:', error);
     }
-  }, [mounted, supabase]);
+  }, [mounted, supabase, getMexicoDate]);
 
-  // ✅ FUNCIÓN PARA CARGAR APARTADOS
+  // ✅ FUNCIÓN PARA CARGAR APARTADOS CORREGIDA CON FECHA MÉXICO
   const loadLayaways = useCallback(async () => {
     if (!mounted) return;
 
@@ -259,25 +307,26 @@ export default function LayawayManagementPage() {
         .order('created_at', { ascending: false });
 
       const currentFilter = tabsData[activeTab]?.value;
-      const today = new Date();
-      const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+      // ✅ USAR FECHA MÉXICO PARA FILTROS
+      const mexicoToday = getMexicoDate();
+      const weekFromNow = new Date(mexicoToday.getTime() + 7 * 24 * 60 * 60 * 1000);
 
       switch (currentFilter) {
         case 'active':
           query = query
             .eq('status', 'pending')
-            .gte('layaway_expires_at', today.toISOString());
+            .gte('layaway_expires_at', mexicoToday.toISOString());
           break;
         case 'expiring':
           query = query
             .eq('status', 'pending')
-            .gte('layaway_expires_at', today.toISOString())
+            .gte('layaway_expires_at', mexicoToday.toISOString())
             .lte('layaway_expires_at', weekFromNow.toISOString());
           break;
         case 'expired':
           query = query
             .eq('status', 'pending')
-            .lt('layaway_expires_at', today.toISOString());
+            .lt('layaway_expires_at', mexicoToday.toISOString());
           break;
         case 'completed':
           query = query.eq('status', 'completed');
@@ -382,7 +431,7 @@ export default function LayawayManagementPage() {
         setLoading(false);
       }
     }
-  }, [mounted, supabase, tabsData, activeTab, searchTerm]);
+  }, [mounted, supabase, tabsData, activeTab, searchTerm, getMexicoDate, showNotification]);
 
   // ✅ useEffect HÍBRIDO CON GUARD CLAUSES
   useEffect(() => {
@@ -404,7 +453,7 @@ export default function LayawayManagementPage() {
     if (!mounted) return;
     setRefreshKey(prev => prev + 1);
     showNotification('Actualizando datos...', 'info');
-  }, [mounted]);
+  }, [mounted, showNotification]);
 
   const getProgressColor = useCallback((percentage: number) => {
     if (percentage >= 80) return darkProTokens.success;
@@ -412,14 +461,16 @@ export default function LayawayManagementPage() {
     return darkProTokens.error;
   }, []);
 
+  // ✅ CÁLCULO DE DÍAS HASTA VENCIMIENTO CORREGIDO CON FECHA MÉXICO
   const getDaysUntilExpiration = useCallback((layawayExpiresAt: string) => {
     if (!layawayExpiresAt) return 0;
-    const today = new Date();
+    // ✅ USAR FECHA MÉXICO PARA CÁLCULOS
+    const mexicoToday = getMexicoDate();
     const expiration = new Date(layawayExpiresAt);
-    const diffTime = expiration.getTime() - today.getTime();
+    const diffTime = expiration.getTime() - mexicoToday.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
-  }, []);
+  }, [getMexicoDate]);
 
   // ✅ HANDLERS DE DIALOGS CON useCallback HÍBRIDO
   const handleViewDetails = useCallback((layaway: Layaway) => {
@@ -559,6 +610,41 @@ export default function LayawayManagementPage() {
       background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
       minHeight: '100vh'
     }}>
+      {/* SNACKBAR */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       {/* Header */}
       <Box sx={{ 
         display: 'flex', 
