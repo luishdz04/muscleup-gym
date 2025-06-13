@@ -77,7 +77,7 @@ interface LayawayDetailsDialogProps {
   layaway: any;
 }
 
-export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDialogProps) {
+export default function LayawayDetailsDialog({ open, onClose, layaway }: LayawayDetailsDialogProps) {
   
   // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
   const getMexicoDate = useCallback(() => {
@@ -111,7 +111,7 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
     return formatMexicoDate(dateString);
   }, [formatMexicoDate]);
 
-  if (!sale) return null;
+if (!layaway) return null;
 
   return (
     <Dialog 
@@ -139,7 +139,7 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <ReceiptIcon />
           <Typography variant="h6" fontWeight="bold">
-            📊 Detalles de Venta #{sale.sale_number}
+📊 Detalles de Apartado #{layaway.sale_number}
           </Typography>
         </Box>
         <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
