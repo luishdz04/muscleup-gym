@@ -316,7 +316,21 @@ export default function PaymentDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS ESTABLES
+  // ✅ FUNCIONES UTILITARIAS ESTABLES CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    const mexicoDate = getMexicoDate();
+    const year = mexicoDate.getFullYear();
+    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = mexicoDate.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, [getMexicoDate]);
+
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -324,9 +338,10 @@ export default function PaymentDialog({
     }).format(price);
   }, []);
 
-  const formatDate = useCallback((dateString: string) => {
+  const formatMexicoDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -557,12 +572,13 @@ export default function PaymentDialog({
     formatPrice
   ]);
 
-  // ✅ GENERAR NÚMERO DE VENTA - ESTABLE
+  // ✅ GENERAR NÚMERO DE VENTA - CORREGIDO CON FECHA MÉXICO
   const generateSaleNumber = useCallback(async (): Promise<string> => {
-    const today = new Date();
-    const year = today.getFullYear().toString().slice(-2);
-    const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    const day = today.getDate().toString().padStart(2, '0');
+    // ✅ USAR FECHA MÉXICO CONSISTENTE
+    const mexicoDate = getMexicoDate();
+    const year = mexicoDate.getFullYear().toString().slice(-2);
+    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = mexicoDate.getDate().toString().padStart(2, '0');
     
     try {
       const { data, error } = await supabase
@@ -589,7 +605,7 @@ export default function PaymentDialog({
       console.error('Error generating sale number:', error);
       return `VE${year}${month}${day}${Date.now().toString().slice(-6)}`;
     }
-  }, [supabase]);
+  }, [supabase, getMexicoDate]);
 
   // ✅ PROCESAR VENTA - OPTIMIZADO
   const processSale = useCallback(async () => {
@@ -622,6 +638,9 @@ export default function PaymentDialog({
         totalPaidAmount = totals.total + totalCommissionAmount;
       }
 
+      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
+      const nowUTC = new Date().toISOString();
+
       const saleData = {
         sale_number: saleNumber,
         customer_id: customer?.id || null,
@@ -644,13 +663,13 @@ export default function PaymentDialog({
         commission_amount: totalCommissionAmount,
         custom_commission_rate: customCommissionRate,
         skip_inscription: false,
-        payment_date: new Date().toISOString(),
+        payment_date: nowUTC,
         notes: formData.notes.trim() || null,
         receipt_printed: formData.printReceipt,
         email_sent: formData.sendEmail,
-        created_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: nowUTC,
+        completed_at: nowUTC,
+        updated_at: nowUTC
       };
 
       const { data: sale, error: saleError } = await supabase
@@ -672,7 +691,7 @@ export default function PaymentDialog({
         discount_amount: item.discount_amount,
         tax_rate: item.product.tax_rate || 16,
         tax_amount: item.tax_amount,
-        created_at: new Date().toISOString()
+        created_at: nowUTC
       }));
 
       const { error: itemsError } = await supabase
@@ -690,8 +709,8 @@ export default function PaymentDialog({
           commission_rate: payment.commission_rate,
           commission_amount: payment.commission_amount,
           sequence_order: payment.sequence,
-          payment_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          payment_date: nowUTC,
+          created_at: nowUTC,
           created_by: userId
         }));
 
@@ -711,8 +730,8 @@ export default function PaymentDialog({
             commission_rate: calculateCommission(formData.paymentMethod, totals.total).rate,
             commission_amount: totalCommissionAmount,
             sequence_order: 1,
-            payment_date: new Date().toISOString(),
-            created_at: new Date().toISOString(),
+            payment_date: nowUTC,
+            created_at: nowUTC,
             created_by: userId
           }]);
 
@@ -724,7 +743,7 @@ export default function PaymentDialog({
           .from('products')
           .update({ 
             current_stock: item.product.current_stock - item.quantity,
-            updated_at: new Date().toISOString(),
+            updated_at: nowUTC,
             updated_by: userId
           })
           .eq('id', item.product.id);
@@ -744,7 +763,7 @@ export default function PaymentDialog({
             reason: 'Venta',
             reference_id: sale.id,
             notes: `Venta #${sale.sale_number}`,
-            created_at: new Date().toISOString(),
+            created_at: nowUTC,
             created_by: userId
           }]);
       }
@@ -754,7 +773,7 @@ export default function PaymentDialog({
           .from('coupons')
           .update({ 
             current_uses: (coupon.current_uses || 0) + 1,
-            updated_at: new Date().toISOString()
+            updated_at: nowUTC
           })
           .eq('id', coupon.id);
       }
@@ -767,7 +786,7 @@ export default function PaymentDialog({
           .update({
             points_balance: (customer.points_balance || 0) + pointsEarned,
             total_purchases: (customer.total_purchases || 0) + totals.total,
-            updated_at: new Date().toISOString()
+            updated_at: nowUTC
           })
           .eq('id', customer.id);
       }
@@ -1541,7 +1560,7 @@ export default function PaymentDialog({
                                                       fontWeight: 700
                                                     }}>
                                                       {formatPrice(calculatedValues.finalTotalAmount)}
-                                                    </Typography>
+                                                                                                    </Typography>
                                                     {calculatedValues.commissionAmount > 0 && (
                                                       <Typography variant="caption" sx={{ 
                                                         color: darkProTokens.warning
@@ -1563,7 +1582,7 @@ export default function PaymentDialog({
                                             border: `2px solid ${darkProTokens.roleTrainer}50`,
                                             borderRadius: 4
                                           }}>
-                                                                                        <CardContent>
+                                            <CardContent>
                                               <Typography variant="h6" sx={{ 
                                                 color: darkProTokens.roleTrainer, 
                                                 mb: 3,
@@ -2005,7 +2024,7 @@ export default function PaymentDialog({
                                                       '& .MuiAlert-icon': { color: darkProTokens.warning }
                                                     }}
                                                   >
-                                                    ⚠️ Total de pagos ({formatPrice(paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0))}) excede el total requerido.
+                                                    ⚠️ Total de pagos ({formatPrice(paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0))}) excede el total requerido ({formatPrice(calculatedValues.finalTotalAmount)}). 
                                                     El excedente se generará como cambio.
                                                   </Alert>
                                                 </Box>
@@ -2756,7 +2775,8 @@ export default function PaymentDialog({
                 #{saleNumber}
               </Typography>
               <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 4 }}>
-                Venta procesada el {formatDate(new Date().toISOString())}
+                {/* ✅ USAR FORMATEO MÉXICO CORREGIDO */}
+                Venta procesada el {formatMexicoDate(new Date().toISOString())}
               </Typography>
 
               <Grid container spacing={3} justifyContent="center" sx={{ mb: 4 }}>
@@ -2980,7 +3000,7 @@ export default function PaymentDialog({
                   fontWeight: 800,
                   mb: 1
                 }}>
-                  {formatPrice(calculatedValues.finalTotalAmount)}
+                                    {formatPrice(calculatedValues.finalTotalAmount)}
                 </Typography>
                 <Typography variant="body1" sx={{ 
                   color: darkProTokens.textSecondary
@@ -3011,7 +3031,7 @@ export default function PaymentDialog({
                   fontWeight: 800,
                   mb: 1
                 }}>
-                                    {cart?.reduce((sum, item) => sum + item.quantity, 0) || 0}
+                  {cart?.reduce((sum, item) => sum + item.quantity, 0) || 0}
                 </Typography>
                 <Typography variant="body1" sx={{ 
                   color: darkProTokens.textSecondary
