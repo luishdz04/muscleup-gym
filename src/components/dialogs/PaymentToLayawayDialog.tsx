@@ -200,7 +200,7 @@ export default function PaymentToLayawayDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+   // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
   const getMexicoDate = useCallback(() => {
     const now = new Date();
     // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
@@ -234,6 +234,13 @@ export default function PaymentToLayawayDialog({
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
+  }, []);
+
+  // ✅ CREAR TIMESTAMP MÉXICO - MOVER AQUÍ (FUERA DE FUNCIONES)
+  const createTimestampForDB = useCallback((): string => {
+    const now = new Date();
+    const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+    return mexicoTime.toISOString();
   }, []);
 
   // ✅ DATOS SEGUROS HÍBRIDOS
@@ -393,7 +400,7 @@ export default function PaymentToLayawayDialog({
     showNotification('Pago eliminado', 'info');
   }, [showNotification]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR PAGO (CORREGIDA CON UTC)
+  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR PAGO (CORREGIDA)
   const processPayment = useCallback(async () => {
     if (!safeLayaway || !calculations) return;
 
@@ -407,13 +414,8 @@ export default function PaymentToLayawayDialog({
 
       const userId = userData.user.id;
 
-      const createTimestampForDB = useCallback((): string => {
-  const now = new Date();
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return mexicoTime.toISOString();
-}, []);
-
-const nowUTC = createTimestampForDB();
+      // ✅ USAR FUNCIÓN YA DEFINIDA ARRIBA
+      const nowUTC = createTimestampForDB();
 
       // ✅ CREAR DETALLES DE PAGO
       if (isMixedPayment && paymentDetails.length > 0) {
@@ -425,8 +427,8 @@ const nowUTC = createTimestampForDB();
           commission_rate: payment.commission,
           commission_amount: payment.commissionAmount,
           sequence_order: payment.sequence,
-          payment_date: nowUTC, // ✅ UTC
-          created_at: nowUTC, // ✅ UTC
+          payment_date: nowUTC, // ✅ HORA MÉXICO
+          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: index + 1,
@@ -449,8 +451,8 @@ const nowUTC = createTimestampForDB();
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.totalCommission,
           sequence_order: 1,
-          payment_date: nowUTC, // ✅ UTC
-          created_at: nowUTC, // ✅ UTC
+          payment_date: nowUTC, // ✅ HORA MÉXICO
+          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId,
           is_partial_payment: !calculations.willComplete,
           payment_sequence: 1,
@@ -470,8 +472,8 @@ const nowUTC = createTimestampForDB();
       const updateData = {
         paid_amount: calculations.newPaidAmount,
         pending_amount: calculations.newPendingAmount,
-        last_payment_date: nowUTC, // ✅ UTC
-        updated_at: nowUTC, // ✅ UTC
+        last_payment_date: nowUTC, // ✅ HORA MÉXICO
+        updated_at: nowUTC, // ✅ HORA MÉXICO
         ...(calculations.willComplete && {
           status: 'completed',
           payment_status: 'paid'
@@ -497,7 +499,7 @@ const nowUTC = createTimestampForDB();
           previous_paid_amount: safeLayaway.paid_amount,
           new_paid_amount: calculations.newPaidAmount,
           reason: calculations.willComplete ? 'Pago completado' : 'Abono recibido',
-          created_at: nowUTC, // ✅ UTC
+          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId
         }]);
 
@@ -515,7 +517,20 @@ const nowUTC = createTimestampForDB();
     } finally {
       setProcessing(false);
     }
-  }, [safeLayaway, calculations, supabase, isMixedPayment, paymentDetails, paymentMethod, paymentReference, applyCommission, paymentMethods, notes, showNotification]);
+  }, [
+    safeLayaway, 
+    calculations, 
+    supabase, 
+    isMixedPayment, 
+    paymentDetails, 
+    paymentMethod, 
+    paymentReference, 
+    applyCommission, 
+    paymentMethods, 
+    notes, 
+    showNotification,
+    createTimestampForDB // ✅ AGREGAR DEPENDENCIA
+  ]);
 
   // ✅ FUNCIÓN HÍBRIDA PARA CERRAR
   const handleClose = useCallback(() => {
@@ -546,7 +561,6 @@ const nowUTC = createTimestampForDB();
     { label: 'Monto y Detalles', description: 'Especifica cantidad y referencias' },
     { label: 'Confirmación', description: 'Revisa y procesa el pago' }
   ];
-
   return (
     <Dialog 
       open={open} 
