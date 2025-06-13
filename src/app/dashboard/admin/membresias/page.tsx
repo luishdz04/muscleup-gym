@@ -100,13 +100,7 @@ export default function MembresiasPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // ✅ FUNCIONES UTILITARIAS CON ZONA HORARIA MÉXICO
-  const getMexicoDate = useCallback(() => {
-    const now = new Date();
-    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
-  }, []);
-
+  // ✅ FUNCIÓN UTILITARIA SIMPLIFICADA - SOLO FORMATO DE PRECIO
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -114,64 +108,72 @@ export default function MembresiasPage() {
     }).format(price);
   }, []);
 
-  // ✅ FUNCIÓN PARA OBTENER PRIMER DÍA DEL MES EN MÉXICO
-  const getFirstDayOfMonthMexico = useCallback(() => {
-    const mexicoDate = getMexicoDate();
-    return new Date(mexicoDate.getFullYear(), mexicoDate.getMonth(), 1);
-  }, [getMexicoDate]);
-
-  // ✅ FUNCIÓN PARA OBTENER FECHA EN 7 DÍAS EN MÉXICO
-  const getIn7DaysMexico = useCallback(() => {
-    const mexicoDate = getMexicoDate();
-    return new Date(mexicoDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-  }, [getMexicoDate]);
-
-  // ✅ CARGAR DATOS CORREGIDO CON ZONA HORARIA MÉXICO
+  // ✅ CARGAR DATOS OPTIMIZADO - LA BD YA MANEJA HORA MÉXICO AUTOMÁTICAMENTE
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const supabase = createBrowserSupabaseClient();
       
-      // Cargar todas las membresías para calcular estadísticas
+      // ✅ CONSULTAS OPTIMIZADAS USANDO FUNCIONES SQL NATIVAS
+      // La BD ya está en timezone México, por lo que NOW() y date functions usan hora correcta
+      
+      // 1️⃣ OBTENER TODAS LAS MEMBRESÍAS
       const { data: allMemberships, error: statsError } = await supabase
         .from('user_memberships')
         .select('*');
 
       if (statsError) throw statsError;
 
-      // ✅ CALCULAR ESTADÍSTICAS CON FECHA MÉXICO
-      const mexicoNow = getMexicoDate();
-      const firstDayOfMonth = getFirstDayOfMonthMexico();
-      const in7Days = getIn7DaysMexico();
+      // 2️⃣ OBTENER INGRESOS DEL MES ACTUAL (usando SQL nativo con timezone México)
+      const { data: monthlyRevenue, error: revenueError } = await supabase
+        .from('user_memberships')
+        .select('amount_paid')
+        .gte('created_at', supabase.sql`date_trunc('month', NOW())`) // ✅ NOW() ya es hora México
+        .not('amount_paid', 'is', null);
 
+      if (revenueError) console.warn('Error cargando ingresos mensuales:', revenueError);
+
+      // 3️⃣ OBTENER MEMBRESÍAS QUE VENCEN EN 7 DÍAS (usando SQL nativo)
+      const { data: expiringSoon, error: expiringError } = await supabase
+        .from('user_memberships')
+        .select('end_date')
+        .eq('status', 'active')
+        .not('end_date', 'is', null)
+        .lte('end_date', supabase.sql`NOW() + INTERVAL '7 days'`) // ✅ Cálculo directo en BD
+        .gte('end_date', supabase.sql`NOW()`); // ✅ Solo futuras
+
+      if (expiringError) console.warn('Error cargando próximas a vencer:', expiringError);
+
+      // 4️⃣ OBTENER NUEVAS MEMBRESÍAS DEL MES
+      const { data: newThisMonth, error: newError } = await supabase
+        .from('user_memberships')
+        .select('id')
+        .gte('created_at', supabase.sql`date_trunc('month', NOW())`); // ✅ Mes actual en hora México
+
+      if (newError) console.warn('Error cargando nuevas del mes:', newError);
+
+      // ✅ CALCULAR ESTADÍSTICAS CON DATOS OBTENIDOS
       const calculatedStats: MembershipStats = {
         total: allMemberships?.length || 0,
         active: allMemberships?.filter(m => m.status === 'active').length || 0,
         expired: allMemberships?.filter(m => m.status === 'expired').length || 0,
         frozen: allMemberships?.filter(m => m.status === 'frozen').length || 0,
-        revenue_this_month: allMemberships
-          ?.filter(m => new Date(m.created_at) >= firstDayOfMonth)
-          .reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0,
-        new_this_month: allMemberships
-          ?.filter(m => new Date(m.created_at) >= firstDayOfMonth).length || 0,
-        expiring_soon: allMemberships
-          ?.filter(m => {
-            if (!m.end_date || m.status !== 'active') return false;
-            const endDate = new Date(m.end_date);
-            // ✅ COMPARAR CON FECHA MÉXICO
-            return endDate <= in7Days && endDate >= mexicoNow;
-          }).length || 0
+        revenue_this_month: monthlyRevenue?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0,
+        new_this_month: newThisMonth?.length || 0,
+        expiring_soon: expiringSoon?.length || 0
       };
 
       setStats(calculatedStats);
       setSuccessMessage('📊 Datos actualizados correctamente');
+      
     } catch (err: any) {
+      console.error('Error cargando datos de membresías:', err);
       setError(`❌ Error cargando datos: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  }, [getMexicoDate, getFirstDayOfMonthMexico, getIn7DaysMexico]);
+  }, []);
 
   // Cargar datos al inicializar
   useEffect(() => {
