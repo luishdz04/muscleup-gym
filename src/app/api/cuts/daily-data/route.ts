@@ -4,280 +4,287 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    
-    // 🇲🇽 Fecha en Monterrey (UTC-6)
-    const requestedDate = searchParams.get('date');
-    let targetDate: string;
-    
-    if (requestedDate) {
-      targetDate = requestedDate;
-    } else {
-      const now = new Date();
-      const monterreyTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-      targetDate = monterreyTime.toISOString().split('T')[0];
+    const date = searchParams.get('date');
+
+    if (!date) {
+      return NextResponse.json(
+        { error: 'Fecha requerida', success: false },
+        { status: 400 }
+      );
     }
-    
+
+    console.log('🔍 Obteniendo datos para fecha:', date);
+
     const supabase = createServerSupabaseClient();
 
-    console.log('🔍 Consultando datos para fecha:', targetDate);
-    console.log('🔍 Rango UTC:', `${targetDate}T06:00:00.000Z a ${getNextDay(targetDate)}T06:00:00.000Z`);
-
-    // 📊 1. OBTENER TODAS LAS VENTAS DEL DÍA (sin filtros complejos)
+    // 🏪 VENTAS POS - LÓGICA CORREGIDA PARA PAGOS MIXTOS
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
       .select(`
         id,
         sale_number,
-        sale_type,
         total_amount,
-        status,
         is_mixed_payment,
-        commission_amount,
-        created_at
+        status,
+        created_at,
+        sale_payment_details (
+          payment_method,
+          amount,
+          commission_rate,
+          commission_amount,
+          sequence_order
+        )
       `)
-      .gte('created_at', `${targetDate}T06:00:00.000Z`)
-      .lt('created_at', `${getNextDay(targetDate)}T06:00:00.000Z`);
+      .eq('status', 'completed')
+      .gte('created_at', `${date}T00:00:00`)
+      .lt('created_at', `${date}T23:59:59`)
+      .order('created_at', { ascending: false });
 
     if (salesError) {
-      console.error('❌ Error consultando ventas:', salesError);
-      throw new Error(`Error en ventas: ${salesError.message}`);
+      console.error('💥 Error obteniendo ventas:', salesError);
+      throw salesError;
     }
 
-    console.log('✅ Ventas encontradas:', salesData?.length);
-    console.log('📊 Ventas data:', salesData?.map(s => ({ 
-      number: s.sale_number, 
-      type: s.sale_type, 
-      status: s.status,
-      total: s.total_amount 
-    })));
+    // 💰 PROCESAR VENTAS CON LÓGICA CORRECTA DE PAGOS MIXTOS
+    const posData = {
+      efectivo: 0,
+      transferencia: 0,
+      debito: 0,
+      credito: 0,
+      mixto: 0, // Mantenemos en 0 siempre
+      total: 0,
+      transactions: 0,
+      commissions: 0
+    };
 
-    // 💰 2. OBTENER TODOS LOS PAGOS DEL DÍA
-    const { data: paymentsData, error: paymentsError } = await supabase
-      .from('sale_payment_details')
-      .select(`
-        id,
-        sale_id,
-        payment_method,
-        amount,
-        commission_amount,
-        is_partial_payment,
-        payment_date,
-        created_at
-      `)
-      .gte('payment_date', `${targetDate}T06:00:00.000Z`)
-      .lt('payment_date', `${getNextDay(targetDate)}T06:00:00.000Z`);
+    console.log('📊 Procesando', salesData?.length || 0, 'ventas...');
 
-    if (paymentsError) {
-      console.error('❌ Error consultando pagos:', paymentsError);
-      throw new Error(`Error en pagos: ${paymentsError.message}`);
-    }
+    salesData?.forEach((sale: any) => {
+      posData.transactions += 1;
+      posData.total += Number(sale.total_amount);
 
-    console.log('✅ Pagos encontrados:', paymentsData?.length);
-    console.log('💳 Pagos data:', paymentsData?.map(p => ({ 
-      sale_id: p.sale_id, 
-      method: p.payment_method, 
-      amount: p.amount,
-      is_partial: p.is_partial_payment
-    })));
+      // 🎯 LÓGICA CORREGIDA: Procesar payment_details en lugar de is_mixed_payment
+      if (sale.sale_payment_details && sale.sale_payment_details.length > 0) {
+        sale.sale_payment_details.forEach((payment: any) => {
+          const amount = Number(payment.amount);
+          const commission = Number(payment.commission_amount || 0);
 
-    // 💪 3. OBTENER MEMBRESÍAS DEL DÍA
+          // Sumar comisiones
+          posData.commissions += commission;
+
+          // 🔥 SUMAR A MÉTODO ESPECÍFICO (NO A MIXTO)
+          switch (payment.payment_method.toLowerCase()) {
+            case 'efectivo':
+              posData.efectivo += amount;
+              break;
+            case 'transferencia':
+              posData.transferencia += amount;
+              break;
+            case 'debito':
+              posData.debito += amount;
+              break;
+            case 'credito':
+              posData.credito += amount;
+              break;
+            default:
+              console.warn('⚠️ Método de pago no reconocido:', payment.payment_method);
+              posData.efectivo += amount; // Fallback a efectivo
+          }
+        });
+      }
+    });
+
+    // 🎫 MEMBRESÍAS - LÓGICA SIMILAR
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('user_memberships')
       .select(`
         id,
+        payment_type,
         amount_paid,
         inscription_amount,
         is_mixed_payment,
-        commission_amount,
-        status,
-        created_at
-      `)
-      .gte('created_at', `${targetDate}T06:00:00.000Z`)
-      .lt('created_at', `${getNextDay(targetDate)}T06:00:00.000Z`)
-      .eq('status', 'active');
-
-    if (membershipsError) {
-      console.error('❌ Error consultando membresías:', membershipsError);
-      throw new Error(`Error en membresías: ${membershipsError.message}`);
-    }
-
-    console.log('✅ Membresías encontradas:', membershipsData?.length);
-
-    // 💪 4. OBTENER DETALLES DE PAGOS DE MEMBRESÍAS
-    const membershipIds = membershipsData?.map(m => m.id) || [];
-    let membershipPaymentsData: any[] = [];
-    
-    if (membershipIds.length > 0) {
-      const { data: membershipPayments, error: membershipPaymentsError } = await supabase
-        .from('membership_payment_details')
-        .select(`
-          id,
-          membership_id,
+        created_at,
+        membership_payment_details (
           payment_method,
           amount,
-          commission_amount
-        `)
-        .in('membership_id', membershipIds);
+          commission_rate,
+          commission_amount,
+          sequence_order
+        )
+      `)
+      .gte('created_at', `${date}T00:00:00`)
+      .lt('created_at', `${date}T23:59:59`)
+      .order('created_at', { ascending: false });
 
-      if (membershipPaymentsError) {
-        console.error('❌ Error consultando pagos de membresías:', membershipPaymentsError);
-      } else {
-        membershipPaymentsData = membershipPayments || [];
-      }
+    if (membershipsError) {
+      console.error('💥 Error obteniendo membresías:', membershipsError);
+      throw membershipsError;
     }
 
-    // 🧮 PROCESAR DATOS CON LÓGICA CLARA
-
-    // === VENTAS POS (Ventas directas completadas) ===
-    const directSales = salesData?.filter(sale => 
-      sale.sale_type === 'sale' && sale.status === 'completed'
-    ) || [];
-
-    const posStats = {
+    // 💰 PROCESAR MEMBRESÍAS
+    const membershipsDataProcessed = {
       efectivo: 0,
       transferencia: 0,
       debito: 0,
       credito: 0,
-      mixto: 0,
+      mixto: 0, // Mantenemos en 0 siempre
       total: 0,
-      transactions: directSales.length,
+      transactions: 0,
       commissions: 0
     };
 
-    directSales.forEach(sale => {
-      const saleTotal = Number(sale.total_amount) || 0;
-      posStats.total += saleTotal;
-      posStats.commissions += Number(sale.commission_amount) || 0;
+    console.log('🎫 Procesando', membershipsData?.length || 0, 'membresías...');
 
-      // Encontrar pagos de esta venta
-      const salePayments = paymentsData?.filter(p => p.sale_id === sale.id) || [];
-      
-      if (sale.is_mixed_payment && salePayments.length > 1) {
-        posStats.mixto += saleTotal;
-      } else {
-        const mainPayment = salePayments[0];
-        if (mainPayment) {
-          const method = mainPayment.payment_method;
-          if (['efectivo', 'transferencia', 'debito', 'credito'].includes(method)) {
-            posStats[method as keyof typeof posStats] += saleTotal;
+    membershipsData?.forEach((membership: any) => {
+      membershipsDataProcessed.transactions += 1;
+      const totalAmount = Number(membership.amount_paid) + Number(membership.inscription_amount || 0);
+      membershipsDataProcessed.total += totalAmount;
+
+      // Procesar detalles de pago de membresías
+      if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
+        membership.membership_payment_details.forEach((payment: any) => {
+          const amount = Number(payment.amount);
+          const commission = Number(payment.commission_amount || 0);
+
+          membershipsDataProcessed.commissions += commission;
+
+          switch (payment.payment_method.toLowerCase()) {
+            case 'efectivo':
+              membershipsDataProcessed.efectivo += amount;
+              break;
+            case 'transferencia':
+              membershipsDataProcessed.transferencia += amount;
+              break;
+            case 'debito':
+              membershipsDataProcessed.debito += amount;
+              break;
+            case 'credito':
+              membershipsDataProcessed.credito += amount;
+              break;
+            default:
+              console.warn('⚠️ Método de pago no reconocido en membresía:', payment.payment_method);
+              membershipsDataProcessed.efectivo += amount;
           }
-        }
+        });
       }
     });
 
-    // === ABONOS (Pagos parciales + Enganches de apartados) ===
-    const directSaleIds = directSales.map(sale => sale.id);
-    const abonoPayments = paymentsData?.filter(payment => 
-      !directSaleIds.includes(payment.sale_id)
-    ) || [];
+    // 📋 ABONOS (Apartados) - Misma lógica
+    const { data: layawaysData, error: layawaysError } = await supabase
+      .from('sales')
+      .select(`
+        id,
+        sale_number,
+        total_amount,
+        paid_amount,
+        is_mixed_payment,
+        status,
+        created_at,
+        sale_payment_details (
+          payment_method,
+          amount,
+          commission_rate,
+          commission_amount,
+          sequence_order,
+          is_partial_payment
+        )
+      `)
+      .eq('sale_type', 'layaway')
+      .in('status', ['pending', 'completed'])
+      .gte('created_at', `${date}T00:00:00`)
+      .lt('created_at', `${date}T23:59:59`)
+      .order('created_at', { ascending: false });
 
-    const abonosStats = {
+    if (layawaysError) {
+      console.error('💥 Error obteniendo abonos:', layawaysError);
+      throw layawaysError;
+    }
+
+    // 💰 PROCESAR ABONOS
+    const abonosData = {
       efectivo: 0,
       transferencia: 0,
       debito: 0,
       credito: 0,
-      mixto: 0,
+      mixto: 0, // Mantenemos en 0 siempre
       total: 0,
-      transactions: abonoPayments.length,
+      transactions: 0,
       commissions: 0
     };
 
-    abonoPayments.forEach(payment => {
-      const amount = Number(payment.amount) || 0;
-      abonosStats.total += amount;
-      abonosStats.commissions += Number(payment.commission_amount) || 0;
+    console.log('📋 Procesando', layawaysData?.length || 0, 'abonos...');
 
-      const method = payment.payment_method;
-      if (['efectivo', 'transferencia', 'debito', 'credito'].includes(method)) {
-        abonosStats[method as keyof typeof abonosStats] += amount;
-      }
-    });
+    layawaysData?.forEach((layaway: any) => {
+      abonosData.transactions += 1;
+      abonosData.total += Number(layaway.paid_amount || 0);
 
-    // === MEMBRESÍAS ===
-    const membershipsStats = {
-      efectivo: 0,
-      transferencia: 0,
-      debito: 0,
-      credito: 0,
-      mixto: 0,
-      total: 0,
-      transactions: membershipsData?.length || 0,
-      commissions: 0
-    };
+      // Procesar solo los pagos del día actual
+      if (layaway.sale_payment_details && layaway.sale_payment_details.length > 0) {
+        layaway.sale_payment_details.forEach((payment: any) => {
+          const amount = Number(payment.amount);
+          const commission = Number(payment.commission_amount || 0);
 
-    membershipsData?.forEach(membership => {
-      const amount = Number(membership.amount_paid) || 0;
-      membershipsStats.total += amount;
-      membershipsStats.commissions += Number(membership.commission_amount) || 0;
+          abonosData.commissions += commission;
 
-      const membershipPayments = membershipPaymentsData.filter(p => p.membership_id === membership.id);
-      
-      if (membership.is_mixed_payment && membershipPayments.length > 1) {
-        membershipsStats.mixto += amount;
-      } else {
-        const mainPayment = membershipPayments[0];
-        if (mainPayment) {
-          const method = mainPayment.payment_method;
-          if (['efectivo', 'transferencia', 'debito', 'credito'].includes(method)) {
-            membershipsStats[method as keyof typeof membershipsStats] += Number(mainPayment.amount) || 0;
+          switch (payment.payment_method.toLowerCase()) {
+            case 'efectivo':
+              abonosData.efectivo += amount;
+              break;
+            case 'transferencia':
+              abonosData.transferencia += amount;
+              break;
+            case 'debito':
+              abonosData.debito += amount;
+              break;
+            case 'credito':
+              abonosData.credito += amount;
+              break;
+            default:
+              console.warn('⚠️ Método de pago no reconocido en abono:', payment.payment_method);
+              abonosData.efectivo += amount;
           }
-        }
+        });
       }
     });
 
-    // === TOTALES CONSOLIDADOS ===
+    // 🧮 CALCULAR TOTALES CONSOLIDADOS
     const totals = {
-      efectivo: posStats.efectivo + abonosStats.efectivo + membershipsStats.efectivo,
-      transferencia: posStats.transferencia + abonosStats.transferencia + membershipsStats.transferencia,
-      debito: posStats.debito + abonosStats.debito + membershipsStats.debito,
-      credito: posStats.credito + abonosStats.credito + membershipsStats.credito,
-      mixto: posStats.mixto + abonosStats.mixto + membershipsStats.mixto,
-      total: posStats.total + abonosStats.total + membershipsStats.total,
-      transactions: posStats.transactions + abonosStats.transactions + membershipsStats.transactions,
-      commissions: posStats.commissions + abonosStats.commissions + membershipsStats.commissions,
-      net_amount: (posStats.total + abonosStats.total + membershipsStats.total) - 
-                  (posStats.commissions + abonosStats.commissions + membershipsStats.commissions)
+      efectivo: posData.efectivo + membershipsDataProcessed.efectivo + abonosData.efectivo,
+      transferencia: posData.transferencia + membershipsDataProcessed.transferencia + abonosData.transferencia,
+      debito: posData.debito + membershipsDataProcessed.debito + abonosData.debito,
+      credito: posData.credito + membershipsDataProcessed.credito + abonosData.credito,
+      mixto: 0, // Siempre 0 porque descomponemos todo
+      total: posData.total + membershipsDataProcessed.total + abonosData.total,
+      transactions: posData.transactions + membershipsDataProcessed.transactions + abonosData.transactions,
+      commissions: posData.commissions + membershipsDataProcessed.commissions + abonosData.commissions,
+      net_amount: (posData.total + membershipsDataProcessed.total + abonosData.total) - (posData.commissions + membershipsDataProcessed.commissions + abonosData.commissions)
     };
 
-    console.log('📊 Resultado final:');
-    console.log('- POS:', posStats);
-    console.log('- Abonos:', abonosStats);
-    console.log('- Membresías:', membershipsStats);
-    console.log('- Totales:', totals);
+    console.log('✅ Datos procesados correctamente:', {
+      fecha: date,
+      pos_total: posData.total,
+      pos_efectivo: posData.efectivo,
+      pos_debito: posData.debito,
+      memberships_total: membershipsDataProcessed.total,
+      abonos_total: abonosData.total,
+      total_consolidado: totals.total,
+      total_comisiones: totals.commissions
+    });
 
     return NextResponse.json({
-      date: targetDate,
-      pos: posStats,
-      abonos: abonosStats,
-      memberships: membershipsStats,
-      totals,
       success: true,
-      timestamp: new Date().toISOString(),
-      debug: {
-        totalSales: salesData?.length || 0,
-        directSales: directSales.length,
-        totalPayments: paymentsData?.length || 0,
-        abonoPayments: abonoPayments.length,
-        memberships: membershipsData?.length || 0,
-        dateRange: `${targetDate}T06:00:00.000Z to ${getNextDay(targetDate)}T06:00:00.000Z`
-      }
+      date,
+      pos: posData,
+      memberships: membershipsDataProcessed,
+      abonos: abonosData,
+      totals
     });
 
   } catch (error) {
-    console.error('💥 Error completo:', error);
+    console.error('💥 Error en API daily-data:', error);
     return NextResponse.json(
-      { 
-        error: `Error al obtener datos del día: ${error instanceof Error ? error.message : 'Error desconocido'}`, 
-        success: false,
-        details: error instanceof Error ? error.stack : 'No stack trace'
-      },
+      { error: 'Error al obtener datos del día', success: false },
       { status: 500 }
     );
   }
-}
-
-function getNextDay(dateString: string): string {
-  const date = new Date(dateString);
-  date.setDate(date.getDate() + 1);
-  return date.toISOString().split('T')[0];
 }
