@@ -651,7 +651,6 @@ export default function PaymentDialog({
         notes: formData.notes.trim() || null,
         receipt_printed: formData.printReceipt,
         email_sent: formData.sendEmail,
-        completed_at: new Date().toISOString()
       };
 
       const { data: sale, error: saleError } = await supabase
