@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -18,7 +17,10 @@ import {
   Paper,
   Chip,
   IconButton,
-  Tooltip
+  Tooltip,
+  Switch,
+  FormControlLabel,
+  InputAdornment
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -31,7 +33,10 @@ import {
   MonetizationOn as MonetizationOnIcon,
   Assessment as AssessmentIcon,
   Warning as WarningIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Edit as EditIcon,
+  AutoMode as AutoModeIcon,
+  Build as BuildIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -139,6 +144,28 @@ interface DailyData {
   };
 }
 
+// 📊 INTERFACE PARA DATOS EDITABLES
+interface EditableData {
+  // POS
+  pos_efectivo: number;
+  pos_transferencia: number;
+  pos_debito: number;
+  pos_credito: number;
+  pos_transactions: number;
+  pos_commissions: number;
+  
+  // MEMBERSHIPS
+  membership_efectivo: number;
+  membership_transferencia: number;
+  membership_debito: number;
+  membership_credito: number;
+  membership_transactions: number;
+  membership_commissions: number;
+  
+  // GASTOS
+  expenses_amount: number;
+}
+
 export default function NuevoCorteePage() {
   const router = useRouter();
   
@@ -152,12 +179,61 @@ export default function NuevoCorteePage() {
   });
   
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
+  const [editableData, setEditableData] = useState<EditableData>({
+    pos_efectivo: 0,
+    pos_transferencia: 0,
+    pos_debito: 0,
+    pos_credito: 0,
+    pos_transactions: 0,
+    pos_commissions: 0,
+    membership_efectivo: 0,
+    membership_transferencia: 0,
+    membership_debito: 0,
+    membership_credito: 0,
+    membership_transactions: 0,
+    membership_commissions: 0,
+    expenses_amount: 0
+  });
+  
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [observations, setObservations] = useState('');
   const [cutExists, setCutExists] = useState(false);
+  const [isManualMode, setIsManualMode] = useState(false);
+  const [dataHasContent, setDataHasContent] = useState(false);
+
+  // 🧮 CALCULAR TOTALES DINÁMICAMENTE
+  const calculateTotals = () => {
+    const pos_total = editableData.pos_efectivo + editableData.pos_transferencia + editableData.pos_debito + editableData.pos_credito;
+    const membership_total = editableData.membership_efectivo + editableData.membership_transferencia + editableData.membership_debito + editableData.membership_credito;
+    
+    const total_efectivo = editableData.pos_efectivo + editableData.membership_efectivo;
+    const total_transferencia = editableData.pos_transferencia + editableData.membership_transferencia;
+    const total_debito = editableData.pos_debito + editableData.membership_debito;
+    const total_credito = editableData.pos_credito + editableData.membership_credito;
+    
+    const grand_total = pos_total + membership_total;
+    const total_transactions = editableData.pos_transactions + editableData.membership_transactions;
+    const total_commissions = editableData.pos_commissions + editableData.membership_commissions;
+    const net_amount = grand_total - total_commissions;
+    const final_balance = net_amount - editableData.expenses_amount;
+    
+    return {
+      pos_total,
+      membership_total,
+      total_efectivo,
+      total_transferencia,
+      total_debito,
+      total_credito,
+      grand_total,
+      total_transactions,
+      total_commissions,
+      net_amount,
+      final_balance
+    };
+  };
 
   // 🔍 CARGAR DATOS DEL DÍA SELECCIONADO
   const loadDailyData = async (date: Date) => {
@@ -174,6 +250,48 @@ export default function NuevoCorteePage() {
       if (data.success) {
         setDailyData(data);
         
+        // 🔍 VERIFICAR SI HAY DATOS
+        const hasData = data.totals.total > 0 || data.totals.transactions > 0;
+        setDataHasContent(hasData);
+        
+        if (hasData) {
+          // ✅ HAY DATOS - LLENAR CAMPOS EDITABLES
+          setEditableData({
+            pos_efectivo: data.pos.efectivo || 0,
+            pos_transferencia: data.pos.transferencia || 0,
+            pos_debito: data.pos.debito || 0,
+            pos_credito: data.pos.credito || 0,
+            pos_transactions: data.pos.transactions || 0,
+            pos_commissions: data.pos.commissions || 0,
+            membership_efectivo: data.memberships.efectivo || 0,
+            membership_transferencia: data.memberships.transferencia || 0,
+            membership_debito: data.memberships.debito || 0,
+            membership_credito: data.memberships.credito || 0,
+            membership_transactions: data.memberships.transactions || 0,
+            membership_commissions: data.memberships.commissions || 0,
+            expenses_amount: 0
+          });
+          setIsManualMode(false);
+        } else {
+          // ❌ NO HAY DATOS - ACTIVAR MODO MANUAL
+          setIsManualMode(true);
+          setEditableData({
+            pos_efectivo: 0,
+            pos_transferencia: 0,
+            pos_debito: 0,
+            pos_credito: 0,
+            pos_transactions: 0,
+            pos_commissions: 0,
+            membership_efectivo: 0,
+            membership_transferencia: 0,
+            membership_debito: 0,
+            membership_credito: 0,
+            membership_transactions: 0,
+            membership_commissions: 0,
+            expenses_amount: 0
+          });
+        }
+        
         // 🔍 VERIFICAR SI YA EXISTE CORTE PARA ESTA FECHA
         await checkExistingCut(dateString);
       } else {
@@ -187,7 +305,7 @@ export default function NuevoCorteePage() {
     }
   };
 
-  // 🔍 VERIFICAR SI YA EXISTE CORTE - ✅ RUTA CORREGIDA
+  // 🔍 VERIFICAR SI YA EXISTE CORTE
   const checkExistingCut = async (dateString: string) => {
     try {
       const response = await fetch(`/api/cuts/check-existing?date=${dateString}`);
@@ -198,49 +316,54 @@ export default function NuevoCorteePage() {
     }
   };
 
-  // 💾 CREAR CORTE - ✅ VARIABLE RESPONSE CORREGIDA
+  // 💾 CREAR CORTE
   const handleCreateCut = async () => {
-    if (!dailyData) return;
-    
     try {
       setCreating(true);
       setError(null);
       
       const dateString = selectedDate.toISOString().split('T')[0];
+      const totals = calculateTotals();
       
       const cutData = {
         cut_date: dateString,
-        cut_name: `Corte ${formatDate(dateString)}`,
         created_by: 'luishdz04',
-        observations: observations.trim(),
+        notes: observations.trim(),
+        is_manual: isManualMode,
         
-        // DATOS CONSOLIDADOS
-        total_pos_amount: dailyData.pos.total,
-        total_memberships_amount: dailyData.memberships.total,
-        total_abonos_amount: dailyData.abonos.total,
-        total_income: dailyData.totals.total,
-        total_commissions: dailyData.totals.commissions,
-        net_amount: dailyData.totals.net_amount,
+        // POS
+        pos_efectivo: editableData.pos_efectivo,
+        pos_transferencia: editableData.pos_transferencia,
+        pos_debito: editableData.pos_debito,
+        pos_credito: editableData.pos_credito,
+        pos_total: totals.pos_total,
+        pos_transactions: editableData.pos_transactions,
+        pos_commissions: editableData.pos_commissions,
         
-        // DESGLOSE POR MÉTODOS
-        efectivo_total: dailyData.totals.efectivo,
-        transferencia_total: dailyData.totals.transferencia,
-        debito_total: dailyData.totals.debito,
-        credito_total: dailyData.totals.credito,
+        // MEMBERSHIPS
+        membership_efectivo: editableData.membership_efectivo,
+        membership_transferencia: editableData.membership_transferencia,
+        membership_debito: editableData.membership_debito,
+        membership_credito: editableData.membership_credito,
+        membership_total: totals.membership_total,
+        membership_transactions: editableData.membership_transactions,
+        membership_commissions: editableData.membership_commissions,
         
-        // CONTADORES
-        total_transactions: dailyData.totals.transactions,
-        pos_transactions: dailyData.pos.transactions,
-        membership_transactions: dailyData.memberships.transactions,
-        abono_transactions: dailyData.abonos.transactions,
-        
-        // METADATOS
-        timezone_info: dailyData.timezone_info
+        // TOTALES
+        total_efectivo: totals.total_efectivo,
+        total_transferencia: totals.total_transferencia,
+        total_debito: totals.total_debito,
+        total_credito: totals.total_credito,
+        grand_total: totals.grand_total,
+        total_transactions: totals.total_transactions,
+        total_commissions: totals.total_commissions,
+        net_amount: totals.net_amount,
+        expenses_amount: editableData.expenses_amount,
+        final_balance: totals.final_balance
       };
       
       console.log('📊 Creando corte con datos:', cutData);
       
-      // ✅ VARIABLE RESPONSE AGREGADA
       const response = await fetch('/api/cuts/create', {
         method: 'POST',
         headers: {
@@ -252,9 +375,9 @@ export default function NuevoCorteePage() {
       const result = await response.json();
       
       if (result.success) {
-        setSuccess(`✅ Corte creado exitosamente: ${cutData.cut_name}`);
+        setSuccess(`✅ Corte creado exitosamente: ${result.cut_number}`);
         setTimeout(() => {
-          router.push(`/dashboard/admin/cortes/${result.cut_id}`);
+          router.push(`/dashboard/admin/cortes`);
         }, 2000);
       } else {
         setError(result.error || 'Error al crear el corte');
@@ -265,6 +388,15 @@ export default function NuevoCorteePage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  // 🔧 MANEJAR CAMBIOS EN CAMPOS EDITABLES
+  const handleEditableChange = (field: keyof EditableData, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setEditableData(prev => ({
+      ...prev,
+      [field]: numericValue
+    }));
   };
 
   // ⚡ EFECTOS
@@ -280,6 +412,9 @@ export default function NuevoCorteePage() {
       setError(null);
     }
   };
+
+  // 🧮 OBTENER TOTALES CALCULADOS
+  const totals = calculateTotals();
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
@@ -315,9 +450,39 @@ export default function NuevoCorteePage() {
                 Crear Nuevo Corte
               </Typography>
               <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                📅 Gestión de cortes de caja • Sin límite de fechas
+                📅 Gestión de cortes de caja • {isManualMode ? '🔧 Modo Manual' : '🤖 Modo Automático'}
               </Typography>
             </Box>
+          </Box>
+          
+          {/* TOGGLE MODO */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isManualMode}
+                  onChange={(e) => setIsManualMode(e.target.checked)}
+                  disabled={!dataHasContent}
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: darkProTokens.warning,
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: darkProTokens.warning,
+                    },
+                  }}
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {isManualMode ? <BuildIcon /> : <AutoModeIcon />}
+                  <Typography variant="body2">
+                    {isManualMode ? 'Modo Manual' : 'Modo Automático'}
+                  </Typography>
+                </Box>
+              }
+              sx={{ color: darkProTokens.textSecondary }}
+            />
           </Box>
         </Box>
 
@@ -358,11 +523,23 @@ export default function NuevoCorteePage() {
               </Alert>
             </motion.div>
           )}
+          
+          {!dataHasContent && !isManualMode && !loading && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <Alert severity="info" sx={{ mb: 3 }}>
+                ℹ️ No hay datos automáticos para esta fecha. Se ha activado el modo manual para ingresar datos manualmente.
+              </Alert>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         <Grid container spacing={4}>
           {/* 📅 CONFIGURACIÓN DEL CORTE */}
-          <Grid size={12} md={4}>
+          <Grid item xs={12} md={4}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -453,6 +630,22 @@ export default function NuevoCorteePage() {
                       
                       <Box>
                         <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                          Tipo de corte:
+                        </Typography>
+                        <Chip
+                          icon={isManualMode ? <BuildIcon /> : <AutoModeIcon />}
+                          label={isManualMode ? 'Manual' : 'Automático'}
+                          sx={{
+                            backgroundColor: isManualMode ? `${darkProTokens.warning}20` : `${darkProTokens.success}20`,
+                            color: isManualMode ? darkProTokens.warning : darkProTokens.success,
+                            fontWeight: 600,
+                            mt: 0.5
+                          }}
+                        />
+                      </Box>
+                      
+                      <Box>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                           Fecha de creación:
                         </Typography>
                         <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
@@ -467,6 +660,40 @@ export default function NuevoCorteePage() {
                         </Typography>
                       </Box>
                     </Stack>
+                  </Box>
+
+                  <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
+
+                  {/* GASTOS */}
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                      💸 Gastos del Día
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      value={editableData.expenses_amount}
+                      onChange={(e) => handleEditableChange('expenses_amount', e.target.value)}
+                      placeholder="0.00"
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: darkProTokens.surfaceLevel4,
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': {
+                            borderColor: darkProTokens.grayMedium,
+                          },
+                          '&:hover fieldset': {
+                            borderColor: darkProTokens.error,
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: darkProTokens.error,
+                          },
+                        },
+                      }}
+                    />
                   </Box>
 
                   <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
@@ -504,6 +731,48 @@ export default function NuevoCorteePage() {
                     />
                   </Box>
 
+                  {/* TOTALES CALCULADOS */}
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                      🧮 Resumen Calculado
+                    </Typography>
+                    <Stack spacing={1}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                          Total Bruto:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                          {formatPrice(totals.grand_total)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                          Comisiones:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                          -{formatPrice(totals.total_commissions)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                          Gastos:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
+                          -{formatPrice(editableData.expenses_amount)}
+                        </Typography>
+                      </Box>
+                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                          Balance Final:
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                          {formatPrice(totals.final_balance)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Box>
+
                   {/* BOTONES DE ACCIÓN */}
                   <Stack direction="row" spacing={2}>
                     <Button
@@ -527,7 +796,7 @@ export default function NuevoCorteePage() {
                       variant="contained"
                       fullWidth
                       onClick={handleCreateCut}
-                      disabled={creating || loading || !dailyData}
+                      disabled={creating || loading}
                       startIcon={creating ? <CircularProgress size={20} /> : <SaveIcon />}
                       sx={{
                         background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.primaryHover})`,
@@ -548,228 +817,350 @@ export default function NuevoCorteePage() {
             </motion.div>
           </Grid>
 
-          {/* 📊 PREVIEW DE DATOS */}
-          <Grid size={12} md={8}>
+          {/* 📊 DATOS EDITABLES */}
+          <Grid item xs={12} md={8}>
             {loading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                 <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin }} />
               </Box>
             )}
 
-            {!loading && dailyData && (
+            {!loading && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
                 <Stack spacing={3}>
-                  {/* RESUMEN PRINCIPAL */}
+                  {/* SECCIÓN POS */}
+                  <Card sx={{
+                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                    border: `2px solid ${darkProTokens.info}40`,
+                    borderRadius: 4
+                  }}>
+                    <CardContent sx={{ p: 4 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                        <Avatar sx={{ bgcolor: darkProTokens.info }}>
+                          <ReceiptIcon />
+                        </Avatar>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                          💼 Punto de Venta
+                        </Typography>
+                        <Chip
+                          label={formatPrice(totals.pos_total)}
+                          sx={{
+                            backgroundColor: `${darkProTokens.info}20`,
+                            color: darkProTokens.info,
+                            fontWeight: 700,
+                            fontSize: '1rem'
+                          }}
+                        />
+                      </Box>
+                      
+                      <Grid container spacing={3}>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Efectivo"
+                            type="number"
+                            value={editableData.pos_efectivo}
+                            onChange={(e) => handleEditableChange('pos_efectivo', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.primary,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Transferencia"
+                            type="number"
+                            value={editableData.pos_transferencia}
+                            onChange={(e) => handleEditableChange('pos_transferencia', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.info,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Tarjeta Débito"
+                            type="number"
+                            value={editableData.pos_debito}
+                            onChange={(e) => handleEditableChange('pos_debito', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.success,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Tarjeta Crédito"
+                            type="number"
+                            value={editableData.pos_credito}
+                            onChange={(e) => handleEditableChange('pos_credito', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.error,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Transacciones"
+                            type="number"
+                            value={editableData.pos_transactions}
+                            onChange={(e) => handleEditableChange('pos_transactions', e.target.value)}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.textSecondary,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Comisiones"
+                            type="number"
+                            value={editableData.pos_commissions}
+                            onChange={(e) => handleEditableChange('pos_commissions', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.warning,
+                              },
+                            }}
+                          />
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+
+                  {/* SECCIÓN MEMBRESÍAS */}
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                     border: `2px solid ${darkProTokens.success}40`,
                     borderRadius: 4
                   }}>
                     <CardContent sx={{ p: 4 }}>
-                      <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.success, mb: 3 }}>
-                        💰 Resumen del Día Seleccionado
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                        <Avatar sx={{ bgcolor: darkProTokens.success }}>
+                          <AssessmentIcon />
+                        </Avatar>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                          🎫 Membresías
+                        </Typography>
+                        <Chip
+                          label={formatPrice(totals.membership_total)}
+                          sx={{
+                            backgroundColor: `${darkProTokens.success}20`,
+                            color: darkProTokens.success,
+                            fontWeight: 700,
+                            fontSize: '1rem'
+                          }}
+                        />
+                      </Box>
                       
                       <Grid container spacing={3}>
-                        <Grid size={12} sm={6} md={3}>
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                              {formatPrice(dailyData.totals.total)}
-                            </Typography>
-                            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
-                              Ingresos Totales
-                            </Typography>
-                          </Box>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Efectivo"
+                            type="number"
+                            value={editableData.membership_efectivo}
+                            onChange={(e) => handleEditableChange('membership_efectivo', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.primary,
+                              },
+                            }}
+                          />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
-                              {formatPrice(dailyData.totals.commissions)}
-                            </Typography>
-                            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
-                              Comisiones
-                            </Typography>
-                          </Box>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Transferencia"
+                            type="number"
+                            value={editableData.membership_transferencia}
+                            onChange={(e) => handleEditableChange('membership_transferencia', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.info,
+                              },
+                            }}
+                          />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
-                              {formatPrice(dailyData.totals.net_amount)}
-                            </Typography>
-                            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
-                              Monto Neto
-                            </Typography>
-                          </Box>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Tarjeta Débito"
+                            type="number"
+                            value={editableData.membership_debito}
+                            onChange={(e) => handleEditableChange('membership_debito', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.success,
+                              },
+                            }}
+                          />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
-                              {dailyData.totals.transactions}
-                            </Typography>
-                            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
-                              Transacciones
-                            </Typography>
-                          </Box>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <TextField
+                            fullWidth
+                            label="Tarjeta Crédito"
+                            type="number"
+                            value={editableData.membership_credito}
+                            onChange={(e) => handleEditableChange('membership_credito', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.error,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Transacciones"
+                            type="number"
+                            value={editableData.membership_transactions}
+                            onChange={(e) => handleEditableChange('membership_transactions', e.target.value)}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.textSecondary,
+                              },
+                            }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Comisiones"
+                            type="number"
+                            value={editableData.membership_commissions}
+                            onChange={(e) => handleEditableChange('membership_commissions', e.target.value)}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                color: darkProTokens.textPrimary,
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: darkProTokens.warning,
+                              },
+                            }}
+                          />
                         </Grid>
                       </Grid>
                     </CardContent>
                   </Card>
 
-                  {/* DESGLOSE POR FUENTE */}
-                  <Grid container spacing={3}>
-                    {/* POS */}
-                    <Grid size={12} md={4}>
-                      <Card sx={{
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                        border: `1px solid ${darkProTokens.info}30`,
-                        borderRadius: 4,
-                        height: '100%'
-                      }}>
-                        <CardContent sx={{ p: 3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                            <Avatar sx={{ bgcolor: darkProTokens.info }}>
-                              <ReceiptIcon />
-                            </Avatar>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.info }}>
-                              Punto de Venta
-                            </Typography>
-                          </Box>
-                          
-                          <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
-                            {formatPrice(dailyData.pos.total)}
-                          </Typography>
-                          
-                          <Stack spacing={1}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                Transacciones:
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                                {dailyData.pos.transactions}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                Comisiones:
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                                {formatPrice(dailyData.pos.commissions)}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-
-                    {/* ABONOS */}
-                    <Grid size={12} md={4}>
-                      <Card sx={{
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                        border: `1px solid ${darkProTokens.warning}30`,
-                        borderRadius: 4,
-                        height: '100%'
-                      }}>
-                        <CardContent sx={{ p: 3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                            <Avatar sx={{ bgcolor: darkProTokens.warning }}>
-                              <MonetizationOnIcon />
-                            </Avatar>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
-                              Abonos
-                            </Typography>
-                          </Box>
-                          
-                          <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
-                            {formatPrice(dailyData.abonos.total)}
-                          </Typography>
-                          
-                          <Stack spacing={1}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                Transacciones:
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                                {dailyData.abonos.transactions}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                Comisiones:
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                                {formatPrice(dailyData.abonos.commissions)}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-
-                    {/* MEMBRESÍAS */}
-                    <Grid size={12} md={4}>
-                      <Card sx={{
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                        border: `1px solid ${darkProTokens.success}30`,
-                        borderRadius: 4,
-                        height: '100%'
-                      }}>
-                        <CardContent sx={{ p: 3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                            <Avatar sx={{ bgcolor: darkProTokens.success }}>
-                              <AssessmentIcon />
-                            </Avatar>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                              Membresías
-                            </Typography>
-                          </Box>
-                          
-                          <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
-                            {formatPrice(dailyData.memberships.total)}
-                          </Typography>
-                          
-                          <Stack spacing={1}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                Transacciones:
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                                {dailyData.memberships.transactions}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                Comisiones:
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                                {formatPrice(dailyData.memberships.commissions)}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  </Grid>
-
-                  {/* DESGLOSE POR MÉTODOS DE PAGO */}
+                  {/* RESUMEN FINAL */}
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                    border: `1px solid ${darkProTokens.grayMedium}`,
+                    border: `2px solid ${darkProTokens.primary}40`,
                     borderRadius: 4
                   }}>
                     <CardContent sx={{ p: 4 }}>
-                      <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
-                        💳 Desglose por Métodos de Pago
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.primary, mb: 3 }}>
+                        💳 Resumen por Métodos de Pago
                       </Typography>
                       
                       <Grid container spacing={3}>
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -787,7 +1178,7 @@ export default function NuevoCorteePage() {
                               <AttachMoneyIcon />
                             </Avatar>
                             <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
-                              {formatPrice(dailyData.totals.efectivo)}
+                              {formatPrice(totals.total_efectivo)}
                             </Typography>
                             <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
                               Efectivo
@@ -795,7 +1186,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -813,7 +1204,7 @@ export default function NuevoCorteePage() {
                               <AccountBalanceIcon />
                             </Avatar>
                             <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.info }}>
-                              {formatPrice(dailyData.totals.transferencia)}
+                              {formatPrice(totals.total_transferencia)}
                             </Typography>
                             <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
                               Transferencia
@@ -821,7 +1212,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -839,7 +1230,7 @@ export default function NuevoCorteePage() {
                               <CreditCardIcon />
                             </Avatar>
                             <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                              {formatPrice(dailyData.totals.debito)}
+                              {formatPrice(totals.total_debito)}
                             </Typography>
                             <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
                               Tarjeta Débito
@@ -847,7 +1238,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -865,7 +1256,7 @@ export default function NuevoCorteePage() {
                               <CreditCardIcon />
                             </Avatar>
                             <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.error }}>
-                              {formatPrice(dailyData.totals.credito)}
+                              {formatPrice(totals.total_credito)}
                             </Typography>
                             <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
                               Tarjeta Crédito
