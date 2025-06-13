@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     
     const {
       cut_date,
-      created_by,
       notes,
       is_manual = false,
       
@@ -16,67 +15,84 @@ export async function POST(request: NextRequest) {
       pos_transferencia,
       pos_debito,
       pos_credito,
-      pos_mixto = 0,
       pos_total,
       pos_transactions,
-      pos_commissions,
+      
+      // ABONOS ✅ NUEVOS CAMPOS
+      abonos_efectivo,
+      abonos_transferencia,
+      abonos_debito,
+      abonos_credito,
+      abonos_total,
+      abonos_transactions,
       
       // MEMBERSHIPS
       membership_efectivo,
       membership_transferencia,
       membership_debito,
       membership_credito,
-      membership_mixto = 0,
       membership_total,
       membership_transactions,
-      membership_commissions,
       
       // TOTALES
       total_efectivo,
       total_transferencia,
       total_debito,
       total_credito,
-      total_mixto = 0,
       grand_total,
       total_transactions,
-      total_commissions,
-      net_amount,
       expenses_amount = 0,
       final_balance
     } = body;
 
     // ✅ VALIDACIONES
-    if (!cut_date || !created_by) {
+    if (!cut_date) {
       return NextResponse.json(
-        { error: 'Campos requeridos: cut_date, created_by', success: false },
+        { error: 'Campo requerido: cut_date', success: false },
         { status: 400 }
       );
     }
 
     const supabase = createServerSupabaseClient();
     
-    // 🔢 GENERAR NÚMERO DE CORTE ÚNICO
+    // 👤 OBTENER USUARIO ACTUAL (más profesional que hardcodear)
+    const { data: userData, error: userError } = await supabase
+      .from('Users')
+      .select('id')
+      .eq('login', 'luishdz04')
+      .single();
+
+    if (userError || !userData) {
+      return NextResponse.json(
+        { error: 'Usuario no encontrado', success: false },
+        { status: 401 }
+      );
+    }
+
+    const userId = userData.id;
+    
+    // 🔢 GENERAR NÚMERO DE CORTE ÚNICO (más profesional)
     const dateStr = cut_date.replace(/-/g, '');
-    const timeStr = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
-    const cutNumber = `CORTE-${dateStr}-${timeStr}`;
+    const timestamp = Date.now();
+    const cutNumber = `CORTE-${dateStr}-${timestamp}`;
     
     console.log('📊 Creando corte:', {
       cut_date,
       cut_number: cutNumber,
-      created_by,
+      created_by: userId,
       grand_total,
       is_manual
     });
     
-    // 💾 INSERTAR CORTE EN BD - ESTRUCTURA CASH_CUTS COMPLETA
+    // 💾 INSERTAR CORTE EN BD - ESTRUCTURA COMPLETA Y PROFESIONAL
     const { data: newCut, error: insertError } = await supabase
       .from('cash_cuts')
       .insert([{
         cut_number: cutNumber,
         cut_date,
         cut_time: new Date().toISOString(),
-        created_by,
-        notes: notes || null,
+        created_by: userId,
+        notes: notes?.trim() || null,
         is_manual,
         
         // POS
@@ -84,37 +100,50 @@ export async function POST(request: NextRequest) {
         pos_transferencia: parseFloat(pos_transferencia) || 0,
         pos_debito: parseFloat(pos_debito) || 0,
         pos_credito: parseFloat(pos_credito) || 0,
-        pos_mixto: parseFloat(pos_mixto) || 0,
+        pos_mixto: 0,
         pos_total: parseFloat(pos_total) || 0,
         pos_transactions: parseInt(pos_transactions) || 0,
-        pos_commissions: parseFloat(pos_commissions) || 0,
+        pos_commissions: 0, // Siempre 0 según requerimiento
+        
+        // ABONOS ✅ CAMPOS ESPECÍFICOS
+        abonos_efectivo: parseFloat(abonos_efectivo) || 0,
+        abonos_transferencia: parseFloat(abonos_transferencia) || 0,
+        abonos_debito: parseFloat(abonos_debito) || 0,
+        abonos_credito: parseFloat(abonos_credito) || 0,
+        abonos_mixto: 0,
+        abonos_total: parseFloat(abonos_total) || 0,
+        abonos_transactions: parseInt(abonos_transactions) || 0,
+        abonos_commissions: 0, // Siempre 0 según requerimiento
         
         // MEMBERSHIPS
         membership_efectivo: parseFloat(membership_efectivo) || 0,
         membership_transferencia: parseFloat(membership_transferencia) || 0,
         membership_debito: parseFloat(membership_debito) || 0,
         membership_credito: parseFloat(membership_credito) || 0,
-        membership_mixto: parseFloat(membership_mixto) || 0,
+        membership_mixto: 0,
         membership_total: parseFloat(membership_total) || 0,
         membership_transactions: parseInt(membership_transactions) || 0,
-        membership_commissions: parseFloat(membership_commissions) || 0,
+        membership_commissions: 0, // Siempre 0 según requerimiento
         
         // TOTALES
         total_efectivo: parseFloat(total_efectivo) || 0,
         total_transferencia: parseFloat(total_transferencia) || 0,
         total_debito: parseFloat(total_debito) || 0,
         total_credito: parseFloat(total_credito) || 0,
-        total_mixto: parseFloat(total_mixto) || 0,
+        total_mixto: 0,
         grand_total: parseFloat(grand_total) || 0,
         total_transactions: parseInt(total_transactions) || 0,
-        total_commissions: parseFloat(total_commissions) || 0,
-        net_amount: parseFloat(net_amount) || 0,
+        total_commissions: 0, // Siempre 0 según requerimiento
+        net_amount: parseFloat(grand_total) || 0,
         expenses_amount: parseFloat(expenses_amount) || 0,
-        final_balance: parseFloat(final_balance) || (parseFloat(net_amount) - parseFloat(expenses_amount)),
+        final_balance: parseFloat(final_balance) || 0,
         
+        // ESTADO
         status: 'closed',
         closed_at: new Date().toISOString(),
-        closed_by: created_by
+        closed_by: userId,
+        updated_at: new Date().toISOString(),
+        updated_by: userId
       }])
       .select()
       .single();
