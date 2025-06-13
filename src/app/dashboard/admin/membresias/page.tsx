@@ -108,67 +108,80 @@ export default function MembresiasPage() {
     }).format(price);
   }, []);
 
-  // ✅ CARGAR DATOS OPTIMIZADO - LA BD YA MANEJA HORA MÉXICO AUTOMÁTICAMENTE
+  // ✅ CARGAR DATOS CORREGIDO - SIN supabase.sql
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const supabase = createBrowserSupabaseClient();
       
-      // ✅ CONSULTAS OPTIMIZADAS USANDO FUNCIONES SQL NATIVAS
-      // La BD ya está en timezone México, por lo que NOW() y date functions usan hora correcta
-      
-      // 1️⃣ OBTENER TODAS LAS MEMBRESÍAS
+      // ✅ OBTENER TODAS LAS MEMBRESÍAS
       const { data: allMemberships, error: statsError } = await supabase
         .from('user_memberships')
         .select('*');
 
       if (statsError) throw statsError;
 
-      // 2️⃣ OBTENER INGRESOS DEL MES ACTUAL (usando SQL nativo con timezone México)
-      const { data: monthlyRevenue, error: revenueError } = await supabase
-        .from('user_memberships')
-        .select('amount_paid')
-        .gte('created_at', supabase.sql`date_trunc('month', NOW())`) // ✅ NOW() ya es hora México
-        .not('amount_paid', 'is', null);
+      // ✅ OBTENER FECHA ACTUAL PARA CÁLCULOS (la BD ya está en México)
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth() + 1; // JavaScript months are 0-indexed
+      
+      // Primer día del mes actual
+      const firstDayOfMonth = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`;
+      
+      // Fecha en 7 días
+      const in7Days = new Date();
+      in7Days.setDate(today.getDate() + 7);
+      const in7DaysString = in7Days.toISOString().split('T')[0];
+      
+      const todayString = today.toISOString().split('T')[0];
+      
+      console.log(`📅 Fechas calculadas para estadísticas:`);
+      console.log(`   📅 Hoy: ${todayString}`);
+      console.log(`   📅 Primer día del mes: ${firstDayOfMonth}`);
+      console.log(`   📅 En 7 días: ${in7DaysString}`);
 
-      if (revenueError) console.warn('Error cargando ingresos mensuales:', revenueError);
-
-      // 3️⃣ OBTENER MEMBRESÍAS QUE VENCEN EN 7 DÍAS (usando SQL nativo)
-      const { data: expiringSoon, error: expiringError } = await supabase
-        .from('user_memberships')
-        .select('end_date')
-        .eq('status', 'active')
-        .not('end_date', 'is', null)
-        .lte('end_date', supabase.sql`NOW() + INTERVAL '7 days'`) // ✅ Cálculo directo en BD
-        .gte('end_date', supabase.sql`NOW()`); // ✅ Solo futuras
-
-      if (expiringError) console.warn('Error cargando próximas a vencer:', expiringError);
-
-      // 4️⃣ OBTENER NUEVAS MEMBRESÍAS DEL MES
-      const { data: newThisMonth, error: newError } = await supabase
-        .from('user_memberships')
-        .select('id')
-        .gte('created_at', supabase.sql`date_trunc('month', NOW())`); // ✅ Mes actual en hora México
-
-      if (newError) console.warn('Error cargando nuevas del mes:', newError);
-
-      // ✅ CALCULAR ESTADÍSTICAS CON DATOS OBTENIDOS
+      // ✅ CALCULAR ESTADÍSTICAS CON FILTROS JAVASCRIPT
       const calculatedStats: MembershipStats = {
         total: allMemberships?.length || 0,
         active: allMemberships?.filter(m => m.status === 'active').length || 0,
         expired: allMemberships?.filter(m => m.status === 'expired').length || 0,
         frozen: allMemberships?.filter(m => m.status === 'frozen').length || 0,
-        revenue_this_month: monthlyRevenue?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0,
-        new_this_month: newThisMonth?.length || 0,
-        expiring_soon: expiringSoon?.length || 0
+        
+        // ✅ INGRESOS DEL MES - Filtrar por created_at >= primer día del mes
+        revenue_this_month: allMemberships
+          ?.filter(m => {
+            if (!m.created_at) return false;
+            const createdDate = new Date(m.created_at).toISOString().split('T')[0];
+            return createdDate >= firstDayOfMonth;
+          })
+          .reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0,
+        
+        // ✅ NUEVAS DEL MES - Filtrar por created_at >= primer día del mes  
+        new_this_month: allMemberships
+          ?.filter(m => {
+            if (!m.created_at) return false;
+            const createdDate = new Date(m.created_at).toISOString().split('T')[0];
+            return createdDate >= firstDayOfMonth;
+          }).length || 0,
+        
+        // ✅ POR VENCER EN 7 DÍAS - Filtrar activas con end_date entre hoy y 7 días
+        expiring_soon: allMemberships
+          ?.filter(m => {
+            if (!m.end_date || m.status !== 'active') return false;
+            const endDate = new Date(m.end_date).toISOString().split('T')[0];
+            return endDate <= in7DaysString && endDate >= todayString;
+          }).length || 0
       };
 
+      console.log('📊 Estadísticas calculadas:', calculatedStats);
+      
       setStats(calculatedStats);
       setSuccessMessage('📊 Datos actualizados correctamente');
       
     } catch (err: any) {
-      console.error('Error cargando datos de membresías:', err);
+      console.error('💥 Error cargando datos de membresías:', err);
       setError(`❌ Error cargando datos: ${err.message}`);
     } finally {
       setLoading(false);
