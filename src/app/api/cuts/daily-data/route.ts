@@ -71,12 +71,14 @@ export async function GET(request: NextRequest) {
       throw abonosError;
     }
 
-    // 🎫 3. MEMBRESÍAS
+    // 🎫 3. MEMBRESÍAS - ACTUALIZADO CON payment_method
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('user_memberships')
       .select(`
         amount_paid,
         inscription_amount,
+        payment_method,
+        commission_amount,
         membership_payment_details (
           payment_method,
           amount,
@@ -180,7 +182,7 @@ export async function GET(request: NextRequest) {
     });
     abonos.transactions = uniqueSaleIds.size;
 
-    // 🧮 PROCESAR MEMBRESÍAS
+    // 🧮 PROCESAR MEMBRESÍAS - CORREGIDO
     const memberships = {
       efectivo: 0,
       transferencia: 0,
@@ -196,32 +198,63 @@ export async function GET(request: NextRequest) {
       
       // ✅ USAR amount_paid DIRECTAMENTE (YA INCLUYE TODO)
       const totalMembership = parseFloat(membership.amount_paid || '0');
-      memberships.total += totalMembership;
+      const membershipCommission = parseFloat(membership.commission_amount || '0');
       
-      membership.membership_payment_details?.forEach(payment => {
-        const amount = parseFloat(payment.amount || '0');
-        const commission = parseFloat(payment.commission_amount || '0');
+      memberships.total += totalMembership;
+      memberships.commissions += membershipCommission;
+      
+      // 🔍 VERIFICAR SI HAY DETALLES DE PAGO
+      if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
+        // ✅ HAY DETALLES - USAR LOS MÉTODOS DE PAGO ESPECÍFICOS
+        console.log('✅ Usando detalles de pago para membresía:', membership.id);
         
-        // ✅ INCLUIR COMISIÓN EN EL MÉTODO DE PAGO
-        const totalWithCommission = amount + commission;
+        membership.membership_payment_details.forEach(payment => {
+          const amount = parseFloat(payment.amount || '0');
+          const commission = parseFloat(payment.commission_amount || '0');
+          
+          // ✅ INCLUIR COMISIÓN EN EL MÉTODO DE PAGO
+          const totalWithCommission = amount + commission;
+          
+          switch (payment.payment_method?.toLowerCase()) {
+            case 'efectivo':
+              memberships.efectivo += totalWithCommission;
+              break;
+            case 'transferencia':
+              memberships.transferencia += totalWithCommission;
+              break;
+            case 'debito':
+              memberships.debito += totalWithCommission;
+              break;
+            case 'credito':
+              memberships.credito += totalWithCommission;
+              break;
+          }
+        });
+      } else {
+        // ❌ NO HAY DETALLES DE PAGO - USAR EL PAYMENT_METHOD DIRECTO
+        console.log('⚠️ Usando payment_method directo para membresía:', membership.id, 'método:', membership.payment_method);
         
-        memberships.commissions += commission; // Solo información
-        
-        switch (payment.payment_method?.toLowerCase()) {
+        // 🎯 USAR EL CAMPO payment_method DIRECTO DE LA TABLA user_memberships
+        switch (membership.payment_method?.toLowerCase()) {
           case 'efectivo':
-            memberships.efectivo += totalWithCommission;
+            memberships.efectivo += totalMembership;
             break;
           case 'transferencia':
-            memberships.transferencia += totalWithCommission;
+            memberships.transferencia += totalMembership;
             break;
           case 'debito':
-            memberships.debito += totalWithCommission;
+            memberships.debito += totalMembership;
             break;
           case 'credito':
-            memberships.credito += totalWithCommission;
+            memberships.credito += totalMembership;
+            break;
+          default:
+            // Si no hay método especificado, asumir efectivo
+            console.warn('🔴 Método de pago no especificado, asumiendo efectivo');
+            memberships.efectivo += totalMembership;
             break;
         }
-      });
+      }
     });
 
     // 🧮 CALCULAR TOTALES
