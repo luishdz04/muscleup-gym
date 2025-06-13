@@ -117,21 +117,24 @@ export async function GET(request: NextRequest) {
           const amount = parseFloat(payment.amount || '0');
           const commission = parseFloat(payment.commission_amount || '0');
           
-          pos.total += amount;
+          // ✅ INCLUIR COMISIÓN EN EL MÉTODO DE PAGO
+          const totalWithCommission = amount + commission;
+          
+          pos.total += totalWithCommission;
           pos.commissions += commission; // Solo información
           
           switch (payment.payment_method?.toLowerCase()) {
             case 'efectivo':
-              pos.efectivo += amount;
+              pos.efectivo += totalWithCommission;
               break;
             case 'transferencia':
-              pos.transferencia += amount;
+              pos.transferencia += totalWithCommission;
               break;
             case 'debito':
-              pos.debito += amount;
+              pos.debito += totalWithCommission;
               break;
             case 'credito':
-              pos.credito += amount;
+              pos.credito += totalWithCommission;
               break;
           }
         }
@@ -154,22 +157,25 @@ export async function GET(request: NextRequest) {
       const amount = parseFloat(abono.amount || '0');
       const commission = parseFloat(abono.commission_amount || '0');
       
-      abonos.total += amount;
+      // ✅ INCLUIR COMISIÓN EN EL MÉTODO DE PAGO
+      const totalWithCommission = amount + commission;
+      
+      abonos.total += totalWithCommission;
       abonos.commissions += commission; // Solo información
       uniqueSaleIds.add(abono.sale_id);
       
       switch (abono.payment_method?.toLowerCase()) {
         case 'efectivo':
-          abonos.efectivo += amount;
+          abonos.efectivo += totalWithCommission;
           break;
         case 'transferencia':
-          abonos.transferencia += amount;
+          abonos.transferencia += totalWithCommission;
           break;
         case 'debito':
-          abonos.debito += amount;
+          abonos.debito += totalWithCommission;
           break;
         case 'credito':
-          abonos.credito += amount;
+          abonos.credito += totalWithCommission;
           break;
       }
     });
@@ -197,20 +203,23 @@ export async function GET(request: NextRequest) {
         const amount = parseFloat(payment.amount || '0');
         const commission = parseFloat(payment.commission_amount || '0');
         
+        // ✅ INCLUIR COMISIÓN EN EL MÉTODO DE PAGO
+        const totalWithCommission = amount + commission;
+        
         memberships.commissions += commission; // Solo información
         
         switch (payment.payment_method?.toLowerCase()) {
           case 'efectivo':
-            memberships.efectivo += amount;
+            memberships.efectivo += totalWithCommission;
             break;
           case 'transferencia':
-            memberships.transferencia += amount;
+            memberships.transferencia += totalWithCommission;
             break;
           case 'debito':
-            memberships.debito += amount;
+            memberships.debito += totalWithCommission;
             break;
           case 'credito':
-            memberships.credito += amount;
+            memberships.credito += totalWithCommission;
             break;
         }
       });
