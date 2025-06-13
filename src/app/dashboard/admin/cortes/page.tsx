@@ -85,20 +85,16 @@ function formatDate(dateString: string): string {
   return `${day} de ${month} de ${year}`;
 }
 
-// 🕒 Función para formatear fecha y hora
-function formatDateTime(dateString: string): string {
-  return new Date(dateString).toLocaleString('es-MX', {
-    timeZone: 'America/Monterrey',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
 interface DailyData {
   date: string;
+  timezone_info?: {
+    mexico_date: string;
+    utc_range: {
+      start: string;
+      end: string;
+    };
+    note: string;
+  };
   pos: {
     efectivo: number;
     transferencia: number;
@@ -145,11 +141,24 @@ export default function CortesPage() {
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   
-  // 📅 Fecha actual en Monterrey
+  // 📅 FECHA ACTUAL EN MÉXICO - CORREGIDA CON ZONA HORARIA
   const [selectedDate] = useState(() => {
+    // ✅ OBTENER FECHA ACTUAL EN ZONA HORARIA DE MÉXICO
     const now = new Date();
-    const monterreyTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-    return monterreyTime.toISOString().split('T')[0];
+    const mexicoDate = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'America/Monterrey'
+    }).format(now);
+    
+    console.log('🇲🇽 Fecha actual México:', mexicoDate);
+    console.log('🌍 Fecha actual UTC:', now.toISOString().split('T')[0]);
+    console.log('⏰ Hora actual México:', new Intl.DateTimeFormat('es-MX', {
+      timeZone: 'America/Monterrey',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).format(now));
+    
+    return mexicoDate; // Formato: YYYY-MM-DD
   });
 
   // ✅ CARGAR DATOS DEL DÍA
@@ -158,10 +167,14 @@ export default function CortesPage() {
       setLoading(true);
       setError(null);
       
+      console.log('🔍 Solicitando datos para fecha México:', selectedDate);
+      
       const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`);
       const data = await response.json();
       
       if (data.success) {
+        console.log('✅ Datos recibidos:', data);
+        console.log('🎯 Información de zona horaria:', data.timezone_info);
         setDailyData(data);
       } else {
         setError('Error al cargar datos del día');
@@ -232,6 +245,15 @@ export default function CortesPage() {
             <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
               📅 {formatDate(selectedDate)} • Gestión de cortes diarios
             </Typography>
+            {dailyData?.timezone_info && (
+              <Typography variant="caption" sx={{ 
+                color: darkProTokens.info,
+                display: 'block',
+                mt: 0.5
+              }}>
+                🇲🇽 Zona horaria: México (America/Monterrey)
+              </Typography>
+            )}
           </Box>
         </Box>
         
@@ -348,7 +370,7 @@ export default function CortesPage() {
                           Comisiones
                         </Typography>
                         <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
-                          {((dailyData.totals.commissions / dailyData.totals.total) * 100).toFixed(1)}% del total
+                          {dailyData.totals.total > 0 ? ((dailyData.totals.commissions / dailyData.totals.total) * 100).toFixed(1) : 0}% del total
                         </Typography>
                       </Box>
                     </Grid>
@@ -388,7 +410,7 @@ export default function CortesPage() {
             </motion.div>
           </Grid>
 
-          {/* 💳 DESGLOSE POR MÉTODOS DE PAGO (SIN MIXTO) */}
+          {/* 💳 DESGLOSE POR MÉTODOS DE PAGO */}
           <Grid xs={12}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
