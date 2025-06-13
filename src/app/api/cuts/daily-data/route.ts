@@ -13,17 +13,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Consultando datos para fecha México:', date);
+    console.log('🔍 Consultando datos para fecha:', date);
 
     const supabase = createServerSupabaseClient();
 
-    // 📅 RANGO SIMPLE - TODO EL DÍA UTC (CORREGIDO)
-    const startOfDayUTC = new Date(`${date}T00:00:00.000Z`);
-    const endOfDayUTC = new Date(`${date}T23:59:59.999Z`);
+    // 📅 CALCULAR RANGO UTC PARA FECHA MÉXICO - CORREGIDO
+    const mexicoStartUTC = new Date(`${date}T00:00:00.000Z`); // Inicio del día UTC
+    const mexicoEndUTC = new Date(`${date}T23:59:59.999Z`);   // Fin del día UTC
 
-    console.log('⏰ Rango UTC corregido:', {
-      inicio: startOfDayUTC.toISOString(),
-      fin: endOfDayUTC.toISOString()
+    console.log('⏰ Rango UTC calculado:', {
+      inicio: mexicoStartUTC.toISOString(),
+      fin: mexicoEndUTC.toISOString()
     });
 
     // 🏪 1. VENTAS POS (sales con sale_type = 'sale')
@@ -41,8 +41,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('sale_type', 'sale')
       .eq('status', 'completed')
-      .gte('created_at', startOfDayUTC.toISOString())
-      .lte('created_at', endOfDayUTC.toISOString());
+      .gte('created_at', mexicoStartUTC.toISOString())
+      .lte('created_at', mexicoEndUTC.toISOString());
 
     if (salesError) {
       console.error('❌ Error consultando ventas:', salesError);
@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('is_partial_payment', true)
-      .gte('payment_date', startOfDayUTC.toISOString())
-      .lte('payment_date', endOfDayUTC.toISOString());
+      .gte('payment_date', mexicoStartUTC.toISOString())
+      .lte('payment_date', mexicoEndUTC.toISOString());
 
     if (abonosError) {
       console.error('❌ Error consultando abonos:', abonosError);
@@ -83,8 +83,8 @@ export async function GET(request: NextRequest) {
           commission_amount
         )
       `)
-      .gte('created_at', startOfDayUTC.toISOString())
-      .lte('created_at', endOfDayUTC.toISOString());
+      .gte('created_at', mexicoStartUTC.toISOString())
+      .lte('created_at', mexicoEndUTC.toISOString());
 
     if (membershipsError) {
       console.error('❌ Error consultando membresías:', membershipsError);
@@ -242,10 +242,10 @@ export async function GET(request: NextRequest) {
       timezone_info: {
         mexico_date: date,
         utc_range: {
-          start: startOfDayUTC.toISOString(),
-          end: endOfDayUTC.toISOString()
+          start: mexicoStartUTC.toISOString(),
+          end: mexicoEndUTC.toISOString()
         },
-        note: "Datos filtrados por fecha UTC completa"
+        note: "Datos filtrados por fecha completa UTC"
       },
       pos,
       abonos,
