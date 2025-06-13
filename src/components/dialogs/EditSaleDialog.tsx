@@ -269,6 +269,13 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
     ));
   };
 
+  // ✅ CREAR TIMESTAMP MÉXICO - MOVER AQUÍ (FUERA DE FUNCIONES)
+  const createTimestampForDB = useCallback((): string => {
+    const now = new Date();
+    const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+    return mexicoTime.toISOString();
+  }, []);
+
   // ✅ VALIDAR CAMBIOS
   const validateChanges = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -334,8 +341,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
     return saleChanged || itemsChanged;
   }, [editedSale, editedItems, sale]);
 
-  // ✅ GUARDAR CAMBIOS (CORREGIDO CON UTC)
-  const handleSave = async () => {
+  // ✅ GUARDAR CAMBIOS (CORREGIDO)
+  const handleSave = useCallback(async () => {
     if (!validateChanges()) return;
     if (!hasChanges()) {
       showNotification('No hay cambios para guardar', 'info');
@@ -358,14 +365,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
       const totals = calculateTotals();
 
-// ✅ CORRECTO - HORA MÉXICO PARA BD:
-const createTimestampForDB = useCallback((): string => {
-  const now = new Date();
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return mexicoTime.toISOString();
-}, []);
-
-const nowUTC = createTimestampForDB();
+      // ✅ USAR FUNCIÓN YA DEFINIDA ARRIBA
+      const nowUTC = createTimestampForDB();
 
       // ✅ ACTUALIZAR VENTA PRINCIPAL
       const { error: saleError } = await supabase
@@ -382,7 +383,7 @@ const nowUTC = createTimestampForDB();
           commission_amount: editedSale.commission_amount,
           total_amount: totals.total,
           paid_amount: totals.finalTotal,
-          updated_at: nowUTC, // ✅ UTC
+          updated_at: nowUTC, // ✅ HORA MÉXICO
           updated_by: userId
         })
         .eq('id', sale.id);
@@ -411,7 +412,7 @@ const nowUTC = createTimestampForDB();
               total_price: item.total_price,
               discount_amount: item.discount_amount,
               tax_amount: item.tax_amount,
-              created_at: nowUTC // ✅ UTC
+              created_at: nowUTC // ✅ HORA MÉXICO
             }]);
           
           if (error) throw error;
@@ -426,7 +427,7 @@ const nowUTC = createTimestampForDB();
               total_price: item.total_price,
               discount_amount: item.discount_amount,
               tax_amount: item.tax_amount,
-              updated_at: nowUTC // ✅ UTC
+              updated_at: nowUTC // ✅ HORA MÉXICO
             })
             .eq('id', item.id);
           
@@ -444,7 +445,7 @@ const nowUTC = createTimestampForDB();
           previous_total: sale.total_amount,
           new_total: totals.total,
           edit_reason: 'Manual edit from admin panel',
-          created_at: nowUTC // ✅ UTC
+          created_at: nowUTC // ✅ HORA MÉXICO
         }]);
 
       showNotification('Venta actualizada exitosamente', 'success');
@@ -455,12 +456,23 @@ const nowUTC = createTimestampForDB();
     } finally {
       setProcessing(false);
     }
-  };
+  }, [
+    validateChanges,
+    hasChanges,
+    confirmChanges,
+    supabase,
+    editedSale,
+    editedItems,
+    sale,
+    calculateTotals,
+    createTimestampForDB, // ✅ AGREGAR DEPENDENCIA
+    showNotification,
+    onSuccess
+  ]);
 
   if (!sale) return null;
 
   const totals = calculateTotals();
-
   return (
     <Dialog 
       open={open} 
