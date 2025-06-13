@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -39,15 +39,6 @@ import Grid from '@mui/material/Grid';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-
-// ✅ IMPORTS DE UTILIDADES DE FECHA CORREGIDAS
-import {
-  getMexicoToday,
-  addPeriodToMexicoDate,
-  formatDateForDB,
-  createTimestampForDB,
-  debugDateInfo
-} from '@/lib/utils/dateUtils';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
@@ -324,8 +315,130 @@ export default function RegistrarMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
+  // ✅ FUNCIONES UTILITARIAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FORMATEAR FECHA PARA BD (YYYY-MM-DD)
+  const formatDateForDB = useCallback((date: Date): string => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  // ✅ OBTENER HOY EN MÉXICO COMO STRING
+  const getMexicoToday = useCallback((): string => {
+    const mexicoDate = getMexicoDate();
+    return formatDateForDB(mexicoDate);
+  }, [getMexicoDate, formatDateForDB]);
+
+  // ✅ CREAR TIMESTAMP UTC PARA BD
+  const createTimestampForDB = useCallback((): string => {
+    return new Date().toISOString();
+  }, []);
+
+  // ✅ FUNCIÓN CRÍTICA: AGREGAR PERÍODOS REALES
+  const addPeriodToMexicoDate = useCallback((dateString: string, periodType: string, fallbackDays: number): string => {
+    console.log(`📅 addPeriodToMexicoDate: ${dateString} + ${periodType} (fallback: ${fallbackDays} días)`);
+    
+    // Parsear fecha base
+    const [year, month, day] = dateString.split('-').map(Number);
+    const baseDate = new Date(year, month - 1, day); // month - 1 porque Date usa 0-indexado
+    
+    console.log(`📅 Fecha base parseada: ${baseDate.toISOString()} (${dateString})`);
+    
+    let endDate: Date;
+    
+    // ✅ PERÍODOS REALES CORREGIDOS
+    switch (periodType) {
+      case 'weekly':
+        endDate = new Date(baseDate);
+        endDate.setDate(baseDate.getDate() + 7); // +7 días exactos
+        console.log(`📅 Semanal: +7 días`);
+        break;
+        
+      case 'biweekly':
+        endDate = new Date(baseDate);
+        endDate.setDate(baseDate.getDate() + 14); // +14 días exactos
+        console.log(`📅 Quincenal: +14 días`);
+        break;
+        
+      case 'monthly':
+        endDate = new Date(baseDate);
+        endDate.setMonth(baseDate.getMonth() + 1); // +1 mes real
+        console.log(`📅 Mensual: +1 mes (${baseDate.getMonth()} → ${endDate.getMonth()})`);
+        break;
+        
+      case 'bimonthly':
+        endDate = new Date(baseDate);
+        endDate.setMonth(baseDate.getMonth() + 2); // +2 meses reales
+        console.log(`📅 Bimestral: +2 meses`);
+        break;
+        
+      case 'quarterly':
+        endDate = new Date(baseDate);
+        endDate.setMonth(baseDate.getMonth() + 3); // +3 meses reales
+        console.log(`📅 Trimestral: +3 meses`);
+        break;
+        
+      case 'semester':
+        endDate = new Date(baseDate);
+        endDate.setMonth(baseDate.getMonth() + 6); // +6 meses reales
+        console.log(`📅 Semestral: +6 meses`);
+        break;
+        
+      case 'annual':
+        endDate = new Date(baseDate);
+        endDate.setFullYear(baseDate.getFullYear() + 1); // +1 año real
+        console.log(`📅 Anual: +1 año (${baseDate.getFullYear()} → ${endDate.getFullYear()})`);
+        break;
+        
+      default:
+        // Fallback a días
+        endDate = new Date(baseDate);
+        endDate.setDate(baseDate.getDate() + fallbackDays);
+        console.log(`📅 Fallback: +${fallbackDays} días`);
+        break;
+    }
+    
+    // Formatear resultado
+    const result = formatDateForDB(endDate);
+    console.log(`📅 Resultado final: ${result}`);
+    console.log(`📅 Verificación: ${baseDate.toDateString()} → ${endDate.toDateString()}`);
+    
+    return result;
+  }, [formatDateForDB]);
+
+  // ✅ DEBUG FUNCIÓN
+  const debugDateInfo = useCallback((label: string, dateString: string | null) => {
+    if (!dateString) {
+      console.log(`🔍 ${label}: null`);
+      return;
+    }
+    
+    const date = new Date(dateString + 'T00:00:00');
+    const mexicoDate = new Date(date.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+    
+    console.log(`🔍 ${label}:`);
+    console.log(`   📅 String: ${dateString}`);
+    console.log(`   📅 Date objeto: ${date.toDateString()}`);
+    console.log(`   📅 México: ${mexicoDate.toDateString()}`);
+    console.log(`   📅 Formatted: ${date.toLocaleDateString('es-MX')}`);
+  }, []);
+
   // 🔧 BÚSQUEDA DE USUARIOS
-  const loadUsers = async (searchTerm: string = '') => {
+  const loadUsers = useCallback(async (searchTerm: string = '') => {
     if (searchTerm.length < 2) {
       setUsers([]);
       return;
@@ -372,10 +485,10 @@ export default function RegistrarMembresiaPage() {
     } finally {
       setLoadingUsers(false);
     }
-  };
+  }, [supabase]);
 
-  // 🔧 CARGAR HISTORIAL DE USUARIO - VERSIÓN CON FECHAS
-  const loadUserHistory = async (userId: string) => {
+  // ✅ CARGAR HISTORIAL DE USUARIO CORREGIDO CON FECHAS MÉXICO
+  const loadUserHistory = useCallback(async (userId: string) => {
     try {
       console.log('🔍 Iniciando carga de historial para usuario:', userId);
       
@@ -434,14 +547,26 @@ export default function RegistrarMembresiaPage() {
       console.log(`✅ Historial procesado exitosamente: ${formattedHistory.length} registros`);
       setUserHistory(formattedHistory);
 
-      // Auto-detección inteligente mejorada
-      const activeMemberships = formattedHistory.filter(h => h.status === 'active');
+      // ✅ AUTO-DETECCIÓN INTELIGENTE CON FECHAS MÉXICO
+      const mexicoToday = getMexicoToday();
+      console.log(`📅 Hoy en México: ${mexicoToday}`);
+      
+      // Filtrar membresías activas con fecha México
+      const activeMemberships = formattedHistory.filter(h => {
+        if (h.status !== 'active' || !h.end_date) return false;
+        
+        // Comparar con fecha México
+        const isActive = h.end_date >= mexicoToday;
+        console.log(`📅 Membresía ${h.id}: ${h.end_date} >= ${mexicoToday} = ${isActive}`);
+        return isActive;
+      });
+      
       const hasActiveMemberships = activeMemberships.length > 0;
       const hasPreviousMemberships = formattedHistory.length > 0;
       
-      console.log(`🔄 Auto-detección: Activas=${hasActiveMemberships}, Previas=${hasPreviousMemberships}`);
+      console.log(`🔄 Auto-detección México: Activas=${hasActiveMemberships}, Previas=${hasPreviousMemberships}`);
       
-      // Detectar fecha de vencimiento más reciente
+      // ✅ DETECTAR FECHA DE VENCIMIENTO MÁS RECIENTE
       let latestEndDate = null;
       if (activeMemberships.length > 0) {
         const sortedActive = activeMemberships
@@ -451,6 +576,7 @@ export default function RegistrarMembresiaPage() {
         if (sortedActive.length > 0) {
           latestEndDate = sortedActive[0].end_date;
           console.log(`📅 Fecha de vencimiento más reciente: ${latestEndDate}`);
+          debugDateInfo('Vencimiento detectado', latestEndDate);
         }
       }
       
@@ -486,7 +612,7 @@ export default function RegistrarMembresiaPage() {
       
       console.log('🛡️ Configuración segura aplicada: Cliente nuevo con inscripción');
     }
-  };
+  }, [supabase, getMexicoToday, debugDateInfo]);
 
   // Cargar planes y comisiones
   useEffect(() => {
@@ -522,10 +648,10 @@ export default function RegistrarMembresiaPage() {
     };
 
     loadInitialData();
-  }, []);
+  }, [supabase]);
 
   // Validar cupón
-  const validateCoupon = async (code: string) => {
+  const validateCoupon = useCallback(async (code: string) => {
     if (!code.trim()) {
       setAppliedCoupon(null);
       return;
@@ -545,12 +671,19 @@ export default function RegistrarMembresiaPage() {
         return;
       }
 
-      const now = new Date();
-      const startDate = new Date(data.start_date);
-      const endDate = new Date(data.end_date);
+      // ✅ VALIDAR FECHAS CON MÉXICO
+      const mexicoToday = getMexicoToday();
+      const startDate = data.start_date;
+      const endDate = data.end_date;
 
-      if (now < startDate || now > endDate) {
-        setError('El cupón no está vigente');
+      if (startDate && mexicoToday < startDate) {
+        setError('El cupón no está vigente aún');
+        setAppliedCoupon(null);
+        return;
+      }
+
+      if (endDate && mexicoToday > endDate) {
+        setError('El cupón ha expirado');
         setAppliedCoupon(null);
         return;
       }
@@ -562,7 +695,7 @@ export default function RegistrarMembresiaPage() {
       }
 
       if (data.min_amount && subtotal < data.min_amount) {
-        setError(`El cupón requiere un monto mínimo de $${data.min_amount}`);
+        setError(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}`);
         setAppliedCoupon(null);
         return;
       }
@@ -574,10 +707,10 @@ export default function RegistrarMembresiaPage() {
       setError(err.message);
       setAppliedCoupon(null);
     }
-  };
+  }, [supabase, subtotal, getMexicoToday, formatPrice]);
 
   // 🔥 CALCULAR COMISIÓN CORREGIDA - SOLO TARJETAS
-  const calculateCommission = (method: string, amount: number): { rate: number; amount: number } => {
+  const calculateCommission = useCallback((method: string, amount: number): { rate: number; amount: number } => {
     // ✅ SOLO TARJETAS TIENEN COMISIÓN
     const methodsWithCommission = ['debito', 'credito'];
     
@@ -608,10 +741,10 @@ export default function RegistrarMembresiaPage() {
       console.log(`💳 Comisión fija ${method}: $${commission.commission_value}`);
       return { rate: 0, amount: commission.commission_value };
     }
-  };
+  }, [formData.customCommissionRate, paymentCommissions]);
 
   // Manejar pagos mixtos
-  const addMixedPaymentDetail = () => {
+  const addMixedPaymentDetail = useCallback(() => {
     const newDetail: PaymentDetail = {
       id: Date.now().toString(),
       method: 'efectivo',
@@ -626,16 +759,16 @@ export default function RegistrarMembresiaPage() {
       ...prev,
       paymentDetails: [...prev.paymentDetails, newDetail]
     }));
-  };
+  }, [formData.paymentDetails.length]);
 
-  const removeMixedPaymentDetail = (id: string) => {
+  const removeMixedPaymentDetail = useCallback((id: string) => {
     setFormData(prev => ({
       ...prev,
       paymentDetails: prev.paymentDetails.filter(detail => detail.id !== id)
     }));
-  };
+  }, []);
 
-  const updateMixedPaymentDetail = (id: string, field: keyof PaymentDetail, value: any) => {
+  const updateMixedPaymentDetail = useCallback((id: string, field: keyof PaymentDetail, value: any) => {
     setFormData(prev => ({
       ...prev,
       paymentDetails: prev.paymentDetails.map(detail => {
@@ -653,9 +786,9 @@ export default function RegistrarMembresiaPage() {
         return detail;
       })
     }));
-  };
+  }, [calculateCommission]);
 
-  // Calcular precios (MEJORADO CON INSCRIPCIÓN CONDICIONAL)
+  // ✅ CALCULAR PRECIOS CON INSCRIPCIÓN CONDICIONAL
   useEffect(() => {
     if (!selectedPlan || !formData.paymentType) {
       setSubtotal(0);
@@ -714,18 +847,10 @@ export default function RegistrarMembresiaPage() {
       setFormData(prev => ({ ...prev, paymentChange: Math.max(0, change) }));
     }
 
-  }, [selectedPlan, formData.paymentType, appliedCoupon, formData.paymentMethod, formData.paymentReceived, formData.isMixedPayment, formData.paymentDetails, paymentCommissions, formData.skipInscription, formData.customCommissionRate]);
+  }, [selectedPlan, formData.paymentType, appliedCoupon, formData.paymentMethod, formData.paymentReceived, formData.isMixedPayment, formData.paymentDetails, formData.skipInscription, formData.isRenewal, calculateCommission]);
 
-  // Formatear precio
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  };
-
-  // ✅ CALCULAR FECHA DE VENCIMIENTO CORREGIDA - SOLO ESTA FUNCIÓN CAMBIÓ
-  const calculateEndDate = () => {
+  // ✅ CALCULAR FECHA DE VENCIMIENTO CRÍTICA CORREGIDA
+  const calculateEndDate = useCallback((): Date | null => {
     if (!selectedPlan || !formData.paymentType) return null;
 
     const paymentTypeData = paymentTypes.find(pt => pt.value === formData.paymentType);
@@ -746,7 +871,7 @@ export default function RegistrarMembresiaPage() {
       console.log(`🆕 Primera venta: Iniciando desde ${startDateString}`);
     }
     
-    // ✅ USAR PERÍODOS REALES CORREGIDOS - FUNCIÓN ACTUALIZADA
+    // ✅ USAR PERÍODOS REALES CORREGIDOS
     const paymentTypeKey = formData.paymentType; // "monthly", "weekly", etc.
     const endDateString = addPeriodToMexicoDate(startDateString, paymentTypeKey, duration);
     
@@ -764,10 +889,10 @@ export default function RegistrarMembresiaPage() {
     debugDateInfo('Fecha final calculada CORREGIDA', endDateString);
     
     return endDate;
-  };
+  }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate, getMexicoToday, addPeriodToMexicoDate, debugDateInfo]);
 
   // Validar pago
-  const validatePayment = (): boolean => {
+  const validatePayment = useCallback((): boolean => {
     if (formData.isMixedPayment) {
       const totalPaid = formData.paymentDetails.reduce((sum, detail) => sum + detail.amount, 0);
       const totalWithCommissions = formData.paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0);
@@ -784,36 +909,37 @@ export default function RegistrarMembresiaPage() {
     }
 
     return true;
-  };
+  }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formData.paymentMethod, formData.paymentReceived, formatPrice]);
 
-const handleSubmit = async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  // ✅ SUBMIT PRINCIPAL CORREGIDO CON FECHAS MÉXICO
+  const handleSubmit = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
-    const { data: { session } } = await supabase.auth.getSession();
+      // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (!session) {
-      setError('No hay sesión activa');
-      return;
-    }
+      if (!session) {
+        setError('No hay sesión activa');
+        return;
+      }
 
-    console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
+      console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
 
-    if (!selectedUser || !selectedPlan || !formData.paymentType) {
-      setError('Por favor complete todos los campos requeridos');
-      return;
-    }
+      if (!selectedUser || !selectedPlan || !formData.paymentType) {
+        setError('Por favor complete todos los campos requeridos');
+        return;
+      }
 
-    if (!formData.isMixedPayment && !formData.paymentMethod) {
-      setError('Seleccione un método de pago');
-      return;
-    }
+      if (!formData.isMixedPayment && !formData.paymentMethod) {
+        setError('Seleccione un método de pago');
+        return;
+      }
 
-    if (!validatePayment()) {
-      return;
-    }
+      if (!validatePayment()) {
+        return;
+      }
 
       // ✅ FECHAS CORREGIDAS PARA RENOVACIÓN - CON PERÍODOS REALES
       let startDate: string;
@@ -886,39 +1012,39 @@ const handleSubmit = async () => {
         }
       }
 
-     // ✅ DATOS DE LA MEMBRESÍA CON UUID CORRECTO
-    const membershipData = {
-      userid: selectedUser.id,
-      planid: selectedPlan.id,
-      payment_type: formData.paymentType,
-      amount_paid: finalAmount,
-      inscription_amount: inscriptionAmount,
-      start_date: startDate,
-      end_date: endDate,
-      status: 'active',
-      total_visits: totalVisits,
-      remaining_visits: remainingVisits,
-      payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
-      payment_reference: formData.paymentReference || null,
-      discount_amount: discountAmount,
-      coupon_code: appliedCoupon?.code || null,
-      subtotal: subtotal,
-      commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
-      commission_amount: commissionAmount,
-      payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
-      payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
-      is_mixed_payment: formData.isMixedPayment,
-      payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
-      is_renewal: formData.isRenewal,
-      skip_inscription: formData.skipInscription,
-      custom_commission_rate: formData.customCommissionRate,
-      notes: formData.notes || null,
-      created_at: createTimestampForDB(),
-      updated_at: createTimestampForDB(),
-      created_by: session.user.id // ✅ UUID correcto del usuario autenticado
-    };
+      // ✅ DATOS DE LA MEMBRESÍA CON UUID CORRECTO
+      const membershipData = {
+        userid: selectedUser.id,
+        planid: selectedPlan.id,
+        payment_type: formData.paymentType,
+        amount_paid: finalAmount,
+        inscription_amount: inscriptionAmount,
+        start_date: startDate,
+        end_date: endDate,
+        status: 'active',
+        total_visits: totalVisits,
+        remaining_visits: remainingVisits,
+        payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
+        payment_reference: formData.paymentReference || null,
+        discount_amount: discountAmount,
+        coupon_code: appliedCoupon?.code || null,
+        subtotal: subtotal,
+        commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
+        commission_amount: commissionAmount,
+        payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
+        payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
+        is_mixed_payment: formData.isMixedPayment,
+        payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
+        is_renewal: formData.isRenewal,
+        skip_inscription: formData.skipInscription,
+        custom_commission_rate: formData.customCommissionRate,
+        notes: formData.notes || null,
+        created_at: createTimestampForDB(),
+        updated_at: createTimestampForDB(),
+        created_by: session.user.id // ✅ UUID correcto del usuario autenticado
+      };
 
-    console.log('💾 Guardando nueva membresía:', membershipData);
+      console.log('💾 Guardando nueva membresía:', membershipData);
 
       const { data: membership, error: membershipError } = await supabase
         .from('user_memberships')
@@ -969,13 +1095,19 @@ const handleSubmit = async () => {
         router.push('/dashboard/admin/membresias');
       }, 3000);
 
-  } catch (err: any) {
-    setError(`Error procesando venta: ${err.message}`);
-  } finally {
-    setLoading(false);
-    setConfirmDialogOpen(false);
-  }
-};
+    } catch (err: any) {
+      setError(`Error procesando venta: ${err.message}`);
+    } finally {
+      setLoading(false);
+      setConfirmDialogOpen(false);
+    }
+  }, [
+    supabase, selectedUser, selectedPlan, formData, validatePayment, 
+    getMexicoToday, addPeriodToMexicoDate, calculateEndDate, formatDateForDB, 
+    createTimestampForDB, debugDateInfo, finalAmount, inscriptionAmount, 
+    discountAmount, subtotal, commissionAmount, calculateCommission, 
+    totalAmount, appliedCoupon, router
+  ]);
 
   const steps = [
     { label: 'Cliente', description: 'Seleccionar cliente' },
@@ -984,7 +1116,7 @@ const handleSubmit = async () => {
     { label: 'Pago', description: 'Método de pago' }
   ];
 
-  const canProceedToNextStep = () => {
+  const canProceedToNextStep = useCallback(() => {
     switch (activeStep) {
       case 0: return selectedUser !== null;
       case 1: return selectedPlan !== null && formData.paymentType !== '';
@@ -994,13 +1126,13 @@ const handleSubmit = async () => {
         formData.paymentMethod !== '';
       default: return false;
     }
-  };
+  }, [activeStep, selectedUser, selectedPlan, formData.paymentType, formData.isMixedPayment, formData.paymentDetails.length, formData.paymentMethod]);
 
   // ✅ FUNCIONES PARA CERRAR NOTIFICACIONES
-  const handleCloseError = () => setError(null);
-  const handleCloseSuccess = () => setSuccessMessage(null);
-  const handleCloseWarning = () => setWarningMessage(null);
-  const handleCloseInfo = () => setInfoMessage(null);
+  const handleCloseError = useCallback(() => setError(null), []);
+  const handleCloseSuccess = useCallback(() => setSuccessMessage(null), []);
+  const handleCloseWarning = useCallback(() => setWarningMessage(null), []);
+  const handleCloseInfo = useCallback(() => setInfoMessage(null), []);
 
   return (
     <Box sx={{ 
@@ -1267,8 +1399,7 @@ const handleSubmit = async () => {
                               <SearchIcon />
                               Búsqueda de Cliente
                             </Typography>
-                            
-                            <Autocomplete
+                                                        <Autocomplete
                               options={users}
                               getOptionLabel={(user) => `${user.firstName} ${user.lastName} - ${user.email}`}
                               loading={loadingUsers}
@@ -1461,7 +1592,7 @@ const handleSubmit = async () => {
                                         `${darkProTokens.success}10`,
                                       border: userHistory.length > 0 ? 
                                         `1px solid ${darkProTokens.warning}30` : 
-                                                                                `1px solid ${darkProTokens.success}30`,
+                                        `1px solid ${darkProTokens.success}30`,
                                       borderRadius: 3,
                                       p: 3
                                     }}>
@@ -2685,7 +2816,7 @@ const handleSubmit = async () => {
                                   </Button>
                                 </Box>
 
-                                {formData.paymentDetails.length === 0 && (
+                                                {formData.paymentDetails.length === 0 && (
                                   <Box sx={{
                                     textAlign: 'center',
                                     py: 4,
@@ -2873,7 +3004,7 @@ const handleSubmit = async () => {
                                     <Box sx={{ mt: 4 }}>
                                       <Card sx={{
                                         background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
-                                                                                border: `2px solid ${darkProTokens.primary}`,
+                                        border: `2px solid ${darkProTokens.primary}`,
                                         borderRadius: 3
                                       }}>
                                         <CardContent sx={{ p: 3 }}>
