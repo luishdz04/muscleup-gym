@@ -205,9 +205,8 @@ interface BulkFreezeOperation {
   reason?: string;
   freezeDays?: number;
   isManual?: boolean;
-  // ✅ NUEVOS CAMPOS PARA CLARIDAD
-  action: 'freeze' | 'unfreeze'; // Acción real a realizar
-  mode: 'auto' | 'manual'; // Modo de operación
+  action: 'freeze' | 'unfreeze';
+  mode: 'auto' | 'manual';
 }
 
 interface BulkPreview {
@@ -218,7 +217,7 @@ interface BulkPreview {
   currentEndDate: string | null;
   newEndDate: string | null;
   daysToAdd: number;
-  actionDescription: string; // ✅ NUEVO: Descripción clara de la acción
+  actionDescription: string;
 }
 
 interface EditData {
@@ -333,24 +332,8 @@ export default function HistorialMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS CON ZONA HORARIA MÉXICO - COMPLETAMENTE CORREGIDAS
+  // ✅ FUNCIONES UTILITARIAS SIMPLIFICADAS - LA BD YA MANEJA HORA MÉXICO
   
-  // 🇲🇽 OBTENER FECHA ACTUAL DE MÉXICO
-  const getMexicoDate = useCallback((): Date => {
-    const now = new Date();
-    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
-  }, []);
-
-  const getMexicoCurrentDate = useCallback((): string => {
-    const mexicoDate = getMexicoDate();
-    const year = mexicoDate.getFullYear();
-    const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
-    const day = String(mexicoDate.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }, [getMexicoDate]);
-
-  // ✅ FORMATEAR PRECIOS CON ZONA MÉXICO
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -358,12 +341,11 @@ export default function HistorialMembresiaPage() {
     }).format(price);
   }, []);
 
-  // ✅ FORMATEAR FECHAS PARA DISPLAY EN ESPAÑOL CON ZONA MÉXICO
+  // ✅ FORMATEAR FECHAS PARA DISPLAY EN ESPAÑOL
   const formatDisplayDate = useCallback((dateString: string | null): string => {
     if (!dateString) return 'Sin fecha';
     
     try {
-      // ✅ CREAR FECHA SIN COMPONENTE DE HORA PARA EVITAR PROBLEMAS DE ZONA HORARIA
       const date = new Date(dateString + 'T12:00:00');
       
       if (isNaN(date.getTime())) {
@@ -383,46 +365,39 @@ export default function HistorialMembresiaPage() {
     }
   }, []);
 
-// ✅ ESTO CONVIERTE CORRECTAMENTE UTC → MÉXICO:
-const formatTimestampForDisplay = useCallback((timestamp: string): string => {
-  if (!timestamp) return 'Sin fecha';
-  
-  try {
-    const date = new Date(timestamp); // ← Lee UTC: 2025-06-13T06:47:59Z
+  // ✅ FORMATEAR TIMESTAMPS
+  const formatTimestampForDisplay = useCallback((timestamp: string): string => {
+    if (!timestamp) return 'Sin fecha';
     
-    if (isNaN(date.getTime())) {
-      console.warn('⚠️ Timestamp inválido:', timestamp);
-      return 'Timestamp inválido';
+    try {
+      const date = new Date(timestamp);
+      
+      if (isNaN(date.getTime())) {
+        console.warn('⚠️ Timestamp inválido:', timestamp);
+        return 'Timestamp inválido';
+      }
+      
+      return date.toLocaleString('es-MX', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('❌ Error formateando timestamp:', timestamp, error);
+      return 'Error de timestamp';
     }
-    
-    // ✅ CONVERSIÓN MANUAL UTC → MÉXICO
-    const mexicoOffset = -6; // México es UTC-6
-    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
-    const mexicoTime = new Date(utcTime + (mexicoOffset * 3600000));
-    
-    return mexicoTime.toLocaleString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }) + ' MX';
-  } catch (error) {
-    console.error('❌ Error formateando timestamp:', timestamp, error);
-    return 'Error de timestamp';
-  }
-}, []);
+  }, []);
 
-  // ✅ CALCULAR DÍAS RESTANTES CON ZONA HORARIA MÉXICO - CORREGIDO
+  // ✅ CALCULAR DÍAS RESTANTES - LA BD YA ESTÁ EN MÉXICO
   const calculateDaysRemaining = useCallback((endDate: string | null): number | null => {
     if (!endDate) return null;
     
     try {
-      const today = getMexicoCurrentDate();
-      
-      // ✅ CREAR FECHAS SIN HORA PARA COMPARACIÓN EXACTA
+      const today = new Date().toISOString().split('T')[0];
       const todayDate = new Date(today + 'T00:00:00');
       const endDateObj = new Date(endDate + 'T00:00:00');
       
@@ -439,13 +414,13 @@ const formatTimestampForDisplay = useCallback((timestamp: string): string => {
       console.error('❌ Error calculando días restantes:', error);
       return null;
     }
-  }, [getMexicoCurrentDate]);
+  }, []);
 
-  // ✅ AGREGAR DÍAS A FECHA MÉXICO - CORREGIDO
-  const addDaysToMexicoDate = useCallback((dateString: string, days: number): string => {
+  // ✅ AGREGAR DÍAS A FECHA
+  const addDaysToDate = useCallback((dateString: string, days: number): string => {
     try {
       const [year, month, day] = dateString.split('-').map(Number);
-      const date = new Date(year, month - 1, day); // month - 1 porque Date usa 0-indexado
+      const date = new Date(year, month - 1, day);
       
       date.setDate(date.getDate() + days);
       
@@ -456,23 +431,16 @@ const formatTimestampForDisplay = useCallback((timestamp: string): string => {
       return `${newYear}-${newMonth}-${newDay}`;
     } catch (error) {
       console.error('❌ Error agregando días a fecha:', error);
-      return dateString; // Fallback
+      return dateString;
     }
   }, []);
 
-// ✅ CAMBIAR A:
-const createTimestampForDB = useCallback((): string => {
-  const now = new Date();
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return mexicoTime.toISOString();
-}, []);
-
-  // ✅ OBTENER DÍAS CONGELADOS ACTUALES - CORREGIDO
+  // ✅ OBTENER DÍAS CONGELADOS ACTUALES
   const getCurrentFrozenDays = useCallback((freezeDate: string | null): number => {
     if (!freezeDate) return 0;
     
     try {
-      const today = getMexicoCurrentDate();
+      const today = new Date().toISOString().split('T')[0];
       const freeze = new Date(freezeDate + 'T00:00:00');
       const todayDate = new Date(today + 'T00:00:00');
       
@@ -488,49 +456,7 @@ const createTimestampForDB = useCallback((): string => {
       console.error('❌ Error calculando días congelados:', error);
       return 0;
     }
-  }, [getMexicoCurrentDate]);
-
-  // 🧪 FUNCIÓN DE DEBUG PARA MEMBRESÍAS ESPECÍFICAS - CORREGIDA
-  const debugMembership = useCallback((membership: MembershipHistory) => {
-    const daysRemaining = calculateDaysRemaining(membership.end_date);
-    const todayMexico = getMexicoCurrentDate();
-    const frozenDays = getCurrentFrozenDays(membership.freeze_date);
-    
-    console.group(`🔍 DEBUG MEMBRESÍA: ${membership.user_name}`);
-    console.log('📋 Datos básicos:', {
-      id: membership.id,
-      nombre: membership.user_name,
-      plan: membership.plan_name,
-      tipo_pago: membership.payment_type,
-      estado: membership.status
-    });
-    console.log('📅 Fechas:', {
-      inicio: membership.start_date,
-      fin: membership.end_date,
-      formato_inicio: formatDisplayDate(membership.start_date),
-      formato_fin: formatDisplayDate(membership.end_date),
-      congelamiento: membership.freeze_date,
-      reactivacion: membership.unfreeze_date
-    });
-    console.log('⏰ Cálculos México:', {
-      hoy_mexico: todayMexico,
-      dias_restantes: daysRemaining,
-      dias_congelados_actuales: frozenDays,
-      dias_congelados_historicos: membership.total_frozen_days,
-      estado_calculado: daysRemaining === null ? 'Sin límite' : 
-                       daysRemaining < 0 ? 'Vencida' : 
-                       daysRemaining === 0 ? 'Vence hoy' : 
-                       'Vigente'
-    });
-    console.groupEnd();
-    
-    return {
-      todayMexico,
-      daysRemaining,
-      frozenDays,
-      formattedEnd: formatDisplayDate(membership.end_date)
-    };
-  }, [calculateDaysRemaining, getMexicoCurrentDate, getCurrentFrozenDays, formatDisplayDate]);
+  }, []);
 
   // ✅ FUNCIONES MEMOIZADAS - VERIFICADAS
   const getStatusColor = useCallback((status: string) => {
@@ -543,17 +469,15 @@ const createTimestampForDB = useCallback((): string => {
     return statusOption?.icon || '📋';
   }, []);
 
-  // ✅ FUNCIÓN DE RECARGA FORZADA CON DEBUGGING CORREGIDA
+  // ✅ FUNCIÓN DE RECARGA OPTIMIZADA
   const forceReloadMemberships = useCallback(async () => {
-    console.log('🔄 Forzando recarga completa de membresías...');
+    console.log('🔄 Recargando membresías...');
     setLoading(true);
     
     try {
-      // Limpiar cache local
       setMemberships([]);
       setFilteredMemberships([]);
       
-      // Esperar un momento para asegurar que la DB esté actualizada
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const { data, error } = await supabase
@@ -567,25 +491,18 @@ const createTimestampForDB = useCallback((): string => {
 
       if (error) throw error;
 
-      const formattedData: MembershipHistory[] = (data || []).map(item => {
-        const membership = {
-          ...item,
-          freeze_date: item.freeze_date || null,
-          unfreeze_date: item.unfreeze_date || null,
-          total_frozen_days: item.total_frozen_days || 0,
-          payment_details: item.payment_details || {},
-          user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
-          user_email: item.Users?.email || '',
-          plan_name: item.membership_plans?.name || 'Plan Desconocido'
-        };
-        
-        return membership;
-      });
+      const formattedData: MembershipHistory[] = (data || []).map(item => ({
+        ...item,
+        freeze_date: item.freeze_date || null,
+        unfreeze_date: item.unfreeze_date || null,
+        total_frozen_days: item.total_frozen_days || 0,
+        payment_details: item.payment_details || {},
+        user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
+        user_email: item.Users?.email || '',
+        plan_name: item.membership_plans?.name || 'Plan Desconocido'
+      }));
 
-      console.log('✅ Membresías recargadas exitosamente:', {
-        total: formattedData.length,
-        fecha_mexico_actual: getMexicoCurrentDate()
-      });
+      console.log('✅ Membresías recargadas exitosamente:', formattedData.length);
       
       setMemberships(formattedData);
       calculateStats(formattedData);
@@ -596,7 +513,7 @@ const createTimestampForDB = useCallback((): string => {
     } finally {
       setLoading(false);
     }
-  }, [supabase, getMexicoCurrentDate]);
+  }, [supabase]);
 
   // ✅ CARGAR DATOS INICIALES
   const loadMemberships = useCallback(async () => {
@@ -613,29 +530,21 @@ const createTimestampForDB = useCallback((): string => {
 
       if (error) throw error;
 
-      const formattedData: MembershipHistory[] = (data || []).map(item => {
-        const membership = {
-          ...item,
-          freeze_date: item.freeze_date || null,
-          unfreeze_date: item.unfreeze_date || null,
-          total_frozen_days: item.total_frozen_days || 0,
-          payment_details: item.payment_details || {},
-          user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
-          user_email: item.Users?.email || '',
-          plan_name: item.membership_plans?.name || 'Plan Desconocido'
-        };
-        
-        return membership;
-      });
+      const formattedData: MembershipHistory[] = (data || []).map(item => ({
+        ...item,
+        freeze_date: item.freeze_date || null,
+        unfreeze_date: item.unfreeze_date || null,
+        total_frozen_days: item.total_frozen_days || 0,
+        payment_details: item.payment_details || {},
+        user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
+        user_email: item.Users?.email || '',
+        plan_name: item.membership_plans?.name || 'Plan Desconocido'
+      }));
 
       setMemberships(formattedData);
       calculateStats(formattedData);
       
-      console.log('📊 CARGA INICIAL COMPLETADA:', {
-        total_memberships: formattedData.length,
-        fecha_actual_mexico: getMexicoCurrentDate()
-      });
-      
+      console.log('📊 CARGA INICIAL COMPLETADA:', formattedData.length);
       setInfoMessage(`📊 ${formattedData.length} membresías cargadas`);
       
     } catch (err: any) {
@@ -643,7 +552,7 @@ const createTimestampForDB = useCallback((): string => {
     } finally {
       setLoading(false);
     }
-  }, [supabase, getMexicoCurrentDate]);
+  }, [supabase]);
 
   const loadPlans = useCallback(async () => {
     try {
@@ -674,7 +583,7 @@ const createTimestampForDB = useCallback((): string => {
     setStats(stats);
   }, []);
 
-  // ✅ APLICAR FILTROS CON FECHAS MÉXICO
+  // ✅ APLICAR FILTROS SIMPLIFICADO
   const applyFilters = useCallback(() => {
     let filtered = [...memberships];
 
@@ -705,7 +614,7 @@ const createTimestampForDB = useCallback((): string => {
       filtered = filtered.filter(m => m.is_renewal === isRenewal);
     }
 
-    // ✅ FILTROS DE FECHA CON ZONA HORARIA MÉXICO
+    // ✅ FILTROS DE FECHA SIMPLIFICADOS
     if (filters.dateFrom) {
       const fromTime = new Date(`${filters.dateFrom}T00:00:00`).getTime();
       filtered = filtered.filter(m => {
@@ -727,7 +636,7 @@ const createTimestampForDB = useCallback((): string => {
     setPage(0);
   }, [memberships, filters, calculateStats]);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO INDIVIDUAL CORREGIDAS
+  // ✅ FUNCIONES DE CONGELAMIENTO SIMPLIFICADAS
   const canFreezeMembership = useCallback((membership: MembershipHistory) => {
     if (membership.status !== 'active') {
       return { canFreeze: false, reason: 'Solo se pueden congelar membresías activas' };
@@ -756,14 +665,13 @@ const createTimestampForDB = useCallback((): string => {
         return;
       }
 
-      const freezeDate = getMexicoCurrentDate();
+      const freezeDate = new Date().toISOString().split('T')[0];
       
       const { error } = await supabase
         .from('user_memberships')
         .update({
           status: 'frozen',
-          freeze_date: freezeDate,
-          updated_at: createTimestampForDB()
+          freeze_date: freezeDate
         })
         .eq('id', membership.id);
 
@@ -778,7 +686,7 @@ const createTimestampForDB = useCallback((): string => {
     } finally {
       setFreezeLoading(false);
     }
-  }, [supabase, forceReloadMemberships, canFreezeMembership, getMexicoCurrentDate, createTimestampForDB]);
+  }, [supabase, forceReloadMemberships, canFreezeMembership]);
 
   const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
@@ -791,14 +699,13 @@ const createTimestampForDB = useCallback((): string => {
         return;
       }
 
-      // ✅ CÁLCULO CORREGIDO DE DÍAS CONGELADOS CON FECHA MÉXICO
-      const unfreezeDate = getMexicoCurrentDate();
+      const unfreezeDate = new Date().toISOString().split('T')[0];
       const daysToAdd = getCurrentFrozenDays(membership.freeze_date);
       const newTotalFrozenDays = (membership.total_frozen_days || 0) + daysToAdd;
       
       let newEndDate = membership.end_date;
       if (membership.end_date) {
-        newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+        newEndDate = addDaysToDate(membership.end_date, daysToAdd);
       }
 
       const { error } = await supabase
@@ -808,8 +715,7 @@ const createTimestampForDB = useCallback((): string => {
           freeze_date: null,
           unfreeze_date: unfreezeDate,
           end_date: newEndDate,
-          total_frozen_days: newTotalFrozenDays,
-          updated_at: createTimestampForDB()
+          total_frozen_days: newTotalFrozenDays
         })
         .eq('id', membership.id);
 
@@ -824,9 +730,9 @@ const createTimestampForDB = useCallback((): string => {
     } finally {
       setUnfreezeLoading(false);
     }
-  }, [supabase, forceReloadMemberships, canUnfreezeMembership, getMexicoCurrentDate, getCurrentFrozenDays, addDaysToMexicoDate, createTimestampForDB]);
+  }, [supabase, forceReloadMemberships, canUnfreezeMembership, getCurrentFrozenDays, addDaysToDate]);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO - COMPLETAMENTE CORREGIDAS
+  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO SIMPLIFICADAS
   const handleSelectAllMemberships = useCallback(() => {
     const eligibleMemberships = filteredMemberships
       .filter(m => m.status === 'active' || m.status === 'frozen')
@@ -848,7 +754,6 @@ const createTimestampForDB = useCallback((): string => {
     });
   }, []);
 
-  // ✅ FUNCIÓN CORREGIDA PARA CONGELAMIENTO MASIVO
   const handleBulkFreeze = useCallback((isManual: boolean = false) => {
     console.log('🧊 Iniciando congelamiento masivo:', { isManual, selectedIds: selectedMembershipIds.length });
     
@@ -866,13 +771,12 @@ const createTimestampForDB = useCallback((): string => {
       return;
     }
 
-    // ✅ CONFIGURACIÓN CORREGIDA
     setBulkOperation({
       type: isManual ? 'manual_freeze' : 'freeze',
       membershipIds: eligibleMemberships.map(m => m.id),
       isManual,
       freezeDays: isManual ? 7 : undefined,
-      action: 'freeze', // ✅ SIEMPRE freeze para congelar
+      action: 'freeze',
       mode: isManual ? 'manual' : 'auto'
     });
     
@@ -880,7 +784,6 @@ const createTimestampForDB = useCallback((): string => {
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
 
-  // ✅ FUNCIÓN CORREGIDA PARA REACTIVACIÓN MASIVA
   const handleBulkUnfreeze = useCallback((isManual: boolean = false) => {
     console.log('🔄 Iniciando reactivación masiva:', { isManual, selectedIds: selectedMembershipIds.length });
     
@@ -898,13 +801,12 @@ const createTimestampForDB = useCallback((): string => {
       return;
     }
 
-    // ✅ CONFIGURACIÓN CORREGIDA
     setBulkOperation({
       type: isManual ? 'manual_unfreeze' : 'unfreeze',
       membershipIds: eligibleMemberships.map(m => m.id),
       isManual,
-      freezeDays: undefined, // ✅ No se usa para unfreeze
-      action: 'unfreeze', // ✅ SIEMPRE unfreeze para reactivar
+      freezeDays: undefined,
+      action: 'unfreeze',
       mode: isManual ? 'manual' : 'auto'
     });
     
@@ -912,7 +814,7 @@ const createTimestampForDB = useCallback((): string => {
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
 
-  // 🔥 FUNCIÓN GENERATEBULKPREVIEW CORREGIDA CON FECHAS MÉXICO
+  // ✅ FUNCIÓN GENERATEBULKPREVIEW SIMPLIFICADA
   const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
     console.log('📋 Generando preview para:', { operationType, count: eligibleMemberships.length });
     
@@ -922,31 +824,25 @@ const createTimestampForDB = useCallback((): string => {
       let actionDescription = '';
 
       if (operationType === 'freeze') {
-        // ✅ CONGELAMIENTO AUTOMÁTICO
         actionDescription = 'Se congelará automáticamente (se agregarán días al reactivar)';
-        // No se modifica la fecha en automático
       } else if (operationType === 'manual_freeze') {
-        // ✅ CONGELAMIENTO MANUAL
         if (bulkOperation.freezeDays && membership.end_date) {
           daysToAdd = bulkOperation.freezeDays;
-          newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+          newEndDate = addDaysToDate(membership.end_date, daysToAdd);
           actionDescription = `Se congelará manualmente y se agregarán ${daysToAdd} días inmediatamente`;
         } else {
           actionDescription = 'Se congelará manualmente (sin modificar fecha de vencimiento)';
         }
       } else if (operationType === 'unfreeze') {
-        // ✅ REACTIVACIÓN AUTOMÁTICA
         if (membership.freeze_date && membership.end_date) {
           daysToAdd = getCurrentFrozenDays(membership.freeze_date);
-          newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+          newEndDate = addDaysToDate(membership.end_date, daysToAdd);
           actionDescription = `Se reactivará automáticamente agregando ${daysToAdd} días congelados`;
         } else {
           actionDescription = 'Se reactivará automáticamente (sin modificar fecha de vencimiento)';
         }
       } else if (operationType === 'manual_unfreeze') {
-        // ✅ REACTIVACIÓN MANUAL
         actionDescription = 'Se reactivará manualmente (NO se agregarán días adicionales)';
-        // No se agregan días en reactivación manual
       }
 
       return {
@@ -957,16 +853,15 @@ const createTimestampForDB = useCallback((): string => {
         currentEndDate: membership.end_date,
         newEndDate,
         daysToAdd,
-        actionDescription // ✅ DESCRIPCIÓN CLARA
+        actionDescription
       };
     });
 
     console.log('📋 Preview generado:', preview);
     setBulkPreview(preview);
     setShowPreview(true);
-  }, [bulkOperation.freezeDays, getCurrentFrozenDays, addDaysToMexicoDate]);
+  }, [bulkOperation.freezeDays, getCurrentFrozenDays, addDaysToDate]);
 
-  // ✅ FUNCIÓN DE TÍTULO CORREGIDA
   const getBulkOperationTitle = useCallback(() => {
     const actionText = bulkOperation.action === 'freeze' ? 'Congelamiento' : 'Reactivación';
     const modeText = bulkOperation.mode === 'manual' ? 'Manual' : 'Automático';
@@ -974,7 +869,7 @@ const createTimestampForDB = useCallback((): string => {
     return `${icon} ${actionText} Masivo ${modeText}`;
   }, [bulkOperation.action, bulkOperation.mode]);
 
-  // 🔥 FUNCIÓN DE EJECUCIÓN MASIVA CORREGIDA CON FECHAS MÉXICO
+  // ✅ FUNCIÓN DE EJECUCIÓN MASIVA SIMPLIFICADA
   const executeBulkOperation = useCallback(async () => {
     console.log('🚀 Ejecutando operación masiva:', bulkOperation);
     
@@ -997,18 +892,14 @@ const createTimestampForDB = useCallback((): string => {
       }
 
       try {
-        let result: any;
-        const currentDate = getMexicoCurrentDate();
+        const currentDate = new Date().toISOString().split('T')[0];
         
-        // 🔥 LÓGICA CORREGIDA BASADA EN ACTION CON FECHAS MÉXICO
         if (bulkOperation.action === 'freeze') {
-          // ✅ CONGELAMIENTO (Manual o Automático)
           if (bulkOperation.mode === 'manual' && bulkOperation.freezeDays) {
-            // 🔥 CONGELAMIENTO MANUAL: AGREGAR DÍAS INMEDIATAMENTE
             let newEndDate = membership.end_date;
             
             if (membership.end_date) {
-              newEndDate = addDaysToMexicoDate(membership.end_date, bulkOperation.freezeDays);
+              newEndDate = addDaysToDate(membership.end_date, bulkOperation.freezeDays);
             }
 
             const { error } = await supabase
@@ -1020,31 +911,24 @@ const createTimestampForDB = useCallback((): string => {
                 total_frozen_days: (membership.total_frozen_days || 0) + bulkOperation.freezeDays,
                 notes: membership.notes ? 
                   `${membership.notes}\n🧊 Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}` :
-                  `🧊 Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`,
-                updated_at: createTimestampForDB()
+                  `🧊 Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`
               })
               .eq('id', membershipId);
 
             if (error) throw error;
-            result = { success: true };
           } else {
-            // ✅ CONGELAMIENTO AUTOMÁTICO: SIN MODIFICAR FECHA
             const { error } = await supabase
               .from('user_memberships')
               .update({
                 status: 'frozen',
-                freeze_date: currentDate,
-                updated_at: createTimestampForDB()
+                freeze_date: currentDate
               })
               .eq('id', membershipId);
 
             if (error) throw error;
-            result = { success: true };
           }
         } else {
-          // ✅ REACTIVACIÓN (Manual o Automática)
           if (bulkOperation.mode === 'manual') {
-            // 🔄 REACTIVACIÓN MANUAL: NO AGREGAR DÍAS
             const { error } = await supabase
               .from('user_memberships')
               .update({
@@ -1053,21 +937,18 @@ const createTimestampForDB = useCallback((): string => {
                 unfreeze_date: currentDate,
                 notes: membership.notes ? 
                   `${membership.notes}\n🔄 Reactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}` :
-                  `🔄 Reactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`,
-                updated_at: createTimestampForDB()
+                  `🔄 Reactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`
               })
               .eq('id', membershipId);
 
             if (error) throw error;
-            result = { success: true };
           } else {
-            // ✅ REACTIVACIÓN AUTOMÁTICA: AGREGAR DÍAS CONGELADOS
             const daysToAdd = getCurrentFrozenDays(membership.freeze_date);
             const newTotalFrozenDays = (membership.total_frozen_days || 0) + daysToAdd;
             
             let newEndDate = membership.end_date;
             if (membership.end_date) {
-              newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+              newEndDate = addDaysToDate(membership.end_date, daysToAdd);
             }
 
             const { error } = await supabase
@@ -1077,22 +958,15 @@ const createTimestampForDB = useCallback((): string => {
                 freeze_date: null,
                 unfreeze_date: currentDate,
                 end_date: newEndDate,
-                total_frozen_days: newTotalFrozenDays,
-                updated_at: createTimestampForDB()
+                total_frozen_days: newTotalFrozenDays
               })
               .eq('id', membershipId);
 
             if (error) throw error;
-            result = { success: true };
           }
         }
 
-        if (result.success) {
-          successCount++;
-        } else {
-          failedCount++;
-          errors.push(`${membership.user_name}: ${result.error || 'Error desconocido'}`);
-        }
+        successCount++;
       } catch (err: any) {
         failedCount++;
         errors.push(`${membership.user_name}: ${err.message}`);
@@ -1126,9 +1000,9 @@ const createTimestampForDB = useCallback((): string => {
     if (failedCount > 0) {
       setWarningMessage(`⚠️ ${failedCount} operaciones fallaron. Revise los detalles.`);
     }
-  }, [bulkOperation, memberships, supabase, formatDisplayDate, forceReloadMemberships, getMexicoCurrentDate, createTimestampForDB, getCurrentFrozenDays, addDaysToMexicoDate]);
+  }, [bulkOperation, memberships, supabase, formatDisplayDate, forceReloadMemberships, getCurrentFrozenDays, addDaysToDate]);
 
-  // ✅ FUNCIÓN DE ACTUALIZACIÓN DE MEMBRESÍA CORREGIDA
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN DE MEMBRESÍA SIMPLIFICADA
   const handleUpdateMembership = useCallback(async () => {
     if (!selectedMembership || !editData) return;
     
@@ -1144,20 +1018,18 @@ const createTimestampForDB = useCallback((): string => {
         return;
       }
 
-      // ✅ EXTENSIÓN MANUAL CORREGIDA CON FECHAS MÉXICO
       if (editData.extend_days && editData.extend_days > 0 && selectedMembership?.end_date) {
-        const newEndDate = addDaysToMexicoDate(selectedMembership.end_date, editData.extend_days);
+        const newEndDate = addDaysToDate(selectedMembership.end_date, editData.extend_days);
         editData.end_date = newEndDate;
         
-        const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${formatDisplayDate(getMexicoCurrentDate())}.`;
+        const today = new Date().toISOString().split('T')[0];
+        const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${formatDisplayDate(today)}.`;
         editData.notes = editData.notes ? `${editData.notes}\n${extensionNote}` : extensionNote;
         
         console.log(`🔧 Extensión aplicada: ${selectedMembership.end_date} → ${editData.end_date} (+${editData.extend_days} días)`);
       }
 
-      const updateData: any = {
-        updated_at: createTimestampForDB()
-      };
+      const updateData: any = {};
 
       const allowedFields = [
         'status',
@@ -1186,8 +1058,7 @@ const createTimestampForDB = useCallback((): string => {
             cash_amount: editData.cash_amount || 0,
             card_amount: editData.card_amount || 0,
             transfer_amount: editData.transfer_amount || 0,
-            total_amount: (editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0),
-            updated_at: createTimestampForDB()
+            total_amount: (editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0)
           };
           
           updateData.payment_details = paymentDetails;
@@ -1218,7 +1089,7 @@ const createTimestampForDB = useCallback((): string => {
     } finally {
       setEditLoading(false);
     }
-  }, [selectedMembership, editData, supabase, formatDisplayDate, forceReloadMemberships, getMexicoCurrentDate, createTimestampForDB, addDaysToMexicoDate]);
+  }, [selectedMembership, editData, supabase, formatDisplayDate, forceReloadMemberships, addDaysToDate]);
 
   const initializeEditData = useCallback((membership: MembershipHistory) => {
     const paymentDetails = membership.payment_details || {};
@@ -1245,10 +1116,7 @@ const createTimestampForDB = useCallback((): string => {
     try {
       const { error } = await supabase
         .from('user_memberships')
-        .update({ 
-          status: newStatus,
-          updated_at: createTimestampForDB()
-        })
+        .update({ status: newStatus })
         .eq('id', membership.id);
 
       if (error) throw error;
@@ -1259,7 +1127,7 @@ const createTimestampForDB = useCallback((): string => {
     } catch (err: any) {
       setError(`Error al cambiar estado: ${err.message}`);
     }
-  }, [supabase, forceReloadMemberships, createTimestampForDB]);
+  }, [supabase, forceReloadMemberships]);
 
   const clearFilters = useCallback(() => {
     setFilters({
@@ -1273,7 +1141,7 @@ const createTimestampForDB = useCallback((): string => {
     });
   }, []);
 
-  // ✅ MODAL DE EDICIÓN OPTIMIZADO (SIN CAMBIOS SIGNIFICATIVOS - SOLO FUNCIONES INTERNAS)
+  // ✅ MODAL DE EDICIÓN OPTIMIZADO (VERSION SIMPLIFICADA)
   const OptimizedEditModal = useMemo(() => {
     if (!editDialogOpen || !selectedMembership) return null;
 
@@ -1386,7 +1254,6 @@ const createTimestampForDB = useCallback((): string => {
               </CardContent>
             </Card>
 
-            {/* Resto del formulario de edición continúa igual... */}
             <Grid container spacing={3}>
               {/* Estado y Método de Pago */}
               <Grid size={{ xs: 12, md: 6 }}>
@@ -1405,7 +1272,7 @@ const createTimestampForDB = useCallback((): string => {
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: `${darkProTokens.primary}30`
                       },
-                                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
                         borderColor: darkProTokens.primary
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
@@ -1484,7 +1351,7 @@ const createTimestampForDB = useCallback((): string => {
                     </Alert>
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <TextField
                       fullWidth
                       label="Efectivo"
@@ -1509,7 +1376,7 @@ const createTimestampForDB = useCallback((): string => {
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <TextField
                       fullWidth
                       label="Tarjeta"
@@ -1534,7 +1401,7 @@ const createTimestampForDB = useCallback((): string => {
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <TextField
                       fullWidth
                       label="Transferencia"
@@ -1558,31 +1425,6 @@ const createTimestampForDB = useCallback((): string => {
                       }}
                     />
                   </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <Box sx={{
-                      background: `${darkProTokens.primary}10`,
-                      border: `1px solid ${darkProTokens.primary}30`,
-                      borderRadius: 2,
-                      p: 2,
-                      textAlign: 'center',
-                      height: '56px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center'
-                    }}>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                        Total Mixto
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                        {formatPrice(
-                          (editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0) + 
-                          (editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0) + 
-                          (editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0)
-                        )}
-                      </Typography>
-                    </Box>
-                  </Grid>
                 </>
               )}
 
@@ -1603,7 +1445,7 @@ const createTimestampForDB = useCallback((): string => {
                   }}
                   InputProps={{
                     sx: {
-                      color: darkProTokens.textPrimary,
+                                            color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: `${darkProTokens.primary}30`
                       },
@@ -1753,12 +1595,6 @@ const createTimestampForDB = useCallback((): string => {
                       color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: `${darkProTokens.primary}30`
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
                       }
                     }
                   }}
@@ -1771,7 +1607,7 @@ const createTimestampForDB = useCallback((): string => {
                 />
               </Grid>
 
-              {/* Extensión Manual CORREGIDA CON FECHAS MÉXICO */}
+              {/* Extensión Manual SIMPLIFICADA */}
               <Grid size={12}>
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
@@ -1789,7 +1625,7 @@ const createTimestampForDB = useCallback((): string => {
                       gap: 2
                     }}>
                       <AcUnitIcon />
-                      📅 Extensión Manual de Vigencia (Con Fechas México)
+                      📅 Extensión Manual de Vigencia
                     </Typography>
 
                     <Grid container spacing={3}>
@@ -1866,7 +1702,7 @@ const createTimestampForDB = useCallback((): string => {
                           textAlign: 'center'
                         }}>
                           <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                            Nueva Fecha (Zona México)
+                            Nueva Fecha
                           </Typography>
                           <Typography variant="body1" sx={{ 
                             color: darkProTokens.primary,
@@ -1876,8 +1712,7 @@ const createTimestampForDB = useCallback((): string => {
                               if (!selectedMembership.end_date || !editData.extend_days) {
                                 return selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) : 'Sin fecha';
                               }
-                              // ✅ USAR FUNCIÓN CORREGIDA PARA AGREGAR DÍAS
-                              const newEndDate = addDaysToMexicoDate(selectedMembership.end_date, editData.extend_days);
+                              const newEndDate = addDaysToDate(selectedMembership.end_date, editData.extend_days);
                               return formatDisplayDate(newEndDate);
                             })()}
                           </Typography>
@@ -1896,9 +1731,8 @@ const createTimestampForDB = useCallback((): string => {
                             }}
                           >
                             <Typography variant="body2">
-                              <strong>📅 Extensión de Vigencia (Zona México):</strong> Se extenderá la fecha de vencimiento por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}.<br/>
-                              <strong>🧊 Diferencia con congelamiento:</strong> Esto NO se registra como días congelados, solo extiende la vigencia manualmente.<br/>
-                              <strong>🇲🇽 Zona Horaria:</strong> Todos los cálculos usan la zona horaria de México.
+                              <strong>📅 Extensión de Vigencia:</strong> Se extenderá la fecha de vencimiento por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}.<br/>
+                              <strong>🧊 Diferencia con congelamiento:</strong> Esto NO se registra como días congelados, solo extiende la vigencia manualmente.
                             </Typography>
                           </Alert>
                         </Grid>
@@ -1952,7 +1786,6 @@ const createTimestampForDB = useCallback((): string => {
                 {editData.extend_days > 0 && (
                   <>
                     <br/><strong>📅 Extensión Manual:</strong> Se extenderá la vigencia por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''} (no cuenta como congelamiento).
-                    <br/><strong>🇲🇽 Zona México:</strong> Todos los cálculos de fechas usan la zona horaria de México.
                   </>
                 )}
               </Typography>
@@ -1997,7 +1830,7 @@ const createTimestampForDB = useCallback((): string => {
         </DialogActions>
       </Dialog>
     );
-  }, [editDialogOpen, selectedMembership, editData, editLoading, formatDisplayDate, formatPrice, handleUpdateMembership, addDaysToMexicoDate]);
+  }, [editDialogOpen, selectedMembership, editData, editLoading, formatDisplayDate, formatPrice, handleUpdateMembership, addDaysToDate]);
 
   // ✅ EFFECTS
   useEffect(() => {
@@ -2136,7 +1969,7 @@ const createTimestampForDB = useCallback((): string => {
         </Alert>
       </Snackbar>
 
-      {/* ✅ HEADER CON BOTÓN DE DEBUG CORREGIDO */}
+      {/* ✅ HEADER SIMPLIFICADO */}
       <Paper sx={{
         p: 4,
         mb: 4,
@@ -2167,44 +2000,11 @@ const createTimestampForDB = useCallback((): string => {
               color: darkProTokens.textSecondary,
               fontWeight: 300
             }}>
-              Gestión Integral | Congelamiento Inteligente | Control Masivo Avanzado | Zona México 🇲🇽
+              Gestión Integral | Congelamiento Inteligente | Control Masivo Avanzado
             </Typography>
           </Box>
           
           <Stack direction="row" spacing={2}>
-            <Button
-              startIcon={<InfoIcon />}
-              onClick={() => {
-                console.log('🧪 INICIANDO DEBUG DE FECHAS CON ZONA MÉXICO...');
-                const hoy = getMexicoCurrentDate();
-                console.log('📅 Fecha México actual:', hoy);
-                
-                // Debug específico para todos los usuarios
-                filteredMemberships
-                  .slice(0, 5) // Primeros 5 para evitar spam
-                  .forEach(membership => {
-                    debugMembership(membership);
-                  });
-                
-                setInfoMessage('🧪 Debug de fechas México completado - Revisa la consola');
-              }}
-              sx={{ 
-                color: darkProTokens.warning,
-                borderColor: `${darkProTokens.warning}60`,
-                px: 2,
-                py: 1,
-                fontWeight: 600,
-                '&:hover': {
-                  borderColor: darkProTokens.warning,
-                  backgroundColor: `${darkProTokens.warning}10`
-                }
-              }}
-              variant="outlined"
-              size="small"
-            >
-              🧪 Debug Fechas 🇲🇽
-            </Button>
-            
             <Button
               startIcon={<RefreshIcon />}
               onClick={forceReloadMemberships}
@@ -2406,7 +2206,6 @@ const createTimestampForDB = useCallback((): string => {
         </Grid>
       </Paper>
 
-      {/* Resto del código continúa igual... */}
       {/* ✅ BARRA DE CONGELAMIENTO MASIVO */}
       <AnimatePresence>
         {bulkMode && (
@@ -2432,10 +2231,10 @@ const createTimestampForDB = useCallback((): string => {
                       color: darkProTokens.info, 
                       fontWeight: 700 
                     }}>
-                      🧊 Modo Congelamiento Masivo Avanzado (Zona México 🇲🇽)
+                      🧊 Modo Congelamiento Masivo Avanzado
                     </Typography>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      {selectedMembershipIds.length} membresías seleccionadas • Gestión inteligente con fechas México
+                      {selectedMembershipIds.length} membresías seleccionadas • Gestión inteligente simplificada
                     </Typography>
                   </Box>
                 </Box>
@@ -2639,9 +2438,9 @@ const createTimestampForDB = useCallback((): string => {
                   }}
                 >
                   <Typography variant="body2">
-                    <strong>💡 Modos Disponibles (Zona México 🇲🇽):</strong><br/>
-                    <strong>🤖 Automático:</strong> El sistema calcula automáticamente los días y fechas usando la zona horaria de México<br/>
-                    <strong>⚙️ Manual:</strong> Usted especifica cuántos días congelar/agregar y el sistema actualiza las fechas con zona México
+                    <strong>💡 Modos Disponibles:</strong><br/>
+                    <strong>🤖 Automático:</strong> El sistema calcula automáticamente los días y fechas<br/>
+                    <strong>⚙️ Manual:</strong> Usted especifica cuántos días congelar/agregar
                   </Typography>
                 </Alert>
               )}
@@ -2650,7 +2449,7 @@ const createTimestampForDB = useCallback((): string => {
         )}
       </AnimatePresence>
 
-      {/* ✅ CONTROLES Y FILTROS CON FECHAS MÉXICO */}
+      {/* ✅ CONTROLES Y FILTROS SIMPLIFICADOS */}
       <Paper sx={{
         p: 3,
         mb: 3,
@@ -2667,7 +2466,7 @@ const createTimestampForDB = useCallback((): string => {
             gap: 2
           }}>
             <SearchIcon />
-            Búsqueda y Filtros Avanzados (Zona México 🇲🇽)
+            Búsqueda y Filtros Avanzados
           </Typography>
 
           <Stack direction="row" spacing={2}>
@@ -2894,7 +2693,7 @@ const createTimestampForDB = useCallback((): string => {
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
-                    label="Fecha desde (Zona México)"
+                    label="Fecha desde"
                     type="date"
                     value={filters.dateFrom}
                     onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
@@ -2902,7 +2701,7 @@ const createTimestampForDB = useCallback((): string => {
                       shrink: true,
                       sx: { 
                         color: darkProTokens.textSecondary,
-                                                '&.Mui-focused': { color: darkProTokens.primary }
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }
                     }}
                     InputProps={{
@@ -2925,7 +2724,7 @@ const createTimestampForDB = useCallback((): string => {
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
-                    label="Fecha hasta (Zona México)"
+                    label="Fecha hasta"
                     type="date"
                     value={filters.dateTo}
                     onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
@@ -2973,7 +2772,7 @@ const createTimestampForDB = useCallback((): string => {
         </AnimatePresence>
       </Paper>
 
-      {/* ✅ TABLA PRINCIPAL CON FECHAS MÉXICO CORREGIDAS */}
+      {/* ✅ TABLA PRINCIPAL SIMPLIFICADA */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
         border: `1px solid ${darkProTokens.primary}20`,
@@ -3036,7 +2835,7 @@ const createTimestampForDB = useCallback((): string => {
                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Cliente</TableCell>
                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Plan</TableCell>
                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Estado</TableCell>
-                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Vigencia (México 🇲🇽)</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Vigencia</TableCell>
                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Pago</TableCell>
                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Congelamiento</TableCell>
                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
@@ -3134,7 +2933,6 @@ const createTimestampForDB = useCallback((): string => {
                             />
                           </TableCell>
 
-                          {/* ✅ COLUMNA DE VIGENCIA CORREGIDA CON FECHAS MÉXICO */}
                           <TableCell>
                             <Box>
                               <Typography variant="body2" sx={{ 
@@ -3162,29 +2960,13 @@ const createTimestampForDB = useCallback((): string => {
                                     })()
                                   }}>
                                     ⏰ {(() => {
-                                      const daysRemaining = calculateDaysRemaining(membership.end_date!);
+                                                                            const daysRemaining = calculateDaysRemaining(membership.end_date!);
                                       if (daysRemaining === null) return 'Sin límite';
                                       if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
                                       if (daysRemaining === 0) return 'Vence hoy';
                                       return `${daysRemaining} días restantes`;
-                                    })()} 🇲🇽
+                                    })()}
                                   </Typography>
-                                  
-                                  {/* 🧪 BOTÓN DE DEBUG POR FILA CON ZONA MÉXICO */}
-                                  <Button
-                                    size="small"
-                                    onClick={() => debugMembership(membership)}
-                                    sx={{ 
-                                      fontSize: '0.6rem',
-                                      color: darkProTokens.info,
-                                      p: 0,
-                                      minWidth: 'auto',
-                                      mt: 0.5,
-                                      display: 'block'
-                                    }}
-                                  >
-                                    🔍 Debug 🇲🇽
-                                  </Button>
                                 </>
                               ) : (
                                 <Typography variant="caption" sx={{ 
@@ -3230,7 +3012,7 @@ const createTimestampForDB = useCallback((): string => {
                                     color: darkProTokens.textSecondary,
                                     display: 'block'
                                   }}>
-                                    Total: {membership.total_frozen_days} días 🇲🇽
+                                    Total: {membership.total_frozen_days} días
                                   </Typography>
                                 </Box>
                               ) : membership.total_frozen_days > 0 ? (
@@ -3345,7 +3127,7 @@ const createTimestampForDB = useCallback((): string => {
         </CardContent>
       </Card>
 
-      {/* ✅ MENU DE ACCIONES CORREGIDO */}
+      {/* ✅ MENU DE ACCIONES */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -3378,7 +3160,7 @@ const createTimestampForDB = useCallback((): string => {
                   )}
                 </ListItemIcon>
                 <ListItemText>
-                  {freezeLoading ? 'Congelando...' : '🧊 Congelar Membresía (México 🇲🇽)'}
+                  {freezeLoading ? 'Congelando...' : '🧊 Congelar Membresía'}
                 </ListItemText>
               </MenuItemComponent>
               
@@ -3417,14 +3199,14 @@ const createTimestampForDB = useCallback((): string => {
                 )}
               </ListItemIcon>
               <ListItemText>
-                {unfreezeLoading ? 'Reactivando...' : '🔄 Reactivar Membresía (México 🇲🇽)'}
+                {unfreezeLoading ? 'Reactivando...' : '🔄 Reactivar Membresía'}
               </ListItemText>
             </MenuItemComponent>
           )}
         </MenuList>
       </Menu>
 
-      {/* 🔥 DIALOG DE CONGELAMIENTO MASIVO CORREGIDO CON FECHAS MÉXICO */}
+      {/* ✅ DIALOG DE CONGELAMIENTO MASIVO SIMPLIFICADO */}
       <Dialog
         open={bulkDialogOpen}
         onClose={() => !bulkLoading && setBulkDialogOpen(false)}
@@ -3453,7 +3235,7 @@ const createTimestampForDB = useCallback((): string => {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {bulkOperation.mode === 'manual' ? <ManualIcon sx={{ fontSize: 40 }} /> : <AutoIcon sx={{ fontSize: 40 }} />}
-            {getBulkOperationTitle()} (Zona México 🇲🇽)
+            {getBulkOperationTitle()}
           </Box>
           <IconButton 
             onClick={() => setBulkDialogOpen(false)}
@@ -3467,7 +3249,6 @@ const createTimestampForDB = useCallback((): string => {
         <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
           {!bulkLoading ? (
             <Box>
-              {/* 🔥 ALERT CORREGIDO CON LÓGICA CLARA Y ZONA MÉXICO */}
               <Alert 
                 severity="warning"
                 sx={{
@@ -3479,7 +3260,7 @@ const createTimestampForDB = useCallback((): string => {
                 }}
               >
                 <Typography variant="body1">
-                  <strong>⚠️ Operación Masiva {bulkOperation.mode === 'manual' ? 'Manual' : 'Automática'} (Zona México 🇲🇽):</strong> Esta acción{' '}
+                  <strong>⚠️ Operación Masiva {bulkOperation.mode === 'manual' ? 'Manual' : 'Automática'}:</strong> Esta acción{' '}
                   {bulkOperation.action === 'freeze' ? 
                     `congelará ${bulkOperation.membershipIds.length} membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
                     `reactivará ${bulkOperation.membershipIds.length} membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
@@ -3494,11 +3275,10 @@ const createTimestampForDB = useCallback((): string => {
                       <br/><strong>🔄 Reactivación:</strong> Se agregarán automáticamente los días que estuvo congelada.
                     </>
                   )}
-                  <br/><strong>🇲🇽 Zona Horaria:</strong> Todos los cálculos usan la zona horaria de México.
                 </Typography>
               </Alert>
 
-              {/* ✅ CONFIGURACIÓN PARA CONGELAMIENTO MANUAL CON ZONA MÉXICO */}
+              {/* Configuración para congelamiento manual */}
               {bulkOperation.mode === 'manual' && bulkOperation.action === 'freeze' && (
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
@@ -3516,7 +3296,7 @@ const createTimestampForDB = useCallback((): string => {
                       gap: 2
                     }}>
                       <AccessTimeIcon />
-                      ⚙️ Configuración de Congelamiento Manual (Zona México 🇲🇽)
+                      ⚙️ Configuración de Congelamiento Manual
                     </Typography>
 
                     <Box sx={{ mb: 3 }}>
@@ -3584,63 +3364,17 @@ const createTimestampForDB = useCallback((): string => {
                       }}
                     >
                       <Typography variant="body2">
-                        <strong>💡 ¿Cómo funciona? (Zona México 🇲🇽)</strong><br/>
+                        <strong>💡 ¿Cómo funciona?</strong><br/>
                         • Las membresías se marcarán como "congeladas"<br/>
                         • Se agregarán <strong>{bulkOperation.freezeDays} días</strong> a la fecha de vencimiento<br/>
-                        • Los días se registrarán en el historial de congelamiento<br/>
-                        • 🇲🇽 <strong>Todos los cálculos usan la zona horaria de México</strong>
+                        • Los días se registrarán en el historial de congelamiento
                       </Typography>
                     </Alert>
                   </CardContent>
                 </Card>
               )}
 
-              {/* 🔥 CONFIGURACIÓN PARA REACTIVACIÓN CON ZONA MÉXICO */}
-              {bulkOperation.action === 'unfreeze' && (
-                <Card sx={{
-                  background: `${darkProTokens.success}10`,
-                  border: `1px solid ${darkProTokens.success}30`,
-                  borderRadius: 3,
-                  mb: 3
-                }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.success,
-                      fontWeight: 700,
-                      mb: 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2
-                    }}>
-                      <PlayArrowIcon />
-                      🔄 Configuración de Reactivación {bulkOperation.mode === 'manual' ? 'Manual' : 'Automática'} (Zona México 🇲🇽)
-                    </Typography>
-
-                    <Alert 
-                      severity="success"
-                      sx={{
-                        backgroundColor: `${darkProTokens.success}05`,
-                        color: darkProTokens.textPrimary,
-                        border: `1px solid ${darkProTokens.success}20`,
-                        '& .MuiAlert-icon': { color: darkProTokens.success }
-                      }}
-                    >
-                      <Typography variant="body2">
-                        <strong>🔄 ¡Lógica de Reactivación! (Zona México 🇲🇽)</strong><br/>
-                        • Las membresías se marcarán como "activas"<br/>
-                        • {bulkOperation.mode === 'manual' ? 
-                            '⚙️ Modo Manual: NO se agregarán días adicionales' : 
-                            '🤖 Modo Automático: Se agregarán automáticamente los días que estuvo congelada'
-                          }<br/>
-                        • Se registrará la fecha de reactivación en el historial<br/>
-                        • 🇲🇽 <strong>Todos los cálculos usan la zona horaria de México</strong>
-                      </Typography>
-                    </Alert>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* ✅ VISTA PREVIA DE CAMBIOS CORREGIDA CON ZONA MÉXICO */}
+              {/* Vista previa de cambios */}
               {showPreview && bulkPreview.length > 0 && (
                 <Card sx={{
                   background: `${darkProTokens.success}10`,
@@ -3658,15 +3392,14 @@ const createTimestampForDB = useCallback((): string => {
                       gap: 2
                     }}>
                       <VisibilityIcon />
-                      👁️ Vista Previa de Cambios (Zona México 🇲🇽)
+                      👁️ Vista Previa de Cambios
                     </Typography>
 
                     <Typography variant="body2" sx={{ 
                       color: darkProTokens.textSecondary,
                       mb: 2
                     }}>
-                      Se procesarán {bulkPreview.length} membresías para {bulkOperation.action === 'freeze' ? 'congelamiento' : 'reactivación'}. 
-                      Todas las fechas calculadas con zona horaria de México:
+                      Se procesarán {bulkPreview.length} membresías para {bulkOperation.action === 'freeze' ? 'congelamiento' : 'reactivación'}:
                     </Typography>
 
                     <Box sx={{
@@ -3707,14 +3440,14 @@ const createTimestampForDB = useCallback((): string => {
                                 <Typography variant="body2" sx={{ 
                                   color: darkProTokens.textSecondary
                                 }}>
-                                  📅 Actual: {preview.currentEndDate ? formatDisplayDate(preview.currentEndDate) : 'Sin fecha'} 🇲🇽
+                                  📅 Actual: {preview.currentEndDate ? formatDisplayDate(preview.currentEndDate) : 'Sin fecha'}
                                 </Typography>
                                 {preview.newEndDate && preview.newEndDate !== preview.currentEndDate && (
                                   <Typography variant="body2" sx={{ 
                                     color: darkProTokens.success,
                                     fontWeight: 600
                                   }}>
-                                    📅 Nueva: {formatDisplayDate(preview.newEndDate)} 🇲🇽
+                                    📅 Nueva: {formatDisplayDate(preview.newEndDate)}
                                     {preview.daysToAdd > 0 && (
                                       <span style={{ color: darkProTokens.info }}>
                                         {' '}(+{preview.daysToAdd} días)
@@ -3742,7 +3475,7 @@ const createTimestampForDB = useCallback((): string => {
                             color: darkProTokens.textSecondary,
                             fontStyle: 'italic'
                           }}>
-                            ... y {bulkPreview.length - 5} membresías más (todas con fechas México 🇲🇽)
+                            ... y {bulkPreview.length - 5} membresías más
                           </Typography>
                         </Box>
                       )}
@@ -3751,74 +3484,21 @@ const createTimestampForDB = useCallback((): string => {
                 </Card>
               )}
 
-              {/* Lista de Membresías Seleccionadas */}
-              <Typography variant="h6" sx={{ 
-                color: darkProTokens.textPrimary,
-                mb: 2
-              }}>
-                Membresías seleccionadas ({bulkOperation.membershipIds.length}):
-              </Typography>
-
-              <Box sx={{
-                maxHeight: 200,
-                overflow: 'auto',
-                border: `1px solid ${darkProTokens.grayDark}`,
-                borderRadius: 2,
-                p: 2
-              }}>
-                {bulkOperation.membershipIds.map(id => {
-                  const membership = memberships.find(m => m.id === id);
-                  return membership ? (
-                    <Box key={id} sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      py: 1,
-                      borderBottom: `1px solid ${darkProTokens.grayDark}40`
-                    }}>
-                      <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                          {membership.user_name}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          {membership.plan_name} • Vence: {membership.end_date ? formatDisplayDate(membership.end_date) + ' 🇲🇽' : 'Sin fecha'}
-                        </Typography>
-                      </Box>
-                      <Chip 
-                        label={membership.status.toUpperCase()}
-                        size="small"
-                        sx={{
-                          backgroundColor: getStatusColor(membership.status),
-                          color: darkProTokens.textPrimary,
-                          fontWeight: 600
-                        }}
-                      />
-                    </Box>
-                  ) : null;
-                })}
-              </Box>
-
-              {/* ✅ MOTIVO CORREGIDO CON ZONA MÉXICO */}
+              {/* Motivo */}
               <TextField
                 fullWidth
-                label="Motivo (opcional) - Zona México 🇲🇽"
+                label="Motivo (opcional)"
                 multiline
                 rows={3}
                 value={bulkOperation.reason || ''}
                 onChange={(e) => setBulkOperation(prev => ({ ...prev, reason: e.target.value }))}
-                placeholder={`Motivo de la ${bulkOperation.action === 'freeze' ? 'congelación' : 'reactivación'} masiva (fechas con zona México)...`}
+                placeholder={`Motivo de la ${bulkOperation.action === 'freeze' ? 'congelación' : 'reactivación'} masiva...`}
                 sx={{ mt: 3 }}
                 InputProps={{
                   sx: {
                     color: darkProTokens.textPrimary,
                     '& .MuiOutlinedInput-notchedOutline': {
                       borderColor: `${bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}30`
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
                     }
                   }
                 }}
@@ -3832,13 +3512,12 @@ const createTimestampForDB = useCallback((): string => {
             </Box>
           ) : (
             <Box>
-              {/* ✅ LOADING STATE CORREGIDO CON ZONA MÉXICO */}
               <Typography variant="h6" sx={{ 
                 color: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success,
                 mb: 3,
                 textAlign: 'center'
               }}>
-                {bulkOperation.action === 'freeze' ? 'Congelando' : 'Reactivando'} membresías{bulkOperation.mode === 'manual' ? ' manualmente' : ''} (Zona México 🇲🇽)...
+                {bulkOperation.action === 'freeze' ? 'Congelando' : 'Reactivando'} membresías{bulkOperation.mode === 'manual' ? ' manualmente' : ''}...
               </Typography>
 
               <LinearProgress 
@@ -3859,7 +3538,7 @@ const createTimestampForDB = useCallback((): string => {
                 textAlign: 'center',
                 mt: 2
               }}>
-                {bulkProgress}% completado • Procesando {bulkOperation.membershipIds.length} membresías (fechas México 🇲🇽)
+                {bulkProgress}% completado • Procesando {bulkOperation.membershipIds.length} membresías
               </Typography>
 
               {bulkResults.success > 0 || bulkResults.failed > 0 ? (
@@ -3980,7 +3659,7 @@ const createTimestampForDB = useCallback((): string => {
               {bulkOperation.action === 'freeze' ? 
                 `🧊 Congelar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
                 `🔄 Reactivar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
-              } (México 🇲🇽)
+              }
               {bulkOperation.mode === 'manual' && bulkOperation.action === 'freeze' && bulkOperation.freezeDays && (
                 <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>
                   {' '}({bulkOperation.freezeDays} días)
@@ -3991,7 +3670,7 @@ const createTimestampForDB = useCallback((): string => {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL DE DETALLES COMPLETO CON FECHAS MÉXICO */}
+      {/* ✅ MODAL DE DETALLES SIMPLIFICADO */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
@@ -4020,7 +3699,7 @@ const createTimestampForDB = useCallback((): string => {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <VisibilityIcon sx={{ fontSize: 40 }} />
-            Vista Detallada de Membresía (Zona México 🇲🇽)
+            Vista Detallada de Membresía
           </Box>
           <IconButton 
             onClick={() => setDetailsDialogOpen(false)}
@@ -4107,17 +3786,6 @@ const createTimestampForDB = useCallback((): string => {
                             }}
                           />
                         )}
-                        <Chip 
-                          label="🇲🇽 ZONA MÉXICO" 
-                          sx={{
-                            backgroundColor: `${darkProTokens.primary}30`,
-                            color: darkProTokens.primary,
-                            fontWeight: 700,
-                            fontSize: '1rem',
-                            px: 2,
-                            py: 1
-                          }}
-                        />
                       </Box>
                     </Box>
                     <Box sx={{ textAlign: 'right' }}>
@@ -4193,7 +3861,7 @@ const createTimestampForDB = useCallback((): string => {
                   </Card>
                 </Grid>
 
-                {/* Fechas y Vigencia CON ZONA MÉXICO */}
+                {/* Fechas y Vigencia */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Card sx={{
                     background: `${darkProTokens.success}10`,
@@ -4211,7 +3879,7 @@ const createTimestampForDB = useCallback((): string => {
                         gap: 2
                       }}>
                         <CalendarTodayIcon />
-                        📅 Fechas y Vigencia (Zona México 🇲🇽)
+                        📅 Fechas y Vigencia
                       </Typography>
 
                       <Stack spacing={2}>
@@ -4220,7 +3888,7 @@ const createTimestampForDB = useCallback((): string => {
                             Fecha de Inicio:
                           </Typography>
                           <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                            {formatDisplayDate(selectedMembership.start_date)} 🇲🇽
+                            {formatDisplayDate(selectedMembership.start_date)}
                           </Typography>
                         </Box>
 
@@ -4232,14 +3900,14 @@ const createTimestampForDB = useCallback((): string => {
                             color: selectedMembership.end_date ? darkProTokens.textPrimary : darkProTokens.textSecondary,
                             fontWeight: 700 
                           }}>
-                            {selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) + ' 🇲🇽' : 'Sin vencimiento'}
+                            {selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) : 'Sin vencimiento'}
                           </Typography>
                         </Box>
 
                         {selectedMembership.end_date && (
                           <Box>
                             <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Días Restantes (Calculado con Zona México):
+                              Días Restantes:
                             </Typography>
                             <Typography variant="h6" sx={{ 
                               color: (() => {
@@ -4257,25 +3925,16 @@ const createTimestampForDB = useCallback((): string => {
                                 if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
                                 if (daysRemaining === 0) return 'Vence hoy';
                                 return `${daysRemaining} días restantes`;
-                              })()} 🇲🇽
+                              })()}
                             </Typography>
                           </Box>
                         )}
-
-                        <Box>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            Fecha Actual del Sistema (México):
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                            {formatDisplayDate(getMexicoCurrentDate())} 🇲🇽
-                          </Typography>
-                        </Box>
                       </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
 
-                {/* Historial de Congelamiento CON ZONA MÉXICO */}
+                {/* Historial de Congelamiento */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Card sx={{
                     background: `${darkProTokens.info}10`,
@@ -4293,7 +3952,7 @@ const createTimestampForDB = useCallback((): string => {
                         gap: 2
                       }}>
                         <AcUnitIcon />
-                        🧊 Historial de Congelamiento (Zona México 🇲🇽)
+                        🧊 Historial de Congelamiento
                       </Typography>
 
                       <Stack spacing={2}>
@@ -4312,11 +3971,10 @@ const createTimestampForDB = useCallback((): string => {
                         {selectedMembership.status === 'frozen' && selectedMembership.freeze_date && (
                           <Box>
                             <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Congelada desde (Zona México):
+                              Congelada desde:
                             </Typography>
                             <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                                                          }}>
-                              {formatDisplayDate(selectedMembership.freeze_date)} ({getCurrentFrozenDays(selectedMembership.freeze_date)} días) 🇲🇽
+                              {formatDisplayDate(selectedMembership.freeze_date)} ({getCurrentFrozenDays(selectedMembership.freeze_date)} días)
                             </Typography>
                           </Box>
                         )}
@@ -4326,17 +3984,17 @@ const createTimestampForDB = useCallback((): string => {
                             Total de Días Congelados Históricos:
                           </Typography>
                           <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
-                            {selectedMembership.total_frozen_days || 0} días 🇲🇽
+                            {selectedMembership.total_frozen_days || 0} días
                           </Typography>
                         </Box>
 
                         {selectedMembership.unfreeze_date && (
                           <Box>
                             <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Última Reactivación (Zona México):
+                              Última Reactivación:
                             </Typography>
                             <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                              {formatDisplayDate(selectedMembership.unfreeze_date)} 🇲🇽
+                              {formatDisplayDate(selectedMembership.unfreeze_date)}
                             </Typography>
                           </Box>
                         )}
@@ -4345,7 +4003,7 @@ const createTimestampForDB = useCallback((): string => {
                   </Card>
                 </Grid>
 
-                {/* Fechas del Sistema CON ZONA MÉXICO */}
+                {/* Fechas del Sistema */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Card sx={{
                     background: `${darkProTokens.grayDark}10`,
@@ -4363,7 +4021,7 @@ const createTimestampForDB = useCallback((): string => {
                         gap: 2
                       }}>
                         <TimerIcon />
-                        ⏰ Fechas del Sistema (Zona México 🇲🇽)
+                        ⏰ Fechas del Sistema
                       </Typography>
 
                       <Stack spacing={2}>
@@ -4372,7 +4030,7 @@ const createTimestampForDB = useCallback((): string => {
                             Fecha de Creación:
                           </Typography>
                           <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            {formatTimestampForDisplay(selectedMembership.created_at)} 🇲🇽
+                            {formatTimestampForDisplay(selectedMembership.created_at)}
                           </Typography>
                         </Box>
 
@@ -4381,25 +4039,7 @@ const createTimestampForDB = useCallback((): string => {
                             Última Actualización:
                           </Typography>
                           <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            {formatTimestampForDisplay(selectedMembership.updated_at)} 🇲🇽
-                          </Typography>
-                        </Box>
-
-                        <Box>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            Fecha Actual del Sistema (México):
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                            {formatDisplayDate(getMexicoCurrentDate())} 🇲🇽
-                          </Typography>
-                        </Box>
-
-                        <Box>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            Usuario Actual del Sistema:
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                            👤 luishdz04
+                            {formatTimestampForDisplay(selectedMembership.updated_at)}
                           </Typography>
                         </Box>
                       </Stack>
@@ -4456,7 +4096,7 @@ const createTimestampForDB = useCallback((): string => {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL DE EDICIÓN OPTIMIZADO CON ZONA MÉXICO */}
+      {/* ✅ MODAL DE EDICIÓN OPTIMIZADO */}
       {OptimizedEditModal}
 
       {/* ✅ ESTILOS CSS DARK PRO */}
