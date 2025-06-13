@@ -344,11 +344,9 @@ export default function RegistrarMembresiaPage() {
   }, [getMexicoDate, formatDateForDB]);
 
 // ✅ FUNCIÓN CORREGIDA PARA GUARDAR CON ZONA MÉXICO:
+// ✅ BUENO (como PaymentDialog)
 const createTimestampForDB = useCallback((): string => {
-  const now = new Date();
-  // ✅ RESTAR 6 HORAS PARA ZONA MÉXICO ANTES DE GUARDAR
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return mexicoTime.toISOString();
+  return new Date().toISOString(); // ← UTC PURO para BD
 }, []);
 
   // ✅ FUNCIÓN CRÍTICA: AGREGAR PERÍODOS REALES
