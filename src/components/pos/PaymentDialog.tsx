@@ -508,7 +508,7 @@ export default function PaymentDialog({
       finalTotalAmount: newFinalAmount,
       changeAmount: newChangeAmount
     };
-  }, [
+    }, [
     totals?.total,
     formData.paymentMethod,
     isMixedPayment,
@@ -516,6 +516,13 @@ export default function PaymentDialog({
     calculateCommission,
     cashReceived
   ]);
+
+  // ✅ CREAR TIMESTAMP MÉXICO - MOVER AQUÍ (FUERA DE FUNCIONES)
+  const createTimestampForDB = useCallback((): string => {
+    const now = new Date();
+    const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+    return mexicoTime.toISOString();
+  }, []);
 
   // ✅ VALIDAR VENTA - MEMOIZADO Y OPTIMIZADO
   const validateSale = useCallback((): boolean => {
@@ -638,14 +645,8 @@ export default function PaymentDialog({
         totalPaidAmount = totals.total + totalCommissionAmount;
       }
 
-     // ✅ USAR HORA MÉXICO PARA BD (CONSISTENTE CON MEMBRESÍAS)
-const createTimestampForDB = useCallback((): string => {
-  const now = new Date();
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return mexicoTime.toISOString();
-}, []);
-
-const nowUTC = createTimestampForDB();
+      // ✅ USAR FUNCIÓN YA DEFINIDA ARRIBA
+      const nowUTC = createTimestampForDB();
 
       const saleData = {
         sale_number: saleNumber,
@@ -685,7 +686,7 @@ const nowUTC = createTimestampForDB();
         .single();
 
       if (saleError) throw saleError;
-
+      
       const saleItems = cart.map(item => ({
         sale_id: sale.id,
         product_id: item.product.id,
