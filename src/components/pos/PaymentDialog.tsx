@@ -647,7 +647,6 @@ export default function PaymentDialog({
         commission_amount: totalCommissionAmount,
         custom_commission_rate: customCommissionRate,
         skip_inscription: false,
-        payment_date: new Date().toISOString(),
         notes: formData.notes.trim() || null,
         receipt_printed: formData.printReceipt,
         email_sent: formData.sendEmail,
