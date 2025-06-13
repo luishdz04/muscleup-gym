@@ -316,20 +316,14 @@ export default function PaymentDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS ESTABLES CON ZONA HORARIA MÉXICO
-  const getMexicoDate = useCallback(() => {
-    const now = new Date();
-    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
-  }, []);
+// ✅ FUNCIONES SIMPLIFICADAS - SIN CONVERSIONES PROBLEMÁTICAS
+const getMexicoDate = useCallback(() => {
+  return new Date();
+}, []);
 
-  const getMexicoDateString = useCallback(() => {
-    const mexicoDate = getMexicoDate();
-    const year = mexicoDate.getFullYear();
-    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = mexicoDate.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }, [getMexicoDate]);
+const getMexicoDateString = useCallback(() => {
+  return new Date().toISOString().split('T')[0];
+}, []);
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -338,17 +332,16 @@ export default function PaymentDialog({
     }).format(price);
   }, []);
 
-  const formatMexicoDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Monterrey',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }, []);
+const formatMexicoDate = useCallback((dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('es-MX', {
+    day: '2-digit',
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}, []);
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
@@ -517,12 +510,10 @@ export default function PaymentDialog({
     cashReceived
   ]);
 
-  // ✅ CREAR TIMESTAMP MÉXICO - MOVER AQUÍ (FUERA DE FUNCIONES)
-  const createTimestampForDB = useCallback((): string => {
-    const now = new Date();
-    const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-    return mexicoTime.toISOString();
-  }, []);
+// ✅ CREAR TIMESTAMP SIMPLIFICADO
+const createTimestampForDB = useCallback((): string => {
+  return new Date().toISOString();
+}, []);
 
   // ✅ VALIDAR VENTA - MEMOIZADO Y OPTIMIZADO
   const validateSale = useCallback((): boolean => {
@@ -579,13 +570,12 @@ export default function PaymentDialog({
     formatPrice
   ]);
 
-  // ✅ GENERAR NÚMERO DE VENTA - CORREGIDO CON FECHA MÉXICO
-  const generateSaleNumber = useCallback(async (): Promise<string> => {
-    // ✅ USAR FECHA MÉXICO CONSISTENTE
-    const mexicoDate = getMexicoDate();
-    const year = mexicoDate.getFullYear().toString().slice(-2);
-    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = mexicoDate.getDate().toString().padStart(2, '0');
+// ✅ GENERAR NÚMERO DE VENTA SIMPLIFICADO
+const generateSaleNumber = useCallback(async (): Promise<string> => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const day = now.getDate().toString().padStart(2, '0');
     
     try {
       const { data, error } = await supabase
@@ -645,9 +635,9 @@ export default function PaymentDialog({
         totalPaidAmount = totals.total + totalCommissionAmount;
       }
 
-      // ✅ USAR FUNCIÓN YA DEFINIDA ARRIBA
-      const nowUTC = createTimestampForDB();
-
+// ✅ TIMESTAMP SIMPLIFICADO
+const nowUTC = new Date().toISOString();
+      
       const saleData = {
         sale_number: saleNumber,
         customer_id: customer?.id || null,
@@ -2783,7 +2773,7 @@ export default function PaymentDialog({
               </Typography>
               <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 4 }}>
                 {/* ✅ USAR FORMATEO MÉXICO CORREGIDO */}
-                Venta procesada el {formatMexicoDate(new Date().toISOString())}
+Venta procesada el {formatMexicoDate(new Date().toISOString())}
               </Typography>
 
               <Grid container spacing={3} justifyContent="center" sx={{ mb: 4 }}>
