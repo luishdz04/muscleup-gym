@@ -37,7 +37,8 @@ import {
   IconButton,
   Tooltip,
   LinearProgress,
-  Avatar
+  Avatar,
+  Snackbar
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { 
@@ -56,8 +57,6 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -188,7 +187,54 @@ export default function PaymentToLayawayDialog({
   // ✅ ESTADOS DE COMISIONES HÍBRIDOS
   const [paymentMethods, setPaymentMethods] = useState(defaultPaymentMethods);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  const formatMexicoDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
+
+  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDate(dateString);
+  }, [formatMexicoDate]);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
   // ✅ DATOS SEGUROS HÍBRIDOS
   const safeLayaway = useMemo(() => {
@@ -340,14 +386,14 @@ export default function PaymentToLayawayDialog({
     setCurrentPaymentReference('');
 
     showNotification('Pago agregado correctamente', 'success');
-  }, [currentPaymentMethod, currentPaymentAmount, currentPaymentReference, applyCommission, paymentDetails.length, paymentMethods]);
+  }, [currentPaymentMethod, currentPaymentAmount, currentPaymentReference, applyCommission, paymentDetails.length, paymentMethods, showNotification]);
 
   const removePaymentDetail = useCallback((id: string) => {
     setPaymentDetails(prev => prev.filter(p => p.id !== id));
     showNotification('Pago eliminado', 'info');
-  }, []);
+  }, [showNotification]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR PAGO
+  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR PAGO (CORREGIDA CON UTC)
   const processPayment = useCallback(async () => {
     if (!safeLayaway || !calculations) return;
 
@@ -361,6 +407,9 @@ export default function PaymentToLayawayDialog({
 
       const userId = userData.user.id;
 
+      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
+      const nowUTC = new Date().toISOString();
+
       // ✅ CREAR DETALLES DE PAGO
       if (isMixedPayment && paymentDetails.length > 0) {
         const paymentInserts = paymentDetails.map((payment, index) => ({
@@ -371,8 +420,8 @@ export default function PaymentToLayawayDialog({
           commission_rate: payment.commission,
           commission_amount: payment.commissionAmount,
           sequence_order: payment.sequence,
-          payment_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          payment_date: nowUTC, // ✅ UTC
+          created_at: nowUTC, // ✅ UTC
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: index + 1,
@@ -395,8 +444,8 @@ export default function PaymentToLayawayDialog({
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.totalCommission,
           sequence_order: 1,
-          payment_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          payment_date: nowUTC, // ✅ UTC
+          created_at: nowUTC, // ✅ UTC
           created_by: userId,
           is_partial_payment: !calculations.willComplete,
           payment_sequence: 1,
@@ -416,8 +465,8 @@ export default function PaymentToLayawayDialog({
       const updateData = {
         paid_amount: calculations.newPaidAmount,
         pending_amount: calculations.newPendingAmount,
-        last_payment_date: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        last_payment_date: nowUTC, // ✅ UTC
+        updated_at: nowUTC, // ✅ UTC
         ...(calculations.willComplete && {
           status: 'completed',
           payment_status: 'paid'
@@ -443,7 +492,7 @@ export default function PaymentToLayawayDialog({
           previous_paid_amount: safeLayaway.paid_amount,
           new_paid_amount: calculations.newPaidAmount,
           reason: calculations.willComplete ? 'Pago completado' : 'Abono recibido',
-          created_at: new Date().toISOString(),
+          created_at: nowUTC, // ✅ UTC
           created_by: userId
         }]);
 
@@ -461,7 +510,7 @@ export default function PaymentToLayawayDialog({
     } finally {
       setProcessing(false);
     }
-  }, [safeLayaway, calculations, supabase, isMixedPayment, paymentDetails, paymentMethod, paymentReference, applyCommission, paymentMethods, notes]);
+  }, [safeLayaway, calculations, supabase, isMixedPayment, paymentDetails, paymentMethod, paymentReference, applyCommission, paymentMethods, notes, showNotification]);
 
   // ✅ FUNCIÓN HÍBRIDA PARA CERRAR
   const handleClose = useCallback(() => {
@@ -509,6 +558,41 @@ export default function PaymentToLayawayDialog({
         }
       }}
     >
+      {/* SNACKBAR */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       <DialogTitle sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
