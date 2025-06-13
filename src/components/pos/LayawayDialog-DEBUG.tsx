@@ -257,14 +257,14 @@ export default function LayawayDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-// ✅ FUNCIONES SIMPLIFICADAS - SIN CONVERSIONES PROBLEMÁTICAS
-const getMexicoDate = useCallback(() => {
-  return new Date();
-}, []);
+  // ✅ FUNCIONES UTILITARIAS SIMPLIFICADAS - LA BD YA ESTÁ EN HORA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
+  }, []);
 
-const getMexicoDateString = useCallback(() => {
-  return new Date().toISOString().split('T')[0];
-}, []);
+  const getMexicoDateString = useCallback(() => {
+    return new Date().toISOString().split('T')[0];
+  }, []);
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -273,17 +273,17 @@ const getMexicoDateString = useCallback(() => {
     }).format(price);
   }, []);
 
-// ✅ FORMATEO SIMPLIFICADO SIN TIMEZONE PROBLEMÁTICA
-const formatMexicoDate = useCallback((dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleString('es-MX', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}, []);
+  // ✅ FORMATEO SIMPLIFICADO SIN TIMEZONE PROBLEMÁTICA
+  const formatMexicoDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
 
   // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD TEMPORAL
   const formatDate = useCallback((dateString: string) => {
@@ -385,7 +385,7 @@ const formatMexicoDate = useCallback((dateString: string) => {
 
     const finalDuration = useCustomDuration ? customDays : durationDays;
     
-    // ✅ USAR FECHA MÉXICO PARA CALCULAR EXPIRACIÓN
+    // ✅ USAR FECHA SIMPLIFICADA PARA CALCULAR EXPIRACIÓN
     const mexicoNow = getMexicoDate();
     const expirationDate = new Date(mexicoNow);
     expirationDate.setDate(expirationDate.getDate() + finalDuration);
@@ -404,7 +404,7 @@ const formatMexicoDate = useCallback((dateString: string) => {
       extensionFee: advancedConfig.extensionFee,
       maxExtensions: advancedConfig.maxExtensions
     };
-    }, [
+  }, [
     totals?.total, 
     depositPercentage, 
     paymentDetails,
@@ -416,12 +416,8 @@ const formatMexicoDate = useCallback((dateString: string) => {
     useCustomDuration,
     advancedConfig,
     paymentMethods,
+    getMexicoDate
   ]);
-
-// ✅ TIMESTAMP SIMPLIFICADO
-const createTimestampForDB = useCallback((): string => {
-  return new Date().toISOString();
-}, []);
 
   // 🚀 FUNCIONES OPTIMIZADAS PARA PAGOS MIXTOS
   const addPaymentDetail = useCallback(() => {
@@ -476,16 +472,16 @@ const createTimestampForDB = useCallback((): string => {
     }
   }, [paymentDetails, removePaymentDetail]);
 
-// ✅ GENERAR NÚMERO SIMPLIFICADO
-const generateLayawayNumber = useCallback(async (): Promise<string> => {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  const timestamp = Date.now().toString().slice(-6);
-  
-  return `AP${year}${month}${day}${timestamp}`;
-}, []);
+  // ✅ GENERAR NÚMERO SIMPLIFICADO
+  const generateLayawayNumber = useCallback(async (): Promise<string> => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const timestamp = Date.now().toString().slice(-6);
+    
+    return `AP${year}${month}${day}${timestamp}`;
+  }, []);
 
   // 🔥 FUNCIÓN HÍBRIDA PARA GENERAR NOTAS (CORREGIDO)
   const generateCleanNotes = useCallback(() => {
@@ -506,7 +502,7 @@ const generateLayawayNumber = useCallback(async (): Promise<string> => {
     return notes;
   }, [calculations, isMixedPayment, paymentDetails, advancedConfig, customerNotes, formatMexicoDate]);
 
-  // ✅ PROCESAMIENTO FINAL HÍBRIDO OPTIMIZADO (CORREGIDO)
+  // ✅ PROCESAMIENTO FINAL OPTIMIZADO (LA BD MANEJA TODOS LOS TIMESTAMPS AUTOMÁTICAMENTE)
   const handleCreateLayaway = useCallback(async () => {
     if (!customer) {
       showNotification('Se requiere un cliente para apartados', 'error');
@@ -529,10 +525,7 @@ const generateLayawayNumber = useCallback(async (): Promise<string> => {
       const userId = userData.user.id;
       const layawayNumber = await generateLayawayNumber();
 
-   // ✅ TIMESTAMP SIMPLIFICADO
-const nowUTC = new Date().toISOString();
-
-      // 🔥 DATOS FINALES OPTIMIZADOS
+      // 🔥 DATOS FINALES OPTIMIZADOS (LA BD MANEJA TODOS LOS TIMESTAMPS AUTOMÁTICAMENTE)
       const layawayData = {
         sale_number: layawayNumber,
         customer_id: customer.id,
@@ -548,7 +541,7 @@ const nowUTC = new Date().toISOString();
         paid_amount: calculations.baseDeposit,
         pending_amount: calculations.remainingAmount,
         deposit_percentage: depositPercentage,
-        layaway_expires_at: calculations.expirationDate.toISOString(), // ✅ UTC para BD
+        layaway_expires_at: calculations.expirationDate.toISOString(),
         status: 'pending',
         payment_status: 'partial',
         is_mixed_payment: isMixedPayment,
@@ -559,11 +552,10 @@ const nowUTC = new Date().toISOString();
         custom_commission_rate: null,
         skip_inscription: false,
         notes: generateCleanNotes(),
-        created_at: nowUTC, // ✅ HORA MÉXICO
-        updated_at: nowUTC, // ✅ HORA MÉXICO
         initial_payment: calculations.totalToCollect,
-        expiration_date: calculations.expirationDate.toISOString().split('T')[0], // ✅ Solo fecha
-        last_payment_date: nowUTC // ✅ HORA MÉXICO
+        expiration_date: calculations.expirationDate.toISOString().split('T')[0]
+        // ✅ TODOS los timestamps (created_at, updated_at, payment_date, last_payment_date) 
+        // se manejan automáticamente por la BD en hora México
       };
 
       // ✅ INSERTAR VENTA PRINCIPAL
@@ -586,8 +578,8 @@ const nowUTC = new Date().toISOString();
         total_price: item.total_price,
         discount_amount: item.discount_amount || 0,
         tax_rate: item.product.tax_rate || 16,
-        tax_amount: item.tax_amount || 0,
-        created_at: nowUTC // ✅ HORA MÉXICO
+        tax_amount: item.tax_amount || 0
+        // ✅ created_at se maneja automáticamente por la BD
       }));
 
       const { error: itemsError } = await supabase
@@ -607,12 +599,11 @@ const nowUTC = new Date().toISOString();
           commission_rate: payment.commission,
           commission_amount: payment.commissionAmount,
           sequence_order: payment.sequence,
-          payment_date: nowUTC, // ✅ HORA MÉXICO
-          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: index + 1,
           notes: `Pago mixto ${index + 1} de ${paymentDetails.length}`
+          // ✅ created_at y payment_date se manejan automáticamente por la BD
         }));
 
         const { error: paymentError } = await supabase
@@ -630,12 +621,11 @@ const nowUTC = new Date().toISOString();
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === currentPaymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.totalCommission,
           sequence_order: 1,
-          payment_date: nowUTC, // ✅ HORA MÉXICO
-          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: 1,
           notes: null
+          // ✅ created_at y payment_date se manejan automáticamente por la BD
         };
 
         const { error: paymentError } = await supabase
@@ -645,13 +635,12 @@ const nowUTC = new Date().toISOString();
         if (paymentError) throw paymentError;
       }
 
-      // ✅ ACTUALIZAR STOCK DE PRODUCTOS
+      // ✅ ACTUALIZAR STOCK DE PRODUCTOS (LA BD MANEJA updated_at AUTOMÁTICAMENTE)
       for (const item of cart) {
         const { error: stockError } = await supabase
           .from('products')
           .update({ 
             current_stock: item.product.current_stock - item.quantity,
-            updated_at: nowUTC, // ✅ HORA MÉXICO
             updated_by: userId
           })
           .eq('id', item.product.id);
@@ -672,8 +661,8 @@ const nowUTC = new Date().toISOString();
             reason: 'Apartado',
             reference_id: layaway.id,
             notes: `Apartado #${layaway.sale_number} - ${calculations.durationDays} días`,
-            created_at: nowUTC, // ✅ HORA MÉXICO
             created_by: userId
+            // ✅ created_at se maneja automáticamente por la BD
           }]);
       }
 
@@ -687,17 +676,16 @@ const nowUTC = new Date().toISOString();
           previous_paid_amount: 0,
           new_paid_amount: calculations.totalToCollect,
           reason: 'Apartado creado',
-          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId
+          // ✅ created_at se maneja automáticamente por la BD
         }]);
 
-      // ✅ ACTUALIZAR CUPÓN SI SE USÓ
+      // ✅ ACTUALIZAR CUPÓN SI SE USÓ (LA BD MANEJA updated_at AUTOMÁTICAMENTE)
       if (coupon) {
         await supabase
           .from('coupons')
           .update({ 
-            current_uses: (coupon.current_uses || 0) + 1,
-            updated_at: nowUTC // ✅ HORA MÉXICO
+            current_uses: (coupon.current_uses || 0) + 1
           })
           .eq('id', coupon.id);
       }
@@ -730,8 +718,9 @@ const nowUTC = new Date().toISOString();
     advancedConfig,
     paymentMethods,
     showNotification,
-    generateCleanNotes,
+    generateCleanNotes
   ]);
+
   // ✅ RESET HÍBRIDO AL CERRAR
   const handleClose = useCallback(() => {
     if (completed) {
@@ -1484,13 +1473,13 @@ const nowUTC = new Date().toISOString();
                                           border: `1px solid ${darkProTokens.grayDark}`
                                         }}>
                                           <Table size="small">
-                                                                                        <TableHead>
+                                            <TableHead>
                                               <TableRow>
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Método</TableCell>
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Monto</TableCell>
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Comisión</TableCell>
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Total</TableCell>
-                                                <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Acciones</TableCell>
+                                                                                                <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Acciones</TableCell>
                                               </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -1917,7 +1906,7 @@ const nowUTC = new Date().toISOString();
                                           🔄 Pagos Mixtos Configurados:
                                         </Typography>
                                         
-                                        {paymentDetails.map((payment, index) => (
+                                        {paymentDetails.map((payment, idx) => (
                                           <Box 
                                             key={payment.id} 
                                             sx={{ 
@@ -1929,7 +1918,7 @@ const nowUTC = new Date().toISOString();
                                             }}
                                           >
                                             <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                                              Pago #{index + 1}: {paymentMethods.find(m => m.value === payment.method)?.icon} {paymentMethods.find(m => m.value === payment.method)?.label}
+                                              Pago #{idx + 1}: {paymentMethods.find(m => m.value === payment.method)?.icon} {paymentMethods.find(m => m.value === payment.method)?.label}
                                             </Typography>
                                             <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                                               Monto: {formatPrice(payment.amount)}
@@ -2378,8 +2367,7 @@ const nowUTC = new Date().toISOString();
               </Typography>
               
               <Typography variant="h6" color={darkProTokens.textSecondary} sx={{ mb: 4 }}>
-                {/* ✅ USAR FORMATEO MÉXICO CORREGIDO */}
-Apartado guardado exitosamente - {formatMexicoDate(new Date().toISOString())}
+                Apartado guardado exitosamente - {formatMexicoDate(new Date().toISOString())}
               </Typography>
               
               <Grid container spacing={2} sx={{ maxWidth: 800, mx: 'auto', mb: 4 }}>
@@ -2502,3 +2490,4 @@ Apartado guardado exitosamente - {formatMexicoDate(new Date().toISOString())}
     </Dialog>
   );
 }
+                         
