@@ -786,25 +786,34 @@ export default function RegistrarMembresiaPage() {
     return true;
   };
 
-  // ✅ MANEJAR ENVÍO DEL FORMULARIO - ACTUALIZADO CON PERÍODOS REALES
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+const handleSubmit = async () => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      if (!selectedUser || !selectedPlan || !formData.paymentType) {
-        setError('Por favor complete todos los campos requeridos');
-        return;
-      }
+    // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
+    const { data: { session } } = await supabase.auth.getSession();
 
-      if (!formData.isMixedPayment && !formData.paymentMethod) {
-        setError('Seleccione un método de pago');
-        return;
-      }
+    if (!session) {
+      setError('No hay sesión activa');
+      return;
+    }
 
-      if (!validatePayment()) {
-        return;
-      }
+    console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
+
+    if (!selectedUser || !selectedPlan || !formData.paymentType) {
+      setError('Por favor complete todos los campos requeridos');
+      return;
+    }
+
+    if (!formData.isMixedPayment && !formData.paymentMethod) {
+      setError('Seleccione un método de pago');
+      return;
+    }
+
+    if (!validatePayment()) {
+      return;
+    }
 
       // ✅ FECHAS CORREGIDAS PARA RENOVACIÓN - CON PERÍODOS REALES
       let startDate: string;
@@ -877,39 +886,39 @@ export default function RegistrarMembresiaPage() {
         }
       }
 
-      // ✅ DATOS DE LA MEMBRESÍA CON TIMESTAMPS CORRECTOS
-      const membershipData = {
-        userid: selectedUser.id,
-        planid: selectedPlan.id,
-        payment_type: formData.paymentType,
-        amount_paid: finalAmount,
-        inscription_amount: inscriptionAmount,
-        start_date: startDate,                    // ✅ Ya está en formato correcto
-        end_date: endDate,                        // ✅ Ya está en formato correcto
-        status: 'active',
-        total_visits: totalVisits,
-        remaining_visits: remainingVisits,
-        payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
-        payment_reference: formData.paymentReference || null,
-        discount_amount: discountAmount,
-        coupon_code: appliedCoupon?.code || null,
-        subtotal: subtotal,
-        commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
-        commission_amount: commissionAmount,
-        payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
-        payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
-        is_mixed_payment: formData.isMixedPayment,
-        payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
-        is_renewal: formData.isRenewal,
-        skip_inscription: formData.skipInscription,
-        custom_commission_rate: formData.customCommissionRate,
-        notes: formData.notes || null,
-        created_at: createTimestampForDB(),       // ✅ UTC timestamp correcto
-        updated_at: createTimestampForDB(),       // ✅ UTC timestamp correcto
-        created_by: 'luishdz04' // ✅ Usuario actual del sistema
-      };
+     // ✅ DATOS DE LA MEMBRESÍA CON UUID CORRECTO
+    const membershipData = {
+      userid: selectedUser.id,
+      planid: selectedPlan.id,
+      payment_type: formData.paymentType,
+      amount_paid: finalAmount,
+      inscription_amount: inscriptionAmount,
+      start_date: startDate,
+      end_date: endDate,
+      status: 'active',
+      total_visits: totalVisits,
+      remaining_visits: remainingVisits,
+      payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
+      payment_reference: formData.paymentReference || null,
+      discount_amount: discountAmount,
+      coupon_code: appliedCoupon?.code || null,
+      subtotal: subtotal,
+      commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
+      commission_amount: commissionAmount,
+      payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
+      payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
+      is_mixed_payment: formData.isMixedPayment,
+      payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
+      is_renewal: formData.isRenewal,
+      skip_inscription: formData.skipInscription,
+      custom_commission_rate: formData.customCommissionRate,
+      notes: formData.notes || null,
+      created_at: createTimestampForDB(),
+      updated_at: createTimestampForDB(),
+      created_by: session.user.id // ✅ UUID correcto del usuario autenticado
+    };
 
-      console.log('💾 Guardando nueva membresía con períodos reales:', membershipData);
+    console.log('💾 Guardando nueva membresía:', membershipData);
 
       const { data: membership, error: membershipError } = await supabase
         .from('user_memberships')
@@ -960,13 +969,13 @@ export default function RegistrarMembresiaPage() {
         router.push('/dashboard/admin/membresias');
       }, 3000);
 
-    } catch (err: any) {
-      setError(`Error procesando venta: ${err.message}`);
-    } finally {
-      setLoading(false);
-      setConfirmDialogOpen(false);
-    }
-  };
+  } catch (err: any) {
+    setError(`Error procesando venta: ${err.message}`);
+  } finally {
+    setLoading(false);
+    setConfirmDialogOpen(false);
+  }
+};
 
   const steps = [
     { label: 'Cliente', description: 'Seleccionar cliente' },
