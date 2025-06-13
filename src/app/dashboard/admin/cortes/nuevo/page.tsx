@@ -34,19 +34,13 @@ import {
   Warning,
   Info,
   CheckCircle,
-  Savings,
-  ReceiptIcon,
-  SavingsIcon,
-  AssessmentIcon,
-  MonetizationOnIcon,
-  WarningIcon,
-  CheckCircleIcon
+  Savings
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
-import { darkProTokens } from '@/styles/theme/tokens';
+import { useTheme } from '@mui/material/styles';
 
 // 💡 TIPOS
 interface CutData {
@@ -103,6 +97,31 @@ interface Totals {
 }
 
 export default function NuevoCorteePage() {
+  const theme = useTheme();
+  
+  // ✅ CREAR TOKENS LOCALES BASADOS EN EL TEMA DE MUI
+  const darkProTokens = {
+    primary: theme.palette.primary.main,
+    secondary: theme.palette.secondary.main,
+    success: theme.palette.success.main,
+    warning: theme.palette.warning.main,
+    error: theme.palette.error.main,
+    info: theme.palette.info.main,
+    textPrimary: theme.palette.text.primary,
+    textSecondary: theme.palette.text.secondary,
+    textDisabled: theme.palette.text.disabled,
+    surfaceLevel1: theme.palette.mode === 'dark' ? '#121212' : '#ffffff',
+    surfaceLevel2: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
+    surfaceLevel3: theme.palette.mode === 'dark' ? '#2d2d2d' : '#eeeeee',
+    surfaceLevel4: theme.palette.mode === 'dark' ? '#3d3d3d' : '#e0e0e0',
+    grayDark: theme.palette.grey[800],
+    grayMedium: theme.palette.grey[600],
+    grayLight: theme.palette.grey[400],
+    roleAdmin: theme.palette.primary.main,
+    backgroundDefault: theme.palette.background.default,
+    backgroundPaper: theme.palette.background.paper
+  };
+
   // 🇲🇽 FUNCIONES PARA MANEJAR TIEMPO DE MÉXICO
   const createTimestampForDB = useCallback((): string => {
     const now = new Date();
@@ -1023,7 +1042,7 @@ export default function NuevoCorteePage() {
             </CardContent>
           </Card>
 
-          {/* 📊 TABLA DE DESGLOSE DETALLADO - NUEVA SECCIÓN */}
+          {/* 📊 TABLA DE DESGLOSE DETALLADO */}
           <Card sx={{
             background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
             border: `2px solid ${darkProTokens.roleAdmin}40`,
@@ -1119,10 +1138,7 @@ export default function NuevoCorteePage() {
                       <td style={{ 
                         color: darkProTokens.info, 
                         padding: '12px', 
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
+                        fontWeight: '600'
                       }}>
                         💼 Punto de Venta
                       </td>
@@ -1151,10 +1167,7 @@ export default function NuevoCorteePage() {
                       <td style={{ 
                         color: darkProTokens.warning, 
                         padding: '12px', 
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
+                        fontWeight: '600'
                       }}>
                         💰 Abonos / Apartados
                       </td>
@@ -1183,10 +1196,7 @@ export default function NuevoCorteePage() {
                       <td style={{ 
                         color: darkProTokens.success, 
                         padding: '12px', 
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
+                        fontWeight: '600'
                       }}>
                         🎫 Membresías
                       </td>
@@ -1228,10 +1238,7 @@ export default function NuevoCorteePage() {
                         color: darkProTokens.textPrimary, 
                         padding: '16px 12px', 
                         fontWeight: '700',
-                        fontSize: '1.1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
+                        fontSize: '1.1rem'
                       }}>
                         💰 TOTALES GENERALES
                       </td>
@@ -1299,10 +1306,7 @@ export default function NuevoCorteePage() {
                         <td style={{ 
                           color: darkProTokens.error, 
                           padding: '12px', 
-                          fontWeight: '600',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
+                          fontWeight: '600'
                         }}>
                           💸 Gastos del Día
                         </td>
@@ -1334,10 +1338,7 @@ export default function NuevoCorteePage() {
                         color: darkProTokens.success, 
                         padding: '16px 12px', 
                         fontWeight: '700',
-                        fontSize: '1.2rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
+                        fontSize: '1.2rem'
                       }}>
                         💚 BALANCE FINAL
                       </td>
@@ -1422,7 +1423,7 @@ export default function NuevoCorteePage() {
                     Total: {formatPrice(totals.final_balance)} | 
                     Transacciones: {totals.total_transactions}
                   </Typography>
-                </Grid>
+                                  </Grid>
                 <Grid item xs={12} md={4}>
                   <Button
                     fullWidth
@@ -1439,7 +1440,7 @@ export default function NuevoCorteePage() {
                       '&:hover': {
                         backgroundColor: darkProTokens.surfaceLevel1,
                       },
-                                            '&:disabled': {
+                      '&:disabled': {
                         backgroundColor: darkProTokens.grayMedium,
                         color: darkProTokens.textDisabled
                       }
