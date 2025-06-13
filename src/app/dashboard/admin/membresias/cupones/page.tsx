@@ -47,15 +47,34 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-// ✅ IMPORTS DE UTILIDADES DE FECHA CORREGIDAS
-import {
-  getMexicoToday,
-  formatDateForDisplay,
-  formatDateForDB,
-  createTimestampForDB,
-  getDaysBetweenMexicoDates,
-  isValidDateString
-} from '@/lib/utils/dateUtils';
+// ✅ FUNCIONES SIMPLIFICADAS - SIN DEPENDENCIAS EXTERNAS
+const getMexicoToday = () => new Date().toISOString().split('T')[0];
+
+const formatDateForDisplay = (dateString: string) => {
+  if (!dateString) return 'Sin fecha';
+  try {
+    const date = new Date(dateString + 'T12:00:00');
+    return date.toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (error) {
+    return 'Fecha inválida';
+  }
+};
+
+const getDaysBetweenMexicoDates = (startDate: string, endDate: string) => {
+  try {
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T00:00:00');
+    const diffTime = end.getTime() - start.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  } catch (error) {
+    return 0;
+  }
+};
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
@@ -135,7 +154,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
 
-// Interfaces
+// ✅ INTERFACES CORREGIDAS
 interface Coupon {
   id: string;
   code: string;
@@ -202,6 +221,21 @@ const discountTypeOptions = [
   { value: 'fixed', label: 'Monto Fijo', icon: '💰' }
 ];
 
+// ✅ HELPER FUNCTION PARA DÍAS RESTANTES
+const getDaysRemainingDisplay = (coupon: Coupon) => {
+  const daysRemaining = coupon.days_remaining;
+  
+  if (daysRemaining === null || daysRemaining === undefined || daysRemaining < 0) {
+    return null;
+  }
+  
+  return {
+    value: daysRemaining,
+    color: daysRemaining < 7 ? darkProTokens.warning : darkProTokens.success,
+    text: `${daysRemaining} días restantes`
+  };
+};
+
 export default function CuponesPage() {
   const router = useRouter();
   
@@ -248,7 +282,7 @@ export default function CuponesPage() {
   const [formLoading, setFormLoading] = useState(false);
   
   // Estado para el usuario actual
-const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   // Estados de estadísticas
   const [stats, setStats] = useState({
@@ -262,30 +296,30 @@ const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const supabase = createBrowserSupabaseClient();
 
- // Cargar usuario actual
-useEffect(() => {
-  const getCurrentUser = async () => {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error('Error obteniendo usuario:', error);
-        return;
+  // Cargar usuario actual
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Error obteniendo usuario:', error);
+          return;
+        }
+        if (user) {
+          setCurrentUserId(user.id);
+          console.log('Usuario actual obtenido:', user.id, 'Email:', user.email);
+        }
+      } catch (err) {
+        console.error('Error crítico obteniendo usuario:', err);
       }
-      if (user) {
-        setCurrentUserId(user.id);
-        console.log('Usuario actual obtenido:', user.id, 'Email:', user.email);
-      }
-    } catch (err) {
-      console.error('Error crítico obteniendo usuario:', err);
-    }
-  };
-  getCurrentUser();
-}, []);
+    };
+    getCurrentUser();
+  }, []);
 
-// Cargar datos iniciales
-useEffect(() => {
-  loadCoupons();
-}, []);
+  // Cargar datos iniciales
+  useEffect(() => {
+    loadCoupons();
+  }, []);
 
   // Aplicar filtros
   useEffect(() => {
@@ -394,7 +428,7 @@ useEffect(() => {
     setPage(0);
   };
 
-  // 💾 CREAR O EDITAR CUPÓN
+  // ✅ CREAR O EDITAR CUPÓN - VERSIÓN CORREGIDA SIN TIMESTAMPS MANUALES
   const handleSaveCoupon = async () => {
     setFormLoading(true);
     try {
@@ -419,11 +453,11 @@ useEffect(() => {
         return;
       }
 
-      // Datos para enviar
+      // ✅ DATOS PARA ENVIAR SIN TIMESTAMPS MANUALES
       const couponData = {
         ...formData,
-        code: formData.code.toUpperCase().trim(),
-        updated_at: createTimestampForDB()
+        code: formData.code.toUpperCase().trim()
+        // ✅ updated_at se maneja automáticamente por la BD
       };
 
       if (selectedCoupon) {
@@ -437,16 +471,14 @@ useEffect(() => {
         setSuccessMessage('Cupón actualizado exitosamente');
         setEditDialogOpen(false);
       } else {
-        // Crear nuevo cupón
-        const newCouponData = {
-          ...couponData,
-          created_at: createTimestampForDB(),
-          created_by: currentUserId // ✅ Usuario actual del sistema
-        };
-
+        // ✅ CREAR NUEVO CUPÓN SIN TIMESTAMPS MANUALES
         const { error } = await supabase
           .from('coupons')
-          .insert([newCouponData]);
+          .insert([{
+            ...couponData,
+            created_by: currentUserId
+            // ✅ created_at se maneja automáticamente por la BD
+          }]);
 
         if (error) throw error;
         setSuccessMessage('Cupón creado exitosamente');
@@ -488,14 +520,14 @@ useEffect(() => {
     }
   };
 
-  // ⚡ ALTERNAR ESTADO ACTIVO/INACTIVO
+  // ✅ ALTERNAR ESTADO ACTIVO/INACTIVO - VERSIÓN CORREGIDA
   const handleToggleActive = async (coupon: Coupon) => {
     try {
       const { error } = await supabase
         .from('coupons')
         .update({ 
-          is_active: !coupon.is_active,
-          updated_at: createTimestampForDB()
+          is_active: !coupon.is_active
+          // ✅ updated_at se maneja automáticamente por la BD
         })
         .eq('id', coupon.id);
 
@@ -663,7 +695,7 @@ useEffect(() => {
         </Alert>
       </Snackbar>
 
-      {/* ✅ HEADER ENTERPRISE CON DARK PRO SYSTEM */}
+      {/* Header Enterprise */}
       <Paper sx={{
         p: 4,
         mb: 4,
@@ -770,18 +802,25 @@ useEffect(() => {
           </Stack>
         </Box>
 
-        {/* ✅ ESTADÍSTICAS DASHBOARD CON DARK PRO SYSTEM */}
+        {/* Estadísticas Dashboard */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: `${darkProTokens.primary}10`,
+              background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
               border: `1px solid ${darkProTokens.primary}30`,
               borderRadius: 3,
               textAlign: 'center',
               p: 2
             }}>
-              <LocalOfferIcon sx={{ color: darkProTokens.primary, fontSize: 30, mb: 1 }} />
-              <Typography variant="h4" sx={{ color: darkProTokens.primary, fontWeight: 800 }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.primary, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <LocalOfferIcon />
                 {stats.total}
               </Typography>
               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
@@ -792,14 +831,21 @@ useEffect(() => {
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: `${darkProTokens.success}10`,
+              background: `linear-gradient(135deg, ${darkProTokens.success}20, ${darkProTokens.success}10)`,
               border: `1px solid ${darkProTokens.success}30`,
               borderRadius: 3,
               textAlign: 'center',
               p: 2
             }}>
-              <CheckCircleIcon sx={{ color: darkProTokens.success, fontSize: 30, mb: 1 }} />
-              <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 800 }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.success, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <CheckCircleIcon />
                 {stats.active}
               </Typography>
               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
@@ -810,14 +856,21 @@ useEffect(() => {
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: `${darkProTokens.error}10`,
+              background: `linear-gradient(135deg, ${darkProTokens.error}20, ${darkProTokens.error}10)`,
               border: `1px solid ${darkProTokens.error}30`,
               borderRadius: 3,
               textAlign: 'center',
               p: 2
             }}>
-              <AccessTimeIcon sx={{ color: darkProTokens.error, fontSize: 30, mb: 1 }} />
-              <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 800 }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.error, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <AccessTimeIcon />
                 {stats.expired}
               </Typography>
               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
@@ -828,14 +881,21 @@ useEffect(() => {
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: `${darkProTokens.info}10`,
+              background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
               border: `1px solid ${darkProTokens.info}30`,
               borderRadius: 3,
               textAlign: 'center',
               p: 2
             }}>
-              <TrendingUpIcon sx={{ color: darkProTokens.info, fontSize: 30, mb: 1 }} />
-              <Typography variant="h4" sx={{ color: darkProTokens.info, fontWeight: 800 }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.info, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <TrendingUpIcon />
                 {stats.totalUsages}
               </Typography>
               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
@@ -846,14 +906,21 @@ useEffect(() => {
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: `${darkProTokens.warning}10`,
+              background: `linear-gradient(135deg, ${darkProTokens.warning}20, ${darkProTokens.warning}10)`,
               border: `1px solid ${darkProTokens.warning}30`,
               borderRadius: 3,
               textAlign: 'center',
               p: 2
             }}>
-              <AttachMoneyIcon sx={{ color: darkProTokens.warning, fontSize: 30, mb: 1 }} />
-              <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 800 }}>
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.warning, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <AttachMoneyIcon />
                 {formatPrice(stats.totalDiscounts)}
               </Typography>
               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
@@ -864,14 +931,21 @@ useEffect(() => {
 
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
-              background: `${darkProTokens.roleModerator}10`,
-              border: `1px solid ${darkProTokens.roleModerator}30`,
+              background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
+              border: `1px solid ${darkProTokens.info}30`,
               borderRadius: 3,
               textAlign: 'center',
               p: 2
             }}>
-              <PercentIcon sx={{ color: darkProTokens.roleModerator, fontSize: 30, mb: 1 }} />
-              <Typography variant="h6" sx={{ color: darkProTokens.roleModerator, fontWeight: 800 }}>
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.info, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <PercentIcon />
                 {stats.averageDiscount.toFixed(1)}%
               </Typography>
               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
@@ -882,7 +956,7 @@ useEffect(() => {
         </Grid>
       </Paper>
 
-      {/* ✅ PANEL DE FILTROS CON DARK PRO SYSTEM */}
+      {/* Panel de Filtros */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}95, ${darkProTokens.surfaceLevel3}90)`,
         border: `1px solid ${darkProTokens.primary}20`,
@@ -1097,7 +1171,7 @@ useEffect(() => {
         </CardContent>
       </Card>
 
-      {/* ✅ TABLA DE CUPONES CON DARK PRO SYSTEM */}
+      {/* Tabla de Cupones */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
         border: `1px solid ${darkProTokens.primary}20`,
@@ -1108,8 +1182,8 @@ useEffect(() => {
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
               <CircularProgress 
-                sx={{ color: darkProTokens.primary }} 
                 size={60} 
+                sx={{ color: darkProTokens.primary }}
                 thickness={4}
               />
             </Box>
@@ -1119,7 +1193,7 @@ useEffect(() => {
                 color: darkProTokens.textSecondary,
                 mb: 2
               }}>
-                🎟️ No se encontraron cupones
+                📋 No se encontraron cupones
               </Typography>
               <Typography variant="body1" sx={{ 
                 color: darkProTokens.textSecondary
@@ -1133,25 +1207,25 @@ useEffect(() => {
                 <Table>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: `${darkProTokens.grayDark}30` }}>
-                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, borderBottom: `1px solid ${darkProTokens.primary}30` }}>
                         Código
                       </TableCell>
-                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, borderBottom: `1px solid ${darkProTokens.primary}30` }}>
                         Descripción
                       </TableCell>
-                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, borderBottom: `1px solid ${darkProTokens.primary}30` }}>
                         Descuento
                       </TableCell>
-                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, borderBottom: `1px solid ${darkProTokens.primary}30` }}>
                         Estado
                       </TableCell>
-                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, borderBottom: `1px solid ${darkProTokens.primary}30` }}>
                         Uso
                       </TableCell>
-                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, borderBottom: `1px solid ${darkProTokens.primary}30` }}>
                         Vigencia
                       </TableCell>
-                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, textAlign: 'center' }}>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, borderBottom: `1px solid ${darkProTokens.primary}30`, textAlign: 'center' }}>
                         Acciones
                       </TableCell>
                     </TableRow>
@@ -1161,16 +1235,19 @@ useEffect(() => {
                       .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                       .map((coupon) => {
                         const status = getCouponStatus(coupon);
+                        const daysDisplay = getDaysRemainingDisplay(coupon);
+                        
                         return (
                           <TableRow 
                             key={coupon.id}
                             sx={{ 
                               '&:hover': { 
                                 backgroundColor: `${darkProTokens.primary}05` 
-                              }
+                              },
+                              borderBottom: `1px solid ${darkProTokens.grayDark}40`
                             }}
                           >
-                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                            <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Typography variant="body1" sx={{ 
                                   fontWeight: 700,
@@ -1191,7 +1268,7 @@ useEffect(() => {
                               </Box>
                             </TableCell>
                             
-                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                            <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
                               <Typography variant="body1" sx={{ 
                                 maxWidth: 200,
                                 overflow: 'hidden',
@@ -1202,7 +1279,7 @@ useEffect(() => {
                               </Typography>
                             </TableCell>
                             
-                            <TableCell>
+                            <TableCell sx={{ borderBottom: 'none' }}>
                               <Box>
                                 <Typography variant="h6" sx={{ 
                                   color: darkProTokens.primary,
@@ -1218,7 +1295,7 @@ useEffect(() => {
                               </Box>
                             </TableCell>
                             
-                            <TableCell>
+                            <TableCell sx={{ borderBottom: 'none' }}>
                               <Chip 
                                 label={`${status.icon} ${status.label}`}
                                 sx={{
@@ -1229,22 +1306,22 @@ useEffect(() => {
                               />
                             </TableCell>
                             
-                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                            <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
                               <Box>
                                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
                                   {coupon.current_uses}{coupon.max_uses ? `/${coupon.max_uses}` : ''}
                                 </Typography>
                                 {coupon.max_uses && (
                                   <Typography variant="caption" sx={{ 
-                                    color: coupon.usage_percentage! > 80 ? darkProTokens.warning : darkProTokens.textSecondary
+                                    color: (coupon.usage_percentage || 0) > 80 ? darkProTokens.warning : darkProTokens.textSecondary
                                   }}>
-                                    {coupon.usage_percentage!.toFixed(1)}% usado
+                                    {(coupon.usage_percentage || 0).toFixed(1)}% usado
                                   </Typography>
                                 )}
                               </Box>
                             </TableCell>
                             
-                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                            <TableCell sx={{ color: darkProTokens.textPrimary, borderBottom: 'none' }}>
                               <Box>
                                 <Typography variant="body2">
                                   📅 {formatDateForDisplay(coupon.start_date)}
@@ -1252,17 +1329,15 @@ useEffect(() => {
                                 <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                                   → {formatDateForDisplay(coupon.end_date)}
                                 </Typography>
-                                {coupon.days_remaining !== null && coupon.days_remaining !== undefined && coupon.days_remaining >= 0 && (
-                                  <Typography variant="caption" sx={{ 
-                                    color: coupon.days_remaining < 7 ? darkProTokens.warning : darkProTokens.success
-                                  }}>
-                                    {coupon.days_remaining} días restantes
+                                {daysDisplay && (
+                                  <Typography variant="caption" sx={{ color: daysDisplay.color }}>
+                                    {daysDisplay.text}
                                   </Typography>
                                 )}
                               </Box>
                             </TableCell>
                             
-                            <TableCell sx={{ textAlign: 'center' }}>
+                            <TableCell sx={{ borderBottom: 'none', textAlign: 'center' }}>
                               <Stack direction="row" spacing={1} justifyContent="center">
                                 <Tooltip title="Ver Detalles">
                                   <IconButton
@@ -1336,7 +1411,7 @@ useEffect(() => {
         </CardContent>
       </Card>
 
-      {/* ✅ MENU DE ACCIONES CON DARK PRO SYSTEM */}
+      {/* Menu de Acciones */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -1401,7 +1476,7 @@ useEffect(() => {
         </MenuList>
       </Menu>
 
-      {/* 🆕 MODAL CREAR CUPÓN - CON DARK PRO SYSTEM */}
+      {/* 🆕 MODAL CREAR CUPÓN */}
       <Dialog 
         open={createDialogOpen} 
         onClose={() => !formLoading && setCreateDialogOpen(false)}
@@ -1519,7 +1594,7 @@ useEffect(() => {
                         Monto Fijo
                       </Box>
                     </MenuItem>
-                  </Select>
+                                    </Select>
                 </FormControl>
               </Grid>
 
@@ -1604,7 +1679,7 @@ useEffect(() => {
                   label="Límite de Usos"
                   type="number"
                   value={formData.max_uses || ''}
-                                    onChange={(e) => setFormData(prev => ({ 
+                  onChange={(e) => setFormData(prev => ({ 
                     ...prev, 
                     max_uses: e.target.value ? parseInt(e.target.value) : null 
                   }))}
@@ -1866,8 +1941,8 @@ useEffect(() => {
                 transform: 'translateY(-1px)'
               },
               '&:disabled': {
-                background: darkProTokens.grayMedium,
-                color: darkProTokens.textDisabled
+                background: `${darkProTokens.grayMedium}60`,
+                color: `${darkProTokens.textSecondary}60`
               }
             }}
           >
@@ -1876,7 +1951,7 @@ useEffect(() => {
         </DialogActions>
       </Dialog>
 
-      {/* ✏️ MODAL EDITAR CUPÓN - CON DARK PRO SYSTEM */}
+      {/* ✏️ MODAL EDITAR CUPÓN */}
       <Dialog 
         open={editDialogOpen} 
         onClose={() => !formLoading && setEditDialogOpen(false)}
@@ -1982,9 +2057,9 @@ useEffect(() => {
                 </Grid>
               </Card>
 
-              {/* Formulario de edición (mismo que crear pero reutilizado) */}
+              {/* Formulario de edición (mismo que crear) */}
               <Grid container spacing={3}>
-                {/* Código */}
+                {/* Los mismos campos que en crear cupón */}
                 <Grid size={6}>
                   <TextField
                     fullWidth
@@ -2019,7 +2094,6 @@ useEffect(() => {
                   />
                 </Grid>
 
-                {/* Tipo de Descuento */}
                 <Grid size={6}>
                   <FormControl fullWidth>
                     <InputLabel sx={{ 
@@ -2063,7 +2137,7 @@ useEffect(() => {
                   </FormControl>
                 </Grid>
 
-                {/* Valor del Descuento */}
+                {/* Resto de campos similares */}
                 <Grid size={6}>
                   <TextField
                     fullWidth
@@ -2084,12 +2158,6 @@ useEffect(() => {
                         color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
@@ -2102,7 +2170,6 @@ useEffect(() => {
                   />
                 </Grid>
 
-                {/* Monto Mínimo */}
                 <Grid size={6}>
                   <TextField
                     fullWidth
@@ -2119,12 +2186,6 @@ useEffect(() => {
                         color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
@@ -2137,7 +2198,6 @@ useEffect(() => {
                   />
                 </Grid>
 
-                {/* Límite de Usos */}
                 <Grid size={6}>
                   <TextField
                     fullWidth
@@ -2154,12 +2214,6 @@ useEffect(() => {
                         color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
@@ -2172,7 +2226,6 @@ useEffect(() => {
                   />
                 </Grid>
 
-                {/* Fecha de Inicio */}
                 <Grid size={6}>
                   <TextField
                     fullWidth
@@ -2192,19 +2245,12 @@ useEffect(() => {
                         color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
                   />
                 </Grid>
 
-                {/* Fecha de Fin */}
                 <Grid size={6}>
                   <TextField
                     fullWidth
@@ -2224,19 +2270,12 @@ useEffect(() => {
                         color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
                   />
                 </Grid>
 
-                {/* Descripción */}
                 <Grid size={12}>
                   <TextField
                     fullWidth
@@ -2250,12 +2289,6 @@ useEffect(() => {
                         color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
@@ -2268,7 +2301,6 @@ useEffect(() => {
                   />
                 </Grid>
 
-                {/* Estado Activo */}
                 <Grid size={12}>
                   <FormControlLabel
                     control={
@@ -2350,8 +2382,8 @@ useEffect(() => {
                 transform: 'translateY(-1px)'
               },
               '&:disabled': {
-                background: darkProTokens.grayMedium,
-                color: darkProTokens.textDisabled
+                background: `${darkProTokens.grayMedium}60`,
+                color: `${darkProTokens.textSecondary}60`
               }
             }}
           >
@@ -2360,7 +2392,7 @@ useEffect(() => {
         </DialogActions>
       </Dialog>
 
-      {/* 👁️ MODAL DE DETALLES - CON DARK PRO SYSTEM */}
+      {/* 👁️ MODAL DE DETALLES SIMPLIFICADO */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
@@ -2462,307 +2494,161 @@ useEffect(() => {
                     </Button>
                     
                     <Button
-                      startIcon={<QrCodeIcon />}
-                      sx={{
-                        background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, #7b1fa2)`,
-                        color: darkProTokens.textPrimary,
-                        fontWeight: 600
+                      startIcon={<EditIcon />}
+                      onClick={() => {
+                        initializeEdit(selectedCoupon);
+                        setDetailsDialogOpen(false);
                       }}
-                    >
-                      Generar QR
-                    </Button>
-                    
-                    <Button
-                      startIcon={<ShareIcon />}
                       sx={{
                         background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
                         color: darkProTokens.background,
                         fontWeight: 600
                       }}
                     >
-                      Compartir
+                      Editar
                     </Button>
                   </Box>
                 </Card>
               </Grid>
 
-              {/* 📊 Estadísticas de Uso */}
+              {/* Más información en columnas */}
               <Grid size={6}>
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
                   border: `1px solid ${darkProTokens.info}30`,
-                  borderRadius: 3
+                  borderRadius: 3,
+                  p: 3
                 }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.info,
-                      fontWeight: 700,
-                      mb: 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2
-                    }}>
-                      <TrendingUpIcon />
-                      Estadísticas de Uso
-                    </Typography>
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.info,
+                    fontWeight: 700,
+                    mb: 2
+                  }}>
+                    📊 Estadísticas de Uso
+                  </Typography>
+                  
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Usos actuales:
+                      </Typography>
+                      <Typography variant="h5" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                        {selectedCoupon.current_uses}
+                      </Typography>
+                    </Box>
                     
-                    <Grid container spacing={2}>
-                      <Grid size={6}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="h4" sx={{ 
-                            color: darkProTokens.info,
-                            fontWeight: 800
-                          }}>
-                            {selectedCoupon.current_uses}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            Usos Totales
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      
-                      <Grid size={6}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="h4" sx={{ 
-                            color: selectedCoupon.max_uses ? darkProTokens.textPrimary : darkProTokens.success,
-                            fontWeight: 800
-                          }}>
-                            {selectedCoupon.max_uses || '∞'}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            Límite Máximo
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      
-                      {selectedCoupon.max_uses && (
-                        <>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h5" sx={{ 
-                                color: darkProTokens.warning,
-                                fontWeight: 700
-                              }}>
-                                {selectedCoupon.usage_percentage!.toFixed(1)}%
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                Porcentaje Usado
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h5" sx={{ 
-                                color: darkProTokens.success,
-                                fontWeight: 700
-                              }}>
-                                {selectedCoupon.max_uses - selectedCoupon.current_uses}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                Usos Restantes
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        </>
-                      )}
-                    </Grid>
-                  </CardContent>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Límite máximo:
+                      </Typography>
+                      <Typography variant="h5" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                        {selectedCoupon.max_uses || '∞'}
+                      </Typography>
+                    </Box>
+
+                    {selectedCoupon.max_uses && (
+                      <Box>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Porcentaje usado:
+                        </Typography>
+                        <Typography variant="h6" sx={{ 
+                          color: (selectedCoupon.usage_percentage || 0) > 80 ? darkProTokens.warning : darkProTokens.success,
+                          fontWeight: 700 
+                        }}>
+                          {(selectedCoupon.usage_percentage || 0).toFixed(1)}%
+                        </Typography>
+                      </Box>
+                    )}
+                  </Stack>
                 </Card>
               </Grid>
 
-              {/* 📅 Información de Vigencia */}
               <Grid size={6}>
                 <Card sx={{
-                  background: `${darkProTokens.roleModerator}10`,
-                  border: `1px solid ${darkProTokens.roleModerator}30`,
-                  borderRadius: 3
+                  background: `${darkProTokens.success}10`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 3,
+                  p: 3
                 }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.roleModerator,
-                      fontWeight: 700,
-                      mb: 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2
-                    }}>
-                      <AccessTimeIcon />
-                      Vigencia
-                    </Typography>
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.success,
+                    fontWeight: 700,
+                    mb: 2
+                  }}>
+                    📅 Información de Vigencia
+                  </Typography>
+                  
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Fecha de inicio:
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        {formatDateForDisplay(selectedCoupon.start_date)}
+                      </Typography>
+                    </Box>
                     
-                    <Stack spacing={2}>
-                      <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                          Fecha de Inicio:
-                        </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                          📅 {formatDateForDisplay(selectedCoupon.start_date)}
-                        </Typography>
-                      </Box>
-                      
-                      <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                          Fecha de Fin:
-                        </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                          📅 {formatDateForDisplay(selectedCoupon.end_date)}
-                        </Typography>
-                      </Box>
-                      
-                      <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                          Estado de Vigencia:
-                        </Typography>
-                        {selectedCoupon.days_remaining !== null && selectedCoupon.days_remaining !== undefined && selectedCoupon.days_remaining >= 0 ? (
-                          <Typography variant="h6" sx={{ 
-                            color: selectedCoupon.days_remaining < 7 ? darkProTokens.warning : darkProTokens.success,
+                    <Box>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Fecha de fin:
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        {formatDateForDisplay(selectedCoupon.end_date)}
+                      </Typography>
+                    </Box>
+
+                    <Box>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Estado de vigencia:
+                      </Typography>
+                      {(() => {
+                        const daysDisplay = getDaysRemainingDisplay(selectedCoupon);
+                        return daysDisplay ? (
+                          <Typography variant="body1" sx={{ 
+                            color: daysDisplay.color,
                             fontWeight: 700
                           }}>
-                            ⏰ {selectedCoupon.days_remaining} días restantes
+                            ⏰ {daysDisplay.text}
                           </Typography>
                         ) : (
-                          <Typography variant="h6" sx={{ 
+                          <Typography variant="body1" sx={{ 
                             color: darkProTokens.error,
                             fontWeight: 700
                           }}>
                             ❌ Vencido
                           </Typography>
-                        )}
-                      </Box>
-                    </Stack>
-                  </CardContent>
+                        );
+                      })()}
+                    </Box>
+                  </Stack>
                 </Card>
               </Grid>
 
-              {/* 💰 Condiciones y Restricciones */}
-              <Grid size={12}>
-                <Card sx={{
-                  background: `${darkProTokens.warning}10`,
-                  border: `1px solid ${darkProTokens.warning}30`,
-                  borderRadius: 3
-                }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.warning,
-                      fontWeight: 700,
-                      mb: 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2
-                    }}>
-                      <WarningIcon />
-                      Condiciones y Restricciones
-                    </Typography>
-                    
-                    <Grid container spacing={3}>
-                      <Grid size={3}>
-                        <Box>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                            Tipo de Descuento:
-                          </Typography>
-                          <Chip 
-                            label={selectedCoupon.discount_type === 'percentage' ? '📊 Porcentaje' : '💰 Monto Fijo'}
-                            sx={{
-                              backgroundColor: darkProTokens.warning,
-                              color: darkProTokens.background,
-                              fontWeight: 600
-                            }}
-                          />
-                        </Box>
-                      </Grid>
-                      
-                      <Grid size={3}>
-                        <Box>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                            Valor del Descuento:
-                          </Typography>
-                          <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                            {formatDiscount(selectedCoupon)}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      
-                      <Grid size={3}>
-                        <Box>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                            Monto Mínimo:
-                          </Typography>
-                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            {selectedCoupon.min_amount > 0 ? formatPrice(selectedCoupon.min_amount) : 'Sin mínimo'}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      
-                      <Grid size={3}>
-                        <Box>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                            Estado:
-                          </Typography>
-                          <Chip 
-                            label={selectedCoupon.is_active ? '✅ Activo' : '⏸️ Inactivo'}
-                            sx={{
-                              backgroundColor: selectedCoupon.is_active ? darkProTokens.success : darkProTokens.grayMuted,
-                              color: darkProTokens.textPrimary,
-                              fontWeight: 600
-                            }}
-                          />
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* 📊 Metadatos */}
+              {/* Metadatos */}
               <Grid size={12}>
                 <Card sx={{
                   background: `${darkProTokens.grayDark}10`,
                   border: `1px solid ${darkProTokens.grayDark}30`,
-                  borderRadius: 3
+                  borderRadius: 3,
+                  p: 2
                 }}>
-                  <CardContent sx={{ p: 2 }}>
-                    <Typography variant="body2" sx={{ 
-                      color: darkProTokens.textSecondary,
-                      mb: 1
-                    }}>
-                      🆔 ID: {selectedCoupon.id}
-                    </Typography>
-                    <Typography variant="body2" sx={{ 
-                      color: darkProTokens.textSecondary
-                    }}>
-                      📅 Creado: {formatDateForDisplay(selectedCoupon.created_at)} por {selectedCoupon.created_by ? 'Usuario' : 'Sistema'}
-                    </Typography>
-                  </CardContent>
+                  <Typography variant="body2" sx={{ 
+                    color: darkProTokens.textSecondary,
+                    mb: 1
+                  }}>
+                    🆔 ID: {selectedCoupon.id}
+                  </Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: darkProTokens.textSecondary
+                  }}>
+                    📅 Creado: {formatDateForDisplay(selectedCoupon.created_at)}
+                  </Typography>
                 </Card>
               </Grid>
             </Grid>
           )}
         </DialogContent>
       </Dialog>
-
-      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
-      <style jsx>{`
-        /* Scrollbar personalizado para Dark Pro System */
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: ${darkProTokens.surfaceLevel1};
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
-        }
-      `}</style>
     </Box>
   );
 }
-                    
