@@ -990,27 +990,6 @@ const calculateTotals = () => {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            label="Comisiones"
-                            type="number"
-                            value={editableData.pos_commissions}
-                            onChange={(e) => handleEditableChange('pos_commissions', e.target.value)}
-                            InputProps={{
-                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                            }}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
-                              },
-                              '& .MuiInputLabel-root': {
-                                color: darkProTokens.warning,
-                              },
-                            }}
-                          />
-                        </Grid>
                       </Grid>
                     </CardContent>
                   </Card>
@@ -1148,27 +1127,6 @@ const calculateTotals = () => {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            label="Comisiones"
-                            type="number"
-                            value={editableData.abonos_commissions}
-                            onChange={(e) => handleEditableChange('abonos_commissions', e.target.value)}
-                            InputProps={{
-                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                            }}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
-                              },
-                              '& .MuiInputLabel-root': {
-                                color: darkProTokens.warning,
-                              },
-                            }}
-                          />
-                        </Grid>
                       </Grid>
                     </CardContent>
                   </Card>
@@ -1306,27 +1264,6 @@ const calculateTotals = () => {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            label="Comisiones"
-                            type="number"
-                            value={editableData.membership_commissions}
-                            onChange={(e) => handleEditableChange('membership_commissions', e.target.value)}
-                            InputProps={{
-                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                            }}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
-                              },
-                              '& .MuiInputLabel-root': {
-                                color: darkProTokens.warning,
-                              },
-                            }}
-                          />
-                        </Grid>
                       </Grid>
                     </CardContent>
                   </Card>
