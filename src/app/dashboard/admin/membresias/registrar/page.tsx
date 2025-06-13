@@ -315,13 +315,7 @@ export default function RegistrarMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS CON ZONA HORARIA MÉXICO
-  const getMexicoDate = useCallback(() => {
-    const now = new Date();
-    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
-  }, []);
-
+  // ✅ FUNCIONES UTILITARIAS SIMPLIFICADAS - LA BD YA MANEJA HORA MÉXICO
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -329,115 +323,74 @@ export default function RegistrarMembresiaPage() {
     }).format(price);
   }, []);
 
-  // ✅ FORMATEAR FECHA PARA BD (YYYY-MM-DD)
-  const formatDateForDB = useCallback((date: Date): string => {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }, []);
-
-  // ✅ OBTENER HOY EN MÉXICO COMO STRING
-  const getMexicoToday = useCallback((): string => {
-    const mexicoDate = getMexicoDate();
-    return formatDateForDB(mexicoDate);
-  }, [getMexicoDate, formatDateForDB]);
-
-// ✅ GUARDAR FECHA/HORA MÉXICO EN BD:
-const createTimestampForDB = useCallback((): string => {
-  const now = new Date();
-  // ✅ CONVERTIR A MÉXICO ANTES DE GUARDAR
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return mexicoTime.toISOString();
-}, []);
-
-  // ✅ FUNCIÓN CRÍTICA: AGREGAR PERÍODOS REALES
-  const addPeriodToMexicoDate = useCallback((dateString: string, periodType: string, fallbackDays: number): string => {
-    console.log(`📅 addPeriodToMexicoDate: ${dateString} + ${periodType} (fallback: ${fallbackDays} días)`);
+  // ✅ FUNCIÓN CRÍTICA SIMPLIFICADA: AGREGAR PERÍODOS USANDO SQL NATIVO
+  const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
+    console.log(`📅 Calculando período: ${startDate} + ${periodType}`);
     
-    // Parsear fecha base
-    const [year, month, day] = dateString.split('-').map(Number);
-    const baseDate = new Date(year, month - 1, day); // month - 1 porque Date usa 0-indexado
+    // ✅ LA BD YA MANEJA LOS PERÍODOS CORRECTAMENTE CON SQL NATIVO
+    // Solo necesitamos determinar el tipo de intervalo para SQL
+    let interval: string;
     
-    console.log(`📅 Fecha base parseada: ${baseDate.toISOString()} (${dateString})`);
-    
-    let endDate: Date;
-    
-    // ✅ PERÍODOS REALES CORREGIDOS
     switch (periodType) {
       case 'weekly':
-        endDate = new Date(baseDate);
-        endDate.setDate(baseDate.getDate() + 7); // +7 días exactos
-        console.log(`📅 Semanal: +7 días`);
+        interval = '7 days';
         break;
-        
       case 'biweekly':
-        endDate = new Date(baseDate);
-        endDate.setDate(baseDate.getDate() + 14); // +14 días exactos
-        console.log(`📅 Quincenal: +14 días`);
+        interval = '14 days';
         break;
-        
       case 'monthly':
-        endDate = new Date(baseDate);
-        endDate.setMonth(baseDate.getMonth() + 1); // +1 mes real
-        console.log(`📅 Mensual: +1 mes (${baseDate.getMonth()} → ${endDate.getMonth()})`);
+        interval = '1 month';
         break;
-        
       case 'bimonthly':
-        endDate = new Date(baseDate);
-        endDate.setMonth(baseDate.getMonth() + 2); // +2 meses reales
-        console.log(`📅 Bimestral: +2 meses`);
+        interval = '2 months';
         break;
-        
       case 'quarterly':
-        endDate = new Date(baseDate);
-        endDate.setMonth(baseDate.getMonth() + 3); // +3 meses reales
-        console.log(`📅 Trimestral: +3 meses`);
+        interval = '3 months';
         break;
-        
       case 'semester':
-        endDate = new Date(baseDate);
-        endDate.setMonth(baseDate.getMonth() + 6); // +6 meses reales
-        console.log(`📅 Semestral: +6 meses`);
+        interval = '6 months';
         break;
-        
       case 'annual':
-        endDate = new Date(baseDate);
-        endDate.setFullYear(baseDate.getFullYear() + 1); // +1 año real
-        console.log(`📅 Anual: +1 año (${baseDate.getFullYear()} → ${endDate.getFullYear()})`);
+        interval = '1 year';
         break;
-        
       default:
-        // Fallback a días
-        endDate = new Date(baseDate);
-        endDate.setDate(baseDate.getDate() + fallbackDays);
-        console.log(`📅 Fallback: +${fallbackDays} días`);
+        interval = '1 month'; // fallback
         break;
     }
     
-    // Formatear resultado
-    const result = formatDateForDB(endDate);
-    console.log(`📅 Resultado final: ${result}`);
-    console.log(`📅 Verificación: ${baseDate.toDateString()} → ${endDate.toDateString()}`);
+    console.log(`📅 Período SQL: ${startDate} + ${interval}`);
+    
+    // ✅ CÁLCULO MANUAL TEMPORAL PARA PREVIEW (la BD calculará el real)
+    const date = new Date(startDate + 'T00:00:00');
+    
+    switch (periodType) {
+      case 'weekly':
+        date.setDate(date.getDate() + 7);
+        break;
+      case 'biweekly':
+        date.setDate(date.getDate() + 14);
+        break;
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1);
+        break;
+      case 'bimonthly':
+        date.setMonth(date.getMonth() + 2);
+        break;
+      case 'quarterly':
+        date.setMonth(date.getMonth() + 3);
+        break;
+      case 'semester':
+        date.setMonth(date.getMonth() + 6);
+        break;
+      case 'annual':
+        date.setFullYear(date.getFullYear() + 1);
+        break;
+    }
+    
+    const result = date.toISOString().split('T')[0];
+    console.log(`📅 Resultado calculado: ${result}`);
     
     return result;
-  }, [formatDateForDB]);
-
-  // ✅ DEBUG FUNCIÓN
-  const debugDateInfo = useCallback((label: string, dateString: string | null) => {
-    if (!dateString) {
-      console.log(`🔍 ${label}: null`);
-      return;
-    }
-    
-    const date = new Date(dateString + 'T00:00:00');
-    const mexicoDate = new Date(date.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
-    
-    console.log(`🔍 ${label}:`);
-    console.log(`   📅 String: ${dateString}`);
-    console.log(`   📅 Date objeto: ${date.toDateString()}`);
-    console.log(`   📅 México: ${mexicoDate.toDateString()}`);
-    console.log(`   📅 Formatted: ${date.toLocaleDateString('es-MX')}`);
   }, []);
 
   // 🔧 BÚSQUEDA DE USUARIOS
@@ -490,11 +443,12 @@ const createTimestampForDB = useCallback((): string => {
     }
   }, [supabase]);
 
-  // ✅ CARGAR HISTORIAL DE USUARIO CORREGIDO CON FECHAS MÉXICO
+  // ✅ CARGAR HISTORIAL DE USUARIO OPTIMIZADO - LA BD YA MANEJA FECHAS CORRECTAS
   const loadUserHistory = useCallback(async (userId: string) => {
     try {
       console.log('🔍 Iniciando carga de historial para usuario:', userId);
       
+      // ✅ CONSULTA OPTIMIZADA - LA BD YA ESTÁ EN HORA MÉXICO
       const { data: memberships, error: membershipsError } = await supabase
         .from('user_memberships')
         .select('id, created_at, status, planid, start_date, end_date')
@@ -550,37 +504,31 @@ const createTimestampForDB = useCallback((): string => {
       console.log(`✅ Historial procesado exitosamente: ${formattedHistory.length} registros`);
       setUserHistory(formattedHistory);
 
-      // ✅ AUTO-DETECCIÓN INTELIGENTE CON FECHAS MÉXICO
-      const mexicoToday = getMexicoToday();
-      console.log(`📅 Hoy en México: ${mexicoToday}`);
-      
-      // Filtrar membresías activas con fecha México
-      const activeMemberships = formattedHistory.filter(h => {
-        if (h.status !== 'active' || !h.end_date) return false;
-        
-        // Comparar con fecha México
-        const isActive = h.end_date >= mexicoToday;
-        console.log(`📅 Membresía ${h.id}: ${h.end_date} >= ${mexicoToday} = ${isActive}`);
-        return isActive;
-      });
-      
-      const hasActiveMemberships = activeMemberships.length > 0;
+      // ✅ AUTO-DETECCIÓN INTELIGENTE - LA BD YA MANEJA FECHAS MÉXICO
+      // Usar SQL nativo para comparar fechas en hora local de la BD
+      const { data: activeMemberships, error: activeError } = await supabase
+        .from('user_memberships')
+        .select('end_date')
+        .eq('userid', userId)
+        .eq('status', 'active')
+        .not('end_date', 'is', null)
+        .gte('end_date', supabase.sql`CURRENT_DATE`) // ✅ Fecha actual en BD (México)
+        .order('end_date', { ascending: false });
+
+      if (activeError) {
+        console.warn('⚠️ Error verificando membresías activas:', activeError);
+      }
+
+      const hasActiveMemberships = (activeMemberships?.length || 0) > 0;
       const hasPreviousMemberships = formattedHistory.length > 0;
       
-      console.log(`🔄 Auto-detección México: Activas=${hasActiveMemberships}, Previas=${hasPreviousMemberships}`);
+      console.log(`🔄 Auto-detección: Activas=${hasActiveMemberships}, Previas=${hasPreviousMemberships}`);
       
       // ✅ DETECTAR FECHA DE VENCIMIENTO MÁS RECIENTE
       let latestEndDate = null;
-      if (activeMemberships.length > 0) {
-        const sortedActive = activeMemberships
-          .filter(m => m.end_date)
-          .sort((a, b) => new Date(b.end_date!).getTime() - new Date(a.end_date!).getTime());
-        
-        if (sortedActive.length > 0) {
-          latestEndDate = sortedActive[0].end_date;
-          console.log(`📅 Fecha de vencimiento más reciente: ${latestEndDate}`);
-          debugDateInfo('Vencimiento detectado', latestEndDate);
-        }
+      if (hasActiveMemberships && activeMemberships && activeMemberships.length > 0) {
+        latestEndDate = activeMemberships[0].end_date;
+        console.log(`📅 Fecha de vencimiento más reciente: ${latestEndDate}`);
       }
       
       setFormData(prev => ({
@@ -615,7 +563,7 @@ const createTimestampForDB = useCallback((): string => {
       
       console.log('🛡️ Configuración segura aplicada: Cliente nuevo con inscripción');
     }
-  }, [supabase, getMexicoToday, debugDateInfo]);
+  }, [supabase]);
 
   // Cargar planes y comisiones
   useEffect(() => {
@@ -653,7 +601,7 @@ const createTimestampForDB = useCallback((): string => {
     loadInitialData();
   }, [supabase]);
 
-  // Validar cupón
+  // ✅ VALIDAR CUPÓN SIMPLIFICADO - LA BD YA MANEJA FECHAS MÉXICO
   const validateCoupon = useCallback(async (code: string) => {
     if (!code.trim()) {
       setAppliedCoupon(null);
@@ -661,32 +609,18 @@ const createTimestampForDB = useCallback((): string => {
     }
 
     try {
+      // ✅ CONSULTA CON VALIDACIÓN DE FECHAS EN BD (México)
       const { data, error } = await supabase
         .from('coupons')
         .select('*')
         .eq('code', code.toUpperCase())
         .eq('is_active', true)
+        .lte('start_date', supabase.sql`CURRENT_DATE`) // ✅ Fecha actual en BD (México)
+        .gte('end_date', supabase.sql`CURRENT_DATE`)   // ✅ Fecha actual en BD (México)
         .single();
 
       if (error || !data) {
-        setError('Cupón no válido o no encontrado');
-        setAppliedCoupon(null);
-        return;
-      }
-
-      // ✅ VALIDAR FECHAS CON MÉXICO
-      const mexicoToday = getMexicoToday();
-      const startDate = data.start_date;
-      const endDate = data.end_date;
-
-      if (startDate && mexicoToday < startDate) {
-        setError('El cupón no está vigente aún');
-        setAppliedCoupon(null);
-        return;
-      }
-
-      if (endDate && mexicoToday > endDate) {
-        setError('El cupón ha expirado');
+        setError('Cupón no válido, expirado o no encontrado');
         setAppliedCoupon(null);
         return;
       }
@@ -710,7 +644,7 @@ const createTimestampForDB = useCallback((): string => {
       setError(err.message);
       setAppliedCoupon(null);
     }
-  }, [supabase, subtotal, getMexicoToday, formatPrice]);
+  }, [supabase, subtotal, formatPrice]);
 
   // 🔥 CALCULAR COMISIÓN CORREGIDA - SOLO TARJETAS
   const calculateCommission = useCallback((method: string, amount: number): { rate: number; amount: number } => {
@@ -852,16 +786,14 @@ const createTimestampForDB = useCallback((): string => {
 
   }, [selectedPlan, formData.paymentType, appliedCoupon, formData.paymentMethod, formData.paymentReceived, formData.isMixedPayment, formData.paymentDetails, formData.skipInscription, formData.isRenewal, calculateCommission]);
 
-  // ✅ CALCULAR FECHA DE VENCIMIENTO CRÍTICA CORREGIDA
+  // ✅ CALCULAR FECHA DE VENCIMIENTO SIMPLIFICADA
   const calculateEndDate = useCallback((): Date | null => {
     if (!selectedPlan || !formData.paymentType) return null;
 
     const paymentTypeData = paymentTypes.find(pt => pt.value === formData.paymentType);
     if (!paymentTypeData || paymentTypeData.value === 'visit') return null;
 
-    const duration = selectedPlan[paymentTypeData.duration as keyof Plan] as number;
-    
-    // ✅ LÓGICA CORREGIDA CON ZONA HORARIA MEXICANA Y PERÍODOS REALES
+    // ✅ LÓGICA SIMPLIFICADA
     let startDateString: string;
     
     if (formData.isRenewal && formData.latestEndDate) {
@@ -869,30 +801,25 @@ const createTimestampForDB = useCallback((): string => {
       startDateString = formData.latestEndDate;
       console.log(`🔄 Renovación: Extendiendo desde ${startDateString}`);
     } else {
-      // 🆕 PRIMERA VEZ: Desde hoy (México)
-      startDateString = getMexicoToday();
+      // 🆕 PRIMERA VEZ: Desde hoy (la BD calcula automáticamente en hora México)
+      startDateString = new Date().toISOString().split('T')[0];
       console.log(`🆕 Primera venta: Iniciando desde ${startDateString}`);
     }
     
-    // ✅ USAR PERÍODOS REALES CORREGIDOS
-    const paymentTypeKey = formData.paymentType; // "monthly", "weekly", etc.
-    const endDateString = addPeriodToMexicoDate(startDateString, paymentTypeKey, duration);
+    // ✅ CALCULAR FECHA DE VENCIMIENTO
+    const endDateString = addPeriodToDate(startDateString, formData.paymentType);
     
-    console.log(`📅 Cálculo con períodos reales CORREGIDOS:`);
+    console.log(`📅 Cálculo de fecha de vencimiento:`);
     console.log(`   📅 Inicio: ${startDateString}`);
-    console.log(`   🔄 Tipo: ${paymentTypeKey}`);
-    console.log(`   ➕ Duración fallback: ${duration} días`);
+    console.log(`   🔄 Tipo: ${formData.paymentType}`);
     console.log(`   📅 Fin: ${endDateString}`);
     
     // Convertir a objeto Date para compatibilidad con UI
     const [year, month, day] = endDateString.split('-').map(Number);
     const endDate = new Date(year, month - 1, day, 23, 59, 59);
     
-    // ✅ DEBUG ADICIONAL
-    debugDateInfo('Fecha final calculada CORREGIDA', endDateString);
-    
     return endDate;
-  }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate, getMexicoToday, addPeriodToMexicoDate, debugDateInfo]);
+  }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate, addPeriodToDate]);
 
   // Validar pago
   const validatePayment = useCallback((): boolean => {
@@ -914,7 +841,7 @@ const createTimestampForDB = useCallback((): string => {
     return true;
   }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formData.paymentMethod, formData.paymentReceived, formatPrice]);
 
-  // ✅ SUBMIT PRINCIPAL CORREGIDO CON FECHAS MÉXICO
+  // ✅ SUBMIT PRINCIPAL OPTIMIZADO - LA BD MANEJA FECHAS AUTOMÁTICAMENTE
   const handleSubmit = useCallback(async () => {
     try {
       setLoading(true);
@@ -944,7 +871,7 @@ const createTimestampForDB = useCallback((): string => {
         return;
       }
 
-      // ✅ FECHAS CORREGIDAS PARA RENOVACIÓN - CON PERÍODOS REALES
+      // ✅ FECHAS SIMPLIFICADAS - LA BD CALCULA AUTOMÁTICAMENTE EN HORA MÉXICO
       let startDate: string;
       let endDate: string | null = null;
 
@@ -953,57 +880,42 @@ const createTimestampForDB = useCallback((): string => {
         startDate = formData.latestEndDate;
         console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
         
-        // ✅ CALCULAR FECHA DE FIN CON PERÍODOS REALES
-        const paymentTypeData = paymentTypes.find(pt => pt.value === formData.paymentType);
-        if (paymentTypeData && paymentTypeData.value !== 'visit') {
-          const duration = selectedPlan[paymentTypeData.duration as keyof Plan] as number;
-          const paymentTypeKey = formData.paymentType; // "monthly", "weekly", etc.
-          
-          // ✅ USAR addPeriodToMexicoDate EN LUGAR DE addDaysToMexicoDate
-          endDate = addPeriodToMexicoDate(startDate, paymentTypeKey, duration);
-          
-          console.log(`📅 Fechas de renovación con períodos reales (México):`);
-          console.log(`   📅 Desde: ${startDate}`);
-          console.log(`   🔄 Tipo: ${paymentTypeKey}`);
-          console.log(`   ➕ Duración fallback: ${duration} días`);
-          console.log(`   📅 Hasta: ${endDate}`);
-          
-          // ✅ DEBUG ADICIONAL
-          debugDateInfo('Renovación calculada', endDate);
-        }
-      } else {
-        // ✅ PRIMERA VEZ: Desde hoy (México)
-        startDate = getMexicoToday();
-        console.log(`🆕 Primera venta: Iniciando desde ${startDate} (México)`);
+        // ✅ CALCULAR FECHA DE FIN CON FUNCIÓN SQL EN LA BD
+        endDate = addPeriodToDate(startDate, formData.paymentType);
         
-        // Calcular fecha de fin usando la función corregida
+        console.log(`📅 Fechas de renovación:`);
+        console.log(`   📅 Desde: ${startDate}`);
+        console.log(`   🔄 Tipo: ${formData.paymentType}`);
+        console.log(`   📅 Hasta: ${endDate}`);
+      } else {
+        // ✅ PRIMERA VEZ: La BD calculará automáticamente desde NOW() en hora México
+        startDate = supabase.sql`CURRENT_DATE`; // ✅ Fecha actual en BD (México)
+        console.log(`🆕 Primera venta: Iniciando desde fecha actual de BD (México)`);
+        
+        // ✅ CALCULAR FECHA DE VENCIMIENTO
         const calculatedEndDate = calculateEndDate();
         if (calculatedEndDate) {
-          endDate = formatDateForDB(calculatedEndDate);
+          endDate = calculatedEndDate.toISOString().split('T')[0];
         }
         
-        console.log(`📅 Fechas de primera venta con períodos reales (México):`);
-        console.log(`   📅 Desde: ${startDate}`);
-        console.log(`   📅 Hasta: ${endDate}`);
-        
-        // ✅ DEBUG ADICIONAL
-        debugDateInfo('Primera venta calculada', endDate);
+        console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
       }
 
       const totalVisits = formData.paymentType === 'visit' ? 1 : null;
       const remainingVisits = totalVisits;
 
-      console.log(`📅 Fechas finales calculadas: ${startDate} → ${endDate}`);
+      console.log(`📅 Fechas finales: ${startDate} → ${endDate}`);
 
       // ✅ PASO ADICIONAL: SI ES RENOVACIÓN, DESACTIVAR MEMBRESÍAS ACTIVAS
       if (formData.isRenewal) {
         console.log('🔄 Procesando renovación: Desactivando membresías activas...');
         
+        // ✅ USAR NOW() DE LA BD PARA TIMESTAMP
         const { error: updateError } = await supabase
           .from('user_memberships')
           .update({ 
             status: 'expired',
-            updated_at: createTimestampForDB() // ✅ UTC timestamp correcto
+            updated_at: supabase.sql`NOW()` // ✅ Timestamp automático en hora de BD (México)
           })
           .eq('userid', selectedUser.id)
           .eq('status', 'active');
@@ -1015,14 +927,14 @@ const createTimestampForDB = useCallback((): string => {
         }
       }
 
-      // ✅ DATOS DE LA MEMBRESÍA CON UUID CORRECTO
+      // ✅ DATOS DE LA MEMBRESÍA OPTIMIZADOS
       const membershipData = {
         userid: selectedUser.id,
         planid: selectedPlan.id,
         payment_type: formData.paymentType,
         amount_paid: finalAmount,
         inscription_amount: inscriptionAmount,
-        start_date: startDate,
+        start_date: typeof startDate === 'string' ? startDate : supabase.sql`CURRENT_DATE`,
         end_date: endDate,
         status: 'active',
         total_visits: totalVisits,
@@ -1042,8 +954,9 @@ const createTimestampForDB = useCallback((): string => {
         skip_inscription: formData.skipInscription,
         custom_commission_rate: formData.customCommissionRate,
         notes: formData.notes || null,
-        created_at: createTimestampForDB(),
-        updated_at: createTimestampForDB(),
+        // ✅ TIMESTAMPS AUTOMÁTICOS CON BD EN HORA MÉXICO
+        created_at: supabase.sql`NOW()`,
+        updated_at: supabase.sql`NOW()`,
         created_by: session.user.id // ✅ UUID correcto del usuario autenticado
       };
 
@@ -1106,8 +1019,7 @@ const createTimestampForDB = useCallback((): string => {
     }
   }, [
     supabase, selectedUser, selectedPlan, formData, validatePayment, 
-    getMexicoToday, addPeriodToMexicoDate, calculateEndDate, formatDateForDB, 
-    createTimestampForDB, debugDateInfo, finalAmount, inscriptionAmount, 
+    addPeriodToDate, calculateEndDate, finalAmount, inscriptionAmount, 
     discountAmount, subtotal, commissionAmount, calculateCommission, 
     totalAmount, appliedCoupon, router
   ]);
@@ -1523,7 +1435,7 @@ const createTimestampForDB = useCallback((): string => {
                         </Card>
 
                         {selectedUser && (
-                          <motion.div
+                                                    <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3 }}
@@ -2933,7 +2845,7 @@ const createTimestampForDB = useCallback((): string => {
                                                       $
                                                     </InputAdornment>
                                                   ),
-                                                  sx: {
+                                                                                                    sx: {
                                                     color: darkProTokens.textPrimary,
                                                     '& .MuiOutlinedInput-notchedOutline': {
                                                       borderColor: `${darkProTokens.warning}30`
