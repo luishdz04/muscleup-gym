@@ -383,32 +383,35 @@ export default function HistorialMembresiaPage() {
     }
   }, []);
 
-  // ✅ FORMATEAR TIMESTAMPS COMPLETOS CON ZONA MÉXICO
-  const formatTimestampForDisplay = useCallback((timestamp: string): string => {
-    if (!timestamp) return 'Sin fecha';
+ // ✅ FUNCIÓN CORREGIDA:
+const formatTimestampForDisplay = useCallback((timestamp: string): string => {
+  if (!timestamp) return 'Sin fecha';
+  
+  try {
+    const date = new Date(timestamp);
     
-    try {
-      const date = new Date(timestamp);
-      
-      if (isNaN(date.getTime())) {
-        console.warn('⚠️ Timestamp inválido:', timestamp);
-        return 'Timestamp inválido';
-      }
-      
-      return date.toLocaleString('es-MX', {
-        timeZone: 'America/Monterrey',
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      console.error('❌ Error formateando timestamp:', timestamp, error);
-      return 'Error de timestamp';
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Timestamp inválido:', timestamp);
+      return 'Timestamp inválido';
     }
-  }, []);
+    
+    // ✅ CONVERSIÓN MANUAL CORRECTA A MÉXICO (UTC-6)
+    const mexicoDate = new Date(date.getTime() - (6 * 60 * 60 * 1000));
+    
+    return mexicoDate.toLocaleString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) + ' MX';
+  } catch (error) {
+    console.error('❌ Error formateando timestamp:', timestamp, error);
+    return 'Error de timestamp';
+  }
+}, []);
 
   // ✅ CALCULAR DÍAS RESTANTES CON ZONA HORARIA MÉXICO - CORREGIDO
   const calculateDaysRemaining = useCallback((endDate: string | null): number | null => {
