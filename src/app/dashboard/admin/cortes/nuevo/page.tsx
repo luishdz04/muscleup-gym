@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -186,7 +187,7 @@ export default function NuevoCorteePage() {
     }
   };
 
-  // 🔍 VERIFICAR SI YA EXISTE CORTE
+  // 🔍 VERIFICAR SI YA EXISTE CORTE - ✅ RUTA CORREGIDA
   const checkExistingCut = async (dateString: string) => {
     try {
       const response = await fetch(`/api/cuts/check-existing?date=${dateString}`);
@@ -197,7 +198,7 @@ export default function NuevoCorteePage() {
     }
   };
 
-  // 💾 CREAR CORTE
+  // 💾 CREAR CORTE - ✅ VARIABLE RESPONSE CORREGIDA
   const handleCreateCut = async () => {
     if (!dailyData) return;
     
@@ -239,7 +240,8 @@ export default function NuevoCorteePage() {
       
       console.log('📊 Creando corte con datos:', cutData);
       
-      const  = await fetch('/api/cuts/create', {
+      // ✅ VARIABLE RESPONSE AGREGADA
+      const response = await fetch('/api/cuts/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -360,7 +362,7 @@ export default function NuevoCorteePage() {
 
         <Grid container spacing={4}>
           {/* 📅 CONFIGURACIÓN DEL CORTE */}
-          <Grid xs={12} md={4}>
+          <Grid size={12} md={4}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -547,7 +549,7 @@ export default function NuevoCorteePage() {
           </Grid>
 
           {/* 📊 PREVIEW DE DATOS */}
-          <Grid xs={12} md={8}>
+          <Grid size={12} md={8}>
             {loading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                 <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin }} />
@@ -573,7 +575,7 @@ export default function NuevoCorteePage() {
                       </Typography>
                       
                       <Grid container spacing={3}>
-                        <Grid xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.success }}>
                               {formatPrice(dailyData.totals.total)}
@@ -584,7 +586,7 @@ export default function NuevoCorteePage() {
                           </Box>
                         </Grid>
                         
-                        <Grid xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
                               {formatPrice(dailyData.totals.commissions)}
@@ -595,7 +597,7 @@ export default function NuevoCorteePage() {
                           </Box>
                         </Grid>
                         
-                        <Grid xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
                               {formatPrice(dailyData.totals.net_amount)}
@@ -606,7 +608,7 @@ export default function NuevoCorteePage() {
                           </Box>
                         </Grid>
                         
-                        <Grid xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
                               {dailyData.totals.transactions}
@@ -623,7 +625,7 @@ export default function NuevoCorteePage() {
                   {/* DESGLOSE POR FUENTE */}
                   <Grid container spacing={3}>
                     {/* POS */}
-                    <Grid xs={12} md={4}>
+                    <Grid size={12} md={4}>
                       <Card sx={{
                         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                         border: `1px solid ${darkProTokens.info}30`,
@@ -667,7 +669,7 @@ export default function NuevoCorteePage() {
                     </Grid>
 
                     {/* ABONOS */}
-                    <Grid xs={12} md={4}>
+                    <Grid size={12} md={4}>
                       <Card sx={{
                         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                         border: `1px solid ${darkProTokens.warning}30`,
@@ -711,7 +713,7 @@ export default function NuevoCorteePage() {
                     </Grid>
 
                     {/* MEMBRESÍAS */}
-                    <Grid xs={12} md={4}>
+                    <Grid size={12} md={4}>
                       <Card sx={{
                         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                         border: `1px solid ${darkProTokens.success}30`,
@@ -767,7 +769,7 @@ export default function NuevoCorteePage() {
                       </Typography>
                       
                       <Grid container spacing={3}>
-                        <Grid xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -793,7 +795,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -819,7 +821,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -845,7 +847,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
