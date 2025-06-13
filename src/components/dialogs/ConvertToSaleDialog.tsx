@@ -37,7 +37,8 @@ import {
   Tooltip,
   LinearProgress,
   Stack,
-  Avatar
+  Avatar,
+  Snackbar
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { 
@@ -57,8 +58,6 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -193,7 +192,54 @@ export default function ConvertToSaleDialog({
   // ✅ ESTADOS DE COMISIONES HÍBRIDOS
   const [paymentMethods, setPaymentMethods] = useState(defaultPaymentMethods);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    const now = new Date();
+    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  const formatMexicoDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
+
+  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDate(dateString);
+  }, [formatMexicoDate]);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
   // ✅ DATOS SEGUROS HÍBRIDOS
   const safeLayaway = useMemo(() => {
@@ -246,16 +292,17 @@ export default function ConvertToSaleDialog({
     }
   }, [open, supabase]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA GENERAR NÚMERO DE VENTA
+  // ✅ FUNCIÓN HÍBRIDA PARA GENERAR NÚMERO DE VENTA CORREGIDA CON FECHA MÉXICO
   const generateSaleNumber = useCallback(async (): Promise<string> => {
-    const today = new Date();
-    const year = today.getFullYear().toString().slice(-2);
-    const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    const day = today.getDate().toString().padStart(2, '0');
+    // ✅ USAR FECHA MÉXICO CONSISTENTE
+    const mexicoDate = getMexicoDate();
+    const year = mexicoDate.getFullYear().toString().slice(-2);
+    const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = mexicoDate.getDate().toString().padStart(2, '0');
     const timestamp = Date.now().toString().slice(-6);
     
     return `VT${year}${month}${day}${timestamp}`;
-  }, []);
+  }, [getMexicoDate]);
 
   // ✅ useEffect HÍBRIDO CON GUARD CLAUSE
   useEffect(() => {
@@ -313,7 +360,7 @@ export default function ConvertToSaleDialog({
     };
   }, [safeLayaway, paymentMethod, applyCommission, paymentMethods, cashReceived]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CONVERSIÓN
+  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CONVERSIÓN (CORREGIDA CON UTC)
   const processConversion = useCallback(async () => {
     if (!safeLayaway || !calculations) return;
 
@@ -333,6 +380,9 @@ export default function ConvertToSaleDialog({
         finalSaleNumber = newSaleNumber || await generateSaleNumber();
       }
 
+      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
+      const nowUTC = new Date().toISOString();
+
       // ✅ ACTUALIZAR EL APARTADO A VENTA COMPLETADA
       const updateData = {
         sale_number: finalSaleNumber,
@@ -346,8 +396,8 @@ export default function ConvertToSaleDialog({
         commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
         commission_amount: calculations.commission,
         notes: notes || `Convertido de apartado ${safeLayaway.sale_number}`,
-        updated_at: new Date().toISOString(),
-        completed_at: new Date().toISOString()
+        updated_at: nowUTC, // ✅ UTC
+        completed_at: nowUTC // ✅ UTC
       };
 
       const { error: updateError } = await supabase
@@ -369,8 +419,8 @@ export default function ConvertToSaleDialog({
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.commission,
           sequence_order: (safeLayaway.payment_history?.length || 0) + 1,
-          payment_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          payment_date: nowUTC, // ✅ UTC
+          created_at: nowUTC, // ✅ UTC
           created_by: userId,
           is_partial_payment: false,
           payment_sequence: 1,
@@ -396,7 +446,7 @@ export default function ConvertToSaleDialog({
           previous_paid_amount: safeLayaway.paid_amount,
           new_paid_amount: safeLayaway.total_amount,
           reason: `Convertido a ${convertToRegularSale ? 'venta regular' : 'venta completada'}`,
-          created_at: new Date().toISOString(),
+          created_at: nowUTC, // ✅ UTC
           created_by: userId
         }]);
 
@@ -412,7 +462,7 @@ export default function ConvertToSaleDialog({
     } finally {
       setProcessing(false);
     }
-  }, [safeLayaway, calculations, supabase, generateNewNumber, newSaleNumber, generateSaleNumber, convertToRegularSale, paymentMethod, paymentReference, applyCommission, paymentMethods, notes]);
+  }, [safeLayaway, calculations, supabase, generateNewNumber, newSaleNumber, generateSaleNumber, convertToRegularSale, paymentMethod, paymentReference, applyCommission, paymentMethods, notes, showNotification]);
 
   // ✅ FUNCIÓN HÍBRIDA PARA CERRAR
   const handleClose = useCallback(() => {
@@ -465,6 +515,41 @@ export default function ConvertToSaleDialog({
         }
       }}
     >
+      {/* SNACKBAR */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       <DialogTitle sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
