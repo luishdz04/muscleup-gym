@@ -343,10 +343,13 @@ export default function RegistrarMembresiaPage() {
     return formatDateForDB(mexicoDate);
   }, [getMexicoDate, formatDateForDB]);
 
-  // ✅ CREAR TIMESTAMP UTC PARA BD
-  const createTimestampForDB = useCallback((): string => {
-    return new Date().toISOString();
-  }, []);
+// ✅ FUNCIÓN CORREGIDA PARA GUARDAR CON ZONA MÉXICO:
+const createTimestampForDB = useCallback((): string => {
+  const now = new Date();
+  // ✅ RESTAR 6 HORAS PARA ZONA MÉXICO ANTES DE GUARDAR
+  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  return mexicoTime.toISOString();
+}, []);
 
   // ✅ FUNCIÓN CRÍTICA: AGREGAR PERÍODOS REALES
   const addPeriodToMexicoDate = useCallback((dateString: string, periodType: string, fallbackDays: number): string => {
