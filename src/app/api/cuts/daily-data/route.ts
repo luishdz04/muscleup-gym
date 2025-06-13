@@ -1,22 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-// 🔧 FUNCIÓN HELPER PARA ZONA HORARIA MÉXICO
-function getMexicoDateRangeUTC(mexicoDateString: string) {
-  // Fecha México 00:00:00 (CST/CDT = UTC-6)
-  const startOfDayMexico = new Date(`${mexicoDateString}T00:00:00-06:00`);
-  // Fecha México 23:59:59.999
-  const endOfDayMexico = new Date(`${mexicoDateString}T23:59:59.999-06:00`);
-  
-  console.log(`🇲🇽 Fecha solicitada México: ${mexicoDateString}`);
-  console.log(`🌍 Rango UTC equivalente: ${startOfDayMexico.toISOString()} → ${endOfDayMexico.toISOString()}`);
-  
-  return {
-    start: startOfDayMexico.toISOString(),
-    end: endOfDayMexico.toISOString()
-  };
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -29,132 +13,93 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Obteniendo datos para fecha México:', date);
+    console.log('🔍 Consultando datos para fecha:', date);
 
     const supabase = createServerSupabaseClient();
-    
-    // 🔧 CALCULAR RANGO UTC PARA FECHA MÉXICO
-    const dateRange = getMexicoDateRangeUTC(date);
 
-    // 🏪 VENTAS POS COMPLETAS DEL DÍA (CON ZONA HORARIA CORREGIDA)
+    // 📅 CALCULAR RANGO UTC PARA FECHA MÉXICO
+    const mexicoStartUTC = new Date(`${date}T06:00:00.000Z`); // 00:00 México = 06:00 UTC
+    const mexicoEndUTC = new Date(`${date}T05:59:59.999Z`);   // 23:59 México = 05:59 UTC (día siguiente)
+    mexicoEndUTC.setDate(mexicoEndUTC.getDate() + 1);
+
+    console.log('⏰ Rango UTC calculado:', {
+      inicio: mexicoStartUTC.toISOString(),
+      fin: mexicoEndUTC.toISOString()
+    });
+
+    // 🏪 1. VENTAS POS (sales con sale_type = 'sale')
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
       .select(`
         id,
-        sale_number,
         total_amount,
-        is_mixed_payment,
-        status,
-        created_at,
         sale_payment_details (
           payment_method,
           amount,
-          commission_rate,
           commission_amount,
-          sequence_order
+          is_partial_payment
         )
       `)
       .eq('sale_type', 'sale')
       .eq('status', 'completed')
-      .gte('created_at', dateRange.start)
-      .lte('created_at', dateRange.end)
-      .order('created_at', { ascending: false });
+      .gte('created_at', mexicoStartUTC.toISOString())
+      .lt('created_at', mexicoEndUTC.toISOString());
 
     if (salesError) {
-      console.error('💥 Error obteniendo ventas:', salesError);
+      console.error('❌ Error consultando ventas:', salesError);
       throw salesError;
     }
 
-    // 💰 PROCESAR VENTAS POS
-    const posData = {
-      efectivo: 0,
-      transferencia: 0,
-      debito: 0,
-      credito: 0,
-      total: 0,
-      transactions: 0,
-      commissions: 0
-    };
-
-    console.log('🏪 Procesando', salesData?.length || 0, 'ventas POS...');
-
-    salesData?.forEach((sale: any) => {
-      posData.transactions += 1;
-      posData.total += Number(sale.total_amount);
-
-      if (sale.sale_payment_details && sale.sale_payment_details.length > 0) {
-        sale.sale_payment_details.forEach((payment: any) => {
-          const amount = Number(payment.amount);
-          const commission = Number(payment.commission_amount || 0);
-
-          posData.commissions += commission;
-          const totalAmountWithCommission = amount + commission;
-
-          switch (payment.payment_method.toLowerCase()) {
-            case 'efectivo':
-              posData.efectivo += totalAmountWithCommission;
-              break;
-            case 'transferencia':
-              posData.transferencia += totalAmountWithCommission;
-              break;
-            case 'debito':
-              posData.debito += totalAmountWithCommission;
-              break;
-            case 'credito':
-              posData.credito += totalAmountWithCommission;
-              break;
-            default:
-              console.warn('⚠️ Método de pago no reconocido:', payment.payment_method);
-              posData.efectivo += totalAmountWithCommission;
-          }
-        });
-      }
-    });
-
-    // 🔥 AGREGAR COMISIONES AL TOTAL DE POS
-    posData.total += posData.commissions;
-
-    console.log('✅ POS FINAL:', {
-      total_con_comisiones: posData.total,
-      efectivo: posData.efectivo,
-      transferencia: posData.transferencia,
-      debito: posData.debito,
-      credito: posData.credito,
-      comisiones: posData.commissions,
-      transacciones: posData.transactions
-    });
-
-    // 📋 ABONOS DEL DÍA (CON ZONA HORARIA CORREGIDA)
+    // 💰 2. ABONOS (sale_payment_details con is_partial_payment = true)
     const { data: abonosData, error: abonosError } = await supabase
       .from('sale_payment_details')
       .select(`
-        id,
         payment_method,
         amount,
-        commission_rate,
         commission_amount,
-        is_partial_payment,
-        payment_date,
         sale_id,
-        sales (
-          sale_number,
+        sales!inner (
           sale_type,
-          total_amount,
           status
         )
       `)
-      .gte('payment_date', dateRange.start)
-      .lte('payment_date', dateRange.end)
       .eq('is_partial_payment', true)
-      .order('payment_date', { ascending: false });
+      .gte('payment_date', mexicoStartUTC.toISOString())
+      .lt('payment_date', mexicoEndUTC.toISOString());
 
     if (abonosError) {
-      console.error('💥 Error obteniendo abonos:', abonosError);
+      console.error('❌ Error consultando abonos:', abonosError);
       throw abonosError;
     }
 
-    // 💰 PROCESAR ABONOS
-    const abonosProcessed = {
+    // 🎫 3. MEMBRESÍAS
+    const { data: membershipsData, error: membershipsError } = await supabase
+      .from('user_memberships')
+      .select(`
+        amount_paid,
+        inscription_amount,
+        membership_payment_details (
+          payment_method,
+          amount,
+          commission_amount
+        )
+      `)
+      .gte('created_at', mexicoStartUTC.toISOString())
+      .lt('created_at', mexicoEndUTC.toISOString());
+
+    if (membershipsError) {
+      console.error('❌ Error consultando membresías:', membershipsError);
+      throw membershipsError;
+    }
+
+    console.log('📊 Datos crudos obtenidos:', {
+      ventas: salesData?.length || 0,
+      abonos: abonosData?.length || 0,
+      membresias: membershipsData?.length || 0
+    });
+
+    // 🧮 PROCESAR VENTAS POS
+    const pos = {
       efectivo: 0,
       transferencia: 0,
       debito: 0,
@@ -164,214 +109,149 @@ export async function GET(request: NextRequest) {
       commissions: 0
     };
 
-    const uniqueAbonos = new Set();
-
-    console.log('📋 Procesando', abonosData?.length || 0, 'abonos...');
-
-    abonosData?.forEach((abono: any) => {
-      const amount = Number(abono.amount);
-      const commission = Number(abono.commission_amount || 0);
+    salesData?.forEach(sale => {
+      pos.transactions++;
       
-      abonosProcessed.total += amount;
-      abonosProcessed.commissions += commission;
-      uniqueAbonos.add(abono.sale_id);
-
-      const totalAmountWithCommission = amount + commission;
-
-      switch (abono.payment_method.toLowerCase()) {
-        case 'efectivo':
-          abonosProcessed.efectivo += totalAmountWithCommission;
-          break;
-        case 'transferencia':
-          abonosProcessed.transferencia += totalAmountWithCommission;
-          break;
-        case 'debito':
-          abonosProcessed.debito += totalAmountWithCommission;
-          break;
-        case 'credito':
-          abonosProcessed.credito += totalAmountWithCommission;
-          break;
-        default:
-          console.warn('⚠️ Método de pago no reconocido en abono:', abono.payment_method);
-          abonosProcessed.efectivo += totalAmountWithCommission;
-      }
+      sale.sale_payment_details?.forEach(payment => {
+        if (!payment.is_partial_payment) { // Solo pagos completos de ventas
+          const amount = parseFloat(payment.amount || '0');
+          const commission = parseFloat(payment.commission_amount || '0');
+          
+          pos.total += amount;
+          pos.commissions += commission; // Solo información
+          
+          switch (payment.payment_method?.toLowerCase()) {
+            case 'efectivo':
+              pos.efectivo += amount;
+              break;
+            case 'transferencia':
+              pos.transferencia += amount;
+              break;
+            case 'debito':
+              pos.debito += amount;
+              break;
+            case 'credito':
+              pos.credito += amount;
+              break;
+          }
+        }
+      });
     });
 
-    abonosProcessed.transactions = uniqueAbonos.size;
-    abonosProcessed.total += abonosProcessed.commissions;
-
-    console.log('✅ ABONOS FINAL:', {
-      total_con_comisiones: abonosProcessed.total,
-      efectivo: abonosProcessed.efectivo,
-      transferencia: abonosProcessed.transferencia,
-      debito: abonosProcessed.debito,
-      credito: abonosProcessed.credito,
-      comisiones: abonosProcessed.commissions,
-      transacciones: abonosProcessed.transactions
-    });
-
-    // 🎫 MEMBRESÍAS DEL DÍA (CON ZONA HORARIA CORREGIDA) - CORRECCIÓN APLICADA
-    const { data: membershipsData, error: membershipsError } = await supabase
-      .from('user_memberships')
-      .select(`
-        id,
-        payment_type,
-        amount_paid,
-        inscription_amount,
-        is_mixed_payment,
-        created_at,
-        membership_payment_details (
-          payment_method,
-          amount,
-          commission_rate,
-          commission_amount,
-          sequence_order
-        )
-      `)
-      .gte('created_at', dateRange.start)
-      .lte('created_at', dateRange.end)
-      .order('created_at', { ascending: false });
-
-    if (membershipsError) {
-      console.error('💥 Error obteniendo membresías:', membershipsError);
-      throw membershipsError;
-    }
-
-    // 💰 PROCESAR MEMBRESÍAS - ✅ CORRECCIÓN APLICADA SIN DOBLE SUMA
-    const membershipsProcessed = {
+    // 🧮 PROCESAR ABONOS
+    const abonos = {
       efectivo: 0,
       transferencia: 0,
       debito: 0,
       credito: 0,
-      total: 0, // ✅ SE CALCULARÁ AL FINAL COMO SUMA DE MÉTODOS
+      total: 0,
       transactions: 0,
       commissions: 0
     };
 
-    console.log('🎫 Procesando', membershipsData?.length || 0, 'membresías...');
-
-    membershipsData?.forEach((membership: any) => {
-      membershipsProcessed.transactions += 1;
+    const uniqueSaleIds = new Set();
+    abonosData?.forEach(abono => {
+      const amount = parseFloat(abono.amount || '0');
+      const commission = parseFloat(abono.commission_amount || '0');
       
-      console.log('🎫 Membresía encontrada:', {
-        id: membership.id,
-        amount_paid: membership.amount_paid,
-        inscription_amount: membership.inscription_amount,
-        is_mixed: membership.is_mixed_payment,
-        created_at: membership.created_at
-      });
-
-      // ✅ SOLO PROCESAR DETALLES DE PAGO (SIN SUMA ANTICIPADA DE TOTAL)
-      if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
-        membership.membership_payment_details.forEach((payment: any) => {
-          const amount = Number(payment.amount);
-          const commission = Number(payment.commission_amount || 0);
-
-          // ✅ ACUMULAR COMISIONES
-          membershipsProcessed.commissions += commission;
-
-          // ✅ SUMAR MONTO + COMISIÓN AL MÉTODO
-          const totalAmountWithCommission = amount + commission;
-
-          console.log('💳 Detalle de pago membresía:', {
-            method: payment.payment_method,
-            amount: amount,
-            commission: commission,
-            total_with_commission: totalAmountWithCommission
-          });
-
-          switch (payment.payment_method.toLowerCase()) {
-            case 'efectivo':
-              membershipsProcessed.efectivo += totalAmountWithCommission;
-              break;
-            case 'transferencia':
-              membershipsProcessed.transferencia += totalAmountWithCommission;
-              break;
-            case 'debito':
-              membershipsProcessed.debito += totalAmountWithCommission;
-              break;
-            case 'credito':
-              membershipsProcessed.credito += totalAmountWithCommission;
-              break;
-            default:
-              console.warn('⚠️ Método de pago no reconocido en membresía:', payment.payment_method);
-              membershipsProcessed.efectivo += totalAmountWithCommission;
-          }
-        });
-      } else {
-        // ✅ SI NO HAY DETALLES, USAR amount_paid + inscription_amount COMO EFECTIVO
-        const totalAmount = Number(membership.amount_paid) + Number(membership.inscription_amount || 0);
-        console.warn('⚠️ Membresía sin detalles de pago, asumiendo efectivo:', membership.id);
-        membershipsProcessed.efectivo += totalAmount;
+      abonos.total += amount;
+      abonos.commissions += commission; // Solo información
+      uniqueSaleIds.add(abono.sale_id);
+      
+      switch (abono.payment_method?.toLowerCase()) {
+        case 'efectivo':
+          abonos.efectivo += amount;
+          break;
+        case 'transferencia':
+          abonos.transferencia += amount;
+          break;
+        case 'debito':
+          abonos.debito += amount;
+          break;
+        case 'credito':
+          abonos.credito += amount;
+          break;
       }
     });
+    abonos.transactions = uniqueSaleIds.size;
 
-    // ✅ CALCULAR TOTAL COMO SUMA DE TODOS LOS MÉTODOS (SIN DUPLICAR)
-    membershipsProcessed.total = membershipsProcessed.efectivo + 
-                                membershipsProcessed.transferencia + 
-                                membershipsProcessed.debito + 
-                                membershipsProcessed.credito;
-
-    console.log('✅ MEMBRESÍAS FINAL CORREGIDO (SIN DOBLE SUMA):', {
-      total_calculado: membershipsProcessed.total,        // Debería ser exactamente $707
-      efectivo: membershipsProcessed.efectivo,            // $500
-      transferencia: membershipsProcessed.transferencia,  // $0
-      debito: membershipsProcessed.debito,                // $0
-      credito: membershipsProcessed.credito,              // $207
-      comisiones: membershipsProcessed.commissions,       // $7 (solo informativo)
-      transacciones: membershipsProcessed.transactions,   // 1
-      verificacion_matematica: `$${membershipsProcessed.efectivo} + $${membershipsProcessed.transferencia} + $${membershipsProcessed.debito} + $${membershipsProcessed.credito} = $${membershipsProcessed.total}`,
-      nota: 'CORRECCIÓN APLICADA: Total calculado como suma directa de métodos, sin duplicar montos'
-    });
-
-    // 🧮 CALCULAR TOTALES CONSOLIDADOS FINALES
-    const totals = {
-      efectivo: posData.efectivo + membershipsProcessed.efectivo + abonosProcessed.efectivo,
-      transferencia: posData.transferencia + membershipsProcessed.transferencia + abonosProcessed.transferencia,
-      debito: posData.debito + membershipsProcessed.debito + abonosProcessed.debito,
-      credito: posData.credito + membershipsProcessed.credito + abonosProcessed.credito,
-      total: posData.total + membershipsProcessed.total + abonosProcessed.total,
-      transactions: posData.transactions + membershipsProcessed.transactions + abonosProcessed.transactions,
-      commissions: posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions,
-      net_amount: (posData.total + membershipsProcessed.total + abonosProcessed.total) - (posData.commissions + membershipsProcessed.commissions + abonosProcessed.commissions)
+    // 🧮 PROCESAR MEMBRESÍAS
+    const memberships = {
+      efectivo: 0,
+      transferencia: 0,
+      debito: 0,
+      credito: 0,
+      total: 0,
+      transactions: 0,
+      commissions: 0
     };
 
-    console.log('🎯 TOTALES CONSOLIDADOS FINALES:', {
-      fecha_mexico: date,
-      rango_utc: `${dateRange.start} → ${dateRange.end}`,
-      pos_encontradas: posData.transactions,
-      abonos_encontrados: abonosProcessed.transactions,
-      membresias_encontradas: membershipsProcessed.transactions,
-      ingresos_totales: totals.total,
-      comisiones_totales: totals.commissions,
-      monto_neto: totals.net_amount,
-      // ✅ VERIFICACIÓN ESPECÍFICA DE MEMBRESÍAS
-      membresias_verificacion: {
-        efectivo: membershipsProcessed.efectivo,     // $500
-        credito: membershipsProcessed.credito,       // $207 
-        total_membresias: membershipsProcessed.total, // $707 (NO $864)
-        comisiones: membershipsProcessed.commissions  // $7
-      }
+    membershipsData?.forEach(membership => {
+      memberships.transactions++;
+      
+      // ✅ USAR amount_paid DIRECTAMENTE (YA INCLUYE TODO)
+      const totalMembership = parseFloat(membership.amount_paid || '0');
+      memberships.total += totalMembership;
+      
+      membership.membership_payment_details?.forEach(payment => {
+        const amount = parseFloat(payment.amount || '0');
+        const commission = parseFloat(payment.commission_amount || '0');
+        
+        memberships.commissions += commission; // Solo información
+        
+        switch (payment.payment_method?.toLowerCase()) {
+          case 'efectivo':
+            memberships.efectivo += amount;
+            break;
+          case 'transferencia':
+            memberships.transferencia += amount;
+            break;
+          case 'debito':
+            memberships.debito += amount;
+            break;
+          case 'credito':
+            memberships.credito += amount;
+            break;
+        }
+      });
     });
 
-    return NextResponse.json({
+    // 🧮 CALCULAR TOTALES
+    const totals = {
+      efectivo: pos.efectivo + abonos.efectivo + memberships.efectivo,
+      transferencia: pos.transferencia + abonos.transferencia + memberships.transferencia,
+      debito: pos.debito + abonos.debito + memberships.debito,
+      credito: pos.credito + abonos.credito + memberships.credito,
+      total: pos.total + abonos.total + memberships.total,
+      transactions: pos.transactions + abonos.transactions + memberships.transactions,
+      commissions: pos.commissions + abonos.commissions + memberships.commissions,
+      net_amount: pos.total + abonos.total + memberships.total - (pos.commissions + abonos.commissions + memberships.commissions)
+    };
+
+    const response = {
       success: true,
       date,
       timezone_info: {
         mexico_date: date,
-        utc_range: dateRange,
-        note: 'Fechas convertidas correctamente a zona horaria México (UTC-6)'
+        utc_range: {
+          start: mexicoStartUTC.toISOString(),
+          end: mexicoEndUTC.toISOString()
+        },
+        note: "Datos filtrados por fecha México (UTC-6)"
       },
-      pos: posData,
-      memberships: membershipsProcessed,
-      abonos: abonosProcessed,
+      pos,
+      abonos,
+      memberships,
       totals
-    });
+    };
+
+    console.log('✅ Respuesta final:', response);
+    return NextResponse.json(response);
 
   } catch (error) {
-    console.error('💥 Error en API daily-data:', error);
+    console.error('💥 Error en daily-data API:', error);
     return NextResponse.json(
-      { error: 'Error al obtener datos del día', success: false },
+      { error: 'Error interno del servidor', success: false },
       { status: 500 }
     );
   }
