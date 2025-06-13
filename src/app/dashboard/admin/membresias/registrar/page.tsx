@@ -343,10 +343,12 @@ export default function RegistrarMembresiaPage() {
     return formatDateForDB(mexicoDate);
   }, [getMexicoDate, formatDateForDB]);
 
-// ✅ FUNCIÓN CORREGIDA PARA GUARDAR CON ZONA MÉXICO:
-// ✅ BUENO (como PaymentDialog)
+// ✅ GUARDAR FECHA/HORA MÉXICO EN BD:
 const createTimestampForDB = useCallback((): string => {
-  return new Date().toISOString(); // ← UTC PURO para BD
+  const now = new Date();
+  // ✅ CONVERTIR A MÉXICO ANTES DE GUARDAR
+  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  return mexicoTime.toISOString();
 }, []);
 
   // ✅ FUNCIÓN CRÍTICA: AGREGAR PERÍODOS REALES
