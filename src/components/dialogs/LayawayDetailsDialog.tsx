@@ -70,7 +70,6 @@ const darkProTokens = {
   roleModerator: '#9C27B0'
 };
 
-// ✅ POR ESTO:
 interface LayawayDetailsDialogProps {
   open: boolean;
   onClose: () => void;
@@ -111,7 +110,7 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     return formatMexicoDate(dateString);
   }, [formatMexicoDate]);
 
-if (!layaway) return null;
+  if (!layaway) return null;
 
   return (
     <Dialog 
@@ -139,7 +138,7 @@ if (!layaway) return null;
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <ReceiptIcon />
           <Typography variant="h6" fontWeight="bold">
-📊 Detalles de Apartado #{layaway.sale_number}
+            📦 Detalles de Apartado #{layaway.sale_number}
           </Typography>
         </Box>
         <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
@@ -164,21 +163,21 @@ if (!layaway) return null;
                 
                 <Stack spacing={2}>
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Número de Venta:</Typography>
-                    <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>{sale.sale_number}</Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Número de Apartado:</Typography>
+                    <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>{layaway.sale_number}</Typography>
                   </Box>
                   
                   <Box>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Fecha:</Typography>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{formatDate(sale.created_at)}</Typography>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{formatDate(layaway.created_at)}</Typography>
                   </Box>
                   
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Tipo de Venta:</Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Tipo:</Typography>
                     <Chip 
-                      label={sale.sale_type === 'sale' ? 'Venta Directa' : 'Apartado'} 
+                      label={layaway.sale_type === 'sale' ? 'Venta Directa' : 'Apartado'} 
                       sx={{
-                        backgroundColor: sale.sale_type === 'sale' ? darkProTokens.success : darkProTokens.roleModerator,
+                        backgroundColor: layaway.sale_type === 'sale' ? darkProTokens.success : darkProTokens.roleModerator,
                         color: darkProTokens.textPrimary,
                         fontWeight: 600
                       }}
@@ -189,12 +188,12 @@ if (!layaway) return null;
                   <Box>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Estado:</Typography>
                     <Chip 
-                      label={sale.status} 
+                      label={layaway.status} 
                       sx={{
                         backgroundColor: 
-                          sale.status === 'completed' ? darkProTokens.success :
-                          sale.status === 'pending' ? darkProTokens.warning :
-                          sale.status === 'cancelled' ? darkProTokens.error : darkProTokens.roleModerator,
+                          layaway.status === 'completed' ? darkProTokens.success :
+                          layaway.status === 'pending' ? darkProTokens.warning :
+                          layaway.status === 'cancelled' ? darkProTokens.error : darkProTokens.roleModerator,
                         color: darkProTokens.textPrimary,
                         fontWeight: 600
                       }}
@@ -205,23 +204,42 @@ if (!layaway) return null;
                   <Box>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Estado de Pago:</Typography>
                     <Chip 
-                      label={sale.payment_status} 
+                      label={layaway.payment_status} 
                       sx={{
                         backgroundColor: 
-                          sale.payment_status === 'paid' ? darkProTokens.success :
-                          sale.payment_status === 'partial' ? darkProTokens.warning :
-                          sale.payment_status === 'pending' ? darkProTokens.error : darkProTokens.roleModerator,
+                          layaway.payment_status === 'paid' ? darkProTokens.success :
+                          layaway.payment_status === 'partial' ? darkProTokens.warning :
+                          layaway.payment_status === 'pending' ? darkProTokens.error : darkProTokens.roleModerator,
                         color: darkProTokens.textPrimary,
                         fontWeight: 600
                       }}
                       size="small" 
                     />
                   </Box>
+
+                  {/* ✅ INFORMACIÓN ESPECÍFICA DE APARTADOS */}
+                  {layaway.layaway_expires_at && (
+                    <Box>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Fecha de Vencimiento:</Typography>
+                      <Typography variant="body1" sx={{ color: darkProTokens.warning }}>
+                        {formatDate(layaway.layaway_expires_at)}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {layaway.deposit_percentage && (
+                    <Box>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Porcentaje de Anticipo:</Typography>
+                      <Typography variant="body1" sx={{ color: darkProTokens.primary }}>
+                        {layaway.deposit_percentage}%
+                      </Typography>
+                    </Box>
+                  )}
                   
-                  {sale.notes && (
+                  {layaway.notes && (
                     <Box>
                       <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Notas:</Typography>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{sale.notes}</Typography>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{layaway.notes}</Typography>
                     </Box>
                   )}
                 </Stack>
@@ -251,11 +269,16 @@ if (!layaway) return null;
                       </Avatar>
                       <Box>
                         <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                          {sale.customer_name || 'Cliente General'}
+                          {layaway.customer_name || 'Cliente General'}
                         </Typography>
-                        {sale.customer_email && (
+                        {layaway.customer_email && (
                           <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            {sale.customer_email}
+                            {layaway.customer_email}
+                          </Typography>
+                        )}
+                        {layaway.customer_phone && (
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            📞 {layaway.customer_phone}
                           </Typography>
                         )}
                       </Box>
@@ -265,14 +288,14 @@ if (!layaway) return null;
                   <Box>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Cajero:</Typography>
                     <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                      {sale.cashier_name || 'N/A'}
+                      {layaway.cashier_name || 'N/A'}
                     </Typography>
                   </Box>
                   
                   <Box>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Opciones:</Typography>
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                      {sale.receipt_printed && (
+                      {layaway.receipt_printed && (
                         <Chip 
                           label="Ticket impreso" 
                           size="small" 
@@ -283,7 +306,7 @@ if (!layaway) return null;
                           }}
                         />
                       )}
-                      {sale.email_sent && (
+                      {layaway.email_sent && (
                         <Chip 
                           label="Email enviado" 
                           size="small" 
@@ -294,7 +317,7 @@ if (!layaway) return null;
                           }}
                         />
                       )}
-                      {sale.is_mixed_payment && (
+                      {layaway.is_mixed_payment && (
                         <Chip 
                           label="Pago mixto" 
                           size="small" 
@@ -321,7 +344,7 @@ if (!layaway) return null;
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
-                  🛒 Productos Vendidos ({sale.items?.length || 0})
+                  🛒 Productos Apartados ({layaway.items?.length || 0})
                 </Typography>
                 
                 <TableContainer component={Paper} sx={{
@@ -342,7 +365,7 @@ if (!layaway) return null;
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {sale.items?.map((item: any, index: number) => (
+                      {layaway.items?.map((item: any, index: number) => (
                         <TableRow key={index} sx={{
                           '&:hover': { backgroundColor: `${darkProTokens.primary}10` },
                           '&:nth-of-type(even)': { backgroundColor: `${darkProTokens.surfaceLevel1}60` }
@@ -415,13 +438,13 @@ if (!layaway) return null;
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
-                  💳 Información de Pagos
+                  💳 Historial de Pagos
                 </Typography>
                 
-                {sale.is_mixed_payment ? (
+                {layaway.is_mixed_payment ? (
                   <Box>
                     <Typography variant="body2" sx={{ mb: 2, color: darkProTokens.textSecondary }}>Pago Mixto:</Typography>
-                    {sale.payment_details?.map((payment: any, index: number) => (
+                    {layaway.payment_history?.map((payment: any, index: number) => (
                       <Box key={index} sx={{ 
                         p: 2, 
                         border: `1px solid ${darkProTokens.grayDark}`, 
@@ -430,7 +453,7 @@ if (!layaway) return null;
                         background: darkProTokens.surfaceLevel2
                       }}>
                         <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                          Pago #{payment.sequence_order}
+                          Pago #{payment.sequence_order || index + 1}
                         </Typography>
                         <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                           Método: {payment.payment_method === 'efectivo' && '💵 Efectivo'}
@@ -465,31 +488,40 @@ if (!layaway) return null;
                 ) : (
                   <Stack spacing={2}>
                     <Box>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Método de Pago:</Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Último Método de Pago:</Typography>
                       <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                        {sale.payment_method === 'efectivo' && '💵 Efectivo'}
-                        {sale.payment_method === 'debito' && '💳 Tarjeta Débito'}
-                        {sale.payment_method === 'credito' && '💳 Tarjeta Crédito'}
-                        {sale.payment_method === 'transferencia' && '🏦 Transferencia'}
-                        {sale.payment_method === 'vales' && '🎫 Vales de Despensa'}
-                        {!sale.payment_method && 'No especificado'}
+                        {layaway.payment_method === 'efectivo' && '💵 Efectivo'}
+                        {layaway.payment_method === 'debito' && '💳 Tarjeta Débito'}
+                        {layaway.payment_method === 'credito' && '💳 Tarjeta Crédito'}
+                        {layaway.payment_method === 'transferencia' && '🏦 Transferencia'}
+                        {layaway.payment_method === 'vales' && '🎫 Vales de Despensa'}
+                        {!layaway.payment_method && 'No especificado'}
                       </Typography>
                     </Box>
                     
-                    {sale.commission_amount > 0 && (
+                    {layaway.commission_amount > 0 && (
                       <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisión:</Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisión Total:</Typography>
                         <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.warning }}>
-                          {formatPrice(sale.commission_amount)}
+                          {formatPrice(layaway.commission_amount)}
                         </Typography>
                       </Box>
                     )}
                     
-                    {sale.change_amount > 0 && (
+                    {layaway.change_amount > 0 && (
                       <Box>
                         <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Cambio:</Typography>
                         <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.info }}>
-                          {formatPrice(sale.change_amount)}
+                          {formatPrice(layaway.change_amount)}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {layaway.last_payment_date && (
+                      <Box>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Último Pago:</Typography>
+                        <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
+                          {formatDate(layaway.last_payment_date)}
                         </Typography>
                       </Box>
                     )}
@@ -516,22 +548,22 @@ if (!layaway) return null;
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Subtotal:</Typography>
                     <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                      {formatPrice(sale.subtotal || 0)}
+                      {formatPrice(layaway.subtotal || 0)}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Impuestos:</Typography>
                     <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.info }}>
-                      {formatPrice(sale.tax_amount || 0)}
+                      {formatPrice(layaway.tax_amount || 0)}
                     </Typography>
                   </Box>
                   
-                  {((sale.discount_amount || 0) > 0 || (sale.coupon_discount || 0) > 0) && (
+                  {((layaway.discount_amount || 0) > 0 || (layaway.coupon_discount || 0) > 0) && (
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Descuentos:</Typography>
                       <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.error }}>
-                        -{formatPrice((sale.discount_amount || 0) + (sale.coupon_discount || 0))}
+                        -{formatPrice((layaway.discount_amount || 0) + (layaway.coupon_discount || 0))}
                       </Typography>
                     </Box>
                   )}
@@ -539,15 +571,15 @@ if (!layaway) return null;
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Total Base:</Typography>
                     <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                      {formatPrice(sale.total_amount || 0)}
+                      {formatPrice(layaway.total_amount || 0)}
                     </Typography>
                   </Box>
                   
-                  {(sale.commission_amount || 0) > 0 && (
+                  {(layaway.commission_amount || 0) > 0 && (
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisiones:</Typography>
                       <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.warning }}>
-                        +{formatPrice(sale.commission_amount)}
+                        +{formatPrice(layaway.commission_amount)}
                       </Typography>
                     </Box>
                   )}
@@ -564,11 +596,26 @@ if (!layaway) return null;
                   }}>
                     <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>Total Final:</Typography>
                     <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                      {formatPrice((sale.total_amount || 0) + (sale.commission_amount || 0))}
+                      {formatPrice((layaway.total_amount || 0) + (layaway.commission_amount || 0))}
+                    </Typography>
+                  </Box>
+
+                  {/* ✅ INFORMACIÓN ESPECÍFICA DE APARTADOS */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    p: 2,
+                    background: `${darkProTokens.info}20`,
+                    borderRadius: 2,
+                    border: `1px solid ${darkProTokens.info}30`
+                  }}>
+                    <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>Total Pagado:</Typography>
+                    <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                      {formatPrice(layaway.paid_amount || 0)}
                     </Typography>
                   </Box>
                   
-                  {sale.payment_status === 'partial' && (sale.pending_amount || 0) > 0 && (
+                  {layaway.payment_status === 'partial' && (layaway.pending_amount || 0) > 0 && (
                     <Box sx={{ 
                       display: 'flex', 
                       justifyContent: 'space-between',
@@ -579,7 +626,23 @@ if (!layaway) return null;
                     }}>
                       <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>Pendiente por Pagar:</Typography>
                       <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
-                        {formatPrice(sale.pending_amount)}
+                        {formatPrice(layaway.pending_amount)}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {layaway.required_deposit && (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      p: 2,
+                      background: `${darkProTokens.roleModerator}20`,
+                      borderRadius: 2,
+                      border: `1px solid ${darkProTokens.roleModerator}30`
+                    }}>
+                      <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>Anticipo Requerido:</Typography>
+                      <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.roleModerator }}>
+                        {formatPrice(layaway.required_deposit)}
                       </Typography>
                     </Box>
                   )}
