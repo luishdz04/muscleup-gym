@@ -57,6 +57,8 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -200,11 +202,13 @@ export default function PaymentToLayawayDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-   // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
   const getMexicoDate = useCallback(() => {
-    const now = new Date();
-    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date()); // ✅ USAR HELPER CORREGIDO
   }, []);
 
   const formatPrice = useCallback((price: number) => {
@@ -214,33 +218,17 @@ export default function PaymentToLayawayDialog({
     }).format(price);
   }, []);
 
-  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
   const formatMexicoDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatMexicoDateTime(dateString); // ✅ USAR HELPER CORREGIDO
   }, []);
 
-  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
   const formatDate = useCallback((dateString: string) => {
-    return formatMexicoDate(dateString);
-  }, [formatMexicoDate]);
+    return formatMexicoDateTime(dateString); // ✅ USAR HELPER CORREGIDO
+  }, []);
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
-  }, []);
-
-  // ✅ CREAR TIMESTAMP MÉXICO - MOVER AQUÍ (FUERA DE FUNCIONES)
-  const createTimestampForDB = useCallback((): string => {
-    const now = new Date();
-    const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-    return mexicoTime.toISOString();
   }, []);
 
   // ✅ DATOS SEGUROS HÍBRIDOS
@@ -400,7 +388,7 @@ export default function PaymentToLayawayDialog({
     showNotification('Pago eliminado', 'info');
   }, [showNotification]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR PAGO (CORREGIDA)
+  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR PAGO (CORREGIDA CON FECHAS MÉXICO)
   const processPayment = useCallback(async () => {
     if (!safeLayaway || !calculations) return;
 
@@ -414,10 +402,7 @@ export default function PaymentToLayawayDialog({
 
       const userId = userData.user.id;
 
-      // ✅ USAR FUNCIÓN YA DEFINIDA ARRIBA
-      const nowUTC = createTimestampForDB();
-
-      // ✅ CREAR DETALLES DE PAGO
+      // ✅ CREAR DETALLES DE PAGO CON FECHAS CORREGIDAS
       if (isMixedPayment && paymentDetails.length > 0) {
         const paymentInserts = paymentDetails.map((payment, index) => ({
           sale_id: safeLayaway.id,
@@ -427,12 +412,12 @@ export default function PaymentToLayawayDialog({
           commission_rate: payment.commission,
           commission_amount: payment.commissionAmount,
           sequence_order: payment.sequence,
-          payment_date: nowUTC, // ✅ HORA MÉXICO
-          created_at: nowUTC, // ✅ HORA MÉXICO
+          payment_date: toMexicoTimestamp(new Date()), // ✅ CORREGIDO: hora México con offset
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: index + 1,
           notes: `Abono mixto ${index + 1} de ${paymentDetails.length}`
+          // ✅ created_at se maneja automáticamente por la BD
         }));
 
         const { error: paymentError } = await supabase
@@ -451,12 +436,12 @@ export default function PaymentToLayawayDialog({
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.totalCommission,
           sequence_order: 1,
-          payment_date: nowUTC, // ✅ HORA MÉXICO
-          created_at: nowUTC, // ✅ HORA MÉXICO
+          payment_date: toMexicoTimestamp(new Date()), // ✅ CORREGIDO: hora México con offset
           created_by: userId,
           is_partial_payment: !calculations.willComplete,
           payment_sequence: 1,
           notes: notes || null
+          // ✅ created_at se maneja automáticamente por la BD
         };
 
         const { error: paymentError } = await supabase
@@ -468,12 +453,11 @@ export default function PaymentToLayawayDialog({
         }
       }
 
-      // ✅ ACTUALIZAR APARTADO
+      // ✅ ACTUALIZAR APARTADO (LA BD MANEJA updated_at AUTOMÁTICAMENTE)
       const updateData = {
         paid_amount: calculations.newPaidAmount,
         pending_amount: calculations.newPendingAmount,
-        last_payment_date: nowUTC, // ✅ HORA MÉXICO
-        updated_at: nowUTC, // ✅ HORA MÉXICO
+        last_payment_date: toMexicoTimestamp(new Date()), // ✅ CORREGIDO: hora México con offset
         ...(calculations.willComplete && {
           status: 'completed',
           payment_status: 'paid'
@@ -489,7 +473,7 @@ export default function PaymentToLayawayDialog({
         throw updateError;
       }
 
-      // ✅ CREAR HISTORIAL
+      // ✅ CREAR HISTORIAL CON FECHA CORREGIDA
       await supabase
         .from('layaway_status_history')
         .insert([{
@@ -499,8 +483,8 @@ export default function PaymentToLayawayDialog({
           previous_paid_amount: safeLayaway.paid_amount,
           new_paid_amount: calculations.newPaidAmount,
           reason: calculations.willComplete ? 'Pago completado' : 'Abono recibido',
-          created_at: nowUTC, // ✅ HORA MÉXICO
           created_by: userId
+          // ✅ created_at se maneja automáticamente por la BD
         }]);
 
       setCompleted(true);
@@ -528,8 +512,7 @@ export default function PaymentToLayawayDialog({
     applyCommission, 
     paymentMethods, 
     notes, 
-    showNotification,
-    createTimestampForDB // ✅ AGREGAR DEPENDENCIA
+    showNotification
   ]);
 
   // ✅ FUNCIÓN HÍBRIDA PARA CERRAR
