@@ -45,6 +45,8 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -141,37 +143,30 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
   const getMexicoDate = useCallback(() => {
-    const now = new Date();
-    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
   }, []);
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
-    }).format(price);
+    }).format(price || 0);
   }, []);
 
-  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
   const formatMexicoDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatMexicoDateTime(dateString);
   }, []);
 
-  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
   const formatDate = useCallback((dateString: string) => {
-    return formatMexicoDate(dateString);
-  }, [formatMexicoDate]);
+    return formatMexicoDateTime(dateString);
+  }, []);
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
@@ -269,13 +264,6 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
     ));
   };
 
-  // ✅ CREAR TIMESTAMP MÉXICO - MOVER AQUÍ (FUERA DE FUNCIONES)
-  const createTimestampForDB = useCallback((): string => {
-    const now = new Date();
-    const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-    return mexicoTime.toISOString();
-  }, []);
-
   // ✅ VALIDAR CAMBIOS
   const validateChanges = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -341,7 +329,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
     return saleChanged || itemsChanged;
   }, [editedSale, editedItems, sale]);
 
-  // ✅ GUARDAR CAMBIOS (CORREGIDO)
+  // ✅ GUARDAR CAMBIOS (CORREGIDO CON FECHAS MÉXICO)
   const handleSave = useCallback(async () => {
     if (!validateChanges()) return;
     if (!hasChanges()) {
@@ -365,10 +353,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
       const totals = calculateTotals();
 
-      // ✅ USAR FUNCIÓN YA DEFINIDA ARRIBA
-      const nowUTC = createTimestampForDB();
-
-      // ✅ ACTUALIZAR VENTA PRINCIPAL
+      // ✅ ACTUALIZAR VENTA PRINCIPAL CON FECHA MÉXICO (LA BD MANEJA updated_at AUTOMÁTICAMENTE)
       const { error: saleError } = await supabase
         .from('sales')
         .update({
@@ -383,14 +368,14 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           commission_amount: editedSale.commission_amount,
           total_amount: totals.total,
           paid_amount: totals.finalTotal,
-          updated_at: nowUTC, // ✅ HORA MÉXICO
           updated_by: userId
+          // ✅ updated_at se maneja automáticamente por la BD
         })
         .eq('id', sale.id);
 
       if (saleError) throw saleError;
 
-      // ✅ ACTUALIZAR ITEMS
+      // ✅ ACTUALIZAR ITEMS CON FECHAS CORREGIDAS
       for (const [index, item] of editedItems.entries()) {
         if (item.isDeleted && !item.isNew) {
           // Eliminar item existente
@@ -411,8 +396,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
               unit_price: item.unit_price,
               total_price: item.total_price,
               discount_amount: item.discount_amount,
-              tax_amount: item.tax_amount,
-              created_at: nowUTC // ✅ HORA MÉXICO
+              tax_amount: item.tax_amount
+              // ✅ created_at se maneja automáticamente por la BD
             }]);
           
           if (error) throw error;
@@ -426,8 +411,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
               unit_price: item.unit_price,
               total_price: item.total_price,
               discount_amount: item.discount_amount,
-              tax_amount: item.tax_amount,
-              updated_at: nowUTC // ✅ HORA MÉXICO
+              tax_amount: item.tax_amount
+              // ✅ updated_at se maneja automáticamente por la BD
             })
             .eq('id', item.id);
           
@@ -435,7 +420,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         }
       }
 
-      // ✅ REGISTRAR HISTORIAL DE CAMBIOS
+      // ✅ REGISTRAR HISTORIAL DE CAMBIOS CON FECHA CORREGIDA
       await supabase
         .from('sale_edit_history')
         .insert([{
@@ -444,8 +429,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           changes_summary: `Venta editada: ${hasChanges() ? 'Items y totales actualizados' : 'Solo metadatos'}`,
           previous_total: sale.total_amount,
           new_total: totals.total,
-          edit_reason: 'Manual edit from admin panel',
-          created_at: nowUTC // ✅ HORA MÉXICO
+          edit_reason: 'Manual edit from admin panel'
+          // ✅ created_at se maneja automáticamente por la BD
         }]);
 
       showNotification('Venta actualizada exitosamente', 'success');
@@ -465,7 +450,6 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
     editedItems,
     sale,
     calculateTotals,
-    createTimestampForDB, // ✅ AGREGAR DEPENDENCIA
     showNotification,
     onSuccess
   ]);
@@ -483,7 +467,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         sx: {
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `1px solid ${darkProTokens.grayDark}`,
-          color: darkProTokens.textPrimary
+          color: darkProTokens.textPrimary,
+          borderRadius: 4
         }
       }}
     >
@@ -527,7 +512,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         justifyContent: 'space-between',
         alignItems: 'center',
         background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
-        color: darkProTokens.textPrimary
+        color: darkProTokens.textPrimary,
+        borderRadius: '16px 16px 0 0'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <EditIcon />
@@ -581,7 +567,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{
               background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.warning, fontWeight: 700 }}>
@@ -737,7 +724,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{
               background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -862,11 +850,12 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           <Grid size={12}> 
             <Card sx={{
               background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.warning, fontWeight: 700 }}>
-                  🛒 Productos de la Venta
+                  🛒 Productos de la Venta ({editedItems.filter(item => !item.isDeleted).length})
                 </Typography>
 
                 {errors.items && (
@@ -886,7 +875,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
                 <TableContainer component={Paper} sx={{
                   background: darkProTokens.surfaceLevel2,
-                  border: `1px solid ${darkProTokens.grayDark}`
+                  border: `1px solid ${darkProTokens.grayDark}`,
+                  borderRadius: 2
                 }}>
                   <Table>
                     <TableHead>
@@ -931,7 +921,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                                 sx={{ 
                                   ml: 1,
                                   backgroundColor: darkProTokens.success,
-                                  color: darkProTokens.textPrimary
+                                  color: darkProTokens.textPrimary,
+                                  fontWeight: 600
                                 }}
                               />
                             )}
@@ -942,7 +933,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                                 sx={{ 
                                   ml: 1,
                                   backgroundColor: darkProTokens.error,
-                                  color: darkProTokens.textPrimary
+                                  color: darkProTokens.textPrimary,
+                                  fontWeight: 600
                                 }}
                               />
                             )}
@@ -1018,7 +1010,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                           </TableCell>
 
                           <TableCell align="right">
-                            <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
+                            <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.primary }}>
                               {formatPrice(item.total_price)}
                             </Typography>
                           </TableCell>
@@ -1055,7 +1047,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           <Grid size={12}> 
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.warning}20, ${darkProTokens.warning}10)`,
-              border: `2px solid ${darkProTokens.warning}30`
+              border: `2px solid ${darkProTokens.warning}30`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.warning, fontWeight: 700 }}>
@@ -1111,9 +1104,9 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                       <Typography variant="h4" fontWeight="800" sx={{ color: darkProTokens.warning }}>
                         {formatPrice(totals.finalTotal)}
                       </Typography>
-                      {totals.finalTotal !== sale.total_amount && (
+                      {totals.finalTotal !== (sale.total_amount || 0) && (
                         <Typography variant="caption" sx={{ color: darkProTokens.warning }}>
-                          (Original: {formatPrice(sale.total_amount)})
+                          (Original: {formatPrice(sale.total_amount || 0)})
                         </Typography>
                       )}
                     </Box>
