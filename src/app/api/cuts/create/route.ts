@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-// ✅ MISMA FUNCIÓN QUE DAILY-DATA Y TRANSACTION-DETAILS
-function getMexicoTimestamp(): string {
+// ✅ IMPLEMENTAR LA MISMA LÓGICA QUE dateHelpers (SIN IMPORTAR)
+function toMexicoTimestamp(date: Date): string {
+  // Simular la función format con timeZone México
+  const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+  
+  // Crear el timestamp con offset México (-06:00)
+  const year = mexicoTime.getFullYear();
+  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoTime.getDate()).padStart(2, '0');
+  const hours = String(mexicoTime.getHours()).padStart(2, '0');
+  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
+  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
+  
+  // Formato: "2025-06-14T16:22:07-06:00" (hora México con offset)
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
+}
+
+// ✅ FUNCIÓN ALTERNATIVA PARA TIMESTAMP UTC CON HORA MÉXICO
+function getMexicoTimestampUTC(): string {
   const now = new Date();
-  const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  const mexicoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
   return mexicoTime.toISOString();
 }
 
@@ -107,33 +124,40 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // ✅ USAR MISMA FUNCIÓN QUE OTRAS APIS
-    const mexicoTimestamp = created_at_mexico || getMexicoTimestamp();
+    // ✅ USAR LÓGICA DE dateHelpers - TIMESTAMP CON OFFSET MÉXICO
+    const now = new Date();
+    const mexicoTimestamp = created_at_mexico || toMexicoTimestamp(now);
     
-    // 🔢 GENERAR NÚMERO DE CORTE CON HORA MÉXICO
+    console.log('🇲🇽 Aplicando lógica de dateHelpers:', {
+      utc_actual: now.toISOString(),
+      mexico_timestamp: mexicoTimestamp,
+      utc_input: new Date().toISOString(),
+      nota: 'Usando toMexicoTimestamp con offset -06:00'
+    });
+    
+    // 🔢 GENERAR NÚMERO DE CORTE
     const mexicoDate = new Date(mexicoTimestamp);
     const dateStr = mexicoDate.toISOString().split('T')[0].replace(/-/g, '');
     const timestamp = mexicoDate.getTime();
     const cutNumber = `CORTE-${dateStr}-${timestamp}`;
     
-    console.log('📊 Creando corte con hora México (función local):', {
+    console.log('📊 Creando corte con dateHelpers:', {
       cut_date,
       cut_number: cutNumber,
       created_by: userId,
       mexico_timestamp: mexicoTimestamp,
-      mexico_formatted: new Date(mexicoTimestamp).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
-      utc_time: new Date().toISOString(),
+      utc_now: now.toISOString(),
       grand_total,
       is_manual
     });
     
-    // 💾 INSERTAR CORTE EN BD CON HORA MÉXICO
+    // 💾 INSERTAR CORTE EN BD CON TIMESTAMP MÉXICO
     const { data: newCut, error: insertError } = await supabase
       .from('cash_cuts')
       .insert([{
         cut_number: cutNumber,
         cut_date,
-        cut_time: mexicoTimestamp, // ✅ HORA MÉXICO CON FUNCIÓN LOCAL
+        cut_time: mexicoTimestamp, // ✅ TIMESTAMP CON OFFSET MÉXICO
         created_by: userId,
         notes: notes?.trim() || null,
         is_manual,
@@ -181,12 +205,12 @@ export async function POST(request: NextRequest) {
         expenses_amount: parseFloat(expenses_amount) || 0,
         final_balance: parseFloat(final_balance) || 0,
         
-        // ESTADO CON HORA MÉXICO
+        // ESTADO CON TIMESTAMP MÉXICO
         status: 'closed',
-        closed_at: mexicoTimestamp, // ✅ HORA MÉXICO CON FUNCIÓN LOCAL
+        closed_at: mexicoTimestamp, // ✅ TIMESTAMP CON OFFSET MÉXICO
         closed_by: userId,
-        created_at: mexicoTimestamp, // ✅ HORA MÉXICO CON FUNCIÓN LOCAL
-        updated_at: mexicoTimestamp, // ✅ HORA MÉXICO CON FUNCIÓN LOCAL
+        created_at: mexicoTimestamp, // ✅ TIMESTAMP CON OFFSET MÉXICO
+        updated_at: mexicoTimestamp, // ✅ TIMESTAMP CON OFFSET MÉXICO
         updated_by: userId
       }])
       .select()
@@ -207,10 +231,10 @@ export async function POST(request: NextRequest) {
       throw insertError;
     }
 
-    console.log('✅ Corte creado exitosamente con hora México (función local):', {
+    console.log('✅ Corte creado con dateHelpers:', {
       corte_id: newCut.id,
-      hora_mexico: new Date(mexicoTimestamp).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
-      hora_utc: new Date().toISOString()
+      timestamp_guardado: mexicoTimestamp,
+      hora_utc_actual: now.toISOString()
     });
 
     return NextResponse.json({
@@ -219,8 +243,7 @@ export async function POST(request: NextRequest) {
       cut_id: newCut.id,
       cut_number: cutNumber,
       mexico_time: mexicoTimestamp,
-      mexico_formatted: new Date(mexicoTimestamp).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
-      utc_time: new Date().toISOString(),
+      utc_time: now.toISOString(),
       cut: newCut
     });
 
