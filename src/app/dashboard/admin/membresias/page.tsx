@@ -19,6 +19,8 @@ import Grid from '@mui/material/Grid';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
@@ -100,15 +102,32 @@ export default function MembresiasPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // ✅ FUNCIÓN UTILITARIA SIMPLIFICADA - SOLO FORMATO DE PRECIO
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
+  }, []);
+
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
-    }).format(price);
+    }).format(price || 0);
   }, []);
 
-  // ✅ CARGAR DATOS CORREGIDO - SIN supabase.sql
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
+  const formatMexicoDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  // ✅ CARGAR DATOS CORREGIDO CON FECHAS MÉXICO
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -122,27 +141,24 @@ export default function MembresiasPage() {
 
       if (statsError) throw statsError;
 
-      // ✅ OBTENER FECHA ACTUAL PARA CÁLCULOS (la BD ya está en México)
-      const today = new Date();
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth() + 1; // JavaScript months are 0-indexed
+      // ✅ OBTENER FECHAS MÉXICO CORREGIDAS
+      const mexicoToday = getMexicoDate();
+      const mexicoTodayString = getMexicoDateString();
       
-      // Primer día del mes actual
-      const firstDayOfMonth = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`;
+      // Primer día del mes actual en México
+      const firstDayOfMonth = `${mexicoToday.getFullYear()}-${(mexicoToday.getMonth() + 1).toString().padStart(2, '0')}-01`;
       
-      // Fecha en 7 días
-      const in7Days = new Date();
-      in7Days.setDate(today.getDate() + 7);
-      const in7DaysString = in7Days.toISOString().split('T')[0];
+      // Fecha en 7 días en México
+      const in7Days = new Date(mexicoToday);
+      in7Days.setDate(mexicoToday.getDate() + 7);
+      const in7DaysString = toMexicoDate(in7Days);
       
-      const todayString = today.toISOString().split('T')[0];
-      
-      console.log(`📅 Fechas calculadas para estadísticas:`);
-      console.log(`   📅 Hoy: ${todayString}`);
+      console.log(`📅 Fechas México calculadas para estadísticas:`);
+      console.log(`   📅 Hoy: ${mexicoTodayString}`);
       console.log(`   📅 Primer día del mes: ${firstDayOfMonth}`);
       console.log(`   📅 En 7 días: ${in7DaysString}`);
 
-      // ✅ CALCULAR ESTADÍSTICAS CON FILTROS JAVASCRIPT
+      // ✅ CALCULAR ESTADÍSTICAS CON FECHAS MÉXICO CORREGIDAS
       const calculatedStats: MembershipStats = {
         total: allMemberships?.length || 0,
         active: allMemberships?.filter(m => m.status === 'active').length || 0,
@@ -153,7 +169,8 @@ export default function MembresiasPage() {
         revenue_this_month: allMemberships
           ?.filter(m => {
             if (!m.created_at) return false;
-            const createdDate = new Date(m.created_at).toISOString().split('T')[0];
+            // Convertir timestamp BD a fecha México para comparar
+            const createdDate = toMexicoDate(new Date(m.created_at));
             return createdDate >= firstDayOfMonth;
           })
           .reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0,
@@ -162,7 +179,8 @@ export default function MembresiasPage() {
         new_this_month: allMemberships
           ?.filter(m => {
             if (!m.created_at) return false;
-            const createdDate = new Date(m.created_at).toISOString().split('T')[0];
+            // Convertir timestamp BD a fecha México para comparar
+            const createdDate = toMexicoDate(new Date(m.created_at));
             return createdDate >= firstDayOfMonth;
           }).length || 0,
         
@@ -170,8 +188,9 @@ export default function MembresiasPage() {
         expiring_soon: allMemberships
           ?.filter(m => {
             if (!m.end_date || m.status !== 'active') return false;
-            const endDate = new Date(m.end_date).toISOString().split('T')[0];
-            return endDate <= in7DaysString && endDate >= todayString;
+            // Convertir timestamp BD a fecha México para comparar
+            const endDate = toMexicoDate(new Date(m.end_date));
+            return endDate <= in7DaysString && endDate >= mexicoTodayString;
           }).length || 0
       };
 
@@ -186,7 +205,7 @@ export default function MembresiasPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getMexicoDate, getMexicoDateString]);
 
   // Cargar datos al inicializar
   useEffect(() => {
