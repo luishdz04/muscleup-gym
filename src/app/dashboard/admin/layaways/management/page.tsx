@@ -670,7 +670,7 @@ export default function LayawayManagementPage() {
               color: darkProTokens.textSecondary,
               mt: 1
             }}>
-              Administra y da seguimiento a todos los apartados activos (Fechas México corregidas)
+             Administra y da seguimiento a todos los apartados activos
             </Typography>
           </Box>
         </Box>
@@ -875,70 +875,7 @@ export default function LayawayManagementPage() {
         </Grid>
       </Grid>
 
-      {/* ✅ PANEL DE INFORMACIÓN DE FECHAS CORREGIDAS */}
-      <Card sx={{ 
-        mb: 4,
-        background: `linear-gradient(135deg, ${darkProTokens.primary}10, ${darkProTokens.primary}05)`,
-        border: `2px solid ${darkProTokens.primary}30`,
-        borderRadius: 4
-      }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <CheckIcon sx={{ color: darkProTokens.primary, fontSize: 28 }} />
-            <Typography variant="h6" sx={{ 
-              color: darkProTokens.primary,
-              fontWeight: 700
-            }}>
-              🇲🇽 Sistema de Fechas México Corregido
-            </Typography>
-          </Box>
-          
-          <Grid container spacing={3}>
-            <Grid xs={12} md={4}>
-              <Box sx={{ p: 2, background: `${darkProTokens.success}10`, borderRadius: 2 }}>
-                <Typography variant="body2" sx={{ color: darkProTokens.success, fontWeight: 600 }}>
-                  ✅ Fecha/Hora Actual México:
-                </Typography>
-                <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                  {formatMexicoDate(new Date().toISOString())}
-                </Typography>
-              </Box>
-            </Grid>
-            
-            <Grid xs={12} md={4}>
-              <Box sx={{ p: 2, background: `${darkProTokens.info}10`, borderRadius: 2 }}>
-                <Typography variant="body2" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
-                  ✅ Formato Timestamp:
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontFamily: 'monospace' }}>
-                  {toMexicoTimestamp(new Date())}
-                </Typography>
-              </Box>
-            </Grid>
-            
-            <Grid xs={12} md={4}>
-              <Box sx={{ p: 2, background: `${darkProTokens.warning}10`, borderRadius: 2 }}>
-                <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                  ✅ Formato Fecha:
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontFamily: 'monospace' }}>
-                  {toMexicoDate(new Date())}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-          
-          <Typography variant="caption" sx={{ 
-            color: darkProTokens.success, 
-            display: 'block', 
-            mt: 2,
-            fontWeight: 600
-          }}>
-            ✅ Sin desfase de 6 horas - Todos los cálculos de vencimiento usan hora México
-          </Typography>
-        </CardContent>
-      </Card>
-
+      
       {/* ✅ FILTROS CON DARK PRO SYSTEM */}
       <Card sx={{ 
         mb: 4,
@@ -1213,7 +1150,7 @@ export default function LayawayManagementPage() {
                   top: 0,
                   zIndex: 10
                 }}>
-                  Vence (México)
+                  Vence 
                 </TableCell>
                 <TableCell sx={{ 
                   background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
@@ -1496,9 +1433,7 @@ export default function LayawayManagementPage() {
                       <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                         {tabsData[activeTab]?.label} - Prueba a cambiar de pestaña o actualizar
                       </Typography>
-                      <Typography variant="caption" sx={{ color: darkProTokens.success, fontWeight: 600 }}>
-                        ✅ Usando hora México corregida para filtros de vencimiento
-                      </Typography>
+                     
                     </Box>
                   </TableCell>
                 </TableRow>
