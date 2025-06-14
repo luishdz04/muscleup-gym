@@ -62,6 +62,8 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
@@ -319,7 +321,7 @@ export default function PaymentDialog({
   }, []);
 
   const getMexicoDateString = useCallback(() => {
-    return new Date().toISOString().split('T')[0];
+    return toMexicoDate(new Date()); // ✅ USAR HELPER CORREGIDO
   }, []);
 
   const formatPrice = useCallback((price: number) => {
@@ -329,15 +331,9 @@ export default function PaymentDialog({
     }).format(price);
   }, []);
 
+  // ✅ FUNCIÓN CORREGIDA PARA MOSTRAR FECHAS EN UI
   const formatMexicoDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatMexicoDateTime(dateString); // ✅ USAR HELPER CORREGIDO
   }, []);
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
@@ -593,7 +589,7 @@ export default function PaymentDialog({
     }
   }, [supabase]);
 
-  // ✅ PROCESAR VENTA - OPTIMIZADO (LA BD MANEJA TIMESTAMPS AUTOMÁTICAMENTE)
+  // ✅ PROCESAR VENTA - OPTIMIZADO CON FECHAS CORREGIDAS
   const processSale = useCallback(async () => {
     if (!validateSale()) return;
 
@@ -624,7 +620,7 @@ export default function PaymentDialog({
         totalPaidAmount = totals.total + totalCommissionAmount;
       }
 
-      // ✅ LA BD MANEJA created_at/updated_at AUTOMÁTICAMENTE
+      // ✅ DATOS DE VENTA CON TIMESTAMPS AUTOMÁTICOS
       const saleData = {
         sale_number: saleNumber,
         customer_id: customer?.id || null,
@@ -649,7 +645,8 @@ export default function PaymentDialog({
         skip_inscription: false,
         notes: formData.notes.trim() || null,
         receipt_printed: formData.printReceipt,
-        email_sent: formData.sendEmail,
+        email_sent: formData.sendEmail
+        // ✅ created_at, updated_at, completed_at, payment_date se manejan automáticamente por la BD
       };
 
       const { data: sale, error: saleError } = await supabase
@@ -671,6 +668,7 @@ export default function PaymentDialog({
         discount_amount: item.discount_amount,
         tax_rate: item.product.tax_rate || 16,
         tax_amount: item.tax_amount
+        // ✅ created_at se maneja automáticamente por la BD
       }));
 
       const { error: itemsError } = await supabase
@@ -688,7 +686,7 @@ export default function PaymentDialog({
           commission_rate: payment.commission_rate,
           commission_amount: payment.commission_amount,
           sequence_order: payment.sequence,
-          payment_date: new Date().toISOString(),
+          payment_date: toMexicoTimestamp(new Date()), // ✅ CORREGIDO: hora México con offset
           created_by: userId
         }));
 
@@ -708,7 +706,7 @@ export default function PaymentDialog({
             commission_rate: calculateCommission(formData.paymentMethod, totals.total).rate,
             commission_amount: totalCommissionAmount,
             sequence_order: 1,
-            payment_date: new Date().toISOString(),
+            payment_date: toMexicoTimestamp(new Date()), // ✅ CORREGIDO: hora México con offset
             created_by: userId
           }]);
 
@@ -741,6 +739,7 @@ export default function PaymentDialog({
             reference_id: sale.id,
             notes: `Venta #${sale.sale_number}`,
             created_by: userId
+            // ✅ created_at se maneja automáticamente por la BD
           }]);
       }
 
@@ -1505,7 +1504,7 @@ export default function PaymentDialog({
                                                         }
                                                       }
                                                     }}
-                                                    InputLabelProps={{
+                                                                                                    InputLabelProps={{
                                                       sx: { 
                                                         color: darkProTokens.textSecondary,
                                                         '&.Mui-focused': { color: darkProTokens.info }
@@ -1556,7 +1555,7 @@ export default function PaymentDialog({
                                           <Card sx={{
                                             background: `${darkProTokens.roleTrainer}15`,
                                             border: `2px solid ${darkProTokens.roleTrainer}50`,
-                                                                            borderRadius: 4
+                                            borderRadius: 4
                                           }}>
                                             <CardContent>
                                               <Typography variant="h6" sx={{ 
@@ -2751,7 +2750,7 @@ export default function PaymentDialog({
                 #{saleNumber}
               </Typography>
               <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 4 }}>
-                Venta procesada el {formatMexicoDate(new Date().toISOString())}
+                ✅ Venta procesada el {formatMexicoDate(new Date().toISOString())} (Hora México)
               </Typography>
 
               <Grid container spacing={3} justifyContent="center" sx={{ mb: 4 }}>
@@ -2890,6 +2889,14 @@ export default function PaymentDialog({
                     }}
                   />
                 )}
+                <Chip 
+                  label="✅ Timestamp correcto México"
+                  sx={{
+                    backgroundColor: darkProTokens.warning,
+                    color: darkProTokens.textPrimary,
+                    fontWeight: 600
+                  }}
+                />
               </Box>
             </motion.div>
           </Box>
@@ -2928,7 +2935,7 @@ export default function PaymentDialog({
         )}
       </DialogActions>
 
-      {/* DIALOG DE CONFIRMACIÓN FINAL */}
+        {/* DIALOG DE CONFIRMACIÓN FINAL */}
       <Dialog 
         open={confirmDialogOpen} 
         onClose={() => !processing && setConfirmDialogOpen(false)}
@@ -3002,7 +3009,7 @@ export default function PaymentDialog({
                 textAlign: 'center'
               }}>
                 <Typography variant="h4" sx={{ 
-                                    color: darkProTokens.info,
+                  color: darkProTokens.info,
                   fontWeight: 800,
                   mb: 1
                 }}>
