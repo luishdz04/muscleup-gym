@@ -295,7 +295,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 🎫 PROCESAR MEMBRESÍAS CON PAGOS SEPARADOS
+       // 🎫 PROCESAR MEMBRESÍAS CON PAGOS SEPARADOS - CORREGIDO
     const processedMemberships = [];
     (membershipTransactions || []).forEach(membership => {
       const customer = findCustomer(membership.userid);
@@ -310,6 +310,8 @@ export async function GET(request: NextRequest) {
         payments.forEach((payment, index) => {
           const baseAmount = parseFloat(payment.amount || 0);
           const commissionAmount = parseFloat(payment.commission_amount || 0);
+          // ✅ APLICAR LA MISMA LÓGICA QUE POS: MONTO + COMISIÓN
+          const totalAmountWithCommission = baseAmount + commissionAmount;
           
           processedMemberships.push({
             id: `membership_${membership.id}_${index}`,
@@ -322,8 +324,9 @@ export async function GET(request: NextRequest) {
               : 'Cliente',
             customer_phone: customer?.whatsapp,
             payment_method: payment.payment_method,
-            amount: baseAmount, // ✅ MONTO SIN COMISIÓN (COMO ESTÁ REGISTRADO)
-            commission_amount: commissionAmount,
+            amount: totalAmountWithCommission, // ✅ MONTO CON COMISIÓN INCLUIDA
+            base_amount: baseAmount, // ✅ MONTO BASE SIN COMISIÓN
+            commission_amount: commissionAmount, // ✅ COMISIÓN PARA MOSTRAR COMO INFO
             created_at: membership.created_at,
             reference: membership.id,
             notes: membership.notes,
@@ -334,6 +337,11 @@ export async function GET(request: NextRequest) {
         });
       } else {
         // ✅ SI NO HAY PAGOS DETALLADOS, MOSTRAR COMO ANTES (PAGO ÚNICO)
+        // PERO TAMBIÉN APLICAR LA LÓGICA DE COMISIÓN INCLUIDA
+        const baseAmount = parseFloat(membership.amount_paid || 0);
+        const commissionAmount = parseFloat(membership.commission_amount || 0);
+        const totalAmountWithCommission = baseAmount + commissionAmount;
+        
         processedMemberships.push({
           id: `membership_${membership.id}`,
           type: 'membership',
@@ -345,8 +353,9 @@ export async function GET(request: NextRequest) {
             : 'Cliente',
           customer_phone: customer?.whatsapp,
           payment_method: membership.payment_method || 'mixto',
-          amount: parseFloat(membership.amount_paid || 0),
-          commission_amount: parseFloat(membership.commission_amount || 0),
+          amount: totalAmountWithCommission, // ✅ MONTO CON COMISIÓN INCLUIDA
+          base_amount: baseAmount, // ✅ MONTO BASE SIN COMISIÓN
+          commission_amount: commissionAmount, // ✅ COMISIÓN PARA MOSTRAR COMO INFO
           created_at: membership.created_at,
           reference: membership.id,
           notes: membership.notes,
