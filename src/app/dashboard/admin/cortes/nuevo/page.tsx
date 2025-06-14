@@ -84,45 +84,40 @@ const darkProTokens = {
   roleAdmin: '#E91E63'
 };
 
-// ✅ FUNCIONES LOCALES PARA FECHAS MÉXICO (SIN IMPORTACIONES)
+// ✅ FUNCIONES LOCALES PARA FECHAS MÉXICO (IDÉNTICAS A LA PÁGINA PRINCIPAL)
 
-// 📅 Función para obtener fecha actual de México
-function getMexicoDateLocal(): Date {
+// 📅 Función para obtener fecha actual de México - CORREGIDA
+function getMexicoDateLocal(): string {
   const now = new Date();
-  // Obtener fecha/hora en zona horaria de México (UTC-6)
-  const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  return mexicoTime;
-}
-
-// 📅 Función para obtener fecha México como string YYYY-MM-DD
-function getMexicoDateStringLocal(): string {
-  const mexicoDate = getMexicoDateLocal();
+  
+  // ✅ OBTENER FECHA EN ZONA HORARIA DE MÉXICO (IGUAL QUE PÁGINA PRINCIPAL)
+  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  
+  // Formatear como YYYY-MM-DD
   const year = mexicoDate.getFullYear();
   const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
   const day = String(mexicoDate.getDate()).padStart(2, '0');
+  
   return `${year}-${month}-${day}`;
 }
 
-// ⏰ Función para timestamp de BD en México
-function createTimestampForDB(): string {
-  // Obtener timestamp actual en México y convertir a ISO string
-  const mexicoDate = getMexicoDateLocal();
-  return mexicoDate.toISOString();
+// ⏰ Función para formatear hora actual de México
+function formatMexicoTimeLocal(date: Date): string {
+  return date.toLocaleString('es-MX', {
+    timeZone: 'America/Mexico_City',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
 }
 
-// 💰 Función para formatear precios
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
-  }).format(amount);
-}
-
-// 📅 Función para formatear fechas
-function formatDate(dateString: string): string {
+// 📅 Función para formatear fechas largas - CORREGIDA
+function formatDateLocal(dateString: string): string {
   try {
+    // ✅ CREAR FECHA Y FORMATEAR EN MÉXICO (IGUAL QUE PÁGINA PRINCIPAL)
     const date = new Date(dateString + 'T12:00:00');
+    
     return date.toLocaleDateString('es-MX', {
       weekday: 'long',
       year: 'numeric',
@@ -132,16 +127,39 @@ function formatDate(dateString: string): string {
     });
   } catch (error) {
     console.error('❌ Error formateando fecha:', dateString, error);
+    
+    // Fallback manual
     const date = new Date(dateString + 'T12:00:00');
     const months = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
     ];
+    const weekdays = [
+      'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
+    ];
+    
+    const weekday = weekdays[date.getDay()];
     const day = date.getDate();
     const month = months[date.getMonth()];
     const year = date.getFullYear();
-    return `${day} de ${month} de ${year}`;
+    
+    return `${weekday}, ${day} de ${month} de ${year}`;
   }
+}
+
+// ⏰ Función para timestamp de BD en México
+function createTimestampForDB(): string {
+  const mexicoDate = new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"});
+  return new Date(mexicoDate).toISOString();
+}
+
+// 💰 Función para formatear precios
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2
+  }).format(amount);
 }
 
 // ⏰ Función para formatear fechas y horas
@@ -213,28 +231,21 @@ interface DailyData {
 
 // 📊 INTERFACE PARA DATOS EDITABLES
 interface EditableData {
-  // POS
   pos_efectivo: number;
   pos_transferencia: number;
   pos_debito: number;
   pos_credito: number;
   pos_transactions: number;
-  
-  // ABONOS
   abonos_efectivo: number;
   abonos_transferencia: number;
   abonos_debito: number;
   abonos_credito: number;
   abonos_transactions: number;
-  
-  // MEMBERSHIPS
   membership_efectivo: number;
   membership_transferencia: number;
   membership_debito: number;
   membership_credito: number;
   membership_transactions: number;
-  
-  // GASTOS
   expenses_amount: number;
 }
 
@@ -253,10 +264,15 @@ interface TransactionDetail {
 export default function NuevoCorteePage() {
   const router = useRouter();
   
-  // 📅 FECHA ACTUAL EN MÉXICO COMO DEFAULT
+  // ✅ FECHA ACTUAL EN MÉXICO COMO DEFAULT - CORREGIDA
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const mexicoDate = getMexicoDateLocal();
-    return new Date(mexicoDate.toISOString().split('T')[0] + 'T12:00:00');
+    const mexicoDateString = getMexicoDateLocal(); // Obtener fecha México como string
+    const mexicoDate = new Date(mexicoDateString + 'T12:00:00'); // Crear Date object
+    
+    console.log('🇲🇽 Fecha actual México (crear corte):', mexicoDateString);
+    console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
+    
+    return mexicoDate;
   });
   
   // 🕐 TIEMPO ACTUAL EN TIEMPO REAL
@@ -297,20 +313,12 @@ export default function NuevoCorteePage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
 
-  // ⏰ ACTUALIZAR RELOJ CADA SEGUNDO
+  // ⏰ ACTUALIZAR RELOJ CADA SEGUNDO - CORREGIDO
   useEffect(() => {
     const updateClock = () => {
-      const mexicoTime = getMexicoDateLocal();
-      setCurrentTime(mexicoTime.toLocaleString('es-MX', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-        timeZone: 'America/Mexico_City'
-      }));
+      const now = new Date();
+      const mexicoTime = formatMexicoTimeLocal(now);
+      setCurrentTime(mexicoTime);
     };
     
     updateClock(); // Llamada inicial
@@ -338,7 +346,6 @@ export default function NuevoCorteePage() {
     const grand_total = pos_total + abonos_total + membership_total;
     const total_transactions = editableData.pos_transactions + editableData.abonos_transactions + editableData.membership_transactions;
     
-    // ✅ BALANCE FINAL: Total Bruto - Gastos
     const final_balance = grand_total - editableData.expenses_amount;
     
     return {
@@ -482,7 +489,7 @@ export default function NuevoCorteePage() {
       
       const cutData = {
         cut_date: dateString,
-        created_at_mexico: createTimestampForDB(), // ✅ HORA MÉXICO
+        created_at_mexico: createTimestampForDB(),
         notes: observations.trim(),
         is_manual: isManualMode,
         
@@ -625,7 +632,7 @@ export default function NuevoCorteePage() {
         color: darkProTokens.textPrimary,
         p: 4
       }}>
-        {/* 🏷️ HEADER */}
+        {/* 🏷️ HEADER - CORREGIDO */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton
@@ -650,8 +657,9 @@ export default function NuevoCorteePage() {
               <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
                 Crear Nuevo Corte
               </Typography>
+              {/* ✅ FECHA CORREGIDA PARA MOSTRAR FECHA MÉXICO */}
               <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                📅 {formatDate(selectedDate.toISOString().split('T')[0])} • ⏰ {currentTime}
+                📅 {formatDateLocal(selectedDate.toISOString().split('T')[0])} • ⏰ {currentTime}
               </Typography>
               <Typography variant="caption" sx={{ color: darkProTokens.info }}>
                 🇲🇽 Zona horaria: México • {isManualMode ? '🔧 Modo Manual' : '🤖 Modo Automático'}
@@ -743,7 +751,7 @@ export default function NuevoCorteePage() {
 
         <Grid container spacing={4}>
           {/* 📅 CONFIGURACIÓN DEL CORTE */}
-          <Grid item xs={12} md={4}>
+          <Grid size={12} md={4}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -812,8 +820,9 @@ export default function NuevoCorteePage() {
                         <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                           Nombre del corte:
                         </Typography>
+                        {/* ✅ NOMBRE DEL CORTE CON FECHA CORREGIDA */}
                         <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                          Corte {formatDate(selectedDate.toISOString().split('T')[0])}
+                          Corte {formatDateLocal(selectedDate.toISOString().split('T')[0])}
                         </Typography>
                       </Box>
                       
@@ -999,7 +1008,7 @@ export default function NuevoCorteePage() {
           </Grid>
 
           {/* 📊 DATOS EDITABLES */}
-          <Grid item xs={12} md={8}>
+          <Grid size={12} md={8}>
             {loading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                 <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin }} />
@@ -1039,7 +1048,7 @@ export default function NuevoCorteePage() {
                       </Box>
                       
                       <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Efectivo"
@@ -1062,7 +1071,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Transferencia"
@@ -1085,7 +1094,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Tarjeta Débito"
@@ -1108,7 +1117,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Tarjeta Crédito"
@@ -1131,7 +1140,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={12} sm={6}>
                           <TextField
                             fullWidth
                             label="Transacciones"
@@ -1180,7 +1189,7 @@ export default function NuevoCorteePage() {
                       </Box>
                       
                       <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Efectivo"
@@ -1203,7 +1212,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Transferencia"
@@ -1226,7 +1235,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Tarjeta Débito"
@@ -1249,7 +1258,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Tarjeta Crédito"
@@ -1272,7 +1281,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={12} sm={6}>
                           <TextField
                             fullWidth
                             label="Transacciones"
@@ -1321,7 +1330,7 @@ export default function NuevoCorteePage() {
                       </Box>
                       
                       <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Efectivo"
@@ -1344,7 +1353,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Transferencia"
@@ -1367,7 +1376,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Tarjeta Débito"
@@ -1390,7 +1399,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Tarjeta Crédito"
@@ -1413,7 +1422,7 @@ export default function NuevoCorteePage() {
                           />
                         </Grid>
                         
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={12} sm={6}>
                           <TextField
                             fullWidth
                             label="Transacciones"
@@ -1448,7 +1457,7 @@ export default function NuevoCorteePage() {
                       </Typography>
                       
                       <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -1474,7 +1483,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -1491,7 +1500,7 @@ export default function NuevoCorteePage() {
                             }}>
                               <AccountBalanceIcon />
                             </Avatar>
-                            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                                                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.info }}>
                               {formatPrice(totals.total_transferencia)}
                             </Typography>
                             <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
@@ -1500,7 +1509,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -1508,7 +1517,7 @@ export default function NuevoCorteePage() {
                             border: `2px solid ${darkProTokens.success}40`,
                             borderRadius: 3
                           }}>
-                                                        <Avatar sx={{ 
+                            <Avatar sx={{ 
                               bgcolor: darkProTokens.success, 
                               width: 48, 
                               height: 48,
@@ -1526,7 +1535,7 @@ export default function NuevoCorteePage() {
                           </Paper>
                         </Grid>
 
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -1875,7 +1884,7 @@ export default function NuevoCorteePage() {
                             📈 Estadísticas del Día
                           </Typography>
                           <Grid container spacing={2}>
-                            <Grid item xs={12} sm={4}>
+                            <Grid size={12} sm={4}>
                               <Box sx={{ textAlign: 'center' }}>
                                 <Typography variant="h4" sx={{ color: darkProTokens.primary, fontWeight: 'bold' }}>
                                   {totals.total_transactions}
@@ -1885,7 +1894,7 @@ export default function NuevoCorteePage() {
                                 </Typography>
                               </Box>
                             </Grid>
-                            <Grid item xs={12} sm={4}>
+                            <Grid size={12} sm={4}>
                               <Box sx={{ textAlign: 'center' }}>
                                 <Typography variant="h4" sx={{ color: darkProTokens.info, fontWeight: 'bold' }}>
                                   {totals.total_transactions > 0 ? formatPrice(totals.grand_total / totals.total_transactions) : '$0.00'}
@@ -1895,7 +1904,7 @@ export default function NuevoCorteePage() {
                                 </Typography>
                               </Box>
                             </Grid>
-                            <Grid item xs={12} sm={4}>
+                            <Grid size={12} sm={4}>
                               <Box sx={{ textAlign: 'center' }}>
                                 <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 'bold' }}>
                                   {totals.grand_total > 0 ? ((totals.total_efectivo / totals.grand_total) * 100).toFixed(1) : '0.0'}%
@@ -2127,7 +2136,7 @@ export default function NuevoCorteePage() {
                                   </Typography>
                                   
                                   <Grid container spacing={2}>
-                                    <Grid item xs={12} sm={4}>
+                                    <Grid size={12} sm={4}>
                                       <Box sx={{ textAlign: 'center' }}>
                                         <Typography variant="h5" sx={{ 
                                           color: darkProTokens.primary, 
@@ -2140,7 +2149,7 @@ export default function NuevoCorteePage() {
                                         </Typography>
                                       </Box>
                                     </Grid>
-                                    <Grid item xs={12} sm={4}>
+                                    <Grid size={12} sm={4}>
                                       <Box sx={{ textAlign: 'center' }}>
                                         <Typography variant="h5" sx={{ 
                                           color: darkProTokens.success, 
@@ -2153,7 +2162,7 @@ export default function NuevoCorteePage() {
                                         </Typography>
                                       </Box>
                                     </Grid>
-                                    <Grid item xs={12} sm={4}>
+                                    <Grid size={12} sm={4}>
                                       <Box sx={{ textAlign: 'center' }}>
                                         <Typography variant="h5" sx={{ 
                                           color: darkProTokens.info, 
