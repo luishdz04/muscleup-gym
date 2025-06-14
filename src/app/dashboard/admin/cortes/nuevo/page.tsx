@@ -19,7 +19,16 @@ import {
   IconButton,
   Switch,
   FormControlLabel,
-  InputAdornment
+  InputAdornment,
+  Collapse,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -32,7 +41,13 @@ import {
   Edit as EditIcon,
   AutoMode as AutoModeIcon,
   Build as BuildIcon,
-  Savings as SavingsIcon
+  Savings as SavingsIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Visibility as VisibilityIcon,
+  ShoppingCart as ShoppingCartIcon,
+  FitnessCenter as FitnessCenterIcon,
+  Payment as PaymentIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -69,24 +84,31 @@ const darkProTokens = {
   roleAdmin: '#E91E63'
 };
 
-// 🇲🇽 FUNCIONES PARA MANEJAR TIEMPO DE MÉXICO
-const createTimestampForDB = (): string => {
-  const now = new Date();
-  // ✅ CONVERTIR A MÉXICO ANTES DE GUARDAR (UTC-6)
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return mexicoTime.toISOString();
-};
+// ✅ FUNCIONES LOCALES PARA FECHAS MÉXICO (SIN IMPORTACIONES)
 
-const getMexicoDate = (): Date => {
+// 📅 Función para obtener fecha actual de México
+function getMexicoDateLocal(): Date {
   const now = new Date();
-  // ✅ HORA ACTUAL DE MÉXICO (UTC-6)
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  // Obtener fecha/hora en zona horaria de México (UTC-6)
+  const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
   return mexicoTime;
-};
+}
 
-const getMexicoDateString = (): string => {
-  return getMexicoDate().toISOString().split('T')[0];
-};
+// 📅 Función para obtener fecha México como string YYYY-MM-DD
+function getMexicoDateStringLocal(): string {
+  const mexicoDate = getMexicoDateLocal();
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// ⏰ Función para timestamp de BD en México
+function createTimestampForDB(): string {
+  // Obtener timestamp actual en México y convertir a ISO string
+  const mexicoDate = getMexicoDateLocal();
+  return mexicoDate.toISOString();
+}
 
 // 💰 Función para formatear precios
 function formatPrice(amount: number): string {
@@ -99,15 +121,45 @@ function formatPrice(amount: number): string {
 
 // 📅 Función para formatear fechas
 function formatDate(dateString: string): string {
-  const date = new Date(dateString + 'T12:00:00');
-  const months = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-  ];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  return `${day} de ${month} de ${year}`;
+  try {
+    const date = new Date(dateString + 'T12:00:00');
+    return date.toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'America/Mexico_City'
+    });
+  } catch (error) {
+    console.error('❌ Error formateando fecha:', dateString, error);
+    const date = new Date(dateString + 'T12:00:00');
+    const months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} de ${month} de ${year}`;
+  }
+}
+
+// ⏰ Función para formatear fechas y horas
+function formatDateTime(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Mexico_City',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    return dateString;
+  }
 }
 
 interface DailyData {
@@ -186,12 +238,24 @@ interface EditableData {
   expenses_amount: number;
 }
 
+// 🧾 INTERFACES PARA DETALLES DE TRANSACCIONES
+interface TransactionDetail {
+  id: string;
+  type: 'pos' | 'abono' | 'membership';
+  description: string;
+  amount: number;
+  payment_method: string;
+  created_at: string;
+  reference?: string;
+  customer_name?: string;
+}
+
 export default function NuevoCorteePage() {
   const router = useRouter();
   
   // 📅 FECHA ACTUAL EN MÉXICO COMO DEFAULT
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const mexicoDate = getMexicoDate();
+    const mexicoDate = getMexicoDateLocal();
     return new Date(mexicoDate.toISOString().split('T')[0] + 'T12:00:00');
   });
   
@@ -226,11 +290,17 @@ export default function NuevoCorteePage() {
   const [cutExists, setCutExists] = useState(false);
   const [isManualMode, setIsManualMode] = useState(false);
   const [dataHasContent, setDataHasContent] = useState(false);
+  
+  // 🔍 ESTADOS PARA DETALLES DE TRANSACCIONES
+  const [showDetails, setShowDetails] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState<TransactionDetail[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [selectedTab, setSelectedTab] = useState(0);
 
   // ⏰ ACTUALIZAR RELOJ CADA SEGUNDO
   useEffect(() => {
     const updateClock = () => {
-      const mexicoTime = getMexicoDate();
+      const mexicoTime = getMexicoDateLocal();
       setCurrentTime(mexicoTime.toLocaleString('es-MX', {
         year: 'numeric',
         month: 'long',
@@ -238,7 +308,8 @@ export default function NuevoCorteePage() {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: true
+        hour12: true,
+        timeZone: 'America/Mexico_City'
       }));
     };
     
@@ -284,6 +355,31 @@ export default function NuevoCorteePage() {
     };
   };
 
+  // 🔍 CARGAR DETALLES DE TRANSACCIONES
+  const loadTransactionDetails = async (date: Date) => {
+    try {
+      setLoadingDetails(true);
+      const dateString = date.toISOString().split('T')[0];
+      
+      console.log('🔍 Cargando detalles de transacciones para fecha:', dateString);
+      
+      const response = await fetch(`/api/cuts/transaction-details?date=${dateString}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setTransactionDetails(data.details || []);
+      } else {
+        console.error('Error cargando detalles:', data.error);
+        setTransactionDetails([]);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setTransactionDetails([]);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
   // 🔍 CARGAR DATOS DEL DÍA SELECCIONADO
   const loadDailyData = async (date: Date) => {
     try {
@@ -291,7 +387,7 @@ export default function NuevoCorteePage() {
       setError(null);
       
       const dateString = date.toISOString().split('T')[0];
-      console.log('🔍 Cargando datos para fecha:', dateString);
+      console.log('🔍 Cargando datos para fecha México:', dateString);
       
       const response = await fetch(`/api/cuts/daily-data?date=${dateString}`);
       const data = await response.json();
@@ -324,6 +420,9 @@ export default function NuevoCorteePage() {
             expenses_amount: 0
           });
           setIsManualMode(false);
+          
+          // 🔍 CARGAR DETALLES DE TRANSACCIONES
+          await loadTransactionDetails(date);
         } else {
           // ❌ NO HAY DATOS - ACTIVAR MODO MANUAL
           setIsManualMode(true);
@@ -345,6 +444,7 @@ export default function NuevoCorteePage() {
             membership_transactions: 0,
             expenses_amount: 0
           });
+          setTransactionDetails([]);
         }
         
         // 🔍 VERIFICAR SI YA EXISTE CORTE PARA ESTA FECHA
@@ -480,6 +580,43 @@ export default function NuevoCorteePage() {
   // 🧮 OBTENER TOTALES CALCULADOS
   const totals = calculateTotals();
 
+  // 🎯 FILTRAR TRANSACCIONES POR TIPO
+  const getTransactionsByType = (type: 'pos' | 'abono' | 'membership') => {
+    return transactionDetails.filter(t => t.type === type);
+  };
+
+  // 🎨 OBTENER COLOR POR MÉTODO DE PAGO
+  const getPaymentMethodColor = (method: string) => {
+    switch (method?.toLowerCase()) {
+      case 'efectivo':
+        return darkProTokens.primary;
+      case 'transferencia':
+        return darkProTokens.info;
+      case 'debito':
+        return darkProTokens.success;
+      case 'credito':
+        return darkProTokens.error;
+      default:
+        return darkProTokens.textSecondary;
+    }
+  };
+
+  // 🎨 OBTENER ICONO POR MÉTODO DE PAGO
+  const getPaymentMethodIcon = (method: string) => {
+    switch (method?.toLowerCase()) {
+      case 'efectivo':
+        return '💵';
+      case 'transferencia':
+        return '🏦';
+      case 'debito':
+        return '💳';
+      case 'credito':
+        return '💳';
+      default:
+        return '💰';
+    }
+  };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <Box sx={{ 
@@ -514,7 +651,10 @@ export default function NuevoCorteePage() {
                 Crear Nuevo Corte
               </Typography>
               <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                📅 Gestión de cortes de caja • {isManualMode ? '🔧 Modo Manual' : '🤖 Modo Automático'}
+                📅 {formatDate(selectedDate.toISOString().split('T')[0])} • ⏰ {currentTime}
+              </Typography>
+              <Typography variant="caption" sx={{ color: darkProTokens.info }}>
+                🇲🇽 Zona horaria: México • {isManualMode ? '🔧 Modo Manual' : '🤖 Modo Automático'}
               </Typography>
             </Box>
           </Box>
@@ -706,15 +846,6 @@ export default function NuevoCorteePage() {
                             mt: 0.5
                           }}
                         />
-                      </Box>
-                      
-                      <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
-                          Fecha y hora actual (México):
-                        </Typography>
-                        <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
-                          {currentTime}
-                        </Typography>
                       </Box>
                     </Stack>
                   </Box>
@@ -1377,7 +1508,7 @@ export default function NuevoCorteePage() {
                             border: `2px solid ${darkProTokens.success}40`,
                             borderRadius: 3
                           }}>
-                            <Avatar sx={{ 
+                                                        <Avatar sx={{ 
                               bgcolor: darkProTokens.success, 
                               width: 48, 
                               height: 48,
@@ -1492,7 +1623,8 @@ export default function NuevoCorteePage() {
                                 }}>
                                   📊 Transacciones
                                 </th>
-                                <th style={{                                  color: darkProTokens.textPrimary, 
+                                <th style={{ 
+                                  color: darkProTokens.textPrimary, 
                                   padding: '16px 12px', 
                                   textAlign: 'right',
                                   fontWeight: 'bold',
@@ -1778,6 +1910,271 @@ export default function NuevoCorteePage() {
                       </Box>
                     </CardContent>
                   </Card>
+
+                  {/* 🔍 SECCIÓN DE DETALLES DE TRANSACCIONES */}
+                  {dataHasContent && transactionDetails.length > 0 && (
+                    <Card sx={{
+                      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                      border: `2px solid ${darkProTokens.roleAdmin}40`,
+                      borderRadius: 4
+                    }}>
+                      <CardContent sx={{ p: 4 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Avatar sx={{ bgcolor: darkProTokens.roleAdmin }}>
+                              <VisibilityIcon />
+                            </Avatar>
+                            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin }}>
+                              🔍 Detalles de Transacciones del Día
+                            </Typography>
+                            <Chip
+                              label={`${transactionDetails.length} registros`}
+                              sx={{
+                                backgroundColor: `${darkProTokens.roleAdmin}20`,
+                                color: darkProTokens.roleAdmin,
+                                fontWeight: 700
+                              }}
+                            />
+                          </Box>
+                          
+                          <Button
+                            variant="outlined"
+                            startIcon={showDetails ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            onClick={() => setShowDetails(!showDetails)}
+                            sx={{
+                              borderColor: darkProTokens.roleAdmin,
+                              color: darkProTokens.roleAdmin,
+                              '&:hover': {
+                                borderColor: darkProTokens.roleAdmin,
+                                backgroundColor: `${darkProTokens.roleAdmin}20`
+                              }
+                            }}
+                          >
+                            {showDetails ? 'Ocultar Detalles' : 'Ver Detalles'}
+                          </Button>
+                        </Box>
+                        
+                        <Collapse in={showDetails}>
+                          <Box>
+                            {/* TABS PARA ORGANIZAR POR TIPO */}
+                            <Tabs 
+                              value={selectedTab} 
+                              onChange={(e, newValue) => setSelectedTab(newValue)}
+                              sx={{
+                                mb: 3,
+                                '& .MuiTab-root': {
+                                  color: darkProTokens.textSecondary,
+                                  fontWeight: 600,
+                                  '&.Mui-selected': {
+                                    color: darkProTokens.primary
+                                  }
+                                },
+                                '& .MuiTabs-indicator': {
+                                  backgroundColor: darkProTokens.primary
+                                }
+                              }}
+                            >
+                              <Tab 
+                                label={
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <ShoppingCartIcon />
+                                    <span>POS ({getTransactionsByType('pos').length})</span>
+                                  </Box>
+                                } 
+                              />
+                              <Tab 
+                                label={
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <PaymentIcon />
+                                    <span>Abonos ({getTransactionsByType('abono').length})</span>
+                                  </Box>
+                                } 
+                              />
+                              <Tab 
+                                label={
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <FitnessCenterIcon />
+                                    <span>Membresías ({getTransactionsByType('membership').length})</span>
+                                  </Box>
+                                } 
+                              />
+                            </Tabs>
+
+                            {/* TABLA DE TRANSACCIONES POR TAB */}
+                            {loadingDetails ? (
+                              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                                <CircularProgress sx={{ color: darkProTokens.roleAdmin }} />
+                              </Box>
+                            ) : (
+                              <TableContainer component={Paper} sx={{ 
+                                backgroundColor: darkProTokens.surfaceLevel4,
+                                borderRadius: 2
+                              }}>
+                                <Table>
+                                  <TableHead>
+                                    <TableRow sx={{ backgroundColor: darkProTokens.grayDark }}>
+                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                        ID
+                                      </TableCell>
+                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                        Descripción
+                                      </TableCell>
+                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                        Cliente
+                                      </TableCell>
+                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                        Método de Pago
+                                      </TableCell>
+                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }} align="right">
+                                        Monto
+                                      </TableCell>
+                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                                        Fecha y Hora
+                                      </TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {getTransactionsByType(
+                                      selectedTab === 0 ? 'pos' : 
+                                      selectedTab === 1 ? 'abono' : 'membership'
+                                    ).map((transaction, index) => (
+                                      <TableRow 
+                                        key={transaction.id}
+                                        sx={{ 
+                                          '&:nth-of-type(odd)': { 
+                                            backgroundColor: darkProTokens.surfaceLevel3 
+                                          },
+                                          '&:hover': {
+                                            backgroundColor: `${darkProTokens.primary}10`
+                                          }
+                                        }}
+                                      >
+                                        <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                          #{transaction.id.slice(-6)}
+                                        </TableCell>
+                                        <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                                          {transaction.description}
+                                        </TableCell>
+                                        <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                          {transaction.customer_name || 'N/A'}
+                                        </TableCell>
+                                        <TableCell>
+                                          <Chip
+                                            label={`${getPaymentMethodIcon(transaction.payment_method)} ${transaction.payment_method}`}
+                                            size="small"
+                                            sx={{
+                                              backgroundColor: `${getPaymentMethodColor(transaction.payment_method)}20`,
+                                              color: getPaymentMethodColor(transaction.payment_method),
+                                              fontWeight: 600
+                                            }}
+                                          />
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ 
+                                          color: darkProTokens.success, 
+                                          fontWeight: 'bold'
+                                        }}>
+                                          {formatPrice(transaction.amount)}
+                                        </TableCell>
+                                        <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                          {formatDateTime(transaction.created_at)}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                    
+                                    {getTransactionsByType(
+                                      selectedTab === 0 ? 'pos' : 
+                                      selectedTab === 1 ? 'abono' : 'membership'
+                                    ).length === 0 && (
+                                      <TableRow>
+                                        <TableCell 
+                                          colSpan={6} 
+                                          sx={{ 
+                                            textAlign: 'center', 
+                                            color: darkProTokens.textDisabled,
+                                            py: 4
+                                          }}
+                                        >
+                                          No hay transacciones de este tipo para el día seleccionado
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </TableContainer>
+                            )}
+
+                            {/* RESUMEN POR TAB */}
+                            {(() => {
+                              const tabTransactions = getTransactionsByType(
+                                selectedTab === 0 ? 'pos' : 
+                                selectedTab === 1 ? 'abono' : 'membership'
+                              );
+                              const tabTotal = tabTransactions.reduce((sum, t) => sum + t.amount, 0);
+                              
+                              return tabTransactions.length > 0 && (
+                                <Box sx={{ 
+                                  mt: 3, 
+                                  p: 3, 
+                                  backgroundColor: darkProTokens.surfaceLevel3, 
+                                  borderRadius: 2,
+                                  border: `1px solid ${darkProTokens.grayMedium}`
+                                }}>
+                                  <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
+                                    📊 Resumen de {
+                                      selectedTab === 0 ? 'Punto de Venta' : 
+                                      selectedTab === 1 ? 'Abonos' : 'Membresías'
+                                    }
+                                  </Typography>
+                                  
+                                  <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={4}>
+                                      <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="h5" sx={{ 
+                                          color: darkProTokens.primary, 
+                                          fontWeight: 'bold' 
+                                        }}>
+                                          {tabTransactions.length}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                          Transacciones
+                                        </Typography>
+                                      </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                      <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="h5" sx={{ 
+                                          color: darkProTokens.success, 
+                                          fontWeight: 'bold' 
+                                        }}>
+                                          {formatPrice(tabTotal)}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                          Total Generado
+                                        </Typography>
+                                      </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                      <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="h5" sx={{ 
+                                          color: darkProTokens.info, 
+                                          fontWeight: 'bold' 
+                                        }}>
+                                          {tabTransactions.length > 0 ? formatPrice(tabTotal / tabTransactions.length) : '$0.00'}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                          Promedio por Transacción
+                                        </Typography>
+                                      </Box>
+                                    </Grid>
+                                  </Grid>
+                                </Box>
+                              );
+                            })()}
+                          </Box>
+                        </Collapse>
+                      </CardContent>
+                    </Card>
+                  )}
                 </Stack>
               </motion.div>
             )}
