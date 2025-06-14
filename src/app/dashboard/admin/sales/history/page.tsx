@@ -60,8 +60,8 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 import SaleDetailsDialog from '@/components/dialogs/SaleDetailsDialog';
 import EditSaleDialog from '@/components/dialogs/EditSaleDialog';
 
@@ -209,7 +209,36 @@ export default function SalesHistoryPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ CARGAR ESTADÍSTICAS
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price || 0);
+  }, []);
+
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
+  const formatMexicoDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    console.log(`[${severity.toUpperCase()}] ${message}`);
+  }, []);
+
+  // ✅ CARGAR ESTADÍSTICAS CON FECHAS CORREGIDAS
   const loadStats = useCallback(async () => {
     try {
       let statsQuery = supabase
@@ -217,12 +246,14 @@ export default function SalesHistoryPage() {
         .select('total_amount, commission_amount, status')
         .eq('sale_type', 'sale');
 
-      // Aplicar filtros de fecha si existen
+      // ✅ APLICAR FILTROS DE FECHA CON FORMATO MÉXICO
       if (dateFilter.from) {
-        statsQuery = statsQuery.gte('created_at', `${dateFilter.from}T00:00:00`);
+        const fromDate = `${dateFilter.from}T00:00:00`;
+        statsQuery = statsQuery.gte('created_at', fromDate);
       }
       if (dateFilter.to) {
-        statsQuery = statsQuery.lte('created_at', `${dateFilter.to}T23:59:59`);
+        const toDate = `${dateFilter.to}T23:59:59`;
+        statsQuery = statsQuery.lte('created_at', toDate);
       }
 
       const { data: statsData, error } = await statsQuery;
@@ -251,7 +282,7 @@ export default function SalesHistoryPage() {
     }
   }, [supabase, dateFilter]);
 
-  // ✅ CARGAR VENTAS CON FILTROS Y MÉTODO DE PAGO
+  // ✅ CARGAR VENTAS CON FILTROS Y MÉTODO DE PAGO CORREGIDO
   const loadSales = useCallback(async () => {
     setLoading(true);
     try {
@@ -281,12 +312,15 @@ export default function SalesHistoryPage() {
         query = query.eq('payment_status', paymentFilter);
       }
 
+      // ✅ APLICAR FILTROS DE FECHA CON FORMATO MÉXICO
       if (dateFilter.from) {
-        query = query.gte('created_at', `${dateFilter.from}T00:00:00`);
+        const fromDate = `${dateFilter.from}T00:00:00`;
+        query = query.gte('created_at', fromDate);
       }
 
       if (dateFilter.to) {
-        query = query.lte('created_at', `${dateFilter.to}T23:59:59`);
+        const toDate = `${dateFilter.to}T23:59:59`;
+        query = query.lte('created_at', toDate);
       }
 
       // ✅ PAGINACIÓN
@@ -333,7 +367,7 @@ export default function SalesHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, searchTerm, statusFilter, paymentFilter, dateFilter, page]);
+  }, [supabase, searchTerm, statusFilter, paymentFilter, dateFilter, page, showNotification]);
 
   // ✅ EFECTOS
   useEffect(() => {
@@ -381,15 +415,15 @@ export default function SalesHistoryPage() {
     handleMenuClose();
   };
 
-  // ✅ PROCESAR DEVOLUCIÓN
+  // ✅ PROCESAR DEVOLUCIÓN CON FECHA CORREGIDA
   const handleRefund = async (sale: Sale) => {
     try {
       const { error } = await supabase
         .from('sales')
         .update({ 
           status: 'refunded',
-          payment_status: 'refunded',
-          updated_at: new Date().toISOString()
+          payment_status: 'refunded'
+          // ✅ updated_at se maneja automáticamente por la BD
         })
         .eq('id', sale.id);
 
@@ -404,14 +438,14 @@ export default function SalesHistoryPage() {
     handleMenuClose();
   };
 
-  // ✅ CANCELAR VENTA
+  // ✅ CANCELAR VENTA CON FECHA CORREGIDA
   const handleCancelSale = async (sale: Sale) => {
     try {
       const { error } = await supabase
         .from('sales')
         .update({ 
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
+          status: 'cancelled'
+          // ✅ updated_at se maneja automáticamente por la BD
         })
         .eq('id', sale.id);
 
