@@ -58,6 +58,8 @@ import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS VERIFICADOS
 const darkProTokens = {
@@ -332,28 +334,29 @@ export default function HistorialMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS SIMPLIFICADAS - LA BD YA MANEJA HORA MÉXICO
-  
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
+  }, []);
+
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
-    }).format(price);
+    }).format(price || 0);
   }, []);
 
-  // ✅ FORMATEAR FECHAS PARA DISPLAY EN ESPAÑOL
+  // ✅ FORMATEAR FECHAS PARA DISPLAY EN ESPAÑOL CON HELPERS MÉXICO
   const formatDisplayDate = useCallback((dateString: string | null): string => {
     if (!dateString) return 'Sin fecha';
     
     try {
-      const date = new Date(dateString + 'T12:00:00');
-      
-      if (isNaN(date.getTime())) {
-        console.warn('⚠️ Fecha inválida:', dateString);
-        return 'Fecha inválida';
-      }
-      
-      return date.toLocaleDateString('es-MX', {
+      // Usar helper para formatear fechas México
+      return formatMexicoDateTime(dateString, {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -365,19 +368,13 @@ export default function HistorialMembresiaPage() {
     }
   }, []);
 
-  // ✅ FORMATEAR TIMESTAMPS
+  // ✅ FORMATEAR TIMESTAMPS CON HELPERS MÉXICO
   const formatTimestampForDisplay = useCallback((timestamp: string): string => {
     if (!timestamp) return 'Sin fecha';
     
     try {
-      const date = new Date(timestamp);
-      
-      if (isNaN(date.getTime())) {
-        console.warn('⚠️ Timestamp inválido:', timestamp);
-        return 'Timestamp inválido';
-      }
-      
-      return date.toLocaleString('es-MX', {
+      // Usar helper para formatear timestamps México
+      return formatMexicoDateTime(timestamp, {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -392,12 +389,12 @@ export default function HistorialMembresiaPage() {
     }
   }, []);
 
-  // ✅ CALCULAR DÍAS RESTANTES - LA BD YA ESTÁ EN MÉXICO
+  // ✅ CALCULAR DÍAS RESTANTES CON FECHAS MÉXICO
   const calculateDaysRemaining = useCallback((endDate: string | null): number | null => {
     if (!endDate) return null;
     
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getMexicoDateString();
       const todayDate = new Date(today + 'T00:00:00');
       const endDateObj = new Date(endDate + 'T00:00:00');
       
@@ -414,9 +411,9 @@ export default function HistorialMembresiaPage() {
       console.error('❌ Error calculando días restantes:', error);
       return null;
     }
-  }, []);
+  }, [getMexicoDateString]);
 
-  // ✅ AGREGAR DÍAS A FECHA
+  // ✅ AGREGAR DÍAS A FECHA CON LÓGICA MÉXICO
   const addDaysToDate = useCallback((dateString: string, days: number): string => {
     try {
       const [year, month, day] = dateString.split('-').map(Number);
@@ -435,12 +432,12 @@ export default function HistorialMembresiaPage() {
     }
   }, []);
 
-  // ✅ OBTENER DÍAS CONGELADOS ACTUALES
+  // ✅ OBTENER DÍAS CONGELADOS ACTUALES CON FECHAS MÉXICO
   const getCurrentFrozenDays = useCallback((freezeDate: string | null): number => {
     if (!freezeDate) return 0;
     
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getMexicoDateString();
       const freeze = new Date(freezeDate + 'T00:00:00');
       const todayDate = new Date(today + 'T00:00:00');
       
@@ -456,7 +453,7 @@ export default function HistorialMembresiaPage() {
       console.error('❌ Error calculando días congelados:', error);
       return 0;
     }
-  }, []);
+  }, [getMexicoDateString]);
 
   // ✅ FUNCIONES MEMOIZADAS - VERIFICADAS
   const getStatusColor = useCallback((status: string) => {
@@ -469,7 +466,7 @@ export default function HistorialMembresiaPage() {
     return statusOption?.icon || '📋';
   }, []);
 
-  // ✅ FUNCIÓN DE RECARGA OPTIMIZADA
+  // ✅ FUNCIÓN DE RECARGA OPTIMIZADA CON FECHAS MÉXICO
   const forceReloadMemberships = useCallback(async () => {
     console.log('🔄 Recargando membresías...');
     setLoading(true);
@@ -515,7 +512,7 @@ export default function HistorialMembresiaPage() {
     }
   }, [supabase]);
 
-  // ✅ CARGAR DATOS INICIALES
+  // ✅ CARGAR DATOS INICIALES CON FECHAS MÉXICO
   const loadMemberships = useCallback(async () => {
     setLoading(true);
     try {
@@ -583,7 +580,7 @@ export default function HistorialMembresiaPage() {
     setStats(stats);
   }, []);
 
-  // ✅ APLICAR FILTROS SIMPLIFICADO
+  // ✅ APLICAR FILTROS CON FECHAS MÉXICO CORREGIDAS
   const applyFilters = useCallback(() => {
     let filtered = [...memberships];
 
@@ -614,7 +611,7 @@ export default function HistorialMembresiaPage() {
       filtered = filtered.filter(m => m.is_renewal === isRenewal);
     }
 
-    // ✅ FILTROS DE FECHA SIMPLIFICADOS
+    // ✅ FILTROS DE FECHA CORREGIDOS CON FECHAS MÉXICO
     if (filters.dateFrom) {
       const fromTime = new Date(`${filters.dateFrom}T00:00:00`).getTime();
       filtered = filtered.filter(m => {
@@ -665,7 +662,8 @@ export default function HistorialMembresiaPage() {
         return;
       }
 
-      const freezeDate = new Date().toISOString().split('T')[0];
+      // ✅ USAR FECHA MÉXICO PARA CONGELAMIENTO
+      const freezeDate = getMexicoDateString();
       
       const { error } = await supabase
         .from('user_memberships')
@@ -686,7 +684,7 @@ export default function HistorialMembresiaPage() {
     } finally {
       setFreezeLoading(false);
     }
-  }, [supabase, forceReloadMemberships, canFreezeMembership]);
+  }, [supabase, forceReloadMemberships, canFreezeMembership, getMexicoDateString]);
 
   const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
@@ -699,7 +697,8 @@ export default function HistorialMembresiaPage() {
         return;
       }
 
-      const unfreezeDate = new Date().toISOString().split('T')[0];
+      // ✅ USAR FECHA MÉXICO PARA REACTIVACIÓN
+      const unfreezeDate = getMexicoDateString();
       const daysToAdd = getCurrentFrozenDays(membership.freeze_date);
       const newTotalFrozenDays = (membership.total_frozen_days || 0) + daysToAdd;
       
@@ -730,9 +729,9 @@ export default function HistorialMembresiaPage() {
     } finally {
       setUnfreezeLoading(false);
     }
-  }, [supabase, forceReloadMemberships, canUnfreezeMembership, getCurrentFrozenDays, addDaysToDate]);
+  }, [supabase, forceReloadMemberships, canUnfreezeMembership, getCurrentFrozenDays, addDaysToDate, getMexicoDateString]);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO SIMPLIFICADAS
+  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO CORREGIDAS
   const handleSelectAllMemberships = useCallback(() => {
     const eligibleMemberships = filteredMemberships
       .filter(m => m.status === 'active' || m.status === 'frozen')
@@ -814,7 +813,7 @@ export default function HistorialMembresiaPage() {
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, filteredMemberships]);
 
-  // ✅ FUNCIÓN GENERATEBULKPREVIEW SIMPLIFICADA
+  // ✅ FUNCIÓN GENERATEBULKPREVIEW CORREGIDA CON FECHAS MÉXICO
   const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
     console.log('📋 Generando preview para:', { operationType, count: eligibleMemberships.length });
     
@@ -869,7 +868,7 @@ export default function HistorialMembresiaPage() {
     return `${icon} ${actionText} Masivo ${modeText}`;
   }, [bulkOperation.action, bulkOperation.mode]);
 
-  // ✅ FUNCIÓN DE EJECUCIÓN MASIVA SIMPLIFICADA
+  // ✅ FUNCIÓN DE EJECUCIÓN MASIVA CORREGIDA CON FECHAS MÉXICO
   const executeBulkOperation = useCallback(async () => {
     console.log('🚀 Ejecutando operación masiva:', bulkOperation);
     
@@ -892,7 +891,8 @@ export default function HistorialMembresiaPage() {
       }
 
       try {
-        const currentDate = new Date().toISOString().split('T')[0];
+        // ✅ USAR FECHA MÉXICO PARA OPERACIONES MASIVAS
+        const currentDate = getMexicoDateString();
         
         if (bulkOperation.action === 'freeze') {
           if (bulkOperation.mode === 'manual' && bulkOperation.freezeDays) {
@@ -1000,9 +1000,9 @@ export default function HistorialMembresiaPage() {
     if (failedCount > 0) {
       setWarningMessage(`⚠️ ${failedCount} operaciones fallaron. Revise los detalles.`);
     }
-  }, [bulkOperation, memberships, supabase, formatDisplayDate, forceReloadMemberships, getCurrentFrozenDays, addDaysToDate]);
+  }, [bulkOperation, memberships, supabase, formatDisplayDate, forceReloadMemberships, getCurrentFrozenDays, addDaysToDate, getMexicoDateString]);
 
-  // ✅ FUNCIÓN DE ACTUALIZACIÓN DE MEMBRESÍA SIMPLIFICADA
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN DE MEMBRESÍA CORREGIDA CON FECHAS MÉXICO
   const handleUpdateMembership = useCallback(async () => {
     if (!selectedMembership || !editData) return;
     
@@ -1022,7 +1022,8 @@ export default function HistorialMembresiaPage() {
         const newEndDate = addDaysToDate(selectedMembership.end_date, editData.extend_days);
         editData.end_date = newEndDate;
         
-        const today = new Date().toISOString().split('T')[0];
+        // ✅ USAR FECHA MÉXICO PARA EXTENSIONES
+        const today = getMexicoDateString();
         const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${formatDisplayDate(today)}.`;
         editData.notes = editData.notes ? `${editData.notes}\n${extensionNote}` : extensionNote;
         
@@ -1089,7 +1090,7 @@ export default function HistorialMembresiaPage() {
     } finally {
       setEditLoading(false);
     }
-  }, [selectedMembership, editData, supabase, formatDisplayDate, forceReloadMemberships, addDaysToDate]);
+  }, [selectedMembership, editData, supabase, formatDisplayDate, forceReloadMemberships, addDaysToDate, getMexicoDateString]);
 
   const initializeEditData = useCallback((membership: MembershipHistory) => {
     const paymentDetails = membership.payment_details || {};
@@ -1141,7 +1142,32 @@ export default function HistorialMembresiaPage() {
     });
   }, []);
 
-  // ✅ MODAL DE EDICIÓN OPTIMIZADO (VERSION SIMPLIFICADA)
+  // ✅ EFFECTS
+  useEffect(() => {
+    loadMemberships();
+    loadPlans();
+  }, [loadMemberships, loadPlans]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  useEffect(() => {
+    if (showPreview && bulkOperation.action === 'freeze' && bulkOperation.mode === 'manual') {
+      const eligibleMemberships = filteredMemberships.filter(m => 
+        bulkOperation.membershipIds.includes(m.id)
+      );
+      generateBulkPreview(eligibleMemberships, 'manual_freeze');
+    }
+  }, [bulkOperation.freezeDays, bulkOperation.membershipIds, filteredMemberships, generateBulkPreview, showPreview, bulkOperation.action, bulkOperation.mode]);
+
+  // ✅ HANDLERS DE CIERRE
+  const handleCloseError = useCallback(() => setError(null), []);
+  const handleCloseSuccess = useCallback(() => setSuccessMessage(null), []);
+  const handleCloseWarning = useCallback(() => setWarningMessage(null), []);
+  const handleCloseInfo = useCallback(() => setInfoMessage(null), []);
+
+  // ✅ MODAL DE EDICIÓN OPTIMIZADO CON FECHAS MÉXICO CORREGIDAS
   const OptimizedEditModal = useMemo(() => {
     if (!editDialogOpen || !selectedMembership) return null;
 
@@ -1445,7 +1471,7 @@ export default function HistorialMembresiaPage() {
                   }}
                   InputProps={{
                     sx: {
-                                            color: darkProTokens.textPrimary,
+                      color: darkProTokens.textPrimary,
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: `${darkProTokens.primary}30`
                       },
@@ -1607,7 +1633,7 @@ export default function HistorialMembresiaPage() {
                 />
               </Grid>
 
-              {/* Extensión Manual SIMPLIFICADA */}
+              {/* Extensión Manual CORREGIDA CON FECHAS MÉXICO */}
               <Grid size={12}>
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
@@ -1832,31 +1858,6 @@ export default function HistorialMembresiaPage() {
     );
   }, [editDialogOpen, selectedMembership, editData, editLoading, formatDisplayDate, formatPrice, handleUpdateMembership, addDaysToDate]);
 
-  // ✅ EFFECTS
-  useEffect(() => {
-    loadMemberships();
-    loadPlans();
-  }, [loadMemberships, loadPlans]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
-
-  useEffect(() => {
-    if (showPreview && bulkOperation.action === 'freeze' && bulkOperation.mode === 'manual') {
-      const eligibleMemberships = filteredMemberships.filter(m => 
-        bulkOperation.membershipIds.includes(m.id)
-      );
-      generateBulkPreview(eligibleMemberships, 'manual_freeze');
-    }
-  }, [bulkOperation.freezeDays, bulkOperation.membershipIds, filteredMemberships, generateBulkPreview, showPreview, bulkOperation.action, bulkOperation.mode]);
-
-  // ✅ HANDLERS DE CIERRE
-  const handleCloseError = useCallback(() => setError(null), []);
-  const handleCloseSuccess = useCallback(() => setSuccessMessage(null), []);
-  const handleCloseWarning = useCallback(() => setWarningMessage(null), []);
-  const handleCloseInfo = useCallback(() => setInfoMessage(null), []);
-
   return (
     <Box sx={{ 
       p: 3, 
@@ -1864,7 +1865,7 @@ export default function HistorialMembresiaPage() {
       minHeight: '100vh',
       color: darkProTokens.textPrimary
     }}>
-      {/* ✅ SNACKBARS */}
+      {/* ✅ SNACKBARS CON DARK PRO SYSTEM */}
       <Snackbar 
         open={!!error} 
         autoHideDuration={8000} 
@@ -1969,7 +1970,7 @@ export default function HistorialMembresiaPage() {
         </Alert>
       </Snackbar>
 
-      {/* ✅ HEADER SIMPLIFICADO */}
+      {/* ✅ HEADER SIMPLIFICADO CON DARK PRO SYSTEM */}
       <Paper sx={{
         p: 4,
         mb: 4,
@@ -2205,8 +2206,7 @@ export default function HistorialMembresiaPage() {
           </Grid>
         </Grid>
       </Paper>
-
-      {/* ✅ BARRA DE CONGELAMIENTO MASIVO */}
+            {/* ✅ BARRA DE CONGELAMIENTO MASIVO */}
       <AnimatePresence>
         {bulkMode && (
           <motion.div
@@ -2960,7 +2960,7 @@ export default function HistorialMembresiaPage() {
                                     })()
                                   }}>
                                     ⏰ {(() => {
-                                                                            const daysRemaining = calculateDaysRemaining(membership.end_date!);
+                                      const daysRemaining = calculateDaysRemaining(membership.end_date!);
                                       if (daysRemaining === null) return 'Sin límite';
                                       if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
                                       if (daysRemaining === 0) return 'Vence hoy';
@@ -3712,7 +3712,7 @@ export default function HistorialMembresiaPage() {
         <DialogContent sx={{ maxHeight: '80vh', overflow: 'auto' }}>
           {selectedMembership && (
             <Box sx={{ mt: 2 }}>
-              {/* Header del Cliente Detallado */}
+                            {/* Header del Cliente Detallado */}
               <Card sx={{
                 background: `${darkProTokens.primary}15`,
                 border: `2px solid ${darkProTokens.primary}40`,
@@ -4096,11 +4096,12 @@ export default function HistorialMembresiaPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL DE EDICIÓN OPTIMIZADO */}
+      {/* ✅ MODAL DE EDICIÓN OPTIMIZADO - RENDERIZADO */}
       {OptimizedEditModal}
 
-      {/* ✅ ESTILOS CSS DARK PRO */}
+      {/* ✅ ESTILOS CSS DARK PRO PERSONALIZADOS */}
       <style jsx>{`
+        /* Scrollbar personalizado para Dark Pro System */
         ::-webkit-scrollbar {
           width: 8px;
         }
@@ -4122,3 +4123,4 @@ export default function HistorialMembresiaPage() {
     </Box>
   );
 }
+              
