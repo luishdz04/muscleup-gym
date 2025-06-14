@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-// ✅ FUNCIÓN PARA TIMESTAMP MÉXICO
+// ✅ FUNCIÓN PARA TIMESTAMP MÉXICO (IGUAL QUE CORTES)
 function toMexicoTimestamp(date: Date): string {
   const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
   const year = mexicoTime.getFullYear();
@@ -14,160 +14,135 @@ function toMexicoTimestamp(date: Date): string {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { date } = body;
+    console.log('🚀 API expenses/daily GET iniciada');
+    
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get('date');
+    
+    console.log('📅 Fecha recibida:', date);
     
     if (!date) {
+      console.log('❌ Fecha no proporcionada');
       return NextResponse.json(
         { error: 'Fecha es requerida', success: false },
         { status: 400 }
       );
     }
     
-    console.log('🔄 Iniciando sincronización manual para fecha:', date);
-    
+    console.log('🔍 Intentando crear cliente Supabase...');
     const supabase = createServerSupabaseClient();
+    console.log('✅ Cliente Supabase creado');
     
-    // 🔍 OBTENER USUARIO
-    let userId;
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
-        console.log('⚠️ No se pudo obtener usuario autenticado, usando usuario hardcodeado');
-        const { data: hardcodedUser, error: userError } = await supabase
-          .from('Users')
-          .select('id')
-          .eq('email', 'ing.luisdeluna@outlook.com')
-          .single();
-        
-        if (userError || !hardcodedUser) {
-          const { data: anyAdmin, error: adminError } = await supabase
-            .from('Users')
-            .select('id')
-            .eq('rol', 'admin')
-            .limit(1)
-            .single();
-          
-          if (adminError || !anyAdmin) {
-            return NextResponse.json(
-              { error: 'No se pudo determinar el usuario para la sincronización', success: false },
-              { status: 401 }
-            );
-          }
-          userId = anyAdmin.id;
-        } else {
-          userId = hardcodedUser.id;
-        }
-      } else {
-        userId = user.id;
-      }
-    } catch (error) {
-      console.error('Error obteniendo usuario:', error);
-      return NextResponse.json(
-        { error: 'Error de autenticación', success: false },
-        { status: 401 }
-      );
-    }
+    const now = new Date();
+    const mexicoTimestamp = toMexicoTimestamp(now);
     
-    // 1️⃣ CALCULAR TOTAL DE EGRESOS ACTIVOS DEL DÍA
-    const { data: dayExpenses, error: expensesError } = await supabase
+    console.log('🇲🇽 Consultando egresos con estructura correcta de tabla...');
+    
+    // ✅ CONSULTAR EGRESOS CON ESTRUCTURA REAL DE TABLA
+    const { data: expenses, error: expensesError } = await supabase
       .from('expenses')
-      .select('amount, description, expense_type')
+      .select(`
+        id,
+        expense_date,
+        expense_time,
+        expense_type,
+        description,
+        amount,
+        receipt_number,
+        notes,
+        status,
+        created_at,
+        created_by,
+        updated_at,
+        updated_by
+      `)
       .eq('expense_date', date)
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .order('expense_time', { ascending: false });
+    
+    console.log('📊 Resultado consulta expenses:', { 
+      data_length: expenses?.length, 
+      error: expensesError 
+    });
     
     if (expensesError) {
       console.error('❌ Error consultando egresos:', expensesError);
-      throw expensesError;
+      return NextResponse.json(
+        { 
+          error: 'Error consultando egresos', 
+          details: expensesError.message,
+          success: false 
+        },
+        { status: 500 }
+      );
     }
     
-    const totalExpenses = dayExpenses?.reduce((sum: number, exp: any) => sum + parseFloat(exp.amount), 0) || 0;
-    const expenseCount = dayExpenses?.length || 0;
+    console.log('✅ Consulta exitosa, procesando datos...');
     
-    console.log('📊 Egresos calculados:', {
-      total_count: expenseCount,
-      total_amount: totalExpenses,
-      expenses: dayExpenses
-    });
+    const processedExpenses = expenses || [];
+    const totalAmount = processedExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount.toString()), 0);
     
-    // 2️⃣ BUSCAR CORTE EXISTENTE DEL MISMO DÍA
-    const { data: existingCut, error: cutError } = await supabase
-      .from('cash_cuts')
-      .select('id, cut_number, expenses_amount, grand_total, final_balance')
-      .eq('cut_date', date)
-      .single();
+    // 📊 CALCULAR RESUMEN POR CATEGORÍAS (usando tipos reales)
+    const categorySummary = processedExpenses.reduce((acc: any, expense: any) => {
+      const category = expense.expense_type || 'otros';
+      if (!acc[category]) {
+        acc[category] = {
+          count: 0,
+          total: 0,
+          items: []
+        };
+      }
+      acc[category].count += 1;
+      acc[category].total += parseFloat(expense.amount.toString());
+      acc[category].items.push(expense);
+      return acc;
+    }, {});
     
-    if (cutError && cutError.code !== 'PGRST116') {
-      console.error('❌ Error buscando corte:', cutError);
-      throw cutError;
-    }
+    // ✅ FORMATEAR EXPENSE_TIME CORRECTAMENTE
+    const formattedExpenses = processedExpenses.map(expense => ({
+      ...expense,
+      expense_time: new Date(expense.expense_time).toLocaleTimeString('es-MX', {
+        timeZone: 'America/Mexico_City',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }),
+      amount: parseFloat(expense.amount.toString())
+    }));
     
-    if (!existingCut) {
-      return NextResponse.json({
-        success: false,
-        error: 'No hay corte registrado para esta fecha',
-        date,
-        total_expenses: totalExpenses,
-        expense_count: expenseCount
-      });
-    }
-    
-    // 3️⃣ ACTUALIZAR CORTE CON SINCRONIZACIÓN
-    const mexicoTimestamp = toMexicoTimestamp(new Date());
-    const newFinalBalance = parseFloat(existingCut.grand_total) - totalExpenses;
-    
-    const { data: updatedCut, error: updateError } = await supabase
-      .from('cash_cuts')
-      .update({
-        expenses_amount: totalExpenses,
-        final_balance: newFinalBalance,
-        updated_at: mexicoTimestamp,
-        updated_by: userId
-      })
-      .eq('id', existingCut.id)
-      .select()
-      .single();
-    
-    if (updateError) {
-      console.error('💥 Error actualizando corte:', updateError);
-      throw updateError;
-    }
-    
-    console.log('✅ Sincronización manual completada:', {
-      cut_number: existingCut.cut_number,
-      old_expenses: existingCut.expenses_amount,
-      new_expenses: totalExpenses,
-      old_final_balance: existingCut.final_balance,
-      new_final_balance: newFinalBalance,
-      expense_count: expenseCount
+    console.log('📊 Datos procesados correctamente:', {
+      total_expenses: processedExpenses.length,
+      total_amount: totalAmount,
+      categorias: Object.keys(categorySummary)
     });
     
     return NextResponse.json({
       success: true,
-      message: 'Sincronización manual completada exitosamente',
       date,
-      cut_number: existingCut.cut_number,
-      sync_details: {
-        old_expenses_amount: existingCut.expenses_amount,
-        new_expenses_amount: totalExpenses,
-        expense_count: expenseCount,
-        old_final_balance: existingCut.final_balance,
-        new_final_balance: newFinalBalance,
-        difference: totalExpenses - parseFloat(existingCut.expenses_amount)
+      mexico_time: mexicoTimestamp,
+      utc_time: now.toISOString(),
+      expenses: formattedExpenses,
+      summary: {
+        total_expenses: processedExpenses.length,
+        total_amount: totalAmount,
+        categories: categorySummary
       },
-      total_expenses: totalExpenses,
-      updated_cut: updatedCut,
-      mexico_time: mexicoTimestamp
+      timezone_info: {
+        mexico_date: date,
+        note: 'Datos consultados con zona horaria México (UTC-6)'
+      }
     });
     
-  } catch (error) {
-    console.error('💥 Error en API sync-with-cut:', error);
+  } catch (error: any) {
+    console.error('💥 Error crítico en API daily expenses:', error);
+    console.error('💥 Error stack:', error.stack);
+    console.error('💥 Error message:', error.message);
+    
     return NextResponse.json(
       { 
-        error: 'Error en sincronización manual', 
+        error: 'Error al cargar egresos', 
         details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         success: false 
       },
