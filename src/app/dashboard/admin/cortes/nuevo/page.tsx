@@ -154,9 +154,11 @@ function getMexicoDateRangeDisplay(dateString: string): string {
   }
 }
 
+// ✅ CAMBIAR ESTA FUNCIÓN PARA QUE COINCIDA
 function createTimestampForDB(): string {
-  const mexicoDate = new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"});
-  return new Date(mexicoDate).toISOString();
+  const now = new Date();
+  const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  return mexicoTime.toISOString();
 }
 
 function formatPrice(amount: number): string {
