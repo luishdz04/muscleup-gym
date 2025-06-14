@@ -212,7 +212,8 @@ export async function GET(request: NextRequest) {
     const getItemsForSale = (saleId: string) => saleItems.filter(item => item.sale_id === saleId);
     const getPaymentsForSale = (saleId: string) => posPayments.filter(payment => payment.sale_id === saleId);
 
-    // 🛒 PROCESAR VENTAS POS
+   
+    // 🛒 PROCESAR VENTAS POS - CORREGIDO
     const processedPOS = [];
     (posTransactions || []).forEach(sale => {
       const customer = findCustomer(sale.customer_id);
@@ -225,6 +226,11 @@ export async function GET(request: NextRequest) {
           `${item.product_name} (${item.quantity}x)`
         ).join(', ') || 'Venta POS';
 
+        // ✅ CALCULAR MONTO TOTAL CON COMISIÓN INCLUIDA
+        const baseAmount = parseFloat(payment.amount || 0);
+        const commissionAmount = parseFloat(payment.commission_amount || 0);
+        const totalAmountWithCommission = baseAmount + commissionAmount;
+
         processedPOS.push({
           id: `pos_${sale.id}_${index}`,
           type: 'pos',
@@ -232,14 +238,15 @@ export async function GET(request: NextRequest) {
           sale_number: sale.sale_number,
           product_name: productNames,
           quantity: items.reduce((sum, item) => sum + item.quantity, 0) || 1,
-          unit_price: parseFloat(payment.amount || 0),
+          unit_price: totalAmountWithCommission, // ✅ PRECIO CON COMISIÓN
           customer_name: customer 
             ? `${customer.firstName} ${customer.lastName || ''}`.trim()
             : 'Cliente General',
           customer_phone: customer?.whatsapp,
           payment_method: payment.payment_method,
-          amount: parseFloat(payment.amount || 0),
-          commission_amount: parseFloat(payment.commission_amount || 0),
+          amount: totalAmountWithCommission, // ✅ MONTO CON COMISIÓN INCLUIDA
+          base_amount: baseAmount, // ✅ MONTO BASE SIN COMISIÓN
+          commission_amount: commissionAmount, // ✅ COMISIÓN PARA MOSTRAR COMO INFO
           created_at: sale.created_at,
           reference: sale.sale_number,
           notes: sale.notes,
@@ -248,9 +255,14 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 💰 PROCESAR ABONOS
+    // 💰 PROCESAR ABONOS - CORREGIDO
     const processedAbonos = [];
     (abonosTransactions || []).forEach(abono => {
+      // ✅ CALCULAR MONTO TOTAL CON COMISIÓN INCLUIDA
+      const baseAmount = parseFloat(abono.amount || 0);
+      const commissionAmount = parseFloat(abono.commission_amount || 0);
+      const totalAmountWithCommission = baseAmount + commissionAmount;
+
       processedAbonos.push({
         id: `abono_${abono.id}`,
         type: 'abono',
@@ -259,8 +271,9 @@ export async function GET(request: NextRequest) {
         customer_name: 'Cliente',
         customer_phone: null,
         payment_method: abono.payment_method,
-        amount: parseFloat(abono.amount || 0),
-        commission_amount: parseFloat(abono.commission_amount || 0),
+        amount: totalAmountWithCommission, // ✅ MONTO CON COMISIÓN INCLUIDA
+        base_amount: baseAmount, // ✅ MONTO BASE SIN COMISIÓN
+        commission_amount: commissionAmount, // ✅ COMISIÓN PARA MOSTRAR COMO INFO
         created_at: abono.payment_date,
         reference: abono.sale_id,
         notes: abono.notes,
@@ -269,7 +282,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 🎫 PROCESAR MEMBRESÍAS
+    // 🎫 PROCESAR MEMBRESÍAS - MANTENER IGUAL (YA ESTÁ BIEN)
     const processedMemberships = [];
     (membershipTransactions || []).forEach(membership => {
       const customer = findCustomer(membership.userid);
@@ -286,8 +299,8 @@ export async function GET(request: NextRequest) {
           : 'Cliente',
         customer_phone: customer?.whatsapp,
         payment_method: membership.payment_method,
-        amount: parseFloat(membership.amount_paid || 0),
-        commission_amount: parseFloat(membership.commission_amount || 0),
+        amount: parseFloat(membership.amount_paid || 0), // ✅ TOTAL PAGADO (YA INCLUYE TODO)
+        commission_amount: parseFloat(membership.commission_amount || 0), // ✅ COMISIÓN SOLO INFORMATIVA
         created_at: membership.created_at,
         reference: membership.id,
         notes: membership.notes,
