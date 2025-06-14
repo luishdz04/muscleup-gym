@@ -1,7 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-// ✅ USAR LOS MISMOS dateHelpers QUE FUNCIONAN EN OTROS LUGARES
-import { getMexicoDateRange } from '@/utils/dateHelpers';
+
+// ✅ LÓGICA DE dateHelpers APLICADA DIRECTAMENTE (SIN IMPORTAR)
+function getMexicoDateRangeLocal(dateString: string) {
+  console.log('📅 Calculando rango para fecha México:', dateString);
+  
+  // Crear fecha base en México
+  const mexicoDate = new Date(dateString + 'T00:00:00.000-06:00'); // UTC-6 México
+  
+  // Inicio del día en México (00:00:00)
+  const startOfDayMexico = new Date(mexicoDate);
+  startOfDayMexico.setHours(0, 0, 0, 0);
+  
+  // Final del día en México (23:59:59.999)
+  const endOfDayMexico = new Date(mexicoDate);
+  endOfDayMexico.setHours(23, 59, 59, 999);
+  
+  // Convertir a UTC para las consultas
+  const startISO = startOfDayMexico.toISOString();
+  const endISO = endOfDayMexico.toISOString();
+  
+  console.log('⏰ Rango calculado directamente:', {
+    fecha_input: dateString,
+    inicio_mexico: startOfDayMexico.toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
+    fin_mexico: endOfDayMexico.toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
+    inicio_utc: startISO,
+    fin_utc: endISO
+  });
+  
+  return { startISO, endISO };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,21 +46,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ✅ VALIDAR FORMATO DE FECHA
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      console.error('❌ Error: Formato de fecha inválido:', date);
+      return NextResponse.json(
+        { error: 'Formato de fecha inválido. Use YYYY-MM-DD', success: false },
+        { status: 400 }
+      );
+    }
+
     console.log('🔍 Consultando datos para fecha México:', date);
 
     const supabase = createServerSupabaseClient();
 
-    // ✅ USAR EL MISMO HELPER QUE FUNCIONA EN OTROS ARCHIVOS
-    const { startISO, endISO } = getMexicoDateRange(date);
-    
-    console.log('⏰ Rango México calculado con dateHelpers:', {
+    // ✅ USAR FUNCIÓN LOCAL (SIN IMPORTAR)
+    const { startISO, endISO } = getMexicoDateRangeLocal(date);
+
+    console.log('⏰ Rango México calculado (función local):', {
       fecha_mexico: date,
       inicio_utc: startISO,
       fin_utc: endISO,
-      note: 'Usando getMexicoDateRange helper'
+      note: 'Calculado directamente sin importaciones'
     });
 
     // 🏪 1. VENTAS POS
+    console.log('🛒 Consultando ventas POS...');
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
       .select(`
@@ -52,10 +91,13 @@ export async function GET(request: NextRequest) {
 
     if (salesError) {
       console.error('❌ Error consultando ventas:', salesError);
-      throw salesError;
+      throw new Error(`Error consultando ventas: ${salesError.message}`);
     }
 
+    console.log('✅ Ventas consultadas:', salesData?.length || 0);
+
     // 💰 2. ABONOS
+    console.log('💰 Consultando abonos...');
     const { data: abonosData, error: abonosError } = await supabase
       .from('sale_payment_details')
       .select(`
@@ -74,10 +116,13 @@ export async function GET(request: NextRequest) {
 
     if (abonosError) {
       console.error('❌ Error consultando abonos:', abonosError);
-      throw abonosError;
+      throw new Error(`Error consultando abonos: ${abonosError.message}`);
     }
 
+    console.log('✅ Abonos consultados:', abonosData?.length || 0);
+
     // 🎫 3. MEMBRESÍAS
+    console.log('🎫 Consultando membresías...');
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('user_memberships')
       .select(`
@@ -96,8 +141,10 @@ export async function GET(request: NextRequest) {
 
     if (membershipsError) {
       console.error('❌ Error consultando membresías:', membershipsError);
-      throw membershipsError;
+      throw new Error(`Error consultando membresías: ${membershipsError.message}`);
     }
+
+    console.log('✅ Membresías consultadas:', membershipsData?.length || 0);
 
     console.log('📊 Datos obtenidos:', {
       ventas: salesData?.length || 0,
@@ -105,7 +152,8 @@ export async function GET(request: NextRequest) {
       membresias: membershipsData?.length || 0
     });
 
-    // 🧮 PROCESAR DATOS (mismo código que ya funciona)
+    // 🧮 PROCESAR VENTAS POS
+    console.log('🧮 Procesando ventas POS...');
     const pos = {
       efectivo: 0,
       transferencia: 0,
@@ -143,6 +191,7 @@ export async function GET(request: NextRequest) {
               pos.credito += totalWithCommission;
               break;
             default:
+              console.warn(`🔴 Método de pago desconocido en POS: ${payment.payment_method}`);
               pos.efectivo += totalWithCommission;
               break;
           }
@@ -150,6 +199,10 @@ export async function GET(request: NextRequest) {
       });
     });
 
+    console.log('✅ Ventas POS procesadas:', pos);
+
+    // 🧮 PROCESAR ABONOS
+    console.log('🧮 Procesando abonos...');
     const abonos = {
       efectivo: 0,
       transferencia: 0,
@@ -185,12 +238,17 @@ export async function GET(request: NextRequest) {
           abonos.credito += totalWithCommission;
           break;
         default:
+          console.warn(`🔴 Método de pago desconocido en abonos: ${abono.payment_method}`);
           abonos.efectivo += totalWithCommission;
           break;
       }
     });
     abonos.transactions = uniqueSaleIds.size;
 
+    console.log('✅ Abonos procesados:', abonos);
+
+    // 🧮 PROCESAR MEMBRESÍAS
+    console.log('🧮 Procesando membresías...');
     const memberships = {
       efectivo: 0,
       transferencia: 0,
@@ -211,6 +269,8 @@ export async function GET(request: NextRequest) {
       memberships.commissions += membershipCommission;
       
       if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
+        console.log('✅ Usando detalles de pago para membresía');
+        
         membership.membership_payment_details.forEach(payment => {
           const amount = parseFloat(payment.amount || '0');
           const commission = parseFloat(payment.commission_amount || '0');
@@ -231,11 +291,14 @@ export async function GET(request: NextRequest) {
               memberships.credito += totalWithCommission;
               break;
             default:
+              console.warn(`🔴 Método de pago desconocido en detalles membresía: ${payment.payment_method}`);
               memberships.efectivo += totalWithCommission;
               break;
           }
         });
       } else {
+        console.log('⚠️ Usando payment_method directo para membresía');
+        
         switch (membership.payment_method?.toLowerCase()) {
           case 'efectivo':
             memberships.efectivo += totalMembership;
@@ -250,12 +313,16 @@ export async function GET(request: NextRequest) {
             memberships.credito += totalMembership;
             break;
           default:
+            console.warn(`🔴 Método de pago no especificado en membresía, asumiendo efectivo: ${membership.payment_method}`);
             memberships.efectivo += totalMembership;
             break;
         }
       }
     });
 
+    console.log('✅ Membresías procesadas:', memberships);
+
+    // 🧮 CALCULAR TOTALES
     const totals = {
       efectivo: pos.efectivo + abonos.efectivo + memberships.efectivo,
       transferencia: pos.transferencia + abonos.transferencia + memberships.transferencia,
@@ -267,7 +334,9 @@ export async function GET(request: NextRequest) {
       net_amount: pos.total + abonos.total + memberships.total - (pos.commissions + abonos.commissions + memberships.commissions)
     };
 
-    // ✅ RESPUESTA CON INFORMACIÓN CORRECTA DE TIMEZONE
+    console.log('✅ Totales calculados:', totals);
+
+    // ✅ RESPUESTA FINAL
     const response = {
       success: true,
       date,
@@ -277,8 +346,8 @@ export async function GET(request: NextRequest) {
           start: startISO,
           end: endISO
         },
-        timezone: 'America/Mexico_City',
-        note: "✅ Datos filtrados con dateHelpers para fecha México"
+        timezone: 'America/Mexico_City (UTC-6)',
+        note: "✅ Datos filtrados directamente para fecha México (sin importaciones)"
       },
       pos,
       abonos,
@@ -286,13 +355,23 @@ export async function GET(request: NextRequest) {
       totals
     };
 
-    console.log('✅ API completada exitosamente con dateHelpers');
+    console.log('🎉 API completada exitosamente sin importaciones');
     return NextResponse.json(response);
 
   } catch (error: any) {
-    console.error('💥 Error en daily-data API:', error);
+    console.error('💥 Error crítico en daily-data API:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      timestamp: new Date().toISOString()
+    });
+    
     return NextResponse.json(
-      { error: 'Error interno del servidor', success: false },
+      { 
+        error: 'Error interno del servidor',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        success: false 
+      },
       { status: 500 }
     );
   }
