@@ -10,54 +10,38 @@ import {
   Button,
   Alert,
   CircularProgress,
-  TextField,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
   Chip,
-  Stack,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Avatar,
+  IconButton,
+  Tooltip,
   Divider,
-  InputAdornment,
-  Fab,
-  Badge,
-  Tooltip
+  Avatar,
+  Stack,
+  LinearProgress,
+  Paper
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Receipt as ReceiptIcon,
+  MoneyOff as MoneyOffIcon,
   TrendingDown as TrendingDownIcon,
-  DateRange as DateRangeIcon,
-  AttachMoney as AttachMoneyIcon,
-  Category as CategoryIcon,
-  Description as DescriptionIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
-  Visibility as VisibilityIcon,
+  Receipt as ReceiptIcon,
+  CreditCard as CreditCardIcon,
   MonetizationOn as MonetizationOnIcon,
-  Sync as SyncIcon,
-  CheckCircle as CheckCircleIcon,
-  Refresh as RefreshIcon
+  SwapHoriz as SwapHorizIcon,
+  Refresh as RefreshIcon,
+  CalendarToday as CalendarIcon,
+  Assessment as AssessmentIcon,
+  AttachMoney as AttachMoneyIcon,
+  ShoppingCart as ShoppingCartIcon,
+  Build as BuildIcon,
+  LocalGasStation as LocalGasStationIcon,
+  Restaurant as RestaurantIcon,
+  DirectionsCar as DirectionsCarIcon,
+  Home as HomeIcon
 } from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
-// 🎨 DARK PRO TOKENS
+// 🎨 DARK PRO SYSTEM - TOKENS (IGUAL QUE CORTES)
 const darkProTokens = {
   background: '#000000',
   surfaceLevel1: '#121212',
@@ -73,26 +57,21 @@ const darkProTokens = {
   textDisabled: '#888888',
   primary: '#FFCC00',
   primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
   success: '#388E3C',
+  successHover: '#2E7D32',
   error: '#D32F2F',
+  errorHover: '#B71C1C',
   warning: '#FFB300',
+  warningHover: '#E6A700',
   info: '#1976D2',
+  infoHover: '#1565C0',
   roleAdmin: '#E91E63'
 };
 
-// 📋 CATEGORÍAS DE EGRESOS
-const EXPENSE_TYPES = {
-  'nomina': { label: '👥 Nómina', color: darkProTokens.error },
-  'suplementos': { label: '💊 Suplementos', color: darkProTokens.warning },
-  'servicios': { label: '⚡ Servicios', color: darkProTokens.info },
-  'mantenimiento': { label: '🔧 Mantenimiento', color: darkProTokens.primary },
-  'limpieza': { label: '🧽 Limpieza', color: darkProTokens.success },
-  'marketing': { label: '📢 Marketing', color: '#9C27B0' },
-  'equipamiento': { label: '🏋️ Equipamiento', color: '#FF5722' },
-  'otros': { label: '📝 Otros', color: darkProTokens.grayMuted }
-};
+// ✅ FUNCIONES LOCALES (SIN IMPORTAR dateHelpers) - IGUAL QUE CORTES
 
-// ✅ FUNCIONES LOCALES (EXACTAMENTE IGUALES A CORTES)
+// 💰 Función para formatear precios
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -101,6 +80,7 @@ function formatPrice(amount: number): string {
   }).format(amount);
 }
 
+// 📅 Función para obtener fecha actual de México
 function getMexicoDateLocal(): string {
   const now = new Date();
   
@@ -115,6 +95,7 @@ function getMexicoDateLocal(): string {
   return `${year}-${month}-${day}`;
 }
 
+// ⏰ Función para formatear hora actual de México
 function formatMexicoTimeLocal(date: Date): string {
   return date.toLocaleString('es-MX', {
     timeZone: 'America/Mexico_City',
@@ -125,6 +106,7 @@ function formatMexicoTimeLocal(date: Date): string {
   });
 }
 
+// 📅 Función para formatear fechas largas
 function formatDateLocal(dateString: string): string {
   try {
     // Crear fecha y formatear en español México
@@ -159,78 +141,101 @@ function formatDateLocal(dateString: string): string {
   }
 }
 
-function formatDateTime(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Mexico_City',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  } catch (error) {
-    return dateString;
+// 🎯 FUNCIÓN PARA OBTENER ICONO POR CATEGORÍA
+function getCategoryIcon(category: string) {
+  switch (category?.toLowerCase()) {
+    case 'comida':
+    case 'alimentos':
+      return <RestaurantIcon />;
+    case 'transporte':
+    case 'gasolina':
+      return <DirectionsCarIcon />;
+    case 'combustible':
+      return <LocalGasStationIcon />;
+    case 'equipamiento':
+    case 'equipo':
+      return <BuildIcon />;
+    case 'servicios':
+      return <HomeIcon />;
+    case 'mantenimiento':
+      return <BuildIcon />;
+    case 'compras':
+      return <ShoppingCartIcon />;
+    default:
+      return <MoneyOffIcon />;
   }
 }
 
-// ✅ FUNCIÓN PARA TIMESTAMP MÉXICO (PARA CREAR EGRESOS)
-function toMexicoTimestamp(date: Date): string {
-  const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-  const year = mexicoTime.getFullYear();
-  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoTime.getDate()).padStart(2, '0');
-  const hours = String(mexicoTime.getHours()).padStart(2, '0');
-  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
-  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
+// 🎨 FUNCIÓN PARA OBTENER COLOR POR CATEGORÍA
+function getCategoryColor(category: string) {
+  switch (category?.toLowerCase()) {
+    case 'comida':
+    case 'alimentos':
+      return darkProTokens.warning;
+    case 'transporte':
+    case 'gasolina':
+    case 'combustible':
+      return darkProTokens.info;
+    case 'equipamiento':
+    case 'equipo':
+    case 'mantenimiento':
+      return darkProTokens.error;
+    case 'servicios':
+      return darkProTokens.success;
+    case 'compras':
+      return darkProTokens.primary;
+    default:
+      return darkProTokens.textSecondary;
+  }
 }
 
-// ✅ INTERFACES
-interface Expense {
-  id: string;
-  expense_date: string;
-  expense_time: string;
-  expense_type: string;
-  description: string;
-  amount: number;
-  receipt_number?: string;
-  notes?: string;
-  status: string;
-  created_at: string;
-  created_by: string;
-  user_name?: string;
+interface DailyExpensesData {
+  date: string;
+  mexico_time?: string;
+  timezone_info?: {
+    mexico_date: string;
+    note: string;
+  };
+  expenses: Array<{
+    id: string;
+    expense_date: string;
+    expense_time: string;
+    expense_type: string;
+    description: string;
+    amount: number;
+    receipt_number?: string;
+    notes?: string;
+    status: string;
+    created_at: string;
+  }>;
+  summary: {
+    total_expenses: number;
+    total_amount: number;
+    categories: Record<string, {
+      count: number;
+      total: number;
+      items: any[];
+    }>;
+  };
 }
 
-interface ExpenseForm {
-  expense_type: string;
-  description: string;
-  amount: string;
-  receipt_number: string;
-  notes: string;
-}
-
-interface RelatedCut {
-  id: string;
-  cut_number: string;
-  expenses_amount: number;
-  grand_total: number;
-  status: string;
+interface RelatedCutData {
+  exists: boolean;
+  cut?: {
+    id: string;
+    cut_number: string;
+    expenses_amount: number;
+    final_balance: number;
+  };
 }
 
 export default function EgresosPage() {
-  // ✅ ESTADOS
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [relatedCut, setRelatedCut] = useState<RelatedCut | null>(null);
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [dailyExpensesData, setDailyExpensesData] = useState<DailyExpensesData | null>(null);
+  const [relatedCutData, setRelatedCutData] = useState<RelatedCutData | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   
   // ✅ ESTADO PARA HORA EN TIEMPO REAL (IGUAL QUE CORTES)
   const [currentMexicoTime, setCurrentMexicoTime] = useState<string>('');
@@ -242,21 +247,6 @@ export default function EgresosPage() {
     console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
     console.log('⏰ Hora actual UTC:', new Date().toISOString());
     return mexicoDate; // Formato: YYYY-MM-DD
-  });
-
-  const [selectedDateObj, setSelectedDateObj] = useState<Date>(() => {
-    return new Date(selectedDate + 'T12:00:00');
-  });
-  
-  // Modal states
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [expenseForm, setExpenseForm] = useState<ExpenseForm>({
-    expense_type: '',
-    description: '',
-    amount: '',
-    receipt_number: '',
-    notes: ''
   });
 
   // ✅ ACTUALIZAR HORA EN TIEMPO REAL CADA SEGUNDO (IGUAL QUE CORTES)
@@ -276,37 +266,35 @@ export default function EgresosPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ EFECTOS
-  useEffect(() => {
-    console.log('🚀 Componente montado, cargando egresos para fecha:', selectedDate);
-    console.log('⏰ Hora actual México:', currentMexicoTime);
-    loadExpenses(selectedDateObj);
-    loadRelatedCut(selectedDateObj);
-  }, [selectedDateObj]);
-
-  // ✅ FUNCIONES DE CARGA CON MEJOR MANEJO DE ERRORES
-  const loadExpenses = async (date: Date) => {
+  // ✅ CARGAR DATOS DEL DÍA CON MEJOR MANEJO DE ERRORES (IGUAL QUE CORTES)
+  const loadExpenses = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const dateString = date.toISOString().split('T')[0];
-      console.log('🔍 Cargando egresos para fecha México:', dateString);
-      console.log('⏰ Hora actual México:', currentMexicoTime);
+      console.log('🔍 Cargando egresos para fecha México:', selectedDate);
+      console.log('⏰ Timestamp actual México:', currentMexicoTime);
       
-      const response = await fetch(`/api/expenses/daily?date=${dateString}`);
+      const response = await fetch(`/api/expenses/daily?date=${selectedDate}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
       console.log('📡 Respuesta de la API egresos:', response.status, response.statusText);
       
       const data = await response.json();
       console.log('📊 Datos recibidos de egresos:', data);
       
       if (response.ok && data.success) {
-        console.log('✅ Egresos válidos recibidos:', {
-          fecha: dateString,
-          total_egresos: data.expenses?.length || 0,
-          total_amount: data.expenses?.reduce((sum: number, exp: Expense) => sum + exp.amount, 0) || 0
+        console.log('✅ Datos de egresos válidos recibidos:', {
+          fecha: data.date,
+          timezone_info: data.timezone_info,
+          total_egresos: data.summary?.total_amount || 0,
+          cantidad_egresos: data.summary?.total_expenses || 0
         });
-        setExpenses(data.expenses || []);
+        setDailyExpensesData(data);
       } else {
         const errorMsg = data.error || `Error HTTP ${response.status}: ${response.statusText}`;
         console.error('❌ Error en respuesta de API egresos:', errorMsg);
@@ -320,911 +308,592 @@ export default function EgresosPage() {
     }
   };
 
-  const loadRelatedCut = async (date: Date) => {
+  // ✅ CARGAR INFORMACIÓN DEL CORTE RELACIONADO
+  const loadRelatedCut = async () => {
     try {
-      const dateString = date.toISOString().split('T')[0];
-      console.log('🔍 Verificando corte relacionado para:', dateString);
+      console.log('🔍 Verificando corte relacionado para fecha:', selectedDate);
       
-const response = await fetch(`/api/cuts/check-existing?date=${dateString}&purpose=expenses`);
+      const response = await fetch(`/api/cuts/check-existing?date=${selectedDate}&purpose=expenses`);
       console.log('📡 Respuesta API check-existing:', response.status);
       
       const data = await response.json();
       console.log('📊 Datos corte relacionado:', data);
       
-      if (response.ok && data.success && data.cut) {
-        setRelatedCut(data.cut);
-        console.log('✅ Corte relacionado encontrado:', data.cut.cut_number);
+      if (response.ok) {
+        setRelatedCutData(data);
       } else {
-        setRelatedCut(null);
         console.log('ℹ️ No hay corte para esta fecha o API no disponible');
+        setRelatedCutData({ exists: false });
       }
     } catch (error) {
-      console.error('Error verificando corte (API no disponible):', error);
-      setRelatedCut(null);
+      console.error('Error cargando corte relacionado:', error);
+      setRelatedCutData({ exists: false });
     }
   };
 
   // 🔄 REFRESCAR DATOS (IGUAL QUE CORTES)
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadExpenses(selectedDateObj);
-    await loadRelatedCut(selectedDateObj);
+    await Promise.all([loadExpenses(), loadRelatedCut()]);
     setRefreshing(false);
   };
 
-  const handleDateChange = (newDate: Date | null) => {
-    if (newDate) {
-      setSelectedDateObj(newDate);
-      setSuccess(null);
-      setError(null);
+  // ⚡ EFECTOS (IGUAL QUE CORTES)
+  useEffect(() => {
+    console.log('🚀 Componente egresos montado, cargando datos para fecha:', selectedDate);
+    Promise.all([loadExpenses(), loadRelatedCut()]);
+  }, [selectedDate]);
+
+  // 📊 CALCULAR PORCENTAJES PARA CATEGORÍAS
+  const calculateCategoryPercentages = () => {
+    if (!dailyExpensesData || dailyExpensesData.summary.total_amount === 0) {
+      return {};
     }
-  };
 
-  // ✅ FUNCIONES DE MODAL
-  const openAddDialog = () => {
-    setEditingExpense(null);
-    setExpenseForm({
-      expense_type: '',
-      description: '',
-      amount: '',
-      receipt_number: '',
-      notes: ''
-    });
-    setOpenDialog(true);
-  };
-
-  const openEditDialog = (expense: Expense) => {
-    setEditingExpense(expense);
-    setExpenseForm({
-      expense_type: expense.expense_type,
-      description: expense.description,
-      amount: expense.amount.toString(),
-      receipt_number: expense.receipt_number || '',
-      notes: expense.notes || ''
-    });
-    setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditingExpense(null);
-    setExpenseForm({
-      expense_type: '',
-      description: '',
-      amount: '',
-      receipt_number: '',
-      notes: ''
-    });
-  };
-
-  const handleFormChange = (field: keyof ExpenseForm, value: string) => {
-    setExpenseForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const validateForm = (): boolean => {
-    if (!expenseForm.expense_type.trim()) {
-      setError('Tipo de egreso es requerido');
-      return false;
-    }
-    if (!expenseForm.description.trim()) {
-      setError('Descripción es requerida');
-      return false;
-    }
-    if (!expenseForm.amount.trim() || parseFloat(expenseForm.amount) <= 0) {
-      setError('Cantidad debe ser mayor a 0');
-      return false;
-    }
-    return true;
-  };
-
-  // ✅ GUARDAR EGRESO CON SINCRONIZACIÓN AUTOMÁTICA
-  const handleSaveExpense = async () => {
-    try {
-      if (!validateForm()) return;
-      
-      setSaving(true);
-      setError(null);
-      
-      const dateString = selectedDateObj.toISOString().split('T')[0];
-      const now = new Date();
-      const mexicoTimestamp = toMexicoTimestamp(now);
-      
-      const expenseData = {
-        expense_date: dateString,
-        expense_time: mexicoTimestamp, // ✅ Hora México con offset
-        expense_type: expenseForm.expense_type,
-        description: expenseForm.description.trim(),
-        amount: parseFloat(expenseForm.amount),
-        receipt_number: expenseForm.receipt_number.trim() || null,
-        notes: expenseForm.notes.trim() || null
-      };
-      
-      const url = editingExpense 
-        ? `/api/expenses/update/${editingExpense.id}`
-        : '/api/expenses/create';
-      
-      const method = editingExpense ? 'PUT' : 'POST';
-      
-      console.log(`${editingExpense ? '✏️ Actualizando' : '➕ Creando'} egreso con sincronización:`, expenseData);
-      console.log('⏰ Timestamp México generado:', mexicoTimestamp);
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(expenseData),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setSuccess(editingExpense 
-          ? `✅ Egreso actualizado y sincronizado con corte`
-          : `✅ Egreso creado: ${formatPrice(expenseData.amount)}${result.sync_info ? ' • Sincronizado con corte' : ''}`
-        );
-        handleCloseDialog();
-        await handleRefresh(); // Usar función de refresh
-      } else {
-        setError(result.error || 'Error al guardar el egreso');
-      }
-    } catch (error) {
-      console.error('Error guardando egreso:', error);
-      setError('Error al guardar el egreso - APIs no disponibles');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteExpense = async (expense: Expense) => {
-    if (!confirm(`¿Estás seguro de eliminar el egreso "${expense.description}"?\n\nEsto también actualizará automáticamente el corte relacionado.`)) {
-      return;
-    }
+    const total = dailyExpensesData.summary.total_amount;
+    const percentages: Record<string, number> = {};
     
-    try {
-      setSaving(true);
-      setError(null);
-      
-      const response = await fetch(`/api/expenses/delete/${expense.id}`, {
-        method: 'DELETE'
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setSuccess(`✅ Egreso eliminado${result.sync_info ? ' y corte actualizado automáticamente' : ''}`);
-        await handleRefresh(); // Usar función de refresh
-      } else {
-        setError(result.error || 'Error al eliminar el egreso');
-      }
-    } catch (error) {
-      console.error('Error eliminando egreso:', error);
-      setError('Error al eliminar el egreso - APIs no disponibles');
-    } finally {
-      setSaving(false);
-    }
+    Object.entries(dailyExpensesData.summary.categories).forEach(([category, data]) => {
+      percentages[category] = (data.total / total) * 100;
+    });
+    
+    return percentages;
   };
 
-  // ✅ SINCRONIZACIÓN MANUAL (POR SI ALGO FALLA)
-  const handleManualSync = async () => {
-    try {
-      setSyncing(true);
-      setError(null);
-      
-      const dateString = selectedDateObj.toISOString().split('T')[0];
-      
-      const response = await fetch(`/api/expenses/sync-with-cut`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ date: dateString }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setSuccess(`✅ Sincronización manual completada: ${formatPrice(result.total_expenses)}`);
-        await loadRelatedCut(selectedDateObj);
-      } else {
-        setError(result.error || 'Error en sincronización manual');
-      }
-    } catch (error) {
-      console.error('Error en sincronización manual:', error);
-      setError('Error en sincronización manual - API no disponible');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // ✅ CÁLCULOS
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const expensesByType = expenses.reduce((acc, expense) => {
-    acc[expense.expense_type] = (acc[expense.expense_type] || 0) + expense.amount;
-    return acc;
-  }, {} as Record<string, number>);
+  const categoryPercentages = calculateCategoryPercentages();
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-      <Box sx={{ 
-        minHeight: '100vh',
-        background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
-        color: darkProTokens.textPrimary,
-        p: 4
-      }}>
-        {/* HEADER CON HORA EN TIEMPO REAL */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ 
-              bgcolor: darkProTokens.error, 
-              width: 60, 
-              height: 60 
-            }}>
-              <TrendingDownIcon sx={{ fontSize: 32 }} />
-            </Avatar>
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+      color: darkProTokens.textPrimary,
+      p: 4
+    }}>
+      {/* 🏷️ HEADER CON HORA DINÁMICA (IGUAL QUE CORTES) */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Avatar sx={{ 
+            bgcolor: darkProTokens.error, 
+            width: 60, 
+            height: 60 
+          }}>
+            <MoneyOffIcon sx={{ fontSize: 32 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+              Egresos del Día
+            </Typography>
             
-            <Box>
-              <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-                💸 Gestión de Egresos
-              </Typography>
-              
-              <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                📅 {formatDateLocal(selectedDateObj.toISOString().split('T')[0])}
-              </Typography>
-              
-              <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 0.5 }}>
-                🇲🇽 Zona horaria: México • ⏰ {currentMexicoTime} • {expenses.length} egresos registrados
-                {relatedCut && (
-                  <Chip 
-                    label={`🔗 Vinculado con ${relatedCut.cut_number}`} 
-                    size="small" 
-                    sx={{ 
-                      ml: 1,
-                      backgroundColor: `${darkProTokens.success}20`,
-                      color: darkProTokens.success
-                    }} 
-                  />
-                )}
-              </Typography>
-            </Box>
-          </Box>
-          
-          {/* TOTAL DEL DÍA Y BOTÓN DE REFRESH */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton
-              onClick={handleRefresh}
-              disabled={refreshing || loading}
-              sx={{
-                color: darkProTokens.primary,
-                backgroundColor: `${darkProTokens.primary}20`,
-                '&:hover': {
-                  backgroundColor: `${darkProTokens.primary}30`,
-                },
-              }}
-            >
-              {refreshing ? (
-                <CircularProgress size={24} sx={{ color: darkProTokens.primary }} />
-              ) : (
-                <RefreshIcon />
-              )}
-            </IconButton>
+            {/* ✅ FECHA Y HORA DINÁMICA CORREGIDAS */}
+            <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+              📅 {formatDateLocal(selectedDate)} • ⏰ {currentMexicoTime} • Gestión de gastos diarios
+            </Typography>
             
-            <Paper sx={{
-              p: 3,
-              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.surfaceLevel3})`,
-              border: `2px solid ${darkProTokens.error}40`,
-              borderRadius: 3,
-              textAlign: 'center'
+            {/* ✅ INFORMACIÓN DE ZONA HORARIA CON FECHA CORRECTA */}
+            <Typography variant="caption" sx={{ 
+              color: darkProTokens.info,
+              display: 'block',
+              mt: 0.5
             }}>
-              <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-                {formatPrice(totalExpenses)}
-              </Typography>
-              <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
-                Total Egresos del Día
-              </Typography>
-              {relatedCut && (
-                <Typography variant="caption" sx={{ 
-                  color: darkProTokens.success,
-                  display: 'block',
-                  mt: 1
-                }}>
-                  ✅ Sincronizado con corte
-                </Typography>
+              🇲🇽 Zona horaria: México (UTC-6) • Fecha consultada: {selectedDate}
+              {dailyExpensesData?.timezone_info && (
+                <span> • {dailyExpensesData.timezone_info.note}</span>
               )}
-            </Paper>
+            </Typography>
           </Box>
         </Box>
-
-        {/* MENSAJES */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+        
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Tooltip title="Refrescar datos">
+            <IconButton
+              onClick={handleRefresh}
+              disabled={refreshing}
+              sx={{ 
+                color: darkProTokens.info,
+                bgcolor: `${darkProTokens.info}20`,
+                '&:hover': { bgcolor: `${darkProTokens.info}30` }
+              }}
             >
-              <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-                {error}
-              </Alert>
-            </motion.div>
-          )}
+              <RefreshIcon sx={{ 
+                animation: refreshing ? 'spin 1s linear infinite' : 'none',
+                '@keyframes spin': {
+                  '0%': { transform: 'rotate(0deg)' },
+                  '100%': { transform: 'rotate(360deg)' }
+                }
+              }} />
+            </IconButton>
+          </Tooltip>
           
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
-                {success}
-              </Alert>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ALERT DE CORTE RELACIONADO */}
-        {relatedCut && (
-          <Alert 
-            severity="info" 
-            sx={{ 
-              mb: 3,
-              backgroundColor: `${darkProTokens.info}15`,
-              border: `1px solid ${darkProTokens.info}40`,
-              color: darkProTokens.textPrimary
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => router.push('/dashboard/admin/egresos/nuevo')}
+            sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+              color: darkProTokens.textPrimary,
+              fontWeight: 700,
+              px: 3,
+              py: 1.5,
+              fontSize: '1.1rem'
             }}
-            action={
-              <Button
-                size="small"
-                onClick={handleManualSync}
-                disabled={syncing}
-                startIcon={syncing ? <CircularProgress size={16} /> : <SyncIcon />}
-                sx={{ color: darkProTokens.info }}
-              >
-                {syncing ? 'Sincronizando...' : 'Sincronizar'}
-              </Button>
-            }
           >
-            💡 <strong>Corte relacionado:</strong> {relatedCut.cut_number} • 
-            Egresos registrados: {formatPrice(relatedCut.expenses_amount)} • 
-            Los cambios se sincronizan automáticamente
-          </Alert>
-        )}
+            Nuevo Egreso
+          </Button>
+        </Box>
+      </Box>
 
-        <Grid container spacing={4}>
-          {/* PANEL DE CONTROL */}
-          <Grid size={12} md={4}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `2px solid ${darkProTokens.roleAdmin}40`,
-              borderRadius: 4
-            }}>
-              <CardContent sx={{ p: 4 }}>
-                <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin, mb: 3 }}>
-                  ⚙️ Panel de Control
-                </Typography>
-                
-                {/* SELECTOR DE FECHA */}
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
-                    📅 Fecha de Egresos
-                  </Typography>
-                  <DatePicker
-                    value={selectedDateObj}
-                    onChange={handleDateChange}
-                    maxDate={new Date()}
-                    format="dd/MM/yyyy"
-                    label="Seleccionar fecha"
-                    sx={{
-                      width: '100%',
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: darkProTokens.surfaceLevel4,
-                        color: darkProTokens.textPrimary,
-                        '& fieldset': {
-                          borderColor: darkProTokens.grayMedium,
-                        },
-                        '&:hover fieldset': {
-                          borderColor: darkProTokens.primary,
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: darkProTokens.primary,
-                        },
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': {
-                          color: darkProTokens.primary,
-                        },
-                      },
-                      '& .MuiSvgIcon-root': {
-                        color: darkProTokens.primary,
-                      },
-                    }}
-                  />
-                </Box>
-
-                <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
-
-                {/* RESUMEN POR CATEGORÍAS */}
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
-                    📊 Resumen por Categorías
-                  </Typography>
-                  
-                  <Stack spacing={1}>
-                    {Object.entries(expensesByType).map(([type, amount]) => (
-                      <Box key={type} sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        p: 1.5,
-                        backgroundColor: darkProTokens.surfaceLevel4,
-                        borderRadius: 2
-                      }}>
-                        <Chip
-                          label={EXPENSE_TYPES[type as keyof typeof EXPENSE_TYPES]?.label || type}
-                          size="small"
-                          sx={{
-                            backgroundColor: `${EXPENSE_TYPES[type as keyof typeof EXPENSE_TYPES]?.color || darkProTokens.grayMuted}20`,
-                            color: EXPENSE_TYPES[type as keyof typeof EXPENSE_TYPES]?.color || darkProTokens.grayMuted,
-                            fontWeight: 600
-                          }}
-                        />
-                        <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
-                          {formatPrice(amount)}
-                        </Typography>
-                      </Box>
-                    ))}
-                    
-                    {Object.keys(expensesByType).length === 0 && (
-                      <Typography variant="body2" sx={{ 
-                        color: darkProTokens.textDisabled,
-                        textAlign: 'center',
-                        py: 2
-                      }}>
-                        {loading ? '⏳ Cargando egresos...' : 'No hay egresos registrados para esta fecha'}
-                      </Typography>
-                    )}
-                  </Stack>
-                </Box>
-
-                <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
-
-                {/* BOTÓN AGREGAR */}
-                <Button
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  startIcon={<AddIcon />}
-                  onClick={openAddDialog}
-                  disabled={loading}
-                  sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.error})`,
-                    color: darkProTokens.textPrimary,
-                    py: 1.5,
-                    fontWeight: 700,
-                    fontSize: '1.1rem',
-                    '&:disabled': {
-                      background: darkProTokens.grayMedium,
-                      color: darkProTokens.textDisabled
-                    }
-                  }}
+      {/* 🚨 ESTADOS DE ERROR CON MÁS DETALLES (IGUAL QUE CORTES) */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 3,
+                backgroundColor: `${darkProTokens.error}20`,
+                color: darkProTokens.textPrimary,
+                border: `1px solid ${darkProTokens.error}60`,
+                '& .MuiAlert-icon': { color: darkProTokens.error }
+              }}
+              action={
+                <Button 
+                  color="inherit" 
+                  size="small" 
+                  onClick={handleRefresh}
+                  sx={{ color: darkProTokens.textPrimary }}
                 >
-                  Agregar Egreso
+                  Reintentar
                 </Button>
-              </CardContent>
-            </Card>
-          </Grid>
+              }
+            >
+              <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                {error}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Fecha consultada: {selectedDate} • Hora México: {currentMexicoTime} • Verifique la API y la conexión a la base de datos
+              </Typography>
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* LISTA DE EGRESOS */}
-          <Grid size={12} md={8}>
-            {loading ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-                <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin, mb: 2 }} />
-                <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                  Cargando egresos para {formatDateLocal(selectedDateObj.toISOString().split('T')[0])}...
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
-                  ⏰ {currentMexicoTime}
-                </Typography>
-              </Box>
-            ) : (
+      {/* 🔄 LOADING STATE (IGUAL QUE CORTES) */}
+      {loading && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 8 }}>
+          <CircularProgress size={60} sx={{ color: darkProTokens.error, mb: 3 }} />
+          <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+            Cargando egresos del día {selectedDate}...
+          </Typography>
+          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+            Consultando gastos y sincronización con cortes • {currentMexicoTime}
+          </Typography>
+        </Box>
+      )}
+
+      {/* 📊 CONTENIDO PRINCIPAL */}
+      {!loading && dailyExpensesData && (
+        <Grid container spacing={4}>
+          {/* 💰 RESUMEN PRINCIPAL */}
+          <Grid xs={12}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
               <Card sx={{
                 background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                 border: `2px solid ${darkProTokens.error}40`,
+                borderRadius: 4,
+                overflow: 'hidden'
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.error, mb: 3 }}>
+                    💸 Resumen de Egresos
+                  </Typography>
+                  
+                  <Grid container spacing={3}>
+                    <Grid xs={12} md={3}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                          {formatPrice(dailyExpensesData.summary.total_amount)}
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                          Total de Egresos
+                        </Typography>
+                        <Chip
+                          icon={<TrendingDownIcon />}
+                          label={`${dailyExpensesData.summary.total_expenses} gastos`}
+                          sx={{
+                            mt: 1,
+                            backgroundColor: `${darkProTokens.error}20`,
+                            color: darkProTokens.error,
+                            fontWeight: 600
+                          }}
+                        />
+                      </Box>
+                    </Grid>
+                    
+                    <Grid xs={12} md={3}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                          {Object.keys(dailyExpensesData.summary.categories).length}
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                          Categorías
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                          Tipos de gastos registrados
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    
+                    <Grid xs={12} md={3}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                          {dailyExpensesData.summary.total_expenses > 0 ? 
+                            formatPrice(dailyExpensesData.summary.total_amount / dailyExpensesData.summary.total_expenses) 
+                            : formatPrice(0)
+                          }
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                          Promedio por Gasto
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                          Gasto promedio registrado
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    
+                    <Grid xs={12} md={3}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        {relatedCutData?.exists ? (
+                          <>
+                            <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                              ✅
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                              Sincronizado
+                            </Typography>
+                            <Chip
+                              label={`Corte: ${formatPrice(relatedCutData.cut?.expenses_amount || 0)}`}
+                              size="small"
+                              sx={{
+                                mt: 1,
+                                backgroundColor: `${darkProTokens.success}20`,
+                                color: darkProTokens.success,
+                                fontWeight: 600
+                              }}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                              📋
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                              Sin Corte
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                              No hay corte para este día
+                            </Typography>
+                          </>
+                        )}
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
+
+          {/* 📊 DESGLOSE POR CATEGORÍAS */}
+          {Object.keys(dailyExpensesData.summary.categories).length > 0 && (
+            <Grid xs={12}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                <Card sx={{
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                  border: `1px solid ${darkProTokens.grayMedium}`,
+                  borderRadius: 4
+                }}>
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+                      📈 Desglose por Categorías
+                    </Typography>
+                    
+                    <Grid container spacing={3}>
+                      {Object.entries(dailyExpensesData.summary.categories).map(([category, data], index) => (
+                        <Grid xs={12} md={6} lg={4} key={category}>
+                          <Paper sx={{ 
+                            p: 3, 
+                            textAlign: 'center',
+                            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                            border: `2px solid ${getCategoryColor(category)}40`,
+                            borderRadius: 3
+                          }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                              <Avatar sx={{ 
+                                bgcolor: getCategoryColor(category), 
+                                width: 48, 
+                                height: 48 
+                              }}>
+                                {getCategoryIcon(category)}
+                              </Avatar>
+                            </Box>
+                            <Typography variant="h4" fontWeight="bold" sx={{ color: getCategoryColor(category) }}>
+                              {formatPrice(data.total)}
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1, textTransform: 'capitalize' }}>
+                              {category}
+                            </Typography>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={categoryPercentages[category] || 0} 
+                              sx={{ 
+                                height: 8, 
+                                borderRadius: 4,
+                                backgroundColor: `${getCategoryColor(category)}20`,
+                                '& .MuiLinearProgress-bar': {
+                                  backgroundColor: getCategoryColor(category)
+                                }
+                              }} 
+                            />
+                            <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                              {(categoryPercentages[category] || 0).toFixed(1)}% • {data.count} gastos
+                            </Typography>
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+          )}
+
+          {/* 📋 LISTA DE EGRESOS */}
+          <Grid xs={12}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <Card sx={{
+                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                border: `1px solid ${darkProTokens.grayMedium}`,
                 borderRadius: 4
               }}>
                 <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                    <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.error }}>
-                      📋 Egresos del Día
-                    </Typography>
-                    <Badge badgeContent={expenses.length} color="primary">
-                      <ReceiptIcon sx={{ color: darkProTokens.error }} />
-                    </Badge>
-                  </Box>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+                    📋 Lista de Egresos del Día
+                  </Typography>
                   
-                  {expenses.length === 0 ? (
+                  {dailyExpensesData.expenses.length === 0 ? (
                     <Box sx={{ 
                       textAlign: 'center', 
                       py: 8,
-                      color: darkProTokens.textDisabled 
+                      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel1}, ${darkProTokens.surfaceLevel2})`,
+                      borderRadius: 3,
+                      border: `1px dashed ${darkProTokens.grayMedium}`
                     }}>
-                      <MonetizationOnIcon sx={{ fontSize: 80, mb: 2, opacity: 0.3 }} />
-                      <Typography variant="h6" sx={{ mb: 1 }}>
-                        No hay egresos registrados
+                      <MoneyOffIcon sx={{ fontSize: 80, color: darkProTokens.textDisabled, mb: 2 }} />
+                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        No hay egresos registrados para hoy
                       </Typography>
-                      <Typography variant="body2">
-                        Para la fecha {formatDateLocal(selectedDateObj.toISOString().split('T')[0])}
+                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mb: 3 }}>
+                        Los egresos que registres aparecerán aquí
                       </Typography>
-                      <Typography variant="caption" sx={{ display: 'block', mt: 2, color: darkProTokens.primary }}>
-                        💡 Las APIs de egresos aún no están implementadas
-                      </Typography>
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => router.push('/dashboard/admin/egresos/nuevo')}
+                        sx={{
+                          background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+                          color: darkProTokens.textPrimary
+                        }}
+                      >
+                        Registrar Primer Egreso
+                      </Button>
                     </Box>
                   ) : (
-                    <TableContainer component={Paper} sx={{ 
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      borderRadius: 2,
-                      maxHeight: 600,
-                      overflow: 'auto'
-                    }}>
-                      <Table stickyHeader>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              fontWeight: 'bold', 
-                              backgroundColor: darkProTokens.grayDark 
-                            }}>
-                              Categoría
-                            </TableCell>
-                            <TableCell sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              fontWeight: 'bold', 
-                              backgroundColor: darkProTokens.grayDark 
-                            }}>
-                              Descripción
-                            </TableCell>
-                            <TableCell sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              fontWeight: 'bold', 
-                              backgroundColor: darkProTokens.grayDark 
-                            }} align="right">
-                              Monto
-                            </TableCell>
-                            <TableCell sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              fontWeight: 'bold', 
-                              backgroundColor: darkProTokens.grayDark 
-                            }}>
-                              Fecha/Hora
-                            </TableCell>
-                            <TableCell sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              fontWeight: 'bold', 
-                              backgroundColor: darkProTokens.grayDark 
-                            }} align="center">
-                              Acciones
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {expenses.map((expense) => (
-                            <TableRow 
-                              key={expense.id}
-                              sx={{ 
-                                '&:nth-of-type(odd)': { 
-                                  backgroundColor: darkProTokens.surfaceLevel3 
-                                },
-                                '&:hover': {
-                                  backgroundColor: `${darkProTokens.error}10`
-                                }
-                              }}
-                            >
-                              <TableCell>
-                                <Chip
-                                  label={EXPENSE_TYPES[expense.expense_type as keyof typeof EXPENSE_TYPES]?.label || expense.expense_type}
-                                  size="small"
-                                  sx={{
-                                    backgroundColor: `${EXPENSE_TYPES[expense.expense_type as keyof typeof EXPENSE_TYPES]?.color || darkProTokens.grayMuted}20`,
-                                    color: EXPENSE_TYPES[expense.expense_type as keyof typeof EXPENSE_TYPES]?.color || darkProTokens.grayMuted,
-                                    fontWeight: 600
-                                  }}
-                                />
-                              </TableCell>
-                              
-                              <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                    <Stack spacing={2}>
+                      {dailyExpensesData.expenses.map((expense, index) => (
+                        <motion.div
+                          key={expense.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.1 }}
+                        >
+                          <Paper sx={{
+                            p: 3,
+                            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                            border: `1px solid ${getCategoryColor(expense.expense_type)}30`,
+                            borderRadius: 3,
+                            '&:hover': {
+                              borderColor: `${getCategoryColor(expense.expense_type)}60`,
+                              transform: 'translateY(-2px)',
+                              transition: 'all 0.2s ease'
+                            }
+                          }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Avatar sx={{ 
+                                  bgcolor: getCategoryColor(expense.expense_type),
+                                  width: 40,
+                                  height: 40
+                                }}>
+                                  {getCategoryIcon(expense.expense_type)}
+                                </Avatar>
                                 <Box>
-                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                                     {expense.description}
                                   </Typography>
-                                  {expense.receipt_number && (
-                                    <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                                      📄 Recibo: {expense.receipt_number}
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
+                                    <Chip
+                                      label={expense.expense_type}
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: `${getCategoryColor(expense.expense_type)}20`,
+                                        color: getCategoryColor(expense.expense_type),
+                                        fontWeight: 600,
+                                        textTransform: 'capitalize'
+                                      }}
+                                    />
+                                    <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                                      {expense.expense_time}
                                     </Typography>
-                                  )}
-                                  {expense.notes && (
-                                    <Typography variant="caption" sx={{ 
-                                      color: darkProTokens.textDisabled,
-                                      display: 'block'
-                                    }}>
-                                      💬 {expense.notes}
-                                    </Typography>
-                                  )}
+                                    {expense.receipt_number && (
+                                      <Chip
+                                        label={`#${expense.receipt_number}`}
+                                        size="small"
+                                        sx={{ backgroundColor: `${darkProTokens.info}20`, color: darkProTokens.info }}
+                                      />
+                                    )}
+                                  </Box>
                                 </Box>
-                              </TableCell>
+                              </Box>
                               
-                              <TableCell align="right" sx={{ color: darkProTokens.error, fontWeight: 'bold' }}>
-                                {formatPrice(expense.amount)}
-                              </TableCell>
-                              
-                              <TableCell sx={{ color: darkProTokens.textSecondary }}>
-                                <Typography variant="body2">
-                                  {formatDateTime(expense.expense_time)}
+                              <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                                  -{formatPrice(expense.amount)}
                                 </Typography>
-                              </TableCell>
-                              
-                              <TableCell align="center">
-                                <Stack direction="row" spacing={1} justifyContent="center">
-                                  <Tooltip title="Editar">
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => openEditDialog(expense)}
-                                      sx={{ 
-                                        color: darkProTokens.warning,
-                                        '&:hover': { backgroundColor: `${darkProTokens.warning}20` }
-                                      }}
-                                    >
-                                      <EditIcon />
-                                    </IconButton>
-                                  </Tooltip>
-                                  
-                                  <Tooltip title="Eliminar">
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => handleDeleteExpense(expense)}
-                                      disabled={saving}
-                                      sx={{ 
-                                        color: darkProTokens.error,
-                                        '&:hover': { backgroundColor: `${darkProTokens.error}20` }
-                                      }}
-                                    >
-                                      <DeleteIcon />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Stack>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                                <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                                  ID: {expense.id.slice(0, 8)}...
+                                </Typography>
+                              </Box>
+                            </Box>
+                            
+                            {expense.notes && (
+                              <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
+                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontStyle: 'italic' }}>
+                                  📝 {expense.notes}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Paper>
+                        </motion.div>
+                      ))}
+                    </Stack>
                   )}
                 </CardContent>
               </Card>
-            )}
+            </motion.div>
+          </Grid>
+
+          {/* 🎯 ACCIONES RÁPIDAS (IGUAL QUE CORTES) */}
+          <Grid xs={12}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <Card sx={{
+                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                border: `1px solid ${darkProTokens.grayMedium}`,
+                borderRadius: 4
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+                    🎯 Acciones Rápidas
+                  </Typography>
+                  
+                  <Grid container spacing={2}>
+                    <Grid xs={12} md={4}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => router.push('/dashboard/admin/egresos/nuevo')}
+                        sx={{
+                          background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+                          color: darkProTokens.textPrimary,
+                          py: 2,
+                          fontSize: '1rem',
+                          fontWeight: 600
+                        }}
+                      >
+                        Nuevo Egreso
+                      </Button>
+                    </Grid>
+                    
+                    <Grid xs={12} md={4}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        startIcon={<CalendarIcon />}
+                        onClick={() => router.push('/dashboard/admin/egresos/historial')}
+                        sx={{
+                          borderColor: darkProTokens.info,
+                          color: darkProTokens.info,
+                          py: 2,
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: darkProTokens.infoHover,
+                            backgroundColor: `${darkProTokens.info}20`
+                          }
+                        }}
+                      >
+                        Ver Historial
+                      </Button>
+                    </Grid>
+                    
+                    <Grid xs={12} md={4}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        startIcon={<SwapHorizIcon />}
+                        onClick={() => relatedCutData?.exists && router.push('/dashboard/admin/cortes')}
+                        disabled={!relatedCutData?.exists}
+                        sx={{
+                          borderColor: relatedCutData?.exists ? darkProTokens.success : darkProTokens.textDisabled,
+                          color: relatedCutData?.exists ? darkProTokens.success : darkProTokens.textDisabled,
+                          py: 2,
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: relatedCutData?.exists ? darkProTokens.successHover : darkProTokens.textDisabled,
+                            backgroundColor: relatedCutData?.exists ? `${darkProTokens.success}20` : 'transparent'
+                          }
+                        }}
+                      >
+                        {relatedCutData?.exists ? 'Ver Corte' : 'Sin Corte'}
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </motion.div>
           </Grid>
         </Grid>
-
-        {/* DIALOG PARA AGREGAR/EDITAR EGRESO */}
-        <Dialog 
-          open={openDialog} 
-          onClose={handleCloseDialog}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            sx: {
-              backgroundColor: darkProTokens.surfaceLevel2,
-              border: `2px solid ${darkProTokens.roleAdmin}40`
-            }
-          }}
-        >
-          <DialogTitle sx={{ 
-            color: darkProTokens.textPrimary,
-            backgroundColor: darkProTokens.surfaceLevel3,
-            borderBottom: `1px solid ${darkProTokens.grayMedium}`
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: darkProTokens.roleAdmin }}>
-                {editingExpense ? <EditIcon /> : <AddIcon />}
-              </Avatar>
-              <Box>
-                <Typography variant="h6" fontWeight="bold">
-                  {editingExpense ? 'Editar Egreso' : 'Agregar Nuevo Egreso'}
-                </Typography>
-                <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                  Se guardará con hora México: {currentMexicoTime} • Se sincronizará automáticamente con el corte del día
-                </Typography>
-              </Box>
-            </Box>
-          </DialogTitle>
-          
-          <DialogContent sx={{ p: 4 }}>
-            <Grid container spacing={3} sx={{ mt: 1 }}>
-              <Grid size={12} sm={6}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Tipo de Egreso"
-                  value={expenseForm.expense_type}
-                  onChange={(e) => handleFormChange('expense_type', e.target.value)}
-                  required
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><CategoryIcon /></InputAdornment>
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: darkProTokens.textSecondary,
-                    },
-                  }}
-                >
-                  {Object.entries(EXPENSE_TYPES).map(([key, value]) => (
-                    <MenuItem key={key} value={key}>
-                      {value.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              
-              <Grid size={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Monto"
-                  type="number"
-                  value={expenseForm.amount}
-                  onChange={(e) => handleFormChange('amount', e.target.value)}
-                  required
-                  inputProps={{ step: "0.01", min: "0" }}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><AttachMoneyIcon /></InputAdornment>
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: darkProTokens.textSecondary,
-                    },
-                  }}
-                />
-              </Grid>
-              
-              <Grid size={12}>
-                <TextField
-                  fullWidth
-                  label="Descripción"
-                  value={expenseForm.description}
-                  onChange={(e) => handleFormChange('description', e.target.value)}
-                  required
-                  multiline
-                  rows={2}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><DescriptionIcon /></InputAdornment>
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: darkProTokens.textSecondary,
-                    },
-                  }}
-                />
-              </Grid>
-              
-              <Grid size={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Número de Recibo (Opcional)"
-                  value={expenseForm.receipt_number}
-                  onChange={(e) => handleFormChange('receipt_number', e.target.value)}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><ReceiptIcon /></InputAdornment>
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: darkProTokens.textSecondary,
-                    },
-                  }}
-                />
-              </Grid>
-              
-              <Grid size={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Notas Adicionales (Opcional)"
-                  value={expenseForm.notes}
-                  onChange={(e) => handleFormChange('notes', e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: darkProTokens.textSecondary,
-                    },
-                  }}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          
-          <DialogActions sx={{ 
-            p: 3, 
-            backgroundColor: darkProTokens.surfaceLevel3,
-            borderTop: `1px solid ${darkProTokens.grayMedium}`
-          }}>
-            <Button
-              onClick={handleCloseDialog}
-              variant="outlined"
-              startIcon={<CancelIcon />}
-              sx={{
-                borderColor: darkProTokens.textSecondary,
-                color: darkProTokens.textSecondary,
-                '&:hover': {
-                  borderColor: darkProTokens.textPrimary,
-                  backgroundColor: `${darkProTokens.textSecondary}20`
-                }
-              }}
-            >
-              Cancelar
-            </Button>
-            
-            <Button
-              onClick={handleSaveExpense}
-              variant="contained"
-              disabled={saving}
-              startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
-              sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.error})`,
-                color: darkProTokens.textPrimary,
-                fontWeight: 700,
-                '&:disabled': {
-                  background: darkProTokens.grayMedium,
-                  color: darkProTokens.textDisabled
-                }
-              }}
-            >
-              {saving ? 'Guardando...' : editingExpense ? 'Actualizar' : 'Guardar'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* FAB PARA AGREGAR RÁPIDO */}
-        <Fab
-          color="primary"
-          aria-label="add"
-          onClick={openAddDialog}
-          disabled={loading}
-          sx={{
-            position: 'fixed',
-            bottom: 32,
-            right: 32,
-            background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.error})`,
-            '&:hover': {
-              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.roleAdmin})`,
-            },
-            '&:disabled': {
-              background: darkProTokens.grayMedium,
-              color: darkProTokens.textDisabled
-            }
-          }}
-        >
-          <AddIcon />
-        </Fab>
-      </Box>
-    </LocalizationProvider>
+      )}
+    </Box>
   );
 }
