@@ -34,8 +34,6 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-// ✅ IMPORTAR HELPERS DE FECHA MÉXICO
-import { toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -65,6 +63,8 @@ const darkProTokens = {
   roleAdmin: '#E91E63'
 };
 
+// ✅ FUNCIONES LOCALES (SIN IMPORTAR dateHelpers)
+
 // 💰 Función para formatear precios
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
@@ -74,27 +74,64 @@ function formatPrice(amount: number): string {
   }).format(amount);
 }
 
-// ✅ FUNCIÓN PARA FORMATEAR FECHAS CON dateHelpers
-function formatDate(dateString: string): string {
+// 📅 Función para obtener fecha actual de México
+function getMexicoDateLocal(): string {
+  const now = new Date();
+  
+  // Obtener fecha en zona horaria de México
+  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  
+  // Formatear como YYYY-MM-DD
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoDate.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+
+// ⏰ Función para formatear hora actual de México
+function formatMexicoTimeLocal(date: Date): string {
+  return date.toLocaleString('es-MX', {
+    timeZone: 'America/Mexico_City',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+}
+
+// 📅 Función para formatear fechas largas
+function formatDateLocal(dateString: string): string {
   try {
-    return formatMexicoDateTime(dateString, {
+    // Crear fecha y formatear en español México
+    const date = new Date(dateString + 'T12:00:00');
+    
+    return date.toLocaleDateString('es-MX', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Mexico_City'
     });
   } catch (error) {
     console.error('❌ Error formateando fecha:', dateString, error);
+    
     // Fallback manual
     const date = new Date(dateString + 'T12:00:00');
     const months = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
     ];
+    const weekdays = [
+      'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
+    ];
+    
+    const weekday = weekdays[date.getDay()];
     const day = date.getDate();
     const month = months[date.getMonth()];
     const year = date.getFullYear();
-    return `${day} de ${month} de ${year}`;
+    
+    return `${weekday}, ${day} de ${month} de ${year}`;
   }
 }
 
@@ -162,11 +199,12 @@ export default function CortesPage() {
   // ✅ ESTADO PARA HORA EN TIEMPO REAL
   const [currentMexicoTime, setCurrentMexicoTime] = useState<string>('');
   
-  // ✅ FECHA ACTUAL EN MÉXICO USANDO dateHelpers CORRECTAMENTE
+  // ✅ FECHA ACTUAL EN MÉXICO USANDO FUNCIÓN LOCAL
   const [selectedDate] = useState(() => {
-    const mexicoDate = toMexicoDate(new Date());
-    console.log('🇲🇽 Fecha actual México (dateHelpers):', mexicoDate);
+    const mexicoDate = getMexicoDateLocal();
+    console.log('🇲🇽 Fecha actual México (función local):', mexicoDate);
     console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
+    console.log('⏰ Hora actual UTC:', new Date().toISOString());
     return mexicoDate; // Formato: YYYY-MM-DD
   });
 
@@ -174,13 +212,7 @@ export default function CortesPage() {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const mexicoTime = formatMexicoDateTime(now, {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-        timeZone: 'America/Mexico_City'
-      });
+      const mexicoTime = formatMexicoTimeLocal(now);
       setCurrentMexicoTime(mexicoTime);
     };
 
@@ -200,6 +232,7 @@ export default function CortesPage() {
       setError(null);
       
       console.log('🔍 Solicitando datos para fecha México:', selectedDate);
+      console.log('⏰ Hora actual México:', currentMexicoTime);
       
       const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`, {
         method: 'GET',
@@ -293,7 +326,7 @@ export default function CortesPage() {
             
             {/* ✅ FECHA Y HORA DINÁMICA CORREGIDAS */}
             <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-              📅 {formatDate(selectedDate)} • ⏰ {currentMexicoTime} • Gestión de cortes diarios
+              📅 {formatDateLocal(selectedDate)} • ⏰ {currentMexicoTime} • Gestión de cortes diarios
             </Typography>
             
             {/* ✅ INFORMACIÓN DE ZONA HORARIA CON FECHA CORRECTA */}
@@ -480,7 +513,7 @@ export default function CortesPage() {
                         <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
                           Operaciones
                         </Typography>
-                        <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mt: 1 }}>
+                        <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mt: 1, flexWrap: 'wrap' }}>
                           <Chip label={`${dailyData.pos.transactions} POS`} size="small" />
                           <Chip label={`${dailyData.abonos.transactions} Abonos`} size="small" />
                           <Chip label={`${dailyData.memberships.transactions} Membresías`} size="small" />
