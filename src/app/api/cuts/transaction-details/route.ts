@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Consultando transacciones detalladas...');
 
-    // 🛒 1. TRANSACCIONES POS (VENTAS COMPLETAS) - SIMPLIFICADA
+    // 🛒 1. TRANSACCIONES POS (VENTAS COMPLETAS)
     console.log('🛒 Consultando ventas POS...');
     const { data: posTransactions, error: posError } = await supabase
       .from('sales')
@@ -79,12 +79,11 @@ export async function GET(request: NextRequest) {
 
     if (posError) {
       console.error('❌ Error consultando ventas POS:', posError);
-      // No lanzar error, continuar con array vacío
     }
 
     console.log('✅ Ventas POS encontradas:', posTransactions?.length || 0);
 
-    // 💰 2. TRANSACCIONES ABONOS (PAGOS PARCIALES) - SIMPLIFICADA
+    // 💰 2. TRANSACCIONES ABONOS (PAGOS PARCIALES)
     console.log('💰 Consultando abonos...');
     const { data: abonosTransactions, error: abonosError } = await supabase
       .from('sale_payment_details')
@@ -103,12 +102,11 @@ export async function GET(request: NextRequest) {
 
     if (abonosError) {
       console.error('❌ Error consultando abonos:', abonosError);
-      // No lanzar error, continuar con array vacío
     }
 
     console.log('✅ Abonos encontrados:', abonosTransactions?.length || 0);
 
-    // 🎫 3. TRANSACCIONES MEMBRESÍAS - SIMPLIFICADA
+    // 🎫 3. TRANSACCIONES MEMBRESÍAS
     console.log('🎫 Consultando membresías...');
     const { data: membershipTransactions, error: membershipError } = await supabase
       .from('user_memberships')
@@ -132,14 +130,13 @@ export async function GET(request: NextRequest) {
 
     if (membershipError) {
       console.error('❌ Error consultando membresías:', membershipError);
-      // No lanzar error, continuar con array vacío
     }
 
     console.log('✅ Membresías encontradas:', membershipTransactions?.length || 0);
 
     // 📊 4. OBTENER DATOS ADICIONALES POR SEPARADO
     
-    // Obtener datos de clientes para POS
+    // Obtener datos de clientes para POS y Membresías
     const customerIds = [...new Set([
       ...(posTransactions || []).map(s => s.customer_id).filter(Boolean),
       ...(membershipTransactions || []).map(m => m.userid).filter(Boolean)
@@ -203,6 +200,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ✅ OBTENER MÉTODOS DE PAGO DETALLADOS PARA MEMBRESÍAS
+    const membershipIds = (membershipTransactions || []).map(m => m.id);
+    let membershipPayments = [];
+    if (membershipIds.length > 0) {
+      console.log('💳 Consultando métodos de pago de membresías...');
+      const { data: membershipPaymentsData, error: membershipPaymentsError } = await supabase
+        .from('membership_payment_details')
+        .select('membership_id, payment_method, amount, commission_amount, sequence_order')
+        .in('membership_id', membershipIds);
+      
+      if (!membershipPaymentsError) {
+        membershipPayments = membershipPaymentsData || [];
+      }
+    }
+
     // 📊 5. PROCESAR Y FORMATEAR DATOS
     console.log('📊 Procesando datos para frontend...');
 
@@ -211,9 +223,10 @@ export async function GET(request: NextRequest) {
     const findPlan = (id: string) => membershipPlans.find(p => p.id === id);
     const getItemsForSale = (saleId: string) => saleItems.filter(item => item.sale_id === saleId);
     const getPaymentsForSale = (saleId: string) => posPayments.filter(payment => payment.sale_id === saleId);
+    const getPaymentsForMembership = (membershipId: string) => 
+      membershipPayments.filter(payment => payment.membership_id === membershipId);
 
-   
-    // 🛒 PROCESAR VENTAS POS - CORREGIDO
+    // 🛒 PROCESAR VENTAS POS
     const processedPOS = [];
     (posTransactions || []).forEach(sale => {
       const customer = findCustomer(sale.customer_id);
@@ -238,7 +251,7 @@ export async function GET(request: NextRequest) {
           sale_number: sale.sale_number,
           product_name: productNames,
           quantity: items.reduce((sum, item) => sum + item.quantity, 0) || 1,
-          unit_price: totalAmountWithCommission, // ✅ PRECIO CON COMISIÓN
+          unit_price: totalAmountWithCommission,
           customer_name: customer 
             ? `${customer.firstName} ${customer.lastName || ''}`.trim()
             : 'Cliente General',
@@ -255,7 +268,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 💰 PROCESAR ABONOS - CORREGIDO
+    // 💰 PROCESAR ABONOS
     const processedAbonos = [];
     (abonosTransactions || []).forEach(abono => {
       // ✅ CALCULAR MONTO TOTAL CON COMISIÓN INCLUIDA
@@ -282,30 +295,65 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 🎫 PROCESAR MEMBRESÍAS - MANTENER IGUAL (YA ESTÁ BIEN)
+    // 🎫 PROCESAR MEMBRESÍAS CON PAGOS SEPARADOS
     const processedMemberships = [];
     (membershipTransactions || []).forEach(membership => {
       const customer = findCustomer(membership.userid);
       const plan = findPlan(membership.planid);
-      
-      processedMemberships.push({
-        id: `membership_${membership.id}`,
-        type: 'membership',
-        membership_id: membership.id,
-        membership_type: plan?.name || 'Membresía',
-        membership_duration: membership.payment_type || 'N/A',
-        customer_name: customer 
-          ? `${customer.firstName} ${customer.lastName || ''}`.trim()
-          : 'Cliente',
-        customer_phone: customer?.whatsapp,
-        payment_method: membership.payment_method,
-        amount: parseFloat(membership.amount_paid || 0), // ✅ TOTAL PAGADO (YA INCLUYE TODO)
-        commission_amount: parseFloat(membership.commission_amount || 0), // ✅ COMISIÓN SOLO INFORMATIVA
-        created_at: membership.created_at,
-        reference: membership.id,
-        notes: membership.notes,
-        status: membership.status
-      });
+      const payments = getPaymentsForMembership(membership.id);
+
+      // ✅ SI HAY PAGOS DETALLADOS, MOSTRAR CADA UNO POR SEPARADO
+      if (payments && payments.length > 0) {
+        // Ordenar por secuencia
+        payments.sort((a, b) => (a.sequence_order || 1) - (b.sequence_order || 1));
+        
+        payments.forEach((payment, index) => {
+          const baseAmount = parseFloat(payment.amount || 0);
+          const commissionAmount = parseFloat(payment.commission_amount || 0);
+          
+          processedMemberships.push({
+            id: `membership_${membership.id}_${index}`,
+            type: 'membership',
+            membership_id: membership.id,
+            membership_type: plan?.name || 'Membresía',
+            membership_duration: membership.payment_type || 'N/A',
+            customer_name: customer 
+              ? `${customer.firstName} ${customer.lastName || ''}`.trim()
+              : 'Cliente',
+            customer_phone: customer?.whatsapp,
+            payment_method: payment.payment_method,
+            amount: baseAmount, // ✅ MONTO SIN COMISIÓN (COMO ESTÁ REGISTRADO)
+            commission_amount: commissionAmount,
+            created_at: membership.created_at,
+            reference: membership.id,
+            notes: membership.notes,
+            status: membership.status,
+            payment_sequence: payment.sequence_order || 1,
+            is_payment_detail: true // ✅ MARCADOR PARA SABER QUE ES DETALLE DE PAGO
+          });
+        });
+      } else {
+        // ✅ SI NO HAY PAGOS DETALLADOS, MOSTRAR COMO ANTES (PAGO ÚNICO)
+        processedMemberships.push({
+          id: `membership_${membership.id}`,
+          type: 'membership',
+          membership_id: membership.id,
+          membership_type: plan?.name || 'Membresía',
+          membership_duration: membership.payment_type || 'N/A',
+          customer_name: customer 
+            ? `${customer.firstName} ${customer.lastName || ''}`.trim()
+            : 'Cliente',
+          customer_phone: customer?.whatsapp,
+          payment_method: membership.payment_method || 'mixto',
+          amount: parseFloat(membership.amount_paid || 0),
+          commission_amount: parseFloat(membership.commission_amount || 0),
+          created_at: membership.created_at,
+          reference: membership.id,
+          notes: membership.notes,
+          status: membership.status,
+          is_payment_detail: false // ✅ PAGO ÚNICO/TOTAL
+        });
+      }
     });
 
     // ✅ RESPUESTA FINAL
@@ -338,7 +386,8 @@ export async function GET(request: NextRequest) {
         customers_found: customers.length,
         sale_items_found: saleItems.length,
         pos_payments_found: posPayments.length,
-        membership_plans_found: membershipPlans.length
+        membership_plans_found: membershipPlans.length,
+        membership_payments_found: membershipPayments.length
       }
     };
 
