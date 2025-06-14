@@ -48,7 +48,8 @@ import {
   Visibility as VisibilityIcon,
   MonetizationOn as MonetizationOnIcon,
   Sync as SyncIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -91,31 +92,44 @@ const EXPENSE_TYPES = {
   'otros': { label: '📝 Otros', color: darkProTokens.grayMuted }
 };
 
-// ✅ FECHAS MÉXICO (MISMA LÓGICA QUE dateHelpers)
+// ✅ FUNCIONES LOCALES (EXACTAMENTE IGUALES A CORTES)
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2
+  }).format(amount);
+}
+
 function getMexicoDateLocal(): string {
   const now = new Date();
-  const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  const year = mexicoTime.getFullYear();
-  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoTime.getDate()).padStart(2, '0');
+  
+  // Obtener fecha en zona horaria de México
+  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  
+  // Formatear como YYYY-MM-DD
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoDate.getDate()).padStart(2, '0');
+  
   return `${year}-${month}-${day}`;
 }
 
-function toMexicoTimestamp(date: Date): string {
-  const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-  const year = mexicoTime.getFullYear();
-  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoTime.getDate()).padStart(2, '0');
-  const hours = String(mexicoTime.getHours()).padStart(2, '0');
-  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
-  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
+function formatMexicoTimeLocal(date: Date): string {
+  return date.toLocaleString('es-MX', {
+    timeZone: 'America/Mexico_City',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
 }
 
 function formatDateLocal(dateString: string): string {
   try {
+    // Crear fecha y formatear en español México
     const date = new Date(dateString + 'T12:00:00');
+    
     return date.toLocaleDateString('es-MX', {
       weekday: 'long',
       year: 'numeric',
@@ -124,16 +138,25 @@ function formatDateLocal(dateString: string): string {
       timeZone: 'America/Mexico_City'
     });
   } catch (error) {
-    return dateString;
+    console.error('❌ Error formateando fecha:', dateString, error);
+    
+    // Fallback manual
+    const date = new Date(dateString + 'T12:00:00');
+    const months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    const weekdays = [
+      'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
+    ];
+    
+    const weekday = weekdays[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${weekday}, ${day} de ${month} de ${year}`;
   }
-}
-
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
-  }).format(amount);
 }
 
 function formatDateTime(dateString: string): string {
@@ -151,6 +174,19 @@ function formatDateTime(dateString: string): string {
   } catch (error) {
     return dateString;
   }
+}
+
+// ✅ FUNCIÓN PARA TIMESTAMP MÉXICO (PARA CREAR EGRESOS)
+function toMexicoTimestamp(date: Date): string {
+  const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+  const year = mexicoTime.getFullYear();
+  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoTime.getDate()).padStart(2, '0');
+  const hours = String(mexicoTime.getHours()).padStart(2, '0');
+  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
+  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
 }
 
 // ✅ INTERFACES
@@ -187,18 +223,30 @@ interface RelatedCut {
 
 export default function EgresosPage() {
   // ✅ ESTADOS
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const mexicoDateString = getMexicoDateLocal();
-    return new Date(mexicoDateString + 'T12:00:00');
-  });
-  
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [relatedCut, setRelatedCut] = useState<RelatedCut | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // ✅ ESTADO PARA HORA EN TIEMPO REAL (IGUAL QUE CORTES)
+  const [currentMexicoTime, setCurrentMexicoTime] = useState<string>('');
+  
+  // ✅ FECHA ACTUAL EN MÉXICO USANDO FUNCIÓN LOCAL (IGUAL QUE CORTES)
+  const [selectedDate] = useState(() => {
+    const mexicoDate = getMexicoDateLocal();
+    console.log('🇲🇽 Fecha actual México (función local):', mexicoDate);
+    console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
+    console.log('⏰ Hora actual UTC:', new Date().toISOString());
+    return mexicoDate; // Formato: YYYY-MM-DD
+  });
+
+  const [selectedDateObj, setSelectedDateObj] = useState<Date>(() => {
+    return new Date(selectedDate + 'T12:00:00');
+  });
   
   // Modal states
   const [openDialog, setOpenDialog] = useState(false);
@@ -211,13 +259,32 @@ export default function EgresosPage() {
     notes: ''
   });
 
+  // ✅ ACTUALIZAR HORA EN TIEMPO REAL CADA SEGUNDO (IGUAL QUE CORTES)
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const mexicoTime = formatMexicoTimeLocal(now);
+      setCurrentMexicoTime(mexicoTime);
+    };
+
+    // Actualizar inmediatamente
+    updateTime();
+
+    // Actualizar cada segundo
+    const interval = setInterval(updateTime, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // ✅ EFECTOS
   useEffect(() => {
-    loadExpenses(selectedDate);
-    loadRelatedCut(selectedDate);
-  }, [selectedDate]);
+    console.log('🚀 Componente montado, cargando egresos para fecha:', selectedDate);
+    console.log('⏰ Hora actual México:', currentMexicoTime);
+    loadExpenses(selectedDateObj);
+    loadRelatedCut(selectedDateObj);
+  }, [selectedDateObj]);
 
-  // ✅ FUNCIONES DE CARGA
+  // ✅ FUNCIONES DE CARGA CON MEJOR MANEJO DE ERRORES
   const loadExpenses = async (date: Date) => {
     try {
       setLoading(true);
@@ -225,19 +292,29 @@ export default function EgresosPage() {
       
       const dateString = date.toISOString().split('T')[0];
       console.log('🔍 Cargando egresos para fecha México:', dateString);
+      console.log('⏰ Hora actual México:', currentMexicoTime);
       
       const response = await fetch(`/api/expenses/daily?date=${dateString}`);
-      const data = await response.json();
+      console.log('📡 Respuesta de la API egresos:', response.status, response.statusText);
       
-      if (data.success) {
+      const data = await response.json();
+      console.log('📊 Datos recibidos de egresos:', data);
+      
+      if (response.ok && data.success) {
+        console.log('✅ Egresos válidos recibidos:', {
+          fecha: dateString,
+          total_egresos: data.expenses?.length || 0,
+          total_amount: data.expenses?.reduce((sum: number, exp: Expense) => sum + exp.amount, 0) || 0
+        });
         setExpenses(data.expenses || []);
-        console.log('✅ Egresos cargados:', data.expenses?.length || 0);
       } else {
-        setError(data.error || 'Error al cargar egresos');
+        const errorMsg = data.error || `Error HTTP ${response.status}: ${response.statusText}`;
+        console.error('❌ Error en respuesta de API egresos:', errorMsg);
+        setError(errorMsg);
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Error al cargar egresos');
+    } catch (error: any) {
+      console.error('💥 Error crítico en loadExpenses:', error);
+      setError(`Error de conexión: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -249,24 +326,35 @@ export default function EgresosPage() {
       console.log('🔍 Verificando corte relacionado para:', dateString);
       
       const response = await fetch(`/api/cuts/check-existing?date=${dateString}`);
-      const data = await response.json();
+      console.log('📡 Respuesta API check-existing:', response.status);
       
-      if (data.success && data.cut) {
+      const data = await response.json();
+      console.log('📊 Datos corte relacionado:', data);
+      
+      if (response.ok && data.success && data.cut) {
         setRelatedCut(data.cut);
         console.log('✅ Corte relacionado encontrado:', data.cut.cut_number);
       } else {
         setRelatedCut(null);
-        console.log('ℹ️ No hay corte para esta fecha');
+        console.log('ℹ️ No hay corte para esta fecha o API no disponible');
       }
     } catch (error) {
-      console.error('Error verificando corte:', error);
+      console.error('Error verificando corte (API no disponible):', error);
       setRelatedCut(null);
     }
   };
 
+  // 🔄 REFRESCAR DATOS (IGUAL QUE CORTES)
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadExpenses(selectedDateObj);
+    await loadRelatedCut(selectedDateObj);
+    setRefreshing(false);
+  };
+
   const handleDateChange = (newDate: Date | null) => {
     if (newDate) {
-      setSelectedDate(newDate);
+      setSelectedDateObj(newDate);
       setSuccess(null);
       setError(null);
     }
@@ -340,7 +428,7 @@ export default function EgresosPage() {
       setSaving(true);
       setError(null);
       
-      const dateString = selectedDate.toISOString().split('T')[0];
+      const dateString = selectedDateObj.toISOString().split('T')[0];
       const now = new Date();
       const mexicoTimestamp = toMexicoTimestamp(now);
       
@@ -361,6 +449,7 @@ export default function EgresosPage() {
       const method = editingExpense ? 'PUT' : 'POST';
       
       console.log(`${editingExpense ? '✏️ Actualizando' : '➕ Creando'} egreso con sincronización:`, expenseData);
+      console.log('⏰ Timestamp México generado:', mexicoTimestamp);
       
       const response = await fetch(url, {
         method,
@@ -378,14 +467,13 @@ export default function EgresosPage() {
           : `✅ Egreso creado: ${formatPrice(expenseData.amount)}${result.sync_info ? ' • Sincronizado con corte' : ''}`
         );
         handleCloseDialog();
-        await loadExpenses(selectedDate);
-        await loadRelatedCut(selectedDate); // Actualizar info del corte
+        await handleRefresh(); // Usar función de refresh
       } else {
         setError(result.error || 'Error al guardar el egreso');
       }
     } catch (error) {
       console.error('Error guardando egreso:', error);
-      setError('Error al guardar el egreso');
+      setError('Error al guardar el egreso - APIs no disponibles');
     } finally {
       setSaving(false);
     }
@@ -408,14 +496,13 @@ export default function EgresosPage() {
       
       if (result.success) {
         setSuccess(`✅ Egreso eliminado${result.sync_info ? ' y corte actualizado automáticamente' : ''}`);
-        await loadExpenses(selectedDate);
-        await loadRelatedCut(selectedDate); // Actualizar info del corte
+        await handleRefresh(); // Usar función de refresh
       } else {
         setError(result.error || 'Error al eliminar el egreso');
       }
     } catch (error) {
       console.error('Error eliminando egreso:', error);
-      setError('Error al eliminar el egreso');
+      setError('Error al eliminar el egreso - APIs no disponibles');
     } finally {
       setSaving(false);
     }
@@ -427,7 +514,7 @@ export default function EgresosPage() {
       setSyncing(true);
       setError(null);
       
-      const dateString = selectedDate.toISOString().split('T')[0];
+      const dateString = selectedDateObj.toISOString().split('T')[0];
       
       const response = await fetch(`/api/expenses/sync-with-cut`, {
         method: 'POST',
@@ -441,13 +528,13 @@ export default function EgresosPage() {
       
       if (result.success) {
         setSuccess(`✅ Sincronización manual completada: ${formatPrice(result.total_expenses)}`);
-        await loadRelatedCut(selectedDate);
+        await loadRelatedCut(selectedDateObj);
       } else {
         setError(result.error || 'Error en sincronización manual');
       }
     } catch (error) {
       console.error('Error en sincronización manual:', error);
-      setError('Error en sincronización manual');
+      setError('Error en sincronización manual - API no disponible');
     } finally {
       setSyncing(false);
     }
@@ -468,7 +555,7 @@ export default function EgresosPage() {
         color: darkProTokens.textPrimary,
         p: 4
       }}>
-        {/* HEADER */}
+        {/* HEADER CON HORA EN TIEMPO REAL */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Avatar sx={{ 
@@ -485,11 +572,11 @@ export default function EgresosPage() {
               </Typography>
               
               <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                📅 {formatDateLocal(selectedDate.toISOString().split('T')[0])}
+                📅 {formatDateLocal(selectedDateObj.toISOString().split('T')[0])}
               </Typography>
               
               <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 0.5 }}>
-                🇲🇽 Zona horaria: México • {expenses.length} egresos registrados
+                🇲🇽 Zona horaria: México • ⏰ {currentMexicoTime} • {expenses.length} egresos registrados
                 {relatedCut && (
                   <Chip 
                     label={`🔗 Vinculado con ${relatedCut.cut_number}`} 
@@ -505,30 +592,50 @@ export default function EgresosPage() {
             </Box>
           </Box>
           
-          {/* TOTAL DEL DÍA */}
-          <Paper sx={{
-            p: 3,
-            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.error}40`,
-            borderRadius: 3,
-            textAlign: 'center'
-          }}>
-            <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-              {formatPrice(totalExpenses)}
-            </Typography>
-            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
-              Total Egresos del Día
-            </Typography>
-            {relatedCut && (
-              <Typography variant="caption" sx={{ 
-                color: darkProTokens.success,
-                display: 'block',
-                mt: 1
-              }}>
-                ✅ Sincronizado con corte
+          {/* TOTAL DEL DÍA Y BOTÓN DE REFRESH */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <IconButton
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              sx={{
+                color: darkProTokens.primary,
+                backgroundColor: `${darkProTokens.primary}20`,
+                '&:hover': {
+                  backgroundColor: `${darkProTokens.primary}30`,
+                },
+              }}
+            >
+              {refreshing ? (
+                <CircularProgress size={24} sx={{ color: darkProTokens.primary }} />
+              ) : (
+                <RefreshIcon />
+              )}
+            </IconButton>
+            
+            <Paper sx={{
+              p: 3,
+              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.surfaceLevel3})`,
+              border: `2px solid ${darkProTokens.error}40`,
+              borderRadius: 3,
+              textAlign: 'center'
+            }}>
+              <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                {formatPrice(totalExpenses)}
               </Typography>
-            )}
-          </Paper>
+              <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
+                Total Egresos del Día
+              </Typography>
+              {relatedCut && (
+                <Typography variant="caption" sx={{ 
+                  color: darkProTokens.success,
+                  display: 'block',
+                  mt: 1
+                }}>
+                  ✅ Sincronizado con corte
+                </Typography>
+              )}
+            </Paper>
+          </Box>
         </Box>
 
         {/* MENSAJES */}
@@ -605,7 +712,7 @@ export default function EgresosPage() {
                     📅 Fecha de Egresos
                   </Typography>
                   <DatePicker
-                    value={selectedDate}
+                    value={selectedDateObj}
                     onChange={handleDateChange}
                     maxDate={new Date()}
                     format="dd/MM/yyyy"
@@ -677,7 +784,7 @@ export default function EgresosPage() {
                         textAlign: 'center',
                         py: 2
                       }}>
-                        No hay egresos registrados para esta fecha
+                        {loading ? '⏳ Cargando egresos...' : 'No hay egresos registrados para esta fecha'}
                       </Typography>
                     )}
                   </Stack>
@@ -692,12 +799,17 @@ export default function EgresosPage() {
                   size="large"
                   startIcon={<AddIcon />}
                   onClick={openAddDialog}
+                  disabled={loading}
                   sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.error})`,
                     color: darkProTokens.textPrimary,
                     py: 1.5,
                     fontWeight: 700,
-                    fontSize: '1.1rem'
+                    fontSize: '1.1rem',
+                    '&:disabled': {
+                      background: darkProTokens.grayMedium,
+                      color: darkProTokens.textDisabled
+                    }
                   }}
                 >
                   Agregar Egreso
@@ -709,8 +821,14 @@ export default function EgresosPage() {
           {/* LISTA DE EGRESOS */}
           <Grid size={12} md={8}>
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-                <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin }} />
+              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+                <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin, mb: 2 }} />
+                <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                  Cargando egresos para {formatDateLocal(selectedDateObj.toISOString().split('T')[0])}...
+                </Typography>
+                <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                  ⏰ {currentMexicoTime}
+                </Typography>
               </Box>
             ) : (
               <Card sx={{
@@ -739,7 +857,10 @@ export default function EgresosPage() {
                         No hay egresos registrados
                       </Typography>
                       <Typography variant="body2">
-                        Para la fecha {formatDateLocal(selectedDate.toISOString().split('T')[0])}
+                        Para la fecha {formatDateLocal(selectedDateObj.toISOString().split('T')[0])}
+                      </Typography>
+                      <Typography variant="caption" sx={{ display: 'block', mt: 2, color: darkProTokens.primary }}>
+                        💡 Las APIs de egresos aún no están implementadas
                       </Typography>
                     </Box>
                   ) : (
@@ -914,7 +1035,7 @@ export default function EgresosPage() {
                   {editingExpense ? 'Editar Egreso' : 'Agregar Nuevo Egreso'}
                 </Typography>
                 <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                  Se sincronizará automáticamente con el corte del día
+                  Se guardará con hora México: {currentMexicoTime} • Se sincronizará automáticamente con el corte del día
                 </Typography>
               </Box>
             </Box>
@@ -1086,6 +1207,7 @@ export default function EgresosPage() {
           color="primary"
           aria-label="add"
           onClick={openAddDialog}
+          disabled={loading}
           sx={{
             position: 'fixed',
             bottom: 32,
@@ -1093,6 +1215,10 @@ export default function EgresosPage() {
             background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.error})`,
             '&:hover': {
               background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.roleAdmin})`,
+            },
+            '&:disabled': {
+              background: darkProTokens.grayMedium,
+              color: darkProTokens.textDisabled
             }
           }}
         >
