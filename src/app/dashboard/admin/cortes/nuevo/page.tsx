@@ -279,7 +279,8 @@ interface TransactionDetail {
   customer_name?: string;
   customer_phone?: string;
   payment_method: string;
-  amount: number;
+  amount: number; // ✅ MONTO TOTAL (CON COMISIÓN PARA POS/ABONOS)
+  base_amount?: number; // ✅ MONTO BASE SIN COMISIÓN (SOLO POS/ABONOS)
   commission_amount?: number;
   created_at: string;
   reference?: string;
@@ -1953,18 +1954,27 @@ const loadTransactionDetails = async (date: Date) => {
                                           />
                                         </TableCell>
                                         
-                                        <TableCell align="right" sx={{ color: darkProTokens.success, fontWeight: 'bold' }}>
-                                          <Box>
-                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                              {formatPrice(transaction.amount)}
-                                            </Typography>
-                                            {transaction.commission_amount && transaction.commission_amount > 0 && (
-                                              <Typography variant="caption" sx={{ color: darkProTokens.warning }}>
-                                                +{formatPrice(transaction.commission_amount)} comisión
-                                              </Typography>
-                                            )}
-                                          </Box>
-                                        </TableCell>
+                                     <TableCell align="right" sx={{ color: darkProTokens.success, fontWeight: 'bold' }}>
+  <Box>
+    {/* ✅ MONTO PRINCIPAL (CON COMISIÓN INCLUIDA PARA POS/ABONOS) */}
+    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+      {formatPrice(transaction.amount)}
+    </Typography>
+    
+    {/* ✅ COMISIÓN COMO INFORMACIÓN ADICIONAL */}
+    {transaction.commission_amount && transaction.commission_amount > 0 && (
+      <Typography variant="caption" sx={{ 
+        color: darkProTokens.warning,
+        display: 'block'
+      }}>
+        {transaction.type === 'pos' || transaction.type === 'abono' 
+          ? `+${formatPrice(transaction.commission_amount)} comisión`
+          : `${formatPrice(transaction.commission_amount)} comisión`
+        }
+      </Typography>
+    )}
+  </Box>
+</TableCell>
                                         
                                         <TableCell sx={{ color: darkProTokens.textSecondary }}>
                                           <Typography variant="body2">
