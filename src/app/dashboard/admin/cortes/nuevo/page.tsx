@@ -184,6 +184,7 @@ function formatDateTime(dateString: string): string {
   }
 }
 
+// ✅ INTERFACES
 interface DailyData {
   date: string;
   timezone_info?: {
@@ -252,7 +253,6 @@ interface EditableData {
   expenses_amount: number;
 }
 
-// ✅ INTERFACE ACTUALIZADA PARA TRANSACCIONES
 interface TransactionDetail {
   id: string;
   type: 'pos' | 'abono' | 'membership';
@@ -263,14 +263,14 @@ interface TransactionDetail {
   // Membership Fields
   membership_type?: string;
   membership_duration?: string;
-  payment_sequence?: number; // ✅ NUEVO: Secuencia de pago
-  is_payment_detail?: boolean; // ✅ NUEVO: Si es detalle de pago
+  payment_sequence?: number;
+  is_payment_detail?: boolean;
   // Common Fields
   customer_name?: string;
   customer_phone?: string;
   payment_method: string;
   amount: number;
-  base_amount?: number; // ✅ NUEVO: Monto base sin comisión
+  base_amount?: number;
   commission_amount?: number;
   created_at: string;
   reference?: string;
@@ -280,9 +280,20 @@ interface TransactionDetail {
   is_partial_payment?: boolean;
 }
 
+// ✅ INTERFACE PARA USUARIO
+interface CurrentUser {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  rol?: string;
+  username?: string;
+}
+
 export default function NuevoCorteePage() {
   const router = useRouter();
   
+  // ✅ ESTADOS
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const mexicoDateString = getMexicoDateLocal();
     const mexicoDate = new Date(mexicoDateString + 'T12:00:00');
@@ -294,6 +305,10 @@ export default function NuevoCorteePage() {
   });
   
   const [currentTime, setCurrentTime] = useState<string>('');
+  
+  // ✅ NUEVO: Estado para usuario autenticado
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
   const [editableData, setEditableData] = useState<EditableData>({
@@ -329,6 +344,63 @@ export default function NuevoCorteePage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
 
+  // ✅ FUNCIÓN: Cargar usuario autenticado
+  const loadCurrentUser = async () => {
+    try {
+      setLoadingUser(true);
+      const response = await fetch('/api/auth/me');
+      const data = await response.json();
+      
+      if (data.success && data.user) {
+        setCurrentUser(data.user);
+        console.log('👤 Usuario autenticado cargado:', data.user);
+      } else {
+        console.warn('⚠️ No se pudo cargar usuario autenticado');
+        // Fallback con datos conocidos
+        setCurrentUser({
+          id: 'unknown',
+          firstName: 'luishdz04',
+          email: 'luis@muscleup.com',
+          username: 'luishdz04'
+        });
+      }
+    } catch (error) {
+      console.error('Error cargando usuario:', error);
+      // Fallback con datos conocidos
+      setCurrentUser({
+        id: 'unknown',
+        firstName: 'luishdz04',
+        email: 'luis@muscleup.com',
+        username: 'luishdz04'
+      });
+    } finally {
+      setLoadingUser(false);
+    }
+  };
+
+  // ✅ FUNCIÓN: Obtener nombre del usuario
+  const getCurrentUserDisplayName = () => {
+    if (loadingUser) return 'Cargando...';
+    if (!currentUser) return 'Usuario';
+    
+    if (currentUser.firstName && currentUser.lastName) {
+      return `${currentUser.firstName} ${currentUser.lastName}`;
+    } else if (currentUser.firstName) {
+      return currentUser.firstName;
+    } else if (currentUser.username) {
+      return currentUser.username;
+    } else if (currentUser.email) {
+      return currentUser.email.split('@')[0];
+    } else {
+      return 'Usuario';
+    }
+  };
+
+  // ✅ EFECTOS
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
+
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -342,6 +414,11 @@ export default function NuevoCorteePage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    loadDailyData(selectedDate);
+  }, [selectedDate]);
+
+  // ✅ FUNCIONES
   const calculateTotals = () => {
     const pos_total = editableData.pos_efectivo + editableData.pos_transferencia + 
                      editableData.pos_debito + editableData.pos_credito;
@@ -376,7 +453,6 @@ export default function NuevoCorteePage() {
     };
   };
 
-  // ✅ FUNCIÓN ACTUALIZADA PARA CARGAR DETALLES
   const loadTransactionDetails = async (date: Date) => {
     try {
       setLoadingDetails(true);
@@ -388,7 +464,6 @@ export default function NuevoCorteePage() {
       const data = await response.json();
       
       if (data.success) {
-        // ✅ USAR DATOS REALES DE LA API
         const details: TransactionDetail[] = [
           // 🛒 POS TRANSACTIONS
           ...(data.pos_transactions || []).map((transaction: any) => ({
@@ -452,11 +527,6 @@ export default function NuevoCorteePage() {
         
         setTransactionDetails(details);
         console.log('✅ Detalles reales cargados:', details.length, 'transacciones');
-        console.log('📊 Datos por tipo:', {
-          pos: data.pos_transactions?.length || 0,
-          abonos: data.abonos_transactions?.length || 0,
-          membresias: data.membership_transactions?.length || 0
-        });
       } else {
         console.error('Error cargando detalles:', data.error);
         setTransactionDetails([]);
@@ -638,10 +708,6 @@ export default function NuevoCorteePage() {
       [field]: numericValue
     }));
   };
-
-  useEffect(() => {
-    loadDailyData(selectedDate);
-  }, [selectedDate]);
 
   const handleDateChange = (newDate: Date | null) => {
     if (newDate) {
@@ -917,7 +983,6 @@ export default function NuevoCorteePage() {
                         '& .MuiSvgIcon-root': {
                           color: darkProTokens.primary,
                         },
-                        // ✅ CSS ADICIONAL PARA EL INPUT
                         '& .MuiInputBase-input': {
                           color: darkProTokens.textPrimary,
                         },
@@ -950,8 +1015,9 @@ export default function NuevoCorteePage() {
                         <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                           Responsable:
                         </Typography>
+                        {/* ✅ RESPONSABLE DINÁMICO */}
                         <Chip
-                          label="luishdz04"
+                          label={getCurrentUserDisplayName()}
                           sx={{
                             backgroundColor: `${darkProTokens.info}20`,
                             color: darkProTokens.info,
@@ -1067,7 +1133,7 @@ export default function NuevoCorteePage() {
                         <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                           Gastos:
                         </Typography>
-                                                <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
                           -{formatPrice(editableData.expenses_amount)}
                         </Typography>
                       </Box>
@@ -1127,7 +1193,7 @@ export default function NuevoCorteePage() {
             </motion.div>
           </Grid>
 
-          {/* DATOS EDITABLES Y DETALLES */}
+          {/* RESTO DEL CONTENIDO (DATOS EDITABLES Y HISTORIAL) */}
           <Grid size={12} md={8}>
             {loading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
@@ -1473,7 +1539,7 @@ export default function NuevoCorteePage() {
                             color: darkProTokens.success,
                             fontWeight: 700,
                             fontSize: '1rem'
-                          }}
+                                                    }}
                         />
                         {getTransactionsByType('membership').length > 0 && (
                           <Badge 
@@ -1994,10 +2060,7 @@ export default function NuevoCorteePage() {
                                                 color: darkProTokens.warning,
                                                 display: 'block'
                                               }}>
-                                                {transaction.type === 'pos' || transaction.type === 'abono' 
-                                                  ? `+${formatPrice(transaction.commission_amount)} comisión`
-                                                  : `${formatPrice(transaction.commission_amount)} comisión`
-                                                }
+                                                {formatPrice(transaction.commission_amount)} comisión
                                               </Typography>
                                             )}
                                           </Box>
