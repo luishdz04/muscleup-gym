@@ -159,21 +159,39 @@ export default function CortesPage() {
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   
-  // ✅ FECHA ACTUAL EN MÉXICO USANDO dateHelpers
+  // ✅ ESTADO PARA HORA EN TIEMPO REAL
+  const [currentMexicoTime, setCurrentMexicoTime] = useState<string>('');
+  
+  // ✅ FECHA ACTUAL EN MÉXICO USANDO dateHelpers CORRECTAMENTE
   const [selectedDate] = useState(() => {
     const mexicoDate = toMexicoDate(new Date());
-    
     console.log('🇲🇽 Fecha actual México (dateHelpers):', mexicoDate);
     console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
-    console.log('⏰ Hora actual México:', formatMexicoDateTime(new Date(), {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZone: 'America/Mexico_City'
-    }));
-    
     return mexicoDate; // Formato: YYYY-MM-DD
   });
+
+  // ✅ ACTUALIZAR HORA EN TIEMPO REAL CADA SEGUNDO
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const mexicoTime = formatMexicoDateTime(now, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'America/Mexico_City'
+      });
+      setCurrentMexicoTime(mexicoTime);
+    };
+
+    // Actualizar inmediatamente
+    updateTime();
+
+    // Actualizar cada segundo
+    const interval = setInterval(updateTime, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // ✅ CARGAR DATOS DEL DÍA CON MEJOR MANEJO DE ERRORES
   const loadDailyData = async () => {
@@ -258,7 +276,7 @@ export default function CortesPage() {
       color: darkProTokens.textPrimary,
       p: 4
     }}>
-      {/* 🏷️ HEADER */}
+      {/* 🏷️ HEADER CON HORA DINÁMICA */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{ 
@@ -272,18 +290,23 @@ export default function CortesPage() {
             <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
               Cortes de Caja
             </Typography>
+            
+            {/* ✅ FECHA Y HORA DINÁMICA CORREGIDAS */}
             <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-              📅 {formatDate(selectedDate)} • Gestión de cortes diarios
+              📅 {formatDate(selectedDate)} • ⏰ {currentMexicoTime} • Gestión de cortes diarios
             </Typography>
-            {dailyData?.timezone_info && (
-              <Typography variant="caption" sx={{ 
-                color: darkProTokens.info,
-                display: 'block',
-                mt: 0.5
-              }}>
-                🇲🇽 {dailyData.timezone_info.timezone || 'Zona horaria: México'} • {dailyData.timezone_info.note}
-              </Typography>
-            )}
+            
+            {/* ✅ INFORMACIÓN DE ZONA HORARIA CON FECHA CORRECTA */}
+            <Typography variant="caption" sx={{ 
+              color: darkProTokens.info,
+              display: 'block',
+              mt: 0.5
+            }}>
+              🇲🇽 Zona horaria: México (UTC-6) • Fecha consultada: {selectedDate}
+              {dailyData?.timezone_info && (
+                <span> • {dailyData.timezone_info.note}</span>
+              )}
+            </Typography>
           </Box>
         </Box>
         
@@ -358,7 +381,7 @@ export default function CortesPage() {
                 {error}
               </Typography>
               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                Fecha consultada: {selectedDate} • Verifique la API y la conexión a la base de datos
+                Fecha consultada: {selectedDate} • Hora México: {currentMexicoTime} • Verifique la API y la conexión a la base de datos
               </Typography>
             </Alert>
           </motion.div>
@@ -373,12 +396,12 @@ export default function CortesPage() {
             Cargando datos del día {selectedDate}...
           </Typography>
           <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
-            Consultando información de ventas, abonos y membresías
+            Consultando información de ventas, abonos y membresías • {currentMexicoTime}
           </Typography>
         </Box>
       )}
 
-      {/* 📊 CONTENIDO PRINCIPAL - RESTO DEL CÓDIGO IGUAL */}
+      {/* 📊 CONTENIDO PRINCIPAL */}
       {!loading && dailyData && (
         <Grid container spacing={4}>
           {/* 💰 RESUMEN PRINCIPAL */}
