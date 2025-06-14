@@ -39,6 +39,8 @@ import Grid from '@mui/material/Grid';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
@@ -315,129 +317,147 @@ export default function RegistrarMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS SIMPLIFICADAS - LA BD YA MANEJA HORA MÉXICO
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
+  }, []);
+
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
-    }).format(price);
+    }).format(price || 0);
   }, []);
 
-const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
-  console.log(`📅 Calculando período: ${startDate} + ${periodType}`);
-  
-  try {
-    // ✅ PARSEAR FECHA MANUALMENTE PARA EVITAR PROBLEMAS DE TIMEZONE
-    const [year, month, day] = startDate.split('-').map(Number);
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
+  const formatMexicoDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  // ✅ FUNCIÓN CORREGIDA PARA CALCULAR PERÍODOS CON FECHAS MÉXICO
+  const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
+    console.log(`📅 Calculando período: ${startDate} + ${periodType}`);
     
-    let targetYear = year;
-    let targetMonth = month; // Mantener 1-indexado
-    let targetDay = day;
-    
-    // ✅ AGREGAR PERÍODOS SIN USAR setMonth() QUE CAUSA PROBLEMAS
-    switch (periodType) {
-      case 'weekly':
-        // Para semanas, es seguro usar días
-        const weekDate = new Date(year, month - 1, day);
-        weekDate.setDate(weekDate.getDate() + 7);
-        targetYear = weekDate.getFullYear();
-        targetMonth = weekDate.getMonth() + 1;
-        targetDay = weekDate.getDate();
-        break;
-        
-      case 'biweekly':
-        const biweekDate = new Date(year, month - 1, day);
-        biweekDate.setDate(biweekDate.getDate() + 14);
-        targetYear = biweekDate.getFullYear();
-        targetMonth = biweekDate.getMonth() + 1;
-        targetDay = biweekDate.getDate();
-        break;
-        
-      case 'monthly':
-        // ✅ CÁLCULO MANUAL PARA EVITAR setMonth()
-        targetMonth = month + 1;
-        if (targetMonth > 12) {
-          targetYear = year + 1;
-          targetMonth = 1;
-        }
-        // Verificar si el día existe en el mes destino
-        const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
-        if (day > daysInTargetMonth) {
-          targetDay = daysInTargetMonth; // Último día del mes
-        }
-        break;
-        
-      case 'bimonthly':
-        targetMonth = month + 2;
-        while (targetMonth > 12) {
-          targetYear++;
-          targetMonth -= 12;
-        }
-        const daysInTargetMonth2 = new Date(targetYear, targetMonth, 0).getDate();
-        if (day > daysInTargetMonth2) {
-          targetDay = daysInTargetMonth2;
-        }
-        break;
-        
-      case 'quarterly':
-        targetMonth = month + 3;
-        while (targetMonth > 12) {
-          targetYear++;
-          targetMonth -= 12;
-        }
-        const daysInTargetMonth3 = new Date(targetYear, targetMonth, 0).getDate();
-        if (day > daysInTargetMonth3) {
-          targetDay = daysInTargetMonth3;
-        }
-        break;
-        
-      case 'semester':
-        targetMonth = month + 6;
-        while (targetMonth > 12) {
-          targetYear++;
-          targetMonth -= 12;
-        }
-        const daysInTargetMonth6 = new Date(targetYear, targetMonth, 0).getDate();
-        if (day > daysInTargetMonth6) {
-          targetDay = daysInTargetMonth6;
-        }
-        break;
-        
-      case 'annual':
-        targetYear = year + 1;
-        // Para febrero 29 en años no bisiestos
-        if (month === 2 && day === 29) {
-          const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
-          if (!isLeapYear) {
-            targetDay = 28;
+    try {
+      // ✅ PARSEAR FECHA MANUALMENTE PARA EVITAR PROBLEMAS DE TIMEZONE
+      const [year, month, day] = startDate.split('-').map(Number);
+      
+      let targetYear = year;
+      let targetMonth = month; // Mantener 1-indexado
+      let targetDay = day;
+      
+      // ✅ AGREGAR PERÍODOS SIN USAR setMonth() QUE CAUSA PROBLEMAS
+      switch (periodType) {
+        case 'weekly':
+          // Para semanas, es seguro usar días
+          const weekDate = new Date(year, month - 1, day);
+          weekDate.setDate(weekDate.getDate() + 7);
+          targetYear = weekDate.getFullYear();
+          targetMonth = weekDate.getMonth() + 1;
+          targetDay = weekDate.getDate();
+          break;
+          
+        case 'biweekly':
+          const biweekDate = new Date(year, month - 1, day);
+          biweekDate.setDate(biweekDate.getDate() + 14);
+          targetYear = biweekDate.getFullYear();
+          targetMonth = biweekDate.getMonth() + 1;
+          targetDay = biweekDate.getDate();
+          break;
+          
+        case 'monthly':
+          // ✅ CÁLCULO MANUAL PARA EVITAR setMonth()
+          targetMonth = month + 1;
+          if (targetMonth > 12) {
+            targetYear = year + 1;
+            targetMonth = 1;
           }
-        }
-        break;
-        
-      default:
-        // Fallback a mensual
-        targetMonth = month + 1;
-        if (targetMonth > 12) {
+          // Verificar si el día existe en el mes destino
+          const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+          if (day > daysInTargetMonth) {
+            targetDay = daysInTargetMonth; // Último día del mes
+          }
+          break;
+          
+        case 'bimonthly':
+          targetMonth = month + 2;
+          while (targetMonth > 12) {
+            targetYear++;
+            targetMonth -= 12;
+          }
+          const daysInTargetMonth2 = new Date(targetYear, targetMonth, 0).getDate();
+          if (day > daysInTargetMonth2) {
+            targetDay = daysInTargetMonth2;
+          }
+          break;
+          
+        case 'quarterly':
+          targetMonth = month + 3;
+          while (targetMonth > 12) {
+            targetYear++;
+            targetMonth -= 12;
+          }
+          const daysInTargetMonth3 = new Date(targetYear, targetMonth, 0).getDate();
+          if (day > daysInTargetMonth3) {
+            targetDay = daysInTargetMonth3;
+          }
+          break;
+          
+        case 'semester':
+          targetMonth = month + 6;
+          while (targetMonth > 12) {
+            targetYear++;
+            targetMonth -= 12;
+          }
+          const daysInTargetMonth6 = new Date(targetYear, targetMonth, 0).getDate();
+          if (day > daysInTargetMonth6) {
+            targetDay = daysInTargetMonth6;
+          }
+          break;
+          
+        case 'annual':
           targetYear = year + 1;
-          targetMonth = 1;
-        }
-        break;
+          // Para febrero 29 en años no bisiestos
+          if (month === 2 && day === 29) {
+            const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
+            if (!isLeapYear) {
+              targetDay = 28;
+            }
+          }
+          break;
+          
+        default:
+          // Fallback a mensual
+          targetMonth = month + 1;
+          if (targetMonth > 12) {
+            targetYear = year + 1;
+            targetMonth = 1;
+          }
+          break;
+      }
+      
+      // ✅ FORMATEAR RESULTADO MANUALMENTE
+      const result = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+      
+      console.log(`📅 Resultado corregido manual: ${startDate} → ${result}`);
+      console.log(`   🔢 Entrada: ${year}-${month}-${day}`);
+      console.log(`   🎯 Salida: ${targetYear}-${targetMonth}-${targetDay}`);
+      
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Error en cálculo de fecha:', error);
+      return startDate; // fallback
     }
-    
-    // ✅ FORMATEAR RESULTADO MANUALMENTE
-    const result = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
-    
-    console.log(`📅 Resultado corregido manual: ${startDate} → ${result}`);
-    console.log(`   🔢 Entrada: ${year}-${month}-${day}`);
-    console.log(`   🎯 Salida: ${targetYear}-${targetMonth}-${targetDay}`);
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Error en cálculo de fecha:', error);
-    return startDate; // fallback
-  }
-}, []);
+  }, []);
 
   // 🔧 BÚSQUEDA DE USUARIOS
   const loadUsers = useCallback(async (searchTerm: string = '') => {
@@ -489,23 +509,24 @@ const addPeriodToDate = useCallback((startDate: string, periodType: string): str
     }
   }, [supabase]);
 
-const loadUserHistory = useCallback(async (userId: string) => {
-  try {
-    console.log('🔍 Iniciando carga de historial para usuario:', userId);
-    
-    // ✅ CONSULTA SIMPLE - LA BD YA ESTÁ EN HORA MÉXICO
-    const { data: memberships, error: membershipsError } = await supabase
-      .from('user_memberships')
-      .select('id, created_at, status, planid, start_date, end_date')
-      .eq('userid', userId)
-      .order('created_at', { ascending: false })
-      .limit(10);
+  // ✅ FUNCIÓN CORREGIDA PARA CARGAR HISTORIAL CON FECHAS MÉXICO
+  const loadUserHistory = useCallback(async (userId: string) => {
+    try {
+      console.log('🔍 Iniciando carga de historial para usuario:', userId);
+      
+      // ✅ CONSULTA SIMPLE - LA BD YA ESTÁ EN HORA MÉXICO
+      const { data: memberships, error: membershipsError } = await supabase
+        .from('user_memberships')
+        .select('id, created_at, status, planid, start_date, end_date')
+        .eq('userid', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-    if (membershipsError) {
-      console.error('❌ Error en consulta de membresías:', membershipsError);
-      setUserHistory([]);
-      return;
-    }
+      if (membershipsError) {
+        console.error('❌ Error en consulta de membresías:', membershipsError);
+        setUserHistory([]);
+        return;
+      }
 
       console.log(`📊 Membresías encontradas: ${memberships?.length || 0}`);
 
@@ -549,23 +570,26 @@ const loadUserHistory = useCallback(async (userId: string) => {
       console.log(`✅ Historial procesado exitosamente: ${formattedHistory.length} registros`);
       setUserHistory(formattedHistory);
 
-     // ✅ AUTO-DETECCIÓN SIMPLE
-    const today = new Date().toISOString().split('T')[0];
-    
-    const activeMemberships = formattedHistory.filter(h => {
-      if (h.status !== 'active' || !h.end_date) return false;
-      return h.end_date >= today;
-    });
-    
-    const hasActiveMemberships = activeMemberships.length > 0;
-    const hasPreviousMemberships = formattedHistory.length > 0;
+      // ✅ AUTO-DETECCIÓN CON FECHAS MÉXICO
+      const mexicoToday = getMexicoDateString();
       
+      const activeMemberships = formattedHistory.filter(h => {
+        if (h.status !== 'active' || !h.end_date) return false;
+        // Convertir fechas BD a formato México para comparar
+        const endDateMexico = toMexicoDate(new Date(h.end_date));
+        return endDateMexico >= mexicoToday;
+      });
+      
+      const hasActiveMemberships = activeMemberships.length > 0;
+      const hasPreviousMemberships = formattedHistory.length > 0;
+        
       console.log(`🔄 Auto-detección: Activas=${hasActiveMemberships}, Previas=${hasPreviousMemberships}`);
       
       // ✅ DETECTAR FECHA DE VENCIMIENTO MÁS RECIENTE
       let latestEndDate = null;
       if (hasActiveMemberships && activeMemberships && activeMemberships.length > 0) {
-        latestEndDate = activeMemberships[0].end_date;
+        // Convertir a formato México para el sistema
+        latestEndDate = toMexicoDate(new Date(activeMemberships[0].end_date));
         console.log(`📅 Fecha de vencimiento más reciente: ${latestEndDate}`);
       }
       
@@ -601,7 +625,7 @@ const loadUserHistory = useCallback(async (userId: string) => {
       
       console.log('🛡️ Configuración segura aplicada: Cliente nuevo con inscripción');
     }
-  }, [supabase]);
+  }, [supabase, getMexicoDateString]);
 
   // Cargar planes y comisiones
   useEffect(() => {
@@ -639,62 +663,63 @@ const loadUserHistory = useCallback(async (userId: string) => {
     loadInitialData();
   }, [supabase]);
 
- const validateCoupon = useCallback(async (code: string) => {
-  if (!code.trim()) {
-    setAppliedCoupon(null);
-    return;
-  }
-
-  try {
-    // ✅ CONSULTA SIMPLE SIN SQL NATIVO PROBLEMÁTICO
-    const { data, error } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('code', code.toUpperCase())
-      .eq('is_active', true)
-      .single();
-
-    if (error || !data) {
-      setError('Cupón no válido o no encontrado');
+  // ✅ FUNCIÓN CORREGIDA PARA VALIDAR CUPONES CON FECHAS MÉXICO
+  const validateCoupon = useCallback(async (code: string) => {
+    if (!code.trim()) {
       setAppliedCoupon(null);
       return;
     }
 
-    // ✅ VALIDAR FECHAS CON JAVASCRIPT (la BD ya está en México)
-    const today = new Date().toISOString().split('T')[0];
-    
-    if (data.start_date && today < data.start_date) {
-      setError('El cupón no está vigente aún');
-      setAppliedCoupon(null);
-      return;
-    }
+    try {
+      // ✅ CONSULTA SIMPLE SIN SQL NATIVO PROBLEMÁTICO
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', code.toUpperCase())
+        .eq('is_active', true)
+        .single();
 
-    if (data.end_date && today > data.end_date) {
-      setError('El cupón ha expirado');
-      setAppliedCoupon(null);
-      return;
-    }
+      if (error || !data) {
+        setError('Cupón no válido o no encontrado');
+        setAppliedCoupon(null);
+        return;
+      }
 
-    if (data.max_uses && data.current_uses >= data.max_uses) {
-      setError('El cupón ha alcanzado su límite de usos');
-      setAppliedCoupon(null);
-      return;
-    }
+      // ✅ VALIDAR FECHAS CON HELPERS MÉXICO
+      const mexicoToday = getMexicoDateString();
+      
+      if (data.start_date && mexicoToday < toMexicoDate(new Date(data.start_date))) {
+        setError('El cupón no está vigente aún');
+        setAppliedCoupon(null);
+        return;
+      }
 
-    if (data.min_amount && subtotal < data.min_amount) {
-      setError(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}`);
-      setAppliedCoupon(null);
-      return;
-    }
+      if (data.end_date && mexicoToday > toMexicoDate(new Date(data.end_date))) {
+        setError('El cupón ha expirado');
+        setAppliedCoupon(null);
+        return;
+      }
 
-    setAppliedCoupon(data);
-    setSuccessMessage('🎟️ Cupón aplicado exitosamente');
-    setError(null);
-  } catch (err: any) {
-    setError(err.message);
-    setAppliedCoupon(null);
-  }
-}, [supabase, subtotal, formatPrice]);
+      if (data.max_uses && data.current_uses >= data.max_uses) {
+        setError('El cupón ha alcanzado su límite de usos');
+        setAppliedCoupon(null);
+        return;
+      }
+
+      if (data.min_amount && subtotal < data.min_amount) {
+        setError(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}`);
+        setAppliedCoupon(null);
+        return;
+      }
+
+      setAppliedCoupon(data);
+      setSuccessMessage('🎟️ Cupón aplicado exitosamente');
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
+      setAppliedCoupon(null);
+    }
+  }, [supabase, subtotal, formatPrice, getMexicoDateString]);
 
   // 🔥 CALCULAR COMISIÓN CORREGIDA - SOLO TARJETAS
   const calculateCommission = useCallback((method: string, amount: number): { rate: number; amount: number } => {
@@ -836,14 +861,14 @@ const loadUserHistory = useCallback(async (userId: string) => {
 
   }, [selectedPlan, formData.paymentType, appliedCoupon, formData.paymentMethod, formData.paymentReceived, formData.isMixedPayment, formData.paymentDetails, formData.skipInscription, formData.isRenewal, calculateCommission]);
 
-  // ✅ CALCULAR FECHA DE VENCIMIENTO SIMPLIFICADA
+  // ✅ CALCULAR FECHA DE VENCIMIENTO CON FECHAS MÉXICO
   const calculateEndDate = useCallback((): Date | null => {
     if (!selectedPlan || !formData.paymentType) return null;
 
     const paymentTypeData = paymentTypes.find(pt => pt.value === formData.paymentType);
     if (!paymentTypeData || paymentTypeData.value === 'visit') return null;
 
-    // ✅ LÓGICA SIMPLIFICADA
+    // ✅ LÓGICA SIMPLIFICADA CON FECHAS MÉXICO
     let startDateString: string;
     
     if (formData.isRenewal && formData.latestEndDate) {
@@ -851,8 +876,8 @@ const loadUserHistory = useCallback(async (userId: string) => {
       startDateString = formData.latestEndDate;
       console.log(`🔄 Renovación: Extendiendo desde ${startDateString}`);
     } else {
-      // 🆕 PRIMERA VEZ: Desde hoy (la BD calcula automáticamente en hora México)
-      startDateString = new Date().toISOString().split('T')[0];
+      // 🆕 PRIMERA VEZ: Desde hoy en México
+      startDateString = getMexicoDateString();
       console.log(`🆕 Primera venta: Iniciando desde ${startDateString}`);
     }
     
@@ -869,7 +894,7 @@ const loadUserHistory = useCallback(async (userId: string) => {
     const endDate = new Date(year, month - 1, day, 23, 59, 59);
     
     return endDate;
-  }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate, addPeriodToDate]);
+  }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate, addPeriodToDate, getMexicoDateString]);
 
   // Validar pago
   const validatePayment = useCallback((): boolean => {
@@ -891,182 +916,182 @@ const loadUserHistory = useCallback(async (userId: string) => {
     return true;
   }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formData.paymentMethod, formData.paymentReceived, formatPrice]);
 
-// ✅ SUBMIT PRINCIPAL CORREGIDO
-const handleSubmit = useCallback(async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  // ✅ SUBMIT PRINCIPAL CORREGIDO CON FECHAS MÉXICO
+  const handleSubmit = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
-    const { data: { session } } = await supabase.auth.getSession();
+      // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (!session) {
-      setError('No hay sesión activa');
-      return;
-    }
+      if (!session) {
+        setError('No hay sesión activa');
+        return;
+      }
 
-    console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
+      console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
 
-    if (!selectedUser || !selectedPlan || !formData.paymentType) {
-      setError('Por favor complete todos los campos requeridos');
-      return;
-    }
+      if (!selectedUser || !selectedPlan || !formData.paymentType) {
+        setError('Por favor complete todos los campos requeridos');
+        return;
+      }
 
-    if (!formData.isMixedPayment && !formData.paymentMethod) {
-      setError('Seleccione un método de pago');
-      return;
-    }
+      if (!formData.isMixedPayment && !formData.paymentMethod) {
+        setError('Seleccione un método de pago');
+        return;
+      }
 
-    if (!validatePayment()) {
-      return;
-    }
+      if (!validatePayment()) {
+        return;
+      }
 
-    // ✅ FECHAS CORREGIDAS - LA BD CALCULA AUTOMÁTICAMENTE EN HORA MÉXICO
-    let startDate: string;
-    let endDate: string | null = null;
+      // ✅ FECHAS CORREGIDAS CON HELPERS MÉXICO
+      let startDate: string;
+      let endDate: string | null = null;
 
-   if (formData.isRenewal && formData.latestEndDate) {
-  // ✅ RENOVACIÓN: Desde fecha de vencimiento actual
-  startDate = formData.latestEndDate;
-  console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
-  
-  // ✅ USAR LA FUNCIÓN CORREGIDA
-  endDate = addPeriodToDate(startDate, formData.paymentType);
-  
-  console.log(`📅 Fechas de renovación:`);
-  console.log(`   📅 Desde: ${startDate}`);
-  console.log(`   🔄 Tipo: ${formData.paymentType}`);
-  console.log(`   📅 Hasta: ${endDate}`);
-} else {
-  // ✅ PRIMERA VEZ: Usar fecha actual
-  startDate = new Date().toISOString().split('T')[0];
-  console.log(`🆕 Primera venta: Iniciando desde ${startDate}`);
-  
-  // ✅ USAR LA FUNCIÓN CORREGIDA TAMBIÉN AQUÍ
-  endDate = addPeriodToDate(startDate, formData.paymentType);
-  
-  console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
-}
-
-    const totalVisits = formData.paymentType === 'visit' ? 1 : null;
-    const remainingVisits = totalVisits;
-
-    console.log(`📅 Fechas finales: ${startDate} → ${endDate}`);
-
-    // ✅ PASO ADICIONAL: SI ES RENOVACIÓN, DESACTIVAR MEMBRESÍAS ACTIVAS
-    if (formData.isRenewal) {
-      console.log('🔄 Procesando renovación: Desactivando membresías activas...');
-      
-      const { error: updateError } = await supabase
-        .from('user_memberships')
-        .update({ 
-          status: 'expired'
-          // ✅ updated_at se actualizará automáticamente si tienes trigger en la BD
-        })
-        .eq('userid', selectedUser.id)
-        .eq('status', 'active');
-
-      if (updateError) {
-        console.warn('⚠️ Error al desactivar membresías activas:', updateError);
+      if (formData.isRenewal && formData.latestEndDate) {
+        // ✅ RENOVACIÓN: Desde fecha de vencimiento actual
+        startDate = formData.latestEndDate;
+        console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
+        
+        // ✅ USAR LA FUNCIÓN CORREGIDA
+        endDate = addPeriodToDate(startDate, formData.paymentType);
+        
+        console.log(`📅 Fechas de renovación:`);
+        console.log(`   📅 Desde: ${startDate}`);
+        console.log(`   🔄 Tipo: ${formData.paymentType}`);
+        console.log(`   📅 Hasta: ${endDate}`);
       } else {
-        console.log('✅ Membresías activas desactivadas correctamente');
+        // ✅ PRIMERA VEZ: Usar fecha actual en México
+        startDate = getMexicoDateString();
+        console.log(`🆕 Primera venta: Iniciando desde ${startDate}`);
+        
+        // ✅ USAR LA FUNCIÓN CORREGIDA TAMBIÉN AQUÍ
+        endDate = addPeriodToDate(startDate, formData.paymentType);
+        
+        console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
       }
-    }
 
-    // ✅ DATOS DE LA MEMBRESÍA CORREGIDOS
-    const membershipData = {
-      userid: selectedUser.id,
-      planid: selectedPlan.id,
-      payment_type: formData.paymentType,
-      amount_paid: finalAmount,
-      inscription_amount: inscriptionAmount,
-      start_date: startDate,
-      end_date: endDate,
-      status: 'active',
-      total_visits: totalVisits,
-      remaining_visits: remainingVisits,
-      payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
-      payment_reference: formData.paymentReference || null,
-      discount_amount: discountAmount,
-      coupon_code: appliedCoupon?.code || null,
-      subtotal: subtotal,
-      commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
-      commission_amount: commissionAmount,
-      payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
-      payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
-      is_mixed_payment: formData.isMixedPayment,
-      payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
-      is_renewal: formData.isRenewal,
-      skip_inscription: formData.skipInscription,
-      custom_commission_rate: formData.customCommissionRate,
-      notes: formData.notes || null,
-      created_by: session.user.id
-      // ✅ created_at y updated_at se manejarán automáticamente por la BD
-    };
+      const totalVisits = formData.paymentType === 'visit' ? 1 : null;
+      const remainingVisits = totalVisits;
 
-    console.log('💾 Guardando nueva membresía:', membershipData);
+      console.log(`📅 Fechas finales: ${startDate} → ${endDate}`);
 
-    const { data: membership, error: membershipError } = await supabase
-      .from('user_memberships')
-      .insert([membershipData])
-      .select()
-      .single();
+      // ✅ PASO ADICIONAL: SI ES RENOVACIÓN, DESACTIVAR MEMBRESÍAS ACTIVAS
+      if (formData.isRenewal) {
+        console.log('🔄 Procesando renovación: Desactivando membresías activas...');
+        
+        const { error: updateError } = await supabase
+          .from('user_memberships')
+          .update({ 
+            status: 'expired'
+            // ✅ updated_at se actualizará automáticamente si tienes trigger en la BD
+          })
+          .eq('userid', selectedUser.id)
+          .eq('status', 'active');
 
-    if (membershipError) throw membershipError;
-
-    console.log('✅ Membresía creada exitosamente:', membership.id);
-
-    // Si es pago mixto, guardar detalles
-    if (formData.isMixedPayment) {
-      const paymentDetailsData = formData.paymentDetails.map(detail => ({
-        membership_id: membership.id,
-        payment_method: detail.method,
-        amount: detail.amount,
-        commission_rate: detail.commission_rate,
-        commission_amount: detail.commission_amount,
-        payment_reference: detail.reference,
-        sequence_order: detail.sequence
-      }));
-
-      const { error: detailsError } = await supabase
-        .from('membership_payment_details')
-        .insert(paymentDetailsData);
-
-      if (detailsError) {
-        console.warn('Error al guardar detalles de pago:', detailsError);
+        if (updateError) {
+          console.warn('⚠️ Error al desactivar membresías activas:', updateError);
+        } else {
+          console.log('✅ Membresías activas desactivadas correctamente');
+        }
       }
+
+      // ✅ DATOS DE LA MEMBRESÍA CORREGIDOS CON FECHAS MÉXICO
+      const membershipData = {
+        userid: selectedUser.id,
+        planid: selectedPlan.id,
+        payment_type: formData.paymentType,
+        amount_paid: finalAmount,
+        inscription_amount: inscriptionAmount,
+        start_date: startDate,
+        end_date: endDate,
+        status: 'active',
+        total_visits: totalVisits,
+        remaining_visits: remainingVisits,
+        payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
+        payment_reference: formData.paymentReference || null,
+        discount_amount: discountAmount,
+        coupon_code: appliedCoupon?.code || null,
+        subtotal: subtotal,
+        commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
+        commission_amount: commissionAmount,
+        payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
+        payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
+        is_mixed_payment: formData.isMixedPayment,
+        payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
+        is_renewal: formData.isRenewal,
+        skip_inscription: formData.skipInscription,
+        custom_commission_rate: formData.customCommissionRate,
+        notes: formData.notes || null,
+        created_by: session.user.id
+        // ✅ created_at y updated_at se manejarán automáticamente por la BD
+      };
+
+      console.log('💾 Guardando nueva membresía:', membershipData);
+
+      const { data: membership, error: membershipError } = await supabase
+        .from('user_memberships')
+        .insert([membershipData])
+        .select()
+        .single();
+
+      if (membershipError) throw membershipError;
+
+      console.log('✅ Membresía creada exitosamente:', membership.id);
+
+      // Si es pago mixto, guardar detalles
+      if (formData.isMixedPayment) {
+        const paymentDetailsData = formData.paymentDetails.map(detail => ({
+          membership_id: membership.id,
+          payment_method: detail.method,
+          amount: detail.amount,
+          commission_rate: detail.commission_rate,
+          commission_amount: detail.commission_amount,
+          payment_reference: detail.reference,
+          sequence_order: detail.sequence
+        }));
+
+        const { error: detailsError } = await supabase
+          .from('membership_payment_details')
+          .insert(paymentDetailsData);
+
+        if (detailsError) {
+          console.warn('Error al guardar detalles de pago:', detailsError);
+        }
+      }
+
+      // Actualizar uso del cupón
+      if (appliedCoupon) {
+        await supabase
+          .from('coupons')
+          .update({ current_uses: appliedCoupon.current_uses + 1 })
+          .eq('id', appliedCoupon.id);
+      }
+
+      const successMsg = formData.isRenewal 
+        ? `¡Renovación exitosa! Membresía extendida hasta ${endDate}`
+        : '¡Membresía registrada exitosamente!';
+      
+      setSuccessMessage(successMsg);
+      
+      setTimeout(() => {
+        router.push('/dashboard/admin/membresias');
+      }, 3000);
+
+    } catch (err: any) {
+      setError(`Error procesando venta: ${err.message}`);
+    } finally {
+      setLoading(false);
+      setConfirmDialogOpen(false);
     }
-
-    // Actualizar uso del cupón
-    if (appliedCoupon) {
-      await supabase
-        .from('coupons')
-        .update({ current_uses: appliedCoupon.current_uses + 1 })
-        .eq('id', appliedCoupon.id);
-    }
-
-    const successMsg = formData.isRenewal 
-      ? `¡Renovación exitosa! Membresía extendida hasta ${endDate}`
-      : '¡Membresía registrada exitosamente!';
-    
-    setSuccessMessage(successMsg);
-    
-    setTimeout(() => {
-      router.push('/dashboard/admin/membresias');
-    }, 3000);
-
-  } catch (err: any) {
-    setError(`Error procesando venta: ${err.message}`);
-  } finally {
-    setLoading(false);
-    setConfirmDialogOpen(false);
-  }
-}, [
-  supabase, selectedUser, selectedPlan, formData, validatePayment, 
-  addPeriodToDate, calculateEndDate, finalAmount, inscriptionAmount, 
-  discountAmount, subtotal, commissionAmount, calculateCommission, 
-  totalAmount, appliedCoupon, router
-]);
+  }, [
+    supabase, selectedUser, selectedPlan, formData, validatePayment, 
+    addPeriodToDate, calculateEndDate, finalAmount, inscriptionAmount, 
+    discountAmount, subtotal, commissionAmount, calculateCommission, 
+    totalAmount, appliedCoupon, router, getMexicoDateString
+  ]);
 
   const steps = [
     { label: 'Cliente', description: 'Seleccionar cliente' },
@@ -1358,7 +1383,7 @@ const handleSubmit = useCallback(async () => {
                               <SearchIcon />
                               Búsqueda de Cliente
                             </Typography>
-                                                        <Autocomplete
+                            <Autocomplete
                               options={users}
                               getOptionLabel={(user) => `${user.firstName} ${user.lastName} - ${user.email}`}
                               loading={loadingUsers}
@@ -1414,7 +1439,7 @@ const handleSubmit = useCallback(async () => {
                                         borderColor: `${darkProTokens.primary}40`,
                                         borderWidth: 2
                                       },
-                                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
                                         borderColor: darkProTokens.primary
                                       },
                                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
@@ -1479,7 +1504,7 @@ const handleSubmit = useCallback(async () => {
                         </Card>
 
                         {selectedUser && (
-                                                    <motion.div
+                          <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3 }}
@@ -1592,8 +1617,8 @@ const handleSubmit = useCallback(async () => {
                                                     {membership.plan_name}
                                                   </Typography>
                                                   <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                                    📅 {new Date(membership.start_date).toLocaleDateString('es-MX')} → {' '}
-                                                    {membership.end_date ? new Date(membership.end_date).toLocaleDateString('es-MX') : 'Sin fecha'}
+                                                    📅 {formatDate(membership.start_date)} → {' '}
+                                                    {membership.end_date ? formatDate(membership.end_date) : 'Sin fecha'}
                                                   </Typography>
                                                 </Box>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -2145,7 +2170,7 @@ const handleSubmit = useCallback(async () => {
                       </Box>
                     )}
 
-                    {/* PASO 4: Sistema de Pago */}
+                                      {/* PASO 4: Sistema de Pago - COMPLETO */}
                     {index === 3 && (
                       <Box sx={{ mb: 4 }}>
                         <Typography variant="h6" sx={{ 
@@ -2490,7 +2515,7 @@ const handleSubmit = useCallback(async () => {
                                   </motion.div>
                                 )}
 
-                                {/* Configuración específica por método */}
+                                {/* Configuración específica para efectivo */}
                                 {formData.paymentMethod === 'efectivo' && (
                                   <motion.div
                                     initial={{ opacity: 0, y: 20 }}
@@ -2775,7 +2800,7 @@ const handleSubmit = useCallback(async () => {
                                   </Button>
                                 </Box>
 
-                                                {formData.paymentDetails.length === 0 && (
+                                {formData.paymentDetails.length === 0 && (
                                   <Box sx={{
                                     textAlign: 'center',
                                     py: 4,
@@ -2889,7 +2914,7 @@ const handleSubmit = useCallback(async () => {
                                                       $
                                                     </InputAdornment>
                                                   ),
-                                                                                                    sx: {
+                                                  sx: {
                                                     color: darkProTokens.textPrimary,
                                                     '& .MuiOutlinedInput-notchedOutline': {
                                                       borderColor: `${darkProTokens.warning}30`
@@ -3112,455 +3137,114 @@ const handleSubmit = useCallback(async () => {
                       </Box>
                     )}
 
-                    {/* Botones de navegación */}
-                    <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                      <Button
-                        disabled={activeStep === 0}
-                        onClick={() => setActiveStep(prev => prev - 1)}
-                        size="large"
-                        sx={{ 
-                          color: darkProTokens.textSecondary,
-                          borderColor: darkProTokens.grayDark,
-                          px: 4,
-                          py: 1.5,
-                          borderRadius: 3,
-                          '&:hover': {
-                            borderColor: darkProTokens.textSecondary,
-                            backgroundColor: darkProTokens.hoverOverlay
-                          }
-                        }}
-                        variant="outlined"
-                      >
-                        ← Anterior
-                      </Button>
-                      
-                      {activeStep === steps.length - 1 ? (
-                        <Button
-                          variant="contained"
-                          onClick={() => setConfirmDialogOpen(true)}
-                          disabled={!canProceedToNextStep()}
-                          size="large"
-                          startIcon={<SaveIcon />}
-                          sx={{
-                            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-                            color: darkProTokens.background,
-                            fontWeight: 700,
-                            px: 4,
-                            py: 1.5,
-                            borderRadius: 3,
-                            fontSize: '1.1rem',
-                            '&:hover': {
-                              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-                              transform: 'translateY(-2px)',
-                              boxShadow: `0 6px 20px ${darkProTokens.primary}40`
-                            },
-                            '&:disabled': {
-                              background: darkProTokens.grayMedium,
-                              color: darkProTokens.textDisabled
-                            }
-                          }}
-                        >
-                          Procesar Venta
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="contained"
-                          onClick={() => setActiveStep(prev => prev + 1)}
-                          disabled={!canProceedToNextStep()}
-                          size="large"
-                          sx={{
-                            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-                            color: darkProTokens.background,
-                            fontWeight: 700,
-                            px: 4,
-                            py: 1.5,
-                            borderRadius: 3,
-                            fontSize: '1.1rem',
-                            '&:hover': {
-                              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-                              transform: 'translateY(-2px)',
-                              boxShadow: `0 6px 20px ${darkProTokens.primary}40`
-                            },
-                            '&:disabled': {
-                              background: darkProTokens.grayMedium,
-                              color: darkProTokens.textDisabled
-                            }
-                          }}
-                        >
-                          Continuar →
-                        </Button>
-                      )}
-                    </Box>
-                  </StepContent>
-                </Step>
-              ))}
-            </Stepper>
-          </Paper>
-        </Grid>
-
-        {/* Panel de Resumen - Sidebar */}
-        <Grid size={{ xs: 12, lg: 4 }}>
-          <Paper sx={{
-            p: 3,
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.primary}30`,
-            borderRadius: 3,
-            position: 'sticky',
-            top: 20,
-            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.3)`
-          }}>
-            <Typography variant="h6" sx={{ 
-              color: darkProTokens.primary, 
-              mb: 3, 
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2
-            }}>
-              <ReceiptIcon />
-              Resumen de Venta
-            </Typography>
-
-            {selectedUser && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Box sx={{ mb: 3 }}>
+                                {/* Información adicional en el panel de resumen */}
+            {(formData.paymentMethod || formData.isMixedPayment) && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle1" sx={{ 
+                  color: darkProTokens.textSecondary,
+                  mb: 2
+                }}>
+                  Método de Pago:
+                </Typography>
+                
+                {formData.isMixedPayment ? (
                   <Box sx={{
-                    background: `${darkProTokens.primary}10`,
-                    border: `1px solid ${darkProTokens.primary}30`,
+                    background: `${darkProTokens.warning}10`,
+                    border: `1px solid ${darkProTokens.warning}30`,
                     borderRadius: 3,
-                    p: 3
+                    p: 2
                   }}>
-                    <Typography variant="subtitle1" sx={{ 
-                      color: darkProTokens.textSecondary,
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.warning,
+                      fontWeight: 600,
                       mb: 1
                     }}>
-                      Cliente:
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 700,
-                      mb: 0.5
-                    }}>
-                      {selectedUser.firstName} {selectedUser.lastName}
+                      🔄 Pago Mixto
                     </Typography>
                     <Typography variant="body2" sx={{ 
                       color: darkProTokens.textSecondary
                     }}>
-                      {selectedUser.email}
+                      {formData.paymentDetails.length} método{formData.paymentDetails.length !== 1 ? 's' : ''} configurado{formData.paymentDetails.length !== 1 ? 's' : ''}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{
+                    background: `${darkProTokens.surfaceLevel3}05`,
+                    border: `1px solid ${darkProTokens.grayDark}`,
+                    borderRadius: 3,
+                    p: 2
+                  }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary,
+                      fontWeight: 600,
+                      mb: 1
+                    }}>
+                      {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.icon} {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.label}
+                    </Typography>
+
+                    {/* 🔥 MOSTRAR SI TIENE COMISIÓN O NO */}
+                    <Typography variant="caption" sx={{ 
+                      color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                        darkProTokens.warning : darkProTokens.success,
+                      fontWeight: 600,
+                      display: 'block',
+                      mb: 1
+                    }}>
+                      {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                        '💰 Con comisión' : '🚫 Sin comisión'}
                     </Typography>
                     
-                    {formData.isRenewal && (
+                    {formData.paymentMethod === 'efectivo' && formData.paymentReceived > 0 && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="body2" sx={{ 
+                          color: darkProTokens.textSecondary
+                        }}>
+                          Recibido: {formatPrice(formData.paymentReceived)}
+                        </Typography>
+                        <Typography variant="body2" sx={{ 
+                          color: formData.paymentChange > 0 ? darkProTokens.primary : darkProTokens.textSecondary,
+                          fontWeight: formData.paymentChange > 0 ? 600 : 400
+                        }}>
+                          Cambio: {formatPrice(formData.paymentChange)}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {formData.customCommissionRate !== null && commissionAmount > 0 && (
                       <Box sx={{ mt: 2 }}>
                         <Chip 
-                          label="🔄 RENOVACIÓN" 
+                          label={`Comisión: ${formData.customCommissionRate}%`}
                           size="small"
                           sx={{
                             backgroundColor: darkProTokens.warning,
                             color: darkProTokens.background,
-                            fontWeight: 700
+                            fontWeight: 600
                           }}
                         />
                       </Box>
                     )}
                   </Box>
-                </Box>
-              </motion.div>
+                )}
+              </Box>
             )}
 
-            {selectedPlan && formData.paymentType && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-              >
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ 
-                    color: darkProTokens.textSecondary,
-                    mb: 2
-                  }}>
-                    Membresía:
-                  </Typography>
-                  
-                  <Box sx={{
-                    background: `${darkProTokens.surfaceLevel3}05`,
-                    border: `1px solid ${darkProTokens.grayDark}`,
-                    borderRadius: 3,
-                    p: 3,
-                    mb: 3
-                  }}>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 700,
-                      mb: 1
-                    }}>
-                      {selectedPlan.name}
-                    </Typography>
-                    <Typography variant="body2" sx={{ 
-                      color: darkProTokens.textSecondary,
-                      mb: 2
-                    }}>
-                      {paymentTypes.find(pt => pt.value === formData.paymentType)?.label}
-                    </Typography>
-
-                    {calculateEndDate() && (
-                      <Box sx={{
-                        background: `${darkProTokens.primary}10`,
-                        borderRadius: 2,
-                        p: 2,
-                        border: `1px solid ${darkProTokens.primary}20`
-                      }}>
-                        <Typography variant="body2" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          mb: 1
-                        }}>
-                          Vigencia hasta:
-                        </Typography>
-                        <Typography variant="body1" sx={{ 
-                          color: darkProTokens.primary,
-                          fontWeight: 600
-                        }}>
-                          📅 {calculateEndDate()?.toLocaleDateString('es-MX', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-
-                  <Divider sx={{ borderColor: `${darkProTokens.primary}30`, my: 3 }} />
-
-                  {/* Desglose de Precios */}
-                  <Stack spacing={2}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body1" sx={{ 
-                        color: darkProTokens.textSecondary,
-                        fontWeight: 500
-                      }}>
-                        Subtotal Plan:
-                      </Typography>
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.textPrimary,
-                        fontWeight: 600
-                      }}>
-                        {formatPrice(subtotal)}
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body1" sx={{ 
-                        color: inscriptionAmount > 0 ? darkProTokens.textSecondary : darkProTokens.success,
-                        fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1
-                      }}>
-                        {inscriptionAmount > 0 ? 'Inscripción:' : '🚫 Inscripción EXENTA:'}
-                      </Typography>
-                      <Typography variant="h6" sx={{ 
-                        color: inscriptionAmount > 0 ? darkProTokens.textPrimary : darkProTokens.success,
-                        fontWeight: inscriptionAmount > 0 ? 600 : 700
-                      }}>
-                        {inscriptionAmount > 0 ? formatPrice(inscriptionAmount) : 'GRATIS'}
-                      </Typography>
-                    </Box>
-
-                    {discountAmount > 0 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body1" sx={{ 
-                          color: darkProTokens.success,
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1
-                        }}>
-                          🎟️ Descuento:
-                        </Typography>
-                        <Typography variant="h6" sx={{ 
-                          color: darkProTokens.success,
-                          fontWeight: 700
-                        }}>
-                          -{formatPrice(discountAmount)}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    <Divider sx={{ borderColor: darkProTokens.grayDark }} />
-
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.textPrimary,
-                        fontWeight: 700
-                      }}>
-                        Subtotal:
-                      </Typography>
-                      <Typography variant="h6" sx={{ 
-                        color: darkProTokens.primary,
-                        fontWeight: 700
-                      }}>
-                        {formatPrice(totalAmount)}
-                      </Typography>
-                    </Box>
-
-                    {commissionAmount > 0 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body1" sx={{ 
-                          color: darkProTokens.warning,
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1
-                        }}>
-                          <InfoIcon fontSize="small" />
-                          Comisión{formData.customCommissionRate !== null ? ' (Personal)' : ''}:
-                        </Typography>
-                        <Typography variant="h6" sx={{ 
-                          color: darkProTokens.warning,
-                          fontWeight: 700
-                        }}>
-                          +{formatPrice(commissionAmount)}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    <Divider sx={{ borderColor: `${darkProTokens.primary}50` }} />
-
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      background: `${darkProTokens.primary}10`,
-                      border: `1px solid ${darkProTokens.primary}30`,
-                      borderRadius: 3,
-                      p: 3
-                    }}>
-                      <Typography variant="h5" sx={{ 
-                        color: darkProTokens.textPrimary, 
-                        fontWeight: 800
-                      }}>
-                        TOTAL FINAL:
-                      </Typography>
-                      <Typography variant="h4" sx={{ 
-                        color: darkProTokens.primary, 
-                        fontWeight: 900
-                      }}>
-                        {formatPrice(finalAmount)}
-                      </Typography>
-                    </Box>
-
-                    {/* Información del método de pago */}
-                    {(formData.paymentMethod || formData.isMixedPayment) && (
-                      <Box sx={{ mt: 3 }}>
-                        <Typography variant="subtitle1" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          mb: 2
-                        }}>
-                          Método de Pago:
-                        </Typography>
-                        
-                        {formData.isMixedPayment ? (
-                          <Box sx={{
-                            background: `${darkProTokens.warning}10`,
-                            border: `1px solid ${darkProTokens.warning}30`,
-                            borderRadius: 3,
-                            p: 2
-                          }}>
-                            <Typography variant="body1" sx={{ 
-                              color: darkProTokens.warning,
-                              fontWeight: 600,
-                              mb: 1
-                            }}>
-                              🔄 Pago Mixto
-                            </Typography>
-                            <Typography variant="body2" sx={{ 
-                              color: darkProTokens.textSecondary
-                            }}>
-                              {formData.paymentDetails.length} método{formData.paymentDetails.length !== 1 ? 's' : ''} configurado{formData.paymentDetails.length !== 1 ? 's' : ''}
-                            </Typography>
-                          </Box>
-                        ) : (
-                          <Box sx={{
-                            background: `${darkProTokens.surfaceLevel3}05`,
-                            border: `1px solid ${darkProTokens.grayDark}`,
-                            borderRadius: 3,
-                            p: 2
-                          }}>
-                            <Typography variant="body1" sx={{ 
-                              color: darkProTokens.textPrimary,
-                              fontWeight: 600,
-                              mb: 1
-                            }}>
-                              {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.icon} {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.label}
-                            </Typography>
-
-                            {/* 🔥 MOSTRAR SI TIENE COMISIÓN O NO */}
-                            <Typography variant="caption" sx={{ 
-                              color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
-                                darkProTokens.warning : darkProTokens.success,
-                              fontWeight: 600,
-                              display: 'block',
-                              mb: 1
-                            }}>
-                              {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
-                                '💰 Con comisión' : '🚫 Sin comisión'}
-                            </Typography>
-                            
-                            {formData.paymentMethod === 'efectivo' && formData.paymentReceived > 0 && (
-                              <Box sx={{ mt: 2 }}>
-                                <Typography variant="body2" sx={{ 
-                                  color: darkProTokens.textSecondary
-                                }}>
-                                  Recibido: {formatPrice(formData.paymentReceived)}
-                                </Typography>
-                                <Typography variant="body2" sx={{ 
-                                  color: formData.paymentChange > 0 ? darkProTokens.primary : darkProTokens.textSecondary,
-                                  fontWeight: formData.paymentChange > 0 ? 600 : 400
-                                }}>
-                                  Cambio: {formatPrice(formData.paymentChange)}
-                                </Typography>
-                              </Box>
-                            )}
-
-                            {formData.customCommissionRate !== null && commissionAmount > 0 && (
-                              <Box sx={{ mt: 2 }}>
-                                <Chip 
-                                  label={`Comisión: ${formData.customCommissionRate}%`}
-                                  size="small"
-                                  sx={{
-                                    backgroundColor: darkProTokens.warning,
-                                    color: darkProTokens.background,
-                                    fontWeight: 600
-                                  }}
-                                />
-                              </Box>
-                            )}
-                          </Box>
-                        )}
-                      </Box>
-                    )}
-                  </Stack>
-                </Box>
-              </motion.div>
-            )}
-
-            {(!selectedUser || !selectedPlan) && (
-              <Box sx={{ textAlign: 'center', py: 6 }}>
-                <Typography variant="h6" sx={{ 
-                  color: `${darkProTokens.textSecondary}40`,
-                  mb: 2
-                }}>
-                  🧾 Resumen de Venta
-                </Typography>
+            {commissionAmount > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="body1" sx={{ 
-                  color: `${darkProTokens.textSecondary}30`
+                  color: darkProTokens.warning,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
                 }}>
-                  Complete los pasos para ver el resumen
+                  <InfoIcon fontSize="small" />
+                  Comisión{formData.customCommissionRate !== null ? ' (Personal)' : ''}:
+                </Typography>
+                <Typography variant="h6" sx={{ 
+                  color: darkProTokens.warning,
+                  fontWeight: 700
+                }}>
+                  +{formatPrice(commissionAmount)}
                 </Typography>
               </Box>
             )}
