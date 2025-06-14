@@ -60,6 +60,8 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
@@ -263,7 +265,7 @@ export default function LayawayDialog({
   }, []);
 
   const getMexicoDateString = useCallback(() => {
-    return new Date().toISOString().split('T')[0];
+    return toMexicoDate(new Date()); // ✅ USAR HELPER CORREGIDO
   }, []);
 
   const formatPrice = useCallback((price: number) => {
@@ -273,22 +275,14 @@ export default function LayawayDialog({
     }).format(price);
   }, []);
 
-  // ✅ FORMATEO SIMPLIFICADO SIN TIMEZONE PROBLEMÁTICA
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
   const formatMexicoDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatMexicoDateTime(dateString); // ✅ USAR HELPER CORREGIDO
   }, []);
 
-  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD TEMPORAL
   const formatDate = useCallback((dateString: string) => {
-    return formatMexicoDate(dateString);
-  }, [formatMexicoDate]);
+    return formatMexicoDateTime(dateString); // ✅ USAR HELPER CORREGIDO
+  }, []);
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
@@ -502,7 +496,7 @@ export default function LayawayDialog({
     return notes;
   }, [calculations, isMixedPayment, paymentDetails, advancedConfig, customerNotes, formatMexicoDate]);
 
-  // ✅ PROCESAMIENTO FINAL OPTIMIZADO (LA BD MANEJA TODOS LOS TIMESTAMPS AUTOMÁTICAMENTE)
+  // ✅ PROCESAMIENTO FINAL OPTIMIZADO CON FECHAS CORREGIDAS
   const handleCreateLayaway = useCallback(async () => {
     if (!customer) {
       showNotification('Se requiere un cliente para apartados', 'error');
@@ -525,7 +519,7 @@ export default function LayawayDialog({
       const userId = userData.user.id;
       const layawayNumber = await generateLayawayNumber();
 
-      // 🔥 DATOS FINALES OPTIMIZADOS (LA BD MANEJA TODOS LOS TIMESTAMPS AUTOMÁTICAMENTE)
+      // 🔥 DATOS FINALES OPTIMIZADOS CON FECHAS CORREGIDAS
       const layawayData = {
         sale_number: layawayNumber,
         customer_id: customer.id,
@@ -541,7 +535,7 @@ export default function LayawayDialog({
         paid_amount: calculations.baseDeposit,
         pending_amount: calculations.remainingAmount,
         deposit_percentage: depositPercentage,
-        layaway_expires_at: calculations.expirationDate.toISOString(),
+        layaway_expires_at: toMexicoTimestamp(calculations.expirationDate), // ✅ CORREGIDO: hora México con offset
         status: 'pending',
         payment_status: 'partial',
         is_mixed_payment: isMixedPayment,
@@ -553,9 +547,8 @@ export default function LayawayDialog({
         skip_inscription: false,
         notes: generateCleanNotes(),
         initial_payment: calculations.totalToCollect,
-        expiration_date: calculations.expirationDate.toISOString().split('T')[0]
-        // ✅ TODOS los timestamps (created_at, updated_at, payment_date, last_payment_date) 
-        // se manejan automáticamente por la BD en hora México
+        expiration_date: toMexicoDate(calculations.expirationDate) // ✅ CORREGIDO: fecha México sin desfase
+        // ✅ created_at, updated_at, payment_date, last_payment_date se manejan automáticamente por la BD
       };
 
       // ✅ INSERTAR VENTA PRINCIPAL
@@ -588,7 +581,7 @@ export default function LayawayDialog({
 
       if (itemsError) throw itemsError;
 
-      // 🔥 CREAR DETALLES DE PAGO HÍBRIDOS
+      // 🔥 CREAR DETALLES DE PAGO HÍBRIDOS CON FECHAS CORREGIDAS
       if (isMixedPayment && paymentDetails.length > 0) {
         // PAGOS MIXTOS
         const paymentInserts = paymentDetails.map((payment, index) => ({
@@ -599,11 +592,12 @@ export default function LayawayDialog({
           commission_rate: payment.commission,
           commission_amount: payment.commissionAmount,
           sequence_order: payment.sequence,
+          payment_date: toMexicoTimestamp(new Date()), // ✅ CORREGIDO: hora México con offset
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: index + 1,
           notes: `Pago mixto ${index + 1} de ${paymentDetails.length}`
-          // ✅ created_at y payment_date se manejan automáticamente por la BD
+          // ✅ created_at se maneja automáticamente por la BD
         }));
 
         const { error: paymentError } = await supabase
@@ -621,11 +615,12 @@ export default function LayawayDialog({
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === currentPaymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.totalCommission,
           sequence_order: 1,
+          payment_date: toMexicoTimestamp(new Date()), // ✅ CORREGIDO: hora México con offset
           created_by: userId,
           is_partial_payment: true,
           payment_sequence: 1,
           notes: null
-          // ✅ created_at y payment_date se manejan automáticamente por la BD
+          // ✅ created_at se maneja automáticamente por la BD
         };
 
         const { error: paymentError } = await supabase
@@ -1478,8 +1473,8 @@ export default function LayawayDialog({
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Método</TableCell>
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Monto</TableCell>
                                                 <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Comisión</TableCell>
-                                                <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Total</TableCell>
-                                                                                                <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Acciones</TableCell>
+                                                                                                <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Total</TableCell>
+                                                <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold' }}>Acciones</TableCell>
                                               </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -1870,6 +1865,16 @@ export default function LayawayDialog({
                                           color: darkProTokens.textPrimary
                                         }}
                                       />
+                                      <Chip 
+                                        label="✅ Fechas México Corregidas" 
+                                        size="small" 
+                                        sx={{ 
+                                          mr: 1, 
+                                          mb: 1,
+                                          backgroundColor: darkProTokens.success,
+                                          color: darkProTokens.textPrimary
+                                        }}
+                                      />
                                     </Box>
 
                                     {/* Notas */}
@@ -2069,7 +2074,7 @@ export default function LayawayDialog({
                                         💾 Guardar en BD
                                       </Typography>
                                       <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                        5 tablas de Supabase
+                                        Con fechas México corregidas
                                       </Typography>
                                     </Box>
                                   </Grid>
@@ -2112,7 +2117,7 @@ export default function LayawayDialog({
 
                                 {processing && (
                                   <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mt: 2 }}>
-                                    Guardando en Supabase, actualizando inventario y creando historial...
+                                    Guardando en Supabase con fechas México corregidas...
                                   </Typography>
                                 )}
                               </Box>
@@ -2343,7 +2348,64 @@ export default function LayawayDialog({
                             color: darkProTokens.info
                           }}
                         />
+                        <Chip 
+                          label="✅ Fechas México" 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ 
+                            borderColor: darkProTokens.success,
+                            color: darkProTokens.success
+                          }}
+                        />
                       </Box>
+                    </CardContent>
+                  </Card>
+
+                  {/* INFO DE TIMESTAMP CORREGIDO */}
+                  <Card sx={{ 
+                    background: `${darkProTokens.primary}10`, 
+                    border: `1px solid ${darkProTokens.primary}30` 
+                  }}>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ color: darkProTokens.primary, mb: 2 }}>
+                        🇲🇽 Timestamps México
+                      </Typography>
+                      
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontSize: '0.75rem' }}>
+                          layaway_expires_at:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600, fontSize: '0.8rem' }}>
+                          {toMexicoTimestamp(calculations.expirationDate)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontSize: '0.75rem' }}>
+                          expiration_date:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600, fontSize: '0.8rem' }}>
+                          {toMexicoDate(calculations.expirationDate)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontSize: '0.75rem' }}>
+                          payment_date:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600, fontSize: '0.8rem' }}>
+                          {toMexicoTimestamp(new Date())}
+                        </Typography>
+                      </Box>
+
+                      <Typography variant="caption" sx={{ 
+                        color: darkProTokens.success, 
+                        display: 'block', 
+                        mt: 1,
+                        fontWeight: 600
+                      }}>
+                        ✅ Sin desfase de 6 horas
+                      </Typography>
                     </CardContent>
                   </Card>
                 </Box>
@@ -2367,7 +2429,7 @@ export default function LayawayDialog({
               </Typography>
               
               <Typography variant="h6" color={darkProTokens.textSecondary} sx={{ mb: 4 }}>
-                Apartado guardado exitosamente - {formatMexicoDate(new Date().toISOString())}
+                ✅ Apartado guardado exitosamente - {formatMexicoDate(new Date().toISOString())} (Hora México)
               </Typography>
               
               <Grid container spacing={2} sx={{ maxWidth: 800, mx: 'auto', mb: 4 }}>
@@ -2416,6 +2478,10 @@ export default function LayawayDialog({
                     />
                   )}
                   <Chip 
+                    label="✅ Fechas México Corregidas" 
+                    sx={{ backgroundColor: darkProTokens.primary, color: darkProTokens.background }}
+                  />
+                  <Chip 
                     label="💾 Guardado en BD" 
                     sx={{ backgroundColor: darkProTokens.grayMedium, color: darkProTokens.textPrimary }}
                   />
@@ -2435,14 +2501,30 @@ export default function LayawayDialog({
               </Box>
 
               <Typography variant="h5" sx={{ color: darkProTokens.textPrimary, fontWeight: 700, mb: 2 }}>
-                🎊 ¡APARTADO COMPLETADO! 🎊
+                🎊 ¡APARTADO COMPLETADO CON FECHAS CORREGIDAS! 🎊
               </Typography>
               <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                Apartado listo para producción - Comisiones configurables en tiempo real
+                Apartado listo para producción - Sin desfase de 6 horas en timestamps
               </Typography>
               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontStyle: 'italic' }}>
                 Los abonos posteriores se manejarán en la Gestión de Apartados
               </Typography>
+
+              {/* Detalle de Timestamps */}
+              <Box sx={{ mt: 3, p: 2, background: `${darkProTokens.primary}10`, borderRadius: 2 }}>
+                <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                  🇲🇽 Timestamps guardados en hora México:
+                </Typography>
+                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
+                  layaway_expires_at: {toMexicoTimestamp(calculations.expirationDate)}
+                </Typography>
+                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
+                  expiration_date: {toMexicoDate(calculations.expirationDate)}
+                </Typography>
+                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
+                  payment_date: {toMexicoTimestamp(new Date())}
+                </Typography>
+              </Box>
             </motion.div>
           </Box>
         )}
@@ -2490,4 +2572,3 @@ export default function LayawayDialog({
     </Dialog>
   );
 }
-                         
