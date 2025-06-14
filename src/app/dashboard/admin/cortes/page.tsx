@@ -34,6 +34,8 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+// ✅ IMPORTAR HELPERS DE FECHA MÉXICO
+import { toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -72,27 +74,43 @@ function formatPrice(amount: number): string {
   }).format(amount);
 }
 
-// 📅 Función para formatear fechas
+// ✅ FUNCIÓN PARA FORMATEAR FECHAS CON dateHelpers
 function formatDate(dateString: string): string {
-  const date = new Date(dateString + 'T12:00:00');
-  const months = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-  ];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  return `${day} de ${month} de ${year}`;
+  try {
+    return formatMexicoDateTime(dateString, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('❌ Error formateando fecha:', dateString, error);
+    // Fallback manual
+    const date = new Date(dateString + 'T12:00:00');
+    const months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} de ${month} de ${year}`;
+  }
 }
 
 interface DailyData {
   date: string;
   timezone_info?: {
     mexico_date: string;
-    utc_range: {
+    mexico_range?: {
       start: string;
       end: string;
     };
+    utc_range?: {
+      start: string;
+      end: string;
+    };
+    timezone?: string;
     note: string;
   };
   pos: {
@@ -141,27 +159,23 @@ export default function CortesPage() {
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   
-  // 📅 FECHA ACTUAL EN MÉXICO - CORREGIDA CON ZONA HORARIA
+  // ✅ FECHA ACTUAL EN MÉXICO USANDO dateHelpers
   const [selectedDate] = useState(() => {
-    // ✅ OBTENER FECHA ACTUAL EN ZONA HORARIA DE MÉXICO
-    const now = new Date();
-    const mexicoDate = new Intl.DateTimeFormat('sv-SE', {
-      timeZone: 'America/Monterrey'
-    }).format(now);
+    const mexicoDate = toMexicoDate(new Date());
     
-    console.log('🇲🇽 Fecha actual México:', mexicoDate);
-    console.log('🌍 Fecha actual UTC:', now.toISOString().split('T')[0]);
-    console.log('⏰ Hora actual México:', new Intl.DateTimeFormat('es-MX', {
-      timeZone: 'America/Monterrey',
+    console.log('🇲🇽 Fecha actual México (dateHelpers):', mexicoDate);
+    console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
+    console.log('⏰ Hora actual México:', formatMexicoDateTime(new Date(), {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
-    }).format(now));
+      second: '2-digit',
+      timeZone: 'America/Mexico_City'
+    }));
     
     return mexicoDate; // Formato: YYYY-MM-DD
   });
 
-  // ✅ CARGAR DATOS DEL DÍA
+  // ✅ CARGAR DATOS DEL DÍA CON MEJOR MANEJO DE ERRORES
   const loadDailyData = async () => {
     try {
       setLoading(true);
@@ -169,19 +183,34 @@ export default function CortesPage() {
       
       console.log('🔍 Solicitando datos para fecha México:', selectedDate);
       
-      const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`);
-      const data = await response.json();
+      const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
       
-      if (data.success) {
-        console.log('✅ Datos recibidos:', data);
-        console.log('🎯 Información de zona horaria:', data.timezone_info);
+      console.log('📡 Respuesta de la API:', response.status, response.statusText);
+      
+      const data = await response.json();
+      console.log('📊 Datos recibidos de la API:', data);
+      
+      if (response.ok && data.success) {
+        console.log('✅ Datos válidos recibidos:', {
+          fecha: data.date,
+          timezone_info: data.timezone_info,
+          total_ingresos: data.totals?.total || 0,
+          transacciones: data.totals?.transactions || 0
+        });
         setDailyData(data);
       } else {
-        setError('Error al cargar datos del día');
+        const errorMsg = data.error || `Error HTTP ${response.status}: ${response.statusText}`;
+        console.error('❌ Error en respuesta de API:', errorMsg);
+        setError(errorMsg);
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Error al cargar datos del día');
+    } catch (error: any) {
+      console.error('💥 Error crítico en loadDailyData:', error);
+      setError(`Error de conexión: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -196,6 +225,7 @@ export default function CortesPage() {
 
   // ⚡ EFECTOS
   useEffect(() => {
+    console.log('🚀 Componente montado, cargando datos para fecha:', selectedDate);
     loadDailyData();
   }, [selectedDate]);
 
@@ -251,7 +281,7 @@ export default function CortesPage() {
                 display: 'block',
                 mt: 0.5
               }}>
-                🇲🇽 Zona horaria: México (America/Monterrey)
+                🇲🇽 {dailyData.timezone_info.timezone || 'Zona horaria: México'} • {dailyData.timezone_info.note}
               </Typography>
             )}
           </Box>
@@ -296,7 +326,7 @@ export default function CortesPage() {
         </Box>
       </Box>
 
-      {/* 🚨 ESTADOS DE ERROR */}
+      {/* 🚨 ESTADOS DE ERROR CON MÁS DETALLES */}
       <AnimatePresence>
         {error && (
           <motion.div
@@ -304,8 +334,32 @@ export default function CortesPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 3,
+                backgroundColor: `${darkProTokens.error}20`,
+                color: darkProTokens.textPrimary,
+                border: `1px solid ${darkProTokens.error}60`,
+                '& .MuiAlert-icon': { color: darkProTokens.error }
+              }}
+              action={
+                <Button 
+                  color="inherit" 
+                  size="small" 
+                  onClick={handleRefresh}
+                  sx={{ color: darkProTokens.textPrimary }}
+                >
+                  Reintentar
+                </Button>
+              }
+            >
+              <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                {error}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Fecha consultada: {selectedDate} • Verifique la API y la conexión a la base de datos
+              </Typography>
             </Alert>
           </motion.div>
         )}
@@ -313,12 +367,18 @@ export default function CortesPage() {
 
       {/* 🔄 LOADING STATE */}
       {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 8 }}>
-          <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin }} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 8 }}>
+          <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin, mb: 3 }} />
+          <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+            Cargando datos del día {selectedDate}...
+          </Typography>
+          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+            Consultando información de ventas, abonos y membresías
+          </Typography>
         </Box>
       )}
 
-      {/* 📊 CONTENIDO PRINCIPAL */}
+      {/* 📊 CONTENIDO PRINCIPAL - RESTO DEL CÓDIGO IGUAL */}
       {!loading && dailyData && (
         <Grid container spacing={4}>
           {/* 💰 RESUMEN PRINCIPAL */}
