@@ -32,7 +32,8 @@ import {
   ShoppingCart as CartIcon,
   AttachMoney as MoneyIcon
 } from '@mui/icons-material';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -78,6 +79,24 @@ interface SaleDetailsDialogProps {
 }
 
 export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDialogProps) {
+  
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price || 0);
+  };
+
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
+  const formatMexicoDate = (dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  };
+
+  const formatDate = (dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  };
+
   if (!sale) return null;
 
   return (
@@ -90,7 +109,8 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
         sx: {
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `1px solid ${darkProTokens.grayDark}`,
-          color: darkProTokens.textPrimary
+          color: darkProTokens.textPrimary,
+          borderRadius: 4
         }
       }}
     >
@@ -99,12 +119,13 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
         justifyContent: 'space-between',
         alignItems: 'center',
         background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-        color: darkProTokens.textPrimary
+        color: darkProTokens.textPrimary,
+        borderRadius: '16px 16px 0 0'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <ReceiptIcon />
           <Typography variant="h6" fontWeight="bold">
-            Detalles de Venta #{sale.sale_number}
+            📋 Detalles de Venta #{sale.sale_number}
           </Typography>
         </Box>
         <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
@@ -119,7 +140,8 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
             <Card sx={{ 
               height: '100%',
               background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
@@ -136,6 +158,13 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Fecha:</Typography>
                     <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{formatDate(sale.created_at)}</Typography>
                   </Box>
+
+                  {sale.completed_at && (
+                    <Box>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Fecha de Completado:</Typography>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{formatDate(sale.completed_at)}</Typography>
+                    </Box>
+                  )}
                   
                   <Box>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Tipo de Venta:</Typography>
@@ -143,7 +172,8 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                       label={sale.sale_type === 'sale' ? 'Venta Directa' : 'Apartado'} 
                       sx={{
                         backgroundColor: sale.sale_type === 'sale' ? darkProTokens.success : darkProTokens.roleModerator,
-                        color: darkProTokens.textPrimary
+                        color: darkProTokens.textPrimary,
+                        fontWeight: 600
                       }}
                       size="small" 
                     />
@@ -158,7 +188,9 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                           sale.status === 'completed' ? darkProTokens.success :
                           sale.status === 'pending' ? darkProTokens.warning :
                           sale.status === 'cancelled' ? darkProTokens.error : darkProTokens.roleModerator,
-                        color: darkProTokens.textPrimary
+                        color: darkProTokens.textPrimary,
+                        fontWeight: 600,
+                        textTransform: 'capitalize'
                       }}
                       size="small" 
                     />
@@ -173,7 +205,9 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                           sale.payment_status === 'paid' ? darkProTokens.success :
                           sale.payment_status === 'partial' ? darkProTokens.warning :
                           sale.payment_status === 'pending' ? darkProTokens.error : darkProTokens.roleModerator,
-                        color: darkProTokens.textPrimary
+                        color: darkProTokens.textPrimary,
+                        fontWeight: 600,
+                        textTransform: 'capitalize'
                       }}
                       size="small" 
                     />
@@ -195,7 +229,8 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
             <Card sx={{ 
               height: '100%',
               background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
@@ -215,7 +250,7 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                         </Typography>
                         {sale.customer_email && (
                           <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            {sale.customer_email}
+                            📧 {sale.customer_email}
                           </Typography>
                         )}
                       </Box>
@@ -231,14 +266,15 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                   
                   <Box>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Opciones:</Typography>
-                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>
                       {sale.receipt_printed && (
                         <Chip 
                           label="Ticket impreso" 
                           size="small" 
                           sx={{
                             backgroundColor: darkProTokens.info,
-                            color: darkProTokens.textPrimary
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600
                           }}
                         />
                       )}
@@ -248,7 +284,8 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                           size="small" 
                           sx={{
                             backgroundColor: darkProTokens.roleModerator,
-                            color: darkProTokens.textPrimary
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600
                           }}
                         />
                       )}
@@ -258,9 +295,15 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                           size="small" 
                           sx={{
                             backgroundColor: darkProTokens.warning,
-                            color: darkProTokens.textPrimary
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600
                           }}
                         />
+                      )}
+                      {!sale.receipt_printed && !sale.email_sent && !sale.is_mixed_payment && (
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontStyle: 'italic' }}>
+                          Sin opciones especiales
+                        </Typography>
                       )}
                     </Stack>
                   </Box>
@@ -273,16 +316,18 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
           <Grid size={{ xs: 12 }}>
             <Card sx={{
               background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
-                  🛒 Productos Vendidos
+                  🛒 Productos Vendidos ({sale.items?.length || 0})
                 </Typography>
                 
                 <TableContainer component={Paper} sx={{
                   background: darkProTokens.surfaceLevel2,
-                  border: `1px solid ${darkProTokens.grayDark}`
+                  border: `1px solid ${darkProTokens.grayDark}`,
+                  borderRadius: 2
                 }}>
                   <Table size="small">
                     <TableHead>
@@ -313,9 +358,15 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                             </Typography>
                           </TableCell>
                           <TableCell align="center">
-                            <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                              {item.quantity}
-                            </Typography>
+                            <Chip 
+                              label={item.quantity}
+                              size="small"
+                              sx={{
+                                backgroundColor: darkProTokens.primary,
+                                color: darkProTokens.background,
+                                fontWeight: 700
+                              }}
+                            />
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
@@ -324,21 +375,29 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" sx={{ color: darkProTokens.error }}>
-                              -{formatPrice(item.discount_amount)}
+                              -{formatPrice(item.discount_amount || 0)}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" sx={{ color: darkProTokens.info }}>
-                              {formatPrice(item.tax_amount)}
+                              {formatPrice(item.tax_amount || 0)}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
-                            <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
+                            <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.primary }}>
                               {formatPrice(item.total_price)}
                             </Typography>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      )) || (
+                        <TableRow>
+                          <TableCell colSpan={7} align="center">
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, py: 2 }}>
+                              No hay productos registrados
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -351,7 +410,8 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
             <Card sx={{ 
               height: '100%',
               background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
@@ -360,7 +420,7 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                 
                 {sale.is_mixed_payment ? (
                   <Box>
-                    <Typography variant="body2" sx={{ mb: 2, color: darkProTokens.textSecondary }}>Pago Mixto:</Typography>
+                    <Typography variant="body2" sx={{ mb: 2, color: darkProTokens.textSecondary }}>Pago Mixto ({sale.payment_details?.length || 0} métodos):</Typography>
                     {sale.payment_details?.map((payment: any, index: number) => (
                       <Box key={index} sx={{ 
                         p: 2, 
@@ -377,6 +437,8 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                           {payment.payment_method === 'debito' && '💳 Débito'}
                           {payment.payment_method === 'credito' && '💳 Crédito'}
                           {payment.payment_method === 'transferencia' && '🏦 Transferencia'}
+                          {payment.payment_method === 'vales' && '🎫 Vales'}
+                          {!['efectivo', 'debito', 'credito', 'transferencia', 'vales'].includes(payment.payment_method) && `💰 ${payment.payment_method}`}
                         </Typography>
                         <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
                           Monto: {formatPrice(payment.amount)}
@@ -406,6 +468,9 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                         {sale.payment_method === 'debito' && '💳 Tarjeta Débito'}
                         {sale.payment_method === 'credito' && '💳 Tarjeta Crédito'}
                         {sale.payment_method === 'transferencia' && '🏦 Transferencia'}
+                        {sale.payment_method === 'vales' && '🎫 Vales de Despensa'}
+                        {sale.payment_method === 'Mixto' && '🔄 Pago Mixto'}
+                        {!['efectivo', 'debito', 'credito', 'transferencia', 'vales', 'Mixto'].includes(sale.payment_method) && `💰 ${sale.payment_method || 'N/A'}`}
                       </Typography>
                     </Box>
                     
@@ -437,7 +502,8 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
             <Card sx={{ 
               height: '100%',
               background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
@@ -448,14 +514,14 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Subtotal:</Typography>
                     <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                      {formatPrice(sale.subtotal)}
+                      {formatPrice(sale.subtotal || 0)}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Impuestos:</Typography>
                     <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.info }}>
-                      {formatPrice(sale.tax_amount)}
+                      {formatPrice(sale.tax_amount || 0)}
                     </Typography>
                   </Box>
                   
@@ -471,7 +537,7 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Total Base:</Typography>
                     <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                      {formatPrice(sale.total_amount)}
+                      {formatPrice(sale.total_amount || 0)}
                     </Typography>
                   </Box>
                   
@@ -491,11 +557,12 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                     justifyContent: 'space-between',
                     p: 2,
                     background: `${darkProTokens.success}20`,
-                    borderRadius: 2
+                    borderRadius: 2,
+                    border: `1px solid ${darkProTokens.success}30`
                   }}>
                     <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>Total Final:</Typography>
                     <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                      {formatPrice(sale.total_amount + (sale.commission_amount || 0))}
+                      {formatPrice((sale.total_amount || 0) + (sale.commission_amount || 0))}
                     </Typography>
                   </Box>
                   
@@ -529,12 +596,17 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
         <Button 
           onClick={onClose} 
           variant="contained" 
+          size="large"
           sx={{
             background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
             color: darkProTokens.background,
-            fontWeight: 600,
+            fontWeight: 700,
+            px: 4,
+            py: 1.5,
+            borderRadius: 3,
             '&:hover': {
-              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`
+              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+              transform: 'translateY(-1px)'
             }
           }}
         >
