@@ -154,13 +154,21 @@ function getMexicoDateRangeDisplay(dateString: string): string {
   }
 }
 
-// ✅ CAMBIAR ESTA FUNCIÓN PARA QUE COINCIDA
+// ✅ FUNCIÓN ACTUALIZADA PARA COINCIDIR CON dateHelpers
 function createTimestampForDB(): string {
   const now = new Date();
-  const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  return mexicoTime.toISOString();
+  const mexicoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+  
+  // Crear timestamp con offset México (-06:00)
+  const year = mexicoTime.getFullYear();
+  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoTime.getDate()).padStart(2, '0');
+  const hours = String(mexicoTime.getHours()).padStart(2, '0');
+  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
+  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
 }
-
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
