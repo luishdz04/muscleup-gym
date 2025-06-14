@@ -39,7 +39,7 @@ import Grid from '@mui/material/Grid';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+// ✅ IMPORTAR HELPERS DE FECHA MÉXICO
 import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
@@ -317,147 +317,144 @@ export default function RegistrarMembresiaPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
-  const getMexicoDate = useCallback(() => {
-    return new Date();
-  }, []);
-
-  const getMexicoDateString = useCallback(() => {
-    return toMexicoDate(new Date());
-  }, []);
-
+  // ✅ FUNCIONES UTILITARIAS CON FECHAS MÉXICO CORREGIDAS
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
-    }).format(price || 0);
+    }).format(price);
   }, []);
 
-  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
-  const formatMexicoDate = useCallback((dateString: string) => {
-    return formatMexicoDateTime(dateString);
-  }, []);
-
+  // ✅ FUNCIÓN PARA FORMATEAR FECHAS EN HISTORIAL
   const formatDate = useCallback((dateString: string) => {
-    return formatMexicoDateTime(dateString);
-  }, []);
-
-  // ✅ FUNCIÓN CORREGIDA PARA CALCULAR PERÍODOS CON FECHAS MÉXICO
-  const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
-    console.log(`📅 Calculando período: ${startDate} + ${periodType}`);
-    
+    if (!dateString) return 'Sin fecha';
     try {
-      // ✅ PARSEAR FECHA MANUALMENTE PARA EVITAR PROBLEMAS DE TIMEZONE
-      const [year, month, day] = startDate.split('-').map(Number);
-      
-      let targetYear = year;
-      let targetMonth = month; // Mantener 1-indexado
-      let targetDay = day;
-      
-      // ✅ AGREGAR PERÍODOS SIN USAR setMonth() QUE CAUSA PROBLEMAS
-      switch (periodType) {
-        case 'weekly':
-          // Para semanas, es seguro usar días
-          const weekDate = new Date(year, month - 1, day);
-          weekDate.setDate(weekDate.getDate() + 7);
-          targetYear = weekDate.getFullYear();
-          targetMonth = weekDate.getMonth() + 1;
-          targetDay = weekDate.getDate();
-          break;
-          
-        case 'biweekly':
-          const biweekDate = new Date(year, month - 1, day);
-          biweekDate.setDate(biweekDate.getDate() + 14);
-          targetYear = biweekDate.getFullYear();
-          targetMonth = biweekDate.getMonth() + 1;
-          targetDay = biweekDate.getDate();
-          break;
-          
-        case 'monthly':
-          // ✅ CÁLCULO MANUAL PARA EVITAR setMonth()
-          targetMonth = month + 1;
-          if (targetMonth > 12) {
-            targetYear = year + 1;
-            targetMonth = 1;
-          }
-          // Verificar si el día existe en el mes destino
-          const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
-          if (day > daysInTargetMonth) {
-            targetDay = daysInTargetMonth; // Último día del mes
-          }
-          break;
-          
-        case 'bimonthly':
-          targetMonth = month + 2;
-          while (targetMonth > 12) {
-            targetYear++;
-            targetMonth -= 12;
-          }
-          const daysInTargetMonth2 = new Date(targetYear, targetMonth, 0).getDate();
-          if (day > daysInTargetMonth2) {
-            targetDay = daysInTargetMonth2;
-          }
-          break;
-          
-        case 'quarterly':
-          targetMonth = month + 3;
-          while (targetMonth > 12) {
-            targetYear++;
-            targetMonth -= 12;
-          }
-          const daysInTargetMonth3 = new Date(targetYear, targetMonth, 0).getDate();
-          if (day > daysInTargetMonth3) {
-            targetDay = daysInTargetMonth3;
-          }
-          break;
-          
-        case 'semester':
-          targetMonth = month + 6;
-          while (targetMonth > 12) {
-            targetYear++;
-            targetMonth -= 12;
-          }
-          const daysInTargetMonth6 = new Date(targetYear, targetMonth, 0).getDate();
-          if (day > daysInTargetMonth6) {
-            targetDay = daysInTargetMonth6;
-          }
-          break;
-          
-        case 'annual':
-          targetYear = year + 1;
-          // Para febrero 29 en años no bisiestos
-          if (month === 2 && day === 29) {
-            const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
-            if (!isLeapYear) {
-              targetDay = 28;
-            }
-          }
-          break;
-          
-        default:
-          // Fallback a mensual
-          targetMonth = month + 1;
-          if (targetMonth > 12) {
-            targetYear = year + 1;
-            targetMonth = 1;
-          }
-          break;
-      }
-      
-      // ✅ FORMATEAR RESULTADO MANUALMENTE
-      const result = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
-      
-      console.log(`📅 Resultado corregido manual: ${startDate} → ${result}`);
-      console.log(`   🔢 Entrada: ${year}-${month}-${day}`);
-      console.log(`   🎯 Salida: ${targetYear}-${targetMonth}-${targetDay}`);
-      
-      return result;
-      
+      return formatMexicoDateTime(dateString, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
     } catch (error) {
-      console.error('❌ Error en cálculo de fecha:', error);
-      return startDate; // fallback
+      console.error('❌ Error formateando fecha:', dateString, error);
+      return 'Fecha inválida';
     }
   }, []);
+
+const addPeriodToDate = useCallback((startDate: string, periodType: string): string => {
+  console.log(`📅 Calculando período: ${startDate} + ${periodType}`);
+  
+  try {
+    // ✅ PARSEAR FECHA MANUALMENTE PARA EVITAR PROBLEMAS DE TIMEZONE
+    const [year, month, day] = startDate.split('-').map(Number);
+    
+    let targetYear = year;
+    let targetMonth = month; // Mantener 1-indexado
+    let targetDay = day;
+    
+    // ✅ AGREGAR PERÍODOS SIN USAR setMonth() QUE CAUSA PROBLEMAS
+    switch (periodType) {
+      case 'weekly':
+        // Para semanas, es seguro usar días
+        const weekDate = new Date(year, month - 1, day);
+        weekDate.setDate(weekDate.getDate() + 7);
+        targetYear = weekDate.getFullYear();
+        targetMonth = weekDate.getMonth() + 1;
+        targetDay = weekDate.getDate();
+        break;
+        
+      case 'biweekly':
+        const biweekDate = new Date(year, month - 1, day);
+        biweekDate.setDate(biweekDate.getDate() + 14);
+        targetYear = biweekDate.getFullYear();
+        targetMonth = biweekDate.getMonth() + 1;
+        targetDay = biweekDate.getDate();
+        break;
+        
+      case 'monthly':
+        // ✅ CÁLCULO MANUAL PARA EVITAR setMonth()
+        targetMonth = month + 1;
+        if (targetMonth > 12) {
+          targetYear = year + 1;
+          targetMonth = 1;
+        }
+        // Verificar si el día existe en el mes destino
+        const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+        if (day > daysInTargetMonth) {
+          targetDay = daysInTargetMonth; // Último día del mes
+        }
+        break;
+        
+      case 'bimonthly':
+        targetMonth = month + 2;
+        while (targetMonth > 12) {
+          targetYear++;
+          targetMonth -= 12;
+        }
+        const daysInTargetMonth2 = new Date(targetYear, targetMonth, 0).getDate();
+        if (day > daysInTargetMonth2) {
+          targetDay = daysInTargetMonth2;
+        }
+        break;
+        
+      case 'quarterly':
+        targetMonth = month + 3;
+        while (targetMonth > 12) {
+          targetYear++;
+          targetMonth -= 12;
+        }
+        const daysInTargetMonth3 = new Date(targetYear, targetMonth, 0).getDate();
+        if (day > daysInTargetMonth3) {
+          targetDay = daysInTargetMonth3;
+        }
+        break;
+        
+      case 'semester':
+        targetMonth = month + 6;
+        while (targetMonth > 12) {
+          targetYear++;
+          targetMonth -= 12;
+        }
+        const daysInTargetMonth6 = new Date(targetYear, targetMonth, 0).getDate();
+        if (day > daysInTargetMonth6) {
+          targetDay = daysInTargetMonth6;
+        }
+        break;
+        
+      case 'annual':
+        targetYear = year + 1;
+        // Para febrero 29 en años no bisiestos
+        if (month === 2 && day === 29) {
+          const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
+          if (!isLeapYear) {
+            targetDay = 28;
+          }
+        }
+        break;
+        
+      default:
+        // Fallback a mensual
+        targetMonth = month + 1;
+        if (targetMonth > 12) {
+          targetYear = year + 1;
+          targetMonth = 1;
+        }
+        break;
+    }
+    
+    // ✅ FORMATEAR RESULTADO MANUALMENTE
+    const result = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+    
+    console.log(`📅 Resultado corregido manual: ${startDate} → ${result}`);
+    console.log(`   🔢 Entrada: ${year}-${month}-${day}`);
+    console.log(`   🎯 Salida: ${targetYear}-${targetMonth}-${targetDay}`);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error en cálculo de fecha:', error);
+    return startDate; // fallback
+  }
+}, []);
 
   // 🔧 BÚSQUEDA DE USUARIOS
   const loadUsers = useCallback(async (searchTerm: string = '') => {
@@ -509,24 +506,23 @@ export default function RegistrarMembresiaPage() {
     }
   }, [supabase]);
 
-  // ✅ FUNCIÓN CORREGIDA PARA CARGAR HISTORIAL CON FECHAS MÉXICO
-  const loadUserHistory = useCallback(async (userId: string) => {
-    try {
-      console.log('🔍 Iniciando carga de historial para usuario:', userId);
-      
-      // ✅ CONSULTA SIMPLE - LA BD YA ESTÁ EN HORA MÉXICO
-      const { data: memberships, error: membershipsError } = await supabase
-        .from('user_memberships')
-        .select('id, created_at, status, planid, start_date, end_date')
-        .eq('userid', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+const loadUserHistory = useCallback(async (userId: string) => {
+  try {
+    console.log('🔍 Iniciando carga de historial para usuario:', userId);
+    
+    // ✅ CONSULTA SIMPLE - LA BD YA ESTÁ EN HORA MÉXICO
+    const { data: memberships, error: membershipsError } = await supabase
+      .from('user_memberships')
+      .select('id, created_at, status, planid, start_date, end_date')
+      .eq('userid', userId)
+      .order('created_at', { ascending: false })
+      .limit(10);
 
-      if (membershipsError) {
-        console.error('❌ Error en consulta de membresías:', membershipsError);
-        setUserHistory([]);
-        return;
-      }
+    if (membershipsError) {
+      console.error('❌ Error en consulta de membresías:', membershipsError);
+      setUserHistory([]);
+      return;
+    }
 
       console.log(`📊 Membresías encontradas: ${memberships?.length || 0}`);
 
@@ -570,26 +566,23 @@ export default function RegistrarMembresiaPage() {
       console.log(`✅ Historial procesado exitosamente: ${formattedHistory.length} registros`);
       setUserHistory(formattedHistory);
 
-      // ✅ AUTO-DETECCIÓN CON FECHAS MÉXICO
-      const mexicoToday = getMexicoDateString();
+     // ✅ AUTO-DETECCIÓN SIMPLE CON FECHAS MÉXICO
+    const today = toMexicoDate(new Date());
+    
+    const activeMemberships = formattedHistory.filter(h => {
+      if (h.status !== 'active' || !h.end_date) return false;
+      return h.end_date >= today;
+    });
+    
+    const hasActiveMemberships = activeMemberships.length > 0;
+    const hasPreviousMemberships = formattedHistory.length > 0;
       
-      const activeMemberships = formattedHistory.filter(h => {
-        if (h.status !== 'active' || !h.end_date) return false;
-        // Convertir fechas BD a formato México para comparar
-        const endDateMexico = toMexicoDate(new Date(h.end_date));
-        return endDateMexico >= mexicoToday;
-      });
-      
-      const hasActiveMemberships = activeMemberships.length > 0;
-      const hasPreviousMemberships = formattedHistory.length > 0;
-        
       console.log(`🔄 Auto-detección: Activas=${hasActiveMemberships}, Previas=${hasPreviousMemberships}`);
       
       // ✅ DETECTAR FECHA DE VENCIMIENTO MÁS RECIENTE
       let latestEndDate = null;
       if (hasActiveMemberships && activeMemberships && activeMemberships.length > 0) {
-        // Convertir a formato México para el sistema
-        latestEndDate = toMexicoDate(new Date(activeMemberships[0].end_date));
+        latestEndDate = activeMemberships[0].end_date;
         console.log(`📅 Fecha de vencimiento más reciente: ${latestEndDate}`);
       }
       
@@ -625,7 +618,7 @@ export default function RegistrarMembresiaPage() {
       
       console.log('🛡️ Configuración segura aplicada: Cliente nuevo con inscripción');
     }
-  }, [supabase, getMexicoDateString]);
+  }, [supabase]);
 
   // Cargar planes y comisiones
   useEffect(() => {
@@ -663,63 +656,62 @@ export default function RegistrarMembresiaPage() {
     loadInitialData();
   }, [supabase]);
 
-  // ✅ FUNCIÓN CORREGIDA PARA VALIDAR CUPONES CON FECHAS MÉXICO
-  const validateCoupon = useCallback(async (code: string) => {
-    if (!code.trim()) {
+ const validateCoupon = useCallback(async (code: string) => {
+  if (!code.trim()) {
+    setAppliedCoupon(null);
+    return;
+  }
+
+  try {
+    // ✅ CONSULTA SIMPLE SIN SQL NATIVO PROBLEMÁTICO
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', code.toUpperCase())
+      .eq('is_active', true)
+      .single();
+
+    if (error || !data) {
+      setError('Cupón no válido o no encontrado');
       setAppliedCoupon(null);
       return;
     }
 
-    try {
-      // ✅ CONSULTA SIMPLE SIN SQL NATIVO PROBLEMÁTICO
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('code', code.toUpperCase())
-        .eq('is_active', true)
-        .single();
-
-      if (error || !data) {
-        setError('Cupón no válido o no encontrado');
-        setAppliedCoupon(null);
-        return;
-      }
-
-      // ✅ VALIDAR FECHAS CON HELPERS MÉXICO
-      const mexicoToday = getMexicoDateString();
-      
-      if (data.start_date && mexicoToday < toMexicoDate(new Date(data.start_date))) {
-        setError('El cupón no está vigente aún');
-        setAppliedCoupon(null);
-        return;
-      }
-
-      if (data.end_date && mexicoToday > toMexicoDate(new Date(data.end_date))) {
-        setError('El cupón ha expirado');
-        setAppliedCoupon(null);
-        return;
-      }
-
-      if (data.max_uses && data.current_uses >= data.max_uses) {
-        setError('El cupón ha alcanzado su límite de usos');
-        setAppliedCoupon(null);
-        return;
-      }
-
-      if (data.min_amount && subtotal < data.min_amount) {
-        setError(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}`);
-        setAppliedCoupon(null);
-        return;
-      }
-
-      setAppliedCoupon(data);
-      setSuccessMessage('🎟️ Cupón aplicado exitosamente');
-      setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    // ✅ VALIDAR FECHAS CON FECHA MÉXICO
+    const today = toMexicoDate(new Date());
+    
+    if (data.start_date && today < data.start_date) {
+      setError('El cupón no está vigente aún');
       setAppliedCoupon(null);
+      return;
     }
-  }, [supabase, subtotal, formatPrice, getMexicoDateString]);
+
+    if (data.end_date && today > data.end_date) {
+      setError('El cupón ha expirado');
+      setAppliedCoupon(null);
+      return;
+    }
+
+    if (data.max_uses && data.current_uses >= data.max_uses) {
+      setError('El cupón ha alcanzado su límite de usos');
+      setAppliedCoupon(null);
+      return;
+    }
+
+    if (data.min_amount && subtotal < data.min_amount) {
+      setError(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}`);
+      setAppliedCoupon(null);
+      return;
+    }
+
+    setAppliedCoupon(data);
+    setSuccessMessage('🎟️ Cupón aplicado exitosamente');
+    setError(null);
+  } catch (err: any) {
+    setError(err.message);
+    setAppliedCoupon(null);
+  }
+}, [supabase, subtotal, formatPrice]);
 
   // 🔥 CALCULAR COMISIÓN CORREGIDA - SOLO TARJETAS
   const calculateCommission = useCallback((method: string, amount: number): { rate: number; amount: number } => {
@@ -800,7 +792,7 @@ export default function RegistrarMembresiaPage() {
     }));
   }, [calculateCommission]);
 
-  // ✅ CALCULAR PRECIOS CON INSCRIPCIÓN CONDICIONAL
+  // ✅ CALCULAR PRECIOS CON INSCRIPCIÓN CONDICIONAL - DEPENDENCIAS COMPLETAS
   useEffect(() => {
     if (!selectedPlan || !formData.paymentType) {
       setSubtotal(0);
@@ -859,16 +851,27 @@ export default function RegistrarMembresiaPage() {
       setFormData(prev => ({ ...prev, paymentChange: Math.max(0, change) }));
     }
 
-  }, [selectedPlan, formData.paymentType, appliedCoupon, formData.paymentMethod, formData.paymentReceived, formData.isMixedPayment, formData.paymentDetails, formData.skipInscription, formData.isRenewal, calculateCommission]);
+  }, [
+    selectedPlan, 
+    formData.paymentType, 
+    appliedCoupon, 
+    formData.paymentMethod, 
+    formData.paymentReceived, 
+    formData.isMixedPayment, 
+    formData.paymentDetails, 
+    formData.skipInscription, 
+    formData.isRenewal, 
+    calculateCommission
+  ]);
 
-  // ✅ CALCULAR FECHA DE VENCIMIENTO CON FECHAS MÉXICO
+  // ✅ CALCULAR FECHA DE VENCIMIENTO SIMPLIFICADA
   const calculateEndDate = useCallback((): Date | null => {
     if (!selectedPlan || !formData.paymentType) return null;
 
     const paymentTypeData = paymentTypes.find(pt => pt.value === formData.paymentType);
     if (!paymentTypeData || paymentTypeData.value === 'visit') return null;
 
-    // ✅ LÓGICA SIMPLIFICADA CON FECHAS MÉXICO
+    // ✅ LÓGICA SIMPLIFICADA
     let startDateString: string;
     
     if (formData.isRenewal && formData.latestEndDate) {
@@ -876,8 +879,8 @@ export default function RegistrarMembresiaPage() {
       startDateString = formData.latestEndDate;
       console.log(`🔄 Renovación: Extendiendo desde ${startDateString}`);
     } else {
-      // 🆕 PRIMERA VEZ: Desde hoy en México
-      startDateString = getMexicoDateString();
+      // 🆕 PRIMERA VEZ: Desde hoy (usando fecha México)
+      startDateString = toMexicoDate(new Date());
       console.log(`🆕 Primera venta: Iniciando desde ${startDateString}`);
     }
     
@@ -894,7 +897,7 @@ export default function RegistrarMembresiaPage() {
     const endDate = new Date(year, month - 1, day, 23, 59, 59);
     
     return endDate;
-  }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate, addPeriodToDate, getMexicoDateString]);
+  }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate, addPeriodToDate]);
 
   // Validar pago
   const validatePayment = useCallback((): boolean => {
@@ -916,182 +919,182 @@ export default function RegistrarMembresiaPage() {
     return true;
   }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formData.paymentMethod, formData.paymentReceived, formatPrice]);
 
-  // ✅ SUBMIT PRINCIPAL CORREGIDO CON FECHAS MÉXICO
-  const handleSubmit = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+// ✅ SUBMIT PRINCIPAL CON FECHAS MÉXICO CORREGIDAS
+const handleSubmit = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
-      const { data: { session } } = await supabase.auth.getSession();
+    // ✅ OBTENER SESIÓN DEL USUARIO AUTENTICADO
+    const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session) {
-        setError('No hay sesión activa');
-        return;
-      }
-
-      console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
-
-      if (!selectedUser || !selectedPlan || !formData.paymentType) {
-        setError('Por favor complete todos los campos requeridos');
-        return;
-      }
-
-      if (!formData.isMixedPayment && !formData.paymentMethod) {
-        setError('Seleccione un método de pago');
-        return;
-      }
-
-      if (!validatePayment()) {
-        return;
-      }
-
-      // ✅ FECHAS CORREGIDAS CON HELPERS MÉXICO
-      let startDate: string;
-      let endDate: string | null = null;
-
-      if (formData.isRenewal && formData.latestEndDate) {
-        // ✅ RENOVACIÓN: Desde fecha de vencimiento actual
-        startDate = formData.latestEndDate;
-        console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
-        
-        // ✅ USAR LA FUNCIÓN CORREGIDA
-        endDate = addPeriodToDate(startDate, formData.paymentType);
-        
-        console.log(`📅 Fechas de renovación:`);
-        console.log(`   📅 Desde: ${startDate}`);
-        console.log(`   🔄 Tipo: ${formData.paymentType}`);
-        console.log(`   📅 Hasta: ${endDate}`);
-      } else {
-        // ✅ PRIMERA VEZ: Usar fecha actual en México
-        startDate = getMexicoDateString();
-        console.log(`🆕 Primera venta: Iniciando desde ${startDate}`);
-        
-        // ✅ USAR LA FUNCIÓN CORREGIDA TAMBIÉN AQUÍ
-        endDate = addPeriodToDate(startDate, formData.paymentType);
-        
-        console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
-      }
-
-      const totalVisits = formData.paymentType === 'visit' ? 1 : null;
-      const remainingVisits = totalVisits;
-
-      console.log(`📅 Fechas finales: ${startDate} → ${endDate}`);
-
-      // ✅ PASO ADICIONAL: SI ES RENOVACIÓN, DESACTIVAR MEMBRESÍAS ACTIVAS
-      if (formData.isRenewal) {
-        console.log('🔄 Procesando renovación: Desactivando membresías activas...');
-        
-        const { error: updateError } = await supabase
-          .from('user_memberships')
-          .update({ 
-            status: 'expired'
-            // ✅ updated_at se actualizará automáticamente si tienes trigger en la BD
-          })
-          .eq('userid', selectedUser.id)
-          .eq('status', 'active');
-
-        if (updateError) {
-          console.warn('⚠️ Error al desactivar membresías activas:', updateError);
-        } else {
-          console.log('✅ Membresías activas desactivadas correctamente');
-        }
-      }
-
-      // ✅ DATOS DE LA MEMBRESÍA CORREGIDOS CON FECHAS MÉXICO
-      const membershipData = {
-        userid: selectedUser.id,
-        planid: selectedPlan.id,
-        payment_type: formData.paymentType,
-        amount_paid: finalAmount,
-        inscription_amount: inscriptionAmount,
-        start_date: startDate,
-        end_date: endDate,
-        status: 'active',
-        total_visits: totalVisits,
-        remaining_visits: remainingVisits,
-        payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
-        payment_reference: formData.paymentReference || null,
-        discount_amount: discountAmount,
-        coupon_code: appliedCoupon?.code || null,
-        subtotal: subtotal,
-        commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
-        commission_amount: commissionAmount,
-        payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
-        payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
-        is_mixed_payment: formData.isMixedPayment,
-        payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
-        is_renewal: formData.isRenewal,
-        skip_inscription: formData.skipInscription,
-        custom_commission_rate: formData.customCommissionRate,
-        notes: formData.notes || null,
-        created_by: session.user.id
-        // ✅ created_at y updated_at se manejarán automáticamente por la BD
-      };
-
-      console.log('💾 Guardando nueva membresía:', membershipData);
-
-      const { data: membership, error: membershipError } = await supabase
-        .from('user_memberships')
-        .insert([membershipData])
-        .select()
-        .single();
-
-      if (membershipError) throw membershipError;
-
-      console.log('✅ Membresía creada exitosamente:', membership.id);
-
-      // Si es pago mixto, guardar detalles
-      if (formData.isMixedPayment) {
-        const paymentDetailsData = formData.paymentDetails.map(detail => ({
-          membership_id: membership.id,
-          payment_method: detail.method,
-          amount: detail.amount,
-          commission_rate: detail.commission_rate,
-          commission_amount: detail.commission_amount,
-          payment_reference: detail.reference,
-          sequence_order: detail.sequence
-        }));
-
-        const { error: detailsError } = await supabase
-          .from('membership_payment_details')
-          .insert(paymentDetailsData);
-
-        if (detailsError) {
-          console.warn('Error al guardar detalles de pago:', detailsError);
-        }
-      }
-
-      // Actualizar uso del cupón
-      if (appliedCoupon) {
-        await supabase
-          .from('coupons')
-          .update({ current_uses: appliedCoupon.current_uses + 1 })
-          .eq('id', appliedCoupon.id);
-      }
-
-      const successMsg = formData.isRenewal 
-        ? `¡Renovación exitosa! Membresía extendida hasta ${endDate}`
-        : '¡Membresía registrada exitosamente!';
-      
-      setSuccessMessage(successMsg);
-      
-      setTimeout(() => {
-        router.push('/dashboard/admin/membresias');
-      }, 3000);
-
-    } catch (err: any) {
-      setError(`Error procesando venta: ${err.message}`);
-    } finally {
-      setLoading(false);
-      setConfirmDialogOpen(false);
+    if (!session) {
+      setError('No hay sesión activa');
+      return;
     }
-  }, [
-    supabase, selectedUser, selectedPlan, formData, validatePayment, 
-    addPeriodToDate, calculateEndDate, finalAmount, inscriptionAmount, 
-    discountAmount, subtotal, commissionAmount, calculateCommission, 
-    totalAmount, appliedCoupon, router, getMexicoDateString
-  ]);
+
+    console.log('👤 Usuario autenticado:', session.user.id, session.user.email);
+
+    if (!selectedUser || !selectedPlan || !formData.paymentType) {
+      setError('Por favor complete todos los campos requeridos');
+      return;
+    }
+
+    if (!formData.isMixedPayment && !formData.paymentMethod) {
+      setError('Seleccione un método de pago');
+      return;
+    }
+
+    if (!validatePayment()) {
+      return;
+    }
+
+    // ✅ FECHAS CORREGIDAS CON HELPERS MÉXICO
+    let startDate: string;
+    let endDate: string | null = null;
+
+   if (formData.isRenewal && formData.latestEndDate) {
+  // ✅ RENOVACIÓN: Desde fecha de vencimiento actual
+  startDate = formData.latestEndDate;
+  console.log(`🔄 Renovación: Iniciando desde ${startDate}`);
+  
+  // ✅ USAR LA FUNCIÓN CORREGIDA
+  endDate = addPeriodToDate(startDate, formData.paymentType);
+  
+  console.log(`📅 Fechas de renovación:`);
+  console.log(`   📅 Desde: ${startDate}`);
+  console.log(`   🔄 Tipo: ${formData.paymentType}`);
+  console.log(`   📅 Hasta: ${endDate}`);
+} else {
+  // ✅ PRIMERA VEZ: Usar fecha México actual
+  startDate = toMexicoDate(new Date());
+  console.log(`🆕 Primera venta: Iniciando desde ${startDate}`);
+  
+  // ✅ USAR LA FUNCIÓN CORREGIDA TAMBIÉN AQUÍ
+  endDate = addPeriodToDate(startDate, formData.paymentType);
+  
+  console.log(`📅 Fechas de primera venta: Hasta ${endDate}`);
+}
+
+    const totalVisits = formData.paymentType === 'visit' ? 1 : null;
+    const remainingVisits = totalVisits;
+
+    console.log(`📅 Fechas finales: ${startDate} → ${endDate}`);
+
+    // ✅ PASO ADICIONAL: SI ES RENOVACIÓN, DESACTIVAR MEMBRESÍAS ACTIVAS
+    if (formData.isRenewal) {
+      console.log('🔄 Procesando renovación: Desactivando membresías activas...');
+      
+      const { error: updateError } = await supabase
+        .from('user_memberships')
+        .update({ 
+          status: 'expired'
+          // ✅ updated_at se actualizará automáticamente si tienes trigger en la BD
+        })
+        .eq('userid', selectedUser.id)
+        .eq('status', 'active');
+
+      if (updateError) {
+        console.warn('⚠️ Error al desactivar membresías activas:', updateError);
+      } else {
+        console.log('✅ Membresías activas desactivadas correctamente');
+      }
+    }
+
+    // ✅ DATOS DE LA MEMBRESÍA CORREGIDOS
+    const membershipData = {
+      userid: selectedUser.id,
+      planid: selectedPlan.id,
+      payment_type: formData.paymentType,
+      amount_paid: finalAmount,
+      inscription_amount: inscriptionAmount,
+      start_date: startDate,
+      end_date: endDate,
+      status: 'active',
+      total_visits: totalVisits,
+      remaining_visits: remainingVisits,
+      payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
+      payment_reference: formData.paymentReference || null,
+      discount_amount: discountAmount,
+      coupon_code: appliedCoupon?.code || null,
+      subtotal: subtotal,
+      commission_rate: formData.isMixedPayment ? 0 : calculateCommission(formData.paymentMethod, totalAmount).rate,
+      commission_amount: commissionAmount,
+      payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
+      payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
+      is_mixed_payment: formData.isMixedPayment,
+      payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
+      is_renewal: formData.isRenewal,
+      skip_inscription: formData.skipInscription,
+      custom_commission_rate: formData.customCommissionRate,
+      notes: formData.notes || null,
+      created_by: session.user.id
+      // ✅ created_at y updated_at se manejarán automáticamente por la BD
+    };
+
+    console.log('💾 Guardando nueva membresía:', membershipData);
+
+    const { data: membership, error: membershipError } = await supabase
+      .from('user_memberships')
+      .insert([membershipData])
+      .select()
+      .single();
+
+    if (membershipError) throw membershipError;
+
+    console.log('✅ Membresía creada exitosamente:', membership.id);
+
+    // Si es pago mixto, guardar detalles
+    if (formData.isMixedPayment) {
+      const paymentDetailsData = formData.paymentDetails.map(detail => ({
+        membership_id: membership.id,
+        payment_method: detail.method,
+        amount: detail.amount,
+        commission_rate: detail.commission_rate,
+        commission_amount: detail.commission_amount,
+        payment_reference: detail.reference,
+        sequence_order: detail.sequence
+      }));
+
+      const { error: detailsError } = await supabase
+        .from('membership_payment_details')
+        .insert(paymentDetailsData);
+
+      if (detailsError) {
+        console.warn('Error al guardar detalles de pago:', detailsError);
+      }
+    }
+
+    // Actualizar uso del cupón
+    if (appliedCoupon) {
+      await supabase
+        .from('coupons')
+        .update({ current_uses: appliedCoupon.current_uses + 1 })
+        .eq('id', appliedCoupon.id);
+    }
+
+    const successMsg = formData.isRenewal 
+      ? `¡Renovación exitosa! Membresía extendida hasta ${endDate}`
+      : '¡Membresía registrada exitosamente!';
+    
+    setSuccessMessage(successMsg);
+    
+    setTimeout(() => {
+      router.push('/dashboard/admin/membresias');
+    }, 3000);
+
+  } catch (err: any) {
+    setError(`Error procesando venta: ${err.message}`);
+  } finally {
+    setLoading(false);
+    setConfirmDialogOpen(false);
+  }
+}, [
+  supabase, selectedUser, selectedPlan, formData, validatePayment, 
+  addPeriodToDate, calculateEndDate, finalAmount, inscriptionAmount, 
+  discountAmount, subtotal, commissionAmount, calculateCommission, 
+  totalAmount, appliedCoupon, router
+]);
 
   const steps = [
     { label: 'Cliente', description: 'Seleccionar cliente' },
@@ -1455,7 +1458,7 @@ export default function RegistrarMembresiaPage() {
                                   }}
                                 />
                               )}
-                              renderOption={(props, user) => {
+                                                            renderOption={(props, user) => {
                                 const { key, ...otherProps } = props;
                                 return (
                                   <li key={key} {...otherProps} style={{ 
@@ -2169,7 +2172,7 @@ export default function RegistrarMembresiaPage() {
                       </Box>
                     )}
 
-                    {/* PASO 4: Sistema de Pago SIMPLIFICADO */}
+                    {/* PASO 4: Sistema de Pago CORREGIDO CON MIXTO RESTAURADO */}
                     {index === 3 && (
                       <Box sx={{ mb: 4 }}>
                         <Typography variant="h6" sx={{ 
@@ -2184,175 +2187,335 @@ export default function RegistrarMembresiaPage() {
                           Sistema de Pago
                         </Typography>
 
+                        {/* Toggle Pago Mixto RESTAURADO */}
                         <Card sx={{
-                          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel2})`,
-                          border: `2px solid ${darkProTokens.primary}30`,
-                          borderRadius: 3
+                          background: `${darkProTokens.primary}05`,
+                          border: `1px solid ${darkProTokens.primary}30`,
+                          borderRadius: 3,
+                          mb: 4
                         }}>
-                          <CardContent sx={{ p: 4 }}>
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.primary, 
-                              mb: 3,
-                              fontWeight: 700
+                          <CardContent sx={{ p: 3 }}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={formData.isMixedPayment}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      isMixedPayment: e.target.checked,
+                                      paymentMethod: e.target.checked ? '' : prev.paymentMethod,
+                                      paymentDetails: e.target.checked ? [] : prev.paymentDetails
+                                    }));
+                                  }}
+                                  sx={{
+                                    '& .MuiSwitch-switchBase.Mui-checked': {
+                                      color: darkProTokens.primary,
+                                    },
+                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                      backgroundColor: darkProTokens.primary,
+                                    },
+                                  }}
+                                />
+                              }
+                              label={
+                                <Typography variant="h6" sx={{ 
+                                  color: darkProTokens.textPrimary, 
+                                  fontWeight: 600 
+                                }}>
+                                  🔄 Pago Mixto
+                                </Typography>
+                              }
+                            />
+                            <Typography variant="body2" sx={{ 
+                              color: darkProTokens.textSecondary,
+                              mt: 1
                             }}>
-                              Método de Pago
+                              Combinar múltiples métodos de pago
                             </Typography>
-                            
-                            <Grid container spacing={3}>
-                              {paymentMethods.filter(m => m.value !== 'mixto').map((method) => (
-                                <Grid key={method.value} size={{ xs: 12, sm: 6 }}>
+                          </CardContent>
+                        </Card>
+
+                        {/* Pago Simple */}
+                        {!formData.isMixedPayment && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <Card sx={{
+                              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel2})`,
+                              border: `2px solid ${darkProTokens.primary}30`,
+                              borderRadius: 3
+                            }}>
+                              <CardContent sx={{ p: 4 }}>
+                                <Typography variant="h6" sx={{ 
+                                  color: darkProTokens.primary, 
+                                  mb: 3,
+                                  fontWeight: 700
+                                }}>
+                                  Método de Pago
+                                </Typography>
+                                
+                                <Grid container spacing={3}>
+                                  {paymentMethods.map((method) => (
+                                    <Grid key={method.value} size={{ xs: 12, sm: 6 }}>
+                                      <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                      >
+                                        <Card
+                                          sx={{
+                                            cursor: method.value === 'mixto' ? 'not-allowed' : 'pointer',
+                                            background: formData.paymentMethod === method.value 
+                                              ? `linear-gradient(135deg, ${method.color}20, ${method.color}10)`
+                                              : `${darkProTokens.surfaceLevel3}05`,
+                                            border: formData.paymentMethod === method.value 
+                                              ? `3px solid ${method.color}` 
+                                              : `1px solid ${darkProTokens.grayDark}`,
+                                            borderRadius: 3,
+                                            transition: 'all 0.3s ease',
+                                            minHeight: '140px',
+                                            opacity: method.value === 'mixto' ? 0.5 : 1,
+                                            '&:hover': {
+                                              borderColor: method.value === 'mixto' ? darkProTokens.grayDark : method.color,
+                                              transform: method.value === 'mixto' ? 'none' : 'translateY(-2px)'
+                                            }
+                                          }}
+                                          onClick={() => {
+                                            if (method.value !== 'mixto') {
+                                              setFormData(prev => ({ 
+                                                ...prev, 
+                                                paymentMethod: method.value 
+                                              }));
+                                            }
+                                          }}
+                                        >
+                                          <CardContent sx={{ 
+                                            textAlign: 'center',
+                                            height: '100%',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'center',
+                                            position: 'relative',
+                                            p: 3
+                                          }}>
+                                            <Typography variant="h3" sx={{ mb: 1 }}>
+                                              {method.icon}
+                                            </Typography>
+                                            <Typography variant="h6" sx={{ 
+                                              color: method.value === 'mixto' ? darkProTokens.textDisabled : darkProTokens.textPrimary,
+                                              fontWeight: 600,
+                                              fontSize: '0.9rem',
+                                              mb: 1
+                                            }}>
+                                              {method.label}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ 
+                                              color: method.value === 'mixto' ? darkProTokens.textDisabled : darkProTokens.textSecondary,
+                                              fontSize: '0.75rem',
+                                              lineHeight: 1.3
+                                            }}>
+                                              {method.value === 'mixto' ? 'Use el toggle de arriba para activar' : method.description}
+                                            </Typography>
+                                            {formData.paymentMethod === method.value && method.value !== 'mixto' && (
+                                              <CheckCircleIcon sx={{ 
+                                                color: method.color,
+                                                position: 'absolute',
+                                                top: 8,
+                                                right: 8
+                                              }} />
+                                            )}
+                                          </CardContent>
+                                        </Card>
+                                      </motion.div>
+                                    </Grid>
+                                  ))}
+                                </Grid>
+
+                                {/* Configuración específica para efectivo */}
+                                {formData.paymentMethod === 'efectivo' && (
                                   <motion.div
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
                                   >
-                                    <Card
-                                      sx={{
-                                        cursor: 'pointer',
-                                        background: formData.paymentMethod === method.value 
-                                          ? `linear-gradient(135deg, ${method.color}20, ${method.color}10)`
-                                          : `${darkProTokens.surfaceLevel3}05`,
-                                        border: formData.paymentMethod === method.value 
-                                          ? `3px solid ${method.color}` 
-                                          : `1px solid ${darkProTokens.grayDark}`,
-                                        borderRadius: 3,
-                                        transition: 'all 0.3s ease',
-                                        minHeight: '140px',
-                                        '&:hover': {
-                                          borderColor: method.color,
-                                          transform: 'translateY(-2px)'
-                                        }
-                                      }}
-                                      onClick={() => setFormData(prev => ({ 
-                                        ...prev, 
-                                        paymentMethod: method.value 
-                                      }))}
-                                    >
-                                      <CardContent sx={{ 
-                                        textAlign: 'center',
-                                        height: '100%',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center',
-                                        position: 'relative',
-                                        p: 3
-                                      }}>
-                                        <Typography variant="h3" sx={{ mb: 1 }}>
-                                          {method.icon}
-                                        </Typography>
+                                    <Card sx={{
+                                      background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}05)`,
+                                      border: `2px solid ${darkProTokens.primary}50`,
+                                      borderRadius: 3,
+                                      mt: 3
+                                    }}>
+                                      <CardContent sx={{ p: 4 }}>
                                         <Typography variant="h6" sx={{ 
-                                          color: darkProTokens.textPrimary,
-                                          fontWeight: 600,
-                                          fontSize: '0.9rem',
-                                          mb: 1
+                                          color: darkProTokens.primary, 
+                                          mb: 3,
+                                          fontWeight: 700,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 2
                                         }}>
-                                          {method.label}
+                                          💵 Calculadora de Efectivo
                                         </Typography>
-                                        <Typography variant="caption" sx={{ 
-                                          color: darkProTokens.textSecondary,
-                                          fontSize: '0.75rem',
-                                          lineHeight: 1.3
-                                        }}>
-                                          {method.description}
-                                        </Typography>
-                                        {formData.paymentMethod === method.value && (
-                                          <CheckCircleIcon sx={{ 
-                                            color: method.color,
-                                            position: 'absolute',
-                                            top: 8,
-                                            right: 8
-                                          }} />
-                                        )}
+
+                                        <Grid container spacing={3}>
+                                          <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                              fullWidth
+                                              label="Total a Cobrar"
+                                              value={formatPrice(finalAmount)}
+                                              disabled
+                                              InputProps={{
+                                                sx: {
+                                                  color: darkProTokens.textPrimary,
+                                                  backgroundColor: `${darkProTokens.primary}10`,
+                                                  fontSize: '1.3rem',
+                                                  fontWeight: 700,
+                                                  '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: `${darkProTokens.primary}50`,
+                                                    borderWidth: 2
+                                                  }
+                                                }
+                                              }}
+                                              InputLabelProps={{
+                                                sx: { 
+                                                  color: darkProTokens.textSecondary,
+                                                  fontWeight: 600
+                                                }
+                                              }}
+                                            />
+                                          </Grid>
+
+                                          <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                              fullWidth
+                                              label="Dinero Recibido"
+                                              type="number"
+                                              value={formData.paymentReceived || ''}
+                                              onChange={(e) => {
+                                                const received = parseFloat(e.target.value) || 0;
+                                                setFormData(prev => ({
+                                                  ...prev,
+                                                  paymentReceived: received,
+                                                  paymentChange: Math.max(0, received - finalAmount)
+                                                }));
+                                              }}
+                                              placeholder="0.00"
+                                              InputProps={{
+                                                startAdornment: (
+                                                  <InputAdornment position="start">
+                                                    <AttachMoneyIcon sx={{ color: darkProTokens.primary }} />
+                                                  </InputAdornment>
+                                                ),
+                                                sx: {
+                                                  color: darkProTokens.textPrimary,
+                                                  fontSize: '1.3rem',
+                                                  fontWeight: 700,
+                                                  '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: `${darkProTokens.primary}50`,
+                                                    borderWidth: 2
+                                                  },
+                                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: darkProTokens.primary
+                                                  },
+                                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: darkProTokens.primary
+                                                  }
+                                                }
+                                              }}
+                                              InputLabelProps={{
+                                                sx: { 
+                                                  color: darkProTokens.textSecondary,
+                                                  fontWeight: 600,
+                                                  '&.Mui-focused': { color: darkProTokens.primary }
+                                                }
+                                              }}
+                                            />
+                                          </Grid>
+
+                                          <Grid size={12}>
+                                            <Box sx={{
+                                              background: formData.paymentChange > 0 
+                                                ? `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`
+                                                : `${darkProTokens.grayMedium}05`,
+                                              border: formData.paymentChange > 0 
+                                                ? `2px solid ${darkProTokens.primary}` 
+                                                : `1px solid ${darkProTokens.grayDark}`,
+                                              borderRadius: 3,
+                                              p: 3,
+                                              textAlign: 'center'
+                                            }}>
+                                              <Typography variant="h4" sx={{ 
+                                                color: formData.paymentChange > 0 ? darkProTokens.primary : darkProTokens.textSecondary,
+                                                fontWeight: 800,
+                                                mb: 1
+                                              }}>
+                                                {formData.paymentChange > 0 
+                                                  ? `💰 Cambio: ${formatPrice(formData.paymentChange)}`
+                                                  : '💰 Cambio: $0.00'
+                                                }
+                                              </Typography>
+                                              <Typography variant="body1" sx={{ 
+                                                color: darkProTokens.textSecondary
+                                              }}>
+                                                {formData.paymentReceived < finalAmount 
+                                                  ? `Faltan: ${formatPrice(finalAmount - formData.paymentReceived)}`
+                                                  : formData.paymentChange > 0 
+                                                    ? 'Entregar cambio al cliente'
+                                                    : 'Pago exacto'
+                                                }
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
+                                        </Grid>
                                       </CardContent>
                                     </Card>
                                   </motion.div>
-                                </Grid>
-                              ))}
-                            </Grid>
+                                )}
 
-                            {/* Configuración específica para efectivo */}
-                            {formData.paymentMethod === 'efectivo' && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                <Card sx={{
-                                  background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}05)`,
-                                  border: `2px solid ${darkProTokens.primary}50`,
-                                  borderRadius: 3,
-                                  mt: 3
-                                }}>
-                                  <CardContent sx={{ p: 4 }}>
-                                    <Typography variant="h6" sx={{ 
-                                      color: darkProTokens.primary, 
-                                      mb: 3,
-                                      fontWeight: 700,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 2
+                                {/* Referencias para otros métodos */}
+                                {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito' || formData.paymentMethod === 'transferencia') && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                  >
+                                    <Card sx={{
+                                      background: `${darkProTokens.surfaceLevel3}15`,
+                                      border: `1px solid ${darkProTokens.grayDark}`,
+                                      borderRadius: 3,
+                                      mt: 3
                                     }}>
-                                      💵 Calculadora de Efectivo
-                                    </Typography>
-
-                                    <Grid container spacing={3}>
-                                      <Grid size={{ xs: 12, md: 6 }}>
+                                      <CardContent sx={{ p: 3 }}>
                                         <TextField
                                           fullWidth
-                                          label="Total a Cobrar"
-                                          value={formatPrice(finalAmount)}
-                                          disabled
-                                          InputProps={{
-                                            sx: {
-                                              color: darkProTokens.textPrimary,
-                                              backgroundColor: `${darkProTokens.primary}10`,
-                                              fontSize: '1.3rem',
-                                              fontWeight: 700,
-                                              '& .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: `${darkProTokens.primary}50`,
-                                                borderWidth: 2
-                                              }
-                                            }
-                                          }}
-                                          InputLabelProps={{
-                                            sx: { 
-                                              color: darkProTokens.textSecondary,
-                                              fontWeight: 600
-                                            }
-                                          }}
-                                        />
-                                      </Grid>
-
-                                      <Grid size={{ xs: 12, md: 6 }}>
-                                        <TextField
-                                          fullWidth
-                                          label="Dinero Recibido"
-                                          type="number"
-                                          value={formData.paymentReceived || ''}
-                                          onChange={(e) => {
-                                            const received = parseFloat(e.target.value) || 0;
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              paymentReceived: received,
-                                              paymentChange: Math.max(0, received - finalAmount)
-                                            }));
-                                          }}
-                                          placeholder="0.00"
+                                          label={
+                                            formData.paymentMethod === 'transferencia' 
+                                              ? 'Número de Referencia / SPEI'
+                                              : 'Número de Autorización'
+                                          }
+                                          value={formData.paymentReference}
+                                          onChange={(e) => setFormData(prev => ({ 
+                                            ...prev, 
+                                            paymentReference: e.target.value 
+                                          }))}
+                                          placeholder="Ej: 123456, AUTH789..."
                                           InputProps={{
                                             startAdornment: (
                                               <InputAdornment position="start">
-                                                <AttachMoneyIcon sx={{ color: darkProTokens.primary }} />
+                                                {formData.paymentMethod === 'transferencia' ? 
+                                                  <AccountBalanceIcon sx={{ color: darkProTokens.info }} /> :
+                                                  <CreditCardIcon sx={{ color: darkProTokens.grayMedium }} />
+                                                }
                                               </InputAdornment>
                                             ),
                                             sx: {
                                               color: darkProTokens.textPrimary,
-                                              fontSize: '1.3rem',
-                                              fontWeight: 700,
                                               '& .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: `${darkProTokens.primary}50`,
+                                                borderColor: `${darkProTokens.grayDark}50`,
                                                 borderWidth: 2
                                               },
                                               '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: darkProTokens.primary
+                                                borderColor: darkProTokens.grayLight
                                               },
                                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                                                 borderColor: darkProTokens.primary
@@ -2362,154 +2525,398 @@ export default function RegistrarMembresiaPage() {
                                           InputLabelProps={{
                                             sx: { 
                                               color: darkProTokens.textSecondary,
-                                              fontWeight: 600,
                                               '&.Mui-focused': { color: darkProTokens.primary }
                                             }
                                           }}
                                         />
-                                      </Grid>
-
-                                      <Grid size={12}>
-                                        <Box sx={{
-                                          background: formData.paymentChange > 0 
-                                            ? `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`
-                                            : `${darkProTokens.grayMedium}05`,
-                                          border: formData.paymentChange > 0 
-                                            ? `2px solid ${darkProTokens.primary}` 
-                                            : `1px solid ${darkProTokens.grayDark}`,
-                                          borderRadius: 3,
-                                          p: 3,
-                                          textAlign: 'center'
-                                        }}>
-                                          <Typography variant="h4" sx={{ 
-                                            color: formData.paymentChange > 0 ? darkProTokens.primary : darkProTokens.textSecondary,
-                                            fontWeight: 800,
-                                            mb: 1
-                                          }}>
-                                            {formData.paymentChange > 0 
-                                              ? `💰 Cambio: ${formatPrice(formData.paymentChange)}`
-                                              : '💰 Cambio: $0.00'
-                                            }
-                                          </Typography>
-                                          <Typography variant="body1" sx={{ 
-                                            color: darkProTokens.textSecondary
-                                          }}>
-                                            {formData.paymentReceived < finalAmount 
-                                              ? `Faltan: ${formatPrice(finalAmount - formData.paymentReceived)}`
-                                              : formData.paymentChange > 0 
-                                                ? 'Entregar cambio al cliente'
-                                                : 'Pago exacto'
-                                            }
-                                          </Typography>
-                                        </Box>
-                                      </Grid>
-                                    </Grid>
-                                  </CardContent>
-                                </Card>
-                              </motion.div>
-                            )}
-
-                            {/* Referencias para otros métodos */}
-                            {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito' || formData.paymentMethod === 'transferencia') && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                <Card sx={{
-                                  background: `${darkProTokens.surfaceLevel3}15`,
-                                  border: `1px solid ${darkProTokens.grayDark}`,
-                                  borderRadius: 3,
-                                  mt: 3
-                                }}>
-                                  <CardContent sx={{ p: 3 }}>
-                                    <TextField
-                                      fullWidth
-                                      label={
-                                        formData.paymentMethod === 'transferencia' 
-                                          ? 'Número de Referencia / SPEI'
-                                          : 'Número de Autorización'
-                                      }
-                                      value={formData.paymentReference}
-                                      onChange={(e) => setFormData(prev => ({ 
-                                        ...prev, 
-                                        paymentReference: e.target.value 
-                                      }))}
-                                      placeholder="Ej: 123456, AUTH789..."
-                                      InputProps={{
-                                        startAdornment: (
-                                          <InputAdornment position="start">
-                                            {formData.paymentMethod === 'transferencia' ? 
-                                              <AccountBalanceIcon sx={{ color: darkProTokens.info }} /> :
-                                              <CreditCardIcon sx={{ color: darkProTokens.grayMedium }} />
-                                            }
-                                          </InputAdornment>
-                                        ),
-                                        sx: {
-                                          color: darkProTokens.textPrimary,
-                                          '& .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: `${darkProTokens.grayDark}50`,
-                                            borderWidth: 2
-                                          },
-                                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: darkProTokens.grayLight
-                                          },
-                                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: darkProTokens.primary
-                                          }
-                                        }
-                                      }}
-                                      InputLabelProps={{
-                                        sx: { 
-                                          color: darkProTokens.textSecondary,
-                                          '&.Mui-focused': { color: darkProTokens.primary }
-                                        }
-                                      }}
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </motion.div>
-                            )}
-
-                            {/* Notas Adicionales */}
-                            <Card sx={{
-                              background: `${darkProTokens.surfaceLevel2}02`,
-                              border: `1px solid ${darkProTokens.grayDark}10`,
-                              borderRadius: 3,
-                              mt: 3
-                            }}>
-                              <CardContent sx={{ p: 3 }}>
-                                <TextField
-                                  fullWidth
-                                  label="Notas Adicionales"
-                                  value={formData.notes}
-                                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                                  multiline
-                                  rows={3}
-                                  placeholder="Observaciones especiales..."
-                                  InputProps={{
-                                    sx: {
-                                      color: darkProTokens.textPrimary,
-                                      '& .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: `${darkProTokens.grayDark}30`
-                                      },
-                                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: `${darkProTokens.grayDark}50`
-                                      },
-                                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: darkProTokens.primary
-                                      }
-                                    }
-                                  }}
-                                  InputLabelProps={{
-                                    sx: { 
-                                      color: darkProTokens.textSecondary,
-                                      '&.Mui-focused': { color: darkProTokens.primary }
-                                    }
-                                  }}
-                                />
+                                      </CardContent>
+                                    </Card>
+                                  </motion.div>
+                                )}
                               </CardContent>
                             </Card>
+                          </motion.div>
+                        )}
+
+                        {/* Pago Mixto RESTAURADO */}
+                        {formData.isMixedPayment && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <Card sx={{
+                              background: `linear-gradient(135deg, ${darkProTokens.warning}15, ${darkProTokens.warning}05)`,
+                              border: `2px solid ${darkProTokens.warning}50`,
+                              borderRadius: 3
+                            }}>
+                              <CardContent sx={{ p: 4 }}>
+                                <Box sx={{ 
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  mb: 3
+                                }}>
+                                  <Typography variant="h6" sx={{ 
+                                    color: darkProTokens.warning, 
+                                    fontWeight: 700,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2
+                                  }}>
+                                    🔄 Pagos Mixtos
+                                  </Typography>
+                                  
+                                  <Button
+                                    variant="contained"
+                                    startIcon={<AddIcon />}
+                                    onClick={addMixedPaymentDetail}
+                                    sx={{
+                                      background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+                                      color: darkProTokens.background,
+                                      fontWeight: 700,
+                                      '&:hover': {
+                                        background: `linear-gradient(135deg, ${darkProTokens.warningHover}, ${darkProTokens.warning})`,
+                                        transform: 'translateY(-2px)'
+                                      }
+                                    }}
+                                  >
+                                    Agregar Método
+                                  </Button>
+                                </Box>
+
+                                {formData.paymentDetails.length === 0 && (
+                                  <Box sx={{
+                                    textAlign: 'center',
+                                    py: 4,
+                                    border: `2px dashed ${darkProTokens.warning}30`,
+                                    borderRadius: 3
+                                  }}>
+                                    <Typography variant="body1" sx={{ 
+                                      color: darkProTokens.textSecondary,
+                                      mb: 2
+                                    }}>
+                                      No hay métodos agregados
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ 
+                                      color: darkProTokens.textSecondary
+                                    }}>
+                                      Agregue métodos de pago para comenzar
+                                    </Typography>
+                                  </Box>
+                                )}
+
+                                <Stack spacing={3}>
+                                  {formData.paymentDetails.map((detail, index) => (
+                                    <motion.div
+                                      key={detail.id}
+                                      initial={{ opacity: 0, x: -20 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                                    >
+                                      <Card sx={{
+                                        background: `${darkProTokens.surfaceLevel3}05`,
+                                        border: `1px solid ${darkProTokens.grayDark}`,
+                                        borderRadius: 3
+                                      }}>
+                                        <CardContent sx={{ p: 3 }}>
+                                          <Box sx={{ 
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            mb: 2
+                                          }}>
+                                            <Typography variant="h6" sx={{ 
+                                              color: darkProTokens.warning,
+                                              fontWeight: 600
+                                            }}>
+                                              Pago #{detail.sequence}
+                                            </Typography>
+                                            
+                                            <IconButton
+                                              onClick={() => removeMixedPaymentDetail(detail.id)}
+                                              sx={{ color: darkProTokens.error }}
+                                            >
+                                              <RemoveIcon />
+                                            </IconButton>
+                                          </Box>
+
+                                          <Grid container spacing={2}>
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                              <FormControl fullWidth>
+                                                <InputLabel sx={{ 
+                                                  color: darkProTokens.textSecondary,
+                                                  '&.Mui-focused': { color: darkProTokens.warning }
+                                                }}>
+                                                  Método
+                                                </InputLabel>
+                                                <Select
+                                                  value={detail.method}
+                                                  onChange={(e) => updateMixedPaymentDetail(detail.id, 'method', e.target.value)}
+                                                  sx={{
+                                                    color: darkProTokens.textPrimary,
+                                                    '& .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: `${darkProTokens.warning}30`
+                                                    },
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: darkProTokens.warning
+                                                    },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: darkProTokens.warning
+                                                    }
+                                                  }}
+                                                >
+                                                  {paymentMethods.filter(m => m.value !== 'mixto').map((method) => (
+                                                    <MenuItem key={method.value} value={method.value}>
+                                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <span>{method.icon}</span>
+                                                        <span>{method.label}</span>
+                                                        {!method.hasCommission && (
+                                                          <Chip label="Sin comisión" size="small" sx={{ 
+                                                            backgroundColor: darkProTokens.success, 
+                                                            color: darkProTokens.background,
+                                                            fontSize: '0.65rem',
+                                                            ml: 1
+                                                          }} />
+                                                        )}
+                                                      </Box>
+                                                    </MenuItem>
+                                                  ))}
+                                                </Select>
+                                              </FormControl>
+                                            </Grid>
+
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                              <TextField
+                                                fullWidth
+                                                label="Monto"
+                                                type="number"
+                                                value={detail.amount || ''}
+                                                onChange={(e) => updateMixedPaymentDetail(detail.id, 'amount', parseFloat(e.target.value) || 0)}
+                                                InputProps={{
+                                                  startAdornment: (
+                                                    <InputAdornment position="start">
+                                                      $
+                                                    </InputAdornment>
+                                                  ),
+                                                  sx: {
+                                                    color: darkProTokens.textPrimary,
+                                                    '& .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: `${darkProTokens.warning}30`
+                                                    },
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: darkProTokens.warning
+                                                    },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: darkProTokens.warning
+                                                    }
+                                                  }
+                                                }}
+                                                InputLabelProps={{
+                                                  sx: { 
+                                                    color: darkProTokens.textSecondary,
+                                                    '&.Mui-focused': { color: darkProTokens.warning }
+                                                  }
+                                                }}
+                                              />
+                                            </Grid>
+
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                              <TextField
+                                                fullWidth
+                                                label="Referencia"
+                                                value={detail.reference}
+                                                onChange={(e) => updateMixedPaymentDetail(detail.id, 'reference', e.target.value)}
+                                                placeholder="Opcional"
+                                                InputProps={{
+                                                  sx: {
+                                                    color: darkProTokens.textPrimary,
+                                                    '& .MuiOutlinedInput-notchedOutline': {
+                                                      borderColor: darkProTokens.grayDark
+                                                    }
+                                                  }
+                                                }}
+                                                InputLabelProps={{
+                                                  sx: { color: darkProTokens.textSecondary }
+                                                }}
+                                              />
+                                            </Grid>
+
+                                            {detail.commission_amount > 0 && (
+                                              <Grid size={12}>
+                                                <Alert severity="warning" sx={{
+                                                  backgroundColor: `${darkProTokens.warning}10`,
+                                                  color: darkProTokens.textPrimary,
+                                                  border: `1px solid ${darkProTokens.warning}30`,
+                                                  '& .MuiAlert-icon': { color: darkProTokens.warning }
+                                                }}>
+                                                  <Typography variant="body2">
+                                                    <strong>💳 Comisión:</strong> {detail.commission_rate}% = {formatPrice(detail.commission_amount)}
+                                                  </Typography>
+                                                </Alert>
+                                              </Grid>
+                                            )}
+                                          </Grid>
+                                        </CardContent>
+                                      </Card>
+                                    </motion.div>
+                                  ))}
+                                </Stack>
+
+                                {/* Resumen de Pagos Mixtos */}
+                                {formData.paymentDetails.length > 0 && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                  >
+                                    <Box sx={{ mt: 4 }}>
+                                      <Card sx={{
+                                        background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
+                                        border: `2px solid ${darkProTokens.primary}`,
+                                        borderRadius: 3
+                                      }}>
+                                        <CardContent sx={{ p: 3 }}>
+                                          <Typography variant="h6" sx={{ 
+                                            color: darkProTokens.primary,
+                                            fontWeight: 700,
+                                            mb: 2
+                                          }}>
+                                            📊 Resumen de Pagos
+                                          </Typography>
+
+                                          <Grid container spacing={2}>
+                                            <Grid size={{ xs: 6, md: 3 }}>
+                                              <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: darkProTokens.textSecondary
+                                                }}>
+                                                  Total Parcial
+                                                </Typography>
+                                                <Typography variant="h6" sx={{ 
+                                                  color: darkProTokens.textPrimary,
+                                                  fontWeight: 700
+                                                }}>
+                                                  {formatPrice(formData.paymentDetails.reduce((sum, detail) => sum + detail.amount, 0))}
+                                                </Typography>
+                                              </Box>
+                                            </Grid>
+
+                                            <Grid size={{ xs: 6, md: 3 }}>
+                                              <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: darkProTokens.textSecondary
+                                                }}>
+                                                  Comisiones
+                                                </Typography>
+                                                <Typography variant="h6" sx={{ 
+                                                  color: darkProTokens.warning,
+                                                  fontWeight: 700
+                                                }}>
+                                                  {formatPrice(formData.paymentDetails.reduce((sum, detail) => sum + detail.commission_amount, 0))}
+                                                </Typography>
+                                              </Box>
+                                            </Grid>
+
+                                            <Grid size={{ xs: 6, md: 3 }}>
+                                              <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: darkProTokens.textSecondary
+                                                }}>
+                                                  Total Pagado
+                                                </Typography>
+                                                <Typography variant="h6" sx={{ 
+                                                  color: darkProTokens.primary,
+                                                  fontWeight: 700
+                                                }}>
+                                                  {formatPrice(formData.paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0))}
+                                                </Typography>
+                                              </Box>
+                                            </Grid>
+
+                                            <Grid size={{ xs: 6, md: 3 }}>
+                                              <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: darkProTokens.textSecondary
+                                                }}>
+                                                  Balance
+                                                </Typography>
+                                                <Typography variant="h6" sx={{ 
+                                                  color: Math.abs(formData.paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0) - finalAmount) < 0.01 
+                                                    ? darkProTokens.success : darkProTokens.error,
+                                                  fontWeight: 700
+                                                }}>
+                                                  {Math.abs(formData.paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0) - finalAmount) < 0.01 
+                                                    ? '✅ Exacto' 
+                                                    : `${formatPrice(finalAmount - formData.paymentDetails.reduce((sum, detail) => sum + detail.amount + detail.commission_amount, 0))}`
+                                                  }
+                                                </Typography>
+                                              </Box>
+                                            </Grid>
+                                                                                    </Grid>
+                                        </CardContent>
+                                      </Card>
+                                    </Box>
+                                  </motion.div>
+                                )}
+
+                                <Alert 
+                                  severity="info"
+                                  sx={{
+                                    mt: 3,
+                                    backgroundColor: `${darkProTokens.info}10`,
+                                    color: darkProTokens.textPrimary,
+                                    border: `1px solid ${darkProTokens.info}30`,
+                                    '& .MuiAlert-icon': { color: darkProTokens.info }
+                                  }}
+                                >
+                                  <Typography variant="body2">
+                                    <strong>💡 Comisiones en Pago Mixto:</strong> Solo se aplicarán comisiones a los métodos de tarjeta (débito/crédito).
+                                    Efectivo y transferencias están exentos.
+                                  </Typography>
+                                </Alert>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        )}
+
+                        {/* Notas Adicionales */}
+                        <Card sx={{
+                          background: `${darkProTokens.surfaceLevel2}02`,
+                          border: `1px solid ${darkProTokens.grayDark}10`,
+                          borderRadius: 3,
+                          mt: 3
+                        }}>
+                          <CardContent sx={{ p: 3 }}>
+                            <TextField
+                              fullWidth
+                              label="Notas Adicionales"
+                              value={formData.notes}
+                              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                              multiline
+                              rows={3}
+                              placeholder="Observaciones especiales..."
+                              InputProps={{
+                                sx: {
+                                  color: darkProTokens.textPrimary,
+                                  '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: `${darkProTokens.grayDark}30`
+                                  },
+                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: `${darkProTokens.grayDark}50`
+                                  },
+                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: darkProTokens.primary
+                                  }
+                                }
+                              }}
+                              InputLabelProps={{
+                                sx: { 
+                                  color: darkProTokens.textSecondary,
+                                  '&.Mui-focused': { color: darkProTokens.primary }
+                                }
+                              }}
+                            />
                           </CardContent>
                         </Card>
                       </Box>
@@ -2557,7 +2964,7 @@ export default function RegistrarMembresiaPage() {
                               transform: 'translateY(-2px)',
                               boxShadow: `0 6px 20px ${darkProTokens.primary}40`
                             },
-                                                        '&:disabled': {
+                            '&:disabled': {
                               background: darkProTokens.grayMedium,
                               color: darkProTokens.textDisabled
                             }
@@ -2858,7 +3265,7 @@ export default function RegistrarMembresiaPage() {
                     </Box>
 
                     {/* Información del método de pago */}
-                    {formData.paymentMethod && (
+                    {(formData.paymentMethod || formData.isMixedPayment) && (
                       <Box sx={{ mt: 3 }}>
                         <Typography variant="subtitle1" sx={{ 
                           color: darkProTokens.textSecondary,
@@ -2867,62 +3274,84 @@ export default function RegistrarMembresiaPage() {
                           Método de Pago:
                         </Typography>
                         
-                        <Box sx={{
-                          background: `${darkProTokens.surfaceLevel3}05`,
-                          border: `1px solid ${darkProTokens.grayDark}`,
-                          borderRadius: 3,
-                          p: 2
-                        }}>
-                          <Typography variant="body1" sx={{ 
-                            color: darkProTokens.textPrimary,
-                            fontWeight: 600,
-                            mb: 1
+                        {formData.isMixedPayment ? (
+                          <Box sx={{
+                            background: `${darkProTokens.warning}10`,
+                            border: `1px solid ${darkProTokens.warning}30`,
+                            borderRadius: 3,
+                            p: 2
                           }}>
-                            {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.icon} {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.label}
-                          </Typography>
-
-                          {/* 🔥 MOSTRAR SI TIENE COMISIÓN O NO */}
-                          <Typography variant="caption" sx={{ 
-                            color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
-                              darkProTokens.warning : darkProTokens.success,
-                            fontWeight: 600,
-                            display: 'block',
-                            mb: 1
+                            <Typography variant="body1" sx={{ 
+                              color: darkProTokens.warning,
+                              fontWeight: 600,
+                              mb: 1
+                            }}>
+                              🔄 Pago Mixto
+                            </Typography>
+                            <Typography variant="body2" sx={{ 
+                              color: darkProTokens.textSecondary
+                            }}>
+                              {formData.paymentDetails.length} método{formData.paymentDetails.length !== 1 ? 's' : ''} configurado{formData.paymentDetails.length !== 1 ? 's' : ''}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Box sx={{
+                            background: `${darkProTokens.surfaceLevel3}05`,
+                            border: `1px solid ${darkProTokens.grayDark}`,
+                            borderRadius: 3,
+                            p: 2
                           }}>
-                            {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
-                              '💰 Con comisión' : '🚫 Sin comisión'}
-                          </Typography>
-                          
-                          {formData.paymentMethod === 'efectivo' && formData.paymentReceived > 0 && (
-                            <Box sx={{ mt: 2 }}>
-                              <Typography variant="body2" sx={{ 
-                                color: darkProTokens.textSecondary
-                              }}>
-                                Recibido: {formatPrice(formData.paymentReceived)}
-                              </Typography>
-                              <Typography variant="body2" sx={{ 
-                                color: formData.paymentChange > 0 ? darkProTokens.primary : darkProTokens.textSecondary,
-                                fontWeight: formData.paymentChange > 0 ? 600 : 400
-                              }}>
-                                Cambio: {formatPrice(formData.paymentChange)}
-                              </Typography>
-                            </Box>
-                          )}
+                            <Typography variant="body1" sx={{ 
+                              color: darkProTokens.textPrimary,
+                              fontWeight: 600,
+                              mb: 1
+                            }}>
+                              {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.icon} {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.label}
+                            </Typography>
 
-                          {formData.customCommissionRate !== null && commissionAmount > 0 && (
-                            <Box sx={{ mt: 2 }}>
-                              <Chip 
-                                label={`Comisión: ${formData.customCommissionRate}%`}
-                                size="small"
-                                sx={{
-                                  backgroundColor: darkProTokens.warning,
-                                  color: darkProTokens.background,
-                                  fontWeight: 600
-                                }}
-                              />
-                            </Box>
-                          )}
-                        </Box>
+                            {/* 🔥 MOSTRAR SI TIENE COMISIÓN O NO */}
+                            <Typography variant="caption" sx={{ 
+                              color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                                darkProTokens.warning : darkProTokens.success,
+                              fontWeight: 600,
+                              display: 'block',
+                              mb: 1
+                            }}>
+                              {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                                '💰 Con comisión' : '🚫 Sin comisión'}
+                            </Typography>
+                            
+                            {formData.paymentMethod === 'efectivo' && formData.paymentReceived > 0 && (
+                              <Box sx={{ mt: 2 }}>
+                                <Typography variant="body2" sx={{ 
+                                  color: darkProTokens.textSecondary
+                                }}>
+                                  Recibido: {formatPrice(formData.paymentReceived)}
+                                </Typography>
+                                <Typography variant="body2" sx={{ 
+                                  color: formData.paymentChange > 0 ? darkProTokens.primary : darkProTokens.textSecondary,
+                                  fontWeight: formData.paymentChange > 0 ? 600 : 400
+                                }}>
+                                  Cambio: {formatPrice(formData.paymentChange)}
+                                </Typography>
+                              </Box>
+                            )}
+
+                            {formData.customCommissionRate !== null && commissionAmount > 0 && (
+                              <Box sx={{ mt: 2 }}>
+                                <Chip 
+                                  label={`Comisión: ${formData.customCommissionRate}%`}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: darkProTokens.warning,
+                                    color: darkProTokens.background,
+                                    fontWeight: 600
+                                  }}
+                                />
+                              </Box>
+                            )}
+                          </Box>
+                        )}
                       </Box>
                     )}
                   </Stack>
@@ -3129,7 +3558,7 @@ export default function RegistrarMembresiaPage() {
                   </Typography>
                   
                   <Grid container spacing={3}>
-                    <Grid size={3}>
+                    <Grid size={2}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                           Subtotal
@@ -3140,28 +3569,48 @@ export default function RegistrarMembresiaPage() {
                       </Box>
                     </Grid>
 
-                    <Grid size={3}>
+                    {commissionAmount > 0 && (
+                      <Grid size={2}>
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography variant="body2" sx={{ color: `${darkProTokens.warning}80` }}>
+                            Comisión{formData.customCommissionRate !== null ? '*' : ''}
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: darkProTokens.warning }}>
+                            +{formatPrice(commissionAmount)}
+                          </Typography>
+                          {formData.customCommissionRate !== null && (
+                            <Typography variant="caption" sx={{ color: darkProTokens.warning }}>
+                              {formData.customCommissionRate}%
+                            </Typography>
+                          )}
+                        </Box>
+                      </Grid>
+                    )}
+
+                    <Grid size={commissionAmount > 0 ? 3 : 4}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                           Método de Pago
                         </Typography>
                         <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          {paymentMethods.find(pm => pm.value === formData.paymentMethod)?.label}
+                          {formData.isMixedPayment ? 'Mixto' : paymentMethods.find(pm => pm.value === formData.paymentMethod)?.label}
                         </Typography>
                         {/* 🔥 INDICADOR DE COMISIÓN EN CONFIRMACIÓN */}
-                        <Typography variant="caption" sx={{ 
-                          color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
-                            darkProTokens.warning : darkProTokens.success,
-                          fontWeight: 600,
-                          display: 'block'
-                        }}>
-                          {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
-                            '💰 Con comisión' : '🚫 Sin comisión'}
-                        </Typography>
+                        {!formData.isMixedPayment && (
+                          <Typography variant="caption" sx={{ 
+                            color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                              darkProTokens.warning : darkProTokens.success,
+                            fontWeight: 600,
+                            display: 'block'
+                          }}>
+                            {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
+                              '💰 Con comisión' : '🚫 Sin comisión'}
+                          </Typography>
+                        )}
                       </Box>
                     </Grid>
 
-                    <Grid size={3}>
+                    <Grid size={commissionAmount > 0 ? 2 : 3}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                           Inscripción
@@ -3175,7 +3624,7 @@ export default function RegistrarMembresiaPage() {
                       </Box>
                     </Grid>
 
-                    <Grid size={3}>
+                    <Grid size={commissionAmount > 0 ? 3 : 3}>
                       <Box sx={{ 
                         textAlign: 'center',
                         background: `${darkProTokens.primary}10`,
@@ -3193,8 +3642,27 @@ export default function RegistrarMembresiaPage() {
                     </Grid>
                   </Grid>
 
-                  {formData.skipInscription && (
+                  {formData.customCommissionRate !== null && (
                     <Box sx={{ mt: 3 }}>
+                      <Alert 
+                        severity="info"
+                        sx={{
+                          backgroundColor: `${darkProTokens.info}10`,
+                          color: darkProTokens.textPrimary,
+                          border: `1px solid ${darkProTokens.info}30`,
+                          '& .MuiAlert-icon': { color: darkProTokens.info }
+                        }}
+                      >
+                        <Typography variant="body2">
+                          <strong>Comisión Personalizada:</strong> {formData.customCommissionRate}% 
+                          (Predeterminada: {paymentCommissions.find(c => c.payment_method === formData.paymentMethod)?.commission_value || 0}%)
+                        </Typography>
+                      </Alert>
+                    </Box>
+                  )}
+
+                  {formData.skipInscription && (
+                    <Box sx={{ mt: 2 }}>
                       <Alert 
                         severity="success"
                         sx={{
