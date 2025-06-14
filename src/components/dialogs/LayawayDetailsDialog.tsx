@@ -35,6 +35,8 @@ import {
   Schedule as ScheduleIcon,
   TrendingUp as ProgressIcon
 } from '@mui/icons-material';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -81,10 +83,13 @@ interface LayawayDetailsDialogProps {
 
 export default function LayawayDetailsDialog({ open, onClose, layaway }: LayawayDetailsDialogProps) {
   
-  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
   const getMexicoDate = useCallback(() => {
-    const now = new Date();
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
   }, []);
 
   const formatPrice = useCallback((price: number | string) => {
@@ -95,23 +100,15 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     }).format(numPrice || 0);
   }, []);
 
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
   const formatMexicoDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Monterrey',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatMexicoDateTime(dateString);
   }, []);
 
   const formatDate = useCallback((dateString: string) => {
-    return formatMexicoDate(dateString);
-  }, [formatMexicoDate]);
+    return formatMexicoDateTime(dateString);
+  }, []);
 
-  // ✅ CALCULAR PROGRESO DEL APARTADO
   const calculateProgress = useCallback(() => {
     if (!layaway) return 0;
     const total = parseFloat(layaway.total_amount || 0);
@@ -119,24 +116,22 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     return total > 0 ? (paid / total) * 100 : 0;
   }, [layaway]);
 
-  // ✅ OBTENER COLOR DEL PROGRESO
   const getProgressColor = useCallback((percentage: number) => {
     if (percentage >= 80) return darkProTokens.success;
     if (percentage >= 50) return darkProTokens.warning;
     return darkProTokens.error;
   }, []);
 
-  // ✅ CALCULAR DÍAS HASTA VENCIMIENTO
+  // ✅ CALCULAR DÍAS HASTA VENCIMIENTO CON FECHA MÉXICO CORREGIDA
   const getDaysUntilExpiration = useCallback(() => {
     if (!layaway?.layaway_expires_at) return null;
-    const today = new Date();
+    const mexicoToday = getMexicoDate();
     const expiration = new Date(layaway.layaway_expires_at);
-    const diffTime = expiration.getTime() - today.getTime();
+    const diffTime = expiration.getTime() - mexicoToday.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
-  }, [layaway]);
+  }, [layaway, getMexicoDate]);
 
-  // ✅ OBTENER MÉTODO DE PAGO CON ICONO
   const getPaymentMethodLabel = useCallback((method: string) => {
     switch (method) {
       case 'efectivo':
@@ -154,7 +149,6 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
     }
   }, []);
 
-  // ✅ OBTENER COLOR DEL MÉTODO DE PAGO
   const getPaymentMethodColor = useCallback((method: string) => {
     switch (method) {
       case 'efectivo':
@@ -177,7 +171,6 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
   const progress = calculateProgress();
   const daysLeft = getDaysUntilExpiration();
   
-  // ✅ OBTENER HISTORIAL DE PAGOS (puede venir como payment_history o payments)
   const paymentHistory = layaway.payment_history || layaway.payments || [];
 
   return (
@@ -217,7 +210,6 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
       <DialogContent sx={{ p: 3, background: darkProTokens.surfaceLevel1 }}>
         <Grid container spacing={3}>
           
-          {/* ✅ PROGRESO DEL APARTADO */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
@@ -296,7 +288,6 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
             </Card>
           </Grid>
 
-          {/* ✅ Información general */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
               height: '100%',
@@ -398,7 +389,6 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
             </Card>
           </Grid>
 
-          {/* ✅ Cliente */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
               height: '100%',
@@ -484,7 +474,6 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
             </Card>
           </Grid>
 
-          {/* ✅ Productos */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{
               background: darkProTokens.surfaceLevel3,
@@ -559,7 +548,6 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
             </Card>
           </Grid>
 
-          {/* ✅ HISTORIAL DE ABONOS CORREGIDO */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
               background: darkProTokens.surfaceLevel3,
