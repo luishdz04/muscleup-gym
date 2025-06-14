@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
+    const purpose = searchParams.get('purpose'); // 'expenses' o 'cuts'
 
     if (!date) {
       return NextResponse.json(
@@ -15,10 +16,31 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerSupabaseClient();
     
-    // 🔍 VERIFICAR SI EXISTE CORTE PARA ESA FECHA
+    // 🔍 CONSULTA AMPLIADA PARA AMBOS PROPÓSITOS
+    const selectFields = purpose === 'expenses' 
+      ? `
+        id,
+        cut_number,
+        cut_date,
+        expenses_amount,
+        grand_total,
+        final_balance,
+        status,
+        created_at,
+        created_by,
+        is_manual,
+        cut_time,
+        Users!created_by (
+          username,
+          first_name,
+          last_name
+        )
+      `
+      : 'id, cut_number, status, created_at, created_by, is_manual, cut_time';
+    
     const { data: existingCuts, error } = await supabase
       .from('cash_cuts')
-      .select('id, cut_number, status, created_at, created_by, is_manual, cut_time')
+      .select(selectFields)
       .eq('cut_date', date)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -43,7 +65,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    // ✅ PROCESAR DATOS PARA EGRESOS
+    if (purpose === 'expenses' && existingCut && existingCut.Users) {
+      existingCut.user_name = existingCut.Users ? 
+        `${existingCut.Users.first_name || ''} ${existingCut.Users.last_name || ''}`.trim() || 
+        existingCut.Users.username : 
+        'Usuario desconocido';
+    }
+
+    // 📋 RESPUESTA COMPATIBLE CON AMBOS USOS
+    const response = {
       success: true,
       exists: !!existingCut,
       existing_cut: existingCut,
@@ -51,7 +82,20 @@ export async function GET(request: NextRequest) {
       message: existingCut 
         ? `Ya existe corte: ${existingCut.cut_number} (${existingCut.is_manual ? 'Manual' : 'Automático'}) - ${existingCut.cut_time_mexico || 'Sin fecha'}`
         : 'No hay cortes para esta fecha'
-    });
+    };
+
+    // ✅ RESPUESTA ESPECÍFICA PARA EGRESOS
+    if (purpose === 'expenses') {
+      return NextResponse.json({
+        ...response,
+        date,
+        cut_exists: !!existingCut,
+        cut: existingCut // Alias para compatibilidad con página de egresos
+      });
+    }
+
+    // ✅ RESPUESTA ORIGINAL PARA CORTES
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Error en API check-exists:', error);
