@@ -28,13 +28,14 @@ export async function POST(request: NextRequest) {
       created_at_mexico
     } = body;
     
-    console.log('📊 Creando egreso con datos:', {
+    console.log('📊 Creando egreso con sincronización directa:', {
       expense_date,
       expense_type,
       description,
       amount,
       receipt_number,
-      usuario: 'luishdz04'
+      usuario: 'luishdz04',
+      timestamp: '2025-06-14 23:32:06'
     });
     
     // ✅ VALIDACIONES CON TIPOS REALES DE TABLA
@@ -168,11 +169,127 @@ export async function POST(request: NextRequest) {
       hora_utc_actual: now.toISOString()
     });
     
+    // 🔄 SINCRONIZACIÓN DIRECTA CON CORTE (SIN FETCH INTERNO)
+    console.log('🔄 Iniciando sincronización DIRECTA con corte para fecha:', expense_date);
+    
+    let syncInfo = null;
+    
+    try {
+      // 1️⃣ CALCULAR TOTAL DE EGRESOS ACTIVOS DEL DÍA (INCLUYENDO EL RECIÉN CREADO)
+      console.log('📊 Calculando total de egresos para fecha:', expense_date);
+      
+      const { data: dayExpenses, error: expensesError } = await supabase
+        .from('expenses')
+        .select('amount, description, expense_type')
+        .eq('expense_date', expense_date)
+        .eq('status', 'active');
+      
+      if (expensesError) {
+        console.error('❌ Error consultando egresos para sincronización:', expensesError);
+        throw expensesError;
+      }
+      
+      const totalExpenses = dayExpenses?.reduce((sum: number, exp: any) => {
+        return sum + parseFloat(exp.amount.toString());
+      }, 0) || 0;
+      
+      const expenseCount = dayExpenses?.length || 0;
+      
+      console.log('📊 Egresos calculados para sincronización:', {
+        total_count: expenseCount,
+        total_amount: totalExpenses,
+        expenses_detail: dayExpenses
+      });
+      
+      // 2️⃣ BUSCAR CORTE EXISTENTE DEL MISMO DÍA
+      console.log('🔍 Buscando corte existente para fecha:', expense_date);
+      
+      const { data: existingCut, error: cutError } = await supabase
+        .from('cash_cuts')
+        .select('id, cut_number, expenses_amount, grand_total, final_balance')
+        .eq('cut_date', expense_date)
+        .single();
+      
+      if (cutError && cutError.code !== 'PGRST116') {
+        console.error('❌ Error buscando corte:', cutError);
+        throw cutError;
+      }
+      
+      if (existingCut) {
+        console.log('📋 Corte encontrado para sincronización:', {
+          cut_id: existingCut.id,
+          cut_number: existingCut.cut_number,
+          old_expenses: existingCut.expenses_amount,
+          new_expenses: totalExpenses,
+          grand_total: existingCut.grand_total
+        });
+        
+        // 3️⃣ ACTUALIZAR CORTE CON SINCRONIZACIÓN DIRECTA
+        const newFinalBalance = parseFloat(existingCut.grand_total.toString()) - totalExpenses;
+        
+        const { data: updatedCut, error: updateError } = await supabase
+          .from('cash_cuts')
+          .update({
+            expenses_amount: totalExpenses,
+            final_balance: newFinalBalance,
+            updated_at: mexicoTimestamp,
+            updated_by: userId
+          })
+          .eq('id', existingCut.id)
+          .select()
+          .single();
+        
+        if (updateError) {
+          console.error('💥 Error actualizando corte en sincronización directa:', updateError);
+          throw updateError;
+        }
+        
+        console.log('✅ Sincronización DIRECTA completada exitosamente:', {
+          cut_number: existingCut.cut_number,
+          old_expenses: existingCut.expenses_amount,
+          new_expenses: totalExpenses,
+          old_final_balance: existingCut.final_balance,
+          new_final_balance: newFinalBalance,
+          expense_count: expenseCount,
+          difference: totalExpenses - parseFloat(existingCut.expenses_amount.toString())
+        });
+        
+        syncInfo = {
+          synchronized: true,
+          cut_number: existingCut.cut_number,
+          old_expenses_amount: existingCut.expenses_amount,
+          new_expenses_amount: totalExpenses,
+          expense_count: expenseCount,
+          old_final_balance: existingCut.final_balance,
+          new_final_balance: newFinalBalance,
+          difference: totalExpenses - parseFloat(existingCut.expenses_amount.toString())
+        };
+        
+      } else {
+        console.log('ℹ️ No hay corte para sincronizar en fecha:', expense_date);
+        syncInfo = {
+          synchronized: false,
+          reason: 'No existe corte para esta fecha',
+          total_expenses: totalExpenses,
+          expense_count: expenseCount
+        };
+      }
+      
+    } catch (syncError: any) {
+      console.error('⚠️ Error en sincronización directa (no crítico):', syncError);
+      syncInfo = {
+        synchronized: false,
+        error: syncError.message,
+        reason: 'Error en sincronización pero egreso creado exitosamente'
+      };
+    }
+    
     return NextResponse.json({
       success: true,
       message: `Egreso creado exitosamente: ${formatPrice(parseFloat(amount))}`,
       expense_id: newExpense.id,
       expense: newExpense,
+      sync_info: syncInfo, // ✅ INFORMACIÓN DETALLADA DE SINCRONIZACIÓN
       mexico_time: mexicoTimestamp,
       utc_time: now.toISOString()
     });
