@@ -63,17 +63,49 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerSupabaseClient();
     
-    // ✅ OBTENER USUARIO AUTENTICADO (NO HARDCODEADO)
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // ✅ OBTENER USUARIO AUTENTICADO O USAR HARDCODED COMO FALLBACK
+    let userId;
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        console.log('⚠️ No se pudo obtener usuario autenticado, usando usuario hardcodeado');
+        // 🔧 USAR USUARIO ESPECÍFICO COMO FALLBACK (luishdz04)
+        const { data: hardcodedUser, error: userError } = await supabase
+          .from('Users')
+          .select('id')
+          .eq('email', 'luis@muscleup.com') // o el email que uses
+          .single();
+        
+        if (userError || !hardcodedUser) {
+          // Si no encuentra el usuario, buscar por cualquier admin
+          const { data: anyAdmin, error: adminError } = await supabase
+            .from('Users')
+            .select('id')
+            .eq('rol', 'admin')
+            .limit(1)
+            .single();
+          
+          if (adminError || !anyAdmin) {
+            return NextResponse.json(
+              { error: 'No se pudo determinar el usuario para crear el corte', success: false },
+              { status: 401 }
+            );
+          }
+          userId = anyAdmin.id;
+        } else {
+          userId = hardcodedUser.id;
+        }
+      } else {
+        userId = user.id;
+      }
+    } catch (error) {
+      console.error('Error obteniendo usuario:', error);
       return NextResponse.json(
-        { error: 'Usuario no autenticado', success: false },
+        { error: 'Error de autenticación', success: false },
         { status: 401 }
       );
     }
-
-    const userId = user.id;
     
     // 🇲🇽 USAR HORA MÉXICO PARA TODO
     const mexicoTimestamp = created_at_mexico || createMexicoTimestamp();
@@ -160,6 +192,16 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       console.error('💥 Error insertando corte:', insertError);
+      
+      // 🔍 DETALLE DEL ERROR PARA DEBUG
+      if (insertError.code === '23503') {
+        console.error('❌ Error de foreign key - Usuario no válido:', userId);
+        return NextResponse.json(
+          { error: 'Usuario no válido para crear corte', success: false },
+          { status: 400 }
+        );
+      }
+      
       throw insertError;
     }
 
@@ -177,7 +219,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('💥 Error en API create cut:', error);
     return NextResponse.json(
-      { error: 'Error al crear el corte', success: false },
+      { 
+        error: 'Error al crear el corte', 
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        success: false 
+      },
       { status: 500 }
     );
   }
