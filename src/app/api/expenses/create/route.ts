@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       amount,
       receipt_number,
       notes,
-      created_at_mexico // ✅ RECIBIR HORA MÉXICO DEL FRONTEND
+      created_at_mexico
     } = body;
     
     console.log('📊 Creando egreso con datos:', {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       usuario: 'luishdz04'
     });
     
-    // ✅ VALIDACIONES
+    // ✅ VALIDACIONES CON TIPOS REALES DE TABLA
     if (!expense_date || !expense_type || !description || !amount) {
       return NextResponse.json(
         { error: 'Campos requeridos: fecha, tipo, descripción y monto', success: false },
@@ -52,19 +52,33 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // ✅ VALIDAR TIPO DE EGRESO SEGÚN CONSTRAINT
+    const validTypes = [
+      'nomina', 'suplementos', 'servicios', 'mantenimiento', 
+      'limpieza', 'marketing', 'equipamiento', 'otros'
+    ];
+    
+    if (!validTypes.includes(expense_type)) {
+      return NextResponse.json(
+        { error: `Tipo de egreso no válido. Tipos permitidos: ${validTypes.join(', ')}`, success: false },
+        { status: 400 }
+      );
+    }
+    
     const supabase = createServerSupabaseClient();
     
-    // ✅ OBTENER USUARIO AUTENTICADO O USAR HARDCODED COMO FALLBACK (IGUAL QUE CORTES)
+    // ✅ OBTENER USUARIO (usando luishdz04 como fallback)
     let userId;
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
-        console.log('⚠️ No se pudo obtener usuario autenticado, usando usuario hardcodeado');
+        console.log('⚠️ No se pudo obtener usuario autenticado, buscando luishdz04...');
         const { data: hardcodedUser, error: userError } = await supabase
           .from('Users')
           .select('id')
-          .eq('username', 'luishdz04')
+          .ilike('email', '%luis%')
+          .limit(1)
           .single();
         
         if (userError || !hardcodedUser) {
@@ -96,30 +110,20 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // ✅ USAR LÓGICA DE dateHelpers - TIMESTAMP CON OFFSET MÉXICO
     const now = new Date();
     const mexicoTimestamp = created_at_mexico || toMexicoTimestamp(now);
     
-    // 🔢 GENERAR TIEMPO DEL EGRESO (solo hora)
-    const mexicoDate = new Date(mexicoTimestamp);
-    const timeStr = mexicoDate.toLocaleTimeString('es-MX', {
-      timeZone: 'America/Mexico_City',
-      hour12: false
-    });
+    // ✅ CREAR TIMESTAMP PARA expense_time (timestamp sin timezone)
+    const mexicoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
     
-    console.log('🇲🇽 Aplicando lógica de dateHelpers para egreso:', {
-      utc_actual: now.toISOString(),
-      mexico_timestamp: mexicoTimestamp,
-      expense_time: timeStr,
-      nota: 'Usando toMexicoTimestamp con offset -06:00'
-    });
+    console.log('🇲🇽 Insertando egreso con estructura correcta de tabla...');
     
-    // 💾 INSERTAR EGRESO EN BD CON TIMESTAMP MÉXICO
+    // ✅ INSERTAR EGRESO CON ESTRUCTURA REAL DE TABLA
     const { data: newExpense, error: insertError } = await supabase
       .from('expenses')
       .insert([{
         expense_date,
-        expense_time: timeStr,
+        expense_time: mexicoTime.toISOString(), // timestamp without time zone
         expense_type,
         description: description.trim(),
         amount: parseFloat(amount),
@@ -127,8 +131,8 @@ export async function POST(request: NextRequest) {
         notes: notes?.trim() || null,
         status: 'active',
         created_by: userId,
-        created_at: mexicoTimestamp, // ✅ TIMESTAMP CON OFFSET MÉXICO
-        updated_at: mexicoTimestamp  // ✅ TIMESTAMP CON OFFSET MÉXICO
+        created_at: mexicoTime.toISOString(),
+        updated_at: mexicoTime.toISOString()
       }])
       .select()
       .single();
@@ -144,35 +148,25 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      throw insertError;
+      if (insertError.code === '23514') {
+        console.error('❌ Error de constraint - Datos no válidos:', insertError.message);
+        return NextResponse.json(
+          { error: 'Datos no válidos: ' + insertError.message, success: false },
+          { status: 400 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: 'Error insertando egreso: ' + insertError.message, success: false },
+        { status: 500 }
+      );
     }
     
-    console.log('✅ Egreso creado con dateHelpers:', {
+    console.log('✅ Egreso creado exitosamente:', {
       egreso_id: newExpense.id,
       timestamp_guardado: mexicoTimestamp,
       hora_utc_actual: now.toISOString()
     });
-    
-    // 🔄 SINCRONIZACIÓN AUTOMÁTICA CON CORTE (si existe)
-    console.log('🔄 Iniciando sincronización automática con corte...');
-    
-    try {
-      const syncResponse = await fetch(`${request.nextUrl.origin}/api/expenses/sync-with-cut`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: expense_date })
-      });
-      
-      const syncData = await syncResponse.json();
-      
-      if (syncData.success) {
-        console.log('✅ Sincronización automática exitosa:', syncData.cut_number);
-      } else {
-        console.log('ℹ️ No hay corte para sincronizar o error menor:', syncData.error);
-      }
-    } catch (syncError) {
-      console.log('⚠️ Error en sincronización (no crítico):', syncError);
-    }
     
     return NextResponse.json({
       success: true,
@@ -196,7 +190,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ✅ FUNCIÓN PARA FORMATEAR PRECIO (IGUAL QUE CORTES)
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
