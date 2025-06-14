@@ -89,9 +89,7 @@ const darkProTokens = {
   roleAdmin: '#E91E63'
 };
 
-// ✅ FUNCIONES LOCALES PARA FECHAS MÉXICO (IDÉNTICAS A LA PÁGINA PRINCIPAL)
-
-// 📅 Función para obtener fecha actual de México
+// ✅ FUNCIONES LOCALES PARA FECHAS MÉXICO
 function getMexicoDateLocal(): string {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
@@ -101,7 +99,6 @@ function getMexicoDateLocal(): string {
   return `${year}-${month}-${day}`;
 }
 
-// ⏰ Función para formatear hora actual de México
 function formatMexicoTimeLocal(date: Date): string {
   return date.toLocaleString('es-MX', {
     timeZone: 'America/Mexico_City',
@@ -112,7 +109,6 @@ function formatMexicoTimeLocal(date: Date): string {
   });
 }
 
-// 📅 Función para formatear fechas largas
 function formatDateLocal(dateString: string): string {
   try {
     const date = new Date(dateString + 'T12:00:00');
@@ -141,14 +137,10 @@ function formatDateLocal(dateString: string): string {
   }
 }
 
-// 🔍 DETECTOR DE RANGO - NUEVA FUNCIÓN
+// 🔍 DETECTOR DE RANGO
 function getMexicoDateRangeDisplay(dateString: string): string {
   try {
     const date = new Date(dateString + 'T12:00:00');
-    const dayName = date.toLocaleDateString('es-MX', { 
-      weekday: 'long',
-      timeZone: 'America/Mexico_City' 
-    });
     const day = date.getDate();
     const month = date.toLocaleDateString('es-MX', { 
       month: 'long',
@@ -162,13 +154,11 @@ function getMexicoDateRangeDisplay(dateString: string): string {
   }
 }
 
-// ⏰ Función para timestamp de BD en México
 function createTimestampForDB(): string {
   const mexicoDate = new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"});
   return new Date(mexicoDate).toISOString();
 }
 
-// 💰 Función para formatear precios
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -177,7 +167,6 @@ function formatPrice(amount: number): string {
   }).format(amount);
 }
 
-// ⏰ Función para formatear fechas y horas
 function formatDateTime(dateString: string): string {
   try {
     const date = new Date(dateString);
@@ -244,7 +233,6 @@ interface DailyData {
   };
 }
 
-// 📊 INTERFACE PARA DATOS EDITABLES
 interface EditableData {
   pos_efectivo: number;
   pos_transferencia: number;
@@ -264,7 +252,7 @@ interface EditableData {
   expenses_amount: number;
 }
 
-// 🧾 INTERFACES PARA DETALLES DE TRANSACCIONES REALES
+// ✅ INTERFACE ACTUALIZADA PARA TRANSACCIONES
 interface TransactionDetail {
   id: string;
   type: 'pos' | 'abono' | 'membership';
@@ -275,12 +263,14 @@ interface TransactionDetail {
   // Membership Fields
   membership_type?: string;
   membership_duration?: string;
+  payment_sequence?: number; // ✅ NUEVO: Secuencia de pago
+  is_payment_detail?: boolean; // ✅ NUEVO: Si es detalle de pago
   // Common Fields
   customer_name?: string;
   customer_phone?: string;
   payment_method: string;
-  amount: number; // ✅ MONTO TOTAL (CON COMISIÓN PARA POS/ABONOS)
-  base_amount?: number; // ✅ MONTO BASE SIN COMISIÓN (SOLO POS/ABONOS)
+  amount: number;
+  base_amount?: number; // ✅ NUEVO: Monto base sin comisión
   commission_amount?: number;
   created_at: string;
   reference?: string;
@@ -293,7 +283,6 @@ interface TransactionDetail {
 export default function NuevoCorteePage() {
   const router = useRouter();
   
-  // ✅ FECHA ACTUAL EN MÉXICO COMO DEFAULT
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const mexicoDateString = getMexicoDateLocal();
     const mexicoDate = new Date(mexicoDateString + 'T12:00:00');
@@ -304,7 +293,6 @@ export default function NuevoCorteePage() {
     return mexicoDate;
   });
   
-  // 🕐 TIEMPO ACTUAL EN TIEMPO REAL
   const [currentTime, setCurrentTime] = useState<string>('');
   
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
@@ -336,13 +324,11 @@ export default function NuevoCorteePage() {
   const [isManualMode, setIsManualMode] = useState(false);
   const [dataHasContent, setDataHasContent] = useState(false);
   
-  // 🔍 ESTADOS PARA DETALLES DE TRANSACCIONES REALES
   const [showDetails, setShowDetails] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState<TransactionDetail[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
 
-  // ⏰ ACTUALIZAR RELOJ CADA SEGUNDO
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -356,7 +342,6 @@ export default function NuevoCorteePage() {
     return () => clearInterval(interval);
   }, []);
 
-  // 🧮 CALCULAR TOTALES DINÁMICAMENTE
   const calculateTotals = () => {
     const pos_total = editableData.pos_efectivo + editableData.pos_transferencia + 
                      editableData.pos_debito + editableData.pos_credito;
@@ -391,96 +376,99 @@ export default function NuevoCorteePage() {
     };
   };
 
- // 🔍 CARGAR DETALLES DE TRANSACCIONES REALES - ACTUALIZADA
-const loadTransactionDetails = async (date: Date) => {
-  try {
-    setLoadingDetails(true);
-    const dateString = date.toISOString().split('T')[0];
-    
-    console.log('🔍 Cargando detalles reales de transacciones para fecha:', dateString);
-    
-    const response = await fetch(`/api/cuts/transaction-details?date=${dateString}`);
-    const data = await response.json();
-    
-    if (data.success) {
-      // ✅ USAR DATOS REALES DE LA API
-      const details: TransactionDetail[] = [
-        // 🛒 POS TRANSACTIONS
-        ...(data.pos_transactions || []).map((transaction: any) => ({
-          id: transaction.id,
-          type: 'pos' as const,
-          product_name: transaction.product_name,
-          quantity: transaction.quantity,
-          unit_price: transaction.unit_price,
-          customer_name: transaction.customer_name,
-          customer_phone: transaction.customer_phone,
-          payment_method: transaction.payment_method,
-          amount: transaction.amount,
-          commission_amount: transaction.commission_amount,
-          created_at: transaction.created_at,
-          reference: transaction.reference,
-          notes: transaction.notes,
-          status: transaction.status
-        })),
-        
-        // 💰 ABONOS TRANSACTIONS
-        ...(data.abonos_transactions || []).map((transaction: any) => ({
-          id: transaction.id,
-          type: 'abono' as const,
-          product_name: transaction.product_name,
-          customer_name: transaction.customer_name,
-          customer_phone: transaction.customer_phone,
-          payment_method: transaction.payment_method,
-          amount: transaction.amount,
-          commission_amount: transaction.commission_amount,
-          created_at: transaction.created_at,
-          reference: transaction.reference,
-          notes: transaction.notes,
-          status: transaction.status,
-          is_partial_payment: true
-        })),
-        
-        // 🎫 MEMBERSHIP TRANSACTIONS
-        ...(data.membership_transactions || []).map((transaction: any) => ({
-          id: transaction.id,
-          type: 'membership' as const,
-          membership_type: transaction.membership_type,
-          membership_duration: transaction.membership_duration,
-          customer_name: transaction.customer_name,
-          customer_phone: transaction.customer_phone,
-          payment_method: transaction.payment_method,
-          amount: transaction.amount,
-          commission_amount: transaction.commission_amount,
-          created_at: transaction.created_at,
-          reference: transaction.reference,
-          notes: transaction.notes,
-          status: transaction.status
-        }))
-      ];
+  // ✅ FUNCIÓN ACTUALIZADA PARA CARGAR DETALLES
+  const loadTransactionDetails = async (date: Date) => {
+    try {
+      setLoadingDetails(true);
+      const dateString = date.toISOString().split('T')[0];
       
-      // Ordenar por fecha de creación (más reciente primero)
-      details.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      console.log('🔍 Cargando detalles reales de transacciones para fecha:', dateString);
       
-      setTransactionDetails(details);
-      console.log('✅ Detalles reales cargados:', details.length, 'transacciones');
-      console.log('📊 Datos por tipo:', {
-        pos: data.pos_transactions?.length || 0,
-        abonos: data.abonos_transactions?.length || 0,
-        membresias: data.membership_transactions?.length || 0
-      });
-    } else {
-      console.error('Error cargando detalles:', data.error);
+      const response = await fetch(`/api/cuts/transaction-details?date=${dateString}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        // ✅ USAR DATOS REALES DE LA API
+        const details: TransactionDetail[] = [
+          // 🛒 POS TRANSACTIONS
+          ...(data.pos_transactions || []).map((transaction: any) => ({
+            id: transaction.id,
+            type: 'pos' as const,
+            product_name: transaction.product_name,
+            quantity: transaction.quantity,
+            unit_price: transaction.unit_price,
+            customer_name: transaction.customer_name,
+            customer_phone: transaction.customer_phone,
+            payment_method: transaction.payment_method,
+            amount: transaction.amount,
+            base_amount: transaction.base_amount,
+            commission_amount: transaction.commission_amount,
+            created_at: transaction.created_at,
+            reference: transaction.reference,
+            notes: transaction.notes,
+            status: transaction.status
+          })),
+          
+          // 💰 ABONOS TRANSACTIONS
+          ...(data.abonos_transactions || []).map((transaction: any) => ({
+            id: transaction.id,
+            type: 'abono' as const,
+            product_name: transaction.product_name,
+            customer_name: transaction.customer_name,
+            customer_phone: transaction.customer_phone,
+            payment_method: transaction.payment_method,
+            amount: transaction.amount,
+            base_amount: transaction.base_amount,
+            commission_amount: transaction.commission_amount,
+            created_at: transaction.created_at,
+            reference: transaction.reference,
+            notes: transaction.notes,
+            status: transaction.status,
+            is_partial_payment: true
+          })),
+          
+          // 🎫 MEMBERSHIP TRANSACTIONS
+          ...(data.membership_transactions || []).map((transaction: any) => ({
+            id: transaction.id,
+            type: 'membership' as const,
+            membership_type: transaction.membership_type,
+            membership_duration: transaction.membership_duration,
+            customer_name: transaction.customer_name,
+            customer_phone: transaction.customer_phone,
+            payment_method: transaction.payment_method,
+            amount: transaction.amount,
+            commission_amount: transaction.commission_amount,
+            created_at: transaction.created_at,
+            reference: transaction.reference,
+            notes: transaction.notes,
+            status: transaction.status,
+            payment_sequence: transaction.payment_sequence,
+            is_payment_detail: transaction.is_payment_detail
+          }))
+        ];
+        
+        // Ordenar por fecha de creación (más reciente primero)
+        details.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        setTransactionDetails(details);
+        console.log('✅ Detalles reales cargados:', details.length, 'transacciones');
+        console.log('📊 Datos por tipo:', {
+          pos: data.pos_transactions?.length || 0,
+          abonos: data.abonos_transactions?.length || 0,
+          membresias: data.membership_transactions?.length || 0
+        });
+      } else {
+        console.error('Error cargando detalles:', data.error);
+        setTransactionDetails([]);
+      }
+    } catch (error) {
+      console.error('Error:', error);
       setTransactionDetails([]);
+    } finally {
+      setLoadingDetails(false);
     }
-  } catch (error) {
-    console.error('Error:', error);
-    setTransactionDetails([]);
-  } finally {
-    setLoadingDetails(false);
-  }
-};
+  };
 
-  // 🔍 CARGAR DATOS DEL DÍA SELECCIONADO
   const loadDailyData = async (date: Date) => {
     try {
       setLoading(true);
@@ -519,7 +507,6 @@ const loadTransactionDetails = async (date: Date) => {
           });
           setIsManualMode(false);
           
-          // 🔍 CARGAR DETALLES REALES DE TRANSACCIONES
           await loadTransactionDetails(date);
         } else {
           setIsManualMode(true);
@@ -556,7 +543,6 @@ const loadTransactionDetails = async (date: Date) => {
     }
   };
 
-  // 🔍 VERIFICAR SI YA EXISTE CORTE
   const checkExistingCut = async (dateString: string) => {
     try {
       const response = await fetch(`/api/cuts/check-existing?date=${dateString}`);
@@ -567,7 +553,6 @@ const loadTransactionDetails = async (date: Date) => {
     }
   };
 
-  // 💾 CREAR CORTE
   const handleCreateCut = async () => {
     try {
       setCreating(true);
@@ -582,7 +567,6 @@ const loadTransactionDetails = async (date: Date) => {
         notes: observations.trim(),
         is_manual: isManualMode,
         
-        // POS
         pos_efectivo: editableData.pos_efectivo,
         pos_transferencia: editableData.pos_transferencia,
         pos_debito: editableData.pos_debito,
@@ -591,7 +575,6 @@ const loadTransactionDetails = async (date: Date) => {
         pos_transactions: editableData.pos_transactions,
         pos_commissions: 0,
         
-        // ABONOS
         abonos_efectivo: editableData.abonos_efectivo,
         abonos_transferencia: editableData.abonos_transferencia,
         abonos_debito: editableData.abonos_debito,
@@ -600,7 +583,6 @@ const loadTransactionDetails = async (date: Date) => {
         abonos_transactions: editableData.abonos_transactions,
         abonos_commissions: 0,
         
-        // MEMBERSHIPS
         membership_efectivo: editableData.membership_efectivo,
         membership_transferencia: editableData.membership_transferencia,
         membership_debito: editableData.membership_debito,
@@ -609,7 +591,6 @@ const loadTransactionDetails = async (date: Date) => {
         membership_transactions: editableData.membership_transactions,
         membership_commissions: 0,
         
-        // TOTALES
         total_efectivo: totals.total_efectivo,
         total_transferencia: totals.total_transferencia,
         total_debito: totals.total_debito,
@@ -650,7 +631,6 @@ const loadTransactionDetails = async (date: Date) => {
     }
   };
 
-  // 🔧 MANEJAR CAMBIOS EN CAMPOS EDITABLES
   const handleEditableChange = (field: keyof EditableData, value: string) => {
     const numericValue = parseFloat(value) || 0;
     setEditableData(prev => ({
@@ -659,12 +639,10 @@ const loadTransactionDetails = async (date: Date) => {
     }));
   };
 
-  // ⚡ EFECTOS
   useEffect(() => {
     loadDailyData(selectedDate);
   }, [selectedDate]);
 
-  // 🔄 MANEJAR CAMBIO DE FECHA
   const handleDateChange = (newDate: Date | null) => {
     if (newDate) {
       setSelectedDate(newDate);
@@ -673,15 +651,12 @@ const loadTransactionDetails = async (date: Date) => {
     }
   };
 
-  // 🧮 OBTENER TOTALES CALCULADOS
   const totals = calculateTotals();
 
-  // 🎯 FILTRAR TRANSACCIONES POR TIPO
   const getTransactionsByType = (type: 'pos' | 'abono' | 'membership') => {
     return transactionDetails.filter(t => t.type === type);
   };
 
-  // 🎨 OBTENER COLOR POR MÉTODO DE PAGO
   const getPaymentMethodColor = (method: string) => {
     switch (method?.toLowerCase()) {
       case 'efectivo':
@@ -697,7 +672,6 @@ const loadTransactionDetails = async (date: Date) => {
     }
   };
 
-  // 🎨 OBTENER ICONO POR MÉTODO DE PAGO
   const getPaymentMethodIcon = (method: string) => {
     switch (method?.toLowerCase()) {
       case 'efectivo':
@@ -719,9 +693,42 @@ const loadTransactionDetails = async (date: Date) => {
         minHeight: '100vh',
         background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
         color: darkProTokens.textPrimary,
-        p: 4
+        p: 4,
+        // ✅ CSS GLOBAL PARA DATEPICKER
+        '& .MuiPickersLayout-root': {
+          backgroundColor: darkProTokens.surfaceLevel2,
+        },
+        '& .MuiDayCalendar-weekContainer': {
+          '& .MuiPickersDay-root': {
+            color: darkProTokens.textPrimary,
+            '&:hover': {
+              backgroundColor: `${darkProTokens.primary}30`,
+            },
+            '&.Mui-selected': {
+              backgroundColor: darkProTokens.primary,
+              color: darkProTokens.background,
+            },
+          },
+        },
+        '& .MuiPickersCalendarHeader-root': {
+          '& .MuiPickersCalendarHeader-label': {
+            color: darkProTokens.textPrimary,
+          },
+          '& .MuiIconButton-root': {
+            color: darkProTokens.textPrimary,
+          },
+        },
+        '& .MuiPickersDay-today': {
+          borderColor: darkProTokens.primary,
+        },
+        '& .MuiTypography-caption': {
+          color: darkProTokens.textSecondary,
+        },
+        '& .MuiPickersLayout-contentWrapper': {
+          backgroundColor: darkProTokens.surfaceLevel2,
+        }
       }}>
-        {/* 🏷️ HEADER CON DETECTOR DE RANGO */}
+        {/* HEADER CON DETECTOR DE RANGO */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton
@@ -805,7 +812,7 @@ const loadTransactionDetails = async (date: Date) => {
           </Box>
         </Box>
 
-        {/* 🚨 MENSAJES DE ESTADO */}
+        {/* MENSAJES DE ESTADO */}
         <AnimatePresence>
           {error && (
             <motion.div
@@ -857,7 +864,7 @@ const loadTransactionDetails = async (date: Date) => {
         </AnimatePresence>
 
         <Grid container spacing={4}>
-          {/* 📅 CONFIGURACIÓN DEL CORTE */}
+          {/* CONFIGURACIÓN DEL CORTE */}
           <Grid size={12} md={4}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -875,7 +882,7 @@ const loadTransactionDetails = async (date: Date) => {
                     ⚙️ Configuración del Corte
                   </Typography>
                   
-                  {/* SELECTOR DE FECHA */}
+                  {/* SELECTOR DE FECHA CON CSS CORREGIDO */}
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
                       📅 Fecha del Corte
@@ -903,9 +910,16 @@ const loadTransactionDetails = async (date: Date) => {
                         },
                         '& .MuiInputLabel-root': {
                           color: darkProTokens.textSecondary,
+                          '&.Mui-focused': {
+                            color: darkProTokens.primary,
+                          },
                         },
                         '& .MuiSvgIcon-root': {
                           color: darkProTokens.primary,
+                        },
+                        // ✅ CSS ADICIONAL PARA EL INPUT
+                        '& .MuiInputBase-input': {
+                          color: darkProTokens.textPrimary,
                         },
                       }}
                     />
@@ -1053,7 +1067,7 @@ const loadTransactionDetails = async (date: Date) => {
                         <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                           Gastos:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
+                                                <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
                           -{formatPrice(editableData.expenses_amount)}
                         </Typography>
                       </Box>
@@ -1113,7 +1127,7 @@ const loadTransactionDetails = async (date: Date) => {
             </motion.div>
           </Grid>
 
-          {/* 📊 DATOS EDITABLES Y DETALLES */}
+          {/* DATOS EDITABLES Y DETALLES */}
           <Grid size={12} md={8}>
             {loading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
@@ -1283,7 +1297,7 @@ const loadTransactionDetails = async (date: Date) => {
                     </CardContent>
                   </Card>
 
-                  {/* 💰 SECCIÓN ABONOS */}
+                  {/* SECCIÓN ABONOS */}
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                     border: `2px solid ${darkProTokens.warning}40`,
@@ -1501,7 +1515,7 @@ const loadTransactionDetails = async (date: Date) => {
                           />
                         </Grid>
                         
-                                                <Grid size={12} sm={6} md={3}>
+                        <Grid size={12} sm={6} md={3}>
                           <TextField
                             fullWidth
                             label="Transferencia"
@@ -1712,7 +1726,7 @@ const loadTransactionDetails = async (date: Date) => {
                     </CardContent>
                   </Card>
 
-                  {/* 🔍 SECCIÓN DE HISTORIAL REAL DE TRANSACCIONES */}
+                  {/* SECCIÓN DE HISTORIAL REAL DE TRANSACCIONES */}
                   {dataHasContent && transactionDetails.length > 0 && (
                     <Card sx={{
                       background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -1823,7 +1837,7 @@ const loadTransactionDetails = async (date: Date) => {
                               }}>
                                 <Table stickyHeader>
                                   <TableHead>
-                                    <TableRow sx={{ backgroundColor: darkProTokens.grayDark }}>
+                                    <TableRow>
                                       <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
                                         #ID
                                       </TableCell>
@@ -1892,6 +1906,19 @@ const loadTransactionDetails = async (date: Date) => {
                                                   ? transaction.product_name || 'Abono a apartado'
                                                   : transaction.membership_type
                                               }
+                                              {/* ✅ MOSTRAR SECUENCIA SI ES PAGO DETALLADO */}
+                                              {transaction.type === 'membership' && transaction.is_payment_detail && transaction.payment_sequence && (
+                                                <Chip
+                                                  label={`Pago ${transaction.payment_sequence}`}
+                                                  size="small"
+                                                  sx={{
+                                                    ml: 1,
+                                                    backgroundColor: `${darkProTokens.info}20`,
+                                                    color: darkProTokens.info,
+                                                    fontSize: '0.7rem'
+                                                  }}
+                                                />
+                                              )}
                                             </Typography>
                                             {transaction.notes && (
                                               <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
@@ -1954,27 +1981,27 @@ const loadTransactionDetails = async (date: Date) => {
                                           />
                                         </TableCell>
                                         
-                                     <TableCell align="right" sx={{ color: darkProTokens.success, fontWeight: 'bold' }}>
-  <Box>
-    {/* ✅ MONTO PRINCIPAL (CON COMISIÓN INCLUIDA PARA POS/ABONOS) */}
-    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-      {formatPrice(transaction.amount)}
-    </Typography>
-    
-    {/* ✅ COMISIÓN COMO INFORMACIÓN ADICIONAL */}
-    {transaction.commission_amount && transaction.commission_amount > 0 && (
-      <Typography variant="caption" sx={{ 
-        color: darkProTokens.warning,
-        display: 'block'
-      }}>
-        {transaction.type === 'pos' || transaction.type === 'abono' 
-          ? `+${formatPrice(transaction.commission_amount)} comisión`
-          : `${formatPrice(transaction.commission_amount)} comisión`
-        }
-      </Typography>
-    )}
-  </Box>
-</TableCell>
+                                        {/* ✅ CELDA DE MONTO CORREGIDA */}
+                                        <TableCell align="right" sx={{ color: darkProTokens.success, fontWeight: 'bold' }}>
+                                          <Box>
+                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                              {formatPrice(transaction.amount)}
+                                            </Typography>
+                                            
+                                            {/* ✅ COMISIÓN COMO INFORMACIÓN ADICIONAL */}
+                                            {transaction.commission_amount && transaction.commission_amount > 0 && (
+                                              <Typography variant="caption" sx={{ 
+                                                color: darkProTokens.warning,
+                                                display: 'block'
+                                              }}>
+                                                {transaction.type === 'pos' || transaction.type === 'abono' 
+                                                  ? `+${formatPrice(transaction.commission_amount)} comisión`
+                                                  : `${formatPrice(transaction.commission_amount)} comisión`
+                                                }
+                                              </Typography>
+                                            )}
+                                          </Box>
+                                        </TableCell>
                                         
                                         <TableCell sx={{ color: darkProTokens.textSecondary }}>
                                           <Typography variant="body2">
