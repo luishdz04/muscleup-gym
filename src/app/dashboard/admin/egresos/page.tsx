@@ -325,7 +325,7 @@ export default function EgresosPage() {
       const dateString = date.toISOString().split('T')[0];
       console.log('🔍 Verificando corte relacionado para:', dateString);
       
-      const response = await fetch(`/api/cuts/check-existing?date=${dateString}`);
+const response = await fetch(`/api/cuts/check-existing?date=${dateString}&purpose=expenses`);
       console.log('📡 Respuesta API check-existing:', response.status);
       
       const data = await response.json();
