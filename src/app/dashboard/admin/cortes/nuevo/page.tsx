@@ -390,89 +390,94 @@ export default function NuevoCorteePage() {
     };
   };
 
-  // 🔍 CARGAR DETALLES DE TRANSACCIONES REALES
-  const loadTransactionDetails = async (date: Date) => {
-    try {
-      setLoadingDetails(true);
-      const dateString = date.toISOString().split('T')[0];
-      
-      console.log('🔍 Cargando detalles reales de transacciones para fecha:', dateString);
-      
-      const response = await fetch(`/api/cuts/transaction-details?date=${dateString}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        // ✅ MAPEAR DATOS REALES DE LA API
-        const details: TransactionDetail[] = [
-          // 🛒 POS TRANSACTIONS
-          ...(data.pos_transactions || []).map((transaction: any) => ({
-            id: transaction.id,
-            type: 'pos' as const,
-            product_name: transaction.product_name || 'Venta POS',
-            quantity: transaction.quantity || 1,
-            unit_price: transaction.unit_price || transaction.amount,
-            customer_name: transaction.customer_name || 'Cliente General',
-            customer_phone: transaction.customer_phone,
-            payment_method: transaction.payment_method,
-            amount: parseFloat(transaction.amount || 0),
-            commission_amount: parseFloat(transaction.commission_amount || 0),
-            created_at: transaction.created_at,
-            reference: transaction.reference,
-            notes: transaction.notes,
-            status: transaction.status || 'completed'
-          })),
-          
-          // 💰 ABONOS TRANSACTIONS
-          ...(data.abonos_transactions || []).map((transaction: any) => ({
-            id: transaction.id,
-            type: 'abono' as const,
-            product_name: transaction.product_name || transaction.description || 'Abono a apartado',
-            customer_name: transaction.customer_name || 'Cliente',
-            customer_phone: transaction.customer_phone,
-            payment_method: transaction.payment_method,
-            amount: parseFloat(transaction.amount || 0),
-            commission_amount: parseFloat(transaction.commission_amount || 0),
-            created_at: transaction.payment_date || transaction.created_at,
-            reference: transaction.sale_id || transaction.reference,
-            notes: transaction.notes,
-            status: transaction.status || 'completed',
-            is_partial_payment: true
-          })),
-          
-          // 🎫 MEMBERSHIP TRANSACTIONS
-          ...(data.membership_transactions || []).map((transaction: any) => ({
-            id: transaction.id,
-            type: 'membership' as const,
-            membership_type: transaction.membership_type || 'Membresía',
-            membership_duration: transaction.duration || transaction.membership_duration,
-            customer_name: transaction.customer_name || transaction.user_name,
-            customer_phone: transaction.customer_phone || transaction.user_phone,
-            payment_method: transaction.payment_method,
-            amount: parseFloat(transaction.amount_paid || transaction.amount || 0),
-            commission_amount: parseFloat(transaction.commission_amount || 0),
-            created_at: transaction.created_at,
-            reference: transaction.membership_id || transaction.reference,
-            notes: transaction.notes,
-            status: transaction.status || 'active'
-          }))
-        ];
+ // 🔍 CARGAR DETALLES DE TRANSACCIONES REALES - ACTUALIZADA
+const loadTransactionDetails = async (date: Date) => {
+  try {
+    setLoadingDetails(true);
+    const dateString = date.toISOString().split('T')[0];
+    
+    console.log('🔍 Cargando detalles reales de transacciones para fecha:', dateString);
+    
+    const response = await fetch(`/api/cuts/transaction-details?date=${dateString}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      // ✅ USAR DATOS REALES DE LA API
+      const details: TransactionDetail[] = [
+        // 🛒 POS TRANSACTIONS
+        ...(data.pos_transactions || []).map((transaction: any) => ({
+          id: transaction.id,
+          type: 'pos' as const,
+          product_name: transaction.product_name,
+          quantity: transaction.quantity,
+          unit_price: transaction.unit_price,
+          customer_name: transaction.customer_name,
+          customer_phone: transaction.customer_phone,
+          payment_method: transaction.payment_method,
+          amount: transaction.amount,
+          commission_amount: transaction.commission_amount,
+          created_at: transaction.created_at,
+          reference: transaction.reference,
+          notes: transaction.notes,
+          status: transaction.status
+        })),
         
-        // Ordenar por fecha de creación (más reciente primero)
-        details.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        // 💰 ABONOS TRANSACTIONS
+        ...(data.abonos_transactions || []).map((transaction: any) => ({
+          id: transaction.id,
+          type: 'abono' as const,
+          product_name: transaction.product_name,
+          customer_name: transaction.customer_name,
+          customer_phone: transaction.customer_phone,
+          payment_method: transaction.payment_method,
+          amount: transaction.amount,
+          commission_amount: transaction.commission_amount,
+          created_at: transaction.created_at,
+          reference: transaction.reference,
+          notes: transaction.notes,
+          status: transaction.status,
+          is_partial_payment: true
+        })),
         
-        setTransactionDetails(details);
-        console.log('✅ Detalles reales cargados:', details.length, 'transacciones');
-      } else {
-        console.error('Error cargando detalles:', data.error);
-        setTransactionDetails([]);
-      }
-    } catch (error) {
-      console.error('Error:', error);
+        // 🎫 MEMBERSHIP TRANSACTIONS
+        ...(data.membership_transactions || []).map((transaction: any) => ({
+          id: transaction.id,
+          type: 'membership' as const,
+          membership_type: transaction.membership_type,
+          membership_duration: transaction.membership_duration,
+          customer_name: transaction.customer_name,
+          customer_phone: transaction.customer_phone,
+          payment_method: transaction.payment_method,
+          amount: transaction.amount,
+          commission_amount: transaction.commission_amount,
+          created_at: transaction.created_at,
+          reference: transaction.reference,
+          notes: transaction.notes,
+          status: transaction.status
+        }))
+      ];
+      
+      // Ordenar por fecha de creación (más reciente primero)
+      details.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      setTransactionDetails(details);
+      console.log('✅ Detalles reales cargados:', details.length, 'transacciones');
+      console.log('📊 Datos por tipo:', {
+        pos: data.pos_transactions?.length || 0,
+        abonos: data.abonos_transactions?.length || 0,
+        membresias: data.membership_transactions?.length || 0
+      });
+    } else {
+      console.error('Error cargando detalles:', data.error);
       setTransactionDetails([]);
-    } finally {
-      setLoadingDetails(false);
     }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+    setTransactionDetails([]);
+  } finally {
+    setLoadingDetails(false);
+  }
+};
 
   // 🔍 CARGAR DATOS DEL DÍA SELECCIONADO
   const loadDailyData = async (date: Date) => {
