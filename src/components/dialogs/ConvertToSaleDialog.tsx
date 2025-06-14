@@ -58,6 +58,8 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -205,11 +207,13 @@ export default function ConvertToSaleDialog({
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON ZONA HORARIA MÉXICO
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
   const getMexicoDate = useCallback(() => {
-    const now = new Date();
-    // ✅ OBTENER FECHA MÉXICO CORRECTAMENTE
-    return new Date(now.toLocaleString("en-US", {timeZone: "America/Monterrey"}));
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
   }, []);
 
   const formatPrice = useCallback((price: number) => {
@@ -219,23 +223,14 @@ export default function ConvertToSaleDialog({
     }).format(price);
   }, []);
 
-  // ✅ FORMATEO DE FECHAS CORREGIDO CON ZONA HORARIA MÉXICO
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
   const formatMexicoDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Monterrey', // ✅ EXPLÍCITO
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatMexicoDateTime(dateString);
   }, []);
 
-  // ✅ MANTENER FUNCIÓN LEGACY PARA COMPATIBILIDAD
   const formatDate = useCallback((dateString: string) => {
-    return formatMexicoDate(dateString);
-  }, [formatMexicoDate]);
+    return formatMexicoDateTime(dateString);
+  }, []);
 
   const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
@@ -294,7 +289,6 @@ export default function ConvertToSaleDialog({
 
   // ✅ FUNCIÓN HÍBRIDA PARA GENERAR NÚMERO DE VENTA CORREGIDA CON FECHA MÉXICO
   const generateSaleNumber = useCallback(async (): Promise<string> => {
-    // ✅ USAR FECHA MÉXICO CONSISTENTE
     const mexicoDate = getMexicoDate();
     const year = mexicoDate.getFullYear().toString().slice(-2);
     const month = (mexicoDate.getMonth() + 1).toString().padStart(2, '0');
@@ -360,7 +354,7 @@ export default function ConvertToSaleDialog({
     };
   }, [safeLayaway, paymentMethod, applyCommission, paymentMethods, cashReceived]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CONVERSIÓN (CORREGIDA CON UTC)
+  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CONVERSIÓN (CORREGIDA CON FECHAS MÉXICO)
   const processConversion = useCallback(async () => {
     if (!safeLayaway || !calculations) return;
 
@@ -380,10 +374,7 @@ export default function ConvertToSaleDialog({
         finalSaleNumber = newSaleNumber || await generateSaleNumber();
       }
 
-      // ✅ USAR UTC PARA ALMACENAMIENTO (CONSISTENTE)
-      const nowUTC = new Date().toISOString();
-
-      // ✅ ACTUALIZAR EL APARTADO A VENTA COMPLETADA
+      // ✅ ACTUALIZAR EL APARTADO A VENTA COMPLETADA (LA BD MANEJA updated_at AUTOMÁTICAMENTE)
       const updateData = {
         sale_number: finalSaleNumber,
         sale_type: convertToRegularSale ? 'regular' : 'layaway',
@@ -396,8 +387,8 @@ export default function ConvertToSaleDialog({
         commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
         commission_amount: calculations.commission,
         notes: notes || `Convertido de apartado ${safeLayaway.sale_number}`,
-        updated_at: nowUTC, // ✅ UTC
-        completed_at: nowUTC // ✅ UTC
+        completed_at: toMexicoTimestamp(new Date()) // ✅ CORREGIDO: hora México con offset
+        // ✅ updated_at se maneja automáticamente por la BD
       };
 
       const { error: updateError } = await supabase
@@ -409,7 +400,7 @@ export default function ConvertToSaleDialog({
         throw updateError;
       }
 
-      // ✅ REGISTRAR PAGO FINAL SI HAY MONTO PENDIENTE
+      // ✅ REGISTRAR PAGO FINAL SI HAY MONTO PENDIENTE CON FECHAS CORREGIDAS
       if (calculations.pendingAmount > 0) {
         const paymentData = {
           sale_id: safeLayaway.id,
@@ -419,12 +410,12 @@ export default function ConvertToSaleDialog({
           commission_rate: applyCommission ? (paymentMethods.find(m => m.value === paymentMethod)?.commission || 0) : 0,
           commission_amount: calculations.commission,
           sequence_order: (safeLayaway.payment_history?.length || 0) + 1,
-          payment_date: nowUTC, // ✅ UTC
-          created_at: nowUTC, // ✅ UTC
+          payment_date: toMexicoTimestamp(new Date()), // ✅ CORREGIDO: hora México con offset
           created_by: userId,
           is_partial_payment: false,
           payment_sequence: 1,
           notes: `Pago final - Conversión a venta`
+          // ✅ created_at se maneja automáticamente por la BD
         };
 
         const { error: paymentError } = await supabase
@@ -436,7 +427,7 @@ export default function ConvertToSaleDialog({
         }
       }
 
-      // ✅ CREAR HISTORIAL DE CONVERSIÓN
+      // ✅ CREAR HISTORIAL DE CONVERSIÓN CON FECHA CORREGIDA
       await supabase
         .from('layaway_status_history')
         .insert([{
@@ -446,8 +437,8 @@ export default function ConvertToSaleDialog({
           previous_paid_amount: safeLayaway.paid_amount,
           new_paid_amount: safeLayaway.total_amount,
           reason: `Convertido a ${convertToRegularSale ? 'venta regular' : 'venta completada'}`,
-          created_at: nowUTC, // ✅ UTC
           created_by: userId
+          // ✅ created_at se maneja automáticamente por la BD
         }]);
 
       setCompleted(true);
