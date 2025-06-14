@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-// ✅ FUNCIÓN PARA TIMESTAMP MÉXICO
+// ✅ FUNCIÓN PARA TIMESTAMP MÉXICO (IGUAL QUE CORTES)
 function toMexicoTimestamp(date: Date): string {
   const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
   const year = mexicoTime.getFullYear();
@@ -26,11 +26,13 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('🔄 Iniciando sincronización manual para fecha:', date);
+    console.log('🔄 Iniciando sincronización manual de egresos para fecha:', date);
+    console.log('⏰ Timestamp actual México:', toMexicoTimestamp(new Date()));
+    console.log('👤 Usuario actual:', 'luishdz04');
     
     const supabase = createServerSupabaseClient();
     
-    // 🔍 OBTENER USUARIO
+    // ✅ OBTENER USUARIO AUTENTICADO O USAR HARDCODED COMO FALLBACK (IGUAL QUE CORTES)
     let userId;
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest) {
         const { data: hardcodedUser, error: userError } = await supabase
           .from('Users')
           .select('id')
-          .eq('email', 'ing.luisdeluna@outlook.com')
+          .eq('username', 'luishdz04')
           .single();
         
         if (userError || !hardcodedUser) {
@@ -163,7 +165,7 @@ export async function POST(request: NextRequest) {
       mexico_time: mexicoTimestamp
     });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Error en API sync-with-cut:', error);
     return NextResponse.json(
       { 
