@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+// ✅ IMPORTAR HELPERS DE FECHA MÉXICO COMO EN LOS OTROS ARCHIVOS
+import { getMexicoDateRange } from '@/utils/dateHelpers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,26 +15,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Consultando datos para fecha:', date);
+    console.log('🔍 Consultando datos para fecha México:', date);
 
     const supabase = createServerSupabaseClient();
 
-    // ✅ ÚNICA CORRECCIÓN: CALCULAR RANGO PARA ZONA HORARIA MÉXICO
-    // México está en UTC-6 (invierno) o UTC-5 (verano)
-    const mexicoDate = new Date(date + 'T00:00:00');
+    // ✅ USAR EL MISMO HELPER QUE EN LOS OTROS ARCHIVOS
+    const { startISO, endISO } = getMexicoDateRange(date);
     
-    // Convertir el inicio del día en México a UTC
-    const mexicoStartUTC = new Date(mexicoDate.getTime() + (6 * 60 * 60 * 1000)); // +6 horas para UTC
-    const mexicoEndUTC = new Date(mexicoDate.getTime() + (6 * 60 * 60 * 1000) + (23 * 60 * 60 * 1000) + (59 * 60 * 1000) + (59 * 1000)); // +23:59:59
-
-    console.log('⏰ Rango UTC calculado para México:', {
+    console.log('⏰ Rango México calculado:', {
       fecha_mexico: date,
-      inicio_utc: mexicoStartUTC.toISOString(),
-      fin_utc: mexicoEndUTC.toISOString(),
-      note: 'Ajustado para zona horaria México (UTC-6)'
+      inicio_utc: startISO,
+      fin_utc: endISO,
+      timezone: 'America/Mexico_City',
+      note: 'Convertido correctamente con dateHelpers'
     });
 
-    // 🏪 1. VENTAS POS (sales con sale_type = 'sale') - SIN CAMBIOS
+    // 🏪 1. VENTAS POS (sales con sale_type = 'sale')
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
       .select(`
@@ -47,15 +45,15 @@ export async function GET(request: NextRequest) {
       `)
       .eq('sale_type', 'sale')
       .eq('status', 'completed')
-      .gte('created_at', mexicoStartUTC.toISOString())
-      .lte('created_at', mexicoEndUTC.toISOString());
+      .gte('created_at', startISO)
+      .lte('created_at', endISO);
 
     if (salesError) {
       console.error('❌ Error consultando ventas:', salesError);
       throw salesError;
     }
 
-    // 💰 2. ABONOS (sale_payment_details con is_partial_payment = true) - SIN CAMBIOS
+    // 💰 2. ABONOS (sale_payment_details con is_partial_payment = true)
     const { data: abonosData, error: abonosError } = await supabase
       .from('sale_payment_details')
       .select(`
@@ -69,15 +67,15 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('is_partial_payment', true)
-      .gte('payment_date', mexicoStartUTC.toISOString())
-      .lte('payment_date', mexicoEndUTC.toISOString());
+      .gte('payment_date', startISO)
+      .lte('payment_date', endISO);
 
     if (abonosError) {
       console.error('❌ Error consultando abonos:', abonosError);
       throw abonosError;
     }
 
-    // 🎫 3. MEMBRESÍAS - SIN CAMBIOS EN LA LÓGICA
+    // 🎫 3. MEMBRESÍAS - ACTUALIZADO CON payment_method
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('user_memberships')
       .select(`
@@ -91,8 +89,8 @@ export async function GET(request: NextRequest) {
           commission_amount
         )
       `)
-      .gte('created_at', mexicoStartUTC.toISOString())
-      .lte('created_at', mexicoEndUTC.toISOString());
+      .gte('created_at', startISO)
+      .lte('created_at', endISO);
 
     if (membershipsError) {
       console.error('❌ Error consultando membresías:', membershipsError);
@@ -105,7 +103,7 @@ export async function GET(request: NextRequest) {
       membresias: membershipsData?.length || 0
     });
 
-    // 🧮 PROCESAR VENTAS POS - LÓGICA ORIGINAL MANTENIDA
+    // 🧮 PROCESAR VENTAS POS
     const pos = {
       efectivo: 0,
       transferencia: 0,
@@ -148,7 +146,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 🧮 PROCESAR ABONOS - LÓGICA ORIGINAL MANTENIDA
+    // 🧮 PROCESAR ABONOS
     const abonos = {
       efectivo: 0,
       transferencia: 0,
@@ -188,7 +186,7 @@ export async function GET(request: NextRequest) {
     });
     abonos.transactions = uniqueSaleIds.size;
 
-    // 🧮 PROCESAR MEMBRESÍAS - LÓGICA ORIGINAL MANTENIDA
+    // 🧮 PROCESAR MEMBRESÍAS - CORREGIDO
     const memberships = {
       efectivo: 0,
       transferencia: 0,
@@ -263,7 +261,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // 🧮 CALCULAR TOTALES - LÓGICA ORIGINAL MANTENIDA
+    // 🧮 CALCULAR TOTALES
     const totals = {
       efectivo: pos.efectivo + abonos.efectivo + memberships.efectivo,
       transferencia: pos.transferencia + abonos.transferencia + memberships.transferencia,
@@ -275,18 +273,18 @@ export async function GET(request: NextRequest) {
       net_amount: pos.total + abonos.total + memberships.total - (pos.commissions + abonos.commissions + memberships.commissions)
     };
 
-    // ✅ RESPUESTA FINAL CON INFORMACIÓN DE ZONA HORARIA CORREGIDA
+    // ✅ RESPUESTA FINAL CONSISTENTE CON dateHelpers
     const response = {
       success: true,
       date,
       timezone_info: {
         mexico_date: date,
-        utc_range: {
-          start: mexicoStartUTC.toISOString(),
-          end: mexicoEndUTC.toISOString()
+        mexico_range: {
+          start: startISO,
+          end: endISO
         },
-        timezone: 'America/Mexico_City (UTC-6)',
-        note: "✅ Datos filtrados correctamente para fecha México"
+        timezone: 'America/Mexico_City',
+        note: "✅ Datos filtrados correctamente por fecha México usando dateHelpers"
       },
       pos,
       abonos,
