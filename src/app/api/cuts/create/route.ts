@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-// 🇲🇽 FUNCIÓN PARA CREAR TIMESTAMP MÉXICO
-function createMexicoTimestamp(): string {
+// ✅ MISMA FUNCIÓN QUE DAILY-DATA Y TRANSACTION-DETAILS
+function getMexicoTimestamp(): string {
   const now = new Date();
-  const mexicoTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+  const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
   return mexicoTime.toISOString();
 }
 
@@ -107,8 +107,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 🇲🇽 USAR HORA MÉXICO PARA TODO
-    const mexicoTimestamp = created_at_mexico || createMexicoTimestamp();
+    // ✅ USAR MISMA FUNCIÓN QUE OTRAS APIS
+    const mexicoTimestamp = created_at_mexico || getMexicoTimestamp();
     
     // 🔢 GENERAR NÚMERO DE CORTE CON HORA MÉXICO
     const mexicoDate = new Date(mexicoTimestamp);
@@ -116,11 +116,13 @@ export async function POST(request: NextRequest) {
     const timestamp = mexicoDate.getTime();
     const cutNumber = `CORTE-${dateStr}-${timestamp}`;
     
-    console.log('📊 Creando corte con hora México:', {
+    console.log('📊 Creando corte con hora México (función local):', {
       cut_date,
       cut_number: cutNumber,
       created_by: userId,
       mexico_timestamp: mexicoTimestamp,
+      mexico_formatted: new Date(mexicoTimestamp).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
+      utc_time: new Date().toISOString(),
       grand_total,
       is_manual
     });
@@ -131,7 +133,7 @@ export async function POST(request: NextRequest) {
       .insert([{
         cut_number: cutNumber,
         cut_date,
-        cut_time: mexicoTimestamp, // ✅ HORA MÉXICO
+        cut_time: mexicoTimestamp, // ✅ HORA MÉXICO CON FUNCIÓN LOCAL
         created_by: userId,
         notes: notes?.trim() || null,
         is_manual,
@@ -181,10 +183,10 @@ export async function POST(request: NextRequest) {
         
         // ESTADO CON HORA MÉXICO
         status: 'closed',
-        closed_at: mexicoTimestamp, // ✅ HORA MÉXICO
+        closed_at: mexicoTimestamp, // ✅ HORA MÉXICO CON FUNCIÓN LOCAL
         closed_by: userId,
-        created_at: mexicoTimestamp, // ✅ HORA MÉXICO
-        updated_at: mexicoTimestamp, // ✅ HORA MÉXICO
+        created_at: mexicoTimestamp, // ✅ HORA MÉXICO CON FUNCIÓN LOCAL
+        updated_at: mexicoTimestamp, // ✅ HORA MÉXICO CON FUNCIÓN LOCAL
         updated_by: userId
       }])
       .select()
@@ -205,7 +207,11 @@ export async function POST(request: NextRequest) {
       throw insertError;
     }
 
-    console.log('✅ Corte creado exitosamente con hora México:', newCut);
+    console.log('✅ Corte creado exitosamente con hora México (función local):', {
+      corte_id: newCut.id,
+      hora_mexico: new Date(mexicoTimestamp).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
+      hora_utc: new Date().toISOString()
+    });
 
     return NextResponse.json({
       success: true,
@@ -213,6 +219,8 @@ export async function POST(request: NextRequest) {
       cut_id: newCut.id,
       cut_number: cutNumber,
       mexico_time: mexicoTimestamp,
+      mexico_formatted: new Date(mexicoTimestamp).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
+      utc_time: new Date().toISOString(),
       cut: newCut
     });
 
