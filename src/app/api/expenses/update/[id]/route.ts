@@ -28,10 +28,10 @@ export async function PUT(
       amount,
       receipt_number,
       notes,
-      updated_at_mexico // ✅ RECIBIR HORA MÉXICO DEL FRONTEND
+      updated_at_mexico
     } = body;
     
-    console.log('✏️ Actualizando egreso:', {
+    console.log('✏️ Actualizando egreso con sincronización directa:', {
       expense_id: expenseId,
       expense_type,
       description,
@@ -57,7 +57,7 @@ export async function PUT(
     
     const supabase = createServerSupabaseClient();
     
-    // ✅ OBTENER USUARIO AUTENTICADO O USAR HARDCODED COMO FALLBACK (IGUAL QUE CORTES)
+    // ✅ OBTENER USUARIO AUTENTICADO O USAR HARDCODED COMO FALLBACK
     let userId;
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -67,7 +67,8 @@ export async function PUT(
         const { data: hardcodedUser, error: userError } = await supabase
           .from('Users')
           .select('id')
-          .eq('username', 'luishdz04')
+          .ilike('email', '%luis%')
+          .limit(1)
           .single();
         
         if (userError || !hardcodedUser) {
@@ -115,15 +116,14 @@ export async function PUT(
       );
     }
     
-    // ✅ USAR LÓGICA DE dateHelpers - TIMESTAMP CON OFFSET MÉXICO
     const now = new Date();
     const mexicoTimestamp = updated_at_mexico || toMexicoTimestamp(now);
     
-    console.log('🇲🇽 Aplicando lógica de dateHelpers para actualización:', {
+    console.log('🇲🇽 Actualizando egreso con sincronización directa:', {
       utc_actual: now.toISOString(),
       mexico_timestamp: mexicoTimestamp,
       egreso_existente: existingExpense.id,
-      nota: 'Usando toMexicoTimestamp con offset -06:00'
+      expense_date: existingExpense.expense_date
     });
     
     // 💾 ACTUALIZAR EGRESO EN BD CON TIMESTAMP MÉXICO
@@ -135,7 +135,7 @@ export async function PUT(
         amount: parseFloat(amount),
         receipt_number: receipt_number?.trim() || null,
         notes: notes?.trim() || null,
-        updated_at: mexicoTimestamp, // ✅ TIMESTAMP CON OFFSET MÉXICO
+        updated_at: mexicoTimestamp,
         updated_by: userId
       })
       .eq('id', expenseId)
@@ -147,61 +147,102 @@ export async function PUT(
       throw updateError;
     }
     
-    console.log('✅ Egreso actualizado con dateHelpers:', {
+    console.log('✅ Egreso actualizado exitosamente:', {
       egreso_id: updatedExpense.id,
       timestamp_actualizado: mexicoTimestamp,
-      hora_utc_actual: now.toISOString(),
       monto_anterior: existingExpense.amount,
       monto_nuevo: parseFloat(amount)
     });
     
-    // 🔄 SINCRONIZACIÓN AUTOMÁTICA CON CORTE (si existe)
-    console.log('🔄 Iniciando sincronización automática con corte...');
+    // 🔄 SINCRONIZACIÓN DIRECTA CON CORTE (SIN FETCH INTERNO)
+    console.log('🔄 Iniciando sincronización DIRECTA tras actualización...');
+    
+    let syncInfo = null;
     
     try {
-      const syncResponse = await fetch(`${request.nextUrl.origin}/api/expenses/sync-with-cut`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: existingExpense.expense_date })
-      });
+      // 1️⃣ CALCULAR TOTAL DE EGRESOS ACTIVOS DEL DÍA (CON EL ACTUALIZADO)
+      const { data: dayExpenses, error: expensesError } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('expense_date', existingExpense.expense_date)
+        .eq('status', 'active');
       
-      const syncData = await syncResponse.json();
-      
-      if (syncData.success) {
-        console.log('✅ Sincronización automática exitosa:', syncData.cut_number);
-        return NextResponse.json({
-          success: true,
-          message: `Egreso actualizado y sincronizado: ${formatPrice(parseFloat(amount))}`,
-          expense_id: updatedExpense.id,
-          expense: updatedExpense,
-          sync_info: syncData,
-          mexico_time: mexicoTimestamp,
-          utc_time: now.toISOString()
-        });
-      } else {
-        console.log('ℹ️ No hay corte para sincronizar:', syncData.error);
-        return NextResponse.json({
-          success: true,
-          message: `Egreso actualizado exitosamente: ${formatPrice(parseFloat(amount))}`,
-          expense_id: updatedExpense.id,
-          expense: updatedExpense,
-          mexico_time: mexicoTimestamp,
-          utc_time: now.toISOString(),
-          note: 'Sin corte asociado para sincronizar'
-        });
+      if (expensesError) {
+        console.error('❌ Error consultando egresos para sincronización:', expensesError);
+        throw expensesError;
       }
-    } catch (syncError) {
-      console.log('⚠️ Error en sincronización (no crítico):', syncError);
-      return NextResponse.json({
-        success: true,
-        message: `Egreso actualizado exitosamente: ${formatPrice(parseFloat(amount))}`,
-        expense_id: updatedExpense.id,
-        expense: updatedExpense,
-        mexico_time: mexicoTimestamp,
-        utc_time: now.toISOString(),
-        note: 'Actualizado sin sincronización (error menor)'
+      
+      const totalExpenses = dayExpenses?.reduce((sum: number, exp: any) => {
+        return sum + parseFloat(exp.amount.toString());
+      }, 0) || 0;
+      
+      console.log('📊 Total recalculado tras actualización:', {
+        total_expenses: totalExpenses,
+        expense_count: dayExpenses?.length || 0
       });
+      
+      // 2️⃣ BUSCAR Y ACTUALIZAR CORTE
+      const { data: existingCut, error: cutError } = await supabase
+        .from('cash_cuts')
+        .select('id, cut_number, expenses_amount, grand_total, final_balance')
+        .eq('cut_date', existingExpense.expense_date)
+        .single();
+      
+      if (cutError && cutError.code !== 'PGRST116') {
+        throw cutError;
+      }
+      
+      if (existingCut) {
+        const newFinalBalance = parseFloat(existingCut.grand_total.toString()) - totalExpenses;
+        
+        const { data: updatedCut, error: cutUpdateError } = await supabase
+          .from('cash_cuts')
+          .update({
+            expenses_amount: totalExpenses,
+            final_balance: newFinalBalance,
+            updated_at: mexicoTimestamp,
+            updated_by: userId
+          })
+          .eq('id', existingCut.id)
+          .select()
+          .single();
+        
+        if (cutUpdateError) {
+          throw cutUpdateError;
+        }
+        
+        console.log('✅ Sincronización directa tras actualización completada:', {
+          cut_number: existingCut.cut_number,
+          old_expenses: existingCut.expenses_amount,
+          new_expenses: totalExpenses,
+          new_final_balance: newFinalBalance
+        });
+        
+        syncInfo = {
+          synchronized: true,
+          cut_number: existingCut.cut_number,
+          old_expenses_amount: existingExpense.amount,
+          new_expenses_amount: parseFloat(amount),
+          total_expenses_after_update: totalExpenses
+        };
+      } else {
+        syncInfo = { synchronized: false, reason: 'No existe corte para esta fecha' };
+      }
+      
+    } catch (syncError: any) {
+      console.error('⚠️ Error en sincronización directa tras actualización:', syncError);
+      syncInfo = { synchronized: false, error: syncError.message };
     }
+    
+    return NextResponse.json({
+      success: true,
+      message: `Egreso actualizado exitosamente: ${formatPrice(parseFloat(amount))}`,
+      expense_id: updatedExpense.id,
+      expense: updatedExpense,
+      sync_info: syncInfo,
+      mexico_time: mexicoTimestamp,
+      utc_time: now.toISOString()
+    });
     
   } catch (error: any) {
     console.error('💥 Error en API update expense:', error);
@@ -216,7 +257,6 @@ export async function PUT(
   }
 }
 
-// ✅ FUNCIÓN PARA FORMATEAR PRECIO (IGUAL QUE CORTES)
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
