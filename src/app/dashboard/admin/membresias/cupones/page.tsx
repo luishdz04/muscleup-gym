@@ -46,21 +46,25 @@ import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
-// ✅ FUNCIONES SIMPLIFICADAS - SIN DEPENDENCIAS EXTERNAS
-const getMexicoToday = () => new Date().toISOString().split('T')[0];
+// ✅ FUNCIONES DE FECHA MÉXICO CORREGIDAS CON HELPERS
+const getMexicoToday = () => {
+  return toMexicoDate(new Date());
+};
 
 const formatDateForDisplay = (dateString: string) => {
   if (!dateString) return 'Sin fecha';
   try {
-    const date = new Date(dateString + 'T12:00:00');
-    return date.toLocaleDateString('es-MX', {
+    return formatMexicoDateTime(dateString, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
   } catch (error) {
+    console.error('❌ Error formateando fecha:', dateString, error);
     return 'Fecha inválida';
   }
 };
@@ -72,6 +76,7 @@ const getDaysBetweenMexicoDates = (startDate: string, endDate: string) => {
     const diffTime = end.getTime() - start.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   } catch (error) {
+    console.error('❌ Error calculando días entre fechas:', error);
     return 0;
   }
 };
@@ -221,7 +226,7 @@ const discountTypeOptions = [
   { value: 'fixed', label: 'Monto Fijo', icon: '💰' }
 ];
 
-// ✅ HELPER FUNCTION PARA DÍAS RESTANTES
+// ✅ HELPER FUNCTION PARA DÍAS RESTANTES CON FECHAS MÉXICO
 const getDaysRemainingDisplay = (coupon: Coupon) => {
   const daysRemaining = coupon.days_remaining;
   
@@ -296,7 +301,7 @@ export default function CuponesPage() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // Cargar usuario actual
+  // ✅ CARGAR USUARIO ACTUAL CON LOGGING
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
@@ -307,14 +312,14 @@ export default function CuponesPage() {
         }
         if (user) {
           setCurrentUserId(user.id);
-          console.log('Usuario actual obtenido:', user.id, 'Email:', user.email);
+          console.log('✅ Usuario actual obtenido:', user.id, 'Email:', user.email);
         }
       } catch (err) {
-        console.error('Error crítico obteniendo usuario:', err);
+        console.error('💥 Error crítico obteniendo usuario:', err);
       }
     };
     getCurrentUser();
-  }, []);
+  }, [supabase]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -326,7 +331,7 @@ export default function CuponesPage() {
     applyFilters();
   }, [coupons, filters]);
 
-  // 🎟️ CARGAR CUPONES CON DATOS CALCULADOS
+  // ✅ CARGAR CUPONES CON FECHAS MÉXICO CORREGIDAS
   const loadCoupons = async () => {
     setLoading(true);
     try {
@@ -337,12 +342,14 @@ export default function CuponesPage() {
 
       if (error) throw error;
 
-      // Procesar y calcular campos adicionales
+      // ✅ PROCESAR CUPONES CON FECHAS MÉXICO
       const processedCoupons: Coupon[] = (data || []).map(coupon => {
         const today = getMexicoToday();
         const isExpired = coupon.end_date < today;
         const daysRemaining = isExpired ? 0 : getDaysBetweenMexicoDates(today, coupon.end_date);
         const usagePercentage = coupon.max_uses ? (coupon.current_uses / coupon.max_uses) * 100 : 0;
+        
+        console.log(`🎟️ Procesando cupón ${coupon.code}: vence ${coupon.end_date}, días restantes: ${daysRemaining}`);
         
         return {
           ...coupon,
@@ -355,14 +362,17 @@ export default function CuponesPage() {
       setCoupons(processedCoupons);
       calculateStats(processedCoupons);
       
+      console.log(`✅ ${processedCoupons.length} cupones cargados con fechas México`);
+      
     } catch (err: any) {
+      console.error('❌ Error al cargar cupones:', err);
       setError(`Error al cargar cupones: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // 📊 CALCULAR ESTADÍSTICAS
+  // ✅ CALCULAR ESTADÍSTICAS CON FECHAS MÉXICO
   const calculateStats = (data: Coupon[]) => {
     const today = getMexicoToday();
     
@@ -376,9 +386,10 @@ export default function CuponesPage() {
     };
     
     setStats(stats);
+    console.log('📊 Estadísticas calculadas:', stats);
   };
 
-  // ✅ APLICAR FILTROS
+  // ✅ APLICAR FILTROS CON FECHAS MÉXICO
   const applyFilters = () => {
     let filtered = [...coupons];
 
@@ -415,7 +426,7 @@ export default function CuponesPage() {
       filtered = filtered.filter(coupon => coupon.discount_type === filters.discountType);
     }
 
-    // Filtros por fecha
+    // ✅ FILTROS POR FECHA CON FECHAS MÉXICO
     if (filters.dateFrom) {
       filtered = filtered.filter(coupon => coupon.start_date >= filters.dateFrom);
     }
@@ -426,9 +437,10 @@ export default function CuponesPage() {
 
     setFilteredCoupons(filtered);
     setPage(0);
+    console.log(`🔍 Filtros aplicados: ${filtered.length}/${coupons.length} cupones`);
   };
 
-  // ✅ CREAR O EDITAR CUPÓN - VERSIÓN CORREGIDA SIN TIMESTAMPS MANUALES
+  // ✅ CREAR O EDITAR CUPÓN CON FECHAS MÉXICO CORREGIDAS
   const handleSaveCoupon = async () => {
     setFormLoading(true);
     try {
@@ -453,12 +465,14 @@ export default function CuponesPage() {
         return;
       }
 
-      // ✅ DATOS PARA ENVIAR SIN TIMESTAMPS MANUALES
+      // ✅ DATOS PARA ENVIAR - LA BD MANEJA TIMESTAMPS AUTOMÁTICAMENTE
       const couponData = {
         ...formData,
         code: formData.code.toUpperCase().trim()
-        // ✅ updated_at se maneja automáticamente por la BD
+        // ✅ created_at y updated_at se manejan automáticamente por la BD
       };
+
+      console.log('💾 Guardando cupón:', couponData);
 
       if (selectedCoupon) {
         // Editar cupón existente
@@ -468,21 +482,23 @@ export default function CuponesPage() {
           .eq('id', selectedCoupon.id);
 
         if (error) throw error;
-        setSuccessMessage('Cupón actualizado exitosamente');
+        setSuccessMessage('✅ Cupón actualizado exitosamente');
         setEditDialogOpen(false);
+        console.log('✅ Cupón editado:', selectedCoupon.id);
       } else {
-        // ✅ CREAR NUEVO CUPÓN SIN TIMESTAMPS MANUALES
+        // ✅ CREAR NUEVO CUPÓN
         const { error } = await supabase
           .from('coupons')
           .insert([{
             ...couponData,
-            created_by: currentUserId
+            created_by: currentUserId || null
             // ✅ created_at se maneja automáticamente por la BD
           }]);
 
         if (error) throw error;
-        setSuccessMessage('Cupón creado exitosamente');
+        setSuccessMessage('✅ Cupón creado exitosamente');
         setCreateDialogOpen(false);
+        console.log('✅ Cupón creado:', couponData.code);
       }
 
       // Limpiar formulario y recargar datos
@@ -490,6 +506,7 @@ export default function CuponesPage() {
       loadCoupons();
       
     } catch (err: any) {
+      console.error('❌ Error al guardar cupón:', err);
       if (err.code === '23505') {
         setError('Ya existe un cupón con ese código');
       } else {
@@ -505,6 +522,8 @@ export default function CuponesPage() {
     if (!confirm(`¿Está seguro de eliminar el cupón "${coupon.code}"?`)) return;
 
     try {
+      console.log('🗑️ Eliminando cupón:', coupon.id);
+      
       const { error } = await supabase
         .from('coupons')
         .delete()
@@ -512,17 +531,21 @@ export default function CuponesPage() {
 
       if (error) throw error;
 
-      setSuccessMessage('Cupón eliminado exitosamente');
+      setSuccessMessage('✅ Cupón eliminado exitosamente');
       loadCoupons();
+      console.log('✅ Cupón eliminado:', coupon.code);
       
     } catch (err: any) {
+      console.error('❌ Error al eliminar cupón:', err);
       setError(`Error al eliminar cupón: ${err.message}`);
     }
   };
 
-  // ✅ ALTERNAR ESTADO ACTIVO/INACTIVO - VERSIÓN CORREGIDA
+  // ✅ ALTERNAR ESTADO ACTIVO/INACTIVO
   const handleToggleActive = async (coupon: Coupon) => {
     try {
+      console.log(`🔄 Cambiando estado de cupón ${coupon.code}: ${coupon.is_active} → ${!coupon.is_active}`);
+      
       const { error } = await supabase
         .from('coupons')
         .update({ 
@@ -533,10 +556,12 @@ export default function CuponesPage() {
 
       if (error) throw error;
 
-      setSuccessMessage(`Cupón ${!coupon.is_active ? 'activado' : 'desactivado'} exitosamente`);
+      setSuccessMessage(`✅ Cupón ${!coupon.is_active ? 'activado' : 'desactivado'} exitosamente`);
       loadCoupons();
+      console.log(`✅ Estado cambiado para cupón ${coupon.code}`);
       
     } catch (err: any) {
+      console.error('❌ Error al cambiar estado:', err);
       setError(`Error al cambiar estado: ${err.message}`);
     }
   };
@@ -545,14 +570,17 @@ export default function CuponesPage() {
   const handleCopyCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
-      setSuccessMessage(`Código "${code}" copiado al portapapeles`);
+      setSuccessMessage(`✅ Código "${code}" copiado al portapapeles`);
+      console.log('📋 Código copiado:', code);
     } catch (err) {
+      console.error('❌ Error al copiar código:', err);
       setError('Error al copiar código');
     }
   };
 
-  // 🔄 RESETEAR FORMULARIO
+  // 🔄 RESETEAR FORMULARIO CON FECHAS MÉXICO
   const resetForm = () => {
+    const today = getMexicoToday();
     setFormData({
       code: '',
       description: '',
@@ -560,14 +588,15 @@ export default function CuponesPage() {
       discount_value: 0,
       min_amount: 0,
       max_uses: null,
-      start_date: getMexicoToday(),
-      end_date: getMexicoToday(),
+      start_date: today,
+      end_date: today,
       is_active: true
     });
     setSelectedCoupon(null);
+    console.log('🔄 Formulario reseteado con fecha México:', today);
   };
 
-  // 🎨 OBTENER COLOR DEL ESTADO
+  // ✅ OBTENER COLOR DEL ESTADO CON FECHAS MÉXICO
   const getCouponStatus = (coupon: Coupon) => {
     const today = getMexicoToday();
     
@@ -612,6 +641,7 @@ export default function CuponesPage() {
       dateFrom: '',
       dateTo: ''
     });
+    console.log('🔧 Filtros limpiados');
   };
 
   // 🎯 INICIALIZAR EDICIÓN
@@ -629,6 +659,7 @@ export default function CuponesPage() {
     });
     setSelectedCoupon(coupon);
     setEditDialogOpen(true);
+    console.log('🎯 Inicializando edición para cupón:', coupon.code);
   };
 
   // ✅ FUNCIONES PARA CERRAR NOTIFICACIONES
@@ -695,7 +726,7 @@ export default function CuponesPage() {
         </Alert>
       </Snackbar>
 
-      {/* Header Enterprise */}
+      {/* ✅ HEADER ENTERPRISE CON DARK PRO SYSTEM */}
       <Paper sx={{
         p: 4,
         mb: 4,
@@ -802,7 +833,7 @@ export default function CuponesPage() {
           </Stack>
         </Box>
 
-        {/* Estadísticas Dashboard */}
+        {/* ✅ ESTADÍSTICAS DASHBOARD */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
             <Card sx={{
@@ -956,7 +987,7 @@ export default function CuponesPage() {
         </Grid>
       </Paper>
 
-      {/* Panel de Filtros */}
+      {/* ✅ PANEL DE FILTROS */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}95, ${darkProTokens.surfaceLevel3}90)`,
         border: `1px solid ${darkProTokens.primary}20`,
@@ -1171,7 +1202,7 @@ export default function CuponesPage() {
         </CardContent>
       </Card>
 
-      {/* Tabla de Cupones */}
+      {/* ✅ TABLA DE CUPONES */}
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
         border: `1px solid ${darkProTokens.primary}20`,
@@ -1411,7 +1442,7 @@ export default function CuponesPage() {
         </CardContent>
       </Card>
 
-      {/* Menu de Acciones */}
+      {/* ✅ MENU DE ACCIONES */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -1476,7 +1507,7 @@ export default function CuponesPage() {
         </MenuList>
       </Menu>
 
-      {/* 🆕 MODAL CREAR CUPÓN */}
+      {/* ✅ MODAL CREAR CUPÓN */}
       <Dialog 
         open={createDialogOpen} 
         onClose={() => !formLoading && setCreateDialogOpen(false)}
@@ -1594,7 +1625,7 @@ export default function CuponesPage() {
                         Monto Fijo
                       </Box>
                     </MenuItem>
-                                    </Select>
+                  </Select>
                 </FormControl>
               </Grid>
 
@@ -1951,7 +1982,7 @@ export default function CuponesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ✏️ MODAL EDITAR CUPÓN */}
+      {/* ✅ MODAL EDITAR CUPÓN (similar al crear) */}
       <Dialog 
         open={editDialogOpen} 
         onClose={() => !formLoading && setEditDialogOpen(false)}
@@ -2057,9 +2088,8 @@ export default function CuponesPage() {
                 </Grid>
               </Card>
 
-              {/* Formulario de edición (mismo que crear) */}
+              {/* Formulario de edición (mismos campos que crear) */}
               <Grid container spacing={3}>
-                {/* Los mismos campos que en crear cupón */}
                 <Grid size={6}>
                   <TextField
                     fullWidth
@@ -2076,12 +2106,6 @@ export default function CuponesPage() {
                         fontWeight: 700,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
                         }
                       }
                     }}
@@ -2112,12 +2136,6 @@ export default function CuponesPage() {
                         color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkProTokens.primary
                         }
                       }}
                     >
@@ -2137,7 +2155,7 @@ export default function CuponesPage() {
                   </FormControl>
                 </Grid>
 
-                {/* Resto de campos similares */}
+                {/* Resto de campos similar al modal crear */}
                 <Grid size={6}>
                   <TextField
                     fullWidth
@@ -2210,7 +2228,7 @@ export default function CuponesPage() {
                     }))}
                     placeholder="Ilimitado si está vacío"
                     InputProps={{
-                      sx: {
+                                            sx: {
                         color: darkProTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: `${darkProTokens.primary}30`
@@ -2392,7 +2410,7 @@ export default function CuponesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* 👁️ MODAL DE DETALLES SIMPLIFICADO */}
+      {/* ✅ MODAL DE DETALLES COMPLETO */}
       <Dialog 
         open={detailsDialogOpen} 
         onClose={() => setDetailsDialogOpen(false)}
@@ -2511,7 +2529,7 @@ export default function CuponesPage() {
                 </Card>
               </Grid>
 
-              {/* Más información en columnas */}
+              {/* Estadísticas de Uso */}
               <Grid size={6}>
                 <Card sx={{
                   background: `${darkProTokens.info}10`,
@@ -2563,6 +2581,7 @@ export default function CuponesPage() {
                 </Card>
               </Grid>
 
+              {/* Información de Vigencia */}
               <Grid size={6}>
                 <Card sx={{
                   background: `${darkProTokens.success}10`,
@@ -2649,6 +2668,28 @@ export default function CuponesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ✅ ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        /* Scrollbar personalizado para Dark Pro System */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+        }
+      `}</style>
     </Box>
   );
 }
