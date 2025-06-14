@@ -29,7 +29,8 @@ import {
   TableRow,
   Tabs,
   Tab,
-  Badge
+  Badge,
+  Tooltip
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -52,7 +53,10 @@ import {
   Schedule as ScheduleIcon,
   DateRange as DateRangeIcon,
   Person as PersonIcon,
-  LocalOffer as LocalOfferIcon
+  LocalOffer as LocalOfferIcon,
+  Info as InfoIcon,
+  Refresh as RefreshIcon,
+  MoneyOff as MoneyOffIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -300,6 +304,13 @@ interface CurrentUser {
   username?: string;
 }
 
+// ✅ NUEVO: Interface para resumen de egresos
+interface ExpensesSummary {
+  total_amount: number;
+  total_expenses: number;
+  categories: any;
+}
+
 export default function NuevoCorteePage() {
   const router = useRouter();
   
@@ -354,6 +365,10 @@ export default function NuevoCorteePage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
 
+  // ✅ NUEVOS ESTADOS PARA EGRESOS
+  const [expensesSummary, setExpensesSummary] = useState<ExpensesSummary | null>(null);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
+
   // ✅ FUNCIÓN: Cargar usuario autenticado
   const loadCurrentUser = async () => {
     try {
@@ -406,6 +421,58 @@ export default function NuevoCorteePage() {
     }
   };
 
+  // ✅ NUEVA FUNCIÓN: Cargar egresos para una fecha específica
+  const loadExpensesForDate = async (dateString: string) => {
+    try {
+      setLoadingExpenses(true);
+      console.log('💸 Cargando egresos para fecha:', dateString);
+      
+      const response = await fetch(`/api/expenses/daily?date=${dateString}`);
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        const totalExpenses = data.summary?.total_amount || 0;
+        const expenseCount = data.summary?.total_expenses || 0;
+        
+        console.log('💸 Egresos cargados automáticamente:', {
+          fecha: dateString,
+          total_amount: totalExpenses,
+          cantidad: expenseCount
+        });
+        
+        // ✅ Actualizar el campo expenses_amount automáticamente
+        setEditableData(prev => ({
+          ...prev,
+          expenses_amount: totalExpenses
+        }));
+        
+        // ✅ Guardar resumen para mostrar información
+        setExpensesSummary({
+          total_amount: totalExpenses,
+          total_expenses: expenseCount,
+          categories: data.summary?.categories || {}
+        });
+        
+      } else {
+        console.log('ℹ️ No hay egresos para esta fecha');
+        setEditableData(prev => ({
+          ...prev,
+          expenses_amount: 0
+        }));
+        setExpensesSummary(null);
+      }
+    } catch (error) {
+      console.error('Error cargando egresos:', error);
+      setEditableData(prev => ({
+        ...prev,
+        expenses_amount: 0
+      }));
+      setExpensesSummary(null);
+    } finally {
+      setLoadingExpenses(false);
+    }
+  };
+
   // ✅ EFECTOS
   useEffect(() => {
     loadCurrentUser();
@@ -426,6 +493,14 @@ export default function NuevoCorteePage() {
 
   useEffect(() => {
     loadDailyData(selectedDate);
+  }, [selectedDate]);
+
+  // ✅ NUEVO: Cargar egresos automáticamente cuando cambie la fecha
+  useEffect(() => {
+    if (selectedDate) {
+      const dateString = selectedDate.toISOString().split('T')[0];
+      loadExpensesForDate(dateString);
+    }
   }, [selectedDate]);
 
   // ✅ FUNCIONES
@@ -583,7 +658,7 @@ export default function NuevoCorteePage() {
             membership_debito: data.memberships.debito || 0,
             membership_credito: data.memberships.credito || 0,
             membership_transactions: data.memberships.transactions || 0,
-            expenses_amount: 0
+            expenses_amount: 0 // ✅ Se carga en loadExpensesForDate
           });
           setIsManualMode(false);
           
@@ -606,7 +681,7 @@ export default function NuevoCorteePage() {
             membership_debito: 0,
             membership_credito: 0,
             membership_transactions: 0,
-            expenses_amount: 0
+            expenses_amount: 0 // ✅ Se carga en loadExpensesForDate
           });
           setTransactionDetails([]);
         }
@@ -1020,7 +1095,7 @@ export default function NuevoCorteePage() {
                           Corte {formatDateLocal(selectedDate.toISOString().split('T')[0])}
                         </Typography>
                       </Box>
-                      
+
                       <Box>
                         <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                           Responsable:
@@ -1057,37 +1132,99 @@ export default function NuevoCorteePage() {
 
                   <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
 
-                  {/* GASTOS */}
+                  {/* ✅ GASTOS AUTOMÁTICOS (CAMPO CORREGIDO) */}
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
                       💸 Gastos del Día
                     </Typography>
+                    
+                    {/* ✅ CAMPO SOLO LECTURA CON DISEÑO ESPECIAL */}
                     <TextField
                       fullWidth
-                      type="number"
-                      value={editableData.expenses_amount}
-                      onChange={(e) => handleEditableChange('expenses_amount', e.target.value)}
-                      placeholder="0.00"
-                      inputProps={{ step: "0.01", min: "0" }}
+                      type="text"
+                      value={formatPrice(editableData.expenses_amount || 0)}
+                      placeholder="$0.00"
+                      disabled
                       InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        startAdornment: <InputAdornment position="start">💸</InputAdornment>,
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Tooltip title="Calculado automáticamente desde egresos registrados">
+                              <IconButton 
+                                size="small" 
+                                sx={{ color: darkProTokens.info }}
+                                onClick={() => loadExpensesForDate(selectedDate.toISOString().split('T')[0])}
+                              >
+                                {loadingExpenses ? <CircularProgress size={16} /> : <InfoIcon fontSize="small" />}
+                              </IconButton>
+                            </Tooltip>
+                          </InputAdornment>
+                        ),
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: darkProTokens.surfaceLevel4,
+                          backgroundColor: `${darkProTokens.info}10`, // Fondo azul claro
                           color: darkProTokens.textPrimary,
                           '& fieldset': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: `${darkProTokens.info}60`,
+                            borderStyle: 'dashed', // Línea punteada para indicar que es automático
                           },
-                          '&:hover fieldset': {
-                            borderColor: darkProTokens.error,
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: darkProTokens.error,
-                          },
+                        },
+                        '& .Mui-disabled': {
+                          WebkitTextFillColor: darkProTokens.textPrimary, // Texto visible
                         },
                       }}
                     />
+
+                    {/* ℹ️ INFORMACIÓN DE GASTOS AUTOMÁTICOS */}
+                    <Box sx={{ 
+                      mt: 2, 
+                      p: 2, 
+                      backgroundColor: `${darkProTokens.info}15`,
+                      borderRadius: 2,
+                      border: `1px solid ${darkProTokens.info}30`
+                    }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <AutoModeIcon sx={{ color: darkProTokens.info, fontSize: 18 }} />
+                        <Typography variant="body2" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                          Calculado automáticamente
+                        </Typography>
+                        {loadingExpenses && <CircularProgress size={14} sx={{ color: darkProTokens.info }} />}
+                      </Box>
+                      
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        💰 Este valor se calcula sumando todos los egresos registrados para: {selectedDate.toISOString().split('T')[0]}
+                      </Typography>
+                      
+                      {expensesSummary && (
+                        <Box sx={{ mt: 1 }}>
+                          {expensesSummary.total_expenses > 0 ? (
+                            <Typography variant="body2" sx={{ color: darkProTokens.success }}>
+                              ✅ {expensesSummary.total_expenses} egreso{expensesSummary.total_expenses === 1 ? '' : 's'} encontrado{expensesSummary.total_expenses === 1 ? '' : 's'} • Total: {formatPrice(expensesSummary.total_amount)}
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                              ℹ️ No hay egresos registrados para esta fecha
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                      
+                      <Button
+                        size="small"
+                        startIcon={loadingExpenses ? <CircularProgress size={12} /> : <RefreshIcon />}
+                        onClick={() => loadExpensesForDate(selectedDate.toISOString().split('T')[0])}
+                        disabled={loadingExpenses}
+                        sx={{ 
+                          color: darkProTokens.info, 
+                          mt: 1,
+                          textTransform: 'none',
+                          fontSize: '0.75rem'
+                        }}
+                      >
+                        {loadingExpenses ? 'Actualizando...' : 'Actualizar gastos'}
+                      </Button>
+                    </Box>
                   </Box>
 
                   <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
@@ -1380,7 +1517,7 @@ export default function NuevoCorteePage() {
                     borderRadius: 4
                   }}>
                     <CardContent sx={{ p: 4 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
                         <Avatar sx={{ bgcolor: darkProTokens.warning }}>
                           <SavingsIcon />
                         </Avatar>
@@ -1549,7 +1686,7 @@ export default function NuevoCorteePage() {
                             color: darkProTokens.success,
                             fontWeight: 700,
                             fontSize: '1rem'
-                                                    }}
+                          }}
                         />
                         {getTransactionsByType('membership').length > 0 && (
                           <Badge 
