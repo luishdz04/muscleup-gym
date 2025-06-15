@@ -1,44 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  let connection;
-  
   try {
     const expenseId = params.id;
 
     console.log('🔍 API: Obteniendo detalle del egreso:', expenseId);
 
-    connection = await getConnection();
+    const { data: expense, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        users!expenses_created_by_fkey(first_name, last_name, username)
+      `)
+      .eq('id', expenseId)
+      .single();
 
-    // Query para obtener detalle completo del egreso
-    const expenseQuery = `
-      SELECT 
-        expenses.*,
-        COALESCE(users.first_name || ' ' || users.last_name, users.username, 'Usuario') as creator_name
-      FROM expenses 
-      LEFT JOIN users ON expenses.created_by = users.id
-      WHERE expenses.id = $1
-    `;
-
-    const result = await connection.query(expenseQuery, [expenseId]);
-
-    if (result.rows.length === 0) {
+    if (error) {
+      console.error('❌ Error obteniendo egreso:', error);
       return NextResponse.json({
         success: false,
         error: 'Egreso no encontrado'
       }, { status: 404 });
     }
 
-    const expense = result.rows[0];
-
-    // Convertir valores numéricos
+    // Formatear datos
     const expenseDetail = {
       ...expense,
-      amount: parseFloat(expense.amount)
+      amount: parseFloat(expense.amount),
+      creator_name: expense.users 
+        ? `${expense.users.first_name || ''} ${expense.users.last_name || ''}`.trim() || expense.users.username
+        : 'luishdz04'
     };
 
     console.log('✅ Detalle del egreso obtenido:', expenseDetail.description);
@@ -54,9 +54,5 @@ export async function GET(
       success: false,
       error: 'Error al obtener el detalle del egreso'
     }, { status: 500 });
-  } finally {
-    if (connection) {
-      await connection.release();
-    }
   }
 }
