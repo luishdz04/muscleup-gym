@@ -14,10 +14,10 @@ export async function GET(
     const supabase = createServerSupabaseClient();
 
     const { data: cut, error } = await supabase
-      .from('cuts')
+      .from('cash_cuts')
       .select(`
         *,
-        users!cuts_created_by_fkey(first_name, last_name, username)
+        users!cash_cuts_created_by_fkey(first_name, last_name, username)
       `)
       .eq('id', cutId)
       .single();
