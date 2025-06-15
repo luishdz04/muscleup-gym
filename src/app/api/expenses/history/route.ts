@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
-  let connection;
-  
   try {
     const { searchParams } = new URL(request.url);
     
@@ -22,174 +25,101 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     console.log('💸 API: Consultando historial de egresos', {
-      page,
-      limit,
-      search,
-      dateFrom,
-      dateTo,
-      expenseType,
-      status,
-      sortBy,
-      sortOrder
+      page, limit, search, dateFrom, dateTo, expenseType, status, sortBy, sortOrder
     });
 
-    connection = await getConnection();
+    // Construir query base
+    let query = supabase
+      .from('expenses')
+      .select(`
+        *,
+        users!expenses_created_by_fkey(first_name, last_name, username)
+      `, { count: 'exact' });
 
-    // Construir WHERE clause dinámicamente
-    let whereConditions = ['1=1'];
-    let queryParams: any[] = [];
-    let paramIndex = 1;
-
-    // Filtro de búsqueda
+    // Aplicar filtros
     if (search) {
-      whereConditions.push(`(
-        expenses.description ILIKE $${paramIndex} OR 
-        expenses.receipt_number ILIKE $${paramIndex} OR 
-        expenses.notes ILIKE $${paramIndex} OR 
-        users.first_name ILIKE $${paramIndex} OR 
-        users.last_name ILIKE $${paramIndex}
-      )`);
-      queryParams.push(`%${search}%`);
-      paramIndex++;
+      query = query.or(`description.ilike.%${search}%,receipt_number.ilike.%${search}%,notes.ilike.%${search}%`);
     }
 
-    // Filtro de fecha desde
     if (dateFrom) {
-      whereConditions.push(`expenses.expense_date >= $${paramIndex}`);
-      queryParams.push(dateFrom);
-      paramIndex++;
+      query = query.gte('expense_date', dateFrom);
     }
 
-    // Filtro de fecha hasta
     if (dateTo) {
-      whereConditions.push(`expenses.expense_date <= $${paramIndex}`);
-      queryParams.push(dateTo);
-      paramIndex++;
+      query = query.lte('expense_date', dateTo);
     }
 
-    // Filtro de tipo de egreso
     if (expenseType && expenseType !== 'all') {
-      whereConditions.push(`expenses.expense_type = $${paramIndex}`);
-      queryParams.push(expenseType);
-      paramIndex++;
+      query = query.eq('expense_type', expenseType);
     }
 
-    // Filtro de estado
     if (status && status !== 'all') {
-      whereConditions.push(`expenses.status = $${paramIndex}`);
-      queryParams.push(status);
-      paramIndex++;
+      query = query.eq('status', status);
     }
 
-    const whereClause = whereConditions.join(' AND ');
+    // Aplicar ordenamiento
+    const ascending = sortOrder === 'asc';
+    query = query.order(sortBy, { ascending });
 
-    // Validar campo de ordenamiento
-    const validSortFields = ['expense_date', 'created_at', 'amount', 'expense_type', 'description'];
-    const orderField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
-    const orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    // Aplicar paginación
+    query = query.range(offset, offset + limit - 1);
 
-    // Query principal para obtener egresos
-    const expensesQuery = `
-      SELECT 
-        expenses.id,
-        expenses.expense_date,
-        expenses.expense_time,
-        expenses.expense_type,
-        expenses.description,
-        expenses.amount,
-        expenses.receipt_number,
-        expenses.notes,
-        expenses.status,
-        expenses.created_by,
-        expenses.created_at,
-        expenses.updated_at,
-        COALESCE(users.first_name || ' ' || users.last_name, users.username, 'Usuario') as creator_name
-      FROM expenses 
-      LEFT JOIN users ON expenses.created_by = users.id
-      WHERE ${whereClause}
-      ORDER BY expenses.${orderField} ${orderDirection}
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
+    const { data: expenses, error: expensesError, count } = await query;
 
-    queryParams.push(limit, offset);
+    if (expensesError) {
+      console.error('❌ Error consultando egresos:', expensesError);
+      return NextResponse.json({
+        success: false,
+        error: 'Error al consultar egresos'
+      }, { status: 500 });
+    }
 
-    // Query para contar total de registros
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM expenses 
-      LEFT JOIN users ON expenses.created_by = users.id
-      WHERE ${whereClause}
-    `;
-
-    // Ejecutar queries
-    const [expensesResult, countResult] = await Promise.all([
-      connection.query(expensesQuery, queryParams.slice(0, -2).concat([limit, offset])),
-      connection.query(countQuery, queryParams.slice(0, -2))
-    ]);
-
-    const expenses = expensesResult.rows.map(expense => ({
+    // Formatear datos
+    const formattedExpenses = expenses?.map(expense => ({
       ...expense,
-      amount: parseFloat(expense.amount)
-    }));
+      amount: parseFloat(expense.amount),
+      creator_name: expense.users 
+        ? `${expense.users.first_name || ''} ${expense.users.last_name || ''}`.trim() || expense.users.username
+        : 'luishdz04'
+    })) || [];
 
-    const totalExpenses = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(totalExpenses / limit);
+    // Obtener estadísticas
+    const { data: allExpenses, error: statsError } = await supabase
+      .from('expenses')
+      .select('amount, expense_type');
 
-    // Query para estadísticas generales
-    const statsQuery = `
-      SELECT 
-        COUNT(*) as total_expenses,
-        COALESCE(SUM(amount), 0) as total_amount,
-        COALESCE(AVG(amount), 0) as avg_amount
-      FROM expenses
-      WHERE ${whereClause}
-    `;
-
-    const statsResult = await connection.query(statsQuery, queryParams.slice(0, -2));
-
-    // Query para desglose por categorías
-    const categoriesQuery = `
-      SELECT 
-        expense_type,
-        COUNT(*) as count,
-        SUM(amount) as amount
-      FROM expenses
-      WHERE ${whereClause}
-      GROUP BY expense_type
-      ORDER BY amount DESC
-    `;
-
-    const categoriesResult = await connection.query(categoriesQuery, queryParams.slice(0, -2));
-
-    const categoriesBreakdown = categoriesResult.rows.reduce((acc, row) => {
-      acc[row.expense_type] = {
-        count: parseInt(row.count),
-        amount: parseFloat(row.amount)
-      };
-      return acc;
-    }, {});
-
+    const statsData = allExpenses || [];
     const stats = {
-      totalExpenses: parseInt(statsResult.rows[0].total_expenses),
-      totalAmount: parseFloat(statsResult.rows[0].total_amount),
-      avgAmount: parseFloat(statsResult.rows[0].avg_amount),
-      categoriesBreakdown
+      totalExpenses: statsData.length,
+      totalAmount: statsData.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0),
+      avgAmount: statsData.length > 0 ? statsData.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0) / statsData.length : 0,
+      categoriesBreakdown: statsData.reduce((acc, expense) => {
+        const type = expense.expense_type;
+        if (!acc[type]) {
+          acc[type] = { count: 0, amount: 0 };
+        }
+        acc[type].count++;
+        acc[type].amount += parseFloat(expense.amount) || 0;
+        return acc;
+      }, {} as Record<string, { count: number; amount: number }>)
     };
 
+    const totalPages = count ? Math.ceil(count / limit) : 1;
+
     console.log('✅ Historial de egresos obtenido:', {
-      expenses: expenses.length,
-      total: totalExpenses,
+      expenses: formattedExpenses.length,
+      total: count,
       pages: totalPages,
       stats
     });
 
     return NextResponse.json({
       success: true,
-      expenses,
+      expenses: formattedExpenses,
       pagination: {
         page,
         limit,
-        total: totalExpenses,
+        total: count || 0,
         totalPages
       },
       stats
@@ -201,9 +131,5 @@ export async function GET(request: NextRequest) {
       success: false,
       error: 'Error al obtener el historial de egresos'
     }, { status: 500 });
-  } finally {
-    if (connection) {
-      await connection.release();
-    }
   }
 }
