@@ -26,12 +26,15 @@ export async function GET(request: NextRequest) {
     // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
 
-    // Construir query base - CAMBIO IMPORTANTE: "Users" con mayúscula
+    // Primero, verificar si podemos conectarnos a Supabase
+    console.log('🔍 Verificando conexión a Supabase...');
+    
+    // Construir query base - CAMBIO IMPORTANTE: "Users" con mayúscula y campos correctos
     let query = supabase
       .from('cash_cuts')
       .select(`
         *,
-        "Users"!cash_cuts_created_by_fkey(first_name, last_name, username)
+        "Users"!cash_cuts_created_by_fkey(firstName, lastName, username)
       `, { count: 'exact' }); // Agregar count para obtener el total
 
     // Aplicar filtros
@@ -66,18 +69,28 @@ export async function GET(request: NextRequest) {
 
     if (cutsError) {
       console.error('❌ Error consultando cortes:', cutsError);
+      console.error('Detalles del error:', {
+        message: cutsError.message,
+        details: cutsError.details,
+        hint: cutsError.hint,
+        code: cutsError.code
+      });
       return NextResponse.json({
         success: false,
         error: 'Error al consultar cortes',
-        details: process.env.NODE_ENV === 'development' ? cutsError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? {
+          message: cutsError.message,
+          hint: cutsError.hint,
+          details: cutsError.details
+        } : undefined
       }, { status: 500 });
     }
 
-    // Formatear datos con nombre del creador - CAMBIO: Users con mayúscula
+    // Formatear datos con nombre del creador - CAMBIO: firstName y lastName
     const formattedCuts = cuts?.map(cut => ({
       ...cut,
       creator_name: cut.Users 
-        ? `${cut.Users.first_name || ''} ${cut.Users.last_name || ''}`.trim() || cut.Users.username
+        ? `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.username
         : 'Usuario',
       // Convertir valores numéricos para evitar errores
       grand_total: parseFloat(cut.grand_total || '0'),
