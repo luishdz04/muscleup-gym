@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server'; // ✅ CAMBIO
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       page, limit, search, dateFrom, dateTo, status, isManual, sortBy, sortOrder
     });
 
-    // ✅ USAR CLIENTE CORRECTO
+    // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
 
     // Construir query base
@@ -68,7 +68,8 @@ export async function GET(request: NextRequest) {
       console.error('❌ Error consultando cortes:', cutsError);
       return NextResponse.json({
         success: false,
-        error: 'Error al consultar cortes'
+        error: 'Error al consultar cortes',
+        details: process.env.NODE_ENV === 'development' ? cutsError.message : undefined
       }, { status: 500 });
     }
 
@@ -77,24 +78,38 @@ export async function GET(request: NextRequest) {
       ...cut,
       creator_name: cut.users 
         ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
-        : 'Usuario'
+        : 'Usuario',
+      // Convertir valores numéricos para evitar errores
+      grand_total: parseFloat(cut.grand_total || '0'),
+      expenses_amount: parseFloat(cut.expenses_amount || '0'),
+      final_balance: parseFloat(cut.final_balance || '0'),
+      total_transactions: parseInt(cut.total_transactions || '0')
     })) || [];
 
-    // Obtener estadísticas generales
-    const { data: statsData, error: statsError } = await supabase
-      .from('cuts')
-      .select('grand_total, is_manual');
-
-    if (statsError) {
-      console.error('❌ Error consultando estadísticas:', statsError);
-    }
-
-    const stats = {
+    // Obtener estadísticas generales (query separada para evitar errores)
+    let stats = {
       totalCuts: formattedCuts.length,
-      totalAmount: statsData?.reduce((sum, cut) => sum + parseFloat(cut.grand_total || '0'), 0) || 0,
-      manualCuts: statsData?.filter(cut => cut.is_manual).length || 0,
-      automaticCuts: statsData?.filter(cut => !cut.is_manual).length || 0
+      totalAmount: 0,
+      manualCuts: 0,
+      automaticCuts: 0
     };
+
+    try {
+      const { data: statsData, error: statsError } = await supabase
+        .from('cuts')
+        .select('grand_total, is_manual');
+
+      if (!statsError && statsData) {
+        stats = {
+          totalCuts: statsData.length,
+          totalAmount: statsData.reduce((sum, cut) => sum + parseFloat(cut.grand_total || '0'), 0),
+          manualCuts: statsData.filter(cut => cut.is_manual).length,
+          automaticCuts: statsData.filter(cut => !cut.is_manual).length
+        };
+      }
+    } catch (statsError) {
+      console.warn('⚠️ Error consultando estadísticas (no crítico):', statsError);
+    }
 
     console.log('✅ Historial consultado:', formattedCuts.length, 'cortes');
 
@@ -104,17 +119,18 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
+        total: count || formattedCuts.length,
+        totalPages: Math.ceil((count || formattedCuts.length) / limit)
       },
       stats
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error en API historial cortes:', error);
     return NextResponse.json({
       success: false,
-      error: 'Error al consultar el historial de cortes'
+      error: 'Error al consultar el historial de cortes',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 });
   }
 }
