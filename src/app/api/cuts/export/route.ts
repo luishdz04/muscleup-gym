@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import * as XLSX from 'xlsx';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createServerSupabaseClient } from '@/lib/supabase/server'; // ✅ CAMBIO
 
 export async function GET(request: NextRequest) {
   try {
+    // ✅ IMPORTACIÓN DINÁMICA PARA VERCEL
+    const { default: XLSX } = await import('xlsx');
+    
     const { searchParams } = new URL(request.url);
     
     // Parámetros de filtros
@@ -21,6 +18,9 @@ export async function GET(request: NextRequest) {
     console.log('📄 API: Exportando cortes con filtros:', {
       search, dateFrom, dateTo, status, isManual
     });
+
+    // ✅ USAR CLIENTE CORRECTO
+    const supabase = createServerSupabaseClient();
 
     // Construir query
     let query = supabase
@@ -86,17 +86,17 @@ export async function GET(request: NextRequest) {
       'Fecha': cut.cut_date,
       'Tipo': cut.is_manual ? 'Manual' : 'Automático',
       'Estado': cut.status,
-      'POS Total': parseFloat(cut.pos_total),
-      'Abonos Total': parseFloat(cut.abonos_total),
-      'Membresías Total': parseFloat(cut.membership_total),
-      'Total Bruto': parseFloat(cut.grand_total),
-      'Gastos': parseFloat(cut.expenses_amount),
-      'Balance Final': parseFloat(cut.final_balance),
-      'Transacciones': parseInt(cut.total_transactions),
-      'Efectivo': parseFloat(cut.total_efectivo),
-      'Transferencia': parseFloat(cut.total_transferencia),
-      'Tarjeta Débito': parseFloat(cut.total_debito),
-      'Tarjeta Crédito': parseFloat(cut.total_credito),
+      'POS Total': parseFloat(cut.pos_total || '0'),
+      'Abonos Total': parseFloat(cut.abonos_total || '0'),
+      'Membresías Total': parseFloat(cut.membership_total || '0'),
+      'Total Bruto': parseFloat(cut.grand_total || '0'),
+      'Gastos': parseFloat(cut.expenses_amount || '0'),
+      'Balance Final': parseFloat(cut.final_balance || '0'),
+      'Transacciones': parseInt(cut.total_transactions || '0'),
+      'Efectivo': parseFloat(cut.total_efectivo || '0'),
+      'Transferencia': parseFloat(cut.total_transferencia || '0'),
+      'Tarjeta Débito': parseFloat(cut.total_debito || '0'),
+      'Tarjeta Crédito': parseFloat(cut.total_credito || '0'),
       'Responsable': cut.users 
         ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
         : 'Usuario',
