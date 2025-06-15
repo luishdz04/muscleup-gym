@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server'; // ✅ CAMBIO
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       search, dateFrom, dateTo, status, isManual
     });
 
-    // ✅ USAR CLIENTE CORRECTO
+    // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
 
     // Construir query
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         users!cuts_created_by_fkey(first_name, last_name, username)
       `);
 
-    // Aplicar filtros (mismos que historial)
+    // Aplicar filtros
     if (search) {
       query = query.or(`cut_number.ilike.%${search}%,notes.ilike.%${search}%`);
     }
@@ -76,16 +76,17 @@ export async function GET(request: NextRequest) {
       console.error('❌ Error exportando cortes:', error);
       return NextResponse.json({
         success: false,
-        error: 'Error al exportar cortes'
+        error: 'Error al exportar cortes',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       }, { status: 500 });
     }
 
-    // Formatear datos para Excel
+    // Formatear datos para Excel con valores seguros
     const excelData = cuts?.map(cut => ({
-      'Número de Corte': cut.cut_number,
-      'Fecha': cut.cut_date,
+      'Número de Corte': cut.cut_number || '',
+      'Fecha': cut.cut_date || '',
       'Tipo': cut.is_manual ? 'Manual' : 'Automático',
-      'Estado': cut.status,
+      'Estado': cut.status || '',
       'POS Total': parseFloat(cut.pos_total || '0'),
       'Abonos Total': parseFloat(cut.abonos_total || '0'),
       'Membresías Total': parseFloat(cut.membership_total || '0'),
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
       'Responsable': cut.users 
         ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
         : 'Usuario',
-      'Fecha Creación': cut.created_at,
+      'Fecha Creación': cut.created_at || '',
       'Observaciones': cut.notes || ''
     })) || [];
 
@@ -130,11 +131,12 @@ export async function GET(request: NextRequest) {
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error en API exportar cortes:', error);
     return NextResponse.json({
       success: false,
-      error: 'Error al exportar los cortes'
+      error: 'Error al exportar los cortes',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 });
   }
 }
