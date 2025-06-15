@@ -26,13 +26,13 @@ export async function GET(request: NextRequest) {
     // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
 
-    // Construir query base
+    // Construir query base - CAMBIO IMPORTANTE: "Users" con mayúscula
     let query = supabase
       .from('cash_cuts')
       .select(`
         *,
-       users!cash_cuts_created_by_fkey(first_name, last_name, username)
-      `);
+        "Users"!cash_cuts_created_by_fkey(first_name, last_name, username)
+      `, { count: 'exact' }); // Agregar count para obtener el total
 
     // Aplicar filtros
     if (search) {
@@ -73,23 +73,27 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Formatear datos con nombre del creador
+    // Formatear datos con nombre del creador - CAMBIO: Users con mayúscula
     const formattedCuts = cuts?.map(cut => ({
       ...cut,
-      creator_name: cut.users 
-        ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
+      creator_name: cut.Users 
+        ? `${cut.Users.first_name || ''} ${cut.Users.last_name || ''}`.trim() || cut.Users.username
         : 'Usuario',
       // Convertir valores numéricos para evitar errores
       grand_total: parseFloat(cut.grand_total || '0'),
       expenses_amount: parseFloat(cut.expenses_amount || '0'),
       final_balance: parseFloat(cut.final_balance || '0'),
-      total_transactions: parseInt(cut.total_transactions || '0')
+      total_transactions: parseInt(cut.total_transactions || '0'),
+      pos_total: parseFloat(cut.pos_total || '0'),
+      abonos_total: parseFloat(cut.abonos_total || '0'),
+      membership_total: parseFloat(cut.membership_total || '0')
     })) || [];
 
     // Obtener estadísticas generales (query separada para evitar errores)
     let stats = {
-      totalCuts: formattedCuts.length,
+      totalCuts: 0,
       totalAmount: 0,
+      avgAmount: 0,
       manualCuts: 0,
       automaticCuts: 0
     };
@@ -100,9 +104,11 @@ export async function GET(request: NextRequest) {
         .select('grand_total, is_manual');
 
       if (!statsError && statsData) {
+        const totalAmount = statsData.reduce((sum, cut) => sum + parseFloat(cut.grand_total || '0'), 0);
         stats = {
           totalCuts: statsData.length,
-          totalAmount: statsData.reduce((sum, cut) => sum + parseFloat(cut.grand_total || '0'), 0),
+          totalAmount: totalAmount,
+          avgAmount: statsData.length > 0 ? totalAmount / statsData.length : 0,
           manualCuts: statsData.filter(cut => cut.is_manual).length,
           automaticCuts: statsData.filter(cut => !cut.is_manual).length
         };
@@ -119,8 +125,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: count || formattedCuts.length,
-        totalPages: Math.ceil((count || formattedCuts.length) / limit)
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit)
       },
       stats
     });
