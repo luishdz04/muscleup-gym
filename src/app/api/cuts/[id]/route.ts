@@ -7,17 +7,17 @@ export async function GET(
 ) {
   try {
     const cutId = params.id;
-
     console.log('🔍 API: Obteniendo detalle del corte:', cutId);
-
+    
     // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
-
+    
+    // CAMBIO IMPORTANTE: "Users" con mayúscula y campos correctos
     const { data: cut, error } = await supabase
       .from('cash_cuts')
       .select(`
         *,
-        users!cash_cuts_created_by_fkey(first_name, last_name, username)
+        "Users"!cash_cuts_created_by_fkey(firstName, lastName, username)
       `)
       .eq('id', cutId)
       .single();
@@ -31,11 +31,11 @@ export async function GET(
       }, { status: 404 });
     }
 
-    // Formatear datos con valores seguros
+    // Formatear datos con valores seguros - CAMBIO: firstName y lastName
     const cutDetail = {
       ...cut,
-      creator_name: cut.users 
-        ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
+      creator_name: cut.Users 
+        ? `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.username
         : 'Usuario',
       // Convertir valores numéricos de forma segura
       grand_total: parseFloat(cut.grand_total || '0'),
@@ -45,34 +45,43 @@ export async function GET(
       pos_transferencia: parseFloat(cut.pos_transferencia || '0'),
       pos_debito: parseFloat(cut.pos_debito || '0'),
       pos_credito: parseFloat(cut.pos_credito || '0'),
+      pos_mixto: parseFloat(cut.pos_mixto || '0'),
       pos_total: parseFloat(cut.pos_total || '0'),
       abonos_efectivo: parseFloat(cut.abonos_efectivo || '0'),
       abonos_transferencia: parseFloat(cut.abonos_transferencia || '0'),
       abonos_debito: parseFloat(cut.abonos_debito || '0'),
       abonos_credito: parseFloat(cut.abonos_credito || '0'),
+      abonos_mixto: parseFloat(cut.abonos_mixto || '0'),
       abonos_total: parseFloat(cut.abonos_total || '0'),
       membership_efectivo: parseFloat(cut.membership_efectivo || '0'),
       membership_transferencia: parseFloat(cut.membership_transferencia || '0'),
       membership_debito: parseFloat(cut.membership_debito || '0'),
       membership_credito: parseFloat(cut.membership_credito || '0'),
+      membership_mixto: parseFloat(cut.membership_mixto || '0'),
       membership_total: parseFloat(cut.membership_total || '0'),
       total_efectivo: parseFloat(cut.total_efectivo || '0'),
       total_transferencia: parseFloat(cut.total_transferencia || '0'),
       total_debito: parseFloat(cut.total_debito || '0'),
       total_credito: parseFloat(cut.total_credito || '0'),
+      total_mixto: parseFloat(cut.total_mixto || '0'),
       total_transactions: parseInt(cut.total_transactions || '0'),
       pos_transactions: parseInt(cut.pos_transactions || '0'),
       abonos_transactions: parseInt(cut.abonos_transactions || '0'),
-      membership_transactions: parseInt(cut.membership_transactions || '0')
+      membership_transactions: parseInt(cut.membership_transactions || '0'),
+      pos_commissions: parseFloat(cut.pos_commissions || '0'),
+      abonos_commissions: parseFloat(cut.abonos_commissions || '0'),
+      membership_commissions: parseFloat(cut.membership_commissions || '0'),
+      total_commissions: parseFloat(cut.total_commissions || '0'),
+      net_amount: parseFloat(cut.net_amount || '0')
     };
 
     console.log('✅ Detalle del corte obtenido:', cutDetail.cut_number);
-
+    
     return NextResponse.json({
       success: true,
       cut: cutDetail
     });
-
+    
   } catch (error: any) {
     console.error('❌ Error en API detalle de corte:', error);
     return NextResponse.json({
