@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import * as XLSX from 'xlsx';
 
 export async function GET(request: NextRequest) {
   try {
-    // ✅ IMPORTACIÓN DINÁMICA PARA VERCEL
-    const { default: XLSX } = await import('xlsx');
-    
     const { searchParams } = new URL(request.url);
     
     // Parámetros de filtros
@@ -15,36 +13,18 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const isManual = searchParams.get('isManual');
 
-    console.log('📄 API: Exportando cortes con filtros:', {
-      search, dateFrom, dateTo, status, isManual
-    });
+    console.log('📄 API: Exportando cortes', { search, dateFrom, dateTo, status, isManual });
 
-    // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
 
     // Construir query
     let query = supabase
       .from('cash_cuts')
       .select(`
-        cut_number,
-        cut_date,
-        is_manual,
-        status,
-        pos_total,
-        abonos_total,
-        membership_total,
-        grand_total,
-        expenses_amount,
-        final_balance,
-        total_transactions,
-        total_efectivo,
-        total_transferencia,
-        total_debito,
-        total_credito,
-        created_at,
-        notes,
-        users!cash_cuts_created_by_fkey(first_name, last_name, username)
-      `);
+        *,
+        "Users"!cash_cuts_created_by_fkey(first_name, last_name, username)
+      `)
+      .order('created_at', { ascending: false });
 
     // Aplicar filtros
     if (search) {
@@ -67,67 +47,77 @@ export async function GET(request: NextRequest) {
       query = query.eq('is_manual', isManual === 'true');
     }
 
-    // Ordenar por fecha
-    query = query.order('created_at', { ascending: false });
-
     const { data: cuts, error } = await query;
 
     if (error) {
       console.error('❌ Error exportando cortes:', error);
       return NextResponse.json({
         success: false,
-        error: 'Error al exportar cortes',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: 'Error al exportar cortes'
       }, { status: 500 });
     }
 
-    // Formatear datos para Excel con valores seguros
-    const excelData = cuts?.map(cut => ({
-      'Número de Corte': cut.cut_number || '',
-      'Fecha': cut.cut_date || '',
+    // Formatear datos para Excel
+    const exportData = cuts?.map(cut => ({
+      'Número de Corte': cut.cut_number,
+      'Fecha': cut.cut_date,
       'Tipo': cut.is_manual ? 'Manual' : 'Automático',
-      'Estado': cut.status || '',
+      'Estado': cut.status,
+      'Responsable': cut.Users 
+        ? `${cut.Users.first_name || ''} ${cut.Users.last_name || ''}`.trim() || cut.Users.username
+        : 'Usuario',
+      // Punto de Venta
+      'POS Efectivo': parseFloat(cut.pos_efectivo || '0'),
+      'POS Transferencia': parseFloat(cut.pos_transferencia || '0'),
+      'POS Débito': parseFloat(cut.pos_debito || '0'),
+      'POS Crédito': parseFloat(cut.pos_credito || '0'),
+      'POS Mixto': parseFloat(cut.pos_mixto || '0'),
       'POS Total': parseFloat(cut.pos_total || '0'),
+      // Abonos
+      'Abonos Efectivo': parseFloat(cut.abonos_efectivo || '0'),
+      'Abonos Transferencia': parseFloat(cut.abonos_transferencia || '0'),
+      'Abonos Débito': parseFloat(cut.abonos_debito || '0'),
+      'Abonos Crédito': parseFloat(cut.abonos_credito || '0'),
+      'Abonos Mixto': parseFloat(cut.abonos_mixto || '0'),
       'Abonos Total': parseFloat(cut.abonos_total || '0'),
+      // Membresías
+      'Membresías Efectivo': parseFloat(cut.membership_efectivo || '0'),
+      'Membresías Transferencia': parseFloat(cut.membership_transferencia || '0'),
+      'Membresías Débito': parseFloat(cut.membership_debito || '0'),
+      'Membresías Crédito': parseFloat(cut.membership_credito || '0'),
+      'Membresías Mixto': parseFloat(cut.membership_mixto || '0'),
       'Membresías Total': parseFloat(cut.membership_total || '0'),
+      // Totales
+      'Total Efectivo': parseFloat(cut.total_efectivo || '0'),
+      'Total Transferencia': parseFloat(cut.total_transferencia || '0'),
+      'Total Débito': parseFloat(cut.total_debito || '0'),
+      'Total Crédito': parseFloat(cut.total_credito || '0'),
+      'Total Mixto': parseFloat(cut.total_mixto || '0'),
       'Total Bruto': parseFloat(cut.grand_total || '0'),
       'Gastos': parseFloat(cut.expenses_amount || '0'),
       'Balance Final': parseFloat(cut.final_balance || '0'),
-      'Transacciones': parseInt(cut.total_transactions || '0'),
-      'Efectivo': parseFloat(cut.total_efectivo || '0'),
-      'Transferencia': parseFloat(cut.total_transferencia || '0'),
-      'Tarjeta Débito': parseFloat(cut.total_debito || '0'),
-      'Tarjeta Crédito': parseFloat(cut.total_credito || '0'),
-      'Responsable': cut.users 
-        ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
-        : 'Usuario',
-      'Fecha Creación': cut.created_at || '',
-      'Observaciones': cut.notes || ''
+      'Total Transacciones': parseInt(cut.total_transactions || '0'),
+      'Comisiones': parseFloat(cut.total_commissions || '0'),
+      'Notas': cut.notes || '',
+      'Creado': new Date(cut.created_at).toLocaleString('es-MX'),
+      'Actualizado': new Date(cut.updated_at).toLocaleString('es-MX')
     })) || [];
 
-    // Crear Excel
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Historial de Cortes');
+    // Crear libro de Excel
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Cortes');
 
-    // Configurar anchos de columna
-    const colWidths = [
-      { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 15 },
-      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 15 },
-      { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
-      { wch: 20 }, { wch: 20 }, { wch: 30 }
-    ];
-    worksheet['!cols'] = colWidths;
+    // Generar buffer
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
 
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+    console.log('✅ Excel generado con', exportData.length, 'cortes');
 
-    console.log('✅ Archivo Excel generado:', excelData.length, 'cortes exportados');
-
+    // Retornar archivo
     return new NextResponse(excelBuffer, {
-      status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="cortes_${new Date().toISOString().split('T')[0]}.xlsx"`
+        'Content-Disposition': `attachment; filename=cortes_${new Date().toISOString().split('T')[0]}.xlsx`
       }
     });
 
@@ -135,8 +125,7 @@ export async function GET(request: NextRequest) {
     console.error('❌ Error en API exportar cortes:', error);
     return NextResponse.json({
       success: false,
-      error: 'Error al exportar los cortes',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Error al exportar cortes'
     }, { status: 500 });
   }
 }
