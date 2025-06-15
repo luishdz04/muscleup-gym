@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server'; // ✅ CAMBIO
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +10,7 @@ export async function GET(
 
     console.log('🔍 API: Obteniendo detalle del corte:', cutId);
 
-    // ✅ USAR CLIENTE CORRECTO
+    // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
 
     const { data: cut, error } = await supabase
@@ -26,17 +26,18 @@ export async function GET(
       console.error('❌ Error obteniendo corte:', error);
       return NextResponse.json({
         success: false,
-        error: 'Corte no encontrado'
+        error: 'Corte no encontrado',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       }, { status: 404 });
     }
 
-    // Formatear datos
+    // Formatear datos con valores seguros
     const cutDetail = {
       ...cut,
       creator_name: cut.users 
         ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
         : 'Usuario',
-      // Convertir valores numéricos
+      // Convertir valores numéricos de forma segura
       grand_total: parseFloat(cut.grand_total || '0'),
       expenses_amount: parseFloat(cut.expenses_amount || '0'),
       final_balance: parseFloat(cut.final_balance || '0'),
@@ -72,11 +73,12 @@ export async function GET(
       cut: cutDetail
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error en API detalle de corte:', error);
     return NextResponse.json({
       success: false,
-      error: 'Error al obtener el detalle del corte'
+      error: 'Error al obtener el detalle del corte',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 });
   }
 }
