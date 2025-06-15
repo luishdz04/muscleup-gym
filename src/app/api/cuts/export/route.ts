@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       .from('cash_cuts')
       .select(`
         *,
-        "Users"!cash_cuts_created_by_fkey(first_name, last_name, username)
+        "Users"!cash_cuts_created_by_fkey(firstName, lastName, username)
       `)
       .order('created_at', { ascending: false });
 
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       'Tipo': cut.is_manual ? 'Manual' : 'Automático',
       'Estado': cut.status,
       'Responsable': cut.Users 
-        ? `${cut.Users.first_name || ''} ${cut.Users.last_name || ''}`.trim() || cut.Users.username
+        ? `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.username
         : 'Usuario',
       // Punto de Venta
       'POS Efectivo': parseFloat(cut.pos_efectivo || '0'),
