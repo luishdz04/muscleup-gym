@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 export async function GET(request: NextRequest) {
-  let connection;
-  
   try {
     const { searchParams } = new URL(request.url);
     
-    // Parámetros de filtros (sin paginación para exportar todo)
+    // Parámetros de filtros
     const search = searchParams.get('search') || '';
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
@@ -16,120 +19,103 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
 
     console.log('📄 API: Exportando egresos con filtros:', {
-      search,
-      dateFrom,
-      dateTo,
-      expenseType,
-      status
+      search, dateFrom, dateTo, expenseType, status
     });
 
-    connection = await getConnection();
+    // Construir query
+    let query = supabase
+      .from('expenses')
+      .select(`
+        expense_date,
+        expense_time,
+        expense_type,
+        description,
+        amount,
+        receipt_number,
+        status,
+        created_at,
+        notes,
+        users!expenses_created_by_fkey(first_name, last_name, username)
+      `);
 
-    // Construir WHERE clause dinámicamente (mismo que historial)
-    let whereConditions = ['1=1'];
-    let queryParams: any[] = [];
-    let paramIndex = 1;
-
+    // Aplicar filtros (mismos que historial)
     if (search) {
-      whereConditions.push(`(
-        expenses.description ILIKE $${paramIndex} OR 
-        expenses.receipt_number ILIKE $${paramIndex} OR 
-        expenses.notes ILIKE $${paramIndex} OR 
-        users.first_name ILIKE $${paramIndex} OR 
-        users.last_name ILIKE $${paramIndex}
-      )`);
-      queryParams.push(`%${search}%`);
-      paramIndex++;
+      query = query.or(`description.ilike.%${search}%,receipt_number.ilike.%${search}%,notes.ilike.%${search}%`);
     }
 
     if (dateFrom) {
-      whereConditions.push(`expenses.expense_date >= $${paramIndex}`);
-      queryParams.push(dateFrom);
-      paramIndex++;
+      query = query.gte('expense_date', dateFrom);
     }
 
     if (dateTo) {
-      whereConditions.push(`expenses.expense_date <= $${paramIndex}`);
-      queryParams.push(dateTo);
-      paramIndex++;
+      query = query.lte('expense_date', dateTo);
     }
 
     if (expenseType && expenseType !== 'all') {
-      whereConditions.push(`expenses.expense_type = $${paramIndex}`);
-      queryParams.push(expenseType);
-      paramIndex++;
+      query = query.eq('expense_type', expenseType);
     }
 
     if (status && status !== 'all') {
-      whereConditions.push(`expenses.status = $${paramIndex}`);
-      queryParams.push(status);
-      paramIndex++;
+      query = query.eq('status', status);
     }
 
-    const whereClause = whereConditions.join(' AND ');
+    // Ordenar por fecha
+    query = query.order('expense_date', { ascending: false });
 
-    // Query para exportar
-    const exportQuery = `
-      SELECT 
-        expenses.expense_date as "Fecha",
-        expenses.expense_time as "Hora",
-        CASE 
-          WHEN expenses.expense_type = 'nomina' THEN 'Nómina'
-          WHEN expenses.expense_type = 'suplementos' THEN 'Suplementos'
-          WHEN expenses.expense_type = 'servicios' THEN 'Servicios'
-          WHEN expenses.expense_type = 'mantenimiento' THEN 'Mantenimiento'
-          WHEN expenses.expense_type = 'limpieza' THEN 'Limpieza'
-          WHEN expenses.expense_type = 'marketing' THEN 'Marketing'
-          WHEN expenses.expense_type = 'equipamiento' THEN 'Equipamiento'
-          ELSE 'Otros'
-        END as "Categoría",
-        expenses.description as "Descripción",
-        expenses.amount as "Monto",
-        expenses.receipt_number as "Número de Recibo",
-        expenses.status as "Estado",
-        COALESCE(users.first_name || ' ' || users.last_name, users.username, 'Usuario') as "Responsable",
-        expenses.created_at as "Fecha Creación",
-        expenses.notes as "Notas"
-      FROM expenses 
-      LEFT JOIN users ON expenses.created_by = users.id
-      WHERE ${whereClause}
-      ORDER BY expenses.expense_date DESC, expenses.expense_time DESC
-    `;
+    const { data: expenses, error } = await query;
 
-    const result = await connection.query(exportQuery, queryParams);
-    const expenses = result.rows;
+    if (error) {
+      console.error('❌ Error exportando egresos:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Error al exportar egresos'
+      }, { status: 500 });
+    }
 
-    // Crear workbook de Excel
-    const worksheet = XLSX.utils.json_to_sheet(expenses);
+    // Mapeo de categorías
+    const categoryMap: Record<string, string> = {
+      'nomina': 'Nómina',
+      'suplementos': 'Suplementos',
+      'servicios': 'Servicios',
+      'mantenimiento': 'Mantenimiento',
+      'limpieza': 'Limpieza',
+      'marketing': 'Marketing',
+      'equipamiento': 'Equipamiento',
+      'otros': 'Otros'
+    };
+
+    // Formatear datos para Excel
+    const excelData = expenses?.map(expense => ({
+      'Fecha': expense.expense_date,
+      'Hora': expense.expense_time,
+      'Categoría': categoryMap[expense.expense_type] || 'Otros',
+      'Descripción': expense.description,
+      'Monto': parseFloat(expense.amount),
+      'Número de Recibo': expense.receipt_number || '',
+      'Estado': expense.status,
+      'Responsable': expense.users 
+        ? `${expense.users.first_name || ''} ${expense.users.last_name || ''}`.trim() || expense.users.username
+        : 'luishdz04',
+      'Fecha Creación': expense.created_at,
+      'Notas': expense.notes || ''
+    })) || [];
+
+    // Crear Excel
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
-    
-    // Agregar hoja
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Historial de Egresos');
 
     // Configurar anchos de columna
     const colWidths = [
-      { wch: 12 }, // Fecha
-      { wch: 10 }, // Hora
-      { wch: 15 }, // Categoría
-      { wch: 30 }, // Descripción
-      { wch: 15 }, // Monto
-      { wch: 20 }, // Número de Recibo
-      { wch: 12 }, // Estado
-      { wch: 20 }, // Responsable
-      { wch: 20 }, // Fecha Creación
-      { wch: 40 }  // Notas
+      { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 15 },
+      { wch: 20 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 40 }
     ];
     worksheet['!cols'] = colWidths;
 
-    // Generar archivo Excel
-    const excelBuffer = XLSX.write(workbook, { 
-      bookType: 'xlsx', 
-      type: 'buffer' 
-    });
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
 
-    console.log('✅ Archivo Excel generado:', expenses.length, 'egresos exportados');
+    console.log('✅ Archivo Excel generado:', excelData.length, 'egresos exportados');
 
-    // Retornar archivo
     return new NextResponse(excelBuffer, {
       status: 200,
       headers: {
@@ -144,9 +130,5 @@ export async function GET(request: NextRequest) {
       success: false,
       error: 'Error al exportar los egresos'
     }, { status: 500 });
-  } finally {
-    if (connection) {
-      await connection.release();
-    }
   }
 }
