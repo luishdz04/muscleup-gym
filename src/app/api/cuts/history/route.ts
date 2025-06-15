@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const { data: statsData, error: statsError } = await supabase
-        .from('cuts')
+        .from('cash_cuts')
         .select('grand_total, is_manual');
 
       if (!statsError && statsData) {
