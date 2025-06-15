@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Construir query
     let query = supabase
-      .from('cuts')
+      .from('cash_cuts')
       .select(`
         cut_number,
         cut_date,
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         total_credito,
         created_at,
         notes,
-        users!cuts_created_by_fkey(first_name, last_name, username)
+        users!cash_cuts_created_by_fkey(first_name, last_name, username)
       `);
 
     // Aplicar filtros
