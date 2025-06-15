@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createServerSupabaseClient } from '@/lib/supabase/server'; // ✅ CAMBIO
 
 export async function GET(
   request: NextRequest,
@@ -14,6 +9,9 @@ export async function GET(
     const cutId = params.id;
 
     console.log('🔍 API: Obteniendo detalle del corte:', cutId);
+
+    // ✅ USAR CLIENTE CORRECTO
+    const supabase = createServerSupabaseClient();
 
     const { data: cut, error } = await supabase
       .from('cuts')
@@ -39,32 +37,32 @@ export async function GET(
         ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
         : 'Usuario',
       // Convertir valores numéricos
-      grand_total: parseFloat(cut.grand_total),
-      expenses_amount: parseFloat(cut.expenses_amount),
-      final_balance: parseFloat(cut.final_balance),
-      pos_efectivo: parseFloat(cut.pos_efectivo),
-      pos_transferencia: parseFloat(cut.pos_transferencia),
-      pos_debito: parseFloat(cut.pos_debito),
-      pos_credito: parseFloat(cut.pos_credito),
-      pos_total: parseFloat(cut.pos_total),
-      abonos_efectivo: parseFloat(cut.abonos_efectivo),
-      abonos_transferencia: parseFloat(cut.abonos_transferencia),
-      abonos_debito: parseFloat(cut.abonos_debito),
-      abonos_credito: parseFloat(cut.abonos_credito),
-      abonos_total: parseFloat(cut.abonos_total),
-      membership_efectivo: parseFloat(cut.membership_efectivo),
-      membership_transferencia: parseFloat(cut.membership_transferencia),
-      membership_debito: parseFloat(cut.membership_debito),
-      membership_credito: parseFloat(cut.membership_credito),
-      membership_total: parseFloat(cut.membership_total),
-      total_efectivo: parseFloat(cut.total_efectivo),
-      total_transferencia: parseFloat(cut.total_transferencia),
-      total_debito: parseFloat(cut.total_debito),
-      total_credito: parseFloat(cut.total_credito),
-      total_transactions: parseInt(cut.total_transactions),
-      pos_transactions: parseInt(cut.pos_transactions),
-      abonos_transactions: parseInt(cut.abonos_transactions),
-      membership_transactions: parseInt(cut.membership_transactions)
+      grand_total: parseFloat(cut.grand_total || '0'),
+      expenses_amount: parseFloat(cut.expenses_amount || '0'),
+      final_balance: parseFloat(cut.final_balance || '0'),
+      pos_efectivo: parseFloat(cut.pos_efectivo || '0'),
+      pos_transferencia: parseFloat(cut.pos_transferencia || '0'),
+      pos_debito: parseFloat(cut.pos_debito || '0'),
+      pos_credito: parseFloat(cut.pos_credito || '0'),
+      pos_total: parseFloat(cut.pos_total || '0'),
+      abonos_efectivo: parseFloat(cut.abonos_efectivo || '0'),
+      abonos_transferencia: parseFloat(cut.abonos_transferencia || '0'),
+      abonos_debito: parseFloat(cut.abonos_debito || '0'),
+      abonos_credito: parseFloat(cut.abonos_credito || '0'),
+      abonos_total: parseFloat(cut.abonos_total || '0'),
+      membership_efectivo: parseFloat(cut.membership_efectivo || '0'),
+      membership_transferencia: parseFloat(cut.membership_transferencia || '0'),
+      membership_debito: parseFloat(cut.membership_debito || '0'),
+      membership_credito: parseFloat(cut.membership_credito || '0'),
+      membership_total: parseFloat(cut.membership_total || '0'),
+      total_efectivo: parseFloat(cut.total_efectivo || '0'),
+      total_transferencia: parseFloat(cut.total_transferencia || '0'),
+      total_debito: parseFloat(cut.total_debito || '0'),
+      total_credito: parseFloat(cut.total_credito || '0'),
+      total_transactions: parseInt(cut.total_transactions || '0'),
+      pos_transactions: parseInt(cut.pos_transactions || '0'),
+      abonos_transactions: parseInt(cut.abonos_transactions || '0'),
+      membership_transactions: parseInt(cut.membership_transactions || '0')
     };
 
     console.log('✅ Detalle del corte obtenido:', cutDetail.cut_number);
