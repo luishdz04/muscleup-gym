@@ -28,10 +28,10 @@ export async function GET(request: NextRequest) {
 
     // Construir query base
     let query = supabase
-      .from('cuts')
+      .from('cash_cuts')
       .select(`
         *,
-        users!cuts_created_by_fkey(first_name, last_name, username)
+       users!cash_cuts_created_by_fkey(first_name, last_name, username)
       `);
 
     // Aplicar filtros
