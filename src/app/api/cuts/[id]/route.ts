@@ -1,43 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  let connection;
-  
   try {
     const cutId = params.id;
 
     console.log('🔍 API: Obteniendo detalle del corte:', cutId);
 
-    connection = await getConnection();
+    const { data: cut, error } = await supabase
+      .from('cuts')
+      .select(`
+        *,
+        users!cuts_created_by_fkey(first_name, last_name, username)
+      `)
+      .eq('id', cutId)
+      .single();
 
-    // Query para obtener detalle completo del corte
-    const cutQuery = `
-      SELECT 
-        cuts.*,
-        COALESCE(users.first_name || ' ' || users.last_name, users.username, 'Usuario') as creator_name
-      FROM cuts 
-      LEFT JOIN users ON cuts.created_by = users.id
-      WHERE cuts.id = $1
-    `;
-
-    const result = await connection.query(cutQuery, [cutId]);
-
-    if (result.rows.length === 0) {
+    if (error) {
+      console.error('❌ Error obteniendo corte:', error);
       return NextResponse.json({
         success: false,
         error: 'Corte no encontrado'
       }, { status: 404 });
     }
 
-    const cut = result.rows[0];
-
-    // Convertir valores numéricos
+    // Formatear datos
     const cutDetail = {
       ...cut,
+      creator_name: cut.users 
+        ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
+        : 'Usuario',
+      // Convertir valores numéricos
       grand_total: parseFloat(cut.grand_total),
       expenses_amount: parseFloat(cut.expenses_amount),
       final_balance: parseFloat(cut.final_balance),
@@ -79,9 +80,5 @@ export async function GET(
       success: false,
       error: 'Error al obtener el detalle del corte'
     }, { status: 500 });
-  } finally {
-    if (connection) {
-      await connection.release();
-    }
   }
 }
