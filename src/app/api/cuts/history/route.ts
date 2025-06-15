@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
-  let connection;
-  
   try {
     const { searchParams } = new URL(request.url);
     
@@ -22,153 +25,106 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     console.log('📊 API: Consultando historial de cortes', {
-      page,
-      limit,
-      search,
-      dateFrom,
-      dateTo,
-      status,
-      isManual,
-      sortBy,
-      sortOrder
+      page, limit, search, dateFrom, dateTo, status, isManual, sortBy, sortOrder
     });
 
-    connection = await getConnection();
+    // Construir query base
+    let query = supabase
+      .from('cuts')
+      .select(`
+        *,
+        users!cuts_created_by_fkey(first_name, last_name, username)
+      `);
 
-    // Construir WHERE clause dinámicamente
-    let whereConditions = ['1=1'];
-    let queryParams: any[] = [];
-    let paramIndex = 1;
-
-    // Filtro de búsqueda
+    // Aplicar filtros
     if (search) {
-      whereConditions.push(`(
-        cuts.cut_number ILIKE $${paramIndex} OR 
-        cuts.notes ILIKE $${paramIndex} OR 
-        users.first_name ILIKE $${paramIndex} OR 
-        users.last_name ILIKE $${paramIndex}
-      )`);
-      queryParams.push(`%${search}%`);
-      paramIndex++;
+      query = query.or(`cut_number.ilike.%${search}%,notes.ilike.%${search}%`);
     }
 
-    // Filtro de fecha desde
     if (dateFrom) {
-      whereConditions.push(`cuts.cut_date >= $${paramIndex}`);
-      queryParams.push(dateFrom);
-      paramIndex++;
+      query = query.gte('cut_date', dateFrom);
     }
 
-    // Filtro de fecha hasta
     if (dateTo) {
-      whereConditions.push(`cuts.cut_date <= $${paramIndex}`);
-      queryParams.push(dateTo);
-      paramIndex++;
+      query = query.lte('cut_date', dateTo);
     }
 
-    // Filtro de estado
     if (status && status !== 'all') {
-      whereConditions.push(`cuts.status = $${paramIndex}`);
-      queryParams.push(status);
-      paramIndex++;
+      query = query.eq('status', status);
     }
 
-    // Filtro de tipo manual/automático
     if (isManual && isManual !== 'all') {
-      whereConditions.push(`cuts.is_manual = $${paramIndex}`);
-      queryParams.push(isManual === 'true');
-      paramIndex++;
+      query = query.eq('is_manual', isManual === 'true');
     }
 
-    const whereClause = whereConditions.join(' AND ');
+    // Aplicar ordenamiento
+    const ascending = sortOrder === 'asc';
+    query = query.order(sortBy, { ascending });
 
-    // Validar campo de ordenamiento
-    const validSortFields = ['cut_date', 'created_at', 'grand_total', 'final_balance', 'cut_number'];
-    const orderField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
-    const orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    // Aplicar paginación
+    query = query.range(offset, offset + limit - 1);
 
-    // Query principal para obtener cortes
-    const cutsQuery = `
-      SELECT 
-        cuts.id,
-        cuts.cut_number,
-        cuts.cut_date,
-        cuts.status,
-        cuts.is_manual,
-        cuts.grand_total,
-        cuts.expenses_amount,
-        cuts.final_balance,
-        cuts.total_transactions,
-        cuts.pos_total,
-        cuts.abonos_total,
-        cuts.membership_total,
-        cuts.created_by,
-        cuts.created_at,
-        cuts.updated_at,
-        cuts.notes,
-        COALESCE(users.first_name || ' ' || users.last_name, users.username, 'Usuario') as creator_name
-      FROM cuts 
-      LEFT JOIN users ON cuts.created_by = users.id
-      WHERE ${whereClause}
-      ORDER BY cuts.${orderField} ${orderDirection}
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
+    const { data: cuts, error: cutsError, count } = await query;
 
-    queryParams.push(limit, offset);
+    if (cutsError) {
+      console.error('❌ Error consultando cortes:', cutsError);
+      return NextResponse.json({
+        success: false,
+        error: 'Error al consultar cortes'
+      }, { status: 500 });
+    }
 
-    // Query para contar total de registros
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM cuts 
-      LEFT JOIN users ON cuts.created_by = users.id
-      WHERE ${whereClause}
-    `;
+    // Formatear datos con nombre del creador
+    const formattedCuts = cuts?.map(cut => ({
+      ...cut,
+      creator_name: cut.users 
+        ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
+        : 'Usuario'
+    })) || [];
 
-    // Ejecutar queries
-    const [cutsResult, countResult] = await Promise.all([
-      connection.query(cutsQuery, queryParams.slice(0, -2).concat([limit, offset])),
-      connection.query(countQuery, queryParams.slice(0, -2))
-    ]);
+    // Obtener estadísticas generales
+    const { data: statsData, error: statsError } = await supabase
+      .from('cuts')
+      .select('grand_total, is_manual')
+      .then(async (result) => {
+        if (result.error) return result;
+        
+        const data = result.data || [];
+        const stats = {
+          totalCuts: data.length,
+          totalAmount: data.reduce((sum, cut) => sum + (parseFloat(cut.grand_total) || 0), 0),
+          avgAmount: data.length > 0 ? data.reduce((sum, cut) => sum + (parseFloat(cut.grand_total) || 0), 0) / data.length : 0,
+          manualCuts: data.filter(cut => cut.is_manual).length,
+          automaticCuts: data.filter(cut => !cut.is_manual).length
+        };
+        
+        return { data: stats, error: null };
+      });
 
-    const cuts = cutsResult.rows;
-    const totalCuts = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(totalCuts / limit);
-
-    // Query para estadísticas generales
-    const statsQuery = `
-      SELECT 
-        COUNT(*) as total_cuts,
-        COALESCE(SUM(grand_total), 0) as total_amount,
-        COALESCE(AVG(grand_total), 0) as avg_amount,
-        COUNT(CASE WHEN is_manual = true THEN 1 END) as manual_cuts,
-        COUNT(CASE WHEN is_manual = false THEN 1 END) as automatic_cuts
-      FROM cuts
-      WHERE ${whereClause}
-    `;
-
-    const statsResult = await connection.query(statsQuery, queryParams.slice(0, -2));
-    const stats = {
-      totalCuts: parseInt(statsResult.rows[0].total_cuts),
-      totalAmount: parseFloat(statsResult.rows[0].total_amount),
-      avgAmount: parseFloat(statsResult.rows[0].avg_amount),
-      manualCuts: parseInt(statsResult.rows[0].manual_cuts),
-      automaticCuts: parseInt(statsResult.rows[0].automatic_cuts)
+    const stats = statsData || {
+      totalCuts: 0,
+      totalAmount: 0,
+      avgAmount: 0,
+      manualCuts: 0,
+      automaticCuts: 0
     };
 
+    const totalPages = count ? Math.ceil(count / limit) : 1;
+
     console.log('✅ Historial de cortes obtenido:', {
-      cuts: cuts.length,
-      total: totalCuts,
+      cuts: formattedCuts.length,
+      total: count,
       pages: totalPages,
       stats
     });
 
     return NextResponse.json({
       success: true,
-      cuts,
+      cuts: formattedCuts,
       pagination: {
         page,
         limit,
-        total: totalCuts,
+        total: count || 0,
         totalPages
       },
       stats
@@ -180,9 +136,5 @@ export async function GET(request: NextRequest) {
       success: false,
       error: 'Error al obtener el historial de cortes'
     }, { status: 500 });
-  } finally {
-    if (connection) {
-      await connection.release();
-    }
   }
 }
