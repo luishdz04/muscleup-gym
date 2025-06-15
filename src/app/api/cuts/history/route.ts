@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createServerSupabaseClient } from '@/lib/supabase/server'; // ✅ CAMBIO
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,6 +22,9 @@ export async function GET(request: NextRequest) {
     console.log('📊 API: Consultando historial de cortes', {
       page, limit, search, dateFrom, dateTo, status, isManual, sortBy, sortOrder
     });
+
+    // ✅ USAR CLIENTE CORRECTO
+    const supabase = createServerSupabaseClient();
 
     // Construir query base
     let query = supabase
@@ -85,38 +83,20 @@ export async function GET(request: NextRequest) {
     // Obtener estadísticas generales
     const { data: statsData, error: statsError } = await supabase
       .from('cuts')
-      .select('grand_total, is_manual')
-      .then(async (result) => {
-        if (result.error) return result;
-        
-        const data = result.data || [];
-        const stats = {
-          totalCuts: data.length,
-          totalAmount: data.reduce((sum, cut) => sum + (parseFloat(cut.grand_total) || 0), 0),
-          avgAmount: data.length > 0 ? data.reduce((sum, cut) => sum + (parseFloat(cut.grand_total) || 0), 0) / data.length : 0,
-          manualCuts: data.filter(cut => cut.is_manual).length,
-          automaticCuts: data.filter(cut => !cut.is_manual).length
-        };
-        
-        return { data: stats, error: null };
-      });
+      .select('grand_total, is_manual');
 
-    const stats = statsData || {
-      totalCuts: 0,
-      totalAmount: 0,
-      avgAmount: 0,
-      manualCuts: 0,
-      automaticCuts: 0
+    if (statsError) {
+      console.error('❌ Error consultando estadísticas:', statsError);
+    }
+
+    const stats = {
+      totalCuts: formattedCuts.length,
+      totalAmount: statsData?.reduce((sum, cut) => sum + parseFloat(cut.grand_total || '0'), 0) || 0,
+      manualCuts: statsData?.filter(cut => cut.is_manual).length || 0,
+      automaticCuts: statsData?.filter(cut => !cut.is_manual).length || 0
     };
 
-    const totalPages = count ? Math.ceil(count / limit) : 1;
-
-    console.log('✅ Historial de cortes obtenido:', {
-      cuts: formattedCuts.length,
-      total: count,
-      pages: totalPages,
-      stats
-    });
+    console.log('✅ Historial consultado:', formattedCuts.length, 'cortes');
 
     return NextResponse.json({
       success: true,
@@ -125,16 +105,16 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total: count || 0,
-        totalPages
+        totalPages: Math.ceil((count || 0) / limit)
       },
       stats
     });
 
   } catch (error) {
-    console.error('❌ Error en API historial de cortes:', error);
+    console.error('❌ Error en API historial cortes:', error);
     return NextResponse.json({
       success: false,
-      error: 'Error al obtener el historial de cortes'
+      error: 'Error al consultar el historial de cortes'
     }, { status: 500 });
   }
 }
