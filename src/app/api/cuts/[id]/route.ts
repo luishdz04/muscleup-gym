@@ -12,12 +12,12 @@ export async function GET(
     // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
     
-    // CAMBIO IMPORTANTE: "Users" con mayúscula y campos correctos
+    // Campos correctos de la tabla Users
     const { data: cut, error } = await supabase
       .from('cash_cuts')
       .select(`
         *,
-        "Users"!cash_cuts_created_by_fkey(firstName, lastName, username)
+        "Users"!cash_cuts_created_by_fkey(id, firstName, lastName, name, email)
       `)
       .eq('id', cutId)
       .single();
@@ -31,11 +31,11 @@ export async function GET(
       }, { status: 404 });
     }
 
-    // Formatear datos con valores seguros - CAMBIO: firstName y lastName
+    // Formatear datos con valores seguros
     const cutDetail = {
       ...cut,
       creator_name: cut.Users 
-        ? `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.username
+        ? cut.Users.name || `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.email || 'Usuario'
         : 'Usuario',
       // Convertir valores numéricos de forma segura
       grand_total: parseFloat(cut.grand_total || '0'),
