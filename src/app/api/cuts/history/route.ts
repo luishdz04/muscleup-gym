@@ -29,12 +29,12 @@ export async function GET(request: NextRequest) {
     // Primero, verificar si podemos conectarnos a Supabase
     console.log('🔍 Verificando conexión a Supabase...');
     
-    // Construir query base - CAMBIO IMPORTANTE: "Users" con mayúscula y campos correctos
+    // Construir query base - Campos correctos de la tabla Users
     let query = supabase
       .from('cash_cuts')
       .select(`
         *,
-        "Users"!cash_cuts_created_by_fkey(firstName, lastName, username)
+        "Users"!cash_cuts_created_by_fkey(id, firstName, lastName, name, email)
       `, { count: 'exact' }); // Agregar count para obtener el total
 
     // Aplicar filtros
@@ -86,11 +86,11 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Formatear datos con nombre del creador - CAMBIO: firstName y lastName
+    // Formatear datos con nombre del creador
     const formattedCuts = cuts?.map(cut => ({
       ...cut,
       creator_name: cut.Users 
-        ? `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.username
+        ? cut.Users.name || `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.email || 'Usuario'
         : 'Usuario',
       // Convertir valores numéricos para evitar errores
       grand_total: parseFloat(cut.grand_total || '0'),
