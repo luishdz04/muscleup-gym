@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 export async function GET(request: NextRequest) {
-  let connection;
-  
   try {
     const { searchParams } = new URL(request.url);
     
-    // Parámetros de filtros (sin paginación para exportar todo)
+    // Parámetros de filtros
     const search = searchParams.get('search') || '';
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
@@ -16,127 +19,109 @@ export async function GET(request: NextRequest) {
     const isManual = searchParams.get('isManual');
 
     console.log('📄 API: Exportando cortes con filtros:', {
-      search,
-      dateFrom,
-      dateTo,
-      status,
-      isManual
+      search, dateFrom, dateTo, status, isManual
     });
 
-    connection = await getConnection();
+    // Construir query
+    let query = supabase
+      .from('cuts')
+      .select(`
+        cut_number,
+        cut_date,
+        is_manual,
+        status,
+        pos_total,
+        abonos_total,
+        membership_total,
+        grand_total,
+        expenses_amount,
+        final_balance,
+        total_transactions,
+        total_efectivo,
+        total_transferencia,
+        total_debito,
+        total_credito,
+        created_at,
+        notes,
+        users!cuts_created_by_fkey(first_name, last_name, username)
+      `);
 
-    // Construir WHERE clause dinámicamente
-    let whereConditions = ['1=1'];
-    let queryParams: any[] = [];
-    let paramIndex = 1;
-
-    // Aplicar los mismos filtros que en el historial
+    // Aplicar filtros (mismos que historial)
     if (search) {
-      whereConditions.push(`(
-        cuts.cut_number ILIKE $${paramIndex} OR 
-        cuts.notes ILIKE $${paramIndex} OR 
-        users.first_name ILIKE $${paramIndex} OR 
-        users.last_name ILIKE $${paramIndex}
-      )`);
-      queryParams.push(`%${search}%`);
-      paramIndex++;
+      query = query.or(`cut_number.ilike.%${search}%,notes.ilike.%${search}%`);
     }
 
     if (dateFrom) {
-      whereConditions.push(`cuts.cut_date >= $${paramIndex}`);
-      queryParams.push(dateFrom);
-      paramIndex++;
+      query = query.gte('cut_date', dateFrom);
     }
 
     if (dateTo) {
-      whereConditions.push(`cuts.cut_date <= $${paramIndex}`);
-      queryParams.push(dateTo);
-      paramIndex++;
+      query = query.lte('cut_date', dateTo);
     }
 
     if (status && status !== 'all') {
-      whereConditions.push(`cuts.status = $${paramIndex}`);
-      queryParams.push(status);
-      paramIndex++;
+      query = query.eq('status', status);
     }
 
     if (isManual && isManual !== 'all') {
-      whereConditions.push(`cuts.is_manual = $${paramIndex}`);
-      queryParams.push(isManual === 'true');
-      paramIndex++;
+      query = query.eq('is_manual', isManual === 'true');
     }
 
-    const whereClause = whereConditions.join(' AND ');
+    // Ordenar por fecha
+    query = query.order('created_at', { ascending: false });
 
-    // Query para exportar
-    const exportQuery = `
-      SELECT 
-        cuts.cut_number as "Número de Corte",
-        cuts.cut_date as "Fecha",
-        CASE WHEN cuts.is_manual THEN 'Manual' ELSE 'Automático' END as "Tipo",
-        cuts.status as "Estado",
-        cuts.pos_total as "POS Total",
-        cuts.abonos_total as "Abonos Total",
-        cuts.membership_total as "Membresías Total",
-        cuts.grand_total as "Total Bruto",
-        cuts.expenses_amount as "Gastos",
-        cuts.final_balance as "Balance Final",
-        cuts.total_transactions as "Transacciones",
-        cuts.total_efectivo as "Efectivo",
-        cuts.total_transferencia as "Transferencia",
-        cuts.total_debito as "Tarjeta Débito",
-        cuts.total_credito as "Tarjeta Crédito",
-        COALESCE(users.first_name || ' ' || users.last_name, users.username, 'Usuario') as "Responsable",
-        cuts.created_at as "Fecha Creación",
-        cuts.notes as "Observaciones"
-      FROM cuts 
-      LEFT JOIN users ON cuts.created_by = users.id
-      WHERE ${whereClause}
-      ORDER BY cuts.created_at DESC
-    `;
+    const { data: cuts, error } = await query;
 
-    const result = await connection.query(exportQuery, queryParams);
-    const cuts = result.rows;
+    if (error) {
+      console.error('❌ Error exportando cortes:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Error al exportar cortes'
+      }, { status: 500 });
+    }
 
-    // Crear workbook de Excel
-    const worksheet = XLSX.utils.json_to_sheet(cuts);
+    // Formatear datos para Excel
+    const excelData = cuts?.map(cut => ({
+      'Número de Corte': cut.cut_number,
+      'Fecha': cut.cut_date,
+      'Tipo': cut.is_manual ? 'Manual' : 'Automático',
+      'Estado': cut.status,
+      'POS Total': parseFloat(cut.pos_total),
+      'Abonos Total': parseFloat(cut.abonos_total),
+      'Membresías Total': parseFloat(cut.membership_total),
+      'Total Bruto': parseFloat(cut.grand_total),
+      'Gastos': parseFloat(cut.expenses_amount),
+      'Balance Final': parseFloat(cut.final_balance),
+      'Transacciones': parseInt(cut.total_transactions),
+      'Efectivo': parseFloat(cut.total_efectivo),
+      'Transferencia': parseFloat(cut.total_transferencia),
+      'Tarjeta Débito': parseFloat(cut.total_debito),
+      'Tarjeta Crédito': parseFloat(cut.total_credito),
+      'Responsable': cut.users 
+        ? `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim() || cut.users.username
+        : 'Usuario',
+      'Fecha Creación': cut.created_at,
+      'Observaciones': cut.notes || ''
+    })) || [];
+
+    // Crear Excel
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
-    
-    // Agregar hoja
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Historial de Cortes');
 
     // Configurar anchos de columna
     const colWidths = [
-      { wch: 15 }, // Número de Corte
-      { wch: 12 }, // Fecha
-      { wch: 12 }, // Tipo
-      { wch: 10 }, // Estado
-      { wch: 15 }, // POS Total
-      { wch: 15 }, // Abonos Total
-      { wch: 15 }, // Membresías Total
-      { wch: 15 }, // Total Bruto
-      { wch: 12 }, // Gastos
-      { wch: 15 }, // Balance Final
-      { wch: 12 }, // Transacciones
-      { wch: 12 }, // Efectivo
-      { wch: 15 }, // Transferencia
-      { wch: 15 }, // Tarjeta Débito
-      { wch: 15 }, // Tarjeta Crédito
-      { wch: 20 }, // Responsable
-      { wch: 20 }, // Fecha Creación
-      { wch: 30 }  // Observaciones
+      { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 15 },
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 15 },
+      { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 20 }, { wch: 20 }, { wch: 30 }
     ];
     worksheet['!cols'] = colWidths;
 
-    // Generar archivo Excel
-    const excelBuffer = XLSX.write(workbook, { 
-      bookType: 'xlsx', 
-      type: 'buffer' 
-    });
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
 
-    console.log('✅ Archivo Excel generado:', cuts.length, 'cortes exportados');
+    console.log('✅ Archivo Excel generado:', excelData.length, 'cortes exportados');
 
-    // Retornar archivo
     return new NextResponse(excelBuffer, {
       status: 200,
       headers: {
@@ -151,9 +136,5 @@ export async function GET(request: NextRequest) {
       success: false,
       error: 'Error al exportar los cortes'
     }, { status: 500 });
-  } finally {
-    if (connection) {
-      await connection.release();
-    }
   }
 }
