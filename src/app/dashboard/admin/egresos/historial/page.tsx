@@ -255,8 +255,9 @@ export default function ExpensesHistoryPage() {
       if (filters.status !== 'all') params.append('status', filters.status);
 
       console.log('💸 Cargando historial de egresos:', params.toString());
-      console.log('👤 Usuario actual: luishdz04');
-      console.log('📅 Timestamp: 2025-06-16 02:31:47');
+      console.log('📅 Timestamp:', new Date().toISOString());
+      console.log('🕐 Hora México:', new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }));
+      console.log('👤 Usuario actual:', 'luishdz04');
 
       const response = await fetch(`/api/expenses/history?${params.toString()}`);
       const data = await response.json();
@@ -268,7 +269,7 @@ export default function ExpensesHistoryPage() {
           .map((expense: any) => ({
             ...expense,
             amount: typeof expense.amount === 'number' ? expense.amount : parseFloat(expense.amount || '0'),
-            creator_name: expense.creator_name || 'luishdz04'
+            creator_name: expense.creator_name || 'Usuario sin nombre'
           }));
 
         const validStats: Stats = {
@@ -619,9 +620,9 @@ export default function ExpensesHistoryPage() {
           </Box>
         </Box>
 
-        {/* ESTADÍSTICAS */}
+        {/* ESTADÍSTICAS - MUI MODERNO CON size */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
               border: `2px solid ${darkProTokens.error}40`,
@@ -647,7 +648,7 @@ export default function ExpensesHistoryPage() {
             </Card>
           </Grid>
 
-          <Grid xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
               border: `2px solid ${darkProTokens.warning}40`,
@@ -673,7 +674,7 @@ export default function ExpensesHistoryPage() {
             </Card>
           </Grid>
 
-          <Grid xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
               border: `2px solid ${darkProTokens.info}40`,
@@ -699,7 +700,7 @@ export default function ExpensesHistoryPage() {
             </Card>
           </Grid>
 
-          <Grid xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
               border: `2px solid ${darkProTokens.primary}40`,
@@ -726,7 +727,7 @@ export default function ExpensesHistoryPage() {
           </Grid>
         </Grid>
 
-        {/* DESGLOSE POR CATEGORÍAS - CORREGIDO */}
+        {/* DESGLOSE POR CATEGORÍAS - MUI MODERNO CON size */}
         {Object.keys(stats.categoriesBreakdown).length > 0 && (
           <Card sx={{
             background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -747,7 +748,7 @@ export default function ExpensesHistoryPage() {
                     const IconComponent = categoryInfo.icon;
                     
                     return (
-                      <Grid xs={12} md={4} lg={3} key={category}>
+                      <Grid size={{ xs: 12, md: 4, lg: 3 }} key={category}>
                         <Paper sx={{
                           p: 2,
                           backgroundColor: darkProTokens.surfaceLevel4,
@@ -782,7 +783,7 @@ export default function ExpensesHistoryPage() {
           </Card>
         )}
 
-        {/* FILTROS */}
+        {/* FILTROS - MUI MODERNO CON size */}
         <Card sx={{
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `2px solid ${darkProTokens.info}40`,
@@ -798,7 +799,7 @@ export default function ExpensesHistoryPage() {
             </Box>
 
             <Grid container spacing={3}>
-              <Grid xs={12} md={3}>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <TextField
                   fullWidth
                   label="Buscar"
@@ -821,7 +822,7 @@ export default function ExpensesHistoryPage() {
                 />
               </Grid>
 
-              <Grid xs={12} md={2}>
+              <Grid size={{ xs: 12, md: 2 }}>
                 <DatePicker
                   label="Fecha Desde"
                   value={filters.dateFrom}
@@ -836,7 +837,7 @@ export default function ExpensesHistoryPage() {
                 />
               </Grid>
 
-              <Grid xs={12} md={2}>
+              <Grid size={{ xs: 12, md: 2 }}>
                 <DatePicker
                   label="Fecha Hasta"
                   value={filters.dateTo}
@@ -851,7 +852,7 @@ export default function ExpensesHistoryPage() {
                 />
               </Grid>
 
-              <Grid xs={12} md={2}>
+              <Grid size={{ xs: 12, md: 2 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ color: darkProTokens.textSecondary }}>Categoría</InputLabel>
                   <Select
@@ -881,7 +882,7 @@ export default function ExpensesHistoryPage() {
                 </FormControl>
               </Grid>
 
-              <Grid xs={12} md={2}>
+              <Grid size={{ xs: 12, md: 2 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ color: darkProTokens.textSecondary }}>Estado</InputLabel>
                   <Select
@@ -901,7 +902,7 @@ export default function ExpensesHistoryPage() {
                 </FormControl>
               </Grid>
 
-              <Grid xs={12} md={1}>
+              <Grid size={{ xs: 12, md: 1 }}>
                 <Stack direction="row" spacing={1}>
                   <Button
                     variant="contained"
@@ -932,7 +933,7 @@ export default function ExpensesHistoryPage() {
           </CardContent>
         </Card>
 
-        {/* TABLA DE EGRESOS - CORREGIDA */}
+        {/* TABLA DE EGRESOS */}
         <Card sx={{
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `2px solid ${darkProTokens.error}40`,
@@ -1084,7 +1085,7 @@ export default function ExpensesHistoryPage() {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <PersonIcon sx={{ fontSize: 16 }} />
                                   <Typography variant="body2">
-                                    {expense.creator_name || 'luishdz04'}
+                                    {expense.creator_name || 'Usuario sin nombre'}
                                   </Typography>
                                 </Box>
                               </TableCell>
@@ -1237,7 +1238,7 @@ export default function ExpensesHistoryPage() {
             {selectedExpense && (
               <Grid container spacing={4}>
                 {/* INFORMACIÓN PRINCIPAL */}
-                <Grid xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Card sx={{
                     backgroundColor: darkProTokens.surfaceLevel3,
                     border: `1px solid ${darkProTokens.grayMedium}`,
@@ -1318,7 +1319,7 @@ export default function ExpensesHistoryPage() {
                 </Grid>
 
                 {/* INFORMACIÓN ADICIONAL */}
-                <Grid xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Card sx={{
                     backgroundColor: darkProTokens.surfaceLevel3,
                     border: `1px solid ${darkProTokens.grayMedium}`,
@@ -1357,7 +1358,7 @@ export default function ExpensesHistoryPage() {
                             Responsable:
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                            {selectedExpense.creator_name || 'luishdz04'}
+                            {selectedExpense.creator_name || 'Usuario sin nombre'}
                           </Typography>
                         </Box>
                         
@@ -1385,7 +1386,7 @@ export default function ExpensesHistoryPage() {
 
                 {/* NOTAS */}
                 {selectedExpense.notes && (
-                  <Grid xs={12}>
+                  <Grid size={{ xs: 12 }}>
                     <Card sx={{
                       backgroundColor: darkProTokens.surfaceLevel3,
                       border: `1px solid ${darkProTokens.grayMedium}`,
@@ -1611,7 +1612,7 @@ export default function ExpensesHistoryPage() {
               sx={{ 
                 color: darkProTokens.textSecondary,
                 '&:hover': {
-                  backgroundColor: `${darkProTokens.textSecondary}20`
+                                    backgroundColor: `${darkProTokens.textSecondary}20`
                 }
               }}
             >
@@ -1631,7 +1632,7 @@ export default function ExpensesHistoryPage() {
               }}
             >
               {loadingUpdate ? 'Guardando...' : 'Guardar Cambios'}
-                        </Button>
+            </Button>
           </DialogActions>
         </Dialog>
       </Box>
