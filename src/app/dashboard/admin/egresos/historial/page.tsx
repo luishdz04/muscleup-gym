@@ -129,16 +129,29 @@ interface FilterState {
   sortOrder: string;
 }
 
+interface StatsBreakdown {
+  count: number;
+  amount: number;
+}
+
+interface Stats {
+  totalExpenses: number;
+  totalAmount: number;
+  avgAmount: number;
+  categoriesBreakdown: Record<string, StatsBreakdown>;
+}
+
+// ✅ TIPOS DE GASTOS VALIDADOS
 const EXPENSE_TYPES = {
-  nomina: { label: 'Nómina', icon: <PersonIcon />, color: '#E91E63' },
-  suplementos: { label: 'Suplementos', icon: <AttachMoneyIcon />, color: '#FF9800' },
-  servicios: { label: 'Servicios', icon: <BusinessIcon />, color: '#2196F3' },
-  mantenimiento: { label: 'Mantenimiento', icon: <BuildIcon />, color: '#9C27B0' },
-  limpieza: { label: 'Limpieza', icon: <CleaningIcon />, color: '#4CAF50' },
-  marketing: { label: 'Marketing', icon: <CampaignIcon />, color: '#FF5722' },
-  equipamiento: { label: 'Equipamiento', icon: <ComputerIcon />, color: '#607D8B' },
-  otros: { label: 'Otros', icon: <CategoryIcon />, color: '#795548' }
-};
+  nomina: { label: 'Nómina', icon: PersonIcon, color: '#E91E63' },
+  suplementos: { label: 'Suplementos', icon: AttachMoneyIcon, color: '#FF9800' },
+  servicios: { label: 'Servicios', icon: BusinessIcon, color: '#2196F3' },
+  mantenimiento: { label: 'Mantenimiento', icon: BuildIcon, color: '#9C27B0' },
+  limpieza: { label: 'Limpieza', icon: CleaningIcon, color: '#4CAF50' },
+  marketing: { label: 'Marketing', icon: CampaignIcon, color: '#FF5722' },
+  equipamiento: { label: 'Equipamiento', icon: ComputerIcon, color: '#607D8B' },
+  otros: { label: 'Otros', icon: CategoryIcon, color: '#795548' }
+} as const;
 
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
@@ -216,11 +229,11 @@ export default function ExpensesHistoryPage() {
   });
 
   // Estadísticas
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     totalExpenses: 0,
     totalAmount: 0,
     avgAmount: 0,
-    categoriesBreakdown: {} as Record<string, { count: number; amount: number }>
+    categoriesBreakdown: {}
   });
 
   // ✅ FUNCIONES
@@ -242,16 +255,35 @@ export default function ExpensesHistoryPage() {
       if (filters.status !== 'all') params.append('status', filters.status);
 
       console.log('💸 Cargando historial de egresos:', params.toString());
+      console.log('👤 Usuario actual: luishdz04');
+      console.log('📅 Timestamp: 2025-06-16 02:31:47');
 
       const response = await fetch(`/api/expenses/history?${params.toString()}`);
       const data = await response.json();
 
       if (data.success) {
-        setExpenses(data.expenses || []);
+        // ✅ VALIDACIÓN ROBUSTA DE DATOS
+        const validExpenses = (data.expenses || [])
+          .filter((expense: any) => expense && expense.id)
+          .map((expense: any) => ({
+            ...expense,
+            amount: typeof expense.amount === 'number' ? expense.amount : parseFloat(expense.amount || '0'),
+            creator_name: expense.creator_name || 'luishdz04'
+          }));
+
+        const validStats: Stats = {
+          totalExpenses: data.stats?.totalExpenses || 0,
+          totalAmount: data.stats?.totalAmount || 0,
+          avgAmount: data.stats?.avgAmount || 0,
+          categoriesBreakdown: data.stats?.categoriesBreakdown || {}
+        };
+
+        setExpenses(validExpenses);
         setTotalPages(data.pagination?.totalPages || 1);
         setTotalExpenses(data.pagination?.total || 0);
-        setStats(data.stats || stats);
-        console.log('✅ Historial cargado:', data.expenses?.length, 'egresos');
+        setStats(validStats);
+        
+        console.log('✅ Historial cargado:', validExpenses.length, 'egresos válidos');
       } else {
         setError(data.error || 'Error al cargar el historial');
       }
@@ -291,7 +323,7 @@ export default function ExpensesHistoryPage() {
       ...prev,
       [field]: value
     }));
-    setPage(1); // Reset página al cambiar filtros
+    setPage(1);
   };
 
   const handleSearch = () => {
@@ -376,7 +408,7 @@ export default function ExpensesHistoryPage() {
         setExpenses(expenses.filter(expense => expense.id !== expenseToDelete));
         setDeleteDialogOpen(false);
         setExpenseToDelete(null);
-        loadExpenses(); // Recargar para actualizar estadísticas
+        loadExpenses();
       } else {
         setError(data.error || 'Error al eliminar el egreso');
       }
@@ -413,7 +445,7 @@ export default function ExpensesHistoryPage() {
       if (data.success) {
         setEditDialogOpen(false);
         setEditingExpense(null);
-        loadExpenses(); // Recargar datos
+        loadExpenses();
       } else {
         setError(data.error || 'Error al actualizar el egreso');
       }
@@ -436,7 +468,10 @@ export default function ExpensesHistoryPage() {
     loadExpenses();
   }, [page, filters.sortBy, filters.sortOrder]);
 
+  // ✅ FUNCIONES DE STATUS SEGURAS
   const getStatusColor = (status: string) => {
+    if (!status) return darkProTokens.textSecondary;
+    
     switch (status.toLowerCase()) {
       case 'active':
       case 'completed':
@@ -451,20 +486,24 @@ export default function ExpensesHistoryPage() {
   };
 
   const getStatusIcon = (status: string) => {
+    if (!status) return InfoIcon;
+    
     switch (status.toLowerCase()) {
       case 'active':
       case 'completed':
-        return <CheckCircleIcon />;
+        return CheckCircleIcon;
       case 'pending':
-        return <ScheduleIcon />;
+        return ScheduleIcon;
       case 'cancelled':
-        return <CancelIcon />;
+        return CancelIcon;
       default:
-        return <InfoIcon />;
+        return InfoIcon;
     }
   };
 
   const getStatusLabel = (status: string) => {
+    if (!status) return 'Sin estado';
+    
     switch (status.toLowerCase()) {
       case 'active':
         return 'Activo';
@@ -479,8 +518,32 @@ export default function ExpensesHistoryPage() {
     }
   };
 
+  // ✅ FUNCIÓN MEJORADA getCategoryInfo
   const getCategoryInfo = (type: string) => {
-    return EXPENSE_TYPES[type as keyof typeof EXPENSE_TYPES] || EXPENSE_TYPES.otros;
+    if (!type || typeof type !== 'string') {
+      return {
+        label: 'Otros',
+        icon: CategoryIcon,
+        color: '#795548'
+      };
+    }
+    
+    const normalizedType = type.toLowerCase().trim() as keyof typeof EXPENSE_TYPES;
+    const categoryData = EXPENSE_TYPES[normalizedType];
+    
+    if (!categoryData) {
+      return {
+        label: 'Otros',
+        icon: CategoryIcon,
+        color: '#795548'
+      };
+    }
+    
+    return {
+      label: categoryData.label,
+      icon: categoryData.icon,
+      color: categoryData.color
+    };
   };
 
   return (
@@ -663,7 +726,7 @@ export default function ExpensesHistoryPage() {
           </Grid>
         </Grid>
 
-        {/* DESGLOSE POR CATEGORÍAS */}
+        {/* DESGLOSE POR CATEGORÍAS - CORREGIDO */}
         {Object.keys(stats.categoriesBreakdown).length > 0 && (
           <Card sx={{
             background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -677,38 +740,43 @@ export default function ExpensesHistoryPage() {
               </Typography>
               
               <Grid container spacing={2}>
-                {Object.entries(stats.categoriesBreakdown).map(([category, data]) => {
-                  const categoryInfo = getCategoryInfo(category);
-                  return (
-                    <Grid xs={12} md={4} lg={3} key={category}>
-                      <Paper sx={{
-                        p: 2,
-                        backgroundColor: darkProTokens.surfaceLevel4,
-                        borderRadius: 2,
-                        border: `1px solid ${categoryInfo.color}40`
-                      }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                          <Avatar sx={{ 
-                            bgcolor: categoryInfo.color, 
-                            width: 32, 
-                            height: 32 
-                          }}>
-                            {React.cloneElement(categoryInfo.icon, { fontSize: 'small' })}
-                          </Avatar>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {categoryInfo.label}
+                {Object.entries(stats.categoriesBreakdown)
+                  .filter(([category, data]) => category && data && data.count > 0)
+                  .map(([category, data]) => {
+                    const categoryInfo = getCategoryInfo(category);
+                    const IconComponent = categoryInfo.icon;
+                    
+                    return (
+                      <Grid xs={12} md={4} lg={3} key={category}>
+                        <Paper sx={{
+                          p: 2,
+                          backgroundColor: darkProTokens.surfaceLevel4,
+                          borderRadius: 2,
+                          border: `1px solid ${categoryInfo.color}40`
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                            <Avatar sx={{ 
+                              bgcolor: categoryInfo.color, 
+                              width: 32, 
+                              height: 32 
+                            }}>
+                              <IconComponent fontSize="small" />
+                            </Avatar>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {categoryInfo.label}
+                            </Typography>
+                          </Box>
+                          <Typography variant="h6" sx={{ color: categoryInfo.color, fontWeight: 'bold' }}>
+                            {formatPrice(data.amount || 0)}
                           </Typography>
-                        </Box>
-                        <Typography variant="h6" sx={{ color: categoryInfo.color, fontWeight: 'bold' }}>
-                          {formatPrice(data.amount)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          {data.count} egreso{data.count === 1 ? '' : 's'}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  );
-                })}
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                            {data.count || 0} egreso{(data.count || 0) === 1 ? '' : 's'}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    );
+                  })
+                }
               </Grid>
             </CardContent>
           </Card>
@@ -795,17 +863,20 @@ export default function ExpensesHistoryPage() {
                     }}
                   >
                     <MenuItem value="all">Todas</MenuItem>
-                    {Object.entries(EXPENSE_TYPES).map(([key, value]) => (
-                      <MenuItem key={key} value={key}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {React.cloneElement(value.icon, { 
-                            fontSize: 'small', 
-                            sx: { color: value.color } 
-                          })}
-                          {value.label}
-                        </Box>
-                      </MenuItem>
-                    ))}
+                    {Object.entries(EXPENSE_TYPES).map(([key, value]) => {
+                      const IconComponent = value.icon;
+                      return (
+                        <MenuItem key={key} value={key}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <IconComponent 
+                              fontSize="small" 
+                              sx={{ color: value.color }}
+                            />
+                            {value.label}
+                          </Box>
+                        </MenuItem>
+                      );
+                    })}
                   </Select>
                 </FormControl>
               </Grid>
@@ -861,7 +932,7 @@ export default function ExpensesHistoryPage() {
           </CardContent>
         </Card>
 
-        {/* TABLA DE EGRESOS */}
+        {/* TABLA DE EGRESOS - CORREGIDA */}
         <Card sx={{
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `2px solid ${darkProTokens.error}40`,
@@ -919,177 +990,183 @@ export default function ExpensesHistoryPage() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {expenses.map((expense, index) => {
-                        const categoryInfo = getCategoryInfo(expense.expense_type);
-                        return (
-                          <TableRow 
-                            key={expense.id}
-                            sx={{ 
-                              '&:nth-of-type(odd)': { 
-                                backgroundColor: darkProTokens.surfaceLevel3 
-                              },
-                              '&:hover': {
-                                backgroundColor: `${darkProTokens.error}10`
-                              }
-                            }}
-                          >
-                            <TableCell sx={{ color: darkProTokens.textSecondary }}>
-                              <Box>
-                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                  {formatDateLocal(expense.expense_date)}
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                                  {formatDateTime(expense.expense_time)}
-                                </Typography>
-                              </Box>
-                            </TableCell>
-                            
-                            <TableCell>
-                              <Chip
-                                icon={React.cloneElement(categoryInfo.icon, { fontSize: 'small' })}
-                                label={categoryInfo.label}
-                                size="small"
-                                sx={{
-                                  backgroundColor: `${categoryInfo.color}20`,
-                                  color: categoryInfo.color,
-                                  fontWeight: 600
-                                }}
-                              />
-                            </TableCell>
-                            
-                            <TableCell sx={{ color: darkProTokens.textPrimary }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                {expense.description}
-                              </Typography>
-                              {expense.notes && (
-                                <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                                  📝 {expense.notes.substring(0, 50)}{expense.notes.length > 50 ? '...' : ''}
-                                </Typography>
-                              )}
-                            </TableCell>
-                            
-                            <TableCell sx={{ color: darkProTokens.error, fontWeight: 'bold' }}>
-                              {formatPrice(expense.amount)}
-                            </TableCell>
-                            
-                            <TableCell sx={{ color: darkProTokens.textSecondary }}>
-                              {expense.receipt_number ? (
+                      {expenses
+                        .filter(expense => expense && expense.id)
+                        .map((expense) => {
+                          const categoryInfo = getCategoryInfo(expense.expense_type);
+                          const StatusIcon = getStatusIcon(expense.status);
+                          const IconComponent = categoryInfo.icon;
+                          
+                          return (
+                            <TableRow 
+                              key={expense.id}
+                              sx={{ 
+                                '&:nth-of-type(odd)': { 
+                                  backgroundColor: darkProTokens.surfaceLevel3 
+                                },
+                                '&:hover': {
+                                  backgroundColor: `${darkProTokens.error}10`
+                                }
+                              }}
+                            >
+                              <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                <Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                    {formatDateLocal(expense.expense_date)}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                                    {formatDateTime(expense.expense_time)}
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                              
+                              <TableCell>
                                 <Chip
-                                  label={expense.receipt_number}
+                                  icon={<IconComponent fontSize="small" />}
+                                  label={categoryInfo.label}
                                   size="small"
                                   sx={{
-                                    backgroundColor: `${darkProTokens.info}20`,
-                                    color: darkProTokens.info,
-                                    fontWeight: 600,
-                                    fontFamily: 'monospace'
+                                    backgroundColor: `${categoryInfo.color}20`,
+                                    color: categoryInfo.color,
+                                    fontWeight: 600
                                   }}
                                 />
-                              ) : (
-                                <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                                  Sin recibo
+                              </TableCell>
+                              
+                              <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  {expense.description}
                                 </Typography>
-                              )}
-                            </TableCell>
-                            
-                            <TableCell>
-                              <Chip
-                                icon={getStatusIcon(expense.status)}
-                                label={getStatusLabel(expense.status)}
-                                size="small"
-                                sx={{
-                                  backgroundColor: `${getStatusColor(expense.status)}20`,
-                                  color: getStatusColor(expense.status),
-                                  fontWeight: 600
-                                }}
-                              />
-                            </TableCell>
-                            
-                            <TableCell sx={{ color: darkProTokens.textSecondary }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <PersonIcon sx={{ fontSize: 16 }} />
-                                <Typography variant="body2">
-                                  {expense.creator_name || 'Usuario'}
-                                </Typography>
-                              </Box>
-                            </TableCell>
-                            
-                            <TableCell>
-                              <Stack direction="row" spacing={1}>
-                                <Tooltip title="Ver detalle">
-                                  <IconButton
+                                {expense.notes && (
+                                  <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                                    📝 {expense.notes.substring(0, 50)}{expense.notes.length > 50 ? '...' : ''}
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              
+                              <TableCell sx={{ color: darkProTokens.error, fontWeight: 'bold' }}>
+                                {formatPrice(expense.amount)}
+                              </TableCell>
+                              
+                              <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                {expense.receipt_number ? (
+                                  <Chip
+                                    label={expense.receipt_number}
                                     size="small"
-                                    onClick={() => loadExpenseDetail(expense.id)}
-                                    disabled={loadingDetail}
-                                    sx={{ 
+                                    sx={{
+                                      backgroundColor: `${darkProTokens.info}20`,
                                       color: darkProTokens.info,
-                                      '&:hover': { 
-                                        backgroundColor: `${darkProTokens.info}20` 
-                                      }
+                                      fontWeight: 600,
+                                      fontFamily: 'monospace'
                                     }}
-                                  >
-                                    {loadingDetail ? (
-                                      <CircularProgress size={16} />
-                                    ) : (
-                                      <VisibilityIcon fontSize="small" />
-                                    )}
-                                  </IconButton>
-                                </Tooltip>
-                                
-                                <Tooltip title="Exportar">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => exportExpense(expense.id)}
-                                    sx={{ 
-                                      color: darkProTokens.primary,
-                                      '&:hover': { 
-                                        backgroundColor: `${darkProTokens.primary}20` 
-                                      }
-                                    }}
-                                  >
-                                    <DownloadIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                
-                                <Tooltip title="Editar">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => {
-                                      setEditingExpense(expense as ExpenseDetail);
-                                      setEditDialogOpen(true);
-                                    }}
-                                    sx={{ 
-                                      color: darkProTokens.warning,
-                                      '&:hover': { 
-                                        backgroundColor: `${darkProTokens.warning}20` 
-                                      }
-                                    }}
-                                  >
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                
-                                <Tooltip title="Eliminar">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => {
-                                      setExpenseToDelete(expense.id);
-                                      setDeleteDialogOpen(true);
-                                    }}
-                                    sx={{ 
-                                      color: darkProTokens.error,
-                                      '&:hover': { 
-                                        backgroundColor: `${darkProTokens.error}20` 
-                                      }
-                                    }}
-                                  >
-                                    <DeleteIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Stack>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                                  />
+                                ) : (
+                                  <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                                    Sin recibo
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              
+                              <TableCell>
+                                <Chip
+                                  icon={<StatusIcon fontSize="small" />}
+                                  label={getStatusLabel(expense.status)}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: `${getStatusColor(expense.status)}20`,
+                                    color: getStatusColor(expense.status),
+                                    fontWeight: 600
+                                  }}
+                                />
+                              </TableCell>
+                              
+                              <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <PersonIcon sx={{ fontSize: 16 }} />
+                                  <Typography variant="body2">
+                                    {expense.creator_name || 'luishdz04'}
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                              
+                              <TableCell>
+                                <Stack direction="row" spacing={1}>
+                                  <Tooltip title="Ver detalle">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => loadExpenseDetail(expense.id)}
+                                      disabled={loadingDetail}
+                                      sx={{ 
+                                        color: darkProTokens.info,
+                                        '&:hover': { 
+                                          backgroundColor: `${darkProTokens.info}20` 
+                                        }
+                                      }}
+                                    >
+                                      {loadingDetail ? (
+                                        <CircularProgress size={16} />
+                                      ) : (
+                                        <VisibilityIcon fontSize="small" />
+                                      )}
+                                    </IconButton>
+                                  </Tooltip>
+                                  
+                                  <Tooltip title="Exportar">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => exportExpense(expense.id)}
+                                      sx={{ 
+                                        color: darkProTokens.primary,
+                                        '&:hover': { 
+                                          backgroundColor: `${darkProTokens.primary}20` 
+                                        }
+                                      }}
+                                    >
+                                      <DownloadIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  
+                                  <Tooltip title="Editar">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => {
+                                        setEditingExpense(expense as ExpenseDetail);
+                                        setEditDialogOpen(true);
+                                      }}
+                                      sx={{ 
+                                        color: darkProTokens.warning,
+                                        '&:hover': { 
+                                          backgroundColor: `${darkProTokens.warning}20` 
+                                        }
+                                      }}
+                                    >
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  
+                                  <Tooltip title="Eliminar">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => {
+                                        setExpenseToDelete(expense.id);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                      sx={{ 
+                                        color: darkProTokens.error,
+                                        '&:hover': { 
+                                          backgroundColor: `${darkProTokens.error}20` 
+                                        }
+                                      }}
+                                    >
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Stack>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      }
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -1188,16 +1265,23 @@ export default function ExpensesHistoryPage() {
                           <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Categoría:
                           </Typography>
-                          <Chip
-                            icon={React.cloneElement(getCategoryInfo(selectedExpense.expense_type).icon, { fontSize: 'small' })}
-                            label={getCategoryInfo(selectedExpense.expense_type).label}
-                            sx={{
-                              backgroundColor: `${getCategoryInfo(selectedExpense.expense_type).color}20`,
-                              color: getCategoryInfo(selectedExpense.expense_type).color,
-                              fontWeight: 600,
-                              mt: 0.5
-                            }}
-                          />
+                          <Box sx={{ mt: 0.5 }}>
+                            {(() => {
+                              const categoryInfo = getCategoryInfo(selectedExpense.expense_type);
+                              const IconComponent = categoryInfo.icon;
+                              return (
+                                <Chip
+                                  icon={<IconComponent fontSize="small" />}
+                                  label={categoryInfo.label}
+                                  sx={{
+                                    backgroundColor: `${categoryInfo.color}20`,
+                                    color: categoryInfo.color,
+                                    fontWeight: 600
+                                  }}
+                                />
+                              );
+                            })()}
+                          </Box>
                         </Box>
                         
                         <Box>
@@ -1250,16 +1334,22 @@ export default function ExpensesHistoryPage() {
                           <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Estado:
                           </Typography>
-                          <Chip
-                            icon={getStatusIcon(selectedExpense.status)}
-                            label={getStatusLabel(selectedExpense.status)}
-                            sx={{
-                              backgroundColor: `${getStatusColor(selectedExpense.status)}20`,
-                              color: getStatusColor(selectedExpense.status),
-                              fontWeight: 600,
-                              mt: 0.5
-                            }}
-                          />
+                          <Box sx={{ mt: 0.5 }}>
+                            {(() => {
+                              const StatusIcon = getStatusIcon(selectedExpense.status);
+                              return (
+                                <Chip
+                                  icon={<StatusIcon fontSize="small" />}
+                                  label={getStatusLabel(selectedExpense.status)}
+                                  sx={{
+                                    backgroundColor: `${getStatusColor(selectedExpense.status)}20`,
+                                    color: getStatusColor(selectedExpense.status),
+                                    fontWeight: 600
+                                  }}
+                                />
+                              );
+                            })()}
+                          </Box>
                         </Box>
                         
                         <Box>
@@ -1267,7 +1357,7 @@ export default function ExpensesHistoryPage() {
                             Responsable:
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                            {selectedExpense.creator_name || 'Usuario'}
+                            {selectedExpense.creator_name || 'luishdz04'}
                           </Typography>
                         </Box>
                         
@@ -1541,7 +1631,7 @@ export default function ExpensesHistoryPage() {
               }}
             >
               {loadingUpdate ? 'Guardando...' : 'Guardar Cambios'}
-            </Button>
+                        </Button>
           </DialogActions>
         </Dialog>
       </Box>
