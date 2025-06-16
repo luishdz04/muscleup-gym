@@ -26,16 +26,16 @@ export async function GET(request: NextRequest) {
     // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
 
-    // Primero, verificar si podemos conectarnos a Supabase
+    // Verificar conexión
     console.log('🔍 Verificando conexión a Supabase...');
     
-    // Construir query base - Campos correctos de la tabla Users
+    // Construir query base con campos correctos de Users
     let query = supabase
       .from('cash_cuts')
       .select(`
         *,
         "Users"!cash_cuts_created_by_fkey(id, firstName, lastName, name, email)
-      `, { count: 'exact' }); // Agregar count para obtener el total
+      `, { count: 'exact' });
 
     // Aplicar filtros
     if (search) {
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       membership_total: parseFloat(cut.membership_total || '0')
     })) || [];
 
-    // Obtener estadísticas generales (query separada para evitar errores)
+    // Obtener estadísticas generales
     let stats = {
       totalCuts: 0,
       totalAmount: 0,
