@@ -59,7 +59,9 @@ import {
   Build as BuildIcon,
   Cleaning as CleaningIcon,
   Campaign as CampaignIcon,
-  Computer as ComputerIcon
+  Computer as ComputerIcon,
+  Refresh as RefreshIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -111,6 +113,10 @@ interface Expense {
   created_at: string;
   updated_at: string;
   creator_name?: string;
+}
+
+interface ExpenseDetail extends Expense {
+  // Campos adicionales para el detalle si los hay
 }
 
 interface FilterState {
@@ -181,9 +187,16 @@ export default function ExpensesHistoryPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<ExpenseDetail | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
+  const [loadingDelete, setLoadingDelete] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseDetail | null>(null);
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Paginación
   const [page, setPage] = useState(1);
@@ -326,6 +339,98 @@ export default function ExpensesHistoryPage() {
     }
   };
 
+  const exportExpense = async (expenseId: string) => {
+    try {
+      console.log('📄 Exportando egreso individual:', expenseId);
+      const response = await fetch(`/api/expenses/${expenseId}/export`);
+      const blob = await response.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `egreso_${expenseId.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exportando egreso:', error);
+      setError('Error al exportar el egreso');
+    }
+  };
+
+  const handleDeleteExpense = async () => {
+    if (!expenseToDelete) return;
+    
+    try {
+      setLoadingDelete(true);
+      console.log('🗑️ Eliminando egreso:', expenseToDelete);
+      
+      const response = await fetch(`/api/expenses/${expenseToDelete}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setExpenses(expenses.filter(expense => expense.id !== expenseToDelete));
+        setDeleteDialogOpen(false);
+        setExpenseToDelete(null);
+        loadExpenses(); // Recargar para actualizar estadísticas
+      } else {
+        setError(data.error || 'Error al eliminar el egreso');
+      }
+    } catch (error) {
+      console.error('Error eliminando egreso:', error);
+      setError('Error al eliminar el egreso');
+    } finally {
+      setLoadingDelete(false);
+    }
+  };
+
+  const handleUpdateExpense = async () => {
+    if (!editingExpense) return;
+    
+    try {
+      setLoadingUpdate(true);
+      console.log('✏️ Actualizando egreso:', editingExpense.id);
+      
+      const response = await fetch(`/api/expenses/${editingExpense.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          notes: editingExpense.notes,
+          amount: editingExpense.amount,
+          status: editingExpense.status,
+          description: editingExpense.description
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setEditDialogOpen(false);
+        setEditingExpense(null);
+        loadExpenses(); // Recargar datos
+      } else {
+        setError(data.error || 'Error al actualizar el egreso');
+      }
+    } catch (error) {
+      console.error('Error actualizando egreso:', error);
+      setError('Error al actualizar el egreso');
+    } finally {
+      setLoadingUpdate(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadExpenses();
+    setRefreshing(false);
+  };
+
   // ✅ EFFECTS
   useEffect(() => {
     loadExpenses();
@@ -356,6 +461,21 @@ export default function ExpensesHistoryPage() {
         return <CancelIcon />;
       default:
         return <InfoIcon />;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return 'Activo';
+      case 'completed':
+        return 'Completado';
+      case 'pending':
+        return 'Pendiente';
+      case 'cancelled':
+        return 'Cancelado';
+      default:
+        return status;
     }
   };
 
@@ -392,7 +512,7 @@ export default function ExpensesHistoryPage() {
               <MoneyOffIcon sx={{ fontSize: 32 }} />
             </Avatar>
             
-                        <Box>
+            <Box>
               <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
                 Historial de Egresos
               </Typography>
@@ -403,6 +523,21 @@ export default function ExpensesHistoryPage() {
           </Box>
           
           <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={refreshing ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <RefreshIcon />}
+              onClick={handleRefresh}
+              disabled={refreshing}
+              sx={{
+                backgroundColor: darkProTokens.info,
+                color: darkProTokens.background,
+                '&:hover': {
+                  backgroundColor: darkProTokens.infoHover
+                }
+              }}
+            >
+              {refreshing ? 'Actualizando...' : 'Actualizar'}
+            </Button>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
@@ -416,7 +551,7 @@ export default function ExpensesHistoryPage() {
                 }
               }}
             >
-              Exportar
+              Exportar Todo
             </Button>
           </Box>
         </Box>
@@ -859,7 +994,7 @@ export default function ExpensesHistoryPage() {
                             <TableCell>
                               <Chip
                                 icon={getStatusIcon(expense.status)}
-                                label={expense.status}
+                                label={getStatusLabel(expense.status)}
                                 size="small"
                                 sx={{
                                   backgroundColor: `${getStatusColor(expense.status)}20`,
@@ -873,13 +1008,13 @@ export default function ExpensesHistoryPage() {
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <PersonIcon sx={{ fontSize: 16 }} />
                                 <Typography variant="body2">
-                                  {expense.creator_name || 'luishdz04'}
+                                  {expense.creator_name || 'Usuario'}
                                 </Typography>
                               </Box>
                             </TableCell>
                             
                             <TableCell>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Stack direction="row" spacing={1}>
                                 <Tooltip title="Ver detalle">
                                   <IconButton
                                     size="small"
@@ -900,10 +1035,28 @@ export default function ExpensesHistoryPage() {
                                   </IconButton>
                                 </Tooltip>
                                 
+                                <Tooltip title="Exportar">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => exportExpense(expense.id)}
+                                    sx={{ 
+                                      color: darkProTokens.primary,
+                                      '&:hover': { 
+                                        backgroundColor: `${darkProTokens.primary}20` 
+                                      }
+                                    }}
+                                  >
+                                    <DownloadIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                
                                 <Tooltip title="Editar">
                                   <IconButton
                                     size="small"
-                                    onClick={() => router.push(`/dashboard/admin/egresos/editar/${expense.id}`)}
+                                    onClick={() => {
+                                      setEditingExpense(expense as ExpenseDetail);
+                                      setEditDialogOpen(true);
+                                    }}
                                     sx={{ 
                                       color: darkProTokens.warning,
                                       '&:hover': { 
@@ -914,7 +1067,25 @@ export default function ExpensesHistoryPage() {
                                     <EditIcon fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
-                              </Box>
+                                
+                                <Tooltip title="Eliminar">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      setExpenseToDelete(expense.id);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                    sx={{ 
+                                      color: darkProTokens.error,
+                                      '&:hover': { 
+                                        backgroundColor: `${darkProTokens.error}20` 
+                                      }
+                                    }}
+                                  >
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
                             </TableCell>
                           </TableRow>
                         );
@@ -951,7 +1122,7 @@ export default function ExpensesHistoryPage() {
         <Dialog
           open={detailDialogOpen}
           onClose={() => setDetailDialogOpen(false)}
-          maxWidth="md"
+          maxWidth="lg"
           fullWidth
           PaperProps={{
             sx: {
@@ -1002,19 +1173,19 @@ export default function ExpensesHistoryPage() {
                       
                       <Stack spacing={2}>
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Fecha del Egreso:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
                             {formatDateLocal(selectedExpense.expense_date)}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
                             {formatDateTime(selectedExpense.expense_time)}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Categoría:
                           </Typography>
                           <Chip
@@ -1030,16 +1201,16 @@ export default function ExpensesHistoryPage() {
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Descripción:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
                             {selectedExpense.description}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Monto:
                           </Typography>
                           <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 'bold' }}>
@@ -1049,10 +1220,10 @@ export default function ExpensesHistoryPage() {
                         
                         {selectedExpense.receipt_number && (
                           <Box>
-                            <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                               Número de Recibo:
                             </Typography>
-                            <Typography variant="body1" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
+                            <Typography variant="body1" sx={{ fontWeight: 600, fontFamily: 'monospace', color: darkProTokens.textPrimary }}>
                               {selectedExpense.receipt_number}
                             </Typography>
                           </Box>
@@ -1076,12 +1247,12 @@ export default function ExpensesHistoryPage() {
                       
                       <Stack spacing={2}>
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Estado:
                           </Typography>
                           <Chip
                             icon={getStatusIcon(selectedExpense.status)}
-                            label={selectedExpense.status}
+                            label={getStatusLabel(selectedExpense.status)}
                             sx={{
                               backgroundColor: `${getStatusColor(selectedExpense.status)}20`,
                               color: getStatusColor(selectedExpense.status),
@@ -1092,28 +1263,28 @@ export default function ExpensesHistoryPage() {
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Responsable:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {selectedExpense.creator_name || 'luishdz04'}
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
+                            {selectedExpense.creator_name || 'Usuario'}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                            Fecha de Creación:
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                            Creado:
                           </Typography>
-                          <Typography variant="body2">
+                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
                             {formatDateTime(selectedExpense.created_at)}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                            Última Actualización:
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                            Actualizado:
                           </Typography>
-                          <Typography variant="body2">
+                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
                             {formatDateTime(selectedExpense.updated_at)}
                           </Typography>
                         </Box>
@@ -1138,7 +1309,8 @@ export default function ExpensesHistoryPage() {
                           backgroundColor: darkProTokens.surfaceLevel4,
                           p: 2,
                           borderRadius: 2,
-                          borderLeft: `4px solid ${darkProTokens.warning}`
+                          borderLeft: `4px solid ${darkProTokens.warning}`,
+                          color: darkProTokens.textPrimary
                         }}>
                           {selectedExpense.notes}
                         </Typography>
@@ -1162,26 +1334,214 @@ export default function ExpensesHistoryPage() {
             >
               Cerrar
             </Button>
-            
-            {selectedExpense && (
-              <Button
-                variant="contained"
-                startIcon={<EditIcon />}
-                onClick={() => {
-                  setDetailDialogOpen(false);
-                  router.push(`/dashboard/admin/egresos/editar/${selectedExpense.id}`);
-                }}
-                sx={{
-                  backgroundColor: darkProTokens.warning,
-                  color: darkProTokens.background,
-                  '&:hover': {
-                    backgroundColor: darkProTokens.warningHover
-                  }
-                }}
-              >
+          </DialogActions>
+        </Dialog>
+
+        {/* DIALOG DE CONFIRMACIÓN DE ELIMINACIÓN */}
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          PaperProps={{
+            sx: {
+              backgroundColor: darkProTokens.surfaceLevel2,
+              color: darkProTokens.textPrimary,
+              borderRadius: 4
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: 2,
+            borderBottom: `1px solid ${darkProTokens.grayMedium}`
+          }}>
+            <Avatar sx={{ bgcolor: darkProTokens.error }}>
+              <WarningIcon />
+            </Avatar>
+            <Typography variant="h6" fontWeight="bold">
+              Confirmar Eliminación
+            </Typography>
+          </DialogTitle>
+          
+          <DialogContent sx={{ p: 4 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              ¿Estás seguro de que deseas eliminar este egreso?
+            </Typography>
+            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+              Esta acción no se puede deshacer. Se eliminarán todos los datos asociados a este egreso.
+            </Typography>
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
+            <Button
+              onClick={() => setDeleteDialogOpen(false)}
+              sx={{ 
+                color: darkProTokens.textSecondary,
+                '&:hover': {
+                  backgroundColor: `${darkProTokens.textSecondary}20`
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDeleteExpense}
+              variant="contained"
+              startIcon={loadingDelete ? <CircularProgress size={20} /> : <DeleteIcon />}
+              disabled={loadingDelete}
+              sx={{
+                backgroundColor: darkProTokens.error,
+                color: darkProTokens.textPrimary,
+                '&:hover': {
+                  backgroundColor: darkProTokens.errorHover
+                }
+              }}
+            >
+              {loadingDelete ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* DIALOG DE EDICIÓN */}
+        <Dialog
+          open={editDialogOpen}
+          onClose={() => setEditDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              backgroundColor: darkProTokens.surfaceLevel2,
+              color: darkProTokens.textPrimary,
+              borderRadius: 4
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: `1px solid ${darkProTokens.grayMedium}`
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar sx={{ bgcolor: darkProTokens.warning }}>
+                <EditIcon />
+              </Avatar>
+              <Typography variant="h6" fontWeight="bold">
                 Editar Egreso
-              </Button>
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setEditDialogOpen(false)}>
+              <CloseIcon sx={{ color: darkProTokens.textSecondary }} />
+            </IconButton>
+          </DialogTitle>
+          
+          <DialogContent sx={{ p: 4 }}>
+            {editingExpense && (
+              <Stack spacing={3}>
+                <TextField
+                  fullWidth
+                  label="Descripción"
+                  value={editingExpense.description}
+                  onChange={(e) => setEditingExpense({
+                    ...editingExpense,
+                    description: e.target.value
+                  })}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      color: darkProTokens.textPrimary,
+                    },
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Monto"
+                  type="number"
+                  value={editingExpense.amount}
+                  onChange={(e) => setEditingExpense({
+                    ...editingExpense,
+                    amount: parseFloat(e.target.value) || 0
+                  })}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      color: darkProTokens.textPrimary,
+                    },
+                  }}
+                />
+                
+                <FormControl fullWidth>
+                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Estado</InputLabel>
+                  <Select
+                    value={editingExpense.status}
+                    onChange={(e) => setEditingExpense({
+                      ...editingExpense,
+                      status: e.target.value
+                    })}
+                    sx={{
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      color: darkProTokens.textPrimary,
+                    }}
+                  >
+                    <MenuItem value="active">Activo</MenuItem>
+                    <MenuItem value="completed">Completado</MenuItem>
+                    <MenuItem value="pending">Pendiente</MenuItem>
+                    <MenuItem value="cancelled">Cancelado</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <TextField
+                  fullWidth
+                  label="Notas / Observaciones"
+                  multiline
+                  rows={4}
+                  value={editingExpense.notes || ''}
+                  onChange={(e) => setEditingExpense({
+                    ...editingExpense,
+                    notes: e.target.value
+                  })}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      color: darkProTokens.textPrimary,
+                    },
+                  }}
+                />
+              </Stack>
             )}
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
+            <Button
+              onClick={() => setEditDialogOpen(false)}
+              sx={{ 
+                color: darkProTokens.textSecondary,
+                '&:hover': {
+                  backgroundColor: `${darkProTokens.textSecondary}20`
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUpdateExpense}
+              variant="contained"
+              startIcon={loadingUpdate ? <CircularProgress size={20} /> : <EditIcon />}
+              disabled={loadingUpdate}
+              sx={{
+                backgroundColor: darkProTokens.warning,
+                color: darkProTokens.background,
+                '&:hover': {
+                  backgroundColor: darkProTokens.warningHover
+                }
+              }}
+            >
+              {loadingUpdate ? 'Guardando...' : 'Guardar Cambios'}
+            </Button>
           </DialogActions>
         </Dialog>
       </Box>
