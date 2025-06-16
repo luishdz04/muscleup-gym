@@ -4,12 +4,13 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 // GET - Obtener detalle del corte
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    // ✅ VALIDACIÓN DEFENSIVA DE PARAMS
+    // ✅ VALIDACIÓN DEFENSIVA COMPLETA
+    const params = context?.params;
     if (!params || !params.id) {
-      console.error('❌ Error: params o params.id no definido', { params });
+      console.error('❌ Error: params no definido o sin ID', { context, params });
       return NextResponse.json({
         success: false,
         error: 'ID del corte no proporcionado'
@@ -18,69 +19,57 @@ export async function GET(
 
     const cutId = params.id;
     console.log('🔍 API: Obteniendo detalle del corte:', cutId);
+    console.log('📍 Timestamp:', new Date().toISOString());
+    console.log('👤 Usuario actual: luishdz04');
     
-    // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
     
-    // ✅ QUERY CON VALIDACIÓN DE CAMPOS DE USUARIO
+    // ✅ QUERY MEJORADA CON MÚLTIPLES CAMPOS DE USUARIO
     const { data: cut, error } = await supabase
       .from('cash_cuts')
       .select(`
         *,
-        "Users"!cash_cuts_created_by_fkey(id, first_name, last_name, username, name, email, firstName, lastName)
+        users!cash_cuts_created_by_fkey(id, first_name, last_name, username, name, email, firstName, lastName)
       `)
       .eq('id', cutId)
       .single();
 
     if (error) {
       console.error('❌ Error obteniendo corte:', error);
-      console.error('Detalles del error:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
       return NextResponse.json({
         success: false,
         error: 'Corte no encontrado',
-        details: process.env.NODE_ENV === 'development' ? {
-          message: error.message,
-          hint: error.hint,
-          details: error.details
-        } : undefined
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       }, { status: 404 });
     }
 
     if (!cut) {
-      console.error('❌ Corte no encontrado en la base de datos:', cutId);
       return NextResponse.json({
         success: false,
         error: 'Corte no encontrado'
       }, { status: 404 });
     }
 
-    // ✅ FORMATEO ROBUSTO DE NOMBRE DE USUARIO
-    let creatorName = 'Usuario';
-    if (cut.Users) {
-      // Intentar diferentes combinaciones de campos
-      if (cut.Users.name) {
-        creatorName = cut.Users.name;
-      } else if (cut.Users.first_name || cut.Users.last_name) {
-        creatorName = `${cut.Users.first_name || ''} ${cut.Users.last_name || ''}`.trim();
-      } else if (cut.Users.firstName || cut.Users.lastName) {
-        creatorName = `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim();
-      } else if (cut.Users.username) {
-        creatorName = cut.Users.username;
-      } else if (cut.Users.email) {
-        creatorName = cut.Users.email;
+    // ✅ FORMATEO ROBUSTO DE USUARIO
+    let creator_name = 'Usuario';
+    if (cut.users) {
+      if (cut.users.name) {
+        creator_name = cut.users.name;
+      } else if (cut.users.first_name || cut.users.last_name) {
+        creator_name = `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim();
+      } else if (cut.users.firstName || cut.users.lastName) {
+        creator_name = `${cut.users.firstName || ''} ${cut.users.lastName || ''}`.trim();
+      } else if (cut.users.username) {
+        creator_name = cut.users.username;
+      } else if (cut.users.email) {
+        creator_name = cut.users.email;
       }
     }
 
-    // ✅ FORMATEAR DATOS CON VALORES SEGUROS
+    // ✅ FORMATEAR DATOS COMPLETOS
     const cutDetail = {
       ...cut,
-      creator_name: creatorName,
-      // Convertir valores numéricos de forma segura
+      creator_name,
       grand_total: parseFloat(cut.grand_total || '0'),
       expenses_amount: parseFloat(cut.expenses_amount || '0'),
       final_balance: parseFloat(cut.final_balance || '0'),
@@ -118,7 +107,7 @@ export async function GET(
       net_amount: parseFloat(cut.net_amount || '0')
     };
 
-    console.log('✅ Detalle del corte obtenido:', cutDetail.cut_number, 'creado por:', creatorName);
+    console.log('✅ Detalle del corte obtenido:', cutDetail.cut_number, 'por:', creator_name);
     
     return NextResponse.json({
       success: true,
@@ -127,14 +116,11 @@ export async function GET(
     
   } catch (error: any) {
     console.error('❌ Error en API detalle de corte:', error);
-    console.error('Stack trace:', error.stack);
+    console.error('📍 Stack:', error.stack);
     return NextResponse.json({
       success: false,
       error: 'Error al obtener el detalle del corte',
-      details: process.env.NODE_ENV === 'development' ? {
-        message: error.message,
-        stack: error.stack
-      } : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 });
   }
 }
@@ -142,10 +128,10 @@ export async function GET(
 // DELETE - Eliminar corte
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    // ✅ VALIDACIÓN DEFENSIVA DE PARAMS
+    const params = context?.params;
     if (!params || !params.id) {
       return NextResponse.json({
         success: false,
@@ -155,10 +141,10 @@ export async function DELETE(
 
     const cutId = params.id;
     console.log('🗑️ API: Eliminando corte:', cutId);
+    console.log('👤 Usuario: luishdz04');
     
     const supabase = createServerSupabaseClient();
     
-    // Verificar que el corte existe
     const { data: existingCut, error: checkError } = await supabase
       .from('cash_cuts')
       .select('id, cut_number')
@@ -172,7 +158,6 @@ export async function DELETE(
       }, { status: 404 });
     }
     
-    // Eliminar el corte
     const { error: deleteError } = await supabase
       .from('cash_cuts')
       .delete()
@@ -207,10 +192,10 @@ export async function DELETE(
 // PATCH - Actualizar corte
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    // ✅ VALIDACIÓN DEFENSIVA DE PARAMS
+    const params = context?.params;
     if (!params || !params.id) {
       return NextResponse.json({
         success: false,
@@ -222,20 +207,18 @@ export async function PATCH(
     const body = await request.json();
     
     console.log('✏️ API: Actualizando corte:', cutId, body);
+    console.log('👤 Usuario: luishdz04');
     
     const supabase = createServerSupabaseClient();
     
-    // Preparar datos para actualizar
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
     
-    // Solo actualizar campos que vengan en el body
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.expenses_amount !== undefined) {
       updateData.expenses_amount = body.expenses_amount;
       
-      // Recalcular balance final si se actualiza expenses_amount
       const { data: currentCut } = await supabase
         .from('cash_cuts')
         .select('grand_total')
@@ -249,7 +232,6 @@ export async function PATCH(
     }
     if (body.status !== undefined) updateData.status = body.status;
     
-    // Actualizar el corte
     const { data: updatedCut, error: updateError } = await supabase
       .from('cash_cuts')
       .update(updateData)
