@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import * as XLSX from 'xlsx';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,29 +13,22 @@ export async function GET(request: NextRequest) {
     const expenseType = searchParams.get('expenseType');
     const status = searchParams.get('status');
 
-    console.log('📄 API: Exportando egresos con filtros:', {
-      search, dateFrom, dateTo, expenseType, status
-    });
+    console.log('📄 API: Exportando egresos', { search, dateFrom, dateTo, expenseType, status });
+
+    const supabase = createServerSupabaseClient();
 
     // Construir query
     let query = supabase
       .from('expenses')
       .select(`
-        expense_date,
-        expense_time,
-        expense_type,
-        description,
-        amount,
-        receipt_number,
-        status,
-        created_at,
-        notes,
-        users!expenses_created_by_fkey(first_name, last_name, username)
-      `);
+        *,
+        "Users"!expenses_created_by_fkey(id, firstName, lastName, name, email)
+      `)
+      .order('created_at', { ascending: false });
 
-    // Aplicar filtros (mismos que historial)
+    // Aplicar filtros
     if (search) {
-      query = query.or(`description.ilike.%${search}%,receipt_number.ilike.%${search}%,notes.ilike.%${search}%`);
+      query = query.or(`description.ilike.%${search}%,notes.ilike.%${search}%,receipt_number.ilike.%${search}%`);
     }
 
     if (dateFrom) {
@@ -59,9 +47,6 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
 
-    // Ordenar por fecha
-    query = query.order('expense_date', { ascending: false });
-
     const { data: expenses, error } = await query;
 
     if (error) {
@@ -72,63 +57,80 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Mapeo de categorías
-    const categoryMap: Record<string, string> = {
-      'nomina': 'Nómina',
-      'suplementos': 'Suplementos',
-      'servicios': 'Servicios',
-      'mantenimiento': 'Mantenimiento',
-      'limpieza': 'Limpieza',
-      'marketing': 'Marketing',
-      'equipamiento': 'Equipamiento',
-      'otros': 'Otros'
-    };
-
     // Formatear datos para Excel
-    const excelData = expenses?.map(expense => ({
+    const exportData = expenses?.map(expense => ({
       'Fecha': expense.expense_date,
-      'Hora': expense.expense_time,
-      'Categoría': categoryMap[expense.expense_type] || 'Otros',
+      'Hora': new Date(expense.expense_time).toLocaleString('es-MX', {
+        timeZone: 'America/Mexico_City',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }),
+      'Categoría': expense.expense_type,
       'Descripción': expense.description,
-      'Monto': parseFloat(expense.amount),
+      'Monto': parseFloat(expense.amount || '0'),
       'Número de Recibo': expense.receipt_number || '',
       'Estado': expense.status,
-      'Responsable': expense.users 
-        ? `${expense.users.first_name || ''} ${expense.users.last_name || ''}`.trim() || expense.users.username
-        : 'luishdz04',
-      'Fecha Creación': expense.created_at,
-      'Notas': expense.notes || ''
+      'Responsable': expense.Users 
+        ? expense.Users.name || `${expense.Users.firstName || ''} ${expense.Users.lastName || ''}`.trim() || expense.Users.email 
+        : 'Usuario',
+      'Notas': expense.notes || '',
+      'Creado': new Date(expense.created_at).toLocaleString('es-MX', {
+        timeZone: 'America/Mexico_City'
+      }),
+      'Actualizado': new Date(expense.updated_at).toLocaleString('es-MX', {
+        timeZone: 'America/Mexico_City'
+      })
     })) || [];
 
-    // Crear Excel
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    // Crear libro de Excel con múltiples hojas
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Historial de Egresos');
 
-    // Configurar anchos de columna
-    const colWidths = [
-      { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 15 },
-      { wch: 20 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 40 }
-    ];
-    worksheet['!cols'] = colWidths;
+    // Hoja 1: Datos principales
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    XLSX.utils.book_append_sheet(workbook, ws, 'Egresos');
 
+    // Hoja 2: Resumen por categorías
+    if (expenses && expenses.length > 0) {
+      const categoriesMap: Record<string, { count: number; amount: number }> = {};
+      expenses.forEach(expense => {
+        const type = expense.expense_type || 'otros';
+        if (!categoriesMap[type]) {
+          categoriesMap[type] = { count: 0, amount: 0 };
+        }
+        categoriesMap[type].count++;
+        categoriesMap[type].amount += parseFloat(expense.amount || '0');
+      });
+
+      const categorySummary = Object.entries(categoriesMap).map(([category, data]) => ({
+        'Categoría': category,
+        'Cantidad de Egresos': data.count,
+        'Monto Total': data.amount,
+        'Monto Promedio': data.amount / data.count
+      }));
+
+      const wsSummary = XLSX.utils.json_to_sheet(categorySummary);
+      XLSX.utils.book_append_sheet(workbook, wsSummary, 'Resumen por Categorías');
+    }
+
+    // Generar buffer
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
 
-    console.log('✅ Archivo Excel generado:', excelData.length, 'egresos exportados');
+    console.log('✅ Excel generado con', exportData.length, 'egresos');
 
+    // Retornar archivo
     return new NextResponse(excelBuffer, {
-      status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="egresos_${new Date().toISOString().split('T')[0]}.xlsx"`
+        'Content-Disposition': `attachment; filename=egresos_${new Date().toISOString().split('T')[0]}.xlsx`
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error en API exportar egresos:', error);
     return NextResponse.json({
       success: false,
-      error: 'Error al exportar los egresos'
+      error: 'Error al exportar egresos'
     }, { status: 500 });
   }
 }
