@@ -7,36 +7,79 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ✅ VALIDACIÓN DEFENSIVA DE PARAMS
+    if (!params || !params.id) {
+      console.error('❌ Error: params o params.id no definido', { params });
+      return NextResponse.json({
+        success: false,
+        error: 'ID del corte no proporcionado'
+      }, { status: 400 });
+    }
+
     const cutId = params.id;
     console.log('🔍 API: Obteniendo detalle del corte:', cutId);
     
+    // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
     
-    // Obtener corte con información del usuario
+    // ✅ QUERY CON VALIDACIÓN DE CAMPOS DE USUARIO
     const { data: cut, error } = await supabase
       .from('cash_cuts')
       .select(`
         *,
-        "Users"!cash_cuts_created_by_fkey(id, firstName, lastName, name, email)
+        "Users"!cash_cuts_created_by_fkey(id, first_name, last_name, username, name, email, firstName, lastName)
       `)
       .eq('id', cutId)
       .single();
 
     if (error) {
       console.error('❌ Error obteniendo corte:', error);
+      console.error('Detalles del error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       return NextResponse.json({
         success: false,
         error: 'Corte no encontrado',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: process.env.NODE_ENV === 'development' ? {
+          message: error.message,
+          hint: error.hint,
+          details: error.details
+        } : undefined
       }, { status: 404 });
     }
 
-    // Formatear datos con valores seguros
+    if (!cut) {
+      console.error('❌ Corte no encontrado en la base de datos:', cutId);
+      return NextResponse.json({
+        success: false,
+        error: 'Corte no encontrado'
+      }, { status: 404 });
+    }
+
+    // ✅ FORMATEO ROBUSTO DE NOMBRE DE USUARIO
+    let creatorName = 'Usuario';
+    if (cut.Users) {
+      // Intentar diferentes combinaciones de campos
+      if (cut.Users.name) {
+        creatorName = cut.Users.name;
+      } else if (cut.Users.first_name || cut.Users.last_name) {
+        creatorName = `${cut.Users.first_name || ''} ${cut.Users.last_name || ''}`.trim();
+      } else if (cut.Users.firstName || cut.Users.lastName) {
+        creatorName = `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim();
+      } else if (cut.Users.username) {
+        creatorName = cut.Users.username;
+      } else if (cut.Users.email) {
+        creatorName = cut.Users.email;
+      }
+    }
+
+    // ✅ FORMATEAR DATOS CON VALORES SEGUROS
     const cutDetail = {
       ...cut,
-      creator_name: cut.Users 
-        ? cut.Users.name || `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.email || 'Usuario'
-        : 'Usuario',
+      creator_name: creatorName,
       // Convertir valores numéricos de forma segura
       grand_total: parseFloat(cut.grand_total || '0'),
       expenses_amount: parseFloat(cut.expenses_amount || '0'),
@@ -75,7 +118,7 @@ export async function GET(
       net_amount: parseFloat(cut.net_amount || '0')
     };
 
-    console.log('✅ Detalle del corte obtenido:', cutDetail.cut_number);
+    console.log('✅ Detalle del corte obtenido:', cutDetail.cut_number, 'creado por:', creatorName);
     
     return NextResponse.json({
       success: true,
@@ -84,10 +127,14 @@ export async function GET(
     
   } catch (error: any) {
     console.error('❌ Error en API detalle de corte:', error);
+    console.error('Stack trace:', error.stack);
     return NextResponse.json({
       success: false,
       error: 'Error al obtener el detalle del corte',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack
+      } : undefined
     }, { status: 500 });
   }
 }
@@ -98,6 +145,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ✅ VALIDACIÓN DEFENSIVA DE PARAMS
+    if (!params || !params.id) {
+      return NextResponse.json({
+        success: false,
+        error: 'ID del corte no proporcionado'
+      }, { status: 400 });
+    }
+
     const cutId = params.id;
     console.log('🗑️ API: Eliminando corte:', cutId);
     
@@ -155,6 +210,14 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ✅ VALIDACIÓN DEFENSIVA DE PARAMS
+    if (!params || !params.id) {
+      return NextResponse.json({
+        success: false,
+        error: 'ID del corte no proporcionado'
+      }, { status: 400 });
+    }
+
     const cutId = params.id;
     const body = await request.json();
     
@@ -181,7 +244,7 @@ export async function PATCH(
         
       if (currentCut) {
         updateData.final_balance = parseFloat(currentCut.grand_total) - parseFloat(body.expenses_amount);
-        updateData.net_amount = updateData.final_balance; // Suponiendo que net_amount = final_balance
+        updateData.net_amount = updateData.final_balance;
       }
     }
     if (body.status !== undefined) updateData.status = body.status;
