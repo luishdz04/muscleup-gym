@@ -2,1001 +2,4489 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
   Box,
+  Typography,
   Card,
   CardContent,
+  Button,
   TextField,
-  FormControl,
-  InputLabel,
   Select,
   MenuItem,
-  Alert,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
-  CircularProgress,
-  Chip,
-  Divider,
-  FormControlLabel,
-  Switch,
-  Radio,
-  RadioGroup,
+  FormControl,
+  InputLabel,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
+  TablePagination,
+  Chip,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Snackbar,
+  CircularProgress,
+  Autocomplete,
+  InputAdornment,
+  Stack,
   Tooltip,
+  Badge,
+  Divider,
+  Menu,
+  MenuItem as MenuItemComponent,
+  MenuList,
+  ListItemIcon,
+  ListItemText,
+  Switch,
+  FormControlLabel,
+  Checkbox,
+  FormGroup,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   LinearProgress,
-  Stack
+  List,
+  ListItem,
+  ListItemAvatar,
+  Avatar,
+  Slider
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import { 
-  Close as CloseIcon,
-  Cancel as CancelIcon,
-  Check as CheckIcon,
-  AttachMoney as MoneyIcon,
-  Warning as WarningIcon,
-  Info as InfoIcon,
-  Inventory as InventoryIcon,
-  Receipt as ReceiptIcon,
-  Assignment as AssignmentIcon
-} from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
+import { useRouter } from 'next/navigation';
 
-interface CancelLayawayDialogProps {
-  open: boolean;
-  onClose: () => void;
-  layaway: any;
-  onSuccess: () => void;
+// ✅ IMPORTS DE UTILIDADES - VERIFICADOS
+import {
+  createTimestampForDB,
+  addDaysToMexicoDate,
+  formatTimestampForDisplay
+} from '@/lib/utils/dateUtils';
+
+// ✅ IMPORTS DEL SISTEMA DE CONGELAMIENTO - VERIFICADOS
+import {
+  freezeMembership,
+  unfreezeMembership,
+  getCurrentFrozenDays,
+  getProjectedEndDate,
+  canFreezeMembership,
+  canUnfreezeMembership,
+  type FreezeResult
+} from '@/src/lib/utils/freezeUtils';
+
+// ✅ ICONOS COMPLETOS - VERIFICADOS
+import HistoryIcon from '@mui/icons-material/History';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import PauseIcon from '@mui/icons-material/Pause';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import BlockIcon from '@mui/icons-material/Block';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import GroupIcon from '@mui/icons-material/Group';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import TimerIcon from '@mui/icons-material/Timer';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import SaveIcon from '@mui/icons-material/Save';
+import CloseIcon from '@mui/icons-material/Close';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import WarningIcon from '@mui/icons-material/Warning';
+import InfoIcon from '@mui/icons-material/Info';
+import PaymentIcon from '@mui/icons-material/Payment';
+import AcUnitIcon from '@mui/icons-material/AcUnit';
+import PercentIcon from '@mui/icons-material/Percent';
+import SelectAllIcon from '@mui/icons-material/SelectAll';
+import BatchIcon from '@mui/icons-material/BatchPrediction';
+import FreezeIcon from '@mui/icons-material/Pause';
+import UnfreezeIcon from '@mui/icons-material/PlayArrow';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
+import ManualIcon from '@mui/icons-material/Settings';
+import AutoIcon from '@mui/icons-material/AutoMode';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+
+// 🎨 DARK PRO SYSTEM - TOKENS VERIFICADOS
+const darkProTokens = {
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  roleAdmin: '#FFCC00',
+  roleStaff: '#1976D2',
+  roleTrainer: '#009688',
+  roleUser: '#777777',
+  roleModerator: '#9C27B0',
+  roleGuest: '#444444',
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
+
+// ✅ INTERFACES COHERENTES - VERIFICADAS
+interface MembershipHistory {
+  id: string;
+  userid: string;
+  planid: string;
+  payment_type: string;
+  amount_paid: number;
+  inscription_amount: number;
+  start_date: string;
+  end_date: string | null;
+  status: string;
+  payment_method: string;
+  payment_reference: string | null;
+  discount_amount: number;
+  coupon_code: string | null;
+  subtotal: number;
+  commission_rate: number;
+  commission_amount: number;
+  payment_received: number;
+  payment_change: number;
+  is_mixed_payment: boolean;
+  is_renewal: boolean;
+  custom_commission_rate: number | null;
+  skip_inscription: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  freeze_date: string | null;
+  unfreeze_date: string | null;
+  total_frozen_days: number;
+  payment_details: any;
+  user_name: string;
+  user_email: string;
+  plan_name: string;
 }
 
-interface RefundDetail {
-  payment_id: string;
-  original_amount: number;
-  refund_amount: number;
-  refund_method: string;
-  refund_reference?: string;
-  commission_refund: number;
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
-const cancelReasons = [
-  { value: 'customer_request', label: '🙋 Solicitud del cliente', description: 'El cliente decidió cancelar' },
-  { value: 'expired', label: '⏰ Apartado vencido', description: 'Superó el tiempo límite' },
-  { value: 'product_unavailable', label: '📦 Producto no disponible', description: 'No hay stock suficiente' },
-  { value: 'administrative', label: '📋 Decisión administrativa', description: 'Cancelación por políticas' },
-  { value: 'payment_issues', label: '💳 Problemas de pago', description: 'Incidencias con pagos' },
-  { value: 'other', label: '❓ Otro motivo', description: 'Especificar en notas' }
+interface Plan {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface Filters {
+  searchTerm: string;
+  status: string;
+  paymentMethod: string;
+  dateFrom: string;
+  dateTo: string;
+  planId: string;
+  isRenewal: string;
+}
+
+// ✅ INTERFACE CORREGIDA PARA OPERACIONES MASIVAS
+interface BulkFreezeOperation {
+  type: 'freeze' | 'unfreeze' | 'manual_freeze' | 'manual_unfreeze';
+  membershipIds: string[];
+  reason?: string;
+  freezeDays?: number;
+  isManual?: boolean;
+  // ✅ NUEVOS CAMPOS PARA CLARIDAD
+  action: 'freeze' | 'unfreeze'; // Acción real a realizar
+  mode: 'auto' | 'manual'; // Modo de operación
+}
+
+interface BulkPreview {
+  membershipId: string;
+  userName: string;
+  planName: string;
+  currentStatus: string;
+  currentEndDate: string | null;
+  newEndDate: string | null;
+  daysToAdd: number;
+  actionDescription: string; // ✅ NUEVO: Descripción clara de la acción
+}
+
+interface EditData {
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  amount_paid?: number;
+  payment_method?: string;
+  payment_reference?: string;
+  notes?: string;
+  commission_rate?: number;
+  commission_amount?: number;
+  is_mixed_payment?: boolean;
+  cash_amount?: number;
+  card_amount?: number;
+  transfer_amount?: number;
+  extend_days?: number;
+}
+
+// ✅ OPCIONES VERIFICADAS
+const statusOptions = [
+  { value: '', label: 'Todos los estados', color: darkProTokens.textSecondary, icon: '📋' },
+  { value: 'active', label: 'Activa', color: darkProTokens.success, icon: '✅' },
+  { value: 'expired', label: 'Vencida', color: darkProTokens.error, icon: '❌' },
+  { value: 'frozen', label: 'Congelada', color: darkProTokens.info, icon: '🧊' },
+  { value: 'cancelled', label: 'Cancelada', color: darkProTokens.grayMuted, icon: '🚫' }
 ];
 
-const refundMethods = [
-  { value: 'efectivo', label: 'Efectivo', icon: '💵', description: 'Devolución en efectivo' },
-  { value: 'transfer', label: 'Transferencia', icon: '🏦', description: 'Transferencia bancaria' },
-  { value: 'store_credit', label: 'Crédito en tienda', icon: '🎫', description: 'Vale para compras futuras' },
-  { value: 'original_method', label: 'Método original', icon: '🔄', description: 'Mismo método de pago' },
-  { value: 'no_refund', label: 'Sin reembolso', icon: '❌', description: 'No aplica devolución' }
+const paymentMethodOptions = [
+  { value: '', label: 'Todos los métodos', icon: '💳' },
+  { value: 'efectivo', label: 'Efectivo', icon: '💵' },
+  { value: 'debito', label: 'Débito', icon: '💳' },
+  { value: 'credito', label: 'Crédito', icon: '💳' },
+  { value: 'transferencia', label: 'Transferencia', icon: '🏦' },
+  { value: 'mixto', label: 'Mixto', icon: '🔄' }
 ];
 
-export default function CancelLayawayDialog({ 
-  open, 
-  onClose, 
-  layaway, 
-  onSuccess 
-}: CancelLayawayDialogProps) {
+export default function HistorialMembresiaPage() {
+  const router = useRouter();
   
-  // ✅ ESTADOS BÁSICOS HÍBRIDOS
-  const [activeStep, setActiveStep] = useState(0);
-  const [processing, setProcessing] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
-  const [customReason, setCustomReason] = useState('');
-  const [notes, setNotes] = useState('');
+  // ✅ ESTADOS PRINCIPALES - VERIFICADOS
+  const [memberships, setMemberships] = useState<MembershipHistory[]>([]);
+  const [filteredMemberships, setFilteredMemberships] = useState<MembershipHistory[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   
-  // ✅ ESTADOS PARA REEMBOLSO HÍBRIDOS
-  const [processRefund, setProcessRefund] = useState(true);
-  const [refundMethod, setRefundMethod] = useState('efectivo');
-  const [refundPercentage, setRefundPercentage] = useState(100);
-  const [applyPenalty, setApplyPenalty] = useState(false);
-  const [penaltyAmount, setPenaltyAmount] = useState(0);
-  const [refundReference, setRefundReference] = useState('');
+  // Estados de paginación
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   
-  // ✅ ESTADOS PARA INVENTARIO HÍBRIDOS
-  const [restoreStock, setRestoreStock] = useState(true);
-  const [partialRestore, setPartialRestore] = useState(false);
+  // Estados de filtros
+  const [filters, setFilters] = useState<Filters>({
+    searchTerm: '',
+    status: '',
+    paymentMethod: '',
+    dateFrom: '',
+    dateTo: '',
+    planId: '',
+    isRenewal: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
   
-  // ✅ ESTADOS DE DATOS HÍBRIDOS
-  const [refundDetails, setRefundDetails] = useState<RefundDetail[]>([]);
+  // Estados de UI
+  const [selectedMembership, setSelectedMembership] = useState<MembershipHistory | null>(null);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  
+  // Estados para congelamiento individual
+  const [freezeLoading, setFreezeLoading] = useState(false);
+  const [unfreezeLoading, setUnfreezeLoading] = useState(false);
+  
+  // ✅ ESTADOS CORREGIDOS PARA CONGELAMIENTO MASIVO
+  const [selectedMembershipIds, setSelectedMembershipIds] = useState<string[]>([]);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkOperation, setBulkOperation] = useState<BulkFreezeOperation>({ 
+    type: 'freeze', 
+    membershipIds: [],
+    isManual: false,
+    freezeDays: 7,
+    action: 'freeze',
+    mode: 'auto'
+  });
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [bulkResults, setBulkResults] = useState<{ success: number; failed: number; errors: string[] }>({ 
+    success: 0, 
+    failed: 0, 
+    errors: [] 
+  });
+  const [bulkPreview, setBulkPreview] = useState<BulkPreview[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  
+  // Estados de edición
+  const [editData, setEditData] = useState<EditData>({});
+  const [editLoading, setEditLoading] = useState(false);
+  
+  // Estados de estadísticas
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    expired: 0,
+    frozen: 0,
+    totalRevenue: 0,
+    totalCommissions: 0
+  });
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ DATOS SEGUROS HÍBRIDOS
-  const safeLayaway = useMemo(() => {
-    if (!layaway) return null;
+  // ✅ FUNCIONES DE FECHAS OPTIMIZADAS - VERIFICADAS
+  
+  // 🇲🇽 OBTENER FECHA ACTUAL DE MÉXICO
+  const getMexicoCurrentDate = useCallback((): string => {
+    const now = new Date();
+    // Convertir a zona horaria de México (UTC-6)
+    const mexicoTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
     
-    return {
-      id: layaway.id || '',
-      sale_number: layaway.sale_number || 'Sin número',
-      total_amount: layaway.total_amount || 0,
-      paid_amount: layaway.paid_amount || 0,
-      pending_amount: layaway.pending_amount || 0,
-      customer_name: layaway.customer_name || 'Cliente General',
-      customer_email: layaway.customer_email || '',
-      customer_id: layaway.customer_id || '',
-      status: layaway.status || 'pending',
-      items: layaway.items || [],
-      payment_history: layaway.payment_history || [],
-      created_at: layaway.created_at || new Date().toISOString(),
-      layaway_expires_at: layaway.layaway_expires_at || ''
-    };
-  }, [layaway]);
+    const year = mexicoTime.getFullYear();
+    const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
+    const day = String(mexicoTime.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  }, []);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA CARGAR DETALLES
-  const loadRefundDetails = useCallback(async () => {
-    if (!open || !safeLayaway) return;
+  // 📅 FORMATEAR FECHAS PARA DISPLAY EN ESPAÑOL
+  const formatDisplayDate = useCallback((dateString: string | null): string => {
+    if (!dateString) return 'Sin fecha';
     
     try {
-      console.log('🔍 Cargando detalles para reembolso... - 2025-06-11 08:46:59 UTC - luishdz04');
+      // Crear fecha sin componente de hora para evitar problemas de zona horaria
+      const date = new Date(dateString + 'T12:00:00');
       
-      // Crear detalles de reembolso basados en pagos existentes
-      const details: RefundDetail[] = safeLayaway.payment_history.map((payment: any) => ({
-        payment_id: payment.id,
-        original_amount: payment.amount || 0,
-        refund_amount: (payment.amount || 0) * (refundPercentage / 100),
-        refund_method: refundMethod,
-        commission_refund: (payment.commission_amount || 0) * (refundPercentage / 100)
-      }));
+      if (isNaN(date.getTime())) {
+        console.warn('⚠️ Fecha inválida:', dateString);
+        return 'Fecha inválida';
+      }
       
-      setRefundDetails(details);
-      console.log('✅ Detalles de reembolso calculados:', details);
+      return date.toLocaleDateString('es-MX', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
     } catch (error) {
-      console.error('❌ Error calculando reembolsos:', error);
+      console.error('❌ Error formateando fecha:', dateString, error);
+      return 'Error de fecha';
     }
-  }, [open, safeLayaway, refundPercentage, refundMethod]);
+  }, []);
 
-  // ✅ useEffect HÍBRIDO CON GUARD CLAUSE
-  useEffect(() => {
-    if (!open || !layaway) return;
+  // ⏰ CALCULAR DÍAS RESTANTES CON ZONA HORARIA MÉXICO
+  const calculateDaysRemaining = useCallback((endDate: string | null): number | null => {
+    if (!endDate) return null;
     
-    console.log('🔄 Inicializando dialog de cancelación... - 2025-06-11 08:46:59 UTC - luishdz04');
-    
-    // Reset estados
-    setActiveStep(0);
-    setProcessing(false);
-    setCompleted(false);
-    setCancelReason('');
-    setCustomReason('');
-    setNotes('');
-    setProcessRefund(true);
-    setRefundMethod('efectivo');
-    setRefundPercentage(100);
-    setApplyPenalty(false);
-    setPenaltyAmount(0);
-    setRefundReference('');
-    setRestoreStock(true);
-    setPartialRestore(false);
-    setRefundDetails([]);
-    
-    // Cargar detalles
-    loadRefundDetails();
-  }, [open, layaway, loadRefundDetails]);
-
-  // ✅ EFECTO HÍBRIDO PARA RECALCULAR REEMBOLSOS
-  useEffect(() => {
-    if (open && safeLayaway) {
-      loadRefundDetails();
+    try {
+      const today = getMexicoCurrentDate();
+      
+      // Crear fechas sin hora para comparación exacta
+      const todayDate = new Date(today + 'T00:00:00');
+      const endDateObj = new Date(endDate + 'T00:00:00');
+      
+      if (isNaN(todayDate.getTime()) || isNaN(endDateObj.getTime())) {
+        console.error('❌ Fechas inválidas para cálculo:', { today, endDate });
+        return null;
+      }
+      
+      const diffTime = endDateObj.getTime() - todayDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return diffDays;
+    } catch (error) {
+      console.error('❌ Error calculando días restantes:', error);
+      return null;
     }
-  }, [refundPercentage, refundMethod, open, safeLayaway, loadRefundDetails]);
+  }, [getMexicoCurrentDate]);
 
-  // ✅ CÁLCULOS HÍBRIDOS
-  const calculations = useMemo(() => {
-    if (!safeLayaway) return null;
+  // 🧪 FUNCIÓN DE DEBUG PARA MEMBRESÍAS ESPECÍFICAS
+  const debugMembership = useCallback((membership: MembershipHistory) => {
+    const daysRemaining = calculateDaysRemaining(membership.end_date);
+    const todayMexico = getMexicoCurrentDate();
     
-    const totalPaid = safeLayaway.paid_amount;
-    const baseRefund = totalPaid * (refundPercentage / 100);
-    const penalty = applyPenalty ? penaltyAmount : 0; // ✅ DEFINIR penalty AQUÍ
-    const finalRefund = Math.max(0, baseRefund - penalty);
-    
-    const totalCommissionRefund = refundDetails.reduce((sum, detail) => sum + detail.commission_refund, 0);
+    console.group(`🔍 DEBUG MEMBRESÍA: ${membership.user_name}`);
+    console.log('📋 Datos básicos:', {
+      id: membership.id,
+      nombre: membership.user_name,
+      plan: membership.plan_name,
+      tipo_pago: membership.payment_type,
+      estado: membership.status
+    });
+    console.log('📅 Fechas:', {
+      inicio: membership.start_date,
+      fin: membership.end_date,
+      formato_inicio: formatDisplayDate(membership.start_date),
+      formato_fin: formatDisplayDate(membership.end_date)
+    });
+    console.log('⏰ Cálculos:', {
+      hoy_mexico: todayMexico,
+      dias_restantes: daysRemaining,
+      estado_calculado: daysRemaining === null ? 'Sin límite' : 
+                       daysRemaining < 0 ? 'Vencida' : 
+                       daysRemaining === 0 ? 'Vence hoy' : 
+                       'Vigente'
+    });
+    console.groupEnd();
     
     return {
-      totalPaid,
-      baseRefund,
-      penalty,
-      finalRefund,
-      totalCommissionRefund,
-      netRefund: finalRefund - totalCommissionRefund,
-      refundPercentage,
-      itemsToRestore: safeLayaway.items.length
+      todayMexico,
+      daysRemaining,
+      formattedEnd: formatDisplayDate(membership.end_date)
     };
-  }, [safeLayaway, refundPercentage, applyPenalty, penaltyAmount, refundDetails]);
+  }, [calculateDaysRemaining, getMexicoCurrentDate, formatDisplayDate]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA PROCESAR CANCELACIÓN - CORREGIDA
-  const processCancellation = useCallback(async () => {
-    if (!safeLayaway || !calculations) return;
+  // ✅ FUNCIONES MEMOIZADAS - VERIFICADAS
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
 
+  const getStatusColor = useCallback((status: string) => {
+    const statusOption = statusOptions.find(s => s.value === status);
+    return statusOption?.color || darkProTokens.textSecondary;
+  }, []);
+
+  const getStatusIcon = useCallback((status: string) => {
+    const statusOption = statusOptions.find(s => s.value === status);
+    return statusOption?.icon || '📋';
+  }, []);
+
+  // ✅ FUNCIÓN DE RECARGA FORZADA CON DEBUGGING
+  const forceReloadMemberships = useCallback(async () => {
+    console.log('🔄 Forzando recarga completa de membresías...');
+    setLoading(true);
+    
     try {
-      setProcessing(true);
+      // Limpiar cache local
+      setMemberships([]);
+      setFilteredMemberships([]);
+      
+      // Esperar un momento para asegurar que la DB esté actualizada
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data, error } = await supabase
+        .from('user_memberships')
+        .select(`
+          *,
+          Users!userid (firstName, lastName, email),
+          membership_plans!planid (name, description)
+        `)
+        .order('created_at', { ascending: false });
 
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user?.id) {
-        throw new Error('Usuario no autenticado');
-      }
+      if (error) throw error;
 
-      const userId = userData.user.id;
-
-      console.log('🚀 Procesando cancelación de apartado:', safeLayaway.sale_number, '- 2025-06-11 08:46:59 UTC - luishdz04');
-
-      // ✅ ACTUALIZAR APARTADO A CANCELADO
-      const updateData = {
-        status: 'cancelled',
-        payment_status: 'refunded',
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: userId,
-        cancel_reason: cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label,
-        refund_amount: processRefund ? calculations.finalRefund : 0,
-        refund_method: processRefund ? refundMethod : null,
-        refund_reference: refundReference || null,
-        penalty_amount: calculations.penalty, // ✅ USAR calculations.penalty
-        notes: notes || null,
-        updated_at: new Date().toISOString()
-      };
-
-      const { error: updateError } = await supabase
-        .from('sales')
-        .update(updateData)
-        .eq('id', safeLayaway.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // ✅ PROCESAR REEMBOLSOS SI APLICA
-      if (processRefund && calculations.finalRefund > 0) {
-        const refundData = {
-          sale_id: safeLayaway.id,
-          refund_amount: calculations.finalRefund,
-          refund_method: refundMethod,
-          refund_reference: refundReference || null,
-          penalty_amount: calculations.penalty, // ✅ USAR calculations.penalty
-          commission_refund: calculations.totalCommissionRefund,
-          refund_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          created_by: userId,
-          reason: cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label,
-          notes: notes || null
+      const formattedData: MembershipHistory[] = (data || []).map(item => {
+        const membership = {
+          ...item,
+          freeze_date: item.freeze_date || null,
+          unfreeze_date: item.unfreeze_date || null,
+          total_frozen_days: item.total_frozen_days || 0,
+          payment_details: item.payment_details || {},
+          user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
+          user_email: item.Users?.email || '',
+          plan_name: item.membership_plans?.name || 'Plan Desconocido'
         };
+        
+        return membership;
+      });
 
-        const { error: refundError } = await supabase
-          .from('sale_refunds')
-          .insert([refundData]);
+      console.log('✅ Membresías recargadas exitosamente:', {
+        total: formattedData.length,
+        fecha_mexico_actual: getMexicoCurrentDate()
+      });
+      
+      setMemberships(formattedData);
+      calculateStats(formattedData);
+      
+    } catch (err: any) {
+      console.error('❌ Error al recargar membresías:', err);
+      setError(`Error al recargar membresías: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, getMexicoCurrentDate]);
 
-        if (refundError) {
-          console.error('❌ Error registrando reembolso:', refundError);
-          // No throw, continuar con el proceso
+  // ✅ CARGAR DATOS INICIALES
+  const loadMemberships = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_memberships')
+        .select(`
+          *,
+          Users!userid (firstName, lastName, email),
+          membership_plans!planid (name, description)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedData: MembershipHistory[] = (data || []).map(item => {
+        const membership = {
+          ...item,
+          freeze_date: item.freeze_date || null,
+          unfreeze_date: item.unfreeze_date || null,
+          total_frozen_days: item.total_frozen_days || 0,
+          payment_details: item.payment_details || {},
+          user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
+          user_email: item.Users?.email || '',
+          plan_name: item.membership_plans?.name || 'Plan Desconocido'
+        };
+        
+        return membership;
+      });
+
+      setMemberships(formattedData);
+      calculateStats(formattedData);
+      
+      console.log('📊 CARGA INICIAL COMPLETADA:', {
+        total_memberships: formattedData.length,
+        fecha_actual_mexico: getMexicoCurrentDate()
+      });
+      
+      setInfoMessage(`📊 ${formattedData.length} membresías cargadas`);
+      
+    } catch (err: any) {
+      setError(`Error al cargar membresías: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, getMexicoCurrentDate]);
+
+  const loadPlans = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('id, name, description')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setPlans(data || []);
+      
+    } catch (err: any) {
+      console.error('Error al cargar planes:', err);
+    }
+  }, [supabase]);
+
+  const calculateStats = useCallback((data: MembershipHistory[]) => {
+    const stats = {
+      total: data.length,
+      active: data.filter(m => m.status === 'active').length,
+      expired: data.filter(m => m.status === 'expired').length,
+      frozen: data.filter(m => m.status === 'frozen').length,
+      totalRevenue: data.reduce((sum, m) => sum + (m.amount_paid || 0), 0),
+      totalCommissions: data.reduce((sum, m) => sum + (m.commission_amount || 0), 0)
+    };
+    
+    setStats(stats);
+  }, []);
+
+  // ✅ APLICAR FILTROS
+  const applyFilters = useCallback(() => {
+    let filtered = [...memberships];
+
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      filtered = filtered.filter(m => 
+        m.user_name.toLowerCase().includes(searchLower) ||
+        m.user_email.toLowerCase().includes(searchLower) ||
+        m.plan_name.toLowerCase().includes(searchLower) ||
+        m.payment_reference?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (filters.status) {
+      filtered = filtered.filter(m => m.status === filters.status);
+    }
+
+    if (filters.paymentMethod) {
+      filtered = filtered.filter(m => m.payment_method === filters.paymentMethod);
+    }
+
+    if (filters.planId) {
+      filtered = filtered.filter(m => m.planid === filters.planId);
+    }
+
+    if (filters.isRenewal) {
+      const isRenewal = filters.isRenewal === 'true';
+      filtered = filtered.filter(m => m.is_renewal === isRenewal);
+    }
+
+    if (filters.dateFrom) {
+      const fromTime = new Date(`${filters.dateFrom}T00:00:00-06:00`).getTime();
+      filtered = filtered.filter(m => {
+        const membershipTime = new Date(`${m.start_date}T00:00:00-06:00`).getTime();
+        return membershipTime >= fromTime;
+      });
+    }
+    
+    if (filters.dateTo) {
+      const toTime = new Date(`${filters.dateTo}T23:59:59-06:00`).getTime();
+      filtered = filtered.filter(m => {
+        const membershipTime = new Date(`${m.start_date}T00:00:00-06:00`).getTime();
+        return membershipTime <= toTime;
+      });
+    }
+
+    setFilteredMemberships(filtered);
+    calculateStats(filtered);
+    setPage(0);
+  }, [memberships, filters, calculateStats]);
+
+  // ✅ FUNCIONES DE CONGELAMIENTO INDIVIDUAL
+  const handleFreezeMembership = useCallback(async (membership: MembershipHistory) => {
+    try {
+      setFreezeLoading(true);
+      setWarningMessage('🧊 Congelando membresía...');
+      
+      const validation = canFreezeMembership(membership);
+      if (!validation.canFreeze) {
+        setError(validation.reason || 'No se puede congelar esta membresía');
+        return;
+      }
+      
+      const result: FreezeResult = await freezeMembership(supabase, membership.id);
+      
+      if (result.success) {
+        setSuccessMessage(result.message);
+        await forceReloadMemberships();
+        setActionMenuAnchor(null);
+      } else {
+        setError(result.error || 'Error al congelar membresía');
+      }
+      
+    } catch (err: any) {
+      setError(`Error al congelar membresía: ${err.message}`);
+    } finally {
+      setFreezeLoading(false);
+    }
+  }, [supabase, forceReloadMemberships]);
+
+  const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
+    try {
+      setUnfreezeLoading(true);
+      setWarningMessage('🔄 Reactivando membresía...');
+      
+      const validation = canUnfreezeMembership(membership);
+      if (!validation.canUnfreeze) {
+        setError(validation.reason || 'No se puede reactivar esta membresía');
+        return;
+      }
+      
+      const result: FreezeResult = await unfreezeMembership(
+        supabase,
+        membership.id,
+        membership.freeze_date!,
+        membership.end_date,
+        membership.total_frozen_days
+      );
+      
+      if (result.success) {
+        setSuccessMessage(result.message);
+        await forceReloadMemberships();
+        setActionMenuAnchor(null);
+      } else {
+        setError(result.error || 'Error al reactivar membresía');
+      }
+      
+    } catch (err: any) {
+      setError(`Error al reactivar membresía: ${err.message}`);
+    } finally {
+      setUnfreezeLoading(false);
+    }
+  }, [supabase, forceReloadMemberships]);
+
+  // ✅ FUNCIONES DE CONGELAMIENTO MASIVO - COMPLETAMENTE CORREGIDAS
+  const handleSelectAllMemberships = useCallback(() => {
+    const eligibleMemberships = filteredMemberships
+      .filter(m => m.status === 'active' || m.status === 'frozen')
+      .map(m => m.id);
+    setSelectedMembershipIds(eligibleMemberships);
+  }, [filteredMemberships]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedMembershipIds([]);
+  }, []);
+
+  const handleToggleMembershipSelection = useCallback((membershipId: string) => {
+    setSelectedMembershipIds(prev => {
+      if (prev.includes(membershipId)) {
+        return prev.filter(id => id !== membershipId);
+      } else {
+        return [...prev, membershipId];
+      }
+    });
+  }, []);
+
+  // ✅ FUNCIÓN CORREGIDA PARA CONGELAMIENTO MASIVO
+  const handleBulkFreeze = useCallback((isManual: boolean = false) => {
+    console.log('🧊 Iniciando congelamiento masivo:', { isManual, selectedIds: selectedMembershipIds.length });
+    
+    if (selectedMembershipIds.length === 0) {
+      setError('Seleccione al menos una membresía para congelar');
+      return;
+    }
+
+    const eligibleMemberships = filteredMemberships.filter(m => 
+      selectedMembershipIds.includes(m.id) && m.status === 'active'
+    );
+
+    if (eligibleMemberships.length === 0) {
+      setError('No hay membresías activas seleccionadas para congelar');
+      return;
+    }
+
+    // ✅ CONFIGURACIÓN CORREGIDA
+    setBulkOperation({
+      type: isManual ? 'manual_freeze' : 'freeze',
+      membershipIds: eligibleMemberships.map(m => m.id),
+      isManual,
+      freezeDays: isManual ? 7 : undefined,
+      action: 'freeze', // ✅ SIEMPRE freeze para congelar
+      mode: isManual ? 'manual' : 'auto'
+    });
+    
+    generateBulkPreview(eligibleMemberships, isManual ? 'manual_freeze' : 'freeze');
+    setBulkDialogOpen(true);
+  }, [selectedMembershipIds, filteredMemberships]);
+
+  // ✅ FUNCIÓN CORREGIDA PARA REACTIVACIÓN MASIVA
+  const handleBulkUnfreeze = useCallback((isManual: boolean = false) => {
+    console.log('🔄 Iniciando reactivación masiva:', { isManual, selectedIds: selectedMembershipIds.length });
+    
+    if (selectedMembershipIds.length === 0) {
+      setError('Seleccione al menos una membresía para reactivar');
+      return;
+    }
+
+    const eligibleMemberships = filteredMemberships.filter(m => 
+      selectedMembershipIds.includes(m.id) && m.status === 'frozen'
+    );
+
+    if (eligibleMemberships.length === 0) {
+      setError('No hay membresías congeladas seleccionadas para reactivar');
+      return;
+    }
+
+    // ✅ CONFIGURACIÓN CORREGIDA
+    setBulkOperation({
+      type: isManual ? 'manual_unfreeze' : 'unfreeze',
+      membershipIds: eligibleMemberships.map(m => m.id),
+      isManual,
+      freezeDays: undefined, // ✅ No se usa para unfreeze
+      action: 'unfreeze', // ✅ SIEMPRE unfreeze para reactivar
+      mode: isManual ? 'manual' : 'auto'
+    });
+    
+    generateBulkPreview(eligibleMemberships, isManual ? 'manual_unfreeze' : 'unfreeze');
+    setBulkDialogOpen(true);
+  }, [selectedMembershipIds, filteredMemberships]);
+
+  // ✅ FUNCIÓN GENERATEBULKPREVIEW COMPLETAMENTE CORREGIDA
+  const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
+    console.log('📋 Generando preview para:', { operationType, count: eligibleMemberships.length });
+    
+    const preview: BulkPreview[] = eligibleMemberships.map(membership => {
+      let newEndDate = membership.end_date;
+      let daysToAdd = 0;
+      let actionDescription = '';
+
+      if (operationType === 'freeze') {
+        // ✅ CONGELAMIENTO AUTOMÁTICO
+        actionDescription = 'Se congelará automáticamente';
+        // No se calcula nueva fecha en automático, el sistema lo maneja
+      } else if (operationType === 'manual_freeze') {
+        // ✅ CONGELAMIENTO MANUAL
+        if (bulkOperation.freezeDays && membership.end_date) {
+          daysToAdd = bulkOperation.freezeDays;
+          newEndDate = addDaysToMexicoDate(membership.end_date, daysToAdd);
+          actionDescription = `Se congelará y se agregarán ${daysToAdd} días a la fecha de vencimiento`;
+        } else {
+          actionDescription = 'Se congelará manualmente';
+        }
+      } else if (operationType === 'unfreeze') {
+        // ✅ REACTIVACIÓN AUTOMÁTICA
+        if (membership.freeze_date && membership.end_date) {
+          const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
+          daysToAdd = currentFrozenDays;
+          if (currentFrozenDays > 0) {
+            newEndDate = addDaysToMexicoDate(membership.end_date, currentFrozenDays);
+            actionDescription = `Se reactivará automáticamente y se agregarán ${currentFrozenDays} días congelados`;
+          } else {
+            actionDescription = 'Se reactivará automáticamente';
+          }
+        } else {
+          actionDescription = 'Se reactivará automáticamente';
+        }
+      } else if (operationType === 'manual_unfreeze') {
+        // ✅ REACTIVACIÓN MANUAL
+        if (membership.freeze_date && membership.end_date) {
+          const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
+          daysToAdd = currentFrozenDays;
+          if (currentFrozenDays > 0) {
+            newEndDate = addDaysToMexicoDate(membership.end_date, currentFrozenDays);
+            actionDescription = `Se reactivará manualmente y se agregarán ${currentFrozenDays} días congelados`;
+          } else {
+            actionDescription = 'Se reactivará manualmente';
+          }
+        } else {
+          actionDescription = 'Se reactivará manualmente';
         }
       }
 
-      // ✅ RESTAURAR STOCK SI APLICA
-      if (restoreStock && safeLayaway.items.length > 0) {
-        for (const item of safeLayaway.items) {
-          const restoreQuantity = partialRestore ? Math.floor(item.quantity * 0.8) : item.quantity;
-          
-          // Obtener stock actual
-          const { data: currentProduct } = await supabase
-            .from('products')
-            .select('current_stock')
-            .eq('id', item.product_id)
-            .single();
+      return {
+        membershipId: membership.id,
+        userName: membership.user_name,
+        planName: membership.plan_name,
+        currentStatus: membership.status,
+        currentEndDate: membership.end_date,
+        newEndDate,
+        daysToAdd,
+        actionDescription // ✅ NUEVO: descripción clara
+      };
+    });
 
-          if (currentProduct) {
-            const newStock = (currentProduct.current_stock || 0) + restoreQuantity;
+    console.log('📋 Preview generado:', preview);
+    setBulkPreview(preview);
+    setShowPreview(true);
+  }, [bulkOperation.freezeDays]);
+
+  // ✅ FUNCIÓN DE TÍTULO CORREGIDA
+  const getBulkOperationTitle = useCallback(() => {
+    const actionText = bulkOperation.action === 'freeze' ? 'Congelamiento' : 'Reactivación';
+    const modeText = bulkOperation.mode === 'manual' ? 'Manual' : 'Automático';
+    const icon = bulkOperation.action === 'freeze' ? '🧊' : '🔄';
+    return `${icon} ${actionText} Masivo ${modeText}`;
+  }, [bulkOperation.action, bulkOperation.mode]);
+
+  // ✅ FUNCIÓN DE EJECUCIÓN MASIVA CORREGIDA
+  const executeBulkOperation = useCallback(async () => {
+    console.log('🚀 Ejecutando operación masiva:', bulkOperation);
+    
+    setBulkLoading(true);
+    setBulkProgress(0);
+    setBulkResults({ success: 0, failed: 0, errors: [] });
+
+    let successCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < bulkOperation.membershipIds.length; i++) {
+      const membershipId = bulkOperation.membershipIds[i];
+      const membership = memberships.find(m => m.id === membershipId);
+      
+      if (!membership) {
+        failedCount++;
+        errors.push(`Membresía ${membershipId} no encontrada`);
+        continue;
+      }
+
+      try {
+        let result: any;
+        
+        // ✅ LÓGICA CORREGIDA BASADA EN ACTION
+        if (bulkOperation.action === 'freeze') {
+          // ✅ CONGELAMIENTO (Manual o Automático)
+          if (bulkOperation.mode === 'manual' && bulkOperation.freezeDays) {
+            // Congelamiento manual con días específicos
+            const freezeDate = getMexicoCurrentDate();
+            let newEndDate = membership.end_date;
             
-            const { error: stockError } = await supabase
-              .from('products')
-              .update({ 
-                current_stock: newStock,
-                updated_at: new Date().toISOString(),
-                updated_by: userId
-              })
-              .eq('id', item.product_id);
-
-            if (stockError) {
-              console.error('❌ Error restaurando stock:', stockError);
+            if (membership.end_date) {
+              newEndDate = addDaysToMexicoDate(membership.end_date, bulkOperation.freezeDays);
             }
 
-            // ✅ REGISTRAR MOVIMIENTO DE INVENTARIO
-            await supabase
-              .from('inventory_movements')
-              .insert([{
-                product_id: item.product_id,
-                movement_type: 'entrada',
-                quantity: restoreQuantity,
-                previous_stock: currentProduct.current_stock || 0,
-                new_stock: newStock,
-                unit_cost: item.unit_price || 0,
-                total_cost: restoreQuantity * (item.unit_price || 0),
-                reason: 'Cancelación de apartado',
-                reference_id: safeLayaway.id,
-                notes: `Cancelación apartado #${safeLayaway.sale_number} - ${partialRestore ? 'Restauración parcial' : 'Restauración completa'}`,
-                created_at: new Date().toISOString(),
-                created_by: userId
-              }]);
+            const { error } = await supabase
+              .from('user_memberships')
+              .update({
+                status: 'frozen',
+                freeze_date: freezeDate,
+                end_date: newEndDate,
+                total_frozen_days: (membership.total_frozen_days || 0) + bulkOperation.freezeDays,
+                notes: membership.notes ? 
+                  `${membership.notes}\nCongelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(freezeDate)}. ${bulkOperation.reason || ''}` :
+                  `Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(freezeDate)}. ${bulkOperation.reason || ''}`,
+                updated_at: createTimestampForDB()
+              })
+              .eq('id', membershipId);
+
+            if (error) throw error;
+            result = { success: true };
+          } else {
+            // Congelamiento automático
+            result = await freezeMembership(supabase, membershipId);
+          }
+        } else {
+          // ✅ REACTIVACIÓN (Manual o Automática)
+          if (bulkOperation.mode === 'manual') {
+            // Reactivación manual: agregar días congelados actuales
+            const currentFrozenDays = getCurrentFrozenDays(membership.freeze_date);
+            let newEndDate = membership.end_date;
+            
+            if (membership.end_date && currentFrozenDays > 0) {
+              newEndDate = addDaysToMexicoDate(membership.end_date, currentFrozenDays);
+            }
+
+            const { error } = await supabase
+              .from('user_memberships')
+              .update({
+                status: 'active',
+                freeze_date: null,
+                unfreeze_date: getMexicoCurrentDate(),
+                end_date: newEndDate,
+                total_frozen_days: (membership.total_frozen_days || 0) + currentFrozenDays,
+                notes: membership.notes ? 
+                  `${membership.notes}\nReactivado manualmente el ${formatDisplayDate(getMexicoCurrentDate())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}` :
+                  `Reactivado manualmente el ${formatDisplayDate(getMexicoCurrentDate())}, agregando ${currentFrozenDays} días. ${bulkOperation.reason || ''}`,
+                updated_at: createTimestampForDB()
+              })
+              .eq('id', membershipId);
+
+            if (error) throw error;
+            result = { success: true };
+          } else {
+            // Reactivación automática
+            result = await unfreezeMembership(
+              supabase,
+              membershipId,
+              membership.freeze_date!,
+              membership.end_date,
+              membership.total_frozen_days
+            );
           }
         }
 
-        console.log('✅ Stock restaurado correctamente');
+        if (result.success) {
+          successCount++;
+        } else {
+          failedCount++;
+          errors.push(`${membership.user_name}: ${result.error || 'Error desconocido'}`);
+        }
+      } catch (err: any) {
+        failedCount++;
+        errors.push(`${membership.user_name}: ${err.message}`);
       }
 
-      // ✅ CREAR HISTORIAL DE CANCELACIÓN
-      await supabase
-        .from('layaway_status_history')
-        .insert([{
-          layaway_id: safeLayaway.id,
-          previous_status: safeLayaway.status,
-          new_status: 'cancelled',
-          previous_paid_amount: safeLayaway.paid_amount,
-          new_paid_amount: safeLayaway.paid_amount,
-          reason: `Cancelado: ${cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label}`,
-          created_at: new Date().toISOString(),
-          created_by: userId
-        }]);
-
-      setCompleted(true);
-      showNotification('¡Apartado cancelado exitosamente!', 'success');
-
-      console.log('✅ Cancelación procesada exitosamente');
-
-    } catch (error: any) {
-      console.error('💥 Error procesando cancelación:', error);
-      showNotification('Error al cancelar apartado: ' + error.message, 'error');
-    } finally {
-      setProcessing(false);
+      setBulkProgress(Math.round(((i + 1) / bulkOperation.membershipIds.length) * 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
-  }, [safeLayaway, calculations, supabase, cancelReason, customReason, notes, processRefund, refundMethod, refundReference, restoreStock, partialRestore]);
 
-  // ✅ FUNCIÓN HÍBRIDA PARA CERRAR
-  const handleClose = useCallback(() => {
-    if (completed) {
-      onSuccess();
+    setBulkResults({ success: successCount, failed: failedCount, errors });
+    setBulkLoading(false);
+    
+    console.log('🔄 Operación completada, recargando datos...');
+    await forceReloadMemberships();
+    
+    setSelectedMembershipIds([]);
+    setBulkMode(false);
+    
+    setTimeout(() => {
+      setBulkDialogOpen(false);
+      setShowPreview(false);
+      setBulkResults({ success: 0, failed: 0, errors: [] });
+      setBulkProgress(0);
+    }, 2000);
+
+    if (successCount > 0) {
+      const operationName = bulkOperation.action === 'freeze' ? 'congelamiento' : 'reactivación';
+      const manualText = bulkOperation.mode === 'manual' ? 'manual' : 'automático';
+      setSuccessMessage(`✅ ${operationName.charAt(0).toUpperCase() + operationName.slice(1)} ${manualText} completado: ${successCount} exitosas, ${failedCount} fallidas`);
     }
-    onClose();
-  }, [completed, onSuccess, onClose]);
-
-  // ✅ VALIDACIÓN HÍBRIDA
-  const canProceed = useCallback(() => {
-    switch (activeStep) {
-      case 0:
-        return cancelReason !== '' && (cancelReason !== 'other' || customReason.trim() !== '');
-      case 1:
-        return !processRefund || (refundMethod !== '' && (!['transfer', 'original_method'].includes(refundMethod) || refundReference !== ''));
-      case 2:
-        return true;
-      default:
-        return false;
+    if (failedCount > 0) {
+      setWarningMessage(`⚠️ ${failedCount} operaciones fallaron. Revise los detalles.`);
     }
-  }, [activeStep, cancelReason, customReason, processRefund, refundMethod, refundReference]);
+  }, [bulkOperation, memberships, supabase, formatDisplayDate, forceReloadMemberships, getMexicoCurrentDate]);
 
-  if (!open || !safeLayaway) return null;
+  // ✅ FUNCIÓN DE ACTUALIZACIÓN DE MEMBRESÍA (SIN CAMBIOS)
+  const handleUpdateMembership = useCallback(async () => {
+    if (!selectedMembership || !editData) return;
+    
+    setEditLoading(true);
+    try {
+      if (editData.end_date && editData.start_date && editData.end_date <= editData.start_date) {
+        setError('La fecha de fin debe ser posterior a la fecha de inicio');
+        return;
+      }
 
-  const steps = [
-    { label: 'Motivo', description: 'Razón de la cancelación' },
-    { label: 'Reembolso', description: 'Configurar devolución' },
-    { label: 'Confirmación', description: 'Revisar y procesar cancelación' }
-  ];
+      if (editData.amount_paid && editData.amount_paid < 0) {
+        setError('El monto no puede ser negativo');
+        return;
+      }
 
-  return (
-    <Dialog 
-      open={open} 
-      onClose={handleClose}
-      maxWidth="lg"
-      fullWidth
-      PaperProps={{
-        sx: { 
-          borderRadius: 4,
-          background: 'linear-gradient(135deg, rgba(51, 51, 51, 0.98), rgba(77, 77, 77, 0.95))',
-          color: '#FFFFFF',
-          minHeight: '70vh'
+      if (editData.extend_days && editData.extend_days > 0 && selectedMembership?.end_date) {
+        const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
+        currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
+        editData.end_date = currentEnd.toISOString().split('T')[0];
+        
+        const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${formatDisplayDate(getMexicoCurrentDate())}.`;
+        editData.notes = editData.notes ? `${editData.notes}\n${extensionNote}` : extensionNote;
+        
+        console.log(`🔧 Extensión aplicada: ${selectedMembership.end_date} → ${editData.end_date} (+${editData.extend_days} días)`);
+      }
+
+      const updateData: any = {
+        updated_at: createTimestampForDB()
+      };
+
+      const allowedFields = [
+        'status',
+        'start_date', 
+        'end_date',
+        'amount_paid',
+        'payment_method',
+        'payment_reference',
+        'notes',
+        'commission_rate',
+        'commission_amount',
+        'is_mixed_payment'
+      ];
+
+      allowedFields.forEach(field => {
+        if (editData[field as keyof EditData] !== undefined && editData[field as keyof EditData] !== null) {
+          updateData[field] = editData[field as keyof EditData];
         }
-      }}
-    >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.98), rgba(244, 67, 54, 0.85))',
-        color: '#FFFFFF'
-      }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <CancelIcon />
-          <Typography variant="h5" fontWeight="bold">
-            ❌ Cancelar Apartado #{safeLayaway.sale_number}
-          </Typography>
-          <Chip 
-            label="HÍBRIDO v1.1" 
-            color="error" 
-            size="small" 
-            sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#FFFFFF', fontWeight: 'bold' }}
-          />
-        </Box>
-        <Button onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}>
-          <CloseIcon />
-        </Button>
-      </DialogTitle>
+      });
 
-      <DialogContent sx={{ p: 3 }}>
-        {!completed ? (
-          <Box>
-            {/* ✅ INFORMACIÓN DEL APARTADO CON GRID CORRECTO */}
-            <Alert severity="warning" sx={{ mb: 3 }}>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Cliente:</strong> {safeLayaway.customer_name}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Total:</strong> {formatPrice(safeLayaway.total_amount)}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Pagado:</strong> {formatPrice(safeLayaway.paid_amount)}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Creado:</strong> {formatDate(safeLayaway.created_at)}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Alert>
+      if (editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') {
+        updateData.is_mixed_payment = true;
+        
+        if (editData.cash_amount || editData.card_amount || editData.transfer_amount) {
+          const paymentDetails = {
+            cash_amount: editData.cash_amount || 0,
+            card_amount: editData.card_amount || 0,
+            transfer_amount: editData.transfer_amount || 0,
+            total_amount: (editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0),
+            updated_at: createTimestampForDB()
+          };
+          
+          updateData.payment_details = paymentDetails;
+          console.log('💳 Guardando detalles de pago mixto:', paymentDetails);
+        }
+      } else {
+        updateData.is_mixed_payment = false;
+        updateData.payment_details = {};
+      }
 
-            {/* ✅ INDICADOR HÍBRIDO */}
-            <Alert severity="success" sx={{ mb: 3 }}>
-              ✅ <strong>SOLUCIÓN HÍBRIDA:</strong> useCallback controlado + Grid correcto - 2025-06-11 08:46:59 UTC por luishdz04
-            </Alert>
+      console.log('💾 Datos a actualizar:', updateData);
 
-            {/* ✅ ADVERTENCIA IMPORTANTE */}
-            <Alert severity="error" sx={{ mb: 3 }}>
-              ⚠️ <strong>ATENCIÓN:</strong> Esta acción cancelará permanentemente el apartado y puede afectar el inventario. Revise cuidadosamente antes de proceder.
-            </Alert>
+      const { error } = await supabase
+        .from('user_memberships')
+        .update(updateData)
+        .eq('id', selectedMembership.id);
 
-            <Grid container spacing={4}>
-              {/* ✅ STEPPER CON GRID CORRECTO */}
-              <Grid size={{ xs: 8 }}>
-                <Card sx={{ background: 'rgba(51, 51, 51, 0.8)', p: 2 }}>
-                  <Stepper activeStep={activeStep} orientation="vertical">
-                    {steps.map((step, index) => (
-                      <Step key={step.label}>
-                        <StepLabel sx={{ '& .MuiStepLabel-label': { color: '#FFFFFF' } }}>
-                          {step.label}
-                        </StepLabel>
-                        <StepContent>
-                          <Typography sx={{ color: '#CCCCCC', mb: 2 }}>
-                            {step.description}
-                          </Typography>
+      if (error) throw error;
 
-                          {/* PASO 1: MOTIVO DE CANCELACIÓN */}
-                          {index === 0 && (
-                            <Box>
-                              <Typography variant="h6" sx={{ color: '#f44336', mb: 2 }}>
-                                📋 Seleccione el motivo de cancelación
-                              </Typography>
-                              
-                              <RadioGroup
-                                value={cancelReason}
-                                onChange={(e) => setCancelReason(e.target.value)}
-                              >
-                                <Grid container spacing={2}>
-                                  {cancelReasons.map(reason => (
-                                    <Grid size={{ xs: 6 }} key={reason.value}>
-                                      <Card 
-                                        sx={{
-                                          p: 2,
-                                          background: cancelReason === reason.value 
-                                            ? 'rgba(244, 67, 54, 0.2)' 
-                                            : 'rgba(255,255,255,0.05)',
-                                          border: cancelReason === reason.value 
-                                            ? '2px solid #f44336' 
-                                            : '1px solid rgba(255,255,255,0.1)',
-                                          cursor: 'pointer',
-                                          transition: 'all 0.3s ease',
-                                          '&:hover': {
-                                            background: 'rgba(244, 67, 54, 0.1)',
-                                            border: '1px solid rgba(244, 67, 54, 0.5)'
-                                          }
-                                        }}
-                                        onClick={() => setCancelReason(reason.value)}
-                                      >
-                                        <FormControlLabel
-                                          value={reason.value}
-                                          control={<Radio sx={{ color: '#f44336' }} />}
-                                          label={
-                                            <Box>
-                                              <Typography variant="body1" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
-                                                {reason.label}
-                                              </Typography>
-                                              <Typography variant="caption" sx={{ color: '#CCCCCC' }}>
-                                                {reason.description}
-                                              </Typography>
-                                            </Box>
-                                          }
-                                        />
-                                      </Card>
-                                    </Grid>
-                                  ))}
-                                </Grid>
-                              </RadioGroup>
+      setSuccessMessage('✅ Membresía actualizada exitosamente');
+      setEditDialogOpen(false);
+      setEditData({});
+      await forceReloadMemberships();
+      
+    } catch (err: any) {
+      setError(`Error al actualizar membresía: ${err.message}`);
+      console.error('💥 Error al actualizar:', err);
+    } finally {
+      setEditLoading(false);
+    }
+  }, [selectedMembership, editData, supabase, formatDisplayDate, forceReloadMemberships, getMexicoCurrentDate]);
 
-                              {cancelReason === 'other' && (
-                                <TextField
-                                  fullWidth
-                                  label="Especifique el motivo"
-                                  multiline
-                                  rows={3}
-                                  value={customReason}
-                                  onChange={(e) => setCustomReason(e.target.value)}
-                                  required
-                                  sx={{
-                                    mt: 3,
-                                    '& .MuiOutlinedInput-root': {
-                                      color: 'white',
-                                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                      '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                                      '&.Mui-focused fieldset': { borderColor: '#f44336' },
-                                    },
-                                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
-                                  }}
-                                />
-                              )}
+  const initializeEditData = useCallback((membership: MembershipHistory) => {
+    const paymentDetails = membership.payment_details || {};
+    
+    setEditData({
+      status: membership.status,
+      start_date: membership.start_date,
+      end_date: membership.end_date,
+      amount_paid: membership.amount_paid,
+      payment_method: membership.payment_method,
+      payment_reference: membership.payment_reference,
+      notes: membership.notes,
+      commission_rate: membership.commission_rate,
+      commission_amount: membership.commission_amount,
+      is_mixed_payment: membership.is_mixed_payment,
+      cash_amount: paymentDetails.cash_amount || 0,
+      card_amount: paymentDetails.card_amount || 0,
+      transfer_amount: paymentDetails.transfer_amount || 0,
+      extend_days: 0
+    });
+  }, []);
 
-                              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                                <Button
-                                  variant="contained"
-                                  onClick={() => setActiveStep(1)}
-                                  disabled={!canProceed()}
-                                  sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
-                                >
-                                  Continuar
-                                </Button>
-                              </Box>
-                            </Box>
-                          )}
+  const handleStatusChange = useCallback(async (membership: MembershipHistory, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_memberships')
+        .update({ 
+          status: newStatus,
+          updated_at: createTimestampForDB()
+        })
+        .eq('id', membership.id);
 
-                          {/* PASO 2: CONFIGURACIÓN DE REEMBOLSO */}
-                          {index === 1 && (
-                            <Box>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={processRefund}
-                                    onChange={(e) => setProcessRefund(e.target.checked)}
-                                    sx={{
-                                      '& .MuiSwitch-switchBase.Mui-checked': {
-                                        color: '#f44336',
-                                      },
-                                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                        backgroundColor: '#f44336',
-                                      },
-                                    }}
-                                  />
-                                }
-                                label={
-                                  <Typography sx={{ color: 'white' }}>
-                                    💰 Procesar reembolso al cliente
-                                  </Typography>
-                                }
-                              />
+      if (error) throw error;
 
-                              {processRefund && calculations && (
-                                <Box sx={{ mt: 3 }}>
-                                  {/* Métodos de reembolso */}
-                                  <Typography variant="h6" sx={{ color: '#f44336', mb: 2 }}>
-                                    💳 Método de reembolso
-                                  </Typography>
-                                  
-                                  <Grid container spacing={2} sx={{ mb: 3 }}>
-                                    {refundMethods.map(method => (
-                                      <Grid size={{ xs: 6 }} key={method.value}>
-                                        <Card 
-                                          sx={{
-                                            p: 2,
-                                            background: refundMethod === method.value 
-                                              ? 'rgba(244, 67, 54, 0.2)' 
-                                              : 'rgba(255,255,255,0.05)',
-                                            border: refundMethod === method.value 
-                                              ? '2px solid #f44336' 
-                                              : '1px solid rgba(255,255,255,0.1)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s ease',
-                                            '&:hover': {
-                                              background: 'rgba(244, 67, 54, 0.1)',
-                                              border: '1px solid rgba(244, 67, 54, 0.5)'
-                                            }
-                                          }}
-                                          onClick={() => setRefundMethod(method.value)}
-                                        >
-                                          <Typography variant="body1" sx={{ color: '#FFFFFF', mb: 1 }}>
-                                            {method.icon} {method.label}
-                                          </Typography>
-                                          <Typography variant="caption" sx={{ color: '#CCCCCC' }}>
-                                            {method.description}
-                                          </Typography>
-                                        </Card>
-                                      </Grid>
-                                    ))}
-                                  </Grid>
+      setSuccessMessage(`✅ Estado cambiado a ${newStatus}`);
+      await forceReloadMemberships();
+      
+    } catch (err: any) {
+      setError(`Error al cambiar estado: ${err.message}`);
+    }
+  }, [supabase, forceReloadMemberships]);
 
-                                  {/* Configuración del reembolso */}
-                                  <Grid container spacing={3}>
-                                    <Grid size={{ xs: 6 }}>
-                                      <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
-                                        Porcentaje de reembolso: {refundPercentage}%
-                                      </Typography>
-                                      <Box sx={{ px: 2 }}>
-                                        <input
-                                          type="range"
-                                          min="0"
-                                          max="100"
-                                          step="5"
-                                          value={refundPercentage}
-                                          onChange={(e) => setRefundPercentage(Number(e.target.value))}
-                                          style={{
-                                            width: '100%',
-                                            height: '8px',
-                                            background: '#f44336',
-                                            borderRadius: '4px',
-                                            outline: 'none',
-                                            cursor: 'pointer'
-                                          }}
-                                        />
-                                      </Box>
-                                    </Grid>
-                                    
-                                    <Grid size={{ xs: 6 }}>
-                                      <FormControlLabel
-                                        control={
-                                          <Switch
-                                            checked={applyPenalty}
-                                            onChange={(e) => setApplyPenalty(e.target.checked)}
-                                            sx={{
-                                              '& .MuiSwitch-switchBase.Mui-checked': {
-                                                color: '#ff9800',
-                                              },
-                                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                                backgroundColor: '#ff9800',
-                                              },
-                                            }}
-                                          />
-                                        }
-                                        label={
-                                          <Typography sx={{ color: 'white' }}>
-                                            ⚠️ Aplicar penalización
-                                          </Typography>
-                                        }
-                                      />
-                                      
-                                      {applyPenalty && (
-                                        <TextField
-                                          fullWidth
-                                          label="Monto de penalización"
-                                          type="number"
-                                          value={penaltyAmount}
-                                          onChange={(e) => setPenaltyAmount(Number(e.target.value) || 0)}
-                                          inputProps={{ min: 0, max: calculations.baseRefund, step: 0.01 }}
-                                          sx={{
-                                            mt: 1,
-                                            '& .MuiOutlinedInput-root': {
-                                              color: 'white',
-                                              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                              '&:hover fieldset': { borderColor: 'rgba(255, 152, 0, 0.5)' },
-                                              '&.Mui-focused fieldset': { borderColor: '#ff9800' },
-                                            },
-                                            '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
-                                          }}
-                                        />
-                                      )}
-                                    </Grid>
+  const clearFilters = useCallback(() => {
+    setFilters({
+      searchTerm: '',
+      status: '',
+      paymentMethod: '',
+      dateFrom: '',
+      dateTo: '',
+      planId: '',
+      isRenewal: ''
+    });
+  }, []);
 
-                                    {['transfer', 'original_method'].includes(refundMethod) && (
-                                      <Grid size={{ xs: 12 }}>
-                                        <TextField
-                                          fullWidth
-                                          label="Referencia para el reembolso"
-                                          value={refundReference}
-                                          onChange={(e) => setRefundReference(e.target.value)}
-                                          required
-                                          sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                              color: 'white',
-                                              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                              '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                                              '&.Mui-focused fieldset': { borderColor: '#f44336' },
-                                            },
-                                            '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
-                                          }}
-                                        />
-                                      </Grid>
-                                    )}
-                                  </Grid>
+  // ✅ MODAL DE EDICIÓN OPTIMIZADO (SIN CAMBIOS)
+  const OptimizedEditModal = useMemo(() => {
+    if (!editDialogOpen || !selectedMembership) return null;
 
-                                  {/* Configuración de inventario */}
-                                  <Box sx={{ mt: 4, p: 3, background: 'rgba(156, 39, 176, 0.1)', borderRadius: 2, border: '1px solid rgba(156, 39, 176, 0.3)' }}>
-                                    <Typography variant="h6" sx={{ color: '#9c27b0', mb: 2 }}>
-                                      📦 Gestión de Inventario
-                                    </Typography>
-                                    
-                                    <FormControlLabel
-                                      control={
-                                        <Switch
-                                          checked={restoreStock}
-                                          onChange={(e) => setRestoreStock(e.target.checked)}
-                                          sx={{
-                                            '& .MuiSwitch-switchBase.Mui-checked': {
-                                              color: '#9c27b0',
-                                            },
-                                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                              backgroundColor: '#9c27b0',
-                                            },
-                                          }}
-                                        />
-                                      }
-                                      label={
-                                        <Typography sx={{ color: 'white' }}>
-                                          📦 Restaurar productos al inventario
-                                        </Typography>
-                                      }
-                                    />
-                                    
-                                    {restoreStock && (
-                                      <FormControlLabel
-                                        control={
-                                          <Switch
-                                            checked={partialRestore}
-                                            onChange={(e) => setPartialRestore(e.target.checked)}
-                                            sx={{
-                                              ml: 3,
-                                              '& .MuiSwitch-switchBase.Mui-checked': {
-                                                color: '#ff9800',
-                                              },
-                                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                                backgroundColor: '#ff9800',
-                                              },
-                                            }}
-                                          />
-                                        }
-                                        label={
-                                          <Typography sx={{ color: 'white' }}>
-                                            ⚠️ Restauración parcial (80%)
-                                          </Typography>
-                                        }
-                                      />
-                                    )}
-                                  </Box>
-                                </Box>
-                              )}
+    const paymentDetailsFromDB = selectedMembership.payment_details || {};
+    const showMixedPaymentFields = editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto';
 
-                              <TextField
-                                fullWidth
-                                label="Notas adicionales"
-                                multiline
-                                rows={3}
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                sx={{
-                                  mt: 3,
-                                  '& .MuiOutlinedInput-root': {
-                                    color: 'white',
-                                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                    '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                                    '&.Mui-focused fieldset': { borderColor: '#f44336' },
-                                  },
-                                  '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
-                                }}
-                              />
-
-                              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                                <Button onClick={() => setActiveStep(0)}>
-                                  Atrás
-                                </Button>
-                                <Button
-                                  variant="contained"
-                                  onClick={() => setActiveStep(2)}
-                                  disabled={!canProceed()}
-                                  sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
-                                >
-                                  Continuar
-                                </Button>
-                              </Box>
-                            </Box>
-                          )}
-
-                          {/* PASO 3: CONFIRMACIÓN */}
-                          {index === 2 && calculations && (
-                            <Box>
-                              <Alert severity="error" sx={{ mb: 3 }}>
-                                <Typography variant="h6" sx={{ mb: 1 }}>
-                                  ⚠️ Confirmación de Cancelación
-                                </Typography>
-                                
-                                <Grid container spacing={2}>
-                                  <Grid size={{ xs: 6 }}>
-                                    <Typography><strong>Motivo:</strong> {cancelReason === 'other' ? customReason : cancelReasons.find(r => r.value === cancelReason)?.label}</Typography>
-                                    <Typography><strong>Procesar reembolso:</strong> {processRefund ? 'Sí' : 'No'}</Typography>
-                                    {processRefund && (
-                                      <>
-                                        <Typography><strong>Método de reembolso:</strong> {refundMethods.find(m => m.value === refundMethod)?.label}</Typography>
-                                        <Typography><strong>Monto a reembolsar:</strong> {formatPrice(calculations.finalRefund)}</Typography>
-                                      </>
-                                    )}
-                                  </Grid>
-                                  <Grid size={{ xs: 6 }}>
-                                    <Typography><strong>Restaurar inventario:</strong> {restoreStock ? (partialRestore ? 'Parcial (80%)' : 'Completo') : 'No'}</Typography>
-                                    <Typography><strong>Productos afectados:</strong> {calculations.itemsToRestore}</Typography>
-                                    {applyPenalty && (
-                                      <Typography><strong>Penalización:</strong> {formatPrice(calculations.penalty)}</Typography>
-                                    )}
-                                  </Grid>
-                                </Grid>
-                              </Alert>
-
-                              <Alert severity="warning" sx={{ mb: 3 }}>
-                                <Typography variant="body1">
-                                  <strong>⚠️ ESTA ACCIÓN NO SE PUEDE DESHACER</strong>
-                                </Typography>
-                                <Typography variant="body2">
-                                  Al confirmar, el apartado será marcado como cancelado permanentemente.
-                                </Typography>
-                              </Alert>
-
-                              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                                <Button onClick={() => setActiveStep(1)}>
-                                  Atrás
-                                </Button>
-                                <Button
-                                  variant="contained"
-                                  onClick={processCancellation}
-                                  disabled={processing}
-                                  startIcon={processing ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : <CancelIcon />}
-                                  sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
-                                >
-                                  {processing ? 'Procesando...' : 'CONFIRMAR CANCELACIÓN'}
-                                </Button>
-                              </Box>
-                            </Box>
-                          )}
-                        </StepContent>
-                      </Step>
-                    ))}
-                  </Stepper>
-                </Card>
-              </Grid>
-
-              {/* ✅ RESUMEN CON GRID CORRECTO */}
-              <Grid size={{ xs: 4 }}>
-                <Card sx={{ background: 'rgba(244, 67, 54, 0.1)', p: 3, height: 'fit-content' }}>
-                  <Typography variant="h6" sx={{ color: '#f44336', mb: 2, fontWeight: 700 }}>
-                    ❌ Resumen de Cancelación
-                  </Typography>
-
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="body2" sx={{ color: '#CCCCCC', mb: 1 }}>
-                      Estado actual del apartado
+    return (
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={() => !editLoading && setEditDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.primary}50`,
+            borderRadius: 4,
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: darkProTokens.primary, 
+          fontWeight: 800,
+          fontSize: '1.8rem',
+          textAlign: 'center',
+          pb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <EditIcon sx={{ fontSize: 40 }} />
+            Editar Registro de Venta
+          </Box>
+          <IconButton 
+            onClick={() => setEditDialogOpen(false)}
+            disabled={editLoading}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+          <Box sx={{ mt: 2 }}>
+            {/* Header del Cliente */}
+            <Card sx={{
+              background: `${darkProTokens.primary}10`,
+              border: `1px solid ${darkProTokens.primary}30`,
+              borderRadius: 3,
+              mb: 3
+            }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: '50%', 
+                    background: darkProTokens.primary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: darkProTokens.background,
+                    fontWeight: 800,
+                    fontSize: '1.5rem'
+                  }}>
+                    {selectedMembership.user_name.split(' ').map((n: string) => n[0]).join('')}
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 700
+                    }}>
+                      {selectedMembership.user_name}
                     </Typography>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={(safeLayaway.paid_amount / safeLayaway.total_amount) * 100}
-                      sx={{ 
-                        height: 8, 
-                        borderRadius: 4,
-                        '& .MuiLinearProgress-bar': {
-                          backgroundColor: '#f44336'
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      📧 {selectedMembership.user_email} | 🏋️‍♂️ {selectedMembership.plan_name}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      📅 Registrado: {formatDisplayDate(selectedMembership.created_at)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Chip 
+                      label={selectedMembership.is_renewal ? '🔄 RENOVACIÓN' : '🆕 PRIMERA VEZ'}
+                      sx={{
+                        backgroundColor: selectedMembership.is_renewal ? darkProTokens.warning : darkProTokens.success,
+                        color: selectedMembership.is_renewal ? darkProTokens.background : darkProTokens.textPrimary,
+                        fontWeight: 700,
+                        mb: 1
+                      }}
+                    />
+                    {selectedMembership.skip_inscription && (
+                      <Chip 
+                        label="🚫 SIN INSCRIPCIÓN" 
+                        size="small"
+                        sx={{
+                          backgroundColor: darkProTokens.success,
+                          color: darkProTokens.textPrimary,
+                          fontWeight: 600,
+                          display: 'block'
+                        }}
+                      />
+                    )}
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Grid container spacing={3}>
+              {/* Estado y Método de Pago */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
+                  }}>
+                    Estado de la Membresía
+                  </InputLabel>
+                  <Select
+                    value={editData.status || selectedMembership.status}
+                    onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
+                    sx={{
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }}
+                  >
+                    {statusOptions.filter(s => s.value !== '').map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{option.icon}</span>
+                          <span>{option.label}</span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
+                  }}>
+                    Método de Pago
+                  </InputLabel>
+                  <Select
+                    value={editData.payment_method || selectedMembership.payment_method}
+                    onChange={(e) => {
+                      const newMethod = e.target.value;
+                      setEditData(prev => ({ 
+                        ...prev, 
+                        payment_method: newMethod,
+                        cash_amount: newMethod === 'mixto' ? (prev.cash_amount || paymentDetailsFromDB.cash_amount || 0) : 0,
+                        card_amount: newMethod === 'mixto' ? (prev.card_amount || paymentDetailsFromDB.card_amount || 0) : 0,
+                        transfer_amount: newMethod === 'mixto' ? (prev.transfer_amount || paymentDetailsFromDB.transfer_amount || 0) : 0
+                      }));
+                    }}
+                    sx={{
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }}
+                  >
+                    {paymentMethodOptions.filter(p => p.value !== '').map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{option.icon}</span>
+                          <span>{option.label}</span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Campos para pago mixto */}
+              {showMixedPaymentFields && (
+                <>
+                  <Grid size={12}>
+                    <Alert severity="info" sx={{
+                      backgroundColor: `${darkProTokens.info}10`,
+                      color: darkProTokens.textPrimary,
+                      border: `1px solid ${darkProTokens.info}30`,
+                      '& .MuiAlert-icon': { color: darkProTokens.info }
+                    }}>
+                      💳 Pago Mixto - Los cambios se guardarán en el historial de la membresía
+                    </Alert>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Efectivo"
+                      type="number"
+                      value={editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, cash_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">💵</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.success}30`
+                          }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.success }
                         }
                       }}
                     />
-                  </Box>
+                  </Grid>
 
-                  <Stack spacing={2}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Total apartado:</Typography>
-                      <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 600 }}>
-                        {formatPrice(safeLayaway.total_amount)}
-                      </Typography>
-                    </Box>
-                    
-                    <Box>
-                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Monto pagado:</Typography>
-                      <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 600 }}>
-                        {formatPrice(safeLayaway.paid_amount)}
-                      </Typography>
-                    </Box>
-                    
-                    <Box>
-                      <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Productos:</Typography>
-                      <Typography variant="h6" sx={{ color: '#9c27b0', fontWeight: 600 }}>
-                        {safeLayaway.items.length} items
-                      </Typography>
-                    </Box>
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Tarjeta"
+                      type="number"
+                      value={editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, card_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">💳</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.info}30`
+                          }
+                        }
+                      }}
+                                            InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.info }
+                        }
+                      }}
+                    />
+                  </Grid>
 
-                    {calculations && processRefund && (
-                      <>
-                        <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.2)' }} />
-                        
-                        <Box>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Reembolso base:</Typography>
-                          <Typography variant="h6" sx={{ color: '#4caf50', fontWeight: 600 }}>
-                            {formatPrice(calculations.baseRefund)}
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Transferencia"
+                      type="number"
+                      value={editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0}
+                      onChange={(e) => setEditData(prev => ({ ...prev, transfer_amount: parseFloat(e.target.value) || 0 }))}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">🏦</InputAdornment>,
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.warning}30`
+                          }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.warning }
+                        }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Box sx={{
+                      background: `${darkProTokens.primary}10`,
+                      border: `1px solid ${darkProTokens.primary}30`,
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: 'center',
+                      height: '56px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
+                    }}>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Total Mixto
+                      </Typography>
+                      <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                        {formatPrice(
+                          (editData.cash_amount ?? paymentDetailsFromDB.cash_amount ?? 0) + 
+                          (editData.card_amount ?? paymentDetailsFromDB.card_amount ?? 0) + 
+                          (editData.transfer_amount ?? paymentDetailsFromDB.transfer_amount ?? 0)
+                        )}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </>
+              )}
+
+              {/* Fechas */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Fecha de Inicio"
+                  type="date"
+                  value={editData.start_date || selectedMembership.start_date}
+                  onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
+                  InputLabelProps={{ 
+                    shrink: true,
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Fecha de Vencimiento"
+                  type="date"
+                  value={editData.end_date || selectedMembership.end_date || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
+                  InputLabelProps={{ 
+                    shrink: true,
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Montos y Comisiones */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Monto Total Pagado"
+                  type="number"
+                  value={editData.amount_paid || selectedMembership.amount_paid}
+                  onChange={(e) => {
+                    const amount = parseFloat(e.target.value) || 0;
+                    const commissionRate = editData.commission_rate || selectedMembership.commission_rate || 0;
+                    const commissionAmount = amount * (commissionRate / 100);
+                    setEditData(prev => ({ 
+                      ...prev, 
+                      amount_paid: amount,
+                      commission_amount: commissionAmount
+                    }));
+                  }}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">💰</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Comisión (%)"
+                  type="number"
+                  value={editData.commission_rate || selectedMembership.commission_rate || 0}
+                  onChange={(e) => {
+                    const rate = parseFloat(e.target.value) || 0;
+                    const amount = editData.amount_paid || selectedMembership.amount_paid;
+                    const commissionAmount = amount * (rate / 100);
+                    setEditData(prev => ({ 
+                      ...prev, 
+                      commission_rate: rate,
+                      commission_amount: commissionAmount
+                    }));
+                  }}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><PercentIcon sx={{ color: darkProTokens.warning }} /></InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.warning}30`
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.warning }
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{
+                  background: `${darkProTokens.success}10`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 2,
+                  p: 2,
+                  textAlign: 'center',
+                  height: '56px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
+                }}>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    Comisión Total
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                    {formatPrice(editData.commission_amount || selectedMembership.commission_amount || 0)}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* Referencia de Pago */}
+              <Grid size={12}>
+                <TextField
+                  fullWidth
+                  label="Referencia de Pago"
+                  value={editData.payment_reference || selectedMembership.payment_reference || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, payment_reference: e.target.value }))}
+                  placeholder="Número de autorización, SPEI, folio, etc."
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">📄</InputAdornment>,
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: darkProTokens.primary
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Extensión Manual */}
+              <Grid size={12}>
+                <Card sx={{
+                  background: `${darkProTokens.info}10`,
+                  border: `1px solid ${darkProTokens.info}30`,
+                  borderRadius: 3,
+                  mt: 2
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info,
+                      fontWeight: 700,
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <AcUnitIcon />
+                      📅 Extensión Manual de Vigencia
+                    </Typography>
+
+                    <Grid container spacing={3}>
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.grayDark}10`,
+                          border: `1px solid ${darkProTokens.grayDark}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Días Congelados Históricos
+                          </Typography>
+                          <Typography variant="h6" sx={{ 
+                            color: darkProTokens.info,
+                            fontWeight: 700
+                          }}>
+                            🧊 {selectedMembership.total_frozen_days || 0} días
                           </Typography>
                         </Box>
-                        
-                        {calculations.penalty > 0 && (
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.grayDark}10`,
+                          border: `1px solid ${darkProTokens.grayDark}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Vencimiento Actual
+                          </Typography>
+                          <Typography variant="body1" sx={{ 
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600
+                          }}>
+                            📅 {selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) : 'Sin fecha'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <TextField
+                          fullWidth
+                          label="Días a Extender"
+                          type="number"
+                          value={editData.extend_days || 0}
+                          onChange={(e) => setEditData(prev => ({ ...prev, extend_days: parseInt(e.target.value) || 0 }))}
+                          placeholder="Ej: 1"
+                          helperText="Solo extiende la fecha de vencimiento"
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">📅</InputAdornment>,
+                            sx: {
+                              color: darkProTokens.textPrimary,
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: `${darkProTokens.info}30`
+                              }
+                            }
+                          }}
+                          FormHelperTextProps={{
+                            sx: { color: darkProTokens.textSecondary }
+                          }}
+                        />
+                      </Grid>
+
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <Box sx={{
+                          background: `${darkProTokens.primary}10`,
+                          border: `1px solid ${darkProTokens.primary}30`,
+                          borderRadius: 2,
+                          p: 2,
+                          textAlign: 'center'
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                            Nueva Fecha de Vencimiento
+                          </Typography>
+                          <Typography variant="body1" sx={{ 
+                            color: darkProTokens.primary,
+                            fontWeight: 700
+                          }}>
+                            📅 {(() => {
+                              if (!selectedMembership.end_date || !editData.extend_days) {
+                                return selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) : 'Sin fecha';
+                              }
+                              const currentEnd = new Date(selectedMembership.end_date + 'T00:00:00');
+                              currentEnd.setDate(currentEnd.getDate() + editData.extend_days);
+                              return formatDisplayDate(currentEnd.toISOString().split('T')[0]);
+                            })()}
+                          </Typography>
+                        </Box>
+                      </Grid>
+
+                      {editData.extend_days > 0 && (
+                        <Grid size={12}>
+                          <Alert 
+                            severity="success"
+                            sx={{
+                              backgroundColor: `${darkProTokens.success}10`,
+                              color: darkProTokens.textPrimary,
+                              border: `1px solid ${darkProTokens.success}30`,
+                              '& .MuiAlert-icon': { color: darkProTokens.success }
+                            }}
+                          >
+                            <Typography variant="body2">
+                              <strong>📅 Extensión de Vigencia:</strong> Se extenderá la fecha de vencimiento por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''}.<br/>
+                              <strong>🧊 Diferencia con congelamiento:</strong> Esto NO se registra como días congelados, solo extiende la vigencia manualmente.
+                            </Typography>
+                          </Alert>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Notas */}
+              <Grid size={12}>
+                <TextField
+                  fullWidth
+                  label="Notas del Registro"
+                  multiline
+                  rows={3}
+                  value={editData.notes || selectedMembership.notes || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Observaciones sobre esta venta, correcciones realizadas, etc..."
+                  InputProps={{
+                    sx: {
+                      color: darkProTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${darkProTokens.primary}30`
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: { 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            {/* Alerta de Confirmación */}
+            <Alert 
+              severity="warning"
+              sx={{
+                mt: 3,
+                backgroundColor: `${darkProTokens.warning}10`,
+                color: darkProTokens.textPrimary,
+                border: `1px solid ${darkProTokens.warning}30`,
+                '& .MuiAlert-icon': { color: darkProTokens.warning }
+              }}
+            >
+              <Typography variant="body2">
+                <strong>⚠️ Edición de Registro:</strong> Solo modifique datos para corregir errores en el registro original.
+                {editData.extend_days > 0 && (
+                  <>
+                    <br/><strong>📅 Extensión Manual:</strong> Se extenderá la vigencia por {editData.extend_days} día{editData.extend_days > 1 ? 's' : ''} (no cuenta como congelamiento).
+                  </>
+                )}
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => setEditDialogOpen(false)}
+            disabled={editLoading}
+            sx={{ 
+              color: darkProTokens.textSecondary,
+              borderColor: darkProTokens.grayDark,
+              px: 3,
+              py: 1
+            }}
+            variant="outlined"
+          >
+            Cancelar
+          </Button>
+          
+          <Button 
+            onClick={handleUpdateMembership}
+            disabled={editLoading}
+            variant="contained"
+            startIcon={editLoading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
+            sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+              color: darkProTokens.background,
+              fontWeight: 700,
+              px: 4,
+              py: 1,
+              '&:hover': {
+                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                transform: 'translateY(-1px)'
+              }
+            }}
+          >
+            {editLoading ? 'Guardando...' : 'Guardar Correcciones'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }, [editDialogOpen, selectedMembership, editData, editLoading, formatDisplayDate, formatPrice, handleUpdateMembership]);
+
+  // ✅ EFFECTS
+  useEffect(() => {
+    loadMemberships();
+    loadPlans();
+  }, [loadMemberships, loadPlans]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  useEffect(() => {
+    if (showPreview && bulkOperation.action === 'freeze' && bulkOperation.mode === 'manual') {
+      const eligibleMemberships = filteredMemberships.filter(m => 
+        bulkOperation.membershipIds.includes(m.id)
+      );
+      generateBulkPreview(eligibleMemberships, 'manual_freeze');
+    }
+  }, [bulkOperation.freezeDays, bulkOperation.membershipIds, filteredMemberships, generateBulkPreview, showPreview, bulkOperation.action, bulkOperation.mode]);
+
+  // ✅ HANDLERS DE CIERRE
+  const handleCloseError = useCallback(() => setError(null), []);
+  const handleCloseSuccess = useCallback(() => setSuccessMessage(null), []);
+  const handleCloseWarning = useCallback(() => setWarningMessage(null), []);
+  const handleCloseInfo = useCallback(() => setInfoMessage(null), []);
+
+  return (
+    <Box sx={{ 
+      p: 3, 
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+      minHeight: '100vh',
+      color: darkProTokens.textPrimary
+    }}>
+      {/* ✅ SNACKBARS - IGUAL QUE ANTES */}
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={8000} 
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseError} 
+          severity="error" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.error}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.error}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar 
+        open={!!successMessage} 
+        autoHideDuration={5000} 
+        onClose={handleCloseSuccess}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseSuccess} 
+          severity="success" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.success}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar 
+        open={!!warningMessage} 
+        autoHideDuration={6000} 
+        onClose={handleCloseWarning}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseWarning} 
+          severity="warning" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+            color: darkProTokens.background,
+            border: `1px solid ${darkProTokens.warning}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.warning}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.background },
+            '& .MuiAlert-action': { color: darkProTokens.background }
+          }}
+        >
+          {warningMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar 
+        open={!!infoMessage} 
+        autoHideDuration={4000} 
+        onClose={handleCloseInfo}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseInfo} 
+          severity="info" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.info}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.info}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {infoMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* ✅ HEADER CON BOTÓN DE DEBUG */}
+      <Paper sx={{
+        p: 4,
+        mb: 4,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}98, ${darkProTokens.surfaceLevel3}95)`,
+        border: `2px solid ${darkProTokens.primary}30`,
+        borderRadius: 4,
+        boxShadow: `0 8px 32px ${darkProTokens.primary}10`
+      }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          mb: 3
+        }}>
+          <Box>
+            <Typography variant="h3" sx={{ 
+              color: darkProTokens.primary, 
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              mb: 1
+            }}>
+              <HistoryIcon sx={{ fontSize: 50 }} />
+              Sistema de Historial de Membresías
+            </Typography>
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.textSecondary,
+              fontWeight: 300
+            }}>
+              Gestión Integral | Congelamiento Inteligente | Control Masivo Avanzado
+            </Typography>
+          </Box>
+          
+          <Stack direction="row" spacing={2}>
+            <Button
+              startIcon={<InfoIcon />}
+              onClick={() => {
+                console.log('🧪 INICIANDO DEBUG DE FECHAS...');
+                const hoy = getMexicoCurrentDate();
+                console.log('📅 Fecha México actual:', hoy);
+                
+                // Debug específico para todos los usuarios
+                filteredMemberships
+                  .slice(0, 5) // Primeros 5 para evitar spam
+                  .forEach(membership => {
+                    debugMembership(membership);
+                  });
+                
+                setInfoMessage('🧪 Debug completado - Revisa la consola');
+              }}
+              sx={{ 
+                color: darkProTokens.warning,
+                borderColor: `${darkProTokens.warning}60`,
+                px: 2,
+                py: 1,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.warning,
+                  backgroundColor: `${darkProTokens.warning}10`
+                }
+              }}
+              variant="outlined"
+              size="small"
+            >
+              🧪 Debug Fechas
+            </Button>
+            
+            <Button
+              startIcon={<RefreshIcon />}
+              onClick={forceReloadMemberships}
+              disabled={loading}
+              sx={{ 
+                color: darkProTokens.info,
+                borderColor: `${darkProTokens.info}60`,
+                px: 3,
+                py: 1.5,
+                borderRadius: 3,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.info,
+                  backgroundColor: `${darkProTokens.info}10`,
+                  transform: 'translateY(-2px)'
+                }
+              }}
+              variant="outlined"
+              size="large"
+            >
+              {loading ? 'Cargando...' : 'Actualizar'}
+            </Button>
+            
+            <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => router.push('/dashboard/admin/membresias')}
+              sx={{ 
+                color: darkProTokens.primary,
+                borderColor: `${darkProTokens.primary}60`,
+                px: 3,
+                py: 1.5,
+                borderRadius: 3,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}10`,
+                  transform: 'translateY(-2px)'
+                }
+              }}
+              variant="outlined"
+              size="large"
+            >
+              Dashboard
+            </Button>
+          </Stack>
+        </Box>
+
+        {/* ✅ ESTADÍSTICAS */}
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
+              border: `1px solid ${darkProTokens.info}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.info, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <GroupIcon />
+                {stats.total}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Total Membresías
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.success}20, ${darkProTokens.success}10)`,
+              border: `1px solid ${darkProTokens.success}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.success, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <CheckCircleIcon />
+                {stats.active}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Activas
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
+              border: `1px solid ${darkProTokens.info}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.info, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <AcUnitIcon />
+                {stats.frozen}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Congeladas
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.error}20, ${darkProTokens.error}10)`,
+              border: `1px solid ${darkProTokens.error}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h4" sx={{ 
+                color: darkProTokens.error, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <CancelIcon />
+                {stats.expired}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Vencidas
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
+              border: `1px solid ${darkProTokens.primary}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h5" sx={{ 
+                color: darkProTokens.primary, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <AttachMoneyIcon />
+                {formatPrice(stats.totalRevenue).replace('MX$', '$')}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Ingresos Totales
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.warning}20, ${darkProTokens.warning}10)`,
+              border: `1px solid ${darkProTokens.warning}30`,
+              borderRadius: 3,
+              textAlign: 'center',
+              p: 2
+            }}>
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.warning, 
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                <TrendingUpIcon />
+                {formatPrice(stats.totalCommissions).replace('MX$', '$')}
+              </Typography>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                Comisiones
+              </Typography>
+            </Card>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* ✅ BARRA DE CONGELAMIENTO MASIVO - IGUAL QUE ANTES */}
+      <AnimatePresence>
+        {bulkMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Paper sx={{
+              p: 3,
+              mb: 3,
+              background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
+              border: `2px solid ${darkProTokens.info}40`,
+              borderRadius: 4,
+              boxShadow: `0 8px 32px ${darkProTokens.info}20`
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <BatchIcon sx={{ color: darkProTokens.info, fontSize: 30 }} />
+                  <Box>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info, 
+                      fontWeight: 700 
+                    }}>
+                      🧊 Modo Congelamiento Masivo Avanzado
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      {selectedMembershipIds.length} membresías seleccionadas • Gestión inteligente por lotes
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Button
+                  startIcon={<CloseIcon />}
+                  onClick={() => {
+                    setBulkMode(false);
+                    setSelectedMembershipIds([]);
+                  }}
+                  sx={{ 
+                    color: darkProTokens.error,
+                    borderColor: `${darkProTokens.error}60`,
+                    px: 3,
+                    fontWeight: 600,
+                    '&:hover': {
+                      borderColor: darkProTokens.error,
+                      backgroundColor: `${darkProTokens.error}10`
+                    }
+                  }}
+                  variant="outlined"
+                  size="small"
+                >
+                  Salir
+                </Button>
+              </Box>
+
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <Stack spacing={1}>
+                    <Button
+                      startIcon={<SelectAllIcon />}
+                      onClick={handleSelectAllMemberships}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.info,
+                        borderColor: `${darkProTokens.info}60`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderColor: darkProTokens.info,
+                          backgroundColor: `${darkProTokens.info}10`
+                        }
+                      }}
+                      variant="outlined"
+                      size="small"
+                    >
+                      Seleccionar Todas
+                    </Button>
+
+                    <Button
+                      startIcon={<ClearAllIcon />}
+                      onClick={handleClearSelection}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.textSecondary,
+                        borderColor: `${darkProTokens.textSecondary}40`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderColor: darkProTokens.textSecondary,
+                          backgroundColor: `${darkProTokens.textSecondary}10`
+                        }
+                      }}
+                      variant="outlined"
+                      size="small"
+                    >
+                      Limpiar
+                    </Button>
+                  </Stack>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Stack spacing={1}>
+                    <Button
+                      startIcon={<AutoIcon />}
+                      onClick={() => handleBulkFreeze(false)}
+                      disabled={selectedMembershipIds.length === 0}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.textPrimary,
+                        backgroundColor: darkProTokens.info,
+                        fontWeight: 700,
+                        '&:hover': {
+                          backgroundColor: darkProTokens.infoHover,
+                          transform: 'translateY(-1px)'
+                        },
+                        '&:disabled': {
+                          backgroundColor: `${darkProTokens.info}30`,
+                          color: `${darkProTokens.textPrimary}50`
+                        }
+                      }}
+                      variant="contained"
+                      size="small"
+                    >
+                      🧊 Congelar Automático
+                    </Button>
+
+                    <Button
+                      startIcon={<ManualIcon />}
+                      onClick={() => handleBulkFreeze(true)}
+                      disabled={selectedMembershipIds.length === 0}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.info,
+                        borderColor: `${darkProTokens.info}60`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderColor: darkProTokens.info,
+                          backgroundColor: `${darkProTokens.info}10`
+                        }
+                      }}
+                      variant="outlined"
+                      size="small"
+                    >
+                      🧊 Congelar Manual
+                    </Button>
+                  </Stack>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Stack spacing={1}>
+                    <Button
+                      startIcon={<AutoIcon />}
+                      onClick={() => handleBulkUnfreeze(false)}
+                      disabled={selectedMembershipIds.length === 0}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.textPrimary,
+                        backgroundColor: darkProTokens.success,
+                        fontWeight: 700,
+                        '&:hover': {
+                          backgroundColor: darkProTokens.successHover,
+                          transform: 'translateY(-1px)'
+                        },
+                        '&:disabled': {
+                          backgroundColor: `${darkProTokens.success}30`,
+                          color: `${darkProTokens.textPrimary}50`
+                        }
+                      }}
+                      variant="contained"
+                      size="small"
+                    >
+                      🔄 Reactivar Automático
+                    </Button>
+
+                    <Button
+                      startIcon={<ManualIcon />}
+                      onClick={() => handleBulkUnfreeze(true)}
+                      disabled={selectedMembershipIds.length === 0}
+                      fullWidth
+                      sx={{ 
+                        color: darkProTokens.success,
+                        borderColor: `${darkProTokens.success}60`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderColor: darkProTokens.success,
+                          backgroundColor: `${darkProTokens.success}10`
+                        }
+                      }}
+                      variant="outlined"
+                      size="small"
+                    >
+                      🔄 Reactivar Manual
+                    </Button>
+                  </Stack>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 1 }}>
+                  <Box sx={{
+                    background: `${darkProTokens.primary}10`,
+                    border: `1px solid ${darkProTokens.primary}30`,
+                    borderRadius: 2,
+                    p: 1,
+                    textAlign: 'center',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center'
+                  }}>
+                    <Typography variant="h4" sx={{ 
+                      color: darkProTokens.primary,
+                      fontWeight: 800
+                    }}>
+                      {selectedMembershipIds.length}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      Seleccionadas
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+
+              {selectedMembershipIds.length > 0 && (
+                <Alert 
+                  severity="info"
+                  sx={{
+                    mt: 2,
+                    backgroundColor: `${darkProTokens.info}05`,
+                    color: darkProTokens.textPrimary,
+                    border: `1px solid ${darkProTokens.info}20`,
+                    '& .MuiAlert-icon': { color: darkProTokens.info }
+                  }}
+                >
+                  <Typography variant="body2">
+                    <strong>💡 Modos Disponibles:</strong><br/>
+                    <strong>🤖 Automático:</strong> El sistema calcula automáticamente los días y fechas<br/>
+                    <strong>⚙️ Manual:</strong> Usted especifica cuántos días congelar/agregar y el sistema actualiza las fechas
+                  </Typography>
+                </Alert>
+              )}
+            </Paper>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ✅ CONTROLES Y FILTROS - IGUAL QUE ANTES */}
+      <Paper sx={{
+        p: 3,
+        mb: 3,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}95, ${darkProTokens.surfaceLevel3}90)`,
+        border: `1px solid ${darkProTokens.primary}20`,
+        borderRadius: 4
+      }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ 
+            color: darkProTokens.primary, 
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <SearchIcon />
+            Búsqueda y Filtros Avanzados
+          </Typography>
+
+          <Stack direction="row" spacing={2}>
+            {!bulkMode && (
+              <Button
+                startIcon={<BatchIcon />}
+                onClick={() => setBulkMode(true)}
+                sx={{ 
+                  color: darkProTokens.info,
+                  backgroundColor: `${darkProTokens.info}15`,
+                  borderColor: `${darkProTokens.info}40`,
+                  px: 3,
+                  py: 1,
+                  fontWeight: 700,
+                  '&:hover': {
+                    backgroundColor: `${darkProTokens.info}20`,
+                    borderColor: darkProTokens.info,
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+                variant="outlined"
+              >
+                🧊 Congelamiento Masivo
+              </Button>
+            )}
+
+            <Button
+              startIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              onClick={() => setShowFilters(!showFilters)}
+              sx={{ 
+                color: darkProTokens.primary,
+                borderColor: `${darkProTokens.primary}60`,
+                px: 3,
+                py: 1,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}10`
+                }
+              }}
+              variant="outlined"
+            >
+              {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
+            </Button>
+          </Stack>
+        </Box>
+
+        <TextField
+          fullWidth
+          placeholder="Buscar por nombre, email, plan o referencia de pago..."
+          value={filters.searchTerm}
+          onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: darkProTokens.primary }} />
+              </InputAdornment>
+            ),
+            sx: {
+              color: darkProTokens.textPrimary,
+              backgroundColor: `${darkProTokens.grayDark}20`,
+              fontSize: '1.1rem',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: `${darkProTokens.primary}30`,
+                borderWidth: 2
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: darkProTokens.primary
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: darkProTokens.primary
+              }
+            }
+          }}
+          sx={{ mb: 3 }}
+        />
+
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Estado
+                    </InputLabel>
+                    <Select
+                      value={filters.status}
+                      onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                      sx={{
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }}
+                    >
+                      {statusOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <span>{option.icon}</span>
+                            <span>{option.label}</span>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Método de Pago
+                    </InputLabel>
+                    <Select
+                      value={filters.paymentMethod}
+                      onChange={(e) => setFilters(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                      sx={{
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }}
+                    >
+                      {paymentMethodOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <span>{option.icon}</span>
+                            <span>{option.label}</span>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Plan
+                    </InputLabel>
+                    <Select
+                      value={filters.planId}
+                      onChange={(e) => setFilters(prev => ({ ...prev, planId: e.target.value }))}
+                      sx={{
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }}
+                    >
+                      <MenuItem value="">Todos los planes</MenuItem>
+                      {plans.map((plan) => (
+                        <MenuItem key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Tipo de Venta
+                    </InputLabel>
+                    <Select
+                      value={filters.isRenewal}
+                      onChange={(e) => setFilters(prev => ({ ...prev, isRenewal: e.target.value }))}
+                      sx={{
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }}
+                    >
+                      <MenuItem value="">Todos los tipos</MenuItem>
+                      <MenuItem value="false">🆕 Primera vez</MenuItem>
+                      <MenuItem value="true">🔄 Renovación</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Fecha desde"
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                    InputLabelProps={{ 
+                      shrink: true,
+                      sx: { 
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
+                      }
+                    }}
+                    InputProps={{
+                      sx: {
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }
+                    }}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Fecha hasta"
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                    InputLabelProps={{ 
+                      shrink: true,
+                      sx: { 
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
+                      }
+                    }}
+                    InputProps={{
+                      sx: {
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+
+              <Box sx={{ mt: 3, textAlign: 'right' }}>
+                <Button
+                  onClick={clearFilters}
+                  sx={{ 
+                    color: darkProTokens.textSecondary,
+                    mr: 2,
+                    '&:hover': {
+                      backgroundColor: `${darkProTokens.textSecondary}10`
+                    }
+                  }}
+                >
+                  Limpiar Filtros
+                </Button>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Paper>
+
+      {/* ✅ TABLA PRINCIPAL CON FECHAS CORREGIDAS - IGUAL QUE ANTES */}
+      <Card sx={{
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.primary}20`,
+        borderRadius: 4,
+        overflow: 'hidden'
+      }}>
+        <CardContent sx={{ p: 0 }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <CircularProgress 
+                size={60} 
+                sx={{ color: darkProTokens.primary }}
+                thickness={4}
+              />
+            </Box>
+          ) : filteredMemberships.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h5" sx={{ 
+                color: darkProTokens.textSecondary,
+                mb: 2
+              }}>
+                📋 No se encontraron membresías
+              </Typography>
+              <Typography variant="body1" sx={{ 
+                color: darkProTokens.textSecondary
+              }}>
+                Intente ajustar los filtros de búsqueda
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: `${darkProTokens.grayDark}30` }}>
+                      {bulkMode && (
+                        <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700, width: 50 }}>
+                          <Checkbox
+                            checked={selectedMembershipIds.length === filteredMemberships.filter(m => m.status === 'active' || m.status === 'frozen').length && selectedMembershipIds.length > 0}
+                            indeterminate={selectedMembershipIds.length > 0 && selectedMembershipIds.length < filteredMemberships.filter(m => m.status === 'active' || m.status === 'frozen').length}
+                            onChange={() => {
+                              const eligibleIds = filteredMemberships
+                                .filter(m => m.status === 'active' || m.status === 'frozen')
+                                .map(m => m.id);
+                              
+                              if (selectedMembershipIds.length === eligibleIds.length) {
+                                setSelectedMembershipIds([]);
+                              } else {
+                                setSelectedMembershipIds(eligibleIds);
+                              }
+                            }}
+                            sx={{
+                              color: darkProTokens.primary,
+                              '&.Mui-checked': { color: darkProTokens.primary },
+                              '&.MuiCheckbox-indeterminate': { color: darkProTokens.warning }
+                            }}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Cliente</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Plan</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Estado</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Vigencia</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Pago</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Congelamiento</TableCell>
+                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                                    <TableBody>
+                    {filteredMemberships
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((membership, index) => (
+                        <TableRow 
+                          key={membership.id}
+                          sx={{ 
+                            '&:hover': { 
+                              backgroundColor: `${darkProTokens.primary}05` 
+                            },
+                            backgroundColor: selectedMembershipIds.includes(membership.id) ? 
+                              `${darkProTokens.info}10` : 'transparent'
+                          }}
+                        >
+                          {bulkMode && (
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedMembershipIds.includes(membership.id)}
+                                onChange={() => handleToggleMembershipSelection(membership.id)}
+                                disabled={membership.status !== 'active' && membership.status !== 'frozen'}
+                                sx={{
+                                  color: darkProTokens.primary,
+                                  '&.Mui-checked': { color: darkProTokens.primary },
+                                  '&.Mui-disabled': { color: darkProTokens.textDisabled }
+                                }}
+                              />
+                            </TableCell>
+                          )}
+                          
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body1" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 600
+                              }}>
+                                {membership.user_name}
+                              </Typography>
+                              <Typography variant="caption" sx={{ 
+                                color: darkProTokens.textSecondary
+                              }}>
+                                {membership.user_email}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 500
+                              }}>
+                                {membership.plan_name}
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                                <Chip 
+                                  label={membership.payment_type.toUpperCase()}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: `${darkProTokens.info}20`,
+                                    color: darkProTokens.info,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600
+                                  }}
+                                />
+                                {membership.is_renewal && (
+                                  <Chip 
+                                    label="🔄 RENO"
+                                    size="small"
+                                    sx={{
+                                      backgroundColor: `${darkProTokens.warning}20`,
+                                      color: darkProTokens.warning,
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Chip 
+                              label={`${getStatusIcon(membership.status)} ${membership.status.toUpperCase()}`}
+                              sx={{
+                                backgroundColor: getStatusColor(membership.status),
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 600,
+                                minWidth: 100
+                              }}
+                            />
+                          </TableCell>
+
+                          {/* ✅ COLUMNA DE VIGENCIA CORREGIDA CON FECHAS MÉXICO */}
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 500
+                              }}>
+                                📅 Inicio: {formatDisplayDate(membership.start_date)}
+                              </Typography>
+                              {membership.end_date ? (
+                                <>
+                                  <Typography variant="body2" sx={{ 
+                                    color: darkProTokens.textPrimary,
+                                    fontWeight: 600,
+                                    mb: 0.5
+                                  }}>
+                                    🏁 Vence: {formatDisplayDate(membership.end_date)}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: (() => {
+                                      const daysRemaining = calculateDaysRemaining(membership.end_date);
+                                      if (daysRemaining === null) return darkProTokens.textSecondary;
+                                      if (daysRemaining < 0) return darkProTokens.error;
+                                      if (daysRemaining < 7) return darkProTokens.warning;
+                                      return darkProTokens.success;
+                                    })()
+                                  }}>
+                                    ⏰ {(() => {
+                                      const daysRemaining = calculateDaysRemaining(membership.end_date!);
+                                      if (daysRemaining === null) return 'Sin límite';
+                                      if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
+                                      if (daysRemaining === 0) return 'Vence hoy';
+                                      return `${daysRemaining} días restantes`;
+                                    })()}
+                                  </Typography>
+                                  
+                                  {/* 🧪 BOTÓN DE DEBUG POR FILA */}
+                                  <Button
+                                    size="small"
+                                    onClick={() => debugMembership(membership)}
+                                    sx={{ 
+                                      fontSize: '0.6rem',
+                                      color: darkProTokens.info,
+                                      p: 0,
+                                      minWidth: 'auto',
+                                      mt: 0.5,
+                                      display: 'block'
+                                    }}
+                                  >
+                                    🔍 Debug
+                                  </Button>
+                                </>
+                              ) : (
+                                <Typography variant="caption" sx={{ 
+                                  color: darkProTokens.success
+                                }}>
+                                  ♾️ Sin vencimiento
+                                </Typography>
+                              )}
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body1" sx={{ 
+                                color: darkProTokens.primary,
+                                fontWeight: 700
+                              }}>
+                                {formatPrice(membership.amount_paid)}
+                              </Typography>
+                              <Typography variant="caption" sx={{ 
+                                color: darkProTokens.textSecondary
+                              }}>
+                                {paymentMethodOptions.find(p => p.value === membership.payment_method)?.icon} {membership.payment_method}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Box>
+                              {membership.status === 'frozen' ? (
+                                <Box>
+                                  <Chip 
+                                    label={`🧊 ${getCurrentFrozenDays(membership.freeze_date)} días`}
+                                    size="small"
+                                    sx={{
+                                      backgroundColor: `${darkProTokens.info}20`,
+                                      color: darkProTokens.info,
+                                      fontWeight: 600,
+                                      mb: 0.5
+                                    }}
+                                  />
+                                  <Typography variant="caption" sx={{ 
+                                    color: darkProTokens.textSecondary,
+                                    display: 'block'
+                                  }}>
+                                    Total: {membership.total_frozen_days} días
+                                  </Typography>
+                                </Box>
+                              ) : membership.total_frozen_days > 0 ? (
+                                <Chip 
+                                  label={`🧊 ${membership.total_frozen_days} días`}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: `${darkProTokens.success}20`,
+                                    color: darkProTokens.success,
+                                    fontWeight: 600
+                                  }}
+                                />
+                              ) : (
+                                <Typography variant="caption" sx={{ 
+                                  color: darkProTokens.textSecondary
+                                }}>
+                                  Sin historial
+                                </Typography>
+                              )}
+                            </Box>
+                          </TableCell>
+
+                          <TableCell>
+                            <Stack direction="row" spacing={1}>
+                              <Tooltip title="Ver detalles">
+                                <IconButton
+                                  onClick={() => {
+                                    setSelectedMembership(membership);
+                                    setDetailsDialogOpen(true);
+                                  }}
+                                  sx={{ 
+                                    color: darkProTokens.info,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.info}15` 
+                                    }
+                                  }}
+                                >
+                                  <VisibilityIcon />
+                                </IconButton>
+                              </Tooltip>
+
+                              <Tooltip title="Editar">
+                                <IconButton
+                                  onClick={() => {
+                                    setSelectedMembership(membership);
+                                    initializeEditData(membership);
+                                    setEditDialogOpen(true);
+                                  }}
+                                  sx={{ 
+                                    color: darkProTokens.warning,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.warning}15` 
+                                    }
+                                  }}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+
+                              <Tooltip title="Más acciones">
+                                <IconButton
+                                  onClick={(event) => {
+                                    setSelectedMembership(membership);
+                                    setActionMenuAnchor(event.currentTarget);
+                                  }}
+                                  sx={{ 
+                                    color: darkProTokens.textSecondary,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.textSecondary}15` 
+                                    }
+                                  }}
+                                >
+                                  <MoreVertIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <TablePagination
+                component="div"
+                count={filteredMemberships.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(event, newPage) => setPage(newPage)}
+                onRowsPerPageChange={(event) => {
+                  setRowsPerPage(parseInt(event.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[5, 10, 25, 50, 100]}
+                sx={{
+                  color: darkProTokens.textPrimary,
+                  borderTop: `1px solid ${darkProTokens.grayDark}`,
+                  '& .MuiTablePagination-actions button': {
+                    color: darkProTokens.primary
+                  },
+                  '& .MuiTablePagination-select': {
+                    color: darkProTokens.textPrimary
+                  }
+                }}
+                labelRowsPerPage="Filas por página:"
+                labelDisplayedRows={({ from, to, count }) => 
+                  `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                }
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ✅ MENU DE ACCIONES - VERIFICADO */}
+      <Menu
+        anchorEl={actionMenuAnchor}
+        open={Boolean(actionMenuAnchor)}
+        onClose={() => setActionMenuAnchor(null)}
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.primary}30`,
+            borderRadius: 2
+          }
+        }}
+      >
+        <MenuList>
+          {selectedMembership?.status === 'active' && (
+            <>
+              <MenuItemComponent 
+                onClick={() => {
+                  if (selectedMembership) {
+                    handleFreezeMembership(selectedMembership);
+                  }
+                }}
+                disabled={freezeLoading}
+                sx={{ color: darkProTokens.info }}
+              >
+                <ListItemIcon>
+                  {freezeLoading ? (
+                    <CircularProgress size={20} sx={{ color: darkProTokens.info }} />
+                  ) : (
+                    <PauseIcon sx={{ color: darkProTokens.info }} />
+                  )}
+                </ListItemIcon>
+                <ListItemText>
+                  {freezeLoading ? 'Congelando...' : '🧊 Congelar Membresía'}
+                </ListItemText>
+              </MenuItemComponent>
+              
+              <MenuItemComponent 
+                onClick={() => {
+                  if (selectedMembership) {
+                    handleStatusChange(selectedMembership, 'cancelled');
+                    setActionMenuAnchor(null);
+                  }
+                }}
+                sx={{ color: darkProTokens.error }}
+              >
+                <ListItemIcon>
+                  <BlockIcon sx={{ color: darkProTokens.error }} />
+                </ListItemIcon>
+                <ListItemText>🚫 Cancelar Membresía</ListItemText>
+              </MenuItemComponent>
+            </>
+          )}
+          
+          {selectedMembership?.status === 'frozen' && (
+            <MenuItemComponent 
+              onClick={() => {
+                if (selectedMembership) {
+                  handleUnfreezeMembership(selectedMembership);
+                }
+              }}
+              disabled={unfreezeLoading}
+              sx={{ color: darkProTokens.success }}
+            >
+              <ListItemIcon>
+                {unfreezeLoading ? (
+                  <CircularProgress size={20} sx={{ color: darkProTokens.success }} />
+                ) : (
+                  <PlayArrowIcon sx={{ color: darkProTokens.success }} />
+                )}
+              </ListItemIcon>
+              <ListItemText>
+                {unfreezeLoading ? 'Reactivando...' : '🔄 Reactivar Membresía'}
+              </ListItemText>
+            </MenuItemComponent>
+          )}
+        </MenuList>
+      </Menu>
+
+      {/* ✅ DIALOG DE CONGELAMIENTO MASIVO COMPLETAMENTE CORREGIDO */}
+      <Dialog
+        open={bulkDialogOpen}
+        onClose={() => !bulkLoading && setBulkDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}50`,
+            borderRadius: 4,
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success, 
+          fontWeight: 800,
+          fontSize: '1.8rem',
+          textAlign: 'center',
+          pb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {bulkOperation.mode === 'manual' ? <ManualIcon sx={{ fontSize: 40 }} /> : <AutoIcon sx={{ fontSize: 40 }} />}
+            {getBulkOperationTitle()}
+          </Box>
+          <IconButton 
+            onClick={() => setBulkDialogOpen(false)}
+            disabled={bulkLoading}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+          {!bulkLoading ? (
+            <Box>
+              {/* ✅ ALERT CORREGIDO CON LÓGICA CLARA */}
+              <Alert 
+                severity="warning"
+                sx={{
+                  backgroundColor: `${darkProTokens.warning}10`,
+                  color: darkProTokens.textPrimary,
+                  border: `1px solid ${darkProTokens.warning}30`,
+                  '& .MuiAlert-icon': { color: darkProTokens.warning },
+                  mb: 3
+                }}
+              >
+                <Typography variant="body1">
+                  <strong>⚠️ Operación Masiva {bulkOperation.mode === 'manual' ? 'Manual' : 'Automática'}:</strong> Esta acción {/* ✅ CORREGIDO */}
+                  {bulkOperation.action === 'freeze' ? 
+                    `congelará ${bulkOperation.membershipIds.length} membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
+                    `reactivará ${bulkOperation.membershipIds.length} membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
+                  }.
+                  {bulkOperation.mode === 'manual' && (
+                    <>
+                      <br/><strong>⚙️ Modo Manual:</strong> Usted define los {bulkOperation.action === 'freeze' ? 'días a congelar' : 'días a agregar'} y el sistema actualiza las fechas automáticamente.
+                    </>
+                  )}
+                </Typography>
+              </Alert>
+
+              {/* ✅ CONFIGURACIÓN PARA CONGELAMIENTO MANUAL */}
+              {bulkOperation.mode === 'manual' && bulkOperation.action === 'freeze' && (
+                <Card sx={{
+                  background: `${darkProTokens.info}10`,
+                  border: `1px solid ${darkProTokens.info}30`,
+                  borderRadius: 3,
+                  mb: 3
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info,
+                      fontWeight: 700,
+                      mb: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <AccessTimeIcon />
+                      ⚙️ Configuración de Congelamiento Manual
+                    </Typography>
+
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body1" sx={{ 
+                        color: darkProTokens.textPrimary,
+                        fontWeight: 600,
+                        mb: 2
+                      }}>
+                        Días a congelar: {bulkOperation.freezeDays} días
+                      </Typography>
+                      
+                      <Slider
+                        value={bulkOperation.freezeDays || 7}
+                        onChange={(e, newValue) => {
+                          setBulkOperation(prev => ({
+                            ...prev,
+                            freezeDays: Array.isArray(newValue) ? newValue[0] : newValue
+                          }));
+                        }}
+                        min={1}
+                        max={90}
+                        step={1}
+                        marks={[
+                          { value: 1, label: '1 día' },
+                          { value: 7, label: '1 semana' },
+                          { value: 15, label: '15 días' },
+                          { value: 30, label: '1 mes' },
+                          { value: 60, label: '2 meses' },
+                          { value: 90, label: '3 meses' }
+                        ]}
+                        valueLabelDisplay="auto"
+                        sx={{
+                          color: darkProTokens.info,
+                          '& .MuiSlider-thumb': {
+                            backgroundColor: darkProTokens.info,
+                            border: `2px solid ${darkProTokens.textPrimary}`,
+                            '&:hover': {
+                              boxShadow: `0 0 0 8px ${darkProTokens.info}30`
+                            }
+                          },
+                          '& .MuiSlider-track': {
+                            backgroundColor: darkProTokens.info
+                          },
+                          '& .MuiSlider-rail': {
+                            backgroundColor: darkProTokens.grayDark
+                          },
+                          '& .MuiSlider-mark': {
+                            backgroundColor: darkProTokens.textSecondary
+                          },
+                          '& .MuiSlider-markLabel': {
+                            color: darkProTokens.textSecondary,
+                            fontSize: '0.75rem'
+                          }
+                        }}
+                      />
+                    </Box>
+
+                    <Alert 
+                      severity="info"
+                      sx={{
+                        backgroundColor: `${darkProTokens.info}05`,
+                        color: darkProTokens.textPrimary,
+                        border: `1px solid ${darkProTokens.info}20`,
+                        '& .MuiAlert-icon': { color: darkProTokens.info }
+                      }}
+                    >
+                      <Typography variant="body2">
+                        <strong>💡 ¿Cómo funciona?</strong><br/>
+                        • Las membresías se marcarán como "congeladas"<br/>
+                        • Se agregarán <strong>{bulkOperation.freezeDays} días</strong> a la fecha de vencimiento<br/>
+                        • Los días se registrarán en el historial de congelamiento<br/>
+                        • El proceso es reversible con la reactivación manual
+                      </Typography>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ✅ CONFIGURACIÓN PARA REACTIVACIÓN MANUAL */}
+              {bulkOperation.mode === 'manual' && bulkOperation.action === 'unfreeze' && (
+                <Card sx={{
+                  background: `${darkProTokens.success}10`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 3,
+                  mb: 3
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.success,
+                      fontWeight: 700,
+                      mb: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <PlayArrowIcon />
+                      🔄 Configuración de Reactivación Manual
+                    </Typography>
+
+                    <Alert 
+                      severity="success"
+                      sx={{
+                        backgroundColor: `${darkProTokens.success}05`,
+                        color: darkProTokens.textPrimary,
+                        border: `1px solid ${darkProTokens.success}20`,
+                        '& .MuiAlert-icon': { color: darkProTokens.success }
+                      }}
+                    >
+                      <Typography variant="body2">
+                        <strong>💡 ¿Cómo funciona la reactivación manual?</strong><br/>
+                        • Las membresías se marcarán como "activas"<br/>
+                        • Se calcularán automáticamente los días congelados actuales<br/>
+                        • Esos días se agregarán a la fecha de vencimiento<br/>
+                        • Se registrará en el historial de la membresía<br/>
+                        • El proceso conserva todo el historial de congelamiento
+                      </Typography>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ✅ VISTA PREVIA DE CAMBIOS CORREGIDA */}
+              {showPreview && bulkPreview.length > 0 && (
+                <Card sx={{
+                  background: `${darkProTokens.success}10`,
+                  border: `1px solid ${darkProTokens.success}30`,
+                  borderRadius: 3,
+                  mb: 3
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.success,
+                      fontWeight: 700,
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <VisibilityIcon />
+                      👁️ Vista Previa de Cambios
+                    </Typography>
+
+                    <Typography variant="body2" sx={{ 
+                      color: darkProTokens.textSecondary,
+                      mb: 2
+                    }}>
+                      Se procesarán {bulkPreview.length} membresías para {/* ✅ CORREGIDO */}
+                      {bulkOperation.action === 'freeze' ? 'congelamiento' : 'reactivación'}. 
+                      Aquí se muestran algunos ejemplos:
+                    </Typography>
+
+                    <Box sx={{
+                      maxHeight: 300,
+                      overflow: 'auto',
+                      border: `1px solid ${darkProTokens.success}30`,
+                      borderRadius: 2
+                    }}>
+                      <List dense>
+                        {bulkPreview.slice(0, 5).map((preview, index) => (
+                          <ListItem key={preview.membershipId} sx={{
+                            borderBottom: index < Math.min(4, bulkPreview.length - 1) ? 
+                              `1px solid ${darkProTokens.grayDark}20` : 'none'
+                          }}>
+                            <ListItemAvatar>
+                              <Avatar sx={{ 
+                                background: darkProTokens.primary,
+                                color: darkProTokens.background,
+                                width: 40,
+                                height: 40
+                              }}>
+                                {preview.userName.split(' ').map(n => n[0]).join('')}
+                              </Avatar>
+                            </ListItemAvatar>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="body1" sx={{ 
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 600
+                              }}>
+                                {preview.userName}
+                              </Typography>
+                              <Typography variant="caption" sx={{ 
+                                color: darkProTokens.textSecondary
+                              }}>
+                                {preview.planName} • {preview.currentStatus.toUpperCase()}
+                              </Typography>
+                              <Box sx={{ mt: 1 }}>
+                                <Typography variant="body2" sx={{ 
+                                  color: darkProTokens.textSecondary
+                                }}>
+                                  📅 Actual: {preview.currentEndDate ? formatDisplayDate(preview.currentEndDate) : 'Sin fecha'}
+                                </Typography>
+                                {preview.newEndDate && preview.newEndDate !== preview.currentEndDate && (
+                                  <Typography variant="body2" sx={{ 
+                                    color: darkProTokens.success,
+                                    fontWeight: 600
+                                  }}>
+                                    📅 Nueva: {formatDisplayDate(preview.newEndDate)} 
+                                    {preview.daysToAdd > 0 && (
+                                      <span style={{ color: darkProTokens.info }}>
+                                        {' '}(+{preview.daysToAdd} días)
+                                      </span>
+                                    )}
+                                  </Typography>
+                                )}
+                                {/* ✅ NUEVO: Descripción clara de la acción */}
+                                <Typography variant="caption" sx={{ 
+                                  color: darkProTokens.info,
+                                  fontStyle: 'italic',
+                                  display: 'block',
+                                  mt: 0.5
+                                }}>
+                                  ℹ️ {preview.actionDescription}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </ListItem>
+                        ))}
+                      </List>
+
+                      {bulkPreview.length > 5 && (
+                        <Box sx={{ p: 2, textAlign: 'center' }}>
+                          <Typography variant="caption" sx={{ 
+                            color: darkProTokens.textSecondary,
+                            fontStyle: 'italic'
+                          }}>
+                            ... y {bulkPreview.length - 5} membresías más
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Lista de Membresías Seleccionadas */}
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.textPrimary,
+                mb: 2
+              }}>
+                Membresías seleccionadas ({bulkOperation.membershipIds.length}):
+              </Typography>
+
+              <Box sx={{
+                maxHeight: 200,
+                overflow: 'auto',
+                border: `1px solid ${darkProTokens.grayDark}`,
+                borderRadius: 2,
+                p: 2
+              }}>
+                {bulkOperation.membershipIds.map(id => {
+                  const membership = memberships.find(m => m.id === id);
+                  return membership ? (
+                    <Box key={id} sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      py: 1,
+                      borderBottom: `1px solid ${darkProTokens.grayDark}40`
+                    }}>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          {membership.user_name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          {membership.plan_name} • Vence: {membership.end_date ? formatDisplayDate(membership.end_date) : 'Sin fecha'}
+                        </Typography>
+                      </Box>
+                      <Chip 
+                        label={membership.status.toUpperCase()}
+                        size="small"
+                        sx={{
+                          backgroundColor: getStatusColor(membership.status),
+                          color: darkProTokens.textPrimary,
+                          fontWeight: 600
+                        }}
+                      />
+                    </Box>
+                  ) : null;
+                })}
+              </Box>
+
+              {/* ✅ MOTIVO CORREGIDO */}
+              <TextField
+                fullWidth
+                label="Motivo (opcional)"
+                multiline
+                rows={3}
+                value={bulkOperation.reason || ''}
+                onChange={(e) => setBulkOperation(prev => ({ ...prev, reason: e.target.value }))}
+                placeholder={`Motivo de la ${bulkOperation.action === 'freeze' ? 'congelación' : 'reactivación'} masiva...`} {/* ✅ CORREGIDO */}
+                sx={{ mt: 3 }}
+                InputProps={{
+                  sx: {
+                    color: darkProTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}30`
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                    }
+                  }
+                }}
+                InputLabelProps={{
+                  sx: { 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success }
+                  }
+                }}
+              />
+            </Box>
+          ) : (
+            <Box>
+              {/* ✅ LOADING STATE CORREGIDO */}
+              <Typography variant="h6" sx={{ 
+                color: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success,
+                mb: 3,
+                textAlign: 'center'
+              }}>
+                {bulkOperation.action === 'freeze' ? 'Congelando' : 'Reactivando'} membresías{bulkOperation.mode === 'manual' ? ' manualmente' : ''}...
+              </Typography>
+
+              <LinearProgress 
+                variant="determinate" 
+                value={bulkProgress}
+                sx={{
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: `${bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}20`,
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                  }
+                }}
+              />
+
+              <Typography variant="body2" sx={{ 
+                color: darkProTokens.textSecondary,
+                textAlign: 'center',
+                mt: 2
+              }}>
+                {bulkProgress}% completado • Procesando {bulkOperation.membershipIds.length} membresías
+              </Typography>
+
+              {bulkResults.success > 0 || bulkResults.failed > 0 ? (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 1 }}>
+                    Resultados en tiempo real:
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid size={6}>
+                      <Box sx={{
+                        background: `${darkProTokens.success}10`,
+                        border: `1px solid ${darkProTokens.success}30`,
+                        borderRadius: 2,
+                        p: 2,
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 800 }}>
+                          {bulkResults.success}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          ✅ Exitosas
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid size={6}>
+                      <Box sx={{
+                        background: `${darkProTokens.error}10`,
+                        border: `1px solid ${darkProTokens.error}30`,
+                        borderRadius: 2,
+                        p: 2,
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 800 }}>
+                          {bulkResults.failed}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          ❌ Fallidas
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                  
+                  {bulkResults.errors.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.error, mb: 1 }}>
+                        Errores detectados:
+                      </Typography>
+                      <Box sx={{
+                        maxHeight: 150,
+                        overflow: 'auto',
+                        border: `1px solid ${darkProTokens.error}30`,
+                        borderRadius: 1,
+                        p: 1,
+                        background: `${darkProTokens.error}05`
+                      }}>
+                        {bulkResults.errors.map((error, index) => (
+                          <Typography key={index} variant="caption" sx={{ 
+                            color: darkProTokens.error,
+                            display: 'block',
+                            fontSize: '0.75rem'
+                          }}>
+                            • {error}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              ) : null}
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => setBulkDialogOpen(false)}
+            disabled={bulkLoading}
+            sx={{ 
+              color: darkProTokens.textSecondary,
+              borderColor: darkProTokens.grayDark,
+              px: 3,
+              py: 1
+            }}
+            variant="outlined"
+          >
+            {bulkLoading ? 'Procesando...' : 'Cancelar'}
+          </Button>
+          
+          {!bulkLoading && (
+            <Button 
+              onClick={executeBulkOperation}
+              variant="contained"
+              startIcon={
+                bulkOperation.action === 'freeze' ? 
+                  (bulkOperation.mode === 'manual' ? <ManualIcon /> : <FreezeIcon />) : 
+                  (bulkOperation.mode === 'manual' ? <ManualIcon /> : <UnfreezeIcon />)
+              }
+              sx={{
+                background: `linear-gradient(135deg, ${
+                  bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                }, ${
+                  bulkOperation.action === 'freeze' ? darkProTokens.infoHover : darkProTokens.successHover
+                })`,
+                color: darkProTokens.textPrimary,
+                fontWeight: 700,
+                px: 4,
+                py: 1,
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${
+                    bulkOperation.action === 'freeze' ? darkProTokens.infoHover : darkProTokens.successHover
+                  }, ${
+                    bulkOperation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                  })`,
+                  transform: 'translateY(-1px)'
+                }
+              }}
+            >
+              {/* ✅ BOTÓN PRINCIPAL CORREGIDO */}
+              {bulkOperation.action === 'freeze' ? 
+                `🧊 Congelar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}` :
+                `🔄 Reactivar ${bulkOperation.membershipIds.length} Membresía${bulkOperation.membershipIds.length > 1 ? 's' : ''}`
+              }
+              {bulkOperation.mode === 'manual' && bulkOperation.action === 'freeze' && bulkOperation.freezeDays && (
+                <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>
+                  {' '}({bulkOperation.freezeDays} días)
+                </span>
+              )}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* ✅ MODAL DE DETALLES COMPLETO - IGUAL QUE ANTES */}
+      <Dialog 
+        open={detailsDialogOpen} 
+        onClose={() => setDetailsDialogOpen(false)}
+        maxWidth="xl"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `2px solid ${darkProTokens.primary}50`,
+            borderRadius: 4,
+            color: darkProTokens.textPrimary,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
+            maxHeight: '95vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: darkProTokens.primary, 
+          fontWeight: 800,
+          fontSize: '1.8rem',
+          textAlign: 'center',
+          pb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <VisibilityIcon sx={{ fontSize: 40 }} />
+            Vista Detallada de Membresía
+          </Box>
+          <IconButton 
+            onClick={() => setDetailsDialogOpen(false)}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ maxHeight: '80vh', overflow: 'auto' }}>
+          {selectedMembership && (
+            <Box sx={{ mt: 2 }}>
+              {/* Header del Cliente Detallado */}
+              <Card sx={{
+                background: `${darkProTokens.primary}15`,
+                border: `2px solid ${darkProTokens.primary}40`,
+                borderRadius: 4,
+                mb: 4
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Box sx={{ 
+                      width: 100, 
+                      height: 100, 
+                      borderRadius: '50%', 
+                      background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: darkProTokens.background,
+                      fontWeight: 800,
+                      fontSize: '2.5rem',
+                      boxShadow: `0 8px 32px ${darkProTokens.primary}40`
+                    }}>
+                      {selectedMembership.user_name.split(' ').map((n: string) => n[0]).join('')}
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h4" sx={{ 
+                        color: darkProTokens.primary, 
+                        fontWeight: 800,
+                        mb: 1
+                      }}>
+                        {selectedMembership.user_name}
+                      </Typography>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.textSecondary,
+                        mb: 2
+                      }}>
+                        📧 {selectedMembership.user_email}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <Chip 
+                          label={`${getStatusIcon(selectedMembership.status)} ${selectedMembership.status.toUpperCase()}`}
+                          sx={{
+                            backgroundColor: getStatusColor(selectedMembership.status),
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            px: 2,
+                            py: 1
+                          }}
+                        />
+                        <Chip 
+                          label={selectedMembership.is_renewal ? '🔄 RENOVACIÓN' : '🆕 PRIMERA VEZ'}
+                          sx={{
+                            backgroundColor: selectedMembership.is_renewal ? darkProTokens.warning : darkProTokens.success,
+                            color: selectedMembership.is_renewal ? darkProTokens.background : darkProTokens.textPrimary,
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            px: 2,
+                            py: 1
+                          }}
+                        />
+                        {selectedMembership.skip_inscription && (
+                          <Chip 
+                            label="🚫 SIN INSCRIPCIÓN" 
+                            sx={{
+                              backgroundColor: darkProTokens.info,
+                              color: darkProTokens.textPrimary,
+                              fontWeight: 700,
+                              fontSize: '1rem',
+                              px: 2,
+                              py: 1
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="h3" sx={{ 
+                        color: darkProTokens.primary,
+                        fontWeight: 800
+                      }}>
+                        {formatPrice(selectedMembership.amount_paid)}
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                        {paymentMethodOptions.find(p => p.value === selectedMembership.payment_method)?.icon} {selectedMembership.payment_method}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+
+              <Grid container spacing={4}>
+                {/* Información del Plan */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.info}10`,
+                    border: `1px solid ${darkProTokens.info}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.info,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <FitnessCenterIcon />
+                        🏋️‍♂️ Información del Plan
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Plan de Membresía:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                            {selectedMembership.plan_name}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Tipo de Pago:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                            {selectedMembership.payment_type.toUpperCase()}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            ID de Membresía:
+                          </Typography>
+                          <Typography variant="body1" sx={{ 
+                            color: darkProTokens.textPrimary,
+                            fontFamily: 'monospace',
+                            fontSize: '0.9rem'
+                          }}>
+                            {selectedMembership.id}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Fechas y Vigencia */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.success}10`,
+                    border: `1px solid ${darkProTokens.success}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.success,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <CalendarTodayIcon />
+                        📅 Fechas y Vigencia
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha de Inicio:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                            {formatDisplayDate(selectedMembership.start_date)}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha de Vencimiento:
+                          </Typography>
+                          <Typography variant="h6" sx={{ 
+                            color: selectedMembership.end_date ? darkProTokens.textPrimary : darkProTokens.textSecondary,
+                            fontWeight: 700 
+                          }}>
+                            {selectedMembership.end_date ? formatDisplayDate(selectedMembership.end_date) : 'Sin vencimiento'}
+                          </Typography>
+                        </Box>
+
+                        {selectedMembership.end_date && (
                           <Box>
-                            <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Penalización:</Typography>
-                            <Typography variant="body1" sx={{ color: '#ff9800', fontWeight: 600 }}>
-                              -{formatPrice(calculations.penalty)}
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Días Restantes:
+                            </Typography>
+                            <Typography variant="h6" sx={{ 
+                              color: (() => {
+                                const daysRemaining = calculateDaysRemaining(selectedMembership.end_date);
+                                if (daysRemaining === null) return darkProTokens.textSecondary;
+                                if (daysRemaining < 0) return darkProTokens.error;
+                                if (daysRemaining < 7) return darkProTokens.warning;
+                                return darkProTokens.success;
+                              })(),
+                              fontWeight: 700
+                            }}>
+                              {(() => {
+                                const daysRemaining = calculateDaysRemaining(selectedMembership.end_date!);
+                                if (daysRemaining === null) return 'Sin límite';
+                                if (daysRemaining < 0) return `Vencida hace ${Math.abs(daysRemaining)} días`;
+                                if (daysRemaining === 0) return 'Vence hoy';
+                                return `${daysRemaining} días restantes`;
+                              })()}
                             </Typography>
                           </Box>
                         )}
-                        
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Detalles de Pago */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.warning}10`,
+                    border: `1px solid ${darkProTokens.warning}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.warning,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <PaymentIcon />
+                        💰 Detalles de Pago
+                      </Typography>
+
+                      <Stack spacing={2}>
                         <Box>
-                          <Typography variant="body2" sx={{ color: '#CCCCCC' }}>Reembolso final:</Typography>
-                          <Typography variant="h5" sx={{ color: '#4caf50', fontWeight: 700 }}>
-                            {formatPrice(calculations.finalRefund)}
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Método de Pago:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                            {paymentMethodOptions.find(p => p.value === selectedMembership.payment_method)?.icon} {selectedMembership.payment_method}
                           </Typography>
                         </Box>
-                      </>
-                    )}
 
-                    {!processRefund && (
-                      <>
-                        <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.2)' }} />
-                        <Alert severity="info"> {/* ✅ CORREGIDO: sin size="small" */}
-                          No se procesará reembolso
-                        </Alert>
-                      </>
-                    )}
-                  </Stack>
-                </Card>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Monto Total Pagado:
+                          </Typography>
+                          <Typography variant="h5" sx={{ color: darkProTokens.primary, fontWeight: 800 }}>
+                            {formatPrice(selectedMembership.amount_paid)}
+                          </Typography>
+                        </Box>
+
+                        {selectedMembership.inscription_amount > 0 && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Inscripción:
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              {formatPrice(selectedMembership.inscription_amount)}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {selectedMembership.commission_amount > 0 && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Comisión ({selectedMembership.commission_rate}%):
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                              {formatPrice(selectedMembership.commission_amount)}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {selectedMembership.payment_reference && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Referencia:
+                            </Typography>
+                            <Typography variant="body1" sx={{ 
+                              color: darkProTokens.textPrimary,
+                              fontFamily: 'monospace',
+                              fontSize: '0.9rem'
+                            }}>
+                              {selectedMembership.payment_reference}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {/* Detalles de Pago Mixto */}
+                        {selectedMembership.is_mixed_payment && selectedMembership.payment_details && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                              Desglose Pago Mixto:
+                            </Typography>
+                            <Box sx={{ 
+                              background: `${darkProTokens.grayDark}10`,
+                              border: `1px solid ${darkProTokens.grayDark}30`,
+                              borderRadius: 2,
+                              p: 2
+                            }}>
+                              {selectedMembership.payment_details.cash_amount > 0 && (
+                                <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                                  💵 Efectivo: {formatPrice(selectedMembership.payment_details.cash_amount)}
+                                </Typography>
+                              )}
+                              {selectedMembership.payment_details.card_amount > 0 && (
+                                <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                                  💳 Tarjeta: {formatPrice(selectedMembership.payment_details.card_amount)}
+                                </Typography>
+                              )}
+                              {selectedMembership.payment_details.transfer_amount > 0 && (
+                                <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                                  🏦 Transferencia: {formatPrice(selectedMembership.payment_details.transfer_amount)}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        )}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Historial de Congelamiento */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.info}10`,
+                    border: `1px solid ${darkProTokens.info}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.info,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <AcUnitIcon />
+                        🧊 Historial de Congelamiento
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Estado de Congelamiento:
+                          </Typography>
+                          <Typography variant="h6" sx={{ 
+                            color: selectedMembership.status === 'frozen' ? darkProTokens.info : darkProTokens.success,
+                            fontWeight: 700 
+                          }}>
+                            {selectedMembership.status === 'frozen' ? '🧊 CONGELADA' : '🔥 ACTIVA'}
+                          </Typography>
+                        </Box>
+
+                        {selectedMembership.status === 'frozen' && selectedMembership.freeze_date && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Congelada desde:
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              {formatDisplayDate(selectedMembership.freeze_date)} ({getCurrentFrozenDays(selectedMembership.freeze_date)} días)
+                            </Typography>
+                          </Box>
+                        )}
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Total de Días Congelados Históricos:
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
+                            {selectedMembership.total_frozen_days || 0} días
+                          </Typography>
+                        </Box>
+
+                        {selectedMembership.unfreeze_date && (
+                          <Box>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Última Reactivación:
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                              {formatDisplayDate(selectedMembership.unfreeze_date)}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Fechas del Sistema */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.grayDark}10`,
+                    border: `1px solid ${darkProTokens.grayDark}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.textSecondary,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <TimerIcon />
+                        ⏰ Fechas del Sistema
+                      </Typography>
+
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha de Creación:
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            {formatTimestampForDisplay(selectedMembership.created_at)}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Última Actualización:
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            {formatTimestampForDisplay(selectedMembership.updated_at)}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            Fecha Actual del Sistema (México):
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                            {formatDisplayDate(getMexicoCurrentDate())}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Notas */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `${darkProTokens.grayDark}10`,
+                    border: `1px solid ${darkProTokens.grayDark}30`,
+                    borderRadius: 3,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                                            <Typography variant="h6" sx={{ 
+                        color: darkProTokens.textSecondary,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <ReceiptIcon />
+                        📝 Notas y Observaciones
+                      </Typography>
+
+                      <Box sx={{
+                        background: `${darkProTokens.grayDark}05`,
+                        border: `1px solid ${darkProTokens.grayDark}20`,
+                        borderRadius: 2,
+                        p: 2,
+                        minHeight: 120,
+                        maxHeight: 200,
+                        overflow: 'auto'
+                      }}>
+                        <Typography variant="body2" sx={{ 
+                          color: selectedMembership.notes ? darkProTokens.textPrimary : darkProTokens.textSecondary,
+                          lineHeight: 1.6,
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {selectedMembership.notes || 'Sin notas registradas para esta membresía.'}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
               </Grid>
-            </Grid>
-          </Box>
-        ) : (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <CancelIcon sx={{ fontSize: 80, color: '#f44336', mb: 2 }} />
-            <Typography variant="h4" sx={{ color: '#f44336', fontWeight: 700, mb: 2 }}>
-              ¡Apartado Cancelado!
-            </Typography>
-            <Typography variant="body1" sx={{ color: '#CCCCCC', mb: 3 }}>
-              El apartado #{safeLayaway.sale_number} ha sido cancelado exitosamente
-            </Typography>
-            {processRefund && calculations && (
-              <Typography variant="body2" sx={{ color: '#4caf50', mb: 3 }}>
-                💰 Reembolso procesado: {formatPrice(calculations.finalRefund)}
-              </Typography>
-            )}
-            <Button
-              variant="contained"
-              onClick={handleClose}
-              sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
-            >
-              Cerrar
-            </Button>
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => {
+              setSelectedMembership(selectedMembership);
+              initializeEditData(selectedMembership!);
+              setEditDialogOpen(true);
+              setDetailsDialogOpen(false);
+            }}
+            startIcon={<EditIcon />}
+            sx={{ 
+              color: darkProTokens.warning,
+              borderColor: `${darkProTokens.warning}60`,
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              '&:hover': {
+                borderColor: darkProTokens.warning,
+                backgroundColor: `${darkProTokens.warning}10`
+              }
+            }}
+            variant="outlined"
+          >
+            Editar Membresía
+          </Button>
+          
+          <Button 
+            onClick={() => setDetailsDialogOpen(false)}
+            sx={{ 
+              color: darkProTokens.primary,
+              borderColor: darkProTokens.primary,
+              px: 4,
+              py: 1,
+              fontWeight: 700,
+              '&:hover': {
+                borderColor: darkProTokens.primaryHover,
+                backgroundColor: `${darkProTokens.primary}10`
+              }
+            }}
+            variant="outlined"
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ✅ MODAL DE EDICIÓN OPTIMIZADO */}
+      {OptimizedEditModal}
+
+      {/* ✅ ESTILOS CSS DARK PRO */}
+      <style jsx>{`
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+        }
+      `}</style>
+    </Box>
   );
 }
+                
