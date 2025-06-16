@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,17 +23,23 @@ export async function GET(request: NextRequest) {
       page, limit, search, dateFrom, dateTo, expenseType, status, sortBy, sortOrder
     });
 
-    // Construir query base
+    // ✅ USAR CLIENTE SERVIDOR CORRECTO
+    const supabase = createServerSupabaseClient();
+
+    // Verificar conexión
+    console.log('🔍 Verificando conexión a Supabase...');
+    
+    // Construir query base con campos correctos de Users
     let query = supabase
       .from('expenses')
       .select(`
         *,
-        users!expenses_created_by_fkey(first_name, last_name, username)
+        "Users"!expenses_created_by_fkey(id, firstName, lastName, name, email)
       `, { count: 'exact' });
 
     // Aplicar filtros
     if (search) {
-      query = query.or(`description.ilike.%${search}%,receipt_number.ilike.%${search}%,notes.ilike.%${search}%`);
+      query = query.or(`description.ilike.%${search}%,notes.ilike.%${search}%,receipt_number.ilike.%${search}%`);
     }
 
     if (dateFrom) {
@@ -68,50 +69,72 @@ export async function GET(request: NextRequest) {
 
     if (expensesError) {
       console.error('❌ Error consultando egresos:', expensesError);
+      console.error('Detalles del error:', {
+        message: expensesError.message,
+        details: expensesError.details,
+        hint: expensesError.hint,
+        code: expensesError.code
+      });
       return NextResponse.json({
         success: false,
-        error: 'Error al consultar egresos'
+        error: 'Error al consultar egresos',
+        details: process.env.NODE_ENV === 'development' ? {
+          message: expensesError.message,
+          hint: expensesError.hint,
+          details: expensesError.details
+        } : undefined
       }, { status: 500 });
     }
 
-    // Formatear datos
+    // Formatear datos con nombre del creador
     const formattedExpenses = expenses?.map(expense => ({
       ...expense,
-      amount: parseFloat(expense.amount),
-      creator_name: expense.users 
-        ? `${expense.users.first_name || ''} ${expense.users.last_name || ''}`.trim() || expense.users.username
-        : 'luishdz04'
+      creator_name: expense.Users 
+        ? expense.Users.name || `${expense.Users.firstName || ''} ${expense.Users.lastName || ''}`.trim() || expense.Users.email || 'Usuario'
+        : 'Usuario',
+      // Convertir valores numéricos para evitar errores
+      amount: parseFloat(expense.amount || '0')
     })) || [];
 
-    // Obtener estadísticas
-    const { data: allExpenses, error: statsError } = await supabase
-      .from('expenses')
-      .select('amount, expense_type');
-
-    const statsData = allExpenses || [];
-    const stats = {
-      totalExpenses: statsData.length,
-      totalAmount: statsData.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0),
-      avgAmount: statsData.length > 0 ? statsData.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0) / statsData.length : 0,
-      categoriesBreakdown: statsData.reduce((acc, expense) => {
-        const type = expense.expense_type;
-        if (!acc[type]) {
-          acc[type] = { count: 0, amount: 0 };
-        }
-        acc[type].count++;
-        acc[type].amount += parseFloat(expense.amount) || 0;
-        return acc;
-      }, {} as Record<string, { count: number; amount: number }>)
+    // Obtener estadísticas generales
+    let stats = {
+      totalExpenses: 0,
+      totalAmount: 0,
+      avgAmount: 0,
+      categoriesBreakdown: {} as Record<string, { count: number; amount: number }>
     };
 
-    const totalPages = count ? Math.ceil(count / limit) : 1;
+    try {
+      const { data: statsData, error: statsError } = await supabase
+        .from('expenses')
+        .select('amount, expense_type');
 
-    console.log('✅ Historial de egresos obtenido:', {
-      expenses: formattedExpenses.length,
-      total: count,
-      pages: totalPages,
-      stats
-    });
+      if (!statsError && statsData) {
+        const totalAmount = statsData.reduce((sum, expense) => sum + parseFloat(expense.amount || '0'), 0);
+        
+        // Calcular desglose por categorías
+        const categoriesBreakdown: Record<string, { count: number; amount: number }> = {};
+        statsData.forEach(expense => {
+          const type = expense.expense_type || 'otros';
+          if (!categoriesBreakdown[type]) {
+            categoriesBreakdown[type] = { count: 0, amount: 0 };
+          }
+          categoriesBreakdown[type].count++;
+          categoriesBreakdown[type].amount += parseFloat(expense.amount || '0');
+        });
+
+        stats = {
+          totalExpenses: statsData.length,
+          totalAmount: totalAmount,
+          avgAmount: statsData.length > 0 ? totalAmount / statsData.length : 0,
+          categoriesBreakdown
+        };
+      }
+    } catch (statsError) {
+      console.warn('⚠️ Error consultando estadísticas (no crítico):', statsError);
+    }
+
+    console.log('✅ Historial consultado:', formattedExpenses.length, 'egresos');
 
     return NextResponse.json({
       success: true,
@@ -120,16 +143,17 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total: count || 0,
-        totalPages
+        totalPages: Math.ceil((count || 0) / limit)
       },
       stats
     });
 
-  } catch (error) {
-    console.error('❌ Error en API historial de egresos:', error);
+  } catch (error: any) {
+    console.error('❌ Error en API historial egresos:', error);
     return NextResponse.json({
       success: false,
-      error: 'Error al obtener el historial de egresos'
+      error: 'Error al consultar el historial de egresos',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 });
   }
 }
