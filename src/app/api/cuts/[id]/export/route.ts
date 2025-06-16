@@ -4,28 +4,20 @@ import * as XLSX from 'xlsx';
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const params = context?.params;
-    if (!params || !params.id) {
-      return NextResponse.json({
-        success: false,
-        error: 'ID del corte no proporcionado'
-      }, { status: 400 });
-    }
-
     const cutId = params.id;
     console.log('📄 API: Exportando corte individual:', cutId);
-    console.log('👤 Usuario: luishdz04');
 
     const supabase = createServerSupabaseClient();
 
+    // Obtener el corte con información del usuario
     const { data: cut, error } = await supabase
       .from('cash_cuts')
       .select(`
         *,
-        users!cash_cuts_created_by_fkey(id, first_name, last_name, username, name, email, firstName, lastName)
+        "Users"!cash_cuts_created_by_fkey(id, firstName, lastName, name, email)
       `)
       .eq('id', cutId)
       .single();
@@ -38,22 +30,7 @@ export async function GET(
       }, { status: 404 });
     }
 
-    // ✅ FORMATEO DE USUARIO ROBUSTO
-    let creator_name = 'Usuario';
-    if (cut.users) {
-      if (cut.users.name) {
-        creator_name = cut.users.name;
-      } else if (cut.users.first_name || cut.users.last_name) {
-        creator_name = `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim();
-      } else if (cut.users.firstName || cut.users.lastName) {
-        creator_name = `${cut.users.firstName || ''} ${cut.users.lastName || ''}`.trim();
-      } else if (cut.users.username) {
-        creator_name = cut.users.username;
-      } else if (cut.users.email) {
-        creator_name = cut.users.email;
-      }
-    }
-
+    // Crear datos para Excel con múltiples hojas
     const workbook = XLSX.utils.book_new();
 
     // Hoja 1: Información General
@@ -65,9 +42,7 @@ export async function GET(
       'Valor': cut.cut_date
     }, {
       'Campo': 'Hora del Corte',
-      'Valor': new Date(cut.cut_time || cut.created_at).toLocaleString('es-MX', {
-        timeZone: 'America/Mexico_City'
-      })
+      'Valor': new Date(cut.cut_time).toLocaleString('es-MX')
     }, {
       'Campo': 'Tipo',
       'Valor': cut.is_manual ? 'Manual' : 'Automático'
@@ -76,17 +51,15 @@ export async function GET(
       'Valor': cut.status
     }, {
       'Campo': 'Responsable',
-      'Valor': creator_name
+      'Valor': cut.Users 
+        ? cut.Users.name || `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.email 
+        : 'Usuario'
     }, {
       'Campo': 'Creado',
-      'Valor': new Date(cut.created_at).toLocaleString('es-MX', {
-        timeZone: 'America/Mexico_City'
-      })
+      'Valor': new Date(cut.created_at).toLocaleString('es-MX')
     }, {
       'Campo': 'Actualizado',
-      'Valor': new Date(cut.updated_at).toLocaleString('es-MX', {
-        timeZone: 'America/Mexico_City'
-      })
+      'Valor': new Date(cut.updated_at).toLocaleString('es-MX')
     }];
 
     const wsGeneral = XLSX.utils.json_to_sheet(generalData);
@@ -200,6 +173,7 @@ export async function GET(
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(workbook, wsSummary, 'Resumen Financiero');
 
+    // Hoja 4: Notas (si existen)
     if (cut.notes) {
       const notesData = [{
         'Notas / Observaciones': cut.notes
@@ -208,10 +182,12 @@ export async function GET(
       XLSX.utils.book_append_sheet(workbook, wsNotes, 'Notas');
     }
 
+    // Generar buffer
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
 
     console.log('✅ Excel individual generado para corte:', cut.cut_number);
 
+    // Retornar archivo
     return new NextResponse(excelBuffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
