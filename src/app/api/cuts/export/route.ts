@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       'Tipo': cut.is_manual ? 'Manual' : 'Automático',
       'Estado': cut.status,
       'Responsable': cut.Users 
-        ? cut.Users.name || `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.email || 'Usuario'
+        ? cut.Users.name || `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.email 
         : 'Usuario',
       // Punto de Venta
       'POS Efectivo': parseFloat(cut.pos_efectivo || '0'),
