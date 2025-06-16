@@ -53,7 +53,11 @@ import {
   Build as BuildIcon,
   AutoMode as AutoModeIcon,
   Close as CloseIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Refresh as RefreshIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -179,7 +183,6 @@ function formatDateLocal(dateString: string): string {
     return dateString;
   }
 }
-
 export default function CutsHistoryPage() {
   const router = useRouter();
 
@@ -190,6 +193,13 @@ export default function CutsHistoryPage() {
   const [selectedCut, setSelectedCut] = useState<CutDetail | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [cutToDelete, setCutToDelete] = useState<string | null>(null);
+  const [loadingDelete, setLoadingDelete] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingCut, setEditingCut] = useState<CutDetail | null>(null);
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Paginación
   const [page, setPage] = useState(1);
@@ -333,6 +343,97 @@ export default function CutsHistoryPage() {
     }
   };
 
+  const exportCut = async (cutId: string) => {
+    try {
+      console.log('📄 Exportando corte individual:', cutId);
+      const response = await fetch(`/api/cuts/${cutId}/export`);
+      const blob = await response.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `corte_${cutId.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exportando corte:', error);
+      setError('Error al exportar el corte');
+    }
+  };
+
+  const handleDeleteCut = async () => {
+    if (!cutToDelete) return;
+    
+    try {
+      setLoadingDelete(true);
+      console.log('🗑️ Eliminando corte:', cutToDelete);
+      
+      const response = await fetch(`/api/cuts/${cutToDelete}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setCuts(cuts.filter(cut => cut.id !== cutToDelete));
+        setDeleteDialogOpen(false);
+        setCutToDelete(null);
+        loadCuts(); // Recargar para actualizar estadísticas
+      } else {
+        setError(data.error || 'Error al eliminar el corte');
+      }
+    } catch (error) {
+      console.error('Error eliminando corte:', error);
+      setError('Error al eliminar el corte');
+    } finally {
+      setLoadingDelete(false);
+    }
+  };
+
+  const handleUpdateCut = async () => {
+    if (!editingCut) return;
+    
+    try {
+      setLoadingUpdate(true);
+      console.log('✏️ Actualizando corte:', editingCut.id);
+      
+      const response = await fetch(`/api/cuts/${editingCut.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          notes: editingCut.notes,
+          expenses_amount: editingCut.expenses_amount,
+          status: editingCut.status
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setEditDialogOpen(false);
+        setEditingCut(null);
+        loadCuts(); // Recargar datos
+      } else {
+        setError(data.error || 'Error al actualizar el corte');
+      }
+    } catch (error) {
+      console.error('Error actualizando corte:', error);
+      setError('Error al actualizar el corte');
+    } finally {
+      setLoadingUpdate(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadCuts();
+    setRefreshing(false);
+  };
+
   // ✅ EFFECTS
   useEffect(() => {
     loadCuts();
@@ -340,13 +441,12 @@ export default function CutsHistoryPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'active':
-      case 'completed':
-        return darkProTokens.success;
-      case 'pending':
+      case 'open':
         return darkProTokens.warning;
-      case 'cancelled':
-        return darkProTokens.error;
+      case 'closed':
+        return darkProTokens.success;
+      case 'edited':
+        return darkProTokens.info;
       default:
         return darkProTokens.textSecondary;
     }
@@ -354,18 +454,29 @@ export default function CutsHistoryPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'active':
-      case 'completed':
-        return <CheckCircleIcon />;
-      case 'pending':
+      case 'open':
         return <ScheduleIcon />;
-      case 'cancelled':
-        return <CancelIcon />;
+      case 'closed':
+        return <CheckCircleIcon />;
+      case 'edited':
+        return <EditIcon />;
       default:
         return <InfoIcon />;
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'open':
+        return 'Abierto';
+      case 'closed':
+        return 'Cerrado';
+      case 'edited':
+        return 'Editado';
+      default:
+        return status;
+    }
+  };
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <Box sx={{ 
@@ -407,6 +518,21 @@ export default function CutsHistoryPage() {
           
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
+              variant="contained"
+              startIcon={refreshing ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <RefreshIcon />}
+              onClick={handleRefresh}
+              disabled={refreshing}
+              sx={{
+                backgroundColor: darkProTokens.info,
+                color: darkProTokens.background,
+                '&:hover': {
+                  backgroundColor: darkProTokens.infoHover
+                }
+              }}
+            >
+              {refreshing ? 'Actualizando...' : 'Actualizar'}
+            </Button>
+            <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
               onClick={exportCuts}
@@ -419,7 +545,7 @@ export default function CutsHistoryPage() {
                 }
               }}
             >
-              Exportar
+              Exportar Todo
             </Button>
           </Box>
         </Box>
@@ -638,10 +764,9 @@ export default function CutsHistoryPage() {
                     }}
                   >
                     <MenuItem value="all">Todos</MenuItem>
-                    <MenuItem value="active">Activo</MenuItem>
-                    <MenuItem value="completed">Completado</MenuItem>
-                    <MenuItem value="pending">Pendiente</MenuItem>
-                    <MenuItem value="cancelled">Cancelado</MenuItem>
+                    <MenuItem value="open">Abierto</MenuItem>
+                    <MenuItem value="closed">Cerrado</MenuItem>
+                    <MenuItem value="edited">Editado</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -814,7 +939,7 @@ export default function CutsHistoryPage() {
                           <TableCell>
                             <Chip
                               icon={getStatusIcon(cut.status)}
-                              label={cut.status}
+                              label={getStatusLabel(cut.status)}
                               size="small"
                               sx={{
                                 backgroundColor: `${getStatusColor(cut.status)}20`,
@@ -834,25 +959,78 @@ export default function CutsHistoryPage() {
                           </TableCell>
                           
                           <TableCell>
-                            <Tooltip title="Ver detalle">
-                              <IconButton
-                                size="small"
-                                onClick={() => loadCutDetail(cut.id)}
-                                disabled={loadingDetail}
-                                sx={{ 
-                                  color: darkProTokens.info,
-                                  '&:hover': { 
-                                    backgroundColor: `${darkProTokens.info}20` 
-                                  }
-                                }}
-                              >
-                                {loadingDetail ? (
-                                  <CircularProgress size={16} />
-                                ) : (
-                                  <VisibilityIcon fontSize="small" />
-                                )}
-                              </IconButton>
-                            </Tooltip>
+                            <Stack direction="row" spacing={1}>
+                              <Tooltip title="Ver detalle">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => loadCutDetail(cut.id)}
+                                  disabled={loadingDetail}
+                                  sx={{ 
+                                    color: darkProTokens.info,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.info}20` 
+                                    }
+                                  }}
+                                >
+                                  {loadingDetail ? (
+                                    <CircularProgress size={16} />
+                                  ) : (
+                                    <VisibilityIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </Tooltip>
+                              
+                              <Tooltip title="Exportar">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => exportCut(cut.id)}
+                                  sx={{ 
+                                    color: darkProTokens.primary,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.primary}20` 
+                                    }
+                                  }}
+                                >
+                                  <DownloadIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              
+                              <Tooltip title="Editar">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    setEditingCut(cut as CutDetail);
+                                    setEditDialogOpen(true);
+                                  }}
+                                  sx={{ 
+                                    color: darkProTokens.warning,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.warning}20` 
+                                    }
+                                  }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              
+                              <Tooltip title="Eliminar">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    setCutToDelete(cut.id);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  sx={{ 
+                                    color: darkProTokens.error,
+                                    '&:hover': { 
+                                      backgroundColor: `${darkProTokens.error}20` 
+                                    }
+                                  }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -939,25 +1117,25 @@ export default function CutsHistoryPage() {
                       
                       <Stack spacing={2}>
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Número de Corte:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, fontFamily: 'monospace', color: darkProTokens.textPrimary }}>
                             {selectedCut.cut_number}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Fecha del Corte:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
                             {formatDateLocal(selectedCut.cut_date)}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Tipo:
                           </Typography>
                           <Chip
@@ -974,28 +1152,28 @@ export default function CutsHistoryPage() {
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Total de Transacciones:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
                             {selectedCut.total_transactions}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Responsable:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
                             {selectedCut.creator_name || 'Usuario'}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                             Creado:
                           </Typography>
-                          <Typography variant="body2">
+                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
                             {formatDateTime(selectedCut.created_at)}
                           </Typography>
                         </Box>
@@ -1173,7 +1351,8 @@ export default function CutsHistoryPage() {
                           backgroundColor: darkProTokens.surfaceLevel4,
                           p: 2,
                           borderRadius: 2,
-                          borderLeft: `4px solid ${darkProTokens.warning}`
+                          borderLeft: `4px solid ${darkProTokens.warning}`,
+                          color: darkProTokens.textPrimary
                         }}>
                           {selectedCut.notes}
                         </Typography>
@@ -1196,6 +1375,197 @@ export default function CutsHistoryPage() {
               }}
             >
               Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* DIALOG DE CONFIRMACIÓN DE ELIMINACIÓN */}
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          PaperProps={{
+            sx: {
+              backgroundColor: darkProTokens.surfaceLevel2,
+              color: darkProTokens.textPrimary,
+              borderRadius: 4
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: 2,
+            borderBottom: `1px solid ${darkProTokens.grayMedium}`
+          }}>
+            <Avatar sx={{ bgcolor: darkProTokens.error }}>
+              <WarningIcon />
+            </Avatar>
+            <Typography variant="h6" fontWeight="bold">
+              Confirmar Eliminación
+            </Typography>
+          </DialogTitle>
+          
+          <DialogContent sx={{ p: 4 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              ¿Estás seguro de que deseas eliminar este corte?
+            </Typography>
+            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+              Esta acción no se puede deshacer. Se eliminarán todos los datos asociados a este corte.
+            </Typography>
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
+            <Button
+              onClick={() => setDeleteDialogOpen(false)}
+              sx={{ 
+                color: darkProTokens.textSecondary,
+                '&:hover': {
+                  backgroundColor: `${darkProTokens.textSecondary}20`
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDeleteCut}
+              variant="contained"
+              startIcon={loadingDelete ? <CircularProgress size={20} /> : <DeleteIcon />}
+              disabled={loadingDelete}
+              sx={{
+                backgroundColor: darkProTokens.error,
+                color: darkProTokens.textPrimary,
+                '&:hover': {
+                  backgroundColor: darkProTokens.errorHover
+                }
+              }}
+            >
+              {loadingDelete ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* DIALOG DE EDICIÓN */}
+        <Dialog
+          open={editDialogOpen}
+          onClose={() => setEditDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              backgroundColor: darkProTokens.surfaceLevel2,
+              color: darkProTokens.textPrimary,
+              borderRadius: 4
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: `1px solid ${darkProTokens.grayMedium}`
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar sx={{ bgcolor: darkProTokens.warning }}>
+                <EditIcon />
+              </Avatar>
+              <Typography variant="h6" fontWeight="bold">
+                Editar Corte
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setEditDialogOpen(false)}>
+              <CloseIcon sx={{ color: darkProTokens.textSecondary }} />
+            </IconButton>
+          </DialogTitle>
+          
+          <DialogContent sx={{ p: 4 }}>
+            {editingCut && (
+              <Stack spacing={3}>
+                <TextField
+                  fullWidth
+                  label="Gastos del Día"
+                  type="number"
+                  value={editingCut.expenses_amount}
+                  onChange={(e) => setEditingCut({
+                    ...editingCut,
+                    expenses_amount: parseFloat(e.target.value) || 0
+                  })}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      color: darkProTokens.textPrimary,
+                    },
+                  }}
+                />
+                
+                <FormControl fullWidth>
+                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Estado</InputLabel>
+                  <Select
+                    value={editingCut.status}
+                    onChange={(e) => setEditingCut({
+                      ...editingCut,
+                      status: e.target.value
+                    })}
+                    sx={{
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      color: darkProTokens.textPrimary,
+                    }}
+                  >
+                    <MenuItem value="open">Abierto</MenuItem>
+                    <MenuItem value="closed">Cerrado</MenuItem>
+                    <MenuItem value="edited">Editado</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <TextField
+                  fullWidth
+                  label="Notas / Observaciones"
+                  multiline
+                  rows={4}
+                  value={editingCut.notes || ''}
+                  onChange={(e) => setEditingCut({
+                    ...editingCut,
+                    notes: e.target.value
+                  })}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      color: darkProTokens.textPrimary,
+                    },
+                  }}
+                />
+              </Stack>
+            )}
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
+            <Button
+              onClick={() => setEditDialogOpen(false)}
+              sx={{ 
+                color: darkProTokens.textSecondary,
+                '&:hover': {
+                  backgroundColor: `${darkProTokens.textSecondary}20`
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUpdateCut}
+              variant="contained"
+              startIcon={loadingUpdate ? <CircularProgress size={20} /> : <EditIcon />}
+              disabled={loadingUpdate}
+              sx={{
+                backgroundColor: darkProTokens.warning,
+                color: darkProTokens.background,
+                '&:hover': {
+                  backgroundColor: darkProTokens.warningHover
+                }
+              }}
+            >
+              {loadingUpdate ? 'Guardando...' : 'Guardar Cambios'}
             </Button>
           </DialogActions>
         </Dialog>
