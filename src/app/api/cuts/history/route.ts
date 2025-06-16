@@ -23,16 +23,18 @@ export async function GET(request: NextRequest) {
       page, limit, search, dateFrom, dateTo, status, isManual, sortBy, sortOrder
     });
 
+    // ✅ USAR CLIENTE SERVIDOR CORRECTO
     const supabase = createServerSupabaseClient();
 
+    // Verificar conexión
     console.log('🔍 Verificando conexión a Supabase...');
     
-    // ✅ QUERY CORREGIDA CON VALIDACIÓN DE CAMPOS
+    // Construir query base con campos correctos de Users
     let query = supabase
       .from('cash_cuts')
       .select(`
         *,
-        users!cash_cuts_created_by_fkey(id, first_name, last_name, username, name, email, firstName, lastName)
+        "Users"!cash_cuts_created_by_fkey(id, firstName, lastName, name, email)
       `, { count: 'exact' });
 
     // Aplicar filtros
@@ -67,45 +69,40 @@ export async function GET(request: NextRequest) {
 
     if (cutsError) {
       console.error('❌ Error consultando cortes:', cutsError);
+      console.error('Detalles del error:', {
+        message: cutsError.message,
+        details: cutsError.details,
+        hint: cutsError.hint,
+        code: cutsError.code
+      });
       return NextResponse.json({
         success: false,
         error: 'Error al consultar cortes',
-        details: process.env.NODE_ENV === 'development' ? cutsError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? {
+          message: cutsError.message,
+          hint: cutsError.hint,
+          details: cutsError.details
+        } : undefined
       }, { status: 500 });
     }
 
-    // ✅ FORMATEO ROBUSTO DE DATOS
-    const formattedCuts = (cuts || []).map(cut => {
-      let creator_name = 'Usuario';
-      
-      if (cut.users) {
-        if (cut.users.name) {
-          creator_name = cut.users.name;
-        } else if (cut.users.first_name || cut.users.last_name) {
-          creator_name = `${cut.users.first_name || ''} ${cut.users.last_name || ''}`.trim();
-        } else if (cut.users.firstName || cut.users.lastName) {
-          creator_name = `${cut.users.firstName || ''} ${cut.users.lastName || ''}`.trim();
-        } else if (cut.users.username) {
-          creator_name = cut.users.username;
-        } else if (cut.users.email) {
-          creator_name = cut.users.email;
-        }
-      }
+    // Formatear datos con nombre del creador
+    const formattedCuts = cuts?.map(cut => ({
+      ...cut,
+      creator_name: cut.Users 
+        ? cut.Users.name || `${cut.Users.firstName || ''} ${cut.Users.lastName || ''}`.trim() || cut.Users.email || 'Usuario'
+        : 'Usuario',
+      // Convertir valores numéricos para evitar errores
+      grand_total: parseFloat(cut.grand_total || '0'),
+      expenses_amount: parseFloat(cut.expenses_amount || '0'),
+      final_balance: parseFloat(cut.final_balance || '0'),
+      total_transactions: parseInt(cut.total_transactions || '0'),
+      pos_total: parseFloat(cut.pos_total || '0'),
+      abonos_total: parseFloat(cut.abonos_total || '0'),
+      membership_total: parseFloat(cut.membership_total || '0')
+    })) || [];
 
-      return {
-        ...cut,
-        creator_name,
-        grand_total: parseFloat(cut.grand_total || '0'),
-        expenses_amount: parseFloat(cut.expenses_amount || '0'),
-        final_balance: parseFloat(cut.final_balance || '0'),
-        total_transactions: parseInt(cut.total_transactions || '0'),
-        pos_total: parseFloat(cut.pos_total || '0'),
-        abonos_total: parseFloat(cut.abonos_total || '0'),
-        membership_total: parseFloat(cut.membership_total || '0')
-      };
-    });
-
-    // Obtener estadísticas
+    // Obtener estadísticas generales
     let stats = {
       totalCuts: 0,
       totalAmount: 0,
@@ -115,22 +112,22 @@ export async function GET(request: NextRequest) {
     };
 
     try {
-      const { data: statsData } = await supabase
+      const { data: statsData, error: statsError } = await supabase
         .from('cash_cuts')
         .select('grand_total, is_manual');
 
-      if (statsData && statsData.length > 0) {
+      if (!statsError && statsData) {
         const totalAmount = statsData.reduce((sum, cut) => sum + parseFloat(cut.grand_total || '0'), 0);
         stats = {
           totalCuts: statsData.length,
           totalAmount: totalAmount,
-          avgAmount: totalAmount / statsData.length,
+          avgAmount: statsData.length > 0 ? totalAmount / statsData.length : 0,
           manualCuts: statsData.filter(cut => cut.is_manual).length,
           automaticCuts: statsData.filter(cut => !cut.is_manual).length
         };
       }
     } catch (statsError) {
-      console.warn('⚠️ Error consultando estadísticas:', statsError);
+      console.warn('⚠️ Error consultando estadísticas (no crítico):', statsError);
     }
 
     console.log('✅ Historial consultado:', formattedCuts.length, 'cortes');
