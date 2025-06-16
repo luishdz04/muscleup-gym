@@ -23,12 +23,12 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerSupabaseClient();
 
-    let query = supabase
-      .from('expenses')
-      .select(`
-        *,
-        created_by(id, firstName, lastName, name, email)
-      `, { count: 'exact' });
+let query = supabase
+  .from('expenses')
+  .select(`
+    *,
+    "Users"!expenses_created_by_fkey(id, firstName, lastName, name, email)  // ✅ ESTO ES CORRECTO
+  `, { count: 'exact' });
 
     if (search) {
       query = query.or(`description.ilike.%${search}%,notes.ilike.%${search}%,receipt_number.ilike.%${search}%`);
