@@ -30,7 +30,8 @@ import {
   Stack,
   Avatar,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  Snackbar
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -47,12 +48,51 @@ import {
   Person as PersonIcon,
   AttachMoney as MoneyIcon,
   Refresh as RefreshIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  Bookmark as BookmarkIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
+
+// 🎨 DARK PRO SYSTEM - TOKENS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // User Roles
+  roleModerator: '#9C27B0'
+};
 
 // ✅ IMPORTS ESTÁTICOS SIMPLES
 import PaymentToLayawayDialog from '@/components/dialogs/PaymentToLayawayDialog';
@@ -117,78 +157,117 @@ export default function LayawayManagementPage() {
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date()); // ✅ USAR HELPER CORREGIDO
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  }, []);
+
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
+  const formatMexicoDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString); // ✅ USAR HELPER CORREGIDO
+  }, []);
+
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString); // ✅ USAR HELPER CORREGIDO
+  }, []);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
   // ✅ MEMOIZACIÓN ESTABLE PARA TABS
   const tabsData = useMemo(() => [
     { 
       label: 'Activos', 
       value: 'active', 
-      color: '#4caf50',
+      color: darkProTokens.success,
       icon: <CheckIcon />,
       count: stats.activeCount
     },
     { 
       label: 'Por Vencer', 
       value: 'expiring', 
-      color: '#ff9800',
+      color: darkProTokens.warning,
       icon: <WarningIcon />,
       count: stats.expiringCount
     },
     { 
       label: 'Vencidos', 
       value: 'expired', 
-      color: '#f44336',
+      color: darkProTokens.error,
       icon: <ErrorIcon />,
       count: stats.expiredCount
     },
     { 
       label: 'Completados', 
       value: 'completed', 
-      color: '#2196f3',
+      color: darkProTokens.info,
       icon: <CheckIcon />,
       count: stats.completedCount
     }
   ], [stats]);
 
-  // ✅ FUNCIÓN PARA CARGAR ESTADÍSTICAS - SOLUCIÓN HÍBRIDA
+  // ✅ FUNCIÓN PARA CARGAR ESTADÍSTICAS CORREGIDA CON FECHA MÉXICO
   const loadStats = useCallback(async () => {
     if (!mounted) return;
 
     try {
-      console.log('📊 Cargando estadísticas... - 2025-06-11 08:27:41 UTC - luishdz04');
-      
       const { data: allLayaways, error } = await supabase
         .from('sales')
         .select('*')
         .eq('sale_type', 'layaway');
 
       if (error) {
-        console.error('❌ Error cargando estadísticas:', error);
+        console.error('Error cargando estadísticas:', error);
         return;
       }
 
       if (allLayaways) {
-        const today = new Date();
-        const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        // ✅ USAR FECHA MÉXICO PARA CÁLCULOS
+        const mexicoToday = getMexicoDate();
+        const weekFromNow = new Date(mexicoToday.getTime() + 7 * 24 * 60 * 60 * 1000);
 
         const active = allLayaways.filter(l => 
           l.status === 'pending' && 
           l.layaway_expires_at && 
-          new Date(l.layaway_expires_at) >= today
+          new Date(l.layaway_expires_at) >= mexicoToday
         );
         
         const expiring = allLayaways.filter(l => 
           l.status === 'pending' && 
           l.layaway_expires_at &&
-          new Date(l.layaway_expires_at) >= today &&
+          new Date(l.layaway_expires_at) >= mexicoToday &&
           new Date(l.layaway_expires_at) <= weekFromNow
         );
         
         const expired = allLayaways.filter(l => 
           l.status === 'pending' && 
           l.layaway_expires_at &&
-          new Date(l.layaway_expires_at) < today
+          new Date(l.layaway_expires_at) < mexicoToday
         );
         
         const completed = allLayaways.filter(l => l.status === 'completed');
@@ -205,18 +284,16 @@ export default function LayawayManagementPage() {
       }
 
     } catch (error) {
-      console.error('💥 Error en estadísticas:', error);
+      console.error('Error en estadísticas:', error);
     }
-  }, [mounted, supabase]); // ✅ DEPENDENCIAS MÍNIMAS Y ESTABLES
+  }, [mounted, supabase, getMexicoDate]);
 
-  // ✅ FUNCIÓN PARA CARGAR APARTADOS - SOLUCIÓN HÍBRIDA
+  // ✅ FUNCIÓN PARA CARGAR APARTADOS CORREGIDA CON FECHA MÉXICO
   const loadLayaways = useCallback(async () => {
     if (!mounted) return;
 
     setLoading(true);
     try {
-      console.log(`🔍 Cargando apartados para tab: ${tabsData[activeTab]?.value} - luishdz04`);
-      
       let query = supabase
         .from('sales')
         .select('*')
@@ -224,25 +301,26 @@ export default function LayawayManagementPage() {
         .order('created_at', { ascending: false });
 
       const currentFilter = tabsData[activeTab]?.value;
-      const today = new Date();
-      const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+      // ✅ USAR FECHA MÉXICO PARA FILTROS
+      const mexicoToday = getMexicoDate();
+      const weekFromNow = new Date(mexicoToday.getTime() + 7 * 24 * 60 * 60 * 1000);
 
       switch (currentFilter) {
         case 'active':
           query = query
             .eq('status', 'pending')
-            .gte('layaway_expires_at', today.toISOString());
+            .gte('layaway_expires_at', toMexicoTimestamp(mexicoToday)); // ✅ CORREGIDO
           break;
         case 'expiring':
           query = query
             .eq('status', 'pending')
-            .gte('layaway_expires_at', today.toISOString())
-            .lte('layaway_expires_at', weekFromNow.toISOString());
+            .gte('layaway_expires_at', toMexicoTimestamp(mexicoToday)) // ✅ CORREGIDO
+            .lte('layaway_expires_at', toMexicoTimestamp(weekFromNow)); // ✅ CORREGIDO
           break;
         case 'expired':
           query = query
             .eq('status', 'pending')
-            .lt('layaway_expires_at', today.toISOString());
+            .lt('layaway_expires_at', toMexicoTimestamp(mexicoToday)); // ✅ CORREGIDO
           break;
         case 'completed':
           query = query.eq('status', 'completed');
@@ -256,7 +334,7 @@ export default function LayawayManagementPage() {
       const { data: salesData, error } = await query;
 
       if (error) {
-        console.error('❌ Error en query principal:', error);
+        console.error('Error en query principal:', error);
         throw error;
       }
 
@@ -335,10 +413,9 @@ export default function LayawayManagementPage() {
       );
 
       setLayaways(layawaysWithDetails);
-      console.log(`🎯 ${layawaysWithDetails.length} apartados procesados con datos completos`);
 
     } catch (error) {
-      console.error('💥 Error cargando apartados:', error);
+      console.error('Error cargando apartados:', error);
       if (mounted) {
         showNotification('Error al cargar apartados', 'error');
       }
@@ -348,7 +425,7 @@ export default function LayawayManagementPage() {
         setLoading(false);
       }
     }
-  }, [mounted, supabase, tabsData, activeTab, searchTerm]); // ✅ DEPENDENCIAS ESPECÍFICAS
+  }, [mounted, supabase, tabsData, activeTab, searchTerm, getMexicoDate, showNotification]);
 
   // ✅ useEffect HÍBRIDO CON GUARD CLAUSES
   useEffect(() => {
@@ -368,34 +445,33 @@ export default function LayawayManagementPage() {
   // ✅ HANDLERS CON useCallback CONTROLADO
   const handleRefresh = useCallback(() => {
     if (!mounted) return;
-    console.log('🔄 Actualización manual... - 2025-06-11 08:27:41 UTC - luishdz04');
     setRefreshKey(prev => prev + 1);
     showNotification('Actualizando datos...', 'info');
-  }, [mounted]);
+  }, [mounted, showNotification]);
 
   const getProgressColor = useCallback((percentage: number) => {
-    if (percentage >= 80) return '#4caf50';
-    if (percentage >= 50) return '#ff9800';
-    return '#f44336';
-  }, []); // ✅ SIN DEPENDENCIAS
+    if (percentage >= 80) return darkProTokens.success;
+    if (percentage >= 50) return darkProTokens.warning;
+    return darkProTokens.error;
+  }, []);
 
+  // ✅ CÁLCULO DE DÍAS HASTA VENCIMIENTO CORREGIDO CON FECHA MÉXICO
   const getDaysUntilExpiration = useCallback((layawayExpiresAt: string) => {
     if (!layawayExpiresAt) return 0;
-    const today = new Date();
+    // ✅ USAR FECHA MÉXICO PARA CÁLCULOS
+    const mexicoToday = getMexicoDate();
     const expiration = new Date(layawayExpiresAt);
-    const diffTime = expiration.getTime() - today.getTime();
+    const diffTime = expiration.getTime() - mexicoToday.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
-  }, []); // ✅ SIN DEPENDENCIAS
+  }, [getMexicoDate]);
 
   // ✅ HANDLERS DE DIALOGS CON useCallback HÍBRIDO
   const handleViewDetails = useCallback((layaway: Layaway) => {
     if (!mounted || !layaway?.id) {
-      console.error('❌ No se puede abrir detalles: layaway inválido o componente desmontado');
+      console.error('No se puede abrir detalles: layaway inválido o componente desmontado');
       return;
     }
-    
-    console.log('👁️ Ver detalles:', layaway.sale_number, '- 2025-06-11 08:27:41 UTC - luishdz04');
     
     const validLayaway = {
       ...layaway,
@@ -418,11 +494,9 @@ export default function LayawayManagementPage() {
 
   const handleAddPayment = useCallback((layaway: Layaway) => {
     if (!mounted || !layaway?.id) {
-      console.error('❌ No se puede agregar abono: layaway inválido o componente desmontado');
+      console.error('No se puede agregar abono: layaway inválido o componente desmontado');
       return;
     }
-    
-    console.log('💰 Agregar abono:', layaway.sale_number, '- 2025-06-11 08:27:41 UTC - luishdz04');
     
     const validLayaway = {
       ...layaway,
@@ -444,11 +518,9 @@ export default function LayawayManagementPage() {
 
   const handleConvertToSale = useCallback((layaway: Layaway) => {
     if (!mounted || !layaway?.id) {
-      console.error('❌ No se puede convertir: layaway inválido o componente desmontado');
+      console.error('No se puede convertir: layaway inválido o componente desmontado');
       return;
     }
-    
-    console.log('🛒 Convertir a venta:', layaway.sale_number, '- 2025-06-11 08:27:41 UTC - luishdz04');
     
     const validLayaway = {
       ...layaway,
@@ -469,11 +541,9 @@ export default function LayawayManagementPage() {
 
   const handleCancelLayaway = useCallback((layaway: Layaway) => {
     if (!mounted || !layaway?.id) {
-      console.error('❌ No se puede cancelar: layaway inválido o componente desmontado');
+      console.error('No se puede cancelar: layaway inválido o componente desmontado');
       return;
     }
-    
-    console.log('❌ Cancelar apartado:', layaway.sale_number, '- 2025-06-11 08:27:41 UTC - luishdz04');
     
     const validLayaway = {
       ...layaway,
@@ -504,7 +574,6 @@ export default function LayawayManagementPage() {
   }, [mounted]);
 
   const handleSuccess = useCallback(() => {
-    console.log('✅ Operación exitosa - refrescando datos...');
     setRefreshKey(prev => prev + 1);
     setPaymentDialogOpen(false);
     setConvertDialogOpen(false);
@@ -514,10 +583,14 @@ export default function LayawayManagementPage() {
 
   if (!mounted) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ 
+        p: 3,
+        background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+        minHeight: '100vh'
+      }}>
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-          <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ ml: 2 }}>
+          <CircularProgress size={60} sx={{ color: darkProTokens.primary }} />
+          <Typography variant="h6" sx={{ ml: 2, color: darkProTokens.textPrimary }}>
             Cargando gestión de apartados...
           </Typography>
         </Box>
@@ -526,127 +599,301 @@ export default function LayawayManagementPage() {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ 
+      p: 3,
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+      minHeight: '100vh'
+    }}>
+      {/* SNACKBAR */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: '#333' }}>
-            📦 Gestión de Apartados
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#666', mt: 1 }}>
-            2025-06-11 08:27:41 UTC - Usuario: luishdz04 - {layaways.length} apartados cargados
-          </Typography>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 4,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        p: 3,
+        borderRadius: 4,
+        border: `1px solid ${darkProTokens.grayDark}`
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Avatar sx={{ 
+            bgcolor: darkProTokens.roleModerator, 
+            width: 56, 
+            height: 56,
+            color: darkProTokens.textPrimary
+          }}>
+            <BookmarkIcon sx={{ fontSize: 30 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h4" sx={{ 
+              fontWeight: 800, 
+              color: darkProTokens.textPrimary 
+            }}>
+              📦 Gestión de Apartados
+            </Typography>
+            <Typography variant="body1" sx={{ 
+              color: darkProTokens.textSecondary,
+              mt: 1
+            }}>
+             Administra y da seguimiento a todos los apartados activos
+            </Typography>
+          </Box>
         </Box>
         <Button
           variant="contained"
-          startIcon={loading ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : <RefreshIcon />}
+          startIcon={loading ? <CircularProgress size={20} sx={{ color: darkProTokens.textPrimary }} /> : <RefreshIcon />}
           onClick={handleRefresh}
           disabled={loading}
           sx={{
-            background: 'linear-gradient(135deg, #4caf50, #388e3c)',
-            fontWeight: 600
+            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+            color: darkProTokens.textPrimary,
+            fontWeight: 700,
+            px: 3,
+            py: 1.5,
+            borderRadius: 3,
+            '&:hover': {
+              background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
+              transform: 'translateY(-2px)',
+              boxShadow: `0 8px 20px ${darkProTokens.success}40`
+            }
           }}
         >
           {loading ? 'Actualizando...' : 'Actualizar'}
         </Button>
       </Box>
 
-      {/* ✅ ALERT DE CORRECCIÓN HÍBRIDA */}
-      <Alert severity="success" sx={{ mb: 3 }}>
-        ✅ <strong>SOLUCIÓN HÍBRIDA APLICADA:</strong> useCallback con dependencias controladas + Guard clauses - 2025-06-11 08:27:41 UTC
-      </Alert>
-
-      {/* ✅ ESTADÍSTICAS CON GRID2 */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      {/* ✅ ESTADÍSTICAS CON DARK PRO SYSTEM */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid xs={12} sm={6} md={2.4}>
-          <Card sx={{
-            background: 'linear-gradient(135deg, #4caf50, #388e3c)',
-            color: '#FFFFFF'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <CheckIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
-                {stats.activeCount}
-              </Typography>
-              <Typography variant="body2">
-                Apartados Activos
-              </Typography>
-            </CardContent>
-          </Card>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+              color: darkProTokens.textPrimary,
+              border: `1px solid ${darkProTokens.success}30`,
+              borderRadius: 3,
+              overflow: 'hidden',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: darkProTokens.primary
+              }
+            }}>
+              <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                <CheckIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <Typography variant="h3" fontWeight="bold">
+                  {stats.activeCount}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Apartados Activos
+                </Typography>
+              </CardContent>
+            </Card>
+          </motion.div>
         </Grid>
 
         <Grid xs={12} sm={6} md={2.4}>
-          <Card sx={{
-            background: 'linear-gradient(135deg, #ff9800, #f57c00)',
-            color: '#FFFFFF'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <WarningIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
-                {stats.expiringCount}
-              </Typography>
-              <Typography variant="body2">
-                Por Vencer (7 días)
-              </Typography>
-            </CardContent>
-          </Card>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+              color: darkProTokens.textPrimary,
+              border: `1px solid ${darkProTokens.warning}30`,
+              borderRadius: 3,
+              overflow: 'hidden',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: darkProTokens.primary
+              }
+            }}>
+              <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                <WarningIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <Typography variant="h3" fontWeight="bold">
+                  {stats.expiringCount}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Por Vencer (7 días)
+                </Typography>
+              </CardContent>
+            </Card>
+          </motion.div>
         </Grid>
 
         <Grid xs={12} sm={6} md={2.4}>
-          <Card sx={{
-            background: 'linear-gradient(135deg, #2196f3, #1976d2)',
-            color: '#FFFFFF'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <MoneyIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
-                {formatPrice(stats.totalValue)}
-              </Typography>
-              <Typography variant="body2">
-                Valor Total
-              </Typography>
-            </CardContent>
-          </Card>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+              color: darkProTokens.textPrimary,
+              border: `1px solid ${darkProTokens.info}30`,
+              borderRadius: 3,
+              overflow: 'hidden',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: darkProTokens.primary
+              }
+            }}>
+              <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                <MoneyIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <Typography variant="h4" fontWeight="bold">
+                  {formatPrice(stats.totalValue)}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Valor Total
+                </Typography>
+              </CardContent>
+            </Card>
+          </motion.div>
         </Grid>
 
         <Grid xs={12} sm={6} md={2.4}>
-          <Card sx={{
-            background: 'linear-gradient(135deg, #9c27b0, #7b1fa2)',
-            color: '#FFFFFF'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <PaymentIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
-                {formatPrice(stats.totalCollected)}
-              </Typography>
-              <Typography variant="body2">
-                Total Cobrado
-              </Typography>
-            </CardContent>
-          </Card>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+              color: darkProTokens.textPrimary,
+              border: `1px solid ${darkProTokens.roleModerator}30`,
+              borderRadius: 3,
+              overflow: 'hidden',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: darkProTokens.primary
+              }
+            }}>
+              <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                <PaymentIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <Typography variant="h4" fontWeight="bold">
+                  {formatPrice(stats.totalCollected)}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Total Cobrado
+                </Typography>
+              </CardContent>
+            </Card>
+          </motion.div>
         </Grid>
 
         <Grid xs={12} sm={6} md={2.4}>
-          <Card sx={{
-            background: 'linear-gradient(135deg, #f44336, #d32f2f)',
-            color: '#FFFFFF'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <PendingIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
-                {formatPrice(stats.totalPending)}
-              </Typography>
-              <Typography variant="body2">
-                Total Pendiente
-              </Typography>
-            </CardContent>
-          </Card>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+              color: darkProTokens.textPrimary,
+              border: `1px solid ${darkProTokens.error}30`,
+              borderRadius: 3,
+              overflow: 'hidden',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: darkProTokens.primary
+              }
+            }}>
+              <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                <PendingIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <Typography variant="h4" fontWeight="bold">
+                  {formatPrice(stats.totalPending)}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Total Pendiente
+                </Typography>
+              </CardContent>
+            </Card>
+          </motion.div>
         </Grid>
       </Grid>
 
-      {/* ✅ FILTROS CON GRID2 */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
+      
+      {/* ✅ FILTROS CON DARK PRO SYSTEM */}
+      <Card sx={{ 
+        mb: 4,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 4
+      }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <FilterIcon sx={{ color: darkProTokens.primary }} />
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.textPrimary,
+              fontWeight: 700
+            }}>
+              Filtros de Búsqueda
+            </Typography>
+          </Box>
+          
           <Grid container spacing={3} alignItems="center">
             <Grid xs={12} md={6}>
               <TextField
@@ -658,19 +905,54 @@ export default function LayawayManagementPage() {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: '#666' }} />
+                      <SearchIcon sx={{ color: darkProTokens.primary }} />
                     </InputAdornment>
-                  )
+                  ),
+                  sx: {
+                    color: darkProTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: darkProTokens.grayDark
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: darkProTokens.primary
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: darkProTokens.primary
+                    }
+                  }
+                }}
+                InputLabelProps={{
+                  sx: { 
+                    color: darkProTokens.textSecondary,
+                    '&.Mui-focused': { color: darkProTokens.primary }
+                  }
                 }}
               />
             </Grid>
 
             <Grid xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>Estado</InputLabel>
+                <InputLabel sx={{ 
+                  color: darkProTokens.textSecondary,
+                  '&.Mui-focused': { color: darkProTokens.primary }
+                }}>
+                  Estado
+                </InputLabel>
                 <Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
+                  sx={{
+                    color: darkProTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: darkProTokens.grayDark
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: darkProTokens.primary
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: darkProTokens.primary
+                    }
+                  }}
                 >
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="active">Activos</MenuItem>
@@ -690,7 +972,15 @@ export default function LayawayManagementPage() {
                   setSearchTerm('');
                   setStatusFilter('all');
                 }}
-                sx={{ height: '56px' }}
+                sx={{ 
+                  height: '56px',
+                  color: darkProTokens.textSecondary,
+                  borderColor: darkProTokens.grayDark,
+                  '&:hover': {
+                    borderColor: darkProTokens.primary,
+                    color: darkProTokens.primary
+                  }
+                }}
               >
                 Limpiar Filtros
               </Button>
@@ -700,7 +990,12 @@ export default function LayawayManagementPage() {
       </Card>
 
       {/* Tabs de estados */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ 
+        mb: 4,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 4
+      }}>
         <Tabs 
           value={activeTab} 
           onChange={handleTabChange}
@@ -709,7 +1004,15 @@ export default function LayawayManagementPage() {
             '& .MuiTab-root': {
               fontWeight: 600,
               textTransform: 'none',
-              fontSize: '1rem'
+              fontSize: '1rem',
+              color: darkProTokens.textSecondary,
+              '&.Mui-selected': {
+                color: darkProTokens.primary
+              }
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: darkProTokens.primary,
+              height: 3
             }
           }}
         >
@@ -727,7 +1030,7 @@ export default function LayawayManagementPage() {
                 </Box>
               }
               sx={{
-                color: activeTab === index ? tab.color : '#666',
+                color: activeTab === index ? tab.color : darkProTokens.textSecondary,
                 '&.Mui-selected': {
                   color: tab.color
                 }
@@ -738,29 +1041,141 @@ export default function LayawayManagementPage() {
       </Card>
 
       {/* Tabla de apartados */}
-      <Card>
+      <Card sx={{
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 4,
+        overflow: 'hidden'
+      }}>
         {loading && (
           <Box sx={{ p: 2 }}>
-            <LinearProgress />
-            <Typography variant="body2" sx={{ mt: 1, textAlign: 'center', color: '#666' }}>
+            <LinearProgress sx={{
+              '& .MuiLinearProgress-bar': {
+                backgroundColor: darkProTokens.primary
+              }
+            }} />
+            <Typography variant="body2" sx={{ mt: 1, textAlign: 'center', color: darkProTokens.textSecondary }}>
               Cargando apartados para {tabsData[activeTab]?.label}...
             </Typography>
           </Box>
         )}
         
-        <TableContainer component={Paper}>
+            <TableContainer component={Paper} sx={{
+          background: darkProTokens.surfaceLevel1,
+          border: `1px solid ${darkProTokens.grayDark}`
+        }}>
           <Table stickyHeader>
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 140 }}>Número</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>Cliente</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Total</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Pagado</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Pendiente</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>Progreso</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 140 }}>Vence</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>Acciones</TableCell>
+              <TableRow>
+                {/* ✅ HEADER CORREGIDO CON FONDO VISIBLE */}
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 140,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Número
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 200,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Cliente
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 120,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Total
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 120,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Pagado
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 120,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Pendiente
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 150,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Progreso
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 140,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Vence 
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 100,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Estado
+                </TableCell>
+                <TableCell sx={{ 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
+                  color: darkProTokens.textPrimary, 
+                  fontWeight: 'bold', 
+                  minWidth: 200,
+                  borderBottom: `2px solid ${darkProTokens.primary}`,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10
+                }}>
+                  Acciones
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -782,14 +1197,22 @@ export default function LayawayManagementPage() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
-                      hover
-                      sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                      sx={{ 
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: `${darkProTokens.primary}10`,
+                        },
+                        '&:nth-of-type(even)': {
+                          backgroundColor: `${darkProTokens.surfaceLevel1}40`
+                        },
+                        '&:last-child td, &:last-child th': { border: 0 }
+                      }}
                     >
                       <TableCell>
-                        <Typography variant="body2" fontWeight="600" color="primary">
+                        <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.primary }}>
                           {layaway.sale_number}
                         </Typography>
-                        <Typography variant="caption" color="textSecondary">
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                           {formatDate(layaway.created_at)}
                         </Typography>
                       </TableCell>
@@ -799,7 +1222,7 @@ export default function LayawayManagementPage() {
                           <Avatar sx={{ 
                             width: 32, 
                             height: 32, 
-                            bgcolor: isRealCustomer ? '#4caf50' : '#ff9800' 
+                            bgcolor: isRealCustomer ? darkProTokens.success : darkProTokens.warning
                           }}>
                             <PersonIcon fontSize="small" />
                           </Avatar>
@@ -808,14 +1231,14 @@ export default function LayawayManagementPage() {
                               variant="body2" 
                               fontWeight="500"
                               sx={{ 
-                                color: isRealCustomer ? '#333' : '#ff9800',
+                                color: isRealCustomer ? darkProTokens.textPrimary : darkProTokens.warning,
                                 fontStyle: isRealCustomer ? 'normal' : 'italic'
                               }}
                             >
                               {layaway.customer_name || 'Cliente General'}
                             </Typography>
                             {layaway.customer_email && (
-                              <Typography variant="caption" color="textSecondary">
+                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                                 {layaway.customer_email}
                               </Typography>
                             )}
@@ -824,19 +1247,19 @@ export default function LayawayManagementPage() {
                       </TableCell>
 
                       <TableCell>
-                        <Typography variant="body2" fontWeight="600">
+                        <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
                           {formatPrice(totalAmount)}
                         </Typography>
                       </TableCell>
 
                       <TableCell>
-                        <Typography variant="body2" fontWeight="600" color="success.main">
+                        <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.success }}>
                           {formatPrice(paidAmount)}
                         </Typography>
                       </TableCell>
 
                       <TableCell>
-                        <Typography variant="body2" fontWeight="600" color="warning.main">
+                        <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.warning }}>
                           {formatPrice(pendingAmount)}
                         </Typography>
                       </TableCell>
@@ -850,12 +1273,13 @@ export default function LayawayManagementPage() {
                               flexGrow: 1, 
                               height: 8, 
                               borderRadius: 4,
+                              backgroundColor: `${darkProTokens.grayDark}`,
                               '& .MuiLinearProgress-bar': {
                                 backgroundColor: getProgressColor(progressPercentage)
                               }
                             }}
                           />
-                          <Typography variant="caption" fontWeight="600">
+                          <Typography variant="caption" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
                             {Math.round(progressPercentage)}%
                           </Typography>
                         </Box>
@@ -863,7 +1287,7 @@ export default function LayawayManagementPage() {
 
                       <TableCell>
                         <Box>
-                          <Typography variant="body2" fontWeight="500">
+                          <Typography variant="body2" fontWeight="500" sx={{ color: darkProTokens.textPrimary }}>
                             {layaway.layaway_expires_at ? formatDate(layaway.layaway_expires_at) : 'Sin fecha'}
                           </Typography>
                           {layaway.layaway_expires_at && (
@@ -874,12 +1298,16 @@ export default function LayawayManagementPage() {
                                 `Vencido ${Math.abs(daysLeft)} días`
                               }
                               size="small"
-                              color={
-                                daysLeft > 7 ? 'success' :
-                                daysLeft > 0 ? 'warning' :
-                                'error'
-                              }
-                              sx={{ mt: 0.5, fontSize: '0.7rem' }}
+                              sx={{
+                                mt: 0.5,
+                                fontSize: '0.7rem',
+                                backgroundColor: 
+                                  daysLeft > 7 ? darkProTokens.success :
+                                  daysLeft > 0 ? darkProTokens.warning :
+                                  darkProTokens.error,
+                                color: darkProTokens.textPrimary,
+                                fontWeight: 600
+                              }}
                             />
                           )}
                         </Box>
@@ -889,11 +1317,15 @@ export default function LayawayManagementPage() {
                         <Chip 
                           label={layaway.status}
                           size="small" 
-                          color={
-                            layaway.status === 'completed' ? 'success' :
-                            layaway.status === 'pending' ? 'warning' :
-                            'error'
-                          }
+                          sx={{
+                            backgroundColor: 
+                              layaway.status === 'completed' ? darkProTokens.success :
+                              layaway.status === 'pending' ? darkProTokens.warning :
+                              darkProTokens.error,
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600,
+                            textTransform: 'capitalize'
+                          }}
                         />
                       </TableCell>
 
@@ -903,6 +1335,13 @@ export default function LayawayManagementPage() {
                             <IconButton
                               size="small"
                               onClick={() => handleViewDetails(layaway)}
+                              sx={{
+                                color: darkProTokens.textSecondary,
+                                '&:hover': {
+                                  backgroundColor: `${darkProTokens.info}20`,
+                                  color: darkProTokens.info
+                                }
+                              }}
                             >
                               <ViewIcon />
                             </IconButton>
@@ -911,9 +1350,18 @@ export default function LayawayManagementPage() {
                           <Tooltip title="Agregar Abono">
                             <IconButton
                               size="small"
-                              color="primary"
                               onClick={() => handleAddPayment(layaway)}
                               disabled={layaway.status !== 'pending'}
+                              sx={{
+                                color: darkProTokens.textSecondary,
+                                '&:hover': {
+                                  backgroundColor: `${darkProTokens.primary}20`,
+                                  color: darkProTokens.primary
+                                },
+                                '&.Mui-disabled': {
+                                  color: darkProTokens.textDisabled
+                                }
+                              }}
                             >
                               <AddPaymentIcon />
                             </IconButton>
@@ -922,9 +1370,18 @@ export default function LayawayManagementPage() {
                           <Tooltip title="Convertir a Venta">
                             <IconButton
                               size="small"
-                              color="success"
                               onClick={() => handleConvertToSale(layaway)}
                               disabled={pendingAmount > 0 || layaway.status !== 'pending'}
+                              sx={{
+                                color: darkProTokens.textSecondary,
+                                '&:hover': {
+                                  backgroundColor: `${darkProTokens.success}20`,
+                                  color: darkProTokens.success
+                                },
+                                '&.Mui-disabled': {
+                                  color: darkProTokens.textDisabled
+                                }
+                              }}
                             >
                               <ConvertIcon />
                             </IconButton>
@@ -933,9 +1390,18 @@ export default function LayawayManagementPage() {
                           <Tooltip title="Cancelar Apartado">
                             <IconButton
                               size="small"
-                              color="error"
                               onClick={() => handleCancelLayaway(layaway)}
                               disabled={layaway.status !== 'pending'}
+                              sx={{
+                                color: darkProTokens.textSecondary,
+                                '&:hover': {
+                                  backgroundColor: `${darkProTokens.error}20`,
+                                  color: darkProTokens.error
+                                },
+                                '&.Mui-disabled': {
+                                  color: darkProTokens.textDisabled
+                                }
+                              }}
                             >
                               <CancelIcon />
                             </IconButton>
@@ -949,13 +1415,26 @@ export default function LayawayManagementPage() {
 
               {layaways.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="h6" color="textSecondary" sx={{ mb: 1 }}>
-                      📦 No se encontraron apartados
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {tabsData[activeTab]?.label} - Prueba a cambiar de pestaña o actualizar
-                    </Typography>
+                  <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6 }}>
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2
+                    }}>
+                      <HistoryIcon sx={{ 
+                        fontSize: 60, 
+                        color: darkProTokens.grayMuted,
+                        opacity: 0.5
+                      }} />
+                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                        📦 No se encontraron apartados
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        {tabsData[activeTab]?.label} - Prueba a cambiar de pestaña o actualizar
+                      </Typography>
+                     
+                    </Box>
                   </TableCell>
                 </TableRow>
               )}
@@ -985,7 +1464,7 @@ export default function LayawayManagementPage() {
             onClose={() => setConvertDialogOpen(false)}
             layaway={selectedLayaway}
             onSuccess={handleSuccess}
-          />
+                      />
 
           <CancelLayawayDialog
             open={cancelDialogOpen}
@@ -996,40 +1475,26 @@ export default function LayawayManagementPage() {
         </>
       )}
 
-      {/* Debug info */}
-      <Card sx={{ mt: 3, background: 'rgba(76, 175, 80, 0.1)' }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ color: '#4caf50', mb: 2 }}>
-            ✅ SOLUCIÓN HÍBRIDA IMPLEMENTADA - 08:27:41 UTC
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid xs={12} sm={6} md={3}>
-              <Typography variant="body2" sx={{ color: '#666' }}>
-                <strong>useCallback:</strong> ✅ Dependencias controladas
-              </Typography>
-            </Grid>
-            <Grid xs={12} sm={6} md={3}>
-              <Typography variant="body2" sx={{ color: '#666' }}>
-                <strong>useEffect:</strong> ✅ Guard clauses
-              </Typography>
-            </Grid>
-            <Grid xs={12} sm={6} md={3}>
-              <Typography variant="body2" sx={{ color: '#666' }}>
-                <strong>Grid:</strong> ✅ Grid2 consistente
-              </Typography>
-            </Grid>
-            <Grid xs={12} sm={6} md={3}>
-              <Typography variant="body2" sx={{ color: '#666' }}>
-                <strong>Usuario:</strong> luishdz04
-              </Typography>
-            </Grid>
-          </Grid>
-          
-          <Typography variant="body2" sx={{ color: '#666', mt: 2 }}>
-            <strong>🎯 SOLUCIÓN HÍBRIDA:</strong> Combinación de useCallback con dependencias estables + Guard clauses + Memoización inteligente. Los dialogs ahora deberían abrir sin loops infinitos.
-          </Typography>
-        </CardContent>
-      </Card>
+      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+        }
+      `}</style>
     </Box>
   );
 }

@@ -1,4 +1,3 @@
-// src/components/dialogs/EditSaleDialog.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -31,7 +30,8 @@ import {
   Stack,
   Divider,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Snackbar
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -45,8 +45,42 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatPrice, formatDate } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
+
+// 🎨 DARK PRO SYSTEM - TOKENS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0'
+};
 
 interface EditSaleDialogProps {
   open: boolean;
@@ -96,7 +130,47 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [confirmChanges, setConfirmChanges] = useState(false);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
+  }, []);
+
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price || 0);
+  }, []);
+
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
+  const formatMexicoDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
   // ✅ INICIALIZAR DATOS
   useEffect(() => {
@@ -255,8 +329,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
     return saleChanged || itemsChanged;
   }, [editedSale, editedItems, sale]);
 
-  // ✅ GUARDAR CAMBIOS
-  const handleSave = async () => {
+  // ✅ GUARDAR CAMBIOS (CORREGIDO CON FECHAS MÉXICO)
+  const handleSave = useCallback(async () => {
     if (!validateChanges()) return;
     if (!hasChanges()) {
       showNotification('No hay cambios para guardar', 'info');
@@ -279,7 +353,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
       const totals = calculateTotals();
 
-      // ✅ ACTUALIZAR VENTA PRINCIPAL
+      // ✅ ACTUALIZAR VENTA PRINCIPAL CON FECHA MÉXICO (LA BD MANEJA updated_at AUTOMÁTICAMENTE)
       const { error: saleError } = await supabase
         .from('sales')
         .update({
@@ -294,14 +368,14 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           commission_amount: editedSale.commission_amount,
           total_amount: totals.total,
           paid_amount: totals.finalTotal,
-          updated_at: new Date().toISOString(),
           updated_by: userId
+          // ✅ updated_at se maneja automáticamente por la BD
         })
         .eq('id', sale.id);
 
       if (saleError) throw saleError;
 
-      // ✅ ACTUALIZAR ITEMS
+      // ✅ ACTUALIZAR ITEMS CON FECHAS CORREGIDAS
       for (const [index, item] of editedItems.entries()) {
         if (item.isDeleted && !item.isNew) {
           // Eliminar item existente
@@ -322,8 +396,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
               unit_price: item.unit_price,
               total_price: item.total_price,
               discount_amount: item.discount_amount,
-              tax_amount: item.tax_amount,
-              created_at: new Date().toISOString()
+              tax_amount: item.tax_amount
+              // ✅ created_at se maneja automáticamente por la BD
             }]);
           
           if (error) throw error;
@@ -337,8 +411,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
               unit_price: item.unit_price,
               total_price: item.total_price,
               discount_amount: item.discount_amount,
-              tax_amount: item.tax_amount,
-              updated_at: new Date().toISOString()
+              tax_amount: item.tax_amount
+              // ✅ updated_at se maneja automáticamente por la BD
             })
             .eq('id', item.id);
           
@@ -346,7 +420,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         }
       }
 
-      // ✅ REGISTRAR HISTORIAL DE CAMBIOS
+      // ✅ REGISTRAR HISTORIAL DE CAMBIOS CON FECHA CORREGIDA
       await supabase
         .from('sale_edit_history')
         .insert([{
@@ -355,8 +429,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           changes_summary: `Venta editada: ${hasChanges() ? 'Items y totales actualizados' : 'Solo metadatos'}`,
           previous_total: sale.total_amount,
           new_total: totals.total,
-          edit_reason: 'Manual edit from admin panel',
-          created_at: new Date().toISOString()
+          edit_reason: 'Manual edit from admin panel'
+          // ✅ created_at se maneja automáticamente por la BD
         }]);
 
       showNotification('Venta actualizada exitosamente', 'success');
@@ -367,20 +441,79 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
     } finally {
       setProcessing(false);
     }
-  };
+  }, [
+    validateChanges,
+    hasChanges,
+    confirmChanges,
+    supabase,
+    editedSale,
+    editedItems,
+    sale,
+    calculateTotals,
+    showNotification,
+    onSuccess
+  ]);
 
   if (!sale) return null;
 
   const totals = calculateTotals();
-
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="xl" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `1px solid ${darkProTokens.grayDark}`,
+          color: darkProTokens.textPrimary,
+          borderRadius: 4
+        }
+      }}
+    >
+      {/* SNACKBAR */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #ff9800, #f57c00)',
-        color: '#FFFFFF'
+        background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+        color: darkProTokens.textPrimary,
+        borderRadius: '16px 16px 0 0'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <EditIcon />
@@ -393,10 +526,19 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         </Button>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: 3, background: darkProTokens.surfaceLevel1 }}>
         {/* Alertas */}
         {hasChanges() && (
-          <Alert severity="warning" sx={{ mb: 3 }}>
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              mb: 3,
+              background: `${darkProTokens.warning}20`,
+              border: `1px solid ${darkProTokens.warning}30`,
+              color: darkProTokens.textPrimary,
+              '& .MuiAlert-icon': { color: darkProTokens.warning }
+            }}
+          >
             <Typography variant="body2">
               ⚠️ Hay cambios sin guardar. Los cambios afectarán los totales y el inventario.
             </Typography>
@@ -404,7 +546,16 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         )}
 
         {confirmChanges && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 3,
+              background: `${darkProTokens.error}20`,
+              border: `1px solid ${darkProTokens.error}30`,
+              color: darkProTokens.textPrimary,
+              '& .MuiAlert-icon': { color: darkProTokens.error }
+            }}
+          >
             <Typography variant="body2" fontWeight="600">
               🔴 CONFIRMACIÓN REQUERIDA: ¿Está seguro de guardar estos cambios? Esta acción es irreversible.
             </Typography>
@@ -414,20 +565,41 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         <Grid container spacing={3}>
           {/* Estados y metadatos */}
           <Grid size={{ xs: 12, md: 6 }}>
-            <Card>
+            <Card sx={{
+              background: darkProTokens.surfaceLevel3,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#ff9800', fontWeight: 700 }}>
+                <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.warning, fontWeight: 700 }}>
                   📋 Estados y Información
                 </Typography>
 
                 <Grid container spacing={2}>
-                <Grid size={6}> 
+                  <Grid size={6}> 
                     <FormControl fullWidth>
-                      <InputLabel>Estado de Venta</InputLabel>
+                      <InputLabel sx={{ 
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.warning }
+                      }}>
+                        Estado de Venta
+                      </InputLabel>
                       <Select
                         value={editedSale.status}
                         onChange={(e) => setEditedSale(prev => ({ ...prev, status: e.target.value }))}
                         error={!!errors.status}
+                        sx={{
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.grayDark
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.warning
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.warning
+                          }
+                        }}
                       >
                         <MenuItem value="pending">Pendiente</MenuItem>
                         <MenuItem value="completed">Completada</MenuItem>
@@ -439,11 +611,28 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
                   <Grid size={6}> 
                     <FormControl fullWidth>
-                      <InputLabel>Estado de Pago</InputLabel>
+                      <InputLabel sx={{ 
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.warning }
+                      }}>
+                        Estado de Pago
+                      </InputLabel>
                       <Select
                         value={editedSale.payment_status}
                         onChange={(e) => setEditedSale(prev => ({ ...prev, payment_status: e.target.value }))}
                         error={!!errors.payment_status}
+                        sx={{
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.grayDark
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.warning
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.warning
+                          }
+                        }}
                       >
                         <MenuItem value="pending">Pendiente</MenuItem>
                         <MenuItem value="partial">Parcial</MenuItem>
@@ -462,6 +651,20 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                       value={editedSale.notes}
                       onChange={(e) => setEditedSale(prev => ({ ...prev, notes: e.target.value }))}
                       placeholder="Notas adicionales sobre la venta..."
+                      InputProps={{
+                        sx: {
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.grayDark
+                          }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.warning }
+                        }
+                      }}
                     />
                   </Grid>
 
@@ -471,9 +674,21 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                         <Switch
                           checked={editedSale.receipt_printed}
                           onChange={(e) => setEditedSale(prev => ({ ...prev, receipt_printed: e.target.checked }))}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': {
+                              color: darkProTokens.warning,
+                            },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: darkProTokens.warning,
+                            },
+                          }}
                         />
                       }
-                      label="Ticket Impreso"
+                      label={
+                        <Typography sx={{ color: darkProTokens.textSecondary }}>
+                          Ticket Impreso
+                        </Typography>
+                      }
                     />
                   </Grid>
 
@@ -483,9 +698,21 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                         <Switch
                           checked={editedSale.email_sent}
                           onChange={(e) => setEditedSale(prev => ({ ...prev, email_sent: e.target.checked }))}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': {
+                              color: darkProTokens.warning,
+                            },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: darkProTokens.warning,
+                            },
+                          }}
                         />
                       }
-                      label="Email Enviado"
+                      label={
+                        <Typography sx={{ color: darkProTokens.textSecondary }}>
+                          Email Enviado
+                        </Typography>
+                      }
                     />
                   </Grid>
                 </Grid>
@@ -495,16 +722,28 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
           {/* Opciones avanzadas */}
           <Grid size={{ xs: 12, md: 6 }}>
-            <Card>
+            <Card sx={{
+              background: darkProTokens.surfaceLevel3,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 700 }}>
+                  <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
                     ⚙️ Opciones Avanzadas
                   </Typography>
                   <Button
                     size="small"
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     variant="outlined"
+                    sx={{
+                      color: darkProTokens.textSecondary,
+                      borderColor: darkProTokens.grayDark,
+                      '&:hover': {
+                        borderColor: darkProTokens.warning,
+                        color: darkProTokens.warning
+                      }
+                    }}
                   >
                     {showAdvanced ? 'Ocultar' : 'Mostrar'}
                   </Button>
@@ -517,7 +756,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                     transition={{ duration: 0.3 }}
                   >
                     <Grid container spacing={2}>
-                    <Grid size={12}> 
+                      <Grid size={12}> 
                         <TextField
                           fullWidth
                           label="Descuento Adicional"
@@ -528,6 +767,20 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                             discount_amount: parseFloat(e.target.value) || 0 
                           }))}
                           inputProps={{ min: 0, step: 0.01 }}
+                          InputProps={{
+                            sx: {
+                              color: darkProTokens.textPrimary,
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: darkProTokens.grayDark
+                              }
+                            }
+                          }}
+                          InputLabelProps={{
+                            sx: { 
+                              color: darkProTokens.textSecondary,
+                              '&.Mui-focused': { color: darkProTokens.warning }
+                            }
+                          }}
                         />
                       </Grid>
 
@@ -542,6 +795,20 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                             tax_amount: parseFloat(e.target.value) || 0 
                           }))}
                           inputProps={{ min: 0, step: 0.01 }}
+                          InputProps={{
+                            sx: {
+                              color: darkProTokens.textPrimary,
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: darkProTokens.grayDark
+                              }
+                            }
+                          }}
+                          InputLabelProps={{
+                            sx: { 
+                              color: darkProTokens.textSecondary,
+                              '&.Mui-focused': { color: darkProTokens.warning }
+                            }
+                          }}
                         />
                       </Grid>
 
@@ -556,6 +823,20 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                             commission_amount: parseFloat(e.target.value) || 0 
                           }))}
                           inputProps={{ min: 0, step: 0.01 }}
+                          InputProps={{
+                            sx: {
+                              color: darkProTokens.textPrimary,
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: darkProTokens.grayDark
+                              }
+                            }
+                          }}
+                          InputLabelProps={{
+                            sx: { 
+                              color: darkProTokens.textSecondary,
+                              '&.Mui-focused': { color: darkProTokens.warning }
+                            }
+                          }}
                         />
                       </Grid>
                     </Grid>
@@ -567,29 +848,46 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
           {/* Productos */}
           <Grid size={12}> 
-            <Card>
+            <Card sx={{
+              background: darkProTokens.surfaceLevel3,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#ff9800', fontWeight: 700 }}>
-                  🛒 Productos de la Venta
+                <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.warning, fontWeight: 700 }}>
+                  🛒 Productos de la Venta ({editedItems.filter(item => !item.isDeleted).length})
                 </Typography>
 
                 {errors.items && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
+                  <Alert 
+                    severity="error" 
+                    sx={{ 
+                      mb: 2,
+                      background: `${darkProTokens.error}20`,
+                      border: `1px solid ${darkProTokens.error}30`,
+                      color: darkProTokens.textPrimary,
+                      '& .MuiAlert-icon': { color: darkProTokens.error }
+                    }}
+                  >
                     {errors.items}
                   </Alert>
                 )}
 
-                <TableContainer>
+                <TableContainer component={Paper} sx={{
+                  background: darkProTokens.surfaceLevel2,
+                  border: `1px solid ${darkProTokens.grayDark}`,
+                  borderRadius: 2
+                }}>
                   <Table>
                     <TableHead>
-                      <TableRow>
-                        <TableCell>Producto</TableCell>
-                        <TableCell align="center">Cantidad</TableCell>
-                        <TableCell align="right">Precio Unit.</TableCell>
-                        <TableCell align="right">Descuento</TableCell>
-                        <TableCell align="right">Impuestos</TableCell>
-                        <TableCell align="right">Total</TableCell>
-                        <TableCell align="center">Acciones</TableCell>
+                      <TableRow sx={{ background: darkProTokens.grayDark }}>
+                        <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Producto</TableCell>
+                        <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Cantidad</TableCell>
+                        <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Precio Unit.</TableCell>
+                        <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Descuento</TableCell>
+                        <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Impuestos</TableCell>
+                        <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Total</TableCell>
+                        <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Acciones</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -598,8 +896,10 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                           key={item.id || index}
                           sx={{ 
                             opacity: item.isDeleted ? 0.4 : 1,
-                            backgroundColor: item.isNew ? 'rgba(76, 175, 80, 0.1)' : 
-                              item.isDeleted ? 'rgba(244, 67, 54, 0.1)' : 'inherit'
+                            backgroundColor: item.isNew ? `${darkProTokens.success}20` : 
+                              item.isDeleted ? `${darkProTokens.error}20` : 'inherit',
+                            '&:hover': { backgroundColor: `${darkProTokens.primary}10` },
+                            '&:nth-of-type(even)': { backgroundColor: `${darkProTokens.surfaceLevel1}60` }
                           }}
                         >
                           <TableCell>
@@ -608,13 +908,35 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                               value={item.product_name}
                               onChange={(e) => updateItem(index, 'product_name', e.target.value)}
                               disabled={item.isDeleted}
-                              sx={{ minWidth: 200 }}
+                              sx={{ 
+                                minWidth: 200,
+                                '& .MuiInputBase-input': { color: darkProTokens.textPrimary },
+                                '& .MuiOutlinedInput-notchedOutline': { borderColor: darkProTokens.grayDark }
+                              }}
                             />
                             {item.isNew && (
-                              <Chip label="Nuevo" size="small" color="success" sx={{ ml: 1 }} />
+                              <Chip 
+                                label="Nuevo" 
+                                size="small" 
+                                sx={{ 
+                                  ml: 1,
+                                  backgroundColor: darkProTokens.success,
+                                  color: darkProTokens.textPrimary,
+                                  fontWeight: 600
+                                }}
+                              />
                             )}
                             {item.isDeleted && (
-                              <Chip label="Eliminado" size="small" color="error" sx={{ ml: 1 }} />
+                              <Chip 
+                                label="Eliminado" 
+                                size="small" 
+                                sx={{ 
+                                  ml: 1,
+                                  backgroundColor: darkProTokens.error,
+                                  color: darkProTokens.textPrimary,
+                                  fontWeight: 600
+                                }}
+                              />
                             )}
                           </TableCell>
 
@@ -626,7 +948,14 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                               onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
                               disabled={item.isDeleted}
                               error={!!errors[`quantity_${index}`]}
-                              sx={{ width: 80 }}
+                              sx={{ 
+                                width: 80,
+                                '& .MuiInputBase-input': { 
+                                  color: darkProTokens.textPrimary,
+                                  textAlign: 'center'
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': { borderColor: darkProTokens.grayDark }
+                              }}
                               inputProps={{ min: 1 }}
                             />
                           </TableCell>
@@ -639,7 +968,11 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                               onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
                               disabled={item.isDeleted}
                               error={!!errors[`price_${index}`]}
-                              sx={{ width: 100 }}
+                              sx={{ 
+                                width: 100,
+                                '& .MuiInputBase-input': { color: darkProTokens.textPrimary },
+                                '& .MuiOutlinedInput-notchedOutline': { borderColor: darkProTokens.grayDark }
+                              }}
                               inputProps={{ min: 0, step: 0.01 }}
                             />
                           </TableCell>
@@ -651,7 +984,11 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                               value={item.discount_amount}
                               onChange={(e) => updateItem(index, 'discount_amount', parseFloat(e.target.value) || 0)}
                               disabled={item.isDeleted}
-                              sx={{ width: 100 }}
+                              sx={{ 
+                                width: 100,
+                                '& .MuiInputBase-input': { color: darkProTokens.textPrimary },
+                                '& .MuiOutlinedInput-notchedOutline': { borderColor: darkProTokens.grayDark }
+                              }}
                               inputProps={{ min: 0, step: 0.01 }}
                             />
                           </TableCell>
@@ -663,13 +1000,17 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                               value={item.tax_amount}
                               onChange={(e) => updateItem(index, 'tax_amount', parseFloat(e.target.value) || 0)}
                               disabled={item.isDeleted}
-                              sx={{ width: 100 }}
+                              sx={{ 
+                                width: 100,
+                                '& .MuiInputBase-input': { color: darkProTokens.textPrimary },
+                                '& .MuiOutlinedInput-notchedOutline': { borderColor: darkProTokens.grayDark }
+                              }}
                               inputProps={{ min: 0, step: 0.01 }}
                             />
                           </TableCell>
 
                           <TableCell align="right">
-                            <Typography variant="body2" fontWeight="600">
+                            <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.primary }}>
                               {formatPrice(item.total_price)}
                             </Typography>
                           </TableCell>
@@ -679,7 +1020,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                               <IconButton
                                 size="small"
                                 onClick={() => restoreItem(index)}
-                                color="success"
+                                sx={{ color: darkProTokens.success }}
                               >
                                 <AddIcon />
                               </IconButton>
@@ -687,7 +1028,7 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                               <IconButton
                                 size="small"
                                 onClick={() => deleteItem(index)}
-                                color="error"
+                                sx={{ color: darkProTokens.error }}
                               >
                                 <DeleteIcon />
                               </IconButton>
@@ -705,19 +1046,20 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           {/* Resumen de totales */}
           <Grid size={12}> 
             <Card sx={{
-              background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05))',
-              border: '2px solid rgba(255, 152, 0, 0.3)'
+              background: `linear-gradient(135deg, ${darkProTokens.warning}20, ${darkProTokens.warning}10)`,
+              border: `2px solid ${darkProTokens.warning}30`,
+              borderRadius: 3
             }}>
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: '#ff9800', fontWeight: 700 }}>
+                <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.warning, fontWeight: 700 }}>
                   💰 Resumen de Totales
                 </Typography>
 
                 <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 2.4 }}>  
+                  <Grid size={{ xs: 12, md: 2.4 }}>  
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="body2" color="textSecondary">Subtotal</Typography>
-                      <Typography variant="h6" fontWeight="600">
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Subtotal</Typography>
+                      <Typography variant="h6" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
                         {formatPrice(totals.subtotal)}
                       </Typography>
                     </Box>
@@ -725,8 +1067,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
                   <Grid size={{ xs: 12, md: 2.4 }}>  
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="body2" color="textSecondary">Descuentos</Typography>
-                      <Typography variant="h6" fontWeight="600" color="error.main">
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Descuentos</Typography>
+                      <Typography variant="h6" fontWeight="600" sx={{ color: darkProTokens.error }}>
                         -{formatPrice(totals.totalDiscount)}
                       </Typography>
                     </Box>
@@ -734,8 +1076,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
                   <Grid size={{ xs: 12, md: 2.4 }}>  
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="body2" color="textSecondary">Impuestos</Typography>
-                      <Typography variant="h6" fontWeight="600" color="info.main">
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Impuestos</Typography>
+                      <Typography variant="h6" fontWeight="600" sx={{ color: darkProTokens.info }}>
                         {formatPrice(totals.totalTax)}
                       </Typography>
                     </Box>
@@ -743,8 +1085,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
 
                   <Grid size={{ xs: 12, md: 2.4 }}>  
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="body2" color="textSecondary">Comisiones</Typography>
-                      <Typography variant="h6" fontWeight="600" color="warning.main">
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisiones</Typography>
+                      <Typography variant="h6" fontWeight="600" sx={{ color: darkProTokens.warning }}>
                         {formatPrice(editedSale.commission_amount)}
                       </Typography>
                     </Box>
@@ -754,17 +1096,17 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
                     <Box sx={{ 
                       textAlign: 'center',
                       p: 2,
-                      background: 'rgba(255, 152, 0, 0.2)',
+                      background: `${darkProTokens.warning}40`,
                       borderRadius: 2,
-                      border: '1px solid rgba(255, 152, 0, 0.5)'
+                      border: `1px solid ${darkProTokens.warning}50`
                     }}>
-                      <Typography variant="body2" color="textSecondary">TOTAL FINAL</Typography>
-                      <Typography variant="h4" fontWeight="800" color="#ff9800">
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>TOTAL FINAL</Typography>
+                      <Typography variant="h4" fontWeight="800" sx={{ color: darkProTokens.warning }}>
                         {formatPrice(totals.finalTotal)}
                       </Typography>
-                      {totals.finalTotal !== sale.total_amount && (
-                        <Typography variant="caption" color="warning.main">
-                          (Original: {formatPrice(sale.total_amount)})
+                      {totals.finalTotal !== (sale.total_amount || 0) && (
+                        <Typography variant="caption" sx={{ color: darkProTokens.warning }}>
+                          (Original: {formatPrice(sale.total_amount || 0)})
                         </Typography>
                       )}
                     </Box>
@@ -776,12 +1118,25 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
         </Grid>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, gap: 2 }}>
+      <DialogActions sx={{ 
+        p: 3, 
+        gap: 2,
+        background: darkProTokens.surfaceLevel2,
+        borderTop: `1px solid ${darkProTokens.grayDark}`
+      }}>
         <Button 
           onClick={onClose} 
           disabled={processing}
           variant="outlined"
           size="large"
+          sx={{
+            color: darkProTokens.textSecondary,
+            borderColor: darkProTokens.grayDark,
+            '&:hover': {
+              borderColor: darkProTokens.primary,
+              color: darkProTokens.primary
+            }
+          }}
         >
           <CancelIcon sx={{ mr: 1 }} />
           Cancelar
@@ -792,14 +1147,19 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }: EditS
           disabled={processing || !hasChanges()}
           variant="contained"
           size="large"
-          color={confirmChanges ? "error" : "warning"}
           startIcon={processing ? <SaveIcon /> : confirmChanges ? <WarningIcon /> : <SaveIcon />}
           sx={{
             background: confirmChanges ? 
-              'linear-gradient(135deg, #f44336, #d32f2f)' :
-              'linear-gradient(135deg, #ff9800, #f57c00)',
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+            color: darkProTokens.textPrimary,
             fontWeight: 'bold',
-            px: 4
+            px: 4,
+            '&:hover': {
+              background: confirmChanges ? 
+                `linear-gradient(135deg, ${darkProTokens.errorHover}, ${darkProTokens.error})` :
+                `linear-gradient(135deg, ${darkProTokens.warningHover}, ${darkProTokens.warning})`
+            }
           }}
         >
           {processing ? 'Guardando...' : 

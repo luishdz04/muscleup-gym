@@ -73,6 +73,83 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import UpdateIcon from '@mui/icons-material/Update';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
+// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  iconDefault: '#FFFFFF',
+  iconMuted: '#AAAAAA',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // Document Status
+  docMissing: '#B00020',
+  docPending: '#FFB300',
+  docApproved: '#388E3C',
+  docRejected: '#D32F2F',
+  docExpired: '#555555',
+  docExpiringSoon: '#FFA000',
+  docUploading: '#2196F3',
+  
+  // User Roles
+  roleAdmin: '#FFCC00',
+  roleStaff: '#1976D2',
+  roleTrainer: '#009688',
+  roleUser: '#777777',
+  roleModerator: '#9C27B0',
+  roleGuest: '#444444',
+  
+  // Profile Status
+  profileComplete: '#388E3C',
+  profileIncomplete: '#FFB300',
+  profileSuspended: '#B00020',
+  profilePending: '#1976D2',
+  profileVerified: '#43A047',
+  
+  // Notifications
+  notifNewBg: 'rgba(255,204,0,0.1)',
+  notifCriticalBg: 'rgba(176,0,32,0.2)',
+  notifWarningBg: 'rgba(255,160,0,0.1)',
+  notifSuccessBg: 'rgba(56,142,60,0.1)',
+  notifErrorBg: 'rgba(211,47,47,0.1)',
+  notifInfoBg: 'rgba(25,118,210,0.1)',
+  
+  // Focus & Interactions
+  focusRing: 'rgba(255,204,0,0.4)',
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
+
 // 🏗️ INTERFACES PRINCIPALES
 interface User {
   id?: string;
@@ -355,7 +432,7 @@ const uploadFileToStorage = async (
   }
 };
 
-// 🚀 COMPONENTE PRINCIPAL
+// 🚀 COMPONENTE PRINCIPAL CON DARK PRO SYSTEM
 export default function UserFormDialog({ open, onClose, user, onSave }: UserFormDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -892,7 +969,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       e.target.value = '';
     };
   
-  // 🎨 COMPONENTE AVATAR ULTRA PRO CON ANIMACIONES
+  // 🎨 COMPONENTE AVATAR ULTRA PRO CON DARK PRO SYSTEM
   const ProfileAvatar = () => {
     if (!initializationComplete) {
       return (
@@ -901,7 +978,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           width={120}
           height={120}
           sx={{ 
-            bgcolor: 'rgba(255, 255, 255, 0.1)',
+            bgcolor: darkProTokens.grayMedium,
             mx: 'auto',
             mb: 2
           }}
@@ -919,21 +996,21 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         <Box sx={{ position: 'relative' }}>
           <Box sx={{
             position: 'relative',
-            background: 'linear-gradient(135deg, #4caf50, #45a049)',
+            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
             borderRadius: '50%',
             padding: '4px',
-            boxShadow: '0 8px 25px rgba(76, 175, 80, 0.3)'
+            boxShadow: `0 8px 25px ${darkProTokens.primary}40`
           }}>
             <Avatar 
               src={currentImageUrl}
               sx={{ 
                 width: 120, 
                 height: 120,
-                border: '3px solid #1a1a1a',
+                border: `3px solid ${darkProTokens.surfaceLevel1}`,
                 fontSize: '2.5rem',
                 fontWeight: 'bold',
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
-                color: '#4caf50',
+                bgcolor: darkProTokens.surfaceLevel2,
+                color: darkProTokens.primary,
                 transition: 'all 0.3s ease',
                 '&:hover': {
                   transform: 'scale(1.05)',
@@ -954,11 +1031,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 position: 'absolute',
                 top: -8,
                 left: -8,
-                bgcolor: '#ff9800',
-                color: 'white',
+                bgcolor: darkProTokens.warning,
+                color: darkProTokens.background,
                 fontSize: '0.7rem',
                 height: 24,
-                animation: 'pulse 2s infinite'
+                animation: 'pulse 2s infinite',
+                border: `1px solid ${darkProTokens.warningHover}`
               }}
             />
           )}
@@ -975,11 +1053,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: '50%',
-              bgcolor: 'rgba(0,0,0,0.7)'
+              bgcolor: `${darkProTokens.background}DD`
             }}>
               <CircularProgress 
                 size={36} 
-                sx={{ color: '#4caf50' }} 
+                sx={{ color: darkProTokens.primary }} 
               />
             </Box>
           )}
@@ -990,35 +1068,36 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               position: 'absolute',
               top: -8,
               right: -8,
-              bgcolor: '#f44336',
+              bgcolor: darkProTokens.error,
               borderRadius: '50%',
               width: 28,
               height: 28,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(244, 67, 54, 0.4)'
+              boxShadow: `0 4px 12px ${darkProTokens.error}40`,
+              border: `2px solid ${darkProTokens.background}`
             }}>
-              <ErrorIcon sx={{ fontSize: 16, color: 'white' }} />
+              <ErrorIcon sx={{ fontSize: 16, color: darkProTokens.textPrimary }} />
             </Box>
           )}
           
-          {/* Botón de cámara mejorado */}
+          {/* Botón de cámara mejorado con Dark Pro */}
           <IconButton 
             sx={{ 
               position: 'absolute',
               bottom: 0,
               right: 0,
-              background: 'linear-gradient(135deg, #4caf50, #45a049)',
-              color: 'white',
+              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+              color: darkProTokens.background,
               width: 40,
               height: 40,
-              border: '3px solid #1a1a1a',
-              boxShadow: '0 4px 20px rgba(76, 175, 80, 0.4)',
+              border: `3px solid ${darkProTokens.surfaceLevel1}`,
+              boxShadow: `0 4px 20px ${darkProTokens.primary}40`,
               '&:hover': { 
-                background: 'linear-gradient(135deg, #45a049, #388e3c)',
+                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
                 transform: 'scale(1.1)',
-                boxShadow: '0 6px 25px rgba(76, 175, 80, 0.6)',
+                boxShadow: `0 6px 25px ${darkProTokens.primary}60`,
               },
               '&:active': {
                 transform: 'scale(0.95)',
@@ -1029,7 +1108,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             disabled={fileUploading.profilePicture}
           >
             {fileUploading.profilePicture ? (
-              <CircularProgress size={20} sx={{ color: 'white' }} />
+              <CircularProgress size={20} sx={{ color: darkProTokens.background }} />
             ) : (
               <>
                 <input
@@ -1047,7 +1126,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     );
   };
   
-  // 🖊️ COMPONENTE FIRMA ULTRA PRO
+  // 🖊️ COMPONENTE FIRMA ULTRA PRO CON DARK PRO SYSTEM
   const SignatureDisplay = () => {
     if (!initializationComplete) {
       return (
@@ -1056,7 +1135,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           width="100%"
           height={120}
           sx={{ 
-            bgcolor: 'rgba(255, 255, 255, 0.1)', 
+            bgcolor: darkProTokens.grayMedium, 
             borderRadius: 2
           }}
         />
@@ -1073,11 +1152,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         <Box sx={{ 
           position: 'relative', 
           width: '100%',
-          bgcolor: 'white',
+          bgcolor: darkProTokens.textPrimary,
           borderRadius: 2,
           p: 2,
-          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-          border: '2px solid rgba(156, 39, 176, 0.2)'
+          boxShadow: `0 4px 15px ${darkProTokens.background}40`,
+          border: `2px solid ${darkProTokens.roleModerator}40`
         }}>
           <Box 
             component="img"
@@ -1101,11 +1180,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               position: 'absolute',
               top: 8,
               right: 8,
-              bgcolor: signature ? '#ff9800' : '#4caf50',
-              color: 'white',
+              bgcolor: signature ? darkProTokens.warning : darkProTokens.success,
+              color: darkProTokens.textPrimary,
               fontWeight: 600,
               fontSize: '0.75rem',
-              '& .MuiChip-icon': { color: 'white', fontSize: 14 },
+              '& .MuiChip-icon': { color: darkProTokens.textPrimary, fontSize: 14 },
               ...(signature ? { animation: 'pulse 2s infinite' } : {})
             }}
           />
@@ -1118,9 +1197,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               position: 'absolute',
               bottom: 8,
               right: 8,
-              bgcolor: 'rgba(156, 39, 176, 0.9)',
-              color: 'white',
-              '&:hover': { bgcolor: '#9c27b0' }
+              bgcolor: `${darkProTokens.roleModerator}E6`,
+              color: darkProTokens.textPrimary,
+              '&:hover': { 
+                bgcolor: darkProTokens.roleModerator,
+                transform: 'scale(1.1)'
+              },
+              transition: 'all 0.2s ease'
             }}
           >
             <PhotoCamera fontSize="small" />
@@ -1140,9 +1223,9 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 position: 'absolute',
                 top: 8,
                 left: 8,
-                bgcolor: 'rgba(244, 67, 54, 0.9)',
-                color: 'white',
-                '&:hover': { bgcolor: '#f44336' }
+                bgcolor: `${darkProTokens.error}E6`,
+                color: darkProTokens.textPrimary,
+                '&:hover': { bgcolor: darkProTokens.error }
               }}
             >
               <RefreshIcon fontSize="small" />
@@ -1161,25 +1244,25 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 2,
-        border: '2px dashed rgba(156, 39, 176, 0.3)',
-        bgcolor: 'rgba(156, 39, 176, 0.05)',
+        border: `2px dashed ${darkProTokens.roleModerator}40`,
+        bgcolor: `${darkProTokens.roleModerator}05`,
         transition: 'all 0.3s ease',
         '&:hover': {
-          borderColor: 'rgba(156, 39, 176, 0.5)',
-          bgcolor: 'rgba(156, 39, 176, 0.1)'
+          borderColor: `${darkProTokens.roleModerator}60`,
+          bgcolor: `${darkProTokens.roleModerator}10`
         }
       }}>
         {signatureImage.isLoading ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-            <CircularProgress size={24} sx={{ color: '#9c27b0' }} />
-            <Typography variant="caption" sx={{ color: '#9c27b0', fontWeight: 500 }}>
+            <CircularProgress size={24} sx={{ color: darkProTokens.roleModerator }} />
+            <Typography variant="caption" sx={{ color: darkProTokens.roleModerator, fontWeight: 500 }}>
               Cargando firma...
             </Typography>
           </Box>
         ) : signatureImage.error ? (
           <Box sx={{ textAlign: 'center' }}>
-            <ErrorIcon sx={{ color: '#f44336', mb: 1, fontSize: 28 }} />
-            <Typography variant="caption" sx={{ color: '#f44336', display: 'block', fontWeight: 500 }}>
+            <ErrorIcon sx={{ color: darkProTokens.error, mb: 1, fontSize: 28 }} />
+            <Typography variant="caption" sx={{ color: darkProTokens.error, display: 'block', fontWeight: 500 }}>
               Error: {signatureImage.error}
             </Typography>
             <Button
@@ -1187,10 +1270,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               onClick={() => retryImageLoad('signature')}
               startIcon={<RefreshIcon />}
               sx={{ 
-                color: '#9c27b0', 
+                color: darkProTokens.roleModerator, 
                 mt: 1,
                 fontWeight: 600,
-                '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.1)' }
+                '&:hover': { bgcolor: `${darkProTokens.roleModerator}10` }
               }}
             >
               Reintentar
@@ -1198,8 +1281,8 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           </Box>
         ) : (
           <Box sx={{ textAlign: 'center' }}>
-            <SignatureIcon sx={{ color: 'rgba(156, 39, 176, 0.4)', fontSize: 32, mb: 1 }} />
-            <Typography variant="caption" sx={{ color: 'rgba(156, 39, 176, 0.6)', fontWeight: 500, display: 'block', mb: 2 }}>
+            <SignatureIcon sx={{ color: `${darkProTokens.roleModerator}60`, fontSize: 32, mb: 1 }} />
+            <Typography variant="caption" sx={{ color: `${darkProTokens.roleModerator}80`, fontWeight: 500, display: 'block', mb: 2 }}>
               Sin firma registrada
             </Typography>
             <Button
@@ -1208,11 +1291,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               size="small"
               startIcon={<PhotoCamera />}
               sx={{
-                borderColor: 'rgba(156, 39, 176, 0.5)',
-                color: '#9c27b0',
+                borderColor: `${darkProTokens.roleModerator}60`,
+                color: darkProTokens.roleModerator,
                 '&:hover': {
-                  borderColor: '#9c27b0',
-                  bgcolor: 'rgba(156, 39, 176, 0.1)'
+                  borderColor: darkProTokens.roleModerator,
+                  bgcolor: `${darkProTokens.roleModerator}10`
                 }
               }}
             >
@@ -1230,7 +1313,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     );
   };
   
-  // 🚀 COMPONENTE CONTRATO PDF ULTRA PRO
+  // 🚀 COMPONENTE CONTRATO PDF ULTRA PRO CON DARK PRO SYSTEM
   const ContractPdfDisplay = () => {
     if (!initializationComplete) {
       return (
@@ -1241,10 +1324,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: 2,
-          bgcolor: 'rgba(0, 0, 0, 0.2)',
-          border: '2px dashed rgba(255, 255, 255, 0.2)'
+          bgcolor: darkProTokens.surfaceLevel2,
+          border: `2px dashed ${darkProTokens.borderDefault}`
         }}>
-          <CircularProgress size={28} sx={{ color: '#2196f3' }} />
+          <CircularProgress size={28} sx={{ color: darkProTokens.info }} />
         </Box>
       );
     }
@@ -1259,21 +1342,21 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           width: '100%',
           p: 3,
           borderRadius: 2,
-          background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(63, 81, 181, 0.1))',
-          border: '2px solid rgba(33, 150, 243, 0.3)',
+          background: `linear-gradient(135deg, ${darkProTokens.info}15, ${darkProTokens.infoHover}15)`,
+          border: `2px solid ${darkProTokens.info}40`,
           position: 'relative'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <AssignmentIcon sx={{ fontSize: 40, color: '#2196f3' }} />
+            <AssignmentIcon sx={{ fontSize: 40, color: darkProTokens.info }} />
             <Box>
               <Typography variant="h6" sx={{ 
-                color: '#2196f3', 
+                color: darkProTokens.info, 
                 fontWeight: 700,
                 mb: 0.5
               }}>
                 Contrato Disponible
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                 Documento oficial generado
               </Typography>
             </Box>
@@ -1287,12 +1370,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               gap: 1,
               p: 1.5,
               borderRadius: 2,
-              bgcolor: 'rgba(33, 150, 243, 0.15)',
-              border: '1px solid rgba(33, 150, 243, 0.4)'
+              bgcolor: `${darkProTokens.info}20`,
+              border: `1px solid ${darkProTokens.info}40`
             }}>
-              <AccessTimeIcon sx={{ fontSize: 16, color: '#2196f3' }} />
+              <AccessTimeIcon sx={{ fontSize: 16, color: darkProTokens.info }} />
               <Typography variant="caption" sx={{ 
-                color: 'rgba(255, 255, 255, 0.8)',
+                color: darkProTokens.textSecondary,
                 fontSize: '0.75rem'
               }}>
                 {new Date(contractLastUpdated).toLocaleString('es-MX', {
@@ -1312,16 +1395,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             onClick={handlePdfView}
             startIcon={<VisibilityIcon />}
             sx={{
-              background: 'linear-gradient(135deg, #2196f3, #1976d2)',
-              color: 'white',
+              background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+              color: darkProTokens.textPrimary,
               px: 3,
               py: 1,
               fontWeight: 600,
               borderRadius: 2,
-              boxShadow: '0 4px 15px rgba(33, 150, 243, 0.3)',
+              boxShadow: `0 4px 15px ${darkProTokens.info}40`,
               '&:hover': {
-                background: 'linear-gradient(135deg, #1976d2, #1565c0)',
-                boxShadow: '0 6px 20px rgba(33, 150, 243, 0.4)',
+                background: `linear-gradient(135deg, ${darkProTokens.infoHover}, ${darkProTokens.info})`,
+                boxShadow: `0 6px 20px ${darkProTokens.info}50`,
                 transform: 'translateY(-2px)'
               },
               transition: 'all 0.3s ease'
@@ -1342,11 +1425,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 2,
-        border: '2px dashed rgba(33, 150, 243, 0.3)',
-        bgcolor: 'rgba(33, 150, 243, 0.05)'
+        border: `2px dashed ${darkProTokens.info}40`,
+        bgcolor: `${darkProTokens.info}05`
       }}>
-        <AssignmentIcon sx={{ color: 'rgba(33, 150, 243, 0.4)', fontSize: 36, mb: 1 }} />
-        <Typography variant="caption" sx={{ color: 'rgba(33, 150, 243, 0.6)', fontWeight: 500 }}>
+        <AssignmentIcon sx={{ color: `${darkProTokens.info}60`, fontSize: 36, mb: 1 }} />
+        <Typography variant="caption" sx={{ color: `${darkProTokens.info}80`, fontWeight: 500 }}>
           Se generará automáticamente
         </Typography>
       </Box>
@@ -1570,7 +1653,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         newErrors.address_postalCode = 'El código postal es obligatorio';
       }
     } else if (step === 2 && formData.rol === 'cliente') {
-      if (!emergencyData.name.trim()) {
+           if (!emergencyData.name.trim()) {
         newErrors.emergency_name = 'El nombre del contacto es obligatorio';
       }
       
@@ -2132,8 +2215,62 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
 
   const steps = getSteps();
 
-  // 🎨 RENDERIZADO DE CONTENIDO POR PASO
+  // 🎨 RENDERIZADO DE CONTENIDO POR PASO CON DARK PRO SYSTEM
   const renderStepContent = (step: number) => {
+    // 🎨 ESTILOS DARK PRO PARA INPUTS
+    const darkProInputStyles = {
+      '& .MuiOutlinedInput-root': {
+        bgcolor: darkProTokens.surfaceLevel1,
+        color: darkProTokens.textPrimary,
+        '& fieldset': { borderColor: darkProTokens.borderDefault, borderWidth: '2px' },
+        '&:hover fieldset': { borderColor: darkProTokens.borderHover },
+        '&.Mui-focused fieldset': { 
+          borderColor: darkProTokens.primary,
+          boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
+        },
+        transition: 'all 0.2s ease'
+      },
+      '& .MuiInputLabel-root': { color: darkProTokens.textSecondary },
+      '& .MuiFormHelperText-root': { color: darkProTokens.error }
+    };
+
+    const darkProSelectStyles = {
+      bgcolor: darkProTokens.surfaceLevel1,
+      color: darkProTokens.textPrimary,
+      '& .MuiOutlinedInput-notchedOutline': { 
+        borderColor: darkProTokens.borderDefault, 
+        borderWidth: '2px' 
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': { 
+        borderColor: darkProTokens.borderHover 
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
+        borderColor: darkProTokens.primary,
+        boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
+      },
+      '& .MuiSvgIcon-root': { color: darkProTokens.iconMuted },
+      transition: 'all 0.2s ease'
+    };
+
+    const darkProMenuProps = {
+      PaperProps: {
+        sx: {
+          bgcolor: darkProTokens.surfaceLevel3,
+          border: `1px solid ${darkProTokens.grayDark}`,
+          borderRadius: 2,
+          backdropFilter: 'blur(10px)',
+          '& .MuiMenuItem-root': {
+            color: darkProTokens.textPrimary,
+            '&:hover': { bgcolor: darkProTokens.hoverOverlay },
+            '&.Mui-selected': {
+              bgcolor: `${darkProTokens.primary}20`,
+              '&:hover': { bgcolor: `${darkProTokens.primary}30` }
+            }
+          }
+        }
+      }
+    };
+
     switch (step) {
       case 0:
         return (
@@ -2151,17 +2288,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   onChange={handleInputChange}
                   error={!!errors.firstName}
                   helperText={errors.firstName}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(76, 175, 80, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#4caf50' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -2174,17 +2301,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   onChange={handleInputChange}
                   error={!!errors.lastName}
                   helperText={errors.lastName}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(76, 175, 80, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#4caf50' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -2201,21 +2318,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <AlternateEmailIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <AlternateEmailIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(76, 175, 80, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#4caf50' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -2231,21 +2338,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PhoneIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <PhoneIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(76, 175, 80, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#4caf50' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -2258,14 +2355,17 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                     sx={{
                       width: '100%',
                       '& .MuiOutlinedInput-root': {
-                        bgcolor: 'rgba(255, 255, 255, 0.05)',
-                        color: 'white',
-                        '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                        '&:hover fieldset': { borderColor: 'rgba(76, 175, 80, 0.5)' },
-                        '&.Mui-focused fieldset': { borderColor: '#4caf50' },
+                        bgcolor: darkProTokens.surfaceLevel1,
+                        color: darkProTokens.textPrimary,
+                        '& fieldset': { borderColor: darkProTokens.borderDefault, borderWidth: '2px' },
+                        '&:hover fieldset': { borderColor: darkProTokens.borderHover },
+                        '&.Mui-focused fieldset': { 
+                          borderColor: darkProTokens.primary,
+                          boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
+                        },
                       },
-                      '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                      '& .MuiSvgIcon-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                      '& .MuiInputLabel-root': { color: darkProTokens.textSecondary },
+                      '& .MuiSvgIcon-root': { color: darkProTokens.iconMuted }
                     }}
                   />
                 </LocalizationProvider>
@@ -2276,31 +2376,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth error={!!errors.gender}>
-                  <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Género</InputLabel>
+                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Género</InputLabel>
                   <Select
                     name="gender"
                     value={formData.gender}
                     onChange={handleSelectChange}
                     label="Género"
-                    sx={{
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(76, 175, 80, 0.5)' },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#4caf50' },
-                      '& .MuiSvgIcon-root': { color: 'rgba(255, 255, 255, 0.7)' }
-                    }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          bgcolor: 'rgba(30, 30, 30, 0.95)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.1)' }
-                          }
-                        }
-                      }
-                    }}
+                    sx={darkProSelectStyles}
+                    MenuProps={darkProMenuProps}
                   >
                     <MenuItem value="masculino">Masculino</MenuItem>
                     <MenuItem value="femenino">Femenino</MenuItem>
@@ -2312,31 +2395,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth error={!!errors.maritalStatus}>
-                  <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Estado Civil</InputLabel>
+                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Estado Civil</InputLabel>
                   <Select
                     name="maritalStatus"
                     value={formData.maritalStatus}
                     onChange={handleSelectChange}
                     label="Estado Civil"
-                    sx={{
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(76, 175, 80, 0.5)' },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#4caf50' },
-                      '& .MuiSvgIcon-root': { color: 'rgba(255, 255, 255, 0.7)' }
-                    }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          bgcolor: 'rgba(30, 30, 30, 0.95)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.1)' }
-                          }
-                        }
-                      }
-                    }}
+                    sx={darkProSelectStyles}
+                    MenuProps={darkProMenuProps}
                   >
                     <MenuItem value="soltero">Soltero/a</MenuItem>
                     <MenuItem value="casado">Casado/a</MenuItem>
@@ -2349,47 +2415,30 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth>
-                  <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Rol</InputLabel>
+                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Rol</InputLabel>
                   <Select
                     name="rol"
                     value={formData.rol}
                     onChange={handleSelectChange}
                     label="Rol"
-                    sx={{
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(76, 175, 80, 0.5)' },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#4caf50' },
-                      '& .MuiSvgIcon-root': { color: 'rgba(255, 255, 255, 0.7)' }
-                    }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          bgcolor: 'rgba(30, 30, 30, 0.95)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.1)' }
-                          }
-                        }
-                      }
-                    }}
+                    sx={darkProSelectStyles}
+                    MenuProps={darkProMenuProps}
                   >
                     <MenuItem value="cliente">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <FitnessCenterIcon fontSize="small" />
+                        <FitnessCenterIcon fontSize="small" sx={{ color: darkProTokens.success }} />
                         Cliente
                       </Box>
                     </MenuItem>
                     <MenuItem value="empleado">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <PersonIcon fontSize="small" />
+                        <PersonIcon fontSize="small" sx={{ color: darkProTokens.roleStaff }} />
                         Empleado
                       </Box>
                     </MenuItem>
                     <MenuItem value="admin">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <SecurityIcon fontSize="small" />
+                        <SecurityIcon fontSize="small" sx={{ color: darkProTokens.roleAdmin }} />
                         Administrador
                       </Box>
                     </MenuItem>
@@ -2403,12 +2452,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   <Alert 
                     severity="warning" 
                     sx={{ 
-                      bgcolor: 'rgba(255, 152, 0, 0.1)', 
-                      border: '1px solid rgba(255, 152, 0, 0.3)',
-                      '& .MuiAlert-icon': { color: '#ff9800' }
+                      bgcolor: darkProTokens.notifWarningBg, 
+                      border: `1px solid ${darkProTokens.warning}40`,
+                      color: darkProTokens.textPrimary,
+                      '& .MuiAlert-icon': { color: darkProTokens.warning }
                     }}
                   >
-                    <Typography sx={{ color: 'white' }}>
+                    <Typography sx={{ color: darkProTokens.textPrimary }}>
                       ⚠️ Este usuario es menor de edad. Se requiere autorización del tutor legal.
                     </Typography>
                   </Alert>
@@ -2425,7 +2475,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
-              color: '#ff9800', 
+              color: darkProTokens.warning, 
               fontWeight: 700, 
               mb: 3,
               display: 'flex',
@@ -2449,20 +2499,20 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <HomeIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <HomeIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255, 152, 0, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#ff9800' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.warning,
+                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
@@ -2477,15 +2527,15 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   error={!!errors.address_number}
                   helperText={errors.address_number}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255, 152, 0, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#ff9800' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.warning,
+                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
@@ -2502,20 +2552,20 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <BusinessIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <BusinessIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255, 152, 0, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#ff9800' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.warning,
+                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
@@ -2532,20 +2582,20 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <LocationCityIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <LocationCityIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255, 152, 0, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#ff9800' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.warning,
+                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
@@ -2562,20 +2612,20 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PublicIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <PublicIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255, 152, 0, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#ff9800' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.warning,
+                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
@@ -2592,20 +2642,20 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <MarkunreadMailboxIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <MarkunreadMailboxIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255, 152, 0, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#ff9800' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.warning,
+                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
@@ -2620,7 +2670,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
-              color: '#f44336', 
+              color: darkProTokens.error, 
               fontWeight: 700, 
               mb: 3,
               display: 'flex',
@@ -2644,20 +2694,20 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PersonIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <PersonIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#f44336' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.error}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.error,
+                        boxShadow: `0 0 0 3px ${darkProTokens.error}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
@@ -2674,27 +2724,27 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PhoneIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <PhoneIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#f44336' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.error}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.error,
+                        boxShadow: `0 0 0 3px ${darkProTokens.error}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth error={!!errors.emergency_bloodType}>
-                  <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Tipo de Sangre</InputLabel>
+                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Tipo de Sangre</InputLabel>
                   <Select
                     name="bloodType"
                     value={emergencyData.bloodType}
@@ -2702,28 +2752,18 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                     label="Tipo de Sangre"
                     startAdornment={
                       <InputAdornment position="start">
-                        <BloodtypeIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <BloodtypeIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     }
                     sx={{
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336' },
-                      '& .MuiSvgIcon-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                      ...darkProSelectStyles,
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: `${darkProTokens.error}80` },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
+                        borderColor: darkProTokens.error,
+                        boxShadow: `0 0 0 3px ${darkProTokens.error}40`
+                      },
                     }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          bgcolor: 'rgba(30, 30, 30, 0.95)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': { bgcolor: 'rgba(244, 67, 54, 0.1)' }
-                          }
-                        }
-                      }
-                    }}
+                    MenuProps={darkProMenuProps}
                   >
                     <MenuItem value="A+">A+</MenuItem>
                     <MenuItem value="A-">A-</MenuItem>
@@ -2751,20 +2791,21 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
-                        <FavoriteIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                        <FavoriteIcon sx={{ color: darkProTokens.iconMuted }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(244, 67, 54, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#f44336' },
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.error}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.error,
+                        boxShadow: `0 0 0 3px ${darkProTokens.error}40`
+                      },
                     },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.5)' }
+                    '& .MuiInputBase-input::placeholder': { color: darkProTokens.textDisabled }
                   }}
                 />
               </Grid>
@@ -2779,7 +2820,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
-              color: '#9c27b0', 
+              color: darkProTokens.roleModerator, 
               fontWeight: 700, 
               mb: 3,
               display: 'flex',
@@ -2799,45 +2840,36 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   value={membershipData.referredBy}
                   onChange={handleMembershipChange}
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(156, 39, 176, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#9c27b0' },
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.roleModerator}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.roleModerator,
+                        boxShadow: `0 0 0 3px ${darkProTokens.roleModerator}40`
+                      },
+                    }
                   }}
                 />
               </Grid>
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth>
-                  <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Nivel de Entrenamiento</InputLabel>
+                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Nivel de Entrenamiento</InputLabel>
                   <Select
                     name="trainingLevel"
                     value={membershipData.trainingLevel}
                     onChange={handleMembershipSelectChange}
                     label="Nivel de Entrenamiento"
                     sx={{
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(156, 39, 176, 0.5)' },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#9c27b0' },
-                      '& .MuiSvgIcon-root': { color: 'rgba(255, 255, 255, 0.7)' }
+                      ...darkProSelectStyles,
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: `${darkProTokens.roleModerator}80` },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
+                        borderColor: darkProTokens.roleModerator,
+                        boxShadow: `0 0 0 3px ${darkProTokens.roleModerator}40`
+                      },
                     }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          bgcolor: 'rgba(30, 30, 30, 0.95)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.1)' }
-                          }
-                        }
-                      }
-                    }}
+                    MenuProps={darkProMenuProps}
                   >
                     <MenuItem value="principiante">🥉 Principiante</MenuItem>
                     <MenuItem value="intermedio">🥈 Intermedio</MenuItem>
@@ -2854,16 +2886,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                       onChange={handleMembershipSwitchChange('receivePlans')}
                       sx={{
                         '& .MuiSwitch-switchBase.Mui-checked': {
-                          color: '#9c27b0',
+                          color: darkProTokens.roleModerator,
                         },
                         '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                          backgroundColor: '#9c27b0',
+                          backgroundColor: darkProTokens.roleModerator,
                         },
                       }}
                     />
                   }
                   label={
-                    <Typography sx={{ color: 'white' }}>
+                    <Typography sx={{ color: darkProTokens.textPrimary }}>
                       📧 Recibir planes de entrenamiento por email
                     </Typography>
                   }
@@ -2883,16 +2915,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   helperText={errors.membership_mainMotivation}
                   placeholder="¿Cuál es tu objetivo principal? (ej: perder peso, ganar músculo, mejorar resistencia...)"
                   sx={{
+                    ...darkProInputStyles,
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(156, 39, 176, 0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: '#9c27b0' },
+                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
+                      '&:hover fieldset': { borderColor: `${darkProTokens.roleModerator}80` },
+                      '&.Mui-focused fieldset': { 
+                        borderColor: darkProTokens.roleModerator,
+                        boxShadow: `0 0 0 3px ${darkProTokens.roleModerator}40`
+                      },
                     },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiFormHelperText-root': { color: '#f44336' },
-                    '& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.5)' }
+                    '& .MuiInputBase-input::placeholder': { color: darkProTokens.textDisabled }
                   }}
                 />
               </Grid>
@@ -2901,11 +2933,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         );
 
       default:
-        // PASO DE ARCHIVOS
+        // PASO DE ARCHIVOS CON DARK PRO SYSTEM
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
-              color: '#2196f3', 
+              color: darkProTokens.info, 
               fontWeight: 700, 
               mb: 3,
               display: 'flex',
@@ -2922,11 +2954,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 <Box sx={{
                   p: 3,
                   borderRadius: 2,
-                  border: '2px solid rgba(156, 39, 176, 0.3)',
-                  bgcolor: 'rgba(156, 39, 176, 0.05)'
+                  border: `2px solid ${darkProTokens.roleModerator}40`,
+                  bgcolor: `${darkProTokens.roleModerator}10`
                 }}>
                   <Typography variant="subtitle1" sx={{ 
-                    color: '#9c27b0', 
+                    color: darkProTokens.roleModerator, 
                     fontWeight: 600, 
                     mb: 2,
                     display: 'flex',
@@ -2940,7 +2972,15 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   <SignatureDisplay />
                   
                   {errors.signature && (
-                    <Alert severity="error" sx={{ mt: 2 }}>
+                    <Alert 
+                      severity="error" 
+                      sx={{ 
+                        mt: 2,
+                        bgcolor: darkProTokens.notifErrorBg,
+                        color: darkProTokens.textPrimary,
+                        '& .MuiAlert-icon': { color: darkProTokens.error }
+                      }}
+                    >
                       {errors.signature}
                     </Alert>
                   )}
@@ -2952,11 +2992,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 <Box sx={{
                   p: 3,
                   borderRadius: 2,
-                  border: '2px solid rgba(33, 150, 243, 0.3)',
-                  bgcolor: 'rgba(33, 150, 243, 0.05)'
+                  border: `2px solid ${darkProTokens.info}40`,
+                  bgcolor: `${darkProTokens.info}10`
                 }}>
                   <Typography variant="subtitle1" sx={{ 
-                    color: '#2196f3', 
+                    color: darkProTokens.info, 
                     fontWeight: 600, 
                     mb: 2,
                     display: 'flex',
@@ -2976,11 +3016,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 <Box sx={{
                   p: 3,
                   borderRadius: 2,
-                  border: '2px solid rgba(255, 193, 7, 0.3)',
-                  bgcolor: 'rgba(255, 193, 7, 0.05)'
+                  border: `2px solid ${darkProTokens.primary}40`,
+                  bgcolor: `${darkProTokens.primary}10`
                 }}>
                   <Typography variant="subtitle1" sx={{ 
-                    color: '#ffc107', 
+                    color: darkProTokens.primary, 
                     fontWeight: 600, 
                     mb: 3,
                     display: 'flex',
@@ -3000,18 +3040,18 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                             onChange={handleSwitchChange('fingerprint')}
                             sx={{
                               '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: '#ffc107',
+                                color: darkProTokens.primary,
                               },
                               '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: '#ffc107',
+                                backgroundColor: darkProTokens.primary,
                               },
                             }}
                           />
                         }
                         label={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <FingerPrintIcon sx={{ color: '#ffc107' }} />
-                            <Typography sx={{ color: 'white' }}>
+                            <FingerPrintIcon sx={{ color: darkProTokens.primary }} />
+                            <Typography sx={{ color: darkProTokens.textPrimary }}>
                               Huella dactilar registrada
                             </Typography>
                           </Box>
@@ -3027,18 +3067,18 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                             onChange={handleSwitchChange('emailSent')}
                             sx={{
                               '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: '#4caf50',
+                                color: darkProTokens.success,
                               },
                               '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: '#4caf50',
+                                backgroundColor: darkProTokens.success,
                               },
                             }}
                           />
                         }
                         label={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AlternateEmailIcon sx={{ color: '#4caf50' }} />
-                            <Typography sx={{ color: 'white' }}>
+                            <AlternateEmailIcon sx={{ color: darkProTokens.success }} />
+                            <Typography sx={{ color: darkProTokens.textPrimary }}>
                               Email de bienvenida enviado
                             </Typography>
                           </Box>
@@ -3065,7 +3105,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                         label={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <PhoneIcon sx={{ color: '#25d366' }} />
-                            <Typography sx={{ color: 'white' }}>
+                            <Typography sx={{ color: darkProTokens.textPrimary }}>
                               WhatsApp de bienvenida enviado
                             </Typography>
                           </Box>
@@ -3097,35 +3137,36 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       fullWidth
       PaperProps={{
         sx: {
-          background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.95), rgba(30, 30, 30, 0.95))',
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          border: `1px solid ${darkProTokens.grayDark}`,
           borderRadius: 3,
-          color: 'white',
+          color: darkProTokens.textPrimary,
           maxHeight: '95vh'
         }
       }}
     >
-      {/* 📋 HEADER */}
+      {/* 📋 HEADER CON DARK PRO SYSTEM */}
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        bgcolor: 'rgba(76, 175, 80, 0.1)'
+        borderBottom: `1px solid ${darkProTokens.grayDark}`,
+        bgcolor: `${darkProTokens.primary}15`,
+        p: 3
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <RocketLaunchIcon sx={{ color: '#4caf50', fontSize: 32 }} />
+          <RocketLaunchIcon sx={{ color: darkProTokens.primary, fontSize: 32 }} />
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
               {user ? 'Editar Usuario' : 'Nuevo Usuario'}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
               {user ? `Modificando: ${user.firstName} ${user.lastName}` : 'Creando nuevo perfil de usuario'}
             </Typography>
           </Box>
         </Box>
-  
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {hasFormChanges && (
             <Chip
@@ -3133,9 +3174,9 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               label="Cambios pendientes"
               size="small"
               sx={{
-                bgcolor: 'rgba(255, 152, 0, 0.2)',
-                color: '#ffab00',
-                border: '1px solid rgba(255, 152, 0, 0.3)',
+                bgcolor: `${darkProTokens.warning}20`,
+                color: darkProTokens.warning,
+                border: `1px solid ${darkProTokens.warning}40`,
                 animation: 'pulse 2s infinite'
               }}
             />
@@ -3148,9 +3189,9 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               size="small"
               onClick={() => setShowDebugInfo(!showDebugInfo)}
               sx={{
-                bgcolor: 'rgba(33, 150, 243, 0.2)',
-                color: '#2196f3',
-                border: '1px solid rgba(33, 150, 243, 0.3)',
+                bgcolor: `${darkProTokens.info}20`,
+                color: darkProTokens.info,
+                border: `1px solid ${darkProTokens.info}40`,
                 cursor: 'pointer'
               }}
             />
@@ -3167,10 +3208,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               }
             }}
             sx={{ 
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: darkProTokens.textSecondary,
               '&:hover': { 
-                color: 'white',
-                bgcolor: 'rgba(255, 255, 255, 0.1)'
+                color: darkProTokens.textPrimary,
+                bgcolor: darkProTokens.hoverOverlay
               }
             }}
           >
@@ -3178,44 +3219,77 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           </IconButton>
         </Box>
       </DialogTitle>
-  
+
       {/* 📝 CONTENIDO */}
       <DialogContent sx={{ p: 0 }}>
         {/* 🚨 MENSAJES DE ERROR */}
         {errors.submit && (
-          <Alert severity="error" sx={{ m: 3, mb: 0 }}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              m: 3, 
+              mb: 0,
+              bgcolor: darkProTokens.notifErrorBg,
+              color: darkProTokens.textPrimary,
+              '& .MuiAlert-icon': { color: darkProTokens.error }
+            }}
+          >
             {errors.submit}
           </Alert>
         )}
         
         {errors.fileLoading && (
-          <Alert severity="warning" sx={{ m: 3, mb: 0 }}>
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              m: 3, 
+              mb: 0,
+              bgcolor: darkProTokens.notifWarningBg,
+              color: darkProTokens.textPrimary,
+              '& .MuiAlert-icon': { color: darkProTokens.warning }
+            }}
+          >
             {errors.fileLoading}
             <Button
               size="small"
               onClick={() => user?.id && loadExistingFiles(user.id)}
-              sx={{ ml: 2 }}
-            >
+              sx={{ ml: 2, color: darkProTokens.warning }}
+                        >
               Reintentar
             </Button>
           </Alert>
         )}
-  
-        {/* 🔄 STEPPER */}
+
+        {/* 🔄 STEPPER CON DARK PRO SYSTEM */}
         <Box sx={{ p: 3 }}>
           <Stepper 
             activeStep={activeStep} 
             orientation={isMobile ? "vertical" : "horizontal"}
             sx={{
               '& .MuiStepLabel-label': { 
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&.Mui-active': { color: '#4caf50' },
-                '&.Mui-completed': { color: '#4caf50' }
+                color: darkProTokens.textSecondary,
+                '&.Mui-active': { color: darkProTokens.primary },
+                '&.Mui-completed': { color: darkProTokens.success }
               },
               '& .MuiStepIcon-root': {
-                color: 'rgba(255, 255, 255, 0.3)',
-                '&.Mui-active': { color: '#4caf50' },
-                '&.Mui-completed': { color: '#4caf50' }
+                color: darkProTokens.grayMedium,
+                '&.Mui-active': { 
+                  color: darkProTokens.primary,
+                  boxShadow: `0 0 10px ${darkProTokens.primary}40`
+                },
+                '&.Mui-completed': { 
+                  color: darkProTokens.success,
+                  boxShadow: `0 0 10px ${darkProTokens.success}40`
+                }
+              },
+              '& .MuiStepConnector-line': {
+                borderColor: darkProTokens.grayDark
+              },
+              '& .Mui-completed .MuiStepConnector-line': {
+                borderColor: darkProTokens.success
+              },
+              '& .Mui-active .MuiStepConnector-line': {
+                borderColor: darkProTokens.primary
               }
             }}
           >
@@ -3230,7 +3304,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               </Step>
             ))}
           </Stepper>
-  
+
           {/* Contenido del paso (solo en desktop) */}
           {!isMobile && (
             <Box sx={{ mt: 4 }}>
@@ -3238,36 +3312,40 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Box>
           )}
         </Box>
-  
-        {/* 🐛 DEBUG INFO */}
+
+        {/* 🐛 DEBUG INFO CON DARK PRO */}
         {showDebugInfo && debugInfo && (
           <Box sx={{ 
             m: 3, 
             p: 2, 
-            bgcolor: 'rgba(33, 150, 243, 0.1)', 
+            bgcolor: `${darkProTokens.info}10`, 
             borderRadius: 2,
-            border: '1px solid rgba(33, 150, 243, 0.3)'
+            border: `1px solid ${darkProTokens.info}40`
           }}>
-            <Typography variant="h6" sx={{ color: '#2196f3', mb: 2 }}>
+            <Typography variant="h6" sx={{ color: darkProTokens.info, mb: 2 }}>
               🐛 Información de Debug
             </Typography>
             <pre style={{ 
-              color: 'white', 
+              color: darkProTokens.textPrimary, 
               fontSize: '0.75rem', 
               overflowX: 'auto',
-              whiteSpace: 'pre-wrap'
+              whiteSpace: 'pre-wrap',
+              bgcolor: darkProTokens.background,
+              padding: '12px',
+              borderRadius: '8px',
+              border: `1px solid ${darkProTokens.grayDark}`
             }}>
               {JSON.stringify(debugInfo, null, 2)}
             </pre>
           </Box>
         )}
       </DialogContent>
-  
-      {/* 🎮 ACCIONES */}
+
+      {/* 🎮 ACCIONES CON DARK PRO SYSTEM */}
       <DialogActions sx={{ 
         p: 3, 
-        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-        bgcolor: 'rgba(0, 0, 0, 0.2)',
+        borderTop: `1px solid ${darkProTokens.grayDark}`,
+        bgcolor: darkProTokens.surfaceLevel1,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
@@ -3279,7 +3357,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 disabled={activeStep === 0}
                 onClick={handleBack}
                 startIcon={<ArrowBackIcon />}
-                sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                sx={{ 
+                  color: darkProTokens.textSecondary,
+                  '&:hover': {
+                    color: darkProTokens.textPrimary,
+                    bgcolor: darkProTokens.hoverOverlay
+                  },
+                  '&:disabled': {
+                    color: darkProTokens.textDisabled
+                  }
+                }}
               >
                 Anterior
               </Button>
@@ -3290,12 +3377,15 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   onClick={handleNext}
                   endIcon={<ArrowForwardIcon />}
                   sx={{
-                    borderColor: 'rgba(76, 175, 80, 0.5)',
-                    color: '#4caf50',
+                    borderColor: `${darkProTokens.primary}60`,
+                    color: darkProTokens.primary,
                     '&:hover': {
-                      borderColor: '#4caf50',
-                      bgcolor: 'rgba(76, 175, 80, 0.1)'
-                    }
+                      borderColor: darkProTokens.primary,
+                      bgcolor: `${darkProTokens.primary}10`,
+                      transform: 'translateY(-1px)',
+                      boxShadow: `0 4px 15px ${darkProTokens.primary}30`
+                    },
+                    transition: 'all 0.3s ease'
                   }}
                 >
                   Siguiente
@@ -3304,13 +3394,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Box>
           )}
         </Box>
-  
+
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           {/* Indicadores de estado */}
           {fetchingRelated && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CircularProgress size={16} sx={{ color: '#2196f3' }} />
-              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+              <CircularProgress size={16} sx={{ color: darkProTokens.info }} />
+              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                 Cargando datos...
               </Typography>
             </Box>
@@ -3322,9 +3412,9 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               label={`${profilePicture && signature ? 'Archivos' : profilePicture ? 'Foto' : 'Firma'} pendiente${profilePicture && signature ? 's' : ''}`}
               size="small"
               sx={{
-                bgcolor: 'rgba(255, 152, 0, 0.2)',
-                color: '#ffab00',
-                border: '1px solid rgba(255, 152, 0, 0.3)',
+                bgcolor: `${darkProTokens.warning}20`,
+                color: darkProTokens.warning,
+                border: `1px solid ${darkProTokens.warning}40`,
                 animation: 'pulse 2s infinite'
               }}
             />
@@ -3342,8 +3432,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             }}
             disabled={loading || isSavingChanges}
             sx={{ 
-              color: 'rgba(255, 255, 255, 0.7)',
-              '&:hover': { color: 'white', bgcolor: 'rgba(255, 255, 255, 0.05)' }
+              color: darkProTokens.textSecondary,
+              '&:hover': { 
+                color: darkProTokens.textPrimary, 
+                bgcolor: darkProTokens.hoverOverlay 
+              },
+              '&:disabled': {
+                color: darkProTokens.textDisabled
+              }
             }}
           >
             Cancelar
@@ -3355,23 +3451,30 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             disabled={loading || isSavingChanges || !hasFormChanges}
             startIcon={
               loading || isSavingChanges ? (
-                <CircularProgress size={20} sx={{ color: 'white' }} />
+                <CircularProgress size={20} sx={{ color: darkProTokens.textPrimary }} />
               ) : (
                 <SaveIcon />
               )
             }
             sx={{
-              background: 'linear-gradient(135deg, #4caf50, #45a049)',
-              color: 'white',
+              background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+              color: darkProTokens.textPrimary,
               fontWeight: 600,
               px: 3,
+              borderRadius: 2,
+              boxShadow: `0 4px 20px ${darkProTokens.success}40`,
               '&:hover': {
-                background: 'linear-gradient(135deg, #45a049, #388e3c)',
+                background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
+                transform: 'translateY(-2px)',
+                boxShadow: `0 6px 25px ${darkProTokens.success}50`
               },
               '&:disabled': {
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
-                color: 'rgba(255, 255, 255, 0.3)'
-              }
+                bgcolor: darkProTokens.grayMedium,
+                color: darkProTokens.textDisabled,
+                boxShadow: 'none',
+                transform: 'none'
+              },
+              transition: 'all 0.3s ease'
             }}
           >
             {loading || isSavingChanges 
@@ -3383,7 +3486,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           </Button>
         </Box>
       </DialogActions>
-  
+
       {/* 🎉 SNACKBAR DE ÉXITO PARA REGENERACIÓN DE CONTRATO */}
       <Snackbar
         open={contractRegenerationSuccess}
@@ -3396,9 +3499,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           severity="success" 
           sx={{ 
             width: '100%',
-            bgcolor: 'rgba(76, 175, 80, 0.9)',
-            color: 'white',
-            '& .MuiAlert-icon': { color: 'white' }
+            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.success}60`,
+            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary }
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -3409,7 +3514,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           </Box>
         </Alert>
       </Snackbar>
-  
+
       {/* 🚨 SNACKBAR DE ERROR PARA REGENERACIÓN DE CONTRATO */}
       <Snackbar
         open={!!contractRegenerationError}
@@ -3422,9 +3527,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           severity="error" 
           sx={{ 
             width: '100%',
-            bgcolor: 'rgba(244, 67, 54, 0.9)',
-            color: 'white',
-            '& .MuiAlert-icon': { color: 'white' }
+            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.error}60`,
+            boxShadow: `0 8px 32px ${darkProTokens.error}40`,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary }
           }}
         >
           <Typography sx={{ fontWeight: 600 }}>
@@ -3432,8 +3539,8 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           </Typography>
         </Alert>
       </Snackbar>
-  
-      {/* 🔄 OVERLAY DE REGENERACIÓN DE CONTRATO */}
+
+      {/* 🔄 OVERLAY DE REGENERACIÓN DE CONTRATO CON DARK PRO */}
       {isRegeneratingContract && (
         <Box sx={{
           position: 'fixed',
@@ -3444,9 +3551,9 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: 'rgba(0, 0, 0, 0.8)',
+          bgcolor: `${darkProTokens.background}DD`,
           zIndex: 9999,
-          backdropFilter: 'blur(10px)'
+          backdropFilter: 'blur(20px)'
         }}>
           <Box sx={{
             display: 'flex',
@@ -3455,24 +3562,25 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             gap: 3,
             p: 4,
             borderRadius: 3,
-            bgcolor: 'rgba(30, 30, 30, 0.95)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            minWidth: 300
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            minWidth: 320,
+            boxShadow: `0 20px 60px ${darkProTokens.background}80`
           }}>
             <CircularProgress 
-              size={60} 
+              size={64} 
               sx={{ 
-                color: '#4caf50',
+                color: darkProTokens.primary,
                 '& .MuiCircularProgress-circle': {
                   strokeLinecap: 'round',
                 }
               }} 
             />
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ color: 'white', fontWeight: 600, mb: 1 }}>
+              <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600, mb: 1 }}>
                 🔄 Regenerando Contrato
               </Typography>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                 Generando documentación actualizada...
               </Typography>
             </Box>
@@ -3483,23 +3591,326 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               gap: 1,
               p: 2,
               borderRadius: 2,
-              bgcolor: 'rgba(76, 175, 80, 0.1)',
-              border: '1px solid rgba(76, 175, 80, 0.3)'
+              bgcolor: `${darkProTokens.primary}15`,
+              border: `1px solid ${darkProTokens.primary}40`
             }}>
-              <AssignmentIcon sx={{ color: '#4caf50', fontSize: 20 }} />
-              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+              <AssignmentIcon sx={{ color: darkProTokens.primary, fontSize: 20 }} />
+              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
                 Este proceso puede tomar unos segundos
               </Typography>
             </Box>
           </Box>
         </Box>
       )}
-  
-      {/* 🎨 ESTILOS PARA ANIMACIONES */}
+
+      {/* 🎨 ESTILOS CSS PERSONALIZADOS PARA ANIMACIONES DARK PRO */}
       <style jsx>{`
         @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
+          0%, 100% { 
+            opacity: 1; 
+            transform: scale(1);
+          }
+          50% { 
+            opacity: 0.8; 
+            transform: scale(1.02);
+          }
+        }
+        
+        @keyframes shimmer {
+          0% {
+            background-position: -468px 0;
+          }
+          100% {
+            background-position: 468px 0;
+          }
+        }
+        
+        @keyframes glow {
+          0%, 100% {
+            box-shadow: 0 0 5px ${darkProTokens.primary}40;
+          }
+          50% {
+            box-shadow: 0 0 20px ${darkProTokens.primary}60, 0 0 30px ${darkProTokens.primary}40;
+          }
+        }
+        
+        @keyframes slideInUp {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes fadeInScale {
+          from {
+            transform: scale(0.95);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes gradientShift {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+        
+        /* Scrollbar personalizado para el modal */
+        .MuiDialog-paper::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        .MuiDialog-paper::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        .MuiDialog-paper::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 4px;
+        }
+        
+        .MuiDialog-paper::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+          box-shadow: 0 0 10px ${darkProTokens.primary}60;
+        }
+        
+        /* Efecto de resplandor en elementos interactivos */
+        .glow-on-hover {
+          transition: all 0.3s ease;
+        }
+        
+        .glow-on-hover:hover {
+          animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        /* Efecto de entrada para modales */
+        .fade-in-scale {
+          animation: fadeInScale 0.5s ease-out;
+        }
+        
+        /* Gradiente animado para elementos especiales */
+        .gradient-animated {
+          background: linear-gradient(
+            -45deg,
+            ${darkProTokens.primary},
+            ${darkProTokens.primaryHover},
+            ${darkProTokens.primary},
+            ${darkProTokens.primaryActive}
+          );
+          background-size: 400% 400%;
+          animation: gradientShift 3s ease infinite;
+        }
+        
+        /* Efecto de glassmorphism para modales */
+        .glassmorphism {
+          backdrop-filter: blur(16px) saturate(180%);
+          background-color: ${darkProTokens.surfaceLevel2}CC;
+          border: 1px solid ${darkProTokens.grayDark}40;
+        }
+        
+        /* Texto con efecto de degradado dorado */
+        .golden-gradient-text {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        /* Efecto de hover para inputs */
+        .input-hover-glow:hover {
+          box-shadow: 0 0 15px ${darkProTokens.primary}30;
+        }
+        
+        .input-focus-glow:focus-within {
+          box-shadow: 0 0 20px ${darkProTokens.primary}50;
+        }
+        
+        /* Efecto de typing para placeholders */
+        @keyframes typing {
+          from { width: 0; }
+          to { width: 100%; }
+        }
+        
+        @keyframes blink {
+          50% { border-color: transparent; }
+        }
+        
+        .typing-effect {
+          overflow: hidden;
+          border-right: 2px solid ${darkProTokens.primary};
+          white-space: nowrap;
+          margin: 0 auto;
+          animation: typing 3.5s steps(40, end), blink 0.75s step-end infinite;
+        }
+        
+        /* Efecto de ondas para botones importantes */
+        @keyframes ripple {
+          0% {
+            transform: scale(0);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(4);
+            opacity: 0;
+          }
+        }
+        
+        .ripple-effect {
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .ripple-effect::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 0;
+          height: 0;
+          border-radius: 50%;
+          background: ${darkProTokens.primary}60;
+          transform: translate(-50%, -50%);
+          transition: width 0.6s, height 0.6s;
+        }
+        
+        .ripple-effect:active::before {
+          width: 300px;
+          height: 300px;
+        }
+        
+        /* Estados de focus mejorados */
+        .enhanced-focus:focus-visible {
+          outline: none;
+          box-shadow: 
+            0 0 0 3px ${darkProTokens.focusRing},
+            0 4px 20px ${darkProTokens.primary}30;
+          transform: translateY(-1px);
+        }
+        
+        /* Efecto de loading mejorado */
+        @keyframes spin-glow {
+          0% {
+            transform: rotate(0deg);
+            filter: hue-rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+            filter: hue-rotate(360deg);
+          }
+        }
+        
+        .loading-spinner-glow {
+          animation: spin-glow 2s linear infinite;
+          filter: drop-shadow(0 0 10px ${darkProTokens.primary}60);
+        }
+        
+        /* Transiciones suaves globales */
+        * {
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Media queries para responsive design con Dark Pro */
+        @media (max-width: 768px) {
+          .mobile-hidden {
+            display: none !important;
+          }
+          
+          .mobile-full-width {
+            width: 100% !important;
+          }
+          
+          .mobile-padding {
+            padding: 1rem !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .mobile-stack {
+            flex-direction: column !important;
+          }
+          
+          .mobile-text-center {
+            text-align: center !important;
+          }
+        }
+        
+        /* Modo de alto contraste (opcional) */
+        @media (prefers-contrast: high) {
+          .high-contrast {
+            border-width: 2px !important;
+            font-weight: 600 !important;
+          }
+        }
+        
+        /* Modo de movimiento reducido */
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+        
+        /* Print styles */
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          
+          .print-friendly {
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+          }
+        }
+        
+        /* Elementos especiales con glow */
+        .primary-glow {
+          box-shadow: 0 0 20px ${darkProTokens.primary}40;
+        }
+        
+        .success-glow {
+          box-shadow: 0 0 20px ${darkProTokens.success}40;
+        }
+        
+        .error-glow {
+          box-shadow: 0 0 20px ${darkProTokens.error}40;
+        }
+        
+        .warning-glow {
+          box-shadow: 0 0 20px ${darkProTokens.warning}40;
+        }
+        
+        /* Efectos de partículas para fondo (opcional) */
+        .particles-bg::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-image: 
+            radial-gradient(circle at 25% 25%, ${darkProTokens.primary}10 1px, transparent 1px),
+            radial-gradient(circle at 75% 75%, ${darkProTokens.success}10 1px, transparent 1px);
+          background-size: 100px 100px;
+          opacity: 0.3;
+          pointer-events: none;
+          z-index: -1;
         }
       `}</style>
     </Dialog>

@@ -48,6 +48,9 @@ import HomeIcon from '@mui/icons-material/Home';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EditIcon from '@mui/icons-material/Edit';
 
+// 🏢 ICONO PROFESIONAL PARA SGI
+import IntegrationInstructionsIcon from '@mui/icons-material/IntegrationInstructions';
+
 // 👥 GESTIÓN DE USUARIOS
 import PeopleIcon from '@mui/icons-material/People';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -392,23 +395,75 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       ]
     },
     
-    // 💳 EGRESOS
+   // 💳 EGRESOS - CONVERTIR A SUBMENU
+{ 
+  text: 'Egresos', 
+  icon: <ReceiptIcon />,
+  submenu: true,
+  section: 'egresos',
+  description: 'Control de gastos y egresos',
+  items: [
     { 
-      text: 'Egresos', 
+      text: 'Dashboard Egresos', 
       path: '/dashboard/admin/egresos', 
-      icon: <ReceiptIcon />,
-      section: 'egresos',
-      description: 'Control de gastos y egresos'
+      icon: <MoneyOffIcon />,
+      parent: 'egresos',
+      section: 'dashboard',
+      description: 'Vista general de egresos'
     },
-    
-    // 📊 CORTES Y ANÁLISIS
     { 
-      text: 'Cortes', 
-      path: '/dashboard/admin/cortes', 
-      icon: <BarChartIcon />,
-      section: 'cortes',
-      description: 'Cierre diario y mensual'
+      text: 'Nuevo Egreso', 
+      path: '/dashboard/admin/egresos/nuevo', 
+      icon: <ReceiptIcon />,
+      parent: 'egresos',
+      section: 'nuevo',
+      description: 'Registrar nuevo gasto'
     },
+    { 
+      text: 'Historial de Egresos', 
+      path: '/dashboard/admin/egresos/historial', 
+      icon: <HistoryIcon />,
+      parent: 'egresos',
+      section: 'historial',
+      description: 'Registro completo de gastos'
+    }
+  ]
+},
+    
+  // 📊 CORTES Y ANÁLISIS - CON SUBMENU
+{ 
+  text: 'Cortes', 
+  icon: <BarChartIcon />,
+  submenu: true,
+  section: 'cortes',
+  description: 'Cierre diario y mensual',
+  items: [
+    { 
+      text: 'Dashboard Cortes', 
+      path: '/dashboard/admin/cortes', 
+      icon: <AssessmentIcon />,
+      parent: 'cortes',
+      section: 'dashboard',
+      description: 'Vista general de cortes'
+    },
+    { 
+      text: 'Nuevo Corte', 
+      path: '/dashboard/admin/cortes/nuevo', 
+      icon: <ReceiptIcon />,
+      parent: 'cortes',
+      section: 'nuevo',
+      description: 'Crear nuevo corte'
+    },
+    { 
+      text: 'Historial de Cortes', 
+      path: '/dashboard/admin/cortes/historial', 
+      icon: <HistoryIcon />,
+      parent: 'cortes',
+      section: 'historial',
+      description: 'Registro completo de cortes'
+    }
+  ]
+},
     
     // 🔐 CONTROL DE ACCESO
     { 
@@ -700,15 +755,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      {/* 🏢 BARRA SUPERIOR MEJORADA */}
+      {/* 🏢 BARRA SUPERIOR COMPLETAMENTE NEGRA Y MÁS ALTA */}
       <AppBar 
         position="fixed" 
         sx={{ 
           zIndex: theme.zIndex.drawer + 1,
-          background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.98) 0%, rgba(25, 25, 25, 0.95) 100%)',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 8px 32px 0 rgba(0,0,0,0.6)',
-          borderBottom: '1px solid rgba(255, 204, 0, 0.1)'
+          // ✅ FONDO COMPLETAMENTE NEGRO
+          background: '#000000',
+          backdropFilter: 'none',
+          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
+          borderBottom: '1px solid rgba(255, 204, 0, 0.15)'
         }}
       >
         {loading && (
@@ -727,7 +783,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           />
         )}
         
-        <Toolbar sx={{ minHeight: '80px !important', px: { xs: 2, sm: 3 } }}>
+        {/* ✅ TOOLBAR MÁS ALTO - AUMENTADO DE 80px A 100px */}
+        <Toolbar sx={{ minHeight: '100px !important', px: { xs: 2, sm: 3 } }}>
           <IconButton
             color="inherit"
             aria-label={drawerOpen ? "cerrar menú" : "abrir menú"}
@@ -744,45 +801,56 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <MenuIcon />
           </IconButton>
           
-          <Box 
-            component="img"
-            sx={{ 
-              height: 45,
-              width: 'auto',
-              display: { xs: 'none', sm: 'block' },
-              mr: 2,
-              filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
-            }}
-            src="/logo.png"
-            alt="Muscle Up Gym"
-          />
-          
-          <Box sx={{ display: { xs: 'none', sm: 'block' }, mr: 3 }}>
-            <Typography 
-              variant="h5" 
-              noWrap 
-              component="div"
+          {/* ✅ ÁREA DEL LOGO MEJORADA - SIN TEXTO "MUSCLE UP" */}
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
+            <Box 
+              component="img"
               sx={{ 
-                fontWeight: 700,
-                background: 'linear-gradient(45deg, #ffcc00, #ffd700)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                lineHeight: 1.2
+                height: 65, // Aumentado para mejor visibilidad
+                width: 'auto',
+                mr: 2,
+                filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
               }}
-            >
-              MUSCLE UP
-            </Typography>
-            <Typography 
-              variant="caption" 
-              sx={{ 
-                color: 'rgba(255,255,255,0.6)',
-                fontWeight: 500,
-                letterSpacing: 1
-              }}
-            >
-              SISTEMA DE GESTIÓN
-            </Typography>
+              src="/logo.png"
+              alt="Muscle Up Gym"
+            />
+            
+            {/* ✅ SOLO "SISTEMA DE GESTIÓN INTEGRAL" CON ICONO SGI */}
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <IntegrationInstructionsIcon 
+                  sx={{ 
+                    color: '#ffcc00', 
+                    fontSize: 24,
+                    filter: 'drop-shadow(0 1px 2px rgba(255,204,0,0.3))'
+                  }} 
+                />
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    color: 'rgba(255,255,255,0.95)',
+                    fontWeight: 700,
+                    letterSpacing: 1.5,
+                    fontSize: '1.1rem'
+                  }}
+                >
+                  SISTEMA DE GESTIÓN INTEGRAL
+                </Typography>
+                <Chip
+                  size="small"
+                  label="SGI"
+                  sx={{
+                    backgroundColor: '#ffcc00',
+                    color: '#000',
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    height: '24px',
+                    minWidth: '45px',
+                    ml: 1
+                  }}
+                />
+              </Box>
+            </Box>
           </Box>
           
           <Search sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 0.4, maxWidth: '600px' }}>
@@ -1008,7 +1076,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </Toolbar>
       </AppBar>
       
-      {/* 📂 MENÚ LATERAL MEJORADO */}
+      {/* 📂 MENÚ LATERAL MEJORADO - ACTUALIZAR ALTURA PARA COINCIDIR */}
       <Drawer
         sx={{
           width: drawerWidth,
@@ -1031,18 +1099,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       >
-        {/* HEADER DEL DRAWER */}
+        {/* HEADER DEL DRAWER - ACTUALIZADO PARA COINCIDIR CON LA NUEVA ALTURA */}
         <DrawerHeader sx={{ 
           background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.9) 0%, rgba(25, 25, 25, 0.8) 100%)',
           borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
-          minHeight: '80px !important',
+          minHeight: '100px !important', // ✅ ACTUALIZADO DE 80px A 100px
           px: 2
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', pl: 1 }}>
             <Box 
               component="img"
               sx={{ 
-                height: 40, 
+                height: 50, 
                 mr: 2,
                 filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
               }}
@@ -1050,20 +1118,24 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               alt="Muscle Up Gym"
             />
             <Box>
-              <Typography variant="h6" sx={{ 
-                fontWeight: 700,
-                lineHeight: 1.1,
-                background: 'linear-gradient(45deg, #ffcc00, #ffd700)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}>
-                MUSCLE UP
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <IntegrationInstructionsIcon sx={{ color: '#ffcc00', fontSize: 18 }} />
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 700,
+                  lineHeight: 1.1,
+                  background: 'linear-gradient(45deg, #ffcc00, #ffd700)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  SGI
+                </Typography>
+              </Box>
               <Typography variant="caption" sx={{ 
-                color: 'rgba(255,255,255,0.6)',
-                fontWeight: 500,
-                letterSpacing: 0.5
+                color: 'rgba(255,255,255,0.8)',
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                fontSize: '0.7rem'
               }}>
                 Admin Panel
               </Typography>
@@ -1136,7 +1208,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           sx={{ 
             px: 1.5, 
             py: 2,
-            height: 'calc(100% - 220px)',
+            height: 'calc(100% - 240px)', // Ajustado por la nueva altura
             overflowY: 'auto',
             overflowX: 'hidden',
             '&::-webkit-scrollbar': {

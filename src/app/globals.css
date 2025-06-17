@@ -26,3 +26,16 @@
 }
 
 /* (si tienes reglas extra, ponlas después…) */
+
+/* Agregar al final de tu archivo CSS global */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}

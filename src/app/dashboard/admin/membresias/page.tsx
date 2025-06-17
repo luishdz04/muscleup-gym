@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,48 @@ import Grid from '@mui/material/Grid';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
+import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
+
+// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // Interactions
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+};
 
 // Iconos
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -31,6 +73,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 
 interface MembershipStats {
   total: number;
@@ -57,59 +100,117 @@ export default function MembresiasPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Cargar datos
-  useEffect(() => {
-    loadData();
+  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
+  const getMexicoDate = useCallback(() => {
+    return new Date();
   }, []);
 
-  const loadData = async () => {
+  const getMexicoDateString = useCallback(() => {
+    return toMexicoDate(new Date());
+  }, []);
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price || 0);
+  }, []);
+
+  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
+  const formatMexicoDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  const formatDate = useCallback((dateString: string) => {
+    return formatMexicoDateTime(dateString);
+  }, []);
+
+  // ✅ CARGAR DATOS CORREGIDO CON FECHAS MÉXICO
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const supabase = createBrowserSupabaseClient();
       
-      // Cargar todas las membresías para calcular estadísticas
+      // ✅ OBTENER TODAS LAS MEMBRESÍAS
       const { data: allMemberships, error: statsError } = await supabase
         .from('user_memberships')
         .select('*');
 
       if (statsError) throw statsError;
 
-      // Calcular estadísticas
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      // ✅ OBTENER FECHAS MÉXICO CORREGIDAS
+      const mexicoToday = getMexicoDate();
+      const mexicoTodayString = getMexicoDateString();
+      
+      // Primer día del mes actual en México
+      const firstDayOfMonth = `${mexicoToday.getFullYear()}-${(mexicoToday.getMonth() + 1).toString().padStart(2, '0')}-01`;
+      
+      // Fecha en 7 días en México
+      const in7Days = new Date(mexicoToday);
+      in7Days.setDate(mexicoToday.getDate() + 7);
+      const in7DaysString = toMexicoDate(in7Days);
+      
+      console.log(`📅 Fechas México calculadas para estadísticas:`);
+      console.log(`   📅 Hoy: ${mexicoTodayString}`);
+      console.log(`   📅 Primer día del mes: ${firstDayOfMonth}`);
+      console.log(`   📅 En 7 días: ${in7DaysString}`);
 
+      // ✅ CALCULAR ESTADÍSTICAS CON FECHAS MÉXICO CORREGIDAS
       const calculatedStats: MembershipStats = {
         total: allMemberships?.length || 0,
         active: allMemberships?.filter(m => m.status === 'active').length || 0,
         expired: allMemberships?.filter(m => m.status === 'expired').length || 0,
         frozen: allMemberships?.filter(m => m.status === 'frozen').length || 0,
+        
+        // ✅ INGRESOS DEL MES - Filtrar por created_at >= primer día del mes
         revenue_this_month: allMemberships
-          ?.filter(m => new Date(m.created_at) >= firstDayOfMonth)
+          ?.filter(m => {
+            if (!m.created_at) return false;
+            // Convertir timestamp BD a fecha México para comparar
+            const createdDate = toMexicoDate(new Date(m.created_at));
+            return createdDate >= firstDayOfMonth;
+          })
           .reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0,
+        
+        // ✅ NUEVAS DEL MES - Filtrar por created_at >= primer día del mes  
         new_this_month: allMemberships
-          ?.filter(m => new Date(m.created_at) >= firstDayOfMonth).length || 0,
+          ?.filter(m => {
+            if (!m.created_at) return false;
+            // Convertir timestamp BD a fecha México para comparar
+            const createdDate = toMexicoDate(new Date(m.created_at));
+            return createdDate >= firstDayOfMonth;
+          }).length || 0,
+        
+        // ✅ POR VENCER EN 7 DÍAS - Filtrar activas con end_date entre hoy y 7 días
         expiring_soon: allMemberships
-          ?.filter(m => m.end_date && new Date(m.end_date) <= in7Days && m.status === 'active').length || 0
+          ?.filter(m => {
+            if (!m.end_date || m.status !== 'active') return false;
+            // Convertir timestamp BD a fecha México para comparar
+            const endDate = toMexicoDate(new Date(m.end_date));
+            return endDate <= in7DaysString && endDate >= mexicoTodayString;
+          }).length || 0
       };
 
+      console.log('📊 Estadísticas calculadas:', calculatedStats);
+      
       setStats(calculatedStats);
+      setSuccessMessage('📊 Datos actualizados correctamente');
+      
     } catch (err: any) {
-      setError(err.message);
+      console.error('💥 Error cargando datos de membresías:', err);
+      setError(`❌ Error cargando datos: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [getMexicoDate, getMexicoDateString]);
 
-  // Formatear precio
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  };
+  // Cargar datos al inicializar
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return (
@@ -119,11 +220,23 @@ export default function MembresiasPage() {
         alignItems="center" 
         minHeight="60vh"
         sx={{
-          background: 'linear-gradient(135deg, #000000, #1a1a1a)',
-          color: 'white'
+          background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+          color: darkProTokens.textPrimary
         }}
       >
-        <CircularProgress sx={{ color: '#FFCC00' }} size={60} />
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress 
+            size={60} 
+            sx={{ 
+              color: darkProTokens.primary,
+              mb: 2,
+              filter: `drop-shadow(0 0 10px ${darkProTokens.primary}60)`
+            }} 
+          />
+          <Typography sx={{ color: darkProTokens.textSecondary }}>
+            Cargando dashboard de membresías...
+          </Typography>
+        </Box>
       </Box>
     );
   }
@@ -131,18 +244,71 @@ export default function MembresiasPage() {
   return (
     <Box sx={{ 
       p: 3, 
-      background: 'linear-gradient(135deg, #000000, #1a1a1a)',
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
       minHeight: '100vh',
-      color: 'white'
+      color: darkProTokens.textPrimary
     }}>
-      {/* Header Enterprise */}
+      {/* ✅ SNACKBARS CON DARK PRO SYSTEM */}
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={8000} 
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setError(null)} 
+          severity="error" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.error}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.error}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar 
+        open={!!successMessage} 
+        autoHideDuration={5000} 
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSuccessMessage(null)} 
+          severity="success" 
+          variant="filled"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${darkProTokens.success}60`,
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
+            backdropFilter: 'blur(20px)',
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* 🎯 HEADER MINIMALISTA CON DARK PRO SYSTEM */}
       <Paper sx={{
-        p: 5,
-        mb: 4,
-        background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.98), rgba(45, 45, 45, 0.95))',
-        border: '2px solid rgba(255, 204, 0, 0.3)',
-        borderRadius: 4,
-        boxShadow: '0 8px 32px rgba(255, 204, 0, 0.1)'
+        p: 3,
+        mb: 3,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 3,
+        backdropFilter: 'blur(10px)'
       }}>
         <Box sx={{ 
           display: 'flex', 
@@ -153,189 +319,159 @@ export default function MembresiasPage() {
           gap: 2
         }}>
           <Box>
-            <Typography variant="h3" sx={{ 
-              color: '#FFCC00', 
-              fontWeight: 800,
+            <Typography variant="h4" sx={{ 
+              color: darkProTokens.primary, 
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               gap: 2,
-              mb: 1
+              textShadow: `0 0 20px ${darkProTokens.primary}40`
             }}>
-              <PaymentIcon sx={{ fontSize: 50 }} />
-              Centro de Control Empresarial
+              <FitnessCenterIcon sx={{ fontSize: 40, color: darkProTokens.primary }} />
+              Dashboard Membresías MUP
             </Typography>
-            <Typography variant="h6" sx={{ 
-              color: 'rgba(255, 255, 255, 0.9)',
-              fontWeight: 300
-            }}>
-              Dashboard de Membresías, Pagos y Sistema POS
+            <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
+              Gestión de membresías activas, pagos y estadísticas del gimnasio
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <Button
-              size="large"
+              size="small"
               startIcon={<RefreshIcon />}
-              onClick={loadData}
-              sx={{ 
-                color: '#FFCC00',
-                borderColor: 'rgba(255, 204, 0, 0.6)',
-                px: 3,
-                py: 1.5,
-                borderRadius: 3,
-                fontWeight: 600,
-                '&:hover': {
-                  borderColor: '#FFCC00',
-                  backgroundColor: 'rgba(255, 204, 0, 0.1)',
-                  transform: 'translateY(-2px)'
-                }
+              onClick={() => {
+                setSuccessMessage('🔄 Actualizando datos...');
+                loadData();
               }}
               variant="outlined"
+              sx={{ 
+                color: darkProTokens.primary,
+                borderColor: `${darkProTokens.primary}60`,
+                '&:hover': {
+                  borderColor: darkProTokens.primary,
+                  bgcolor: `${darkProTokens.primary}10`,
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px 15px ${darkProTokens.primary}30`
+                },
+                borderWidth: '2px',
+                fontWeight: 600,
+                transition: 'all 0.3s ease'
+              }}
             >
-              Actualizar Datos
+              Actualizar
             </Button>
             
             <Button
               variant="contained"
-              size="large"
+              size="small"
               startIcon={<PersonAddAltIcon />}
-              onClick={() => router.push('/dashboard/admin/membresias/registrar')}
+              onClick={() => {
+                setSuccessMessage('➕ Redirigiendo a nueva venta...');
+                router.push('/dashboard/admin/membresias/registrar');
+              }}
               sx={{
-                background: 'linear-gradient(135deg, #FFCC00, #FFB300)',
-                color: 'black',
-                fontWeight: 800,
-                px: 4,
-                py: 1.5,
-                borderRadius: 3,
-                fontSize: '1.1rem',
+                background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+                fontWeight: 600,
+                px: 3,
+                borderRadius: 2,
+                boxShadow: `0 4px 20px ${darkProTokens.success}40`,
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #FFB300, #FF8F00)',
+                  background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 6px 20px rgba(255, 204, 0, 0.4)'
+                  boxShadow: `0 6px 25px ${darkProTokens.success}50`
                 },
                 transition: 'all 0.3s ease'
               }}
             >
-              🚀 Nueva Venta
+              Nueva Venta
             </Button>
           </Box>
         </Box>
 
-        {/* Progreso general Enterprise */}
+        {/* 📊 RESUMEN GENERAL CON DARK PRO */}
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          p: 4,
-          background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.15), rgba(255, 204, 0, 0.05))',
-          borderRadius: 4,
-          border: '1px solid rgba(255, 204, 0, 0.3)'
+          p: 3,
+          bgcolor: `${darkProTokens.primary}10`,
+          borderRadius: 2,
+          border: `1px solid ${darkProTokens.primary}30`,
+          backdropFilter: 'blur(5px)'
         }}>
-          <Box>
-            <Typography sx={{ 
-              color: 'white', 
-              fontWeight: 700,
-              fontSize: '1.3rem',
-              mb: 1
-            }}>
-              📊 Resumen Ejecutivo: {stats.total} membresías activas en el sistema
-            </Typography>
-            <Typography sx={{ 
-              color: 'rgba(255, 255, 255, 0.8)',
-              fontSize: '1rem'
-            }}>
-              Rendimiento mensual: {stats.new_this_month} nuevas ventas | {formatPrice(stats.revenue_this_month)} ingresos
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <PaymentIcon sx={{ color: darkProTokens.primary, fontSize: 28 }} />
+            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+              📊 Total: {stats.total} membresías | {stats.new_this_month} nuevas este mes
             </Typography>
           </Box>
+          
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Box sx={{ width: 200 }}>
+            <Box sx={{ minWidth: 200 }}>
               <LinearProgress 
                 variant="determinate" 
                 value={stats.total > 0 ? (stats.active / stats.total) * 100 : 0}
                 sx={{ 
-                  height: 12, 
-                  borderRadius: 6,
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  height: 8, 
+                  borderRadius: 4,
+                  bgcolor: darkProTokens.grayDark,
                   '& .MuiLinearProgress-bar': {
-                    backgroundColor: '#FFCC00',
-                    borderRadius: 6
+                    bgcolor: darkProTokens.primary,
+                    borderRadius: 4,
+                    boxShadow: `0 0 10px ${darkProTokens.primary}40`
                   }
                 }} 
               />
-              <Typography variant="body2" sx={{ 
-                color: '#FFCC00', 
-                fontWeight: 700,
+              <Typography variant="caption" sx={{ 
+                color: darkProTokens.primary, 
+                fontWeight: 600,
+                display: 'block',
                 textAlign: 'center',
-                mt: 1
+                mt: 0.5
               }}>
-                {stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% Tasa de Retención
+                {stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% Activas
               </Typography>
             </Box>
+            
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.primary, 
+              fontWeight: 700
+            }}>
+              {formatPrice(stats.revenue_this_month)}
+            </Typography>
           </Box>
         </Box>
       </Paper>
 
-      {/* Messages */}
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity="error" 
-          onClose={() => setError(null)}
-          sx={{
-            backgroundColor: 'rgba(211, 47, 47, 0.95)',
-            color: 'white',
-            '& .MuiAlert-icon': { color: 'white' }
-          }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-
-      {/* Tarjetas de estadísticas Enterprise */}
-      <Grid container spacing={4} sx={{ mb: 4 }}>
+      {/* 📊 ESTADÍSTICAS DARK PRO MINIMALISTAS */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <motion.div 
             whileHover={{ scale: 1.02, y: -5 }}
             transition={{ duration: 0.3 }}
           >
             <Paper sx={{
-              p: 4,
-              background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05))',
-              border: '2px solid rgba(76, 175, 80, 0.3)',
-              borderRadius: 4,
-              cursor: 'pointer',
+              p: 3,
+              background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+              color: darkProTokens.textPrimary,
+              borderRadius: 3,
+              border: `1px solid ${darkProTokens.success}30`,
               transition: 'all 0.3s ease',
               '&:hover': { 
-                transform: 'translateY(-6px)',
-                boxShadow: '0 12px 40px rgba(76, 175, 80, 0.2)'
+                transform: 'translateY(-4px)',
+                boxShadow: `0 8px 32px ${darkProTokens.success}40`
               }
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
-                  <Typography variant="h3" sx={{ 
-                    fontWeight: 800,
-                    color: '#4caf50',
-                    mb: 1
-                  }}>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
                     {stats.active}
                   </Typography>
-                  <Typography variant="h6" sx={{ 
-                    color: 'white',
-                    fontWeight: 600
-                  }}>
+                  <Typography variant="body2" sx={{ opacity: 0.9, color: darkProTokens.textSecondary }}>
                     Membresías Activas
                   </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.7)'
-                  }}>
-                    Clientes activos
-                  </Typography>
                 </Box>
-                <CheckCircleIcon sx={{ fontSize: 50, color: '#4caf50', opacity: 0.8 }} />
+                <CheckCircleIcon sx={{ fontSize: 40, opacity: 0.8, color: darkProTokens.textPrimary }} />
               </Box>
             </Paper>
           </motion.div>
@@ -347,39 +483,27 @@ export default function MembresiasPage() {
             transition={{ duration: 0.3 }}
           >
             <Paper sx={{
-              p: 4,
-              background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.05))',
-              border: '2px solid rgba(255, 152, 0, 0.3)',
-              borderRadius: 4,
-              cursor: 'pointer',
+              p: 3,
+              background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+              color: darkProTokens.background,
+              borderRadius: 3,
+              border: `1px solid ${darkProTokens.warning}30`,
               transition: 'all 0.3s ease',
               '&:hover': { 
-                transform: 'translateY(-6px)',
-                boxShadow: '0 12px 40px rgba(255, 152, 0, 0.2)'
+                transform: 'translateY(-4px)',
+                boxShadow: `0 8px 32px ${darkProTokens.warning}40`
               }
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
-                  <Typography variant="h3" sx={{ 
-                    fontWeight: 800,
-                    color: '#ff9800',
-                    mb: 1
-                  }}>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: darkProTokens.background }}>
                     {stats.expiring_soon}
                   </Typography>
-                  <Typography variant="h6" sx={{ 
-                    color: 'white',
-                    fontWeight: 600
-                  }}>
-                    Por Vencer
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.7)'
-                  }}>
-                    Próximos 7 días
+                  <Typography variant="body2" sx={{ opacity: 0.8, color: darkProTokens.background }}>
+                    Por Vencer (7 días)
                   </Typography>
                 </Box>
-                <ScheduleIcon sx={{ fontSize: 50, color: '#ff9800', opacity: 0.8 }} />
+                <ScheduleIcon sx={{ fontSize: 40, opacity: 0.8, color: darkProTokens.background }} />
               </Box>
             </Paper>
           </motion.div>
@@ -391,39 +515,27 @@ export default function MembresiasPage() {
             transition={{ duration: 0.3 }}
           >
             <Paper sx={{
-              p: 4,
-              background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.05))',
-              border: '2px solid rgba(33, 150, 243, 0.3)',
-              borderRadius: 4,
-              cursor: 'pointer',
+              p: 3,
+              background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+              color: darkProTokens.textPrimary,
+              borderRadius: 3,
+              border: `1px solid ${darkProTokens.info}30`,
               transition: 'all 0.3s ease',
               '&:hover': { 
-                transform: 'translateY(-6px)',
-                boxShadow: '0 12px 40px rgba(33, 150, 243, 0.2)'
+                transform: 'translateY(-4px)',
+                boxShadow: `0 8px 32px ${darkProTokens.info}40`
               }
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
-                  <Typography variant="h3" sx={{ 
-                    fontWeight: 800,
-                    color: '#2196f3',
-                    mb: 1
-                  }}>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
                     {stats.frozen}
                   </Typography>
-                  <Typography variant="h6" sx={{ 
-                    color: 'white',
-                    fontWeight: 600
-                  }}>
+                  <Typography variant="body2" sx={{ opacity: 0.9, color: darkProTokens.textSecondary }}>
                     Congeladas
                   </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.7)'
-                  }}>
-                    Temporalmente pausadas
-                  </Typography>
                 </Box>
-                <PauseCircleIcon sx={{ fontSize: 50, color: '#2196f3', opacity: 0.8 }} />
+                <PauseCircleIcon sx={{ fontSize: 40, opacity: 0.8, color: darkProTokens.textPrimary }} />
               </Box>
             </Paper>
           </motion.div>
@@ -435,89 +547,79 @@ export default function MembresiasPage() {
             transition={{ duration: 0.3 }}
           >
             <Paper sx={{
-              p: 4,
-              background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.25), rgba(255, 204, 0, 0.1))',
-              border: '2px solid rgba(255, 204, 0, 0.4)',
-              borderRadius: 4,
-              cursor: 'pointer',
+              p: 3,
+              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+              color: darkProTokens.background,
+              borderRadius: 3,
+              border: `1px solid ${darkProTokens.primary}30`,
               transition: 'all 0.3s ease',
               '&:hover': { 
-                transform: 'translateY(-6px)',
-                boxShadow: '0 12px 40px rgba(255, 204, 0, 0.3)'
+                transform: 'translateY(-4px)',
+                boxShadow: `0 8px 32px ${darkProTokens.primary}40`
               }
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
-                  <Typography variant="h3" sx={{ 
-                    fontWeight: 800,
-                    color: '#FFCC00',
-                    mb: 1
-                  }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: darkProTokens.background }}>
                     {formatPrice(stats.revenue_this_month)}
                   </Typography>
-                  <Typography variant="h6" sx={{ 
-                    color: 'white',
-                    fontWeight: 600
-                  }}>
+                  <Typography variant="body2" sx={{ opacity: 0.8, color: darkProTokens.background }}>
                     Ingresos del Mes
                   </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.7)'
-                  }}>
-                    Facturación mensual
-                  </Typography>
                 </Box>
-                <AttachMoneyIcon sx={{ fontSize: 50, color: '#FFCC00', opacity: 0.8 }} />
+                <AttachMoneyIcon sx={{ fontSize: 40, opacity: 0.8, color: darkProTokens.background }} />
               </Box>
             </Paper>
           </motion.div>
         </Grid>
       </Grid>
 
-      {/* Accesos rápidos Enterprise */}
-      <Grid container spacing={4}>
+      {/* 🚀 ACCIONES RÁPIDAS Y ANALYTICS MINIMALISTAS */}
+      <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{
-            p: 5,
-            background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.98), rgba(45, 45, 45, 0.95))',
-            border: '1px solid rgba(255, 204, 0, 0.2)',
-            borderRadius: 4,
+            p: 3,
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3,
             height: '100%'
           }}>
-            <Typography variant="h5" sx={{ 
-              color: '#FFCC00', 
-              mb: 4, 
-              fontWeight: 800,
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.primary, 
+              mb: 3, 
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2
+              gap: 1
             }}>
-              🚀 Acciones Rápidas
+              ⚡ Acciones Rápidas
             </Typography>
             
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Button
                 fullWidth
                 variant="contained"
                 size="large"
                 startIcon={<PersonAddAltIcon />}
-                onClick={() => router.push('/dashboard/admin/membresias/registrar')}
+                onClick={() => {
+                  setSuccessMessage('💰 Abriendo sistema de ventas...');
+                  router.push('/dashboard/admin/membresias/registrar');
+                }}
                 sx={{
-                  background: 'linear-gradient(135deg, #FFCC00, #FFB300)',
-                  color: 'black',
-                  fontWeight: 700,
-                  py: 2,
-                  borderRadius: 3,
-                  fontSize: '1.1rem',
+                  background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                  color: darkProTokens.background,
+                  fontWeight: 600,
+                  py: 1.5,
+                  borderRadius: 2,
                   justifyContent: 'flex-start',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #FFB300, #FF8F00)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 6px 20px rgba(255, 204, 0, 0.4)'
+                    background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                    transform: 'translateY(-1px)',
+                    boxShadow: `0 4px 20px ${darkProTokens.primary}40`
                   }
                 }}
               >
-                💰 Procesar Nueva Venta (Sistema POS)
+                💰 Nueva Venta
               </Button>
               
               <Button
@@ -525,17 +627,20 @@ export default function MembresiasPage() {
                 variant="outlined"
                 size="large"
                 startIcon={<HistoryIcon />}
-                onClick={() => router.push('/dashboard/admin/membresias/historial')}
+                onClick={() => {
+                  setSuccessMessage('📊 Cargando historial...');
+                  router.push('/dashboard/admin/membresias/historial');
+                }}
                 sx={{
-                  color: 'white',
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                  py: 2,
-                  borderRadius: 3,
-                  fontWeight: 600,
+                  color: darkProTokens.textPrimary,
+                  borderColor: darkProTokens.grayDark,
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontWeight: 500,
                   justifyContent: 'flex-start',
                   '&:hover': {
-                    borderColor: 'white',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderColor: darkProTokens.textPrimary,
+                    bgcolor: darkProTokens.hoverOverlay,
                   }
                 }}
               >
@@ -547,21 +652,24 @@ export default function MembresiasPage() {
                 variant="outlined"
                 size="large"
                 startIcon={<LocalOfferIcon />}
-                onClick={() => router.push('/dashboard/admin/membresias/cupones')}
+                onClick={() => {
+                  setSuccessMessage('🎟️ Abriendo gestión de cupones...');
+                  router.push('/dashboard/admin/membresias/cupones');
+                }}
                 sx={{
-                  color: '#ff9800',
-                  borderColor: 'rgba(255, 152, 0, 0.4)',
-                  py: 2,
-                  borderRadius: 3,
-                  fontWeight: 600,
+                  color: darkProTokens.warning,
+                  borderColor: `${darkProTokens.warning}40`,
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontWeight: 500,
                   justifyContent: 'flex-start',
                   '&:hover': {
-                    borderColor: '#ff9800',
-                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                    borderColor: darkProTokens.warning,
+                    bgcolor: `${darkProTokens.warning}10`,
                   }
                 }}
               >
-                🎟️ Gestionar Cupones y Descuentos
+                🎟️ Gestionar Cupones
               </Button>
             </Box>
           </Paper>
@@ -569,49 +677,44 @@ export default function MembresiasPage() {
 
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{
-            p: 5,
-            background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.98), rgba(45, 45, 45, 0.95))',
-            border: '1px solid rgba(255, 204, 0, 0.2)',
-            borderRadius: 4,
+            p: 3,
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3,
             height: '100%'
           }}>
-            <Typography variant="h5" sx={{ 
-              color: '#FFCC00', 
-              mb: 4, 
-              fontWeight: 800,
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.primary, 
+              mb: 3, 
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2
+              gap: 1
             }}>
-              📈 Analytics del Período
+              📈 Analytics del Mes
             </Typography>
             
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               <Grid size={6}>
                 <Box sx={{ 
                   textAlign: 'center', 
-                  p: 3,
-                  background: 'rgba(76, 175, 80, 0.1)',
-                  borderRadius: 3,
-                  border: '1px solid rgba(76, 175, 80, 0.3)'
+                  p: 2,
+                  bgcolor: `${darkProTokens.success}10`,
+                  borderRadius: 2,
+                  border: `1px solid ${darkProTokens.success}30`
                 }}>
-                  <Typography variant="h4" sx={{ 
-                    color: '#4caf50', 
-                    fontWeight: 800,
-                    mb: 1
+                  <Typography variant="h5" sx={{ 
+                    color: darkProTokens.success, 
+                    fontWeight: 700,
+                    mb: 0.5
                   }}>
                     {stats.new_this_month}
                   </Typography>
-                  <Typography variant="body1" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    fontWeight: 600
+                  <Typography variant="body2" sx={{ 
+                    color: darkProTokens.textSecondary,
+                    fontWeight: 500
                   }}>
                     Nuevas Membresías
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.6)'
-                  }}>
-                    Este mes
                   </Typography>
                 </Box>
               </Grid>
@@ -619,58 +722,53 @@ export default function MembresiasPage() {
               <Grid size={6}>
                 <Box sx={{ 
                   textAlign: 'center', 
-                  p: 3,
-                  background: 'rgba(255, 152, 0, 0.1)',
-                  borderRadius: 3,
-                  border: '1px solid rgba(255, 152, 0, 0.3)'
+                  p: 2,
+                  bgcolor: `${darkProTokens.warning}10`,
+                  borderRadius: 2,
+                  border: `1px solid ${darkProTokens.warning}30`
                 }}>
-                  <Typography variant="h4" sx={{ 
-                    color: '#ff9800', 
-                    fontWeight: 800,
-                    mb: 1
+                  <Typography variant="h5" sx={{ 
+                    color: darkProTokens.warning, 
+                    fontWeight: 700,
+                    mb: 0.5
                   }}>
                     {stats.expiring_soon}
                   </Typography>
-                  <Typography variant="body1" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    fontWeight: 600
+                  <Typography variant="body2" sx={{ 
+                    color: darkProTokens.textSecondary,
+                    fontWeight: 500
                   }}>
                     Por Renovar
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.6)'
-                  }}>
-                    Próximos días
                   </Typography>
                 </Box>
               </Grid>
               
               <Grid size={12}>
-                <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.3)', my: 2 }} />
+                <Divider sx={{ borderColor: darkProTokens.grayDark, my: 2 }} />
                 <Box sx={{ 
                   textAlign: 'center',
                   p: 3,
-                  background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.2), rgba(255, 204, 0, 0.05))',
-                  borderRadius: 3,
-                  border: '1px solid rgba(255, 204, 0, 0.3)'
+                  bgcolor: `${darkProTokens.primary}10`,
+                  borderRadius: 2,
+                  border: `1px solid ${darkProTokens.primary}30`
                 }}>
-                  <Typography variant="h4" sx={{ 
-                    color: '#FFCC00', 
-                    fontWeight: 800,
+                  <Typography variant="h5" sx={{ 
+                    color: darkProTokens.primary, 
+                    fontWeight: 700,
                     mb: 1
                   }}>
                     {formatPrice(stats.revenue_this_month)}
                   </Typography>
-                  <Typography variant="h6" sx={{ 
-                    color: 'white',
-                    fontWeight: 700
+                  <Typography variant="body1" sx={{ 
+                    color: darkProTokens.textPrimary,
+                    fontWeight: 600
                   }}>
-                    💰 Total de Ingresos Mensuales
+                    💰 Ingresos Totales
                   </Typography>
                   <Typography variant="body2" sx={{ 
-                    color: 'rgba(255, 255, 255, 0.7)'
+                    color: darkProTokens.textSecondary
                   }}>
-                    Rendimiento financiero del período actual
+                    Facturación del mes actual
                   </Typography>
                 </Box>
               </Grid>
@@ -678,6 +776,28 @@ export default function MembresiasPage() {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
+      <style jsx>{`
+        /* Scrollbar personalizado para Dark Pro System */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${darkProTokens.surfaceLevel1};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+        }
+      `}</style>
     </Box>
   );
 }

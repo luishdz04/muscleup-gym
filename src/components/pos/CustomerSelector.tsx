@@ -9,7 +9,7 @@ import {
   Button,
   Typography,
   Box,
-  Grid as Grid,
+  Grid,
   Card,
   CardContent,
   TextField,
@@ -31,7 +31,9 @@ import {
   MenuItem,
   Badge,
   Tooltip,
-  Divider
+  Divider,
+  CircularProgress,
+  Snackbar
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -50,14 +52,73 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatDate, formatPhoneNumber } from '@/utils/formatUtils';
-import { showNotification } from '@/utils/notifications';
-import { User } from '@/types';
-import { corporateColors, getGradient } from '@/theme/colors';
+
+// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
+const darkProTokens = {
+  // Base Colors
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  
+  // Neutrals
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  
+  // Primary Accent (Golden)
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  
+  // Semantic Colors
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  
+  // User Roles
+  roleAdmin: '#FFCC00',
+  roleStaff: '#1976D2',
+  roleTrainer: '#009688',
+  roleUser: '#777777',
+  roleModerator: '#9C27B0',
+  roleGuest: '#444444',
+  
+  // Interactions
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName?: string;
+  email?: string;
+  whatsapp?: string;
+  birthDate?: string;
+  gender?: string;
+  maritalStatus?: string;
+  rol?: string;
+  isMinor?: boolean;
+  createdAt?: string;
+}
 
 interface Customer extends User {
   name: string;
- 
   membership_type?: string;
   points_balance?: number;
   total_purchases?: number;
@@ -136,7 +197,43 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
 
+  // Estados de notificaciones
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
   const supabase = createBrowserSupabaseClient();
+
+  // ✅ Formatear fecha
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-MX', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // ✅ Formatear teléfono
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length <= 10) {
+      return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '+52 $1 $2 $3');
+    }
+    return phone;
+  };
+
+  // ✅ Mostrar notificación
+  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity });
+  };
 
   // Cargar clientes
   const loadCustomers = async () => {
@@ -266,7 +363,6 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
       const newCustomer: Customer = {
         ...data,
         name: `${data.firstName} ${data.lastName || ''}`.trim(),
-        phone: data.whatsapp,
         membership_type: data.rol === 'miembro' ? 'Miembro activo' : undefined,
         points_balance: 0,
         total_purchases: 0
@@ -376,47 +472,98 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
       fullWidth
       PaperProps={{
         sx: { 
-          borderRadius: 3,
-          bgcolor: corporateColors.background.paper,
-          color: corporateColors.text.onWhite
+          borderRadius: 4,
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `2px solid ${darkProTokens.primary}50`,
+          color: darkProTokens.textPrimary,
+          maxHeight: '90vh',
+          boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
         }
       }}
     >
+      {/* ✅ SNACKBAR CON DARK PRO SYSTEM */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          sx={{
+            background: notification.severity === 'success' ? 
+              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
+              notification.severity === 'error' ?
+              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
+              notification.severity === 'warning' ?
+              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
+              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+            color: darkProTokens.textPrimary,
+            border: `1px solid ${
+              notification.severity === 'success' ? darkProTokens.success :
+              notification.severity === 'error' ? darkProTokens.error :
+              notification.severity === 'warning' ? darkProTokens.warning :
+              darkProTokens.info
+            }60`,
+            borderRadius: 3,
+            fontWeight: 600,
+            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
+            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
       <DialogTitle sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        background: getGradient('primary'),
-        color: corporateColors.text.onPrimary,
-        pb: 2
+        background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+        color: darkProTokens.background,
+        pb: 2,
+        borderRadius: '16px 16px 0 0'
       }}>
         <Box display="flex" alignItems="center" gap={2}>
-          <PersonIcon />
-          <Typography variant="h6" fontWeight="bold">
+          <PersonIcon sx={{ fontSize: 35 }} />
+          <Typography variant="h5" fontWeight="bold">
             👥 Seleccionar Cliente
           </Typography>
         </Box>
-        <IconButton onClick={onClose} sx={{ color: 'inherit' }}>
+        <IconButton 
+          onClick={onClose} 
+          sx={{ 
+            color: darkProTokens.background,
+            '&:hover': {
+              backgroundColor: `${darkProTokens.background}20`
+            }
+          }}
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <DialogContent sx={{ p: 0 }}>
         <Box sx={{ p: 0 }}>
-          {/* Tabs */}
+          {/* ✅ TABS CON DARK PRO SYSTEM */}
           <Tabs 
             value={currentTab} 
             onChange={(_, newValue) => setCurrentTab(newValue)}
             variant="fullWidth"
             sx={{ 
-              borderBottom: 1, 
-              borderColor: 'divider',
-              bgcolor: corporateColors.background.dark,
+              borderBottom: `1px solid ${darkProTokens.grayDark}`,
+              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
               '& .MuiTab-root': {
-                color: corporateColors.text.primary
+                color: darkProTokens.textSecondary,
+                fontWeight: 600,
+                '&.Mui-selected': {
+                  color: darkProTokens.primary
+                }
               },
-              '& .Mui-selected': {
-                color: corporateColors.primary.main
+              '& .MuiTabs-indicator': {
+                backgroundColor: darkProTokens.primary,
+                height: 3
               }
             }}
           >
@@ -432,7 +579,7 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
             />
           </Tabs>
 
-          {/* Tab 1: Buscar cliente */}
+          {/* ✅ TAB 1: BUSCAR CLIENTE CON DARK PRO SYSTEM */}
           <TabPanel value={currentTab} index={0}>
             <Box sx={{ p: 3 }}>
               {/* Filtros de búsqueda */}
@@ -446,27 +593,56 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <SearchIcon />
+                          <SearchIcon sx={{ color: darkProTokens.primary }} />
                         </InputAdornment>
                       ),
                       endAdornment: searchTerm && (
                         <InputAdornment position="end">
                           <IconButton size="small" onClick={() => setSearchTerm('')}>
-                            <ClearIcon />
+                            <ClearIcon sx={{ color: darkProTokens.textSecondary }} />
                           </IconButton>
                         </InputAdornment>
-                      )
+                      ),
+                      sx: {
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }
                     }}
                   />
                 </Grid>
                 
                 <Grid size={{ xs: 12, md: 3 }}>
                   <FormControl fullWidth>
-                    <InputLabel>Género</InputLabel>
+                    <InputLabel sx={{ 
+                      color: darkProTokens.textSecondary,
+                      '&.Mui-focused': { color: darkProTokens.primary }
+                    }}>
+                      Género
+                    </InputLabel>
                     <Select
                       value={genderFilter}
                       label="Género"
                       onChange={(e) => setGenderFilter(e.target.value)}
+                      sx={{
+                        color: darkProTokens.textPrimary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: `${darkProTokens.primary}30`
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: darkProTokens.primary
+                        }
+                      }}
                     >
                       <MenuItem value="">Todos</MenuItem>
                       {GENDER_OPTIONS.map((option) => (
@@ -482,7 +658,14 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                   <IconButton 
                     onClick={loadCustomers}
                     disabled={loading}
-                    sx={{ mt: 1 }}
+                    sx={{ 
+                      mt: 1,
+                      color: darkProTokens.textSecondary,
+                      '&:hover': {
+                        color: darkProTokens.primary,
+                        backgroundColor: `${darkProTokens.primary}10`
+                      }
+                    }}
                   >
                     <RefreshIcon />
                   </IconButton>
@@ -490,7 +673,16 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
               </Grid>
 
               {/* Estadísticas */}
-              <Alert severity="info" sx={{ mb: 3 }}>
+              <Alert 
+                severity="info" 
+                sx={{ 
+                  mb: 3,
+                  backgroundColor: `${darkProTokens.info}10`,
+                  color: darkProTokens.textPrimary,
+                  border: `1px solid ${darkProTokens.info}30`,
+                  '& .MuiAlert-icon': { color: darkProTokens.info }
+                }}
+              >
                 <Typography variant="body2">
                   {filteredCustomers.length} de {customers.length} clientes encontrados
                 </Typography>
@@ -500,15 +692,15 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
               <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
                 {loading ? (
                   <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-                    <Typography>Cargando clientes...</Typography>
+                    <CircularProgress sx={{ color: darkProTokens.primary }} size={60} thickness={4} />
                   </Box>
                 ) : filteredCustomers.length === 0 ? (
                   <Box textAlign="center" py={4}>
-                    <PersonIcon sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                    <PersonIcon sx={{ fontSize: 64, color: darkProTokens.textSecondary, mb: 2 }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }} gutterBottom>
                       No se encontraron clientes
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
                       {customers.length === 0 
                         ? 'No hay clientes registrados'
                         : 'Intenta ajustar los filtros de búsqueda'
@@ -519,8 +711,9 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                       startIcon={<PersonAddIcon />}
                       onClick={() => setCurrentTab(1)}
                       sx={{
-                        background: getGradient('primary'),
-                        color: corporateColors.text.onPrimary
+                        background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                        color: darkProTokens.background,
+                        fontWeight: 700
                       }}
                     >
                       Crear Primer Cliente
@@ -539,50 +732,59 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                         >
                           <ListItem
                             sx={{
-                              border: 1,
-                              borderColor: 'grey.200',
+                              border: `1px solid ${darkProTokens.grayDark}`,
                               borderRadius: 2,
                               mb: 1,
-                              position: 'relative', // ✅ Para positioning de chips
-                              minHeight: 80, // ✅ Altura mínima para evitar solapamiento
-                              pr: 8, // ✅ Padding derecho para el botón
+                              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                              position: 'relative',
+                              minHeight: 80,
+                              pr: 8,
                               '&:hover': {
-                                bgcolor: corporateColors.primary.main + '20',
-                                borderColor: corporateColors.primary.main,
-                                cursor: 'pointer'
-                              }
+                                bgcolor: `${darkProTokens.primary}10`,
+                                borderColor: darkProTokens.primary,
+                                cursor: 'pointer',
+                                transform: 'translateY(-2px)'
+                              },
+                              transition: 'all 0.3s ease'
                             }}
                             onClick={() => handleSelectCustomer(customer)}
                           >
                             <ListItemAvatar>
                               <Badge
                                 badgeContent={customer.membership_type ? '⭐' : ''}
-                                color="primary"
+                                sx={{
+                                  '& .MuiBadge-badge': {
+                                    backgroundColor: darkProTokens.primary,
+                                    color: darkProTokens.background
+                                  }
+                                }}
                               >
-                                <Avatar sx={{ bgcolor: corporateColors.primary.main }}>
+                                <Avatar sx={{ bgcolor: darkProTokens.primary, color: darkProTokens.background }}>
                                   <PersonIcon />
                                 </Avatar>
                               </Badge>
                             </ListItemAvatar>
                             
-                            {/* ✅ CORREGIDO: Evitar anidación de elementos p */}
                             <ListItemText
                               primary={customer.name}
                               secondary={formatCustomerInfo(customer)}
                               primaryTypographyProps={{
                                 variant: 'subtitle1',
                                 fontWeight: 'bold',
-                                component: 'div' // ✅ Usar div en lugar de p
+                                component: 'div',
+                                sx: { color: darkProTokens.textPrimary }
                               }}
                               secondaryTypographyProps={{
                                 variant: 'body2',
-                                color: 'text.secondary',
-                                component: 'div', // ✅ Usar div en lugar de p
-                                sx: { mt: 0.5 }
+                                component: 'div',
+                                sx: { 
+                                  mt: 0.5,
+                                  color: darkProTokens.textSecondary
+                                }
                               }}
                             />
                             
-                            {/* ✅ Chips posicionados absolutamente */}
+                            {/* Chips posicionados absolutamente */}
                             <Box sx={{ 
                               position: 'absolute', 
                               top: 8, 
@@ -594,26 +796,36 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                                 <Chip 
                                   label={customer.membership_type} 
                                   size="small" 
-                                  color="primary" 
+                                  sx={{
+                                    backgroundColor: `${darkProTokens.primary}20`,
+                                    color: darkProTokens.primary,
+                                    border: `1px solid ${darkProTokens.primary}40`,
+                                    fontWeight: 600
+                                  }}
                                 />
                               )}
                               {customer.isMinor && (
                                 <Chip 
                                   label="Menor" 
                                   size="small" 
-                                  color="warning" 
+                                  sx={{
+                                    backgroundColor: `${darkProTokens.warning}20`,
+                                    color: darkProTokens.warning,
+                                    border: `1px solid ${darkProTokens.warning}40`,
+                                    fontWeight: 600
+                                  }}
                                 />
                               )}
                             </Box>
                             
-                            {/* ✅ ID y fecha como elemento separado */}
+                            {/* ID y fecha como elemento separado */}
                             <Box sx={{ 
                               position: 'absolute', 
                               bottom: 8, 
                               left: 72, 
                               right: 60 
                             }}>
-                              <Typography variant="caption" color="text.secondary" component="div">
+                              <Typography variant="caption" component="div" sx={{ color: darkProTokens.textSecondary }}>
                                 ID: {customer.id.slice(0, 8)}... • Registro: {formatDate(customer.createdAt || '')}
                               </Typography>
                             </Box>
@@ -625,7 +837,7 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                                   e.stopPropagation();
                                   handleSelectCustomer(customer);
                                 }}
-                                color="primary"
+                                sx={{ color: darkProTokens.primary }}
                               >
                                 <CheckIcon />
                               </IconButton>
@@ -640,19 +852,29 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
             </Box>
           </TabPanel>
 
-          {/* Tab 2: Nuevo cliente */}
+          {/* ✅ TAB 2: NUEVO CLIENTE CON DARK PRO SYSTEM */}
           <TabPanel value={currentTab} index={1}>
             <Box sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PersonAddIcon color="primary" />
+              <Typography variant="h6" gutterBottom sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                color: darkProTokens.textPrimary,
+                fontWeight: 700
+              }}>
+                <PersonAddIcon sx={{ color: darkProTokens.primary }} />
                 Crear Nuevo Cliente
               </Typography>
 
               <Grid container spacing={3}>
                 <Grid size={12}>
-                  <Card variant="outlined">
+                  <Card sx={{
+                    background: `${darkProTokens.info}10`,
+                    border: `1px solid ${darkProTokens.info}30`,
+                    borderRadius: 3
+                  }}>
                     <CardContent>
-                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ color: darkProTokens.info }}>
                         📋 Información Personal
                       </Typography>
                       
@@ -666,6 +888,29 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                             error={!!errors.firstName}
                             helperText={errors.firstName}
                             placeholder="Nombre del cliente"
+                            InputProps={{
+                              sx: {
+                                color: darkProTokens.textPrimary,
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${darkProTokens.primary}30`
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                }
+                              }
+                            }}
+                            InputLabelProps={{
+                              sx: { 
+                                color: darkProTokens.textSecondary,
+                                '&.Mui-focused': { color: darkProTokens.primary }
+                              }
+                            }}
+                            FormHelperTextProps={{
+                              sx: { color: darkProTokens.error }
+                            }}
                           />
                         </Grid>
 
@@ -676,6 +921,26 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                             value={newCustomerData.lastName}
                             onChange={(e) => setNewCustomerData(prev => ({ ...prev, lastName: e.target.value }))}
                             placeholder="Apellidos del cliente"
+                            InputProps={{
+                              sx: {
+                                color: darkProTokens.textPrimary,
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${darkProTokens.primary}30`
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                }
+                              }
+                            }}
+                            InputLabelProps={{
+                              sx: { 
+                                color: darkProTokens.textSecondary,
+                                '&.Mui-focused': { color: darkProTokens.primary }
+                              }
+                            }}
                           />
                         </Grid>
 
@@ -692,9 +957,30 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start">
-                                  <EmailIcon />
+                                  <EmailIcon sx={{ color: darkProTokens.primary }} />
                                 </InputAdornment>
                               ),
+                              sx: {
+                                color: darkProTokens.textPrimary,
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${darkProTokens.primary}30`
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                }
+                              }
+                            }}
+                            InputLabelProps={{
+                              sx: { 
+                                color: darkProTokens.textSecondary,
+                                '&.Mui-focused': { color: darkProTokens.primary }
+                              }
+                            }}
+                            FormHelperTextProps={{
+                              sx: { color: darkProTokens.error }
                             }}
                           />
                         </Grid>
@@ -711,9 +997,30 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start">
-                                  <WhatsAppIcon />
+                                  <WhatsAppIcon sx={{ color: darkProTokens.success }} />
                                 </InputAdornment>
                               ),
+                              sx: {
+                                color: darkProTokens.textPrimary,
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${darkProTokens.primary}30`
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                }
+                              }
+                            }}
+                            InputLabelProps={{
+                              sx: { 
+                                color: darkProTokens.textSecondary,
+                                '&.Mui-focused': { color: darkProTokens.primary }
+                              }
+                            }}
+                            FormHelperTextProps={{
+                              sx: { color: darkProTokens.error }
                             }}
                           />
                         </Grid>
@@ -729,24 +1036,60 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                             helperText={errors.birthDate}
                             InputLabelProps={{
                               shrink: true,
+                              sx: { 
+                                color: darkProTokens.textSecondary,
+                                '&.Mui-focused': { color: darkProTokens.primary }
+                              }
                             }}
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start">
-                                  <CakeIcon />
+                                  <CakeIcon sx={{ color: darkProTokens.warning }} />
                                 </InputAdornment>
                               ),
+                              sx: {
+                                color: darkProTokens.textPrimary,
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${darkProTokens.primary}30`
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                }
+                              }
+                            }}
+                            FormHelperTextProps={{
+                              sx: { color: darkProTokens.error }
                             }}
                           />
                         </Grid>
 
                         <Grid size={{ xs: 12, md: 4 }}>
                           <FormControl fullWidth>
-                            <InputLabel>Género</InputLabel>
+                            <InputLabel sx={{ 
+                              color: darkProTokens.textSecondary,
+                              '&.Mui-focused': { color: darkProTokens.primary }
+                            }}>
+                              Género
+                            </InputLabel>
                             <Select
                               value={newCustomerData.gender}
                               label="Género"
                               onChange={(e) => setNewCustomerData(prev => ({ ...prev, gender: e.target.value }))}
+                              sx={{
+                                color: darkProTokens.textPrimary,
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${darkProTokens.primary}30`
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                }
+                              }}
                             >
                               <MenuItem value="">No especificar</MenuItem>
                               {GENDER_OPTIONS.map((option) => (
@@ -760,11 +1103,28 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
 
                         <Grid size={{ xs: 12, md: 4 }}>
                           <FormControl fullWidth>
-                            <InputLabel>Estado Civil</InputLabel>
+                            <InputLabel sx={{ 
+                              color: darkProTokens.textSecondary,
+                              '&.Mui-focused': { color: darkProTokens.primary }
+                            }}>
+                              Estado Civil
+                            </InputLabel>
                             <Select
                               value={newCustomerData.maritalStatus}
                               label="Estado Civil"
                               onChange={(e) => setNewCustomerData(prev => ({ ...prev, maritalStatus: e.target.value }))}
+                              sx={{
+                                color: darkProTokens.textPrimary,
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${darkProTokens.primary}30`
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: darkProTokens.primary
+                                }
+                              }}
                             >
                               <MenuItem value="">No especificar</MenuItem>
                               {MARITAL_STATUS_OPTIONS.map((option) => (
@@ -778,25 +1138,31 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
                       </Grid>
 
                       {/* Previsualización */}
-                      <Box sx={{ mt: 3, p: 2, bgcolor: corporateColors.background.light, borderRadius: 1 }}>
-                        <Typography variant="subtitle2" gutterBottom>
+                      <Box sx={{ 
+                        mt: 3, 
+                        p: 2, 
+                        background: `${darkProTokens.success}10`,
+                        border: `1px solid ${darkProTokens.success}30`,
+                        borderRadius: 2
+                      }}>
+                        <Typography variant="subtitle2" gutterBottom sx={{ color: darkProTokens.success }}>
                           👀 Vista previa:
                         </Typography>
-                        <Typography variant="body1" fontWeight="bold">
+                        <Typography variant="body1" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
                           {newCustomerData.firstName} {newCustomerData.lastName}
                         </Typography>
                         {newCustomerData.email && (
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                             📧 {newCustomerData.email}
                           </Typography>
                         )}
                         {newCustomerData.whatsapp && (
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                             📱 {newCustomerData.whatsapp}
                           </Typography>
                         )}
                         {newCustomerData.birthDate && (
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                             🎂 {calculateAge(newCustomerData.birthDate)} años
                           </Typography>
                         )}
@@ -813,7 +1179,10 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
       <DialogActions sx={{ p: 3, pt: 0 }}>
         {currentTab === 0 ? (
           <>
-            <Button onClick={onClose}>
+            <Button 
+              onClick={onClose}
+              sx={{ color: darkProTokens.textSecondary }}
+            >
               Cancelar
             </Button>
             <Button
@@ -821,8 +1190,12 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
               startIcon={<PersonAddIcon />}
               onClick={() => setCurrentTab(1)}
               sx={{
-                borderColor: corporateColors.primary.main,
-                color: corporateColors.primary.main
+                borderColor: darkProTokens.primary,
+                color: darkProTokens.primary,
+                '&:hover': {
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}10`
+                }
               }}
             >
               Nuevo Cliente
@@ -830,7 +1203,11 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
           </>
         ) : (
           <>
-            <Button onClick={onClose} disabled={creating}>
+            <Button 
+              onClick={onClose} 
+              disabled={creating}
+              sx={{ color: darkProTokens.textSecondary }}
+            >
               Cancelar
             </Button>
             <Button
@@ -838,8 +1215,12 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
               onClick={() => setCurrentTab(0)}
               disabled={creating}
               sx={{
-                borderColor: corporateColors.primary.main,
-                color: corporateColors.primary.main
+                borderColor: darkProTokens.primary,
+                color: darkProTokens.primary,
+                '&:hover': {
+                  borderColor: darkProTokens.primary,
+                  backgroundColor: `${darkProTokens.primary}10`
+                }
               }}
             >
               Volver a Buscar
@@ -849,21 +1230,28 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
               onClick={clearForm}
               disabled={creating}
               sx={{
-                borderColor: corporateColors.primary.main,
-                color: corporateColors.primary.main
+                borderColor: darkProTokens.textSecondary,
+                color: darkProTokens.textSecondary,
+                '&:hover': {
+                  borderColor: darkProTokens.textSecondary,
+                  backgroundColor: `${darkProTokens.textSecondary}10`
+                }
               }}
             >
               Limpiar
             </Button>
             <Button
               variant="contained"
-              startIcon={creating ? undefined : <CheckIcon />}
+              startIcon={creating ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <CheckIcon />}
               onClick={createNewCustomer}
               disabled={!newCustomerData.firstName.trim() || creating}
               sx={{
-                background: getGradient('primary'),
-                color: corporateColors.text.onPrimary,
-                fontWeight: 'bold'
+                background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                color: darkProTokens.background,
+                fontWeight: 'bold',
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`
+                }
               }}
             >
               {creating ? 'Creando...' : 'Crear Cliente'}
