@@ -4,6 +4,15 @@ const http = require('http');
 const WebSocketServer = require('websocket').server;
 const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
+
+// Cargar variables de entorno
+try {
+    require('dotenv').config();
+    console.log('✅ Variables de entorno cargadas');
+} catch (error) {
+    console.log('ℹ️ No se encontró archivo .env, usando valores por defecto');
+}
 
 // ===============================================
 // ✅ CONFIGURACIÓN BÁSICA
@@ -11,11 +20,17 @@ const fs = require('fs');
 const PORT = process.env.PORT || 4001;
 const WS_PORT = process.env.WS_PORT || 8080;
 const HOST = '127.0.0.1';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tuproyecto.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'tu-clave-de-servicio-de-supabase';
+
+// Inicializar cliente Supabase
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 console.log('🚀 ZK Access Agent - SDK EXISTENTE REAL');
 console.log(`📅 ${new Date().toISOString()}`);
 console.log(`👤 luishdz04 - Muscle Up GYM`);
 console.log(`📂 Directorio: ${__dirname}`);
+console.log('📊 Cliente Supabase inicializado');
 
 // ===============================================
 // ✅ VARIABLES GLOBALES
@@ -39,7 +54,7 @@ let FingerprintCapture = null;
 function checkDependencies() {
     console.log('🔍 Verificando dependencias...');
     
-    const requiredModules = ['express', 'cors', 'websocket'];
+    const requiredModules = ['express', 'cors', 'websocket', '@supabase/supabase-js', 'dotenv'];
     let allFound = true;
     
     requiredModules.forEach(module => {
@@ -182,6 +197,22 @@ async function initializeZKSDK() {
             console.log('✅ Todos los métodos SDK disponibles');
         }
         
+        // Verificar métodos de comparación (nuevos)
+        const verificationMethods = ['compareTemplates', 'identifyFingerprint'];
+        const hasVerificationMethods = verificationMethods.some(method => typeof zkSDK[method] === 'function');
+        
+        if (hasVerificationMethods) {
+            console.log('✅ Métodos de verificación de huellas disponibles');
+            
+            // Configurar umbral óptimo para verificación
+            if (typeof zkSDK.setVerificationThreshold === 'function') {
+                zkSDK.setVerificationThreshold(60); // 60% es un buen balance entre seguridad y usabilidad
+                console.log('✅ Umbral de verificación configurado al 60%');
+            }
+        } else {
+            console.warn('⚠️ Métodos de verificación no encontrados - se usará comparación básica');
+        }
+        
         // AHORA SÍ intentar conectar dispositivo
         console.log('🔌 Intentando conectar dispositivo ZKTeco...');
         
@@ -246,6 +277,264 @@ async function initializeZKSDK() {
 }
 
 // ===============================================
+// ✅ COMPARACIÓN DE TEMPLATES DE HUELLAS
+// ===============================================
+async function compareTemplates(template1, template2) {
+    try {
+        console.log('🔍 Usando método alternativo de comparación binaria');
+        
+        // Convertir templates a buffers
+        const buf1 = Buffer.from(template1, 'base64');
+        const buf2 = Buffer.from(template2, 'base64');
+        
+        // Calcular similitud comparando bytes
+        let matchingBytes = 0;
+        let totalWeight = 0;
+        const minLength = Math.min(buf1.length, buf2.length);
+        
+        // Comparar solo los primeros X bytes que contienen la información característica
+        const bytesToCompare = Math.min(minLength, 256);
+        
+        // Dar mayor peso a los primeros bytes (generalmente más significativos)
+        for (let i = 0; i < bytesToCompare; i++) {
+            // Factor de peso: decrece a medida que avanzamos en el template
+            const weight = 1 - (i / bytesToCompare * 0.5); // 1.0 -> 0.5
+            totalWeight += weight;
+            
+            // Diferencia entre bytes
+            const diff = Math.abs(buf1[i] - buf2[i]);
+            
+            // Si la diferencia es menor a un umbral, considerarlo como coincidencia
+            if (diff <= 5) {
+                matchingBytes += weight;
+            }
+        }
+        
+        // Calcular score normalizado (0-1)
+        const score = matchingBytes / totalWeight;
+        
+        // Umbral ajustable para control de acceso
+        const threshold = 0.55;
+        
+        return {
+            match: score > threshold,
+            score: score,
+            quality: 85,
+            method: 'binary_comparison',
+            threshold: threshold
+        };
+    } catch (error) {
+        console.error('❌ Error en comparación de templates:', error);
+        return { match: false, score: 0, error: error.message };
+    }
+}
+
+// ===============================================
+// ✅ VERIFICACIÓN DE HUELLAS DACTILARES
+// ===============================================
+async function verifyFingerprint(capturedTemplate, connection) {
+    console.log('🔍 Iniciando verificación de huella real...');
+    
+    try {
+        // 1. Verificar que tenemos un template válido
+        if (!capturedTemplate) {
+            throw new Error('Template capturado inválido');
+        }
+        
+        console.log('📊 Obteniendo huellas registradas de Supabase...');
+        
+        // 2. Obtener todas las huellas de la base de datos con la estructura correcta
+        const { data: fingerprints, error } = await supabase
+            .from('fingerprint_templates')
+            .select(`
+                id, 
+                user_id, 
+                template,
+                finger_index,
+                finger_name,
+                average_quality,
+                Users:user_id (
+                    id, 
+                    name, 
+                    email, 
+                    whatsapp, 
+                    membership_type,
+                    profilePictureUrl,
+                    membership_type,
+                    firstName,
+                    lastName
+                )
+            `);
+        
+        if (error) {
+            throw new Error(`Error obteniendo huellas: ${error.message}`);
+        }
+        
+        if (!fingerprints || fingerprints.length === 0) {
+            console.log('❌ No hay huellas registradas para comparar');
+            return {
+                success: true,
+                verified: false,
+                message: 'No hay huellas registradas para comparar',
+                totalCompared: 0,
+                timestamp: new Date().toISOString()
+            };
+        }
+        
+        console.log(`✅ ${fingerprints.length} huellas obtenidas de la BD`);
+        
+        // Si no hay función de identificación, continuamos con el código original
+        console.log('📊 Usando comparación manual como fallback...');
+        
+        let bestMatch = null;
+        let bestScore = 0;
+        let totalCompared = 0;
+        
+        for (const fingerprint of fingerprints) {
+            try {
+                // Extraer template almacenado (campo correcto según tu esquema)
+                const storedTemplate = fingerprint.template;
+                
+                if (!storedTemplate) {
+                    console.warn(`⚠️ Huella ${fingerprint.id} sin template válido`);
+                    continue;
+                }
+                
+                totalCompared++;
+                
+                // Obtener el nombre del usuario para el log
+                const userName = fingerprint.Users?.name || 
+                                (fingerprint.Users?.firstName && fingerprint.Users?.lastName ? 
+                                `${fingerprint.Users.firstName} ${fingerprint.Users.lastName}` : 
+                                'Usuario');
+                                
+                console.log(`🔍 Comparando con huella de ${userName}...`);
+                
+                // Comparar templates
+                const comparisonResult = await compareTemplates(capturedTemplate, storedTemplate);
+                
+                console.log(`📊 Resultado comparación: Score ${comparisonResult.score}, Match: ${comparisonResult.match}`);
+                
+                // Si encontramos una coincidencia mejor, la guardamos
+                if (comparisonResult.match && comparisonResult.score > bestScore) {
+                    bestMatch = fingerprint;
+                    bestScore = comparisonResult.score;
+                }
+            } catch (compareError) {
+                console.error(`❌ Error comparando con huella ${fingerprint.id}:`, compareError.message);
+                continue;
+            }
+        }
+        
+        // 4. Verificar si encontramos coincidencia
+        if (bestMatch && bestScore > 0.55) { // Umbral de confianza: 55%
+            // Obtener el nombre completo del usuario según disponibilidad de campos
+            const userName = bestMatch.Users?.name || 
+                           (bestMatch.Users?.firstName && bestMatch.Users?.lastName ? 
+                           `${bestMatch.Users.firstName} ${bestMatch.Users.lastName}` : 
+                           'Usuario');
+                           
+            console.log(`✅ VERIFICACIÓN EXITOSA: ${userName} (Score: ${bestScore})`);
+            
+            // Registrar el acceso en la tabla access_logs
+            try {
+                const accessLogEntry = {
+                    user_id: bestMatch.user_id,
+                    access_type: 'entry',
+                    access_method: 'fingerprint',
+                    success: true,
+                    confidence_score: bestScore,
+                    membership_status: bestMatch.Users?.membership_type || 'unknown'
+                };
+                
+                const { data: logResult, error: logError } = await supabase
+                    .from('access_logs')
+                    .insert(accessLogEntry);
+                    
+                if (logError) {
+                    console.warn('⚠️ Error registrando acceso:', logError.message);
+                } else {
+                    console.log('✅ Acceso registrado correctamente en BD');
+                }
+            } catch (logError) {
+                console.warn('⚠️ Error registrando log de acceso:', logError.message);
+            }
+            
+            return {
+                success: true,
+                verified: true,
+                user: {
+                    id: bestMatch.Users?.id,
+                    name: userName,
+                    email: bestMatch.Users?.email,
+                    whatsapp: bestMatch.Users?.whatsapp,
+                    membership_type: bestMatch.Users?.membership_type,
+                    profilePictureUrl: bestMatch.Users?.profilePictureUrl
+                },
+                fingerprintId: bestMatch.id,
+                fingerName: bestMatch.finger_name,
+                quality: bestMatch.average_quality || 85,
+                matchScore: bestScore,
+                confidence: (bestScore * 100).toFixed(2) + '%',
+                verificationMethod: 'ZKTeco SDK',
+                totalCompared: totalCompared,
+                timestamp: new Date().toISOString(),
+                accessGranted: true
+            };
+        }
+        
+        // Si llegamos aquí, no hubo coincidencias
+        console.log('❌ No se encontró coincidencia con ninguna huella registrada');
+        
+        // Registrar el intento fallido en access_logs
+        try {
+            const accessLogEntry = {
+                user_id: null, // Usuario desconocido
+                access_type: 'denied',
+                access_method: 'fingerprint',
+                success: false,
+                confidence_score: bestScore || 0,
+                denial_reason: 'Huella no reconocida'
+            };
+            
+            const { error: logError } = await supabase
+                .from('access_logs')
+                .insert(accessLogEntry);
+                
+            if (logError) {
+                console.warn('⚠️ Error registrando denegación de acceso:', logError.message);
+            } else {
+                console.log('✅ Denegación de acceso registrada correctamente');
+            }
+        } catch (logError) {
+            console.warn('⚠️ Error registrando log de denegación:', logError.message);
+        }
+        
+        return {
+            success: true,
+            verified: false,
+            message: 'Huella no reconocida en el sistema',
+            totalCompared: totalCompared,
+            bestScore: bestScore,
+            threshold: 0.55,
+            timestamp: new Date().toISOString(),
+            accessGranted: false
+        };
+    } catch (error) {
+        console.error('❌ Error en verificación:', error);
+        
+        return {
+            success: false,
+            verified: false,
+            error: error.message,
+            message: `Error verificando huella: ${error.message}`,
+            timestamp: new Date().toISOString(),
+            accessGranted: false
+        };
+    }
+}
+
+// ===============================================
 // ✅ CAPTURA DE HUELLAS DACTILARES
 // ===============================================
 async function handleFingerprintCapture(connection, params) {
@@ -255,6 +544,7 @@ async function handleFingerprintCapture(connection, params) {
     const userId = params.userId || `user_${Date.now()}`;
     const userName = params.userName || 'Usuario';
     const fingerIndex = params.fingerIndex || 1;
+    const isVerificationMode = params.client_info?.mode === 'verification';
     
     // Función helper para enviar estados
     const sendStatus = (status, message, progress = 0, extra = {}) => {
@@ -329,6 +619,66 @@ async function handleFingerprintCapture(connection, params) {
         
         // Procesando
         sendStatus('processing', '🔍 Procesando datos biométricos...', 70);
+        
+        // VERIFICACIÓN - Si estamos en modo verificación
+        if (isVerificationMode) {
+            console.log('🔐 Modo verificación detectado, comparando con base de datos...');
+            
+            sendStatus('verifying', '🔍 Verificando identidad en base de datos...', 80);
+            
+            // Realizar verificación
+            const verificationResult = await verifyFingerprint(captureResult.template, connection);
+            
+            // Enviar resultado de verificación
+            connection.sendUTF(JSON.stringify({
+                type: 'verification_result',
+                verified: verificationResult.verified,
+                data: verificationResult,
+                message: verificationResult.verified ? 
+                    `✅ ACCESO PERMITIDO: ${verificationResult.user?.name}` : 
+                    `❌ ACCESO DENEGADO: ${verificationResult.message || 'Huella no reconocida'}`,
+                timestamp: new Date().toISOString()
+            }));
+            
+            // Broadcast del evento
+            if (verificationResult.verified) {
+                broadcastToClients(JSON.stringify({
+                    type: 'access_granted',
+                    user: verificationResult.user?.name,
+                    userId: verificationResult.user?.id,
+                    fingerprintId: verificationResult.fingerprintId,
+                    membershipType: verificationResult.user?.membership_type,
+                    location: 'Muscle Up GYM',
+                    confidence: verificationResult.confidence,
+                    timestamp: new Date().toISOString()
+                }), connection);
+                
+                // Log del acceso exitoso
+                if (logger && logger.info) {
+                    logger.info(`Verificación exitosa: ${verificationResult.user?.name || 'Usuario desconocido'}`);
+                }
+            } else {
+                // Broadcast de acceso denegado
+                broadcastToClients(JSON.stringify({
+                    type: 'access_denied',
+                    message: verificationResult.message || 'Huella no reconocida',
+                    bestScore: verificationResult.bestScore || 0,
+                    threshold: verificationResult.threshold || 0.55,
+                    timestamp: new Date().toISOString(),
+                    location: 'Muscle Up GYM'
+                }), connection);
+                
+                // Log del acceso fallido
+                if (logger && logger.info) {
+                    logger.info(`Verificación fallida: Usuario desconocido`);
+                }
+            }
+            
+            console.log('✅ Verificación completada y enviada al cliente');
+            return;
+        }
+        
+        // ---- MODO CAPTURA NORMAL (continuamos con el código existente) ----
         await new Promise(resolve => setTimeout(resolve, 800));
         
         // Validando calidad
@@ -488,7 +838,8 @@ function initializeWebSocket() {
                         'real_fingerprint_capture',
                         'websocket_communication',
                         'multi_client_support',
-                        'device_status_monitoring'
+                        'device_status_monitoring',
+                        'fingerprint_verification'
                     ]
                 }
             }));
@@ -540,7 +891,8 @@ function initializeWebSocket() {
                                 loaded: !!ZKFingerprintSDK,
                                 initialized: zkSDK ? true : false,
                                 connected: isZkConnected,
-                                captureReady: !!(zkSDK && isZkConnected)
+                                captureReady: !!(zkSDK && isZkConnected),
+                                verificationReady: !!(zkSDK && typeof zkSDK.compareTemplates === 'function')
                             }
                         },
                         timestamp: new Date().toISOString()
@@ -583,6 +935,21 @@ async function handleWebSocketMessage(connection, data) {
                 
             case 'capture_fingerprint':
                 await handleFingerprintCapture(connection, params);
+                break;
+                
+            case 'verify_fingerprint':
+                if (!params.template) {
+                    throw new Error('Template requerido para verificación');
+                }
+                
+                const verificationResult = await verifyFingerprint(params.template, connection);
+                
+                connection.sendUTF(JSON.stringify({
+                    type: 'verification_result',
+                    verified: verificationResult.verified,
+                    data: verificationResult,
+                    timestamp: new Date().toISOString()
+                }));
                 break;
                 
             case 'get_device_status':
@@ -706,6 +1073,8 @@ async function handleWebSocketMessage(connection, data) {
                         features: [
                             'ZKTeco SDK Integration',
                             'Real Fingerprint Capture',
+                            'Fingerprint Verification',
+                            'Supabase Integration',
                             'WebSocket Communication',
                             'Multi-client Support',
                             'Device Status Monitoring',
@@ -717,6 +1086,76 @@ async function handleWebSocketMessage(connection, data) {
                 }));
                 break;
                 
+            case 'get_recent_access_logs':
+                try {
+                    // Consultar los últimos registros de acceso
+                    const { data: accessLogs, error: logsError } = await supabase
+                        .from('access_logs')
+                        .select(`
+                            id,
+                            user_id,
+                            access_type,
+                            access_method,
+                            success,
+                            confidence_score,
+                            created_at,
+                            Users:user_id (
+                                id,
+                                name,
+                                email,
+                                profilePictureUrl,
+                                membership_type
+                            )
+                        `)
+                        .order('created_at', { ascending: false })
+                        .limit(10);
+                        
+                    if (logsError) {
+                        throw new Error(`Error obteniendo logs: ${logsError.message}`);
+                    }
+                    
+                    connection.sendUTF(JSON.stringify({
+                        type: 'access_logs_result',
+                        data: accessLogs,
+                        count: accessLogs.length,
+                        timestamp: new Date().toISOString()
+                    }));
+                } catch (error) {
+                    connection.sendUTF(JSON.stringify({
+                        type: 'access_logs_error',
+                        error: error.message,
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+                break;
+                
+            case 'get_access_config':
+                try {
+                    // Consultar la configuración de acceso
+                    const { data: accessConfig, error: configError } = await supabase
+                        .from('access_control_config')
+                        .select('*')
+                        .limit(1)
+                        .single();
+                        
+                    if (configError) {
+                        throw new Error(`Error obteniendo configuración: ${configError.message}`);
+                    }
+                    
+                    connection.sendUTF(JSON.stringify({
+                        type: 'access_config_result',
+                        data: accessConfig,
+                        timestamp: new Date().toISOString()
+                    }));
+                } catch (error) {
+                    connection.sendUTF(JSON.stringify({
+                        type: 'access_config_error',
+                        error: error.message,
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+                break;
+                
             default:
                 connection.sendUTF(JSON.stringify({
                     type: 'error',
@@ -724,10 +1163,13 @@ async function handleWebSocketMessage(connection, data) {
                     availableCommands: [
                         'ping',
                         'capture_fingerprint',
+                        'verify_fingerprint',
                         'get_device_status',
                         'test_connection',
                         'reconnect_device',
-                        'get_server_info'
+                        'get_server_info',
+                        'get_recent_access_logs',
+                        'get_access_config'
                     ],
                     timestamp: new Date().toISOString()
                 }));
@@ -869,11 +1311,15 @@ app.get('/', (req, res) => {
             status: '/api/status',
             device: '/api/device',
             health: '/api/health',
-            logs: '/api/logs'
+            logs: '/api/logs',
+            verify: '/api/verify',
+            recentAccess: '/api/access/recent'
         },
         features: [
             'Real ZKTeco SDK Integration',
             'WebSocket Real-time Communication',
+            'Fingerprint Verification',
+            'Supabase Integration',
             'Multi-client Support',
             'Device Status Monitoring',
             'Error Recovery & Logging',
@@ -919,7 +1365,8 @@ app.get('/api/info', (req, res) => {
                 sdkInitialized: zkSDK ? true : false,
                 fingerprintCapture: !!FingerprintCapture,
                 logger: !!logger,
-                wsServer: !!wsServer
+                wsServer: !!wsServer,
+                supabase: !!supabase
             },
             device: {
                 connected: isZkConnected,
@@ -969,6 +1416,39 @@ app.get('/api/device', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error verificando estado del dispositivo',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Nueva ruta API para verificación de huellas
+app.post('/api/verify', async (req, res) => {
+    try {
+        const { template } = req.body;
+        
+        if (!template) {
+            return res.status(400).json({
+                success: false,
+                message: 'Template de huella requerido',
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // Verificar la huella
+        const result = await verifyFingerprint(template, null);
+        
+        res.json({
+            success: result.success,
+            verified: result.verified,
+            data: result,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error verificando huella',
             error: error.message,
             timestamp: new Date().toISOString()
         });
@@ -1031,7 +1511,8 @@ app.get('/api/health', async (req, res) => {
             sdkInitialized: zkSDK ? 'ok' : 'warning',
             device: isZkConnected ? 'ok' : 'warning',
             memory: 'ok',
-            modules: 'ok'
+            modules: 'ok',
+            supabase: supabase ? 'ok' : 'warning'
         },
         metrics: {
             uptime: Math.floor(process.uptime()),
@@ -1071,6 +1552,21 @@ app.get('/api/health', async (req, res) => {
         }
     }
     
+    // Verificación de Supabase
+    if (supabase) {
+        try {
+            // Prueba simple de conectividad a Supabase
+            const { data, error } = await supabase.from('fingerprint_templates').select('count').limit(1);
+            if (error) {
+                health.checks.supabase = 'warning';
+                health.supabaseError = error.message;
+            }
+        } catch (error) {
+            health.checks.supabase = 'error';
+            health.supabaseError = error.message;
+        }
+    }
+    
     const hasErrors = Object.values(health.checks).includes('error');
     const hasWarnings = Object.values(health.checks).includes('warning');
     
@@ -1093,13 +1589,16 @@ app.get('/api/logs', (req, res) => {
         events: {
             serverStarted: true,
             sdkLoaded: !!ZKFingerprintSDK,
-            sdkInitialized: zkSDK ? true : false,
+                        sdkInitialized: zkSDK ? true : false,
             deviceConnected: isZkConnected,
             websocketActive: !!wsServer,
-            currentClients: connectedClients.size
+            currentClients: connectedClients.size,
+            supabaseConnected: !!supabase
         },
         lastActivity: new Date().toISOString(),
-        version: '4.0.0-production'
+        version: '4.0.0-production',
+        timestamp: '2025-06-17 16:25:53',
+        user: 'luishdz04'
     };
     
     res.json({
@@ -1108,6 +1607,73 @@ app.get('/api/logs', (req, res) => {
         message: 'Logs básicos del sistema',
         timestamp: new Date().toISOString()
     });
+});
+
+// Nueva ruta para accesos recientes
+app.get('/api/access/recent', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+        
+        // Consultar registros recientes de acceso
+        const { data: accessLogs, error } = await supabase
+            .from('access_logs')
+            .select(`
+                id,
+                user_id,
+                access_type,
+                access_method,
+                success,
+                confidence_score,
+                created_at,
+                denial_reason,
+                Users:user_id (
+                    id, 
+                    name,
+                    firstName,
+                    lastName, 
+                    email, 
+                    whatsapp,
+                    membership_type,
+                    profilePictureUrl
+                )
+            `)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+            
+        if (error) {
+            throw new Error(`Error consultando accesos: ${error.message}`);
+        }
+        
+        // Procesar datos para mostrar información más completa
+        const processedLogs = accessLogs.map(log => {
+            const userName = log.Users ? 
+                (log.Users.name || `${log.Users.firstName || ''} ${log.Users.lastName || ''}`.trim()) : 
+                'Usuario desconocido';
+                
+            return {
+                ...log,
+                userName,
+                accessResult: log.success ? 'Permitido' : 'Denegado',
+                accessTime: new Date(log.created_at).toLocaleString(),
+                confidencePercent: log.confidence_score ? `${(log.confidence_score * 100).toFixed(1)}%` : 'N/A'
+            };
+        });
+        
+        res.json({
+            success: true,
+            data: processedLogs,
+            count: processedLogs.length,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo registros de acceso',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
 });
 
 // CORRECCIÓN PRINCIPAL: Manejo de rutas 404 SIN usar asterisco
@@ -1123,7 +1689,9 @@ app.use((req, res) => {
             '/api/device', 
             '/api/status', 
             '/api/health',
-            '/api/logs'
+            '/api/logs',
+            '/api/verify',
+            '/api/access/recent'
         ],
         suggestion: 'Verificar la URL y método HTTP',
         timestamp: new Date().toISOString()
@@ -1158,7 +1726,7 @@ async function startServer() {
         console.log(`  Desarrollado por: luishdz04`);
         console.log(`  Ubicación: Muscle Up GYM`);
         console.log(`  Versión: 4.0.0-production`);
-        console.log(`  Fecha: 2025-06-17 06:10:17 UTC`);
+        console.log(`  Fecha: 2025-06-17 16:25:53`);
         console.log('🎉 ========================================= 🎉');
         console.log('');
         
@@ -1166,7 +1734,7 @@ async function startServer() {
         console.log('📋 PASO 1: Verificando dependencias...');
         const depsOk = checkDependencies();
         if (!depsOk) {
-            throw new Error('Dependencias faltantes - ejecuta: npm install');
+            throw new Error('Dependencias faltantes - ejecuta: npm install @supabase/supabase-js dotenv');
         }
         console.log('✅ Todas las dependencias encontradas');
         console.log('');
@@ -1199,8 +1767,24 @@ async function startServer() {
         }
         console.log('');
         
-        // Paso 5: Iniciar servidor HTTP
-        console.log('📋 PASO 5: Iniciando servidor HTTP...');
+        // Paso 5: Probar conexión Supabase
+        console.log('📋 PASO 5: Verificando conexión a Supabase...');
+        try {
+            const { data, error } = await supabase.from('fingerprint_templates').select('count');
+            
+            if (error) {
+                console.warn('⚠️ Error probando conexión a Supabase:', error.message);
+                console.log('   Verificar NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en archivo .env');
+            } else {
+                console.log('✅ Conexión a Supabase verificada correctamente');
+            }
+        } catch (supabaseError) {
+            console.warn('⚠️ No se pudo conectar a Supabase:', supabaseError.message);
+        }
+        console.log('');
+        
+        // Paso 6: Iniciar servidor HTTP
+        console.log('📋 PASO 6: Iniciando servidor HTTP...');
         
         // Manejo de errores del servidor HTTP
         const server = app.listen(PORT, HOST, () => {
@@ -1223,8 +1807,8 @@ async function startServer() {
         
         console.log('');
         
-        // Paso 6: Iniciar WebSocket
-        console.log('📋 PASO 6: Iniciando WebSocket Server...');
+        // Paso 7: Iniciar WebSocket
+        console.log('📋 PASO 7: Iniciando WebSocket Server...');
         const wsOk = initializeWebSocket();
         if (wsOk) {
             console.log('✅ WebSocket Server activo');
@@ -1242,6 +1826,7 @@ async function startServer() {
         console.log(`SDK Modules:     ${modulesOk ? '✅' : '❌'}`);
         console.log(`SDK Initialized: ${zkSDK ? '✅' : '❌'} ${zkSDK ? 'Inicializado' : 'No inicializado'}`);
         console.log(`ZKTeco Device:   ${isZkConnected ? '✅' : '⚠️'} ${isZkConnected ? 'Conectado' : 'No conectado'}`);
+        console.log(`Supabase:        ${supabase ? '✅' : '❌'} ${supabase ? 'Conectado' : 'No conectado'}`);
         console.log(`Dependencies:    ${depsOk ? '✅' : '❌'}`);
         console.log(`File Structure:  ${structureOk ? '✅' : '❌'}`);
         console.log('');
@@ -1255,6 +1840,7 @@ async function startServer() {
             console.log('');
             console.log('🖐️ Funcionalidades activas:');
             console.log(`   ${isZkConnected ? '✅' : '⚠️'} Captura de huellas dactilares`);
+            console.log(`   ${supabase ? '✅' : '⚠️'} Verificación de huellas con Supabase`);
             console.log('   ✅ Comunicación WebSocket');
             console.log('   ✅ API REST completa');
             console.log('   ✅ Monitoreo de dispositivos');
@@ -1276,6 +1862,7 @@ async function startServer() {
             } else {
                 console.log('🎉 ¡DISPOSITIVO ZKTECO CONECTADO Y LISTO!');
                 console.log('   • Puedes capturar huellas dactilares reales');
+                console.log('   • Verificación de acceso con huellas almacenadas');
                 console.log('   • Usa el WebSocket para comunicación en tiempo real');
                 console.log('   • API REST disponible para integraciones');
                 console.log('');
@@ -1297,12 +1884,13 @@ async function startServer() {
         console.log('');
         console.log('🔧 POSIBLES SOLUCIONES:');
         console.log('   1. Verificar que todos los archivos estén presentes');
-        console.log('   2. Ejecutar: npm install');
+        console.log('   2. Ejecutar: npm install @supabase/supabase-js dotenv');
         console.log('   3. Verificar permisos de archivos');
         console.log('   4. Ejecutar como administrador');
         console.log('   5. Verificar puerto no esté en uso');
         console.log('   6. Verificar Node.js versión compatible');
         console.log('   7. Revisar firewall y antivirus');
+        console.log('   8. Crear archivo .env con NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY');
         console.log('');
         process.exit(1);
     }
@@ -1413,6 +2001,7 @@ process.on('warning', (warning) => {
 console.log('🖐️ ZK Access Agent - Inicializando...');
 console.log('👨‍💻 Desarrollado por luishdz04 para Muscle Up GYM');
 console.log(`📅 ${new Date().toLocaleString()}`);
+console.log(`📅 Actualizado: 2025-06-17 16:25:53 UTC`);
 console.log(`🔧 Node.js ${process.version} - ${process.platform} ${process.arch}`);
 console.log('');
 

@@ -1,1475 +1,976 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  Card,
-  CardContent,
-  Avatar,
-  Chip,
-  Alert,
-  Button,
-  Grid,
-  IconButton,
-  Switch,
-  FormControlLabel,
-  Divider,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  CircularProgress,
-  LinearProgress,
-  Tooltip,
-  Badge,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Snackbar
-} from '@mui/material';
-import {
-  Fingerprint as FingerprintIcon,
-  AccessTime as AccessTimeIcon,
-  Person as PersonIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon,
-  Warning as WarningIcon,
-  Security as SecurityIcon,
-  Wifi as WifiIcon,
-  WifiOff as WifiOffIcon,
-  Refresh as RefreshIcon,
-  PlayArrow as PlayArrowIcon,
-  Stop as StopIcon,
-  Visibility as VisibilityIcon,
-  Settings as SettingsIcon,
-  TrendingUp as TrendingUpIcon,
-  Group as GroupIcon,
-  Login as LoginIcon,
-  Logout as LogoutIcon,
-  Block as BlockIcon,
-  Timer as TimerIcon,
-  Notifications as NotificationsIcon,
-  Close as CloseIcon,
-  TouchApp as TouchAppIcon,
-  DeviceHub as DeviceHubIcon,
-  Speed as SpeedIcon
-} from '@mui/icons-material';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Box, Typography, Paper, Button, CircularProgress, Alert, Card, CardContent, Divider, Chip, Badge, Tooltip, IconButton } from '@mui/material';
+import { CheckCircle, Error, Fingerprint as FingerprintIcon, PersonSearch, Security, History, Info } from '@mui/icons-material';
+import { green, red, blue, grey, orange } from '@mui/material/colors';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-// 🎨 DARK PRO TOKENS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#D4AC00',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#C62828',
-  warning: '#FFB300',
-  warningHover: '#FF8F00',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  borderDefault: '#333333',
-  focusRing: 'rgba(255,204,0,0.4)',
-  hoverOverlay: 'rgba(255,255,255,0.08)',
-  notifSuccessBg: 'rgba(56,142,60,0.1)',
-  notifErrorBg: 'rgba(211,47,47,0.1)',
-  notifWarningBg: 'rgba(255,179,0,0.1)',
-  notifInfoBg: 'rgba(25,118,210,0.1)'
-};
+// Datos del sistema actualizados
+const CURRENT_DATE = '2025-06-17 15:26:36';
+const CURRENT_USER = 'luishdz04';
 
-// 🔗 INTERFACES
-interface AccessAttempt {
-  id: string;
-  user_id: string;
-  device_id: string;
-  access_type: 'entry' | 'exit' | 'denied';
-  access_method: 'fingerprint' | 'card' | 'manual' | 'qr';
-  success: boolean;
-  confidence_score: number;
-  denial_reason?: string;
-  membership_status?: string;
-  created_at: string;
-  device_timestamp: string;
-  user?: {
-    firstName: string;
-    lastName: string;
-    profilePictureUrl?: string;
-    rol: string;
-  };
-  device?: {
-    name: string;
-    type: string;
-    ip_address: string;
-  };
-}
-
-interface DeviceStatus {
-  id: string;
-  name: string;
-  type: string;
-  ip_address: string;
-  status: 'connected' | 'disconnected' | 'error';
-  last_sync: string;
-  user_count: number;
-  fingerprint_count: number;
-}
-
-interface AccessStats {
-  totalToday: number;
-  successfulToday: number;
-  deniedToday: number;
-  currentlyInside: number;
-  averageConfidence: number;
-}
-
-interface ZKAgentStatus {
-  status: 'disconnected' | 'connected' | 'error' | 'capturing';
-  lastMessage?: string;
-  deviceConnected?: boolean;
-  sdkInitialized?: boolean;
-}
-
-// 🚀 COMPONENTE PRINCIPAL
-export default function AccesosTiempoReal() {
-  // 📊 ESTADOS
-  const [isMonitoring, setIsMonitoring] = useState(false);
-  const [accessAttempts, setAccessAttempts] = useState<AccessAttempt[]>([]);
-  const [devices, setDevices] = useState<DeviceStatus[]>([]);
-  const [stats, setStats] = useState<AccessStats>({
-    totalToday: 0,
-    successfulToday: 0,
-    deniedToday: 0,
-    currentlyInside: 0,
-    averageConfidence: 0
+export default function AccessVerificationPage() {
+  // Estados
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'connecting' | 'ready' | 'scanning' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('Listo para verificar');
+  const [deviceStatus, setDeviceStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
+  const [lastVerifiedUser, setLastVerifiedUser] = useState<any>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [fingerprintTemplates, setFingerprintTemplates] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [verificationStats, setVerificationStats] = useState({
+    total: 0,
+    successful: 0,
+    failed: 0,
+    lastVerified: null as Date | null
   });
-  const [wsConnected, setWsConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [selectedAttempt, setSelectedAttempt] = useState<AccessAttempt | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [zkAgentStatus, setZkAgentStatus] = useState<ZKAgentStatus>({
-    status: 'disconnected',
-    deviceConnected: false,
-    sdkInitialized: false
+  const [debugInfo, setDebugInfo] = useState({
+    lastCommand: '',
+    lastResponse: '',
+    lastTemplate: ''
   });
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [captureMessage, setCaptureMessage] = useState<string | null>(null);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('info');
-
-  // 🔗 REFERENCIAS
+  
+  // Referencias
   const wsRef = useRef<WebSocket | null>(null);
-  const accessListRef = useRef<HTMLDivElement | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const captureTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // 🌐 CONFIGURACIÓN - TU ZK ACCESS AGENT
-  const ZK_AGENT_WS_URL = 'ws://127.0.0.1:8080';
-  const ZK_AGENT_HTTP_URL = 'http://127.0.0.1:4001';
-  const RECONNECT_INTERVAL = 3000;
-  const CAPTURE_TIMEOUT = 15000; // 15 segundos para captura
-
-  // 🔄 CONECTAR AL ZK ACCESS AGENT REAL
-  const connectToZKAgent = useCallback(() => {
+  const reconnectAttempts = useRef(0);
+  const isConnecting = useRef(false);
+  const manualDisconnect = useRef(false);
+  const isComponentMounted = useRef(true);
+  const supabase = createClientComponentClient();
+  
+  // Cargar huellas registradas desde Supabase
+  const loadRegisteredFingerprints = useCallback(async () => {
+    if (!isComponentMounted.current) return;
+    
     try {
-      console.log('🔌 Conectando al ZK Access Agent real...');
-      console.log('📡 WebSocket URL:', ZK_AGENT_WS_URL);
-      console.log('📡 HTTP URL:', ZK_AGENT_HTTP_URL);
-      console.log('👤 Usuario actual: luishdz04');
-      console.log('📅 Fecha actual: 2025-06-17 08:28:59 UTC');
+      setIsLoading(true);
+      setMessage('Cargando huellas registradas...');
       
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        console.log('⚠️ WebSocket ya está conectado');
+      const { data, error } = await supabase
+        .from('fingerprint_templates')
+        .select(`
+          id, 
+          user_id, 
+          template, 
+          primary_template,
+          verification_template,
+          finger_index, 
+          finger_name, 
+          average_quality,
+          Users:user_id (id, name, email, whatsapp, membership_type)
+        `);
+        
+      if (error) {
+        console.error('Error cargando huellas:', error);
+        setMessage(`Error cargando huellas: ${error.message}`);
         return;
       }
       
-      wsRef.current = new WebSocket(ZK_AGENT_WS_URL);
+      const processedData = data?.map(fp => ({
+        ...fp,
+        user: fp.Users,
+        Users: undefined
+      })) || [];
       
-      wsRef.current.onopen = () => {
-        console.log('✅ Conectado exitosamente al ZK Access Agent');
-        setWsConnected(true);
-        setZkAgentStatus(prev => ({
-          ...prev,
-          status: 'connected',
-          lastMessage: 'Conexión establecida'
-        }));
-        
-        showSnackbar('✅ Conectado al ZK Access Agent', 'success');
-        
-        // 📡 SOLICITAR ESTADO INICIAL DEL DISPOSITIVO
-        wsRef.current?.send(JSON.stringify({
-          action: 'get_device_status',
-          timestamp: Date.now(),
-          user: 'luishdz04'
-        }));
-
-        // 📡 CONFIRMAR QUE ESTAMOS LISTOS PARA RECIBIR EVENTOS
-        wsRef.current?.send(JSON.stringify({
-          action: 'subscribe_events',
-          events: ['fingerprint_captured', 'device_status', 'access_verification'],
-          timestamp: Date.now()
-        }));
-      };
+      console.log(`✅ Cargadas ${processedData.length} huellas registradas`);
       
-      wsRef.current.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          handleZKAgentMessage(message);
-        } catch (error) {
-          console.error('❌ Error parseando mensaje del ZK Agent:', error);
-          console.log('📨 Mensaje raw:', event.data);
-        }
-      };
-      
-      wsRef.current.onclose = (event) => {
-        console.log('🔌 Desconectado del ZK Access Agent', event.code, event.reason);
-        setWsConnected(false);
-        setZkAgentStatus(prev => ({
-          ...prev,
-          status: 'disconnected',
-          lastMessage: `Desconectado: ${event.reason || 'Sin razón'}`
-        }));
-        
-        showSnackbar('🔌 Desconectado del ZK Access Agent', 'warning');
-        
-        // Reconectar automáticamente si está monitoreando
-        if (isMonitoring) {
-          console.log('🔄 Reintentando conexión en', RECONNECT_INTERVAL / 1000, 'segundos...');
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectToZKAgent();
-          }, RECONNECT_INTERVAL);
-        }
-      };
-      
-      wsRef.current.onerror = (error) => {
-        console.error('❌ Error de WebSocket:', error);
-        setWsConnected(false);
-        setZkAgentStatus(prev => ({
-          ...prev,
-          status: 'error',
-          lastMessage: 'Error de conexión'
-        }));
-        
-        showSnackbar('❌ Error conectando al ZK Access Agent', 'error');
-      };
+      if (isComponentMounted.current) {
+        setFingerprintTemplates(processedData);
+        setMessage(`${processedData.length} huellas registradas cargadas correctamente.`);
+      }
       
     } catch (error) {
-      console.error('❌ Error creando conexión WebSocket:', error);
-      setWsConnected(false);
-      setZkAgentStatus(prev => ({
-        ...prev,
-        status: 'error',
-        lastMessage: 'Error al crear conexión'
-      }));
-      
-      showSnackbar('❌ Error de conexión WebSocket', 'error');
+      console.error('Error cargando huellas:', error);
+      if (isComponentMounted.current) {
+        setMessage(`Error al cargar las huellas: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      }
+    } finally {
+      if (isComponentMounted.current) {
+        setIsLoading(false);
+      }
     }
-  }, [isMonitoring]);
-
-  // 📨 MANEJAR MENSAJES DEL ZK ACCESS AGENT
-  const handleZKAgentMessage = useCallback((message: any) => {
-    console.log('📨 Mensaje del ZK Agent recibido:', message);
-    setLastUpdate(new Date());
+  }, [supabase]);
+  
+  // Cargar logs de acceso
+  const loadAccessLogs = useCallback(async () => {
+    if (!isComponentMounted.current) return;
     
-    switch (message.type) {
-      case 'fingerprint_captured':
-        console.log('🖐️ Huella capturada detectada');
-        handleFingerprintCapture(message.data);
-        break;
-        
-      case 'device_status':
-        console.log('📱 Estado del dispositivo actualizado');
-        handleDeviceStatus(message.data);
-        break;
-        
-      case 'capture_started':
-        console.log('🚀 Captura iniciada');
-        setIsCapturing(true);
-        setCaptureMessage('🖐️ Coloque su dedo en el lector ZKTeco...');
-        setZkAgentStatus(prev => ({
-          ...prev,
-          status: 'capturing'
-        }));
-        break;
-        
-      case 'capture_timeout':
-        console.log('⏱️ Timeout de captura');
-        setIsCapturing(false);
-        setCaptureMessage(null);
-        showSnackbar('⏱️ Tiempo de captura agotado', 'warning');
-        break;
-        
-      case 'capture_error':
-        console.log('❌ Error en captura:', message.error);
-        setIsCapturing(false);
-        setCaptureMessage(null);
-        showSnackbar(`❌ Error de captura: ${message.error}`, 'error');
-        break;
-        
-      case 'agent_status':
-        console.log('🤖 Estado del Agent actualizado');
-        handleAgentStatus(message.data);
-        break;
-        
-      case 'error':
-        console.error('❌ Error del ZK Agent:', message.error);
-        showSnackbar(`❌ Error: ${message.error}`, 'error');
-        break;
-        
-      case 'connection_established':
-        console.log('🔗 Conexión establecida con el Agent');
-        setZkAgentStatus(prev => ({
-          ...prev,
-          status: 'connected',
-          lastMessage: 'Conexión establecida'
-        }));
-        break;
-        
-      default:
-        console.log('📨 Tipo de mensaje no manejado:', message.type);
-        setZkAgentStatus(prev => ({
-          ...prev,
-          lastMessage: `Mensaje: ${message.type}`
-        }));
-    }
-  }, [autoScroll]);
-
-  // 🖐️ MANEJAR CAPTURA DE HUELLA REAL
-  const handleFingerprintCapture = useCallback(async (data: any) => {
     try {
-      console.log('🖐️ Procesando huella capturada del dispositivo real:', data);
-      
-      setIsCapturing(false);
-      setCaptureMessage('🔍 Verificando huella...');
-      
-      // 🔍 VERIFICAR HUELLA CONTRA BASE DE DATOS
-      const verificationResponse = await fetch('/api/access-control/verify-fingerprint', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          template: data.template || `fingerprint_${Date.now()}`,
-          quality: data.quality || 85,
-          device_id: 'zk-device-real',
-          capture_time: data.timestamp || new Date().toISOString(),
-          user_context: 'luishdz04' // Para dar prioridad a tu usuario
-        })
-      });
-      
-      const verificationResult = await verificationResponse.json();
-      setCaptureMessage(null);
-      
-      if (verificationResult.success) {
-        console.log('✅ Verificación exitosa:', verificationResult);
+      const { data, error } = await supabase
+        .from('access_logs')
+        .select('*, Users:user_id(*)')
+        .order('created_at', { ascending: false })
+        .limit(10);
         
-        // ✅ CREAR NUEVO INTENTO DE ACCESO
-        const newAttempt: AccessAttempt = {
-          id: `access_${Date.now()}`,
-          user_id: verificationResult.user?.id || 'unknown',
-          device_id: 'zk-device-real',
-          access_type: 'entry',
-          access_method: 'fingerprint',
-          success: verificationResult.access_granted,
-          confidence_score: verificationResult.confidence_score || 0,
-          denial_reason: verificationResult.access_granted ? null : verificationResult.denial_reason,
-          membership_status: verificationResult.membership_status || 'unknown',
-          created_at: new Date().toISOString(),
-          device_timestamp: data.timestamp || new Date().toISOString(),
-          user: verificationResult.user || {
-            firstName: 'Desconocido',
-            lastName: '',
-            rol: 'guest'
-          },
-          device: {
-            name: 'ZKTeco Real Device',
-            type: 'zk9500',
-            ip_address: '127.0.0.1'
-          }
-        };
-        
-        // Agregar a la lista de intentos
-        setAccessAttempts(prev => [newAttempt, ...prev.slice(0, 99)]);
-        
-        // Actualizar estadísticas
-        setStats(prev => ({
-          ...prev,
-          totalToday: prev.totalToday + 1,
-          successfulToday: newAttempt.success ? prev.successfulToday + 1 : prev.successfulToday,
-          deniedToday: newAttempt.success ? prev.deniedToday : prev.deniedToday + 1,
-          averageConfidence: prev.totalToday > 0 
-            ? Math.round((prev.averageConfidence * prev.totalToday + newAttempt.confidence_score) / (prev.totalToday + 1))
-            : newAttempt.confidence_score,
-          currentlyInside: newAttempt.success && newAttempt.access_type === 'entry' 
-            ? prev.currentlyInside + 1 
-            : prev.currentlyInside
-        }));
-
-        // Auto scroll
-        if (autoScroll && accessListRef.current) {
-          setTimeout(() => {
-            accessListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 100);
-        }
-
-        // Mostrar notificación
-        if (newAttempt.success) {
-          const userName = verificationResult.user ? `${verificationResult.user.firstName} ${verificationResult.user.lastName}` : 'Usuario';
-          showSnackbar(`🎉 Acceso concedido: ${userName}`, 'success');
-          console.log('🎉 ACCESO CONCEDIDO:', userName, `(${newAttempt.confidence_score}%)`);
-        } else {
-          showSnackbar(`❌ Acceso denegado: ${verificationResult.denial_reason}`, 'error');
-          console.log('❌ ACCESO DENEGADO:', verificationResult.denial_reason);
-        }
-      } else {
-        console.error('❌ Error en verificación:', verificationResult.error);
-        showSnackbar(`❌ Error de verificación: ${verificationResult.error}`, 'error');
+      if (error) {
+        console.error('Error cargando logs:', error);
+        return;
       }
       
+      if (data && isComponentMounted.current) {
+        setLogs(data);
+      }
     } catch (error) {
-      console.error('❌ Error procesando huella capturada:', error);
-      setIsCapturing(false);
-      setCaptureMessage(null);
-      showSnackbar('❌ Error procesando huella capturada', 'error');
+      console.error('Error cargando logs:', error);
     }
-  }, [autoScroll]);
-
-  // 📱 MANEJAR ESTADO DEL DISPOSITIVO
-  const handleDeviceStatus = useCallback((data: any) => {
-    console.log('📱 Actualizando estado del dispositivo:', data);
-    
-    setDevices(prev => {
-      const updated = [...prev];
-      const index = updated.findIndex(d => d.id === 'zk-device-real');
+  }, [supabase]);
+  
+  // Simulación de verificación de huella
+  const simulateVerification = useCallback(async (capturedTemplate: string) => {
+    try {
+      console.log(`Simulando verificación contra ${fingerprintTemplates.length} huellas...`);
       
-      const deviceStatus: DeviceStatus = {
-        id: 'zk-device-real',
-        name: 'ZKTeco Real Device',
-        type: 'zk9500',
-        ip_address: '127.0.0.1',
-        status: data.isConnected ? 'connected' : 'disconnected',
-        last_sync: new Date().toISOString(),
-        user_count: data.deviceCount || 0,
-        fingerprint_count: data.fingerprintCount || 0
+      if (fingerprintTemplates.length === 0) {
+        return { success: false, message: 'No hay huellas registradas para comparar' };
+      }
+      
+      const isSuccess = Math.random() > 0.3;
+      
+      if (isSuccess) {
+        const randomIndex = Math.floor(Math.random() * fingerprintTemplates.length);
+        const matchedFingerprint = fingerprintTemplates[randomIndex];
+        
+        return {
+          success: true,
+          user: matchedFingerprint.user,
+          fingerprintId: matchedFingerprint.id,
+          quality: matchedFingerprint.average_quality,
+          finger: matchedFingerprint.finger_name,
+          confidence: (Math.random() * 0.4 + 0.6).toFixed(2)
+        };
+      }
+      
+      return { 
+        success: false, 
+        message: 'Huella no reconocida en el sistema' 
       };
       
-      if (index >= 0) {
-        updated[index] = deviceStatus;
-      } else {
-        updated.push(deviceStatus);
+    } catch (error) {
+      console.error('Error en verificación:', error);
+      return { 
+        success: false, 
+        message: `Error en verificación: ${error instanceof Error ? error.message : 'Error desconocido'}` 
+      };
+    }
+  }, [fingerprintTemplates]);
+  
+  // Función para programar reconexión
+  const scheduleReconnect = useCallback((delay = 3000) => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    if (!isComponentMounted.current || manualDisconnect.current) {
+      return;
+    }
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (isComponentMounted.current && 
+          deviceStatus !== 'connected' && 
+          !isConnecting.current && 
+          !manualDisconnect.current &&
+          reconnectAttempts.current < 5) {
+        console.log(`⏰ Ejecutando reconexión programada (intento ${reconnectAttempts.current + 1})`);
+        connectWebSocket();
       }
-      
-      return updated;
-    });
-
-    setZkAgentStatus(prev => ({
-      ...prev,
-      deviceConnected: data.isConnected,
-      sdkInitialized: data.sdkInitialized || false
-    }));
-  }, []);
-
-  // 🤖 MANEJAR ESTADO DEL AGENT
-  const handleAgentStatus = useCallback((data: any) => {
-    console.log('🤖 Estado del Agent actualizado:', data);
-    setZkAgentStatus(prev => ({
-      ...prev,
-      ...data,
-      lastMessage: data.message || prev.lastMessage
-    }));
-  }, []);
-
-  // 🚀 INICIAR MONITOREO REAL
-  const startRealMonitoring = useCallback(() => {
-    console.log('🚀 Iniciando monitoreo real del ZK Access Agent...');
-    console.log('👤 Usuario: luishdz04');
-    console.log('📅 Fecha: 2025-06-17 08:28:59 UTC');
+    }, delay);
+  }, [deviceStatus]); // Solo depende de deviceStatus
+  
+  // Función para conectar WebSocket - SIN DEPENDENCIAS COMPLEJAS
+  const connectWebSocket = useCallback(() => {
+    if (!isComponentMounted.current || isConnecting.current) {
+      console.log('Conexión cancelada: componente desmontado o ya conectando');
+      return;
+    }
     
-    setIsMonitoring(true);
-    connectToZKAgent();
+    isConnecting.current = true;
+    manualDisconnect.current = false;
     
-    showSnackbar('🚀 Iniciando monitoreo biométrico...', 'info');
-  }, [connectToZKAgent]);
-
-  // ⏹️ DETENER MONITOREO
-  const stopRealMonitoring = useCallback(() => {
-    console.log('⏹️ Deteniendo monitoreo real...');
-    setIsMonitoring(false);
-    
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      // Enviar comando para detener monitoreo
-      wsRef.current.send(JSON.stringify({
-        action: 'stop_monitoring',
-        timestamp: Date.now(),
-        user: 'luishdz04'
-      }));
-      
-      setTimeout(() => {
-        wsRef.current?.close();
-      }, 500);
+    // Limpiar conexión anterior
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch (e) {
+        console.error('Error al cerrar WebSocket:', e);
+      }
+      wsRef.current = null;
     }
     
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
     
-    if (captureTimeoutRef.current) {
-      clearTimeout(captureTimeoutRef.current);
-    }
-    
-    setWsConnected(false);
-    setIsCapturing(false);
-    setCaptureMessage(null);
-    setZkAgentStatus({
-      status: 'disconnected',
-      deviceConnected: false,
-      sdkInitialized: false,
-      lastMessage: 'Monitoreo detenido'
-    });
-    
-    showSnackbar('⏹️ Monitoreo detenido', 'info');
-  }, []);
-
-  // 🧪 SOLICITAR CAPTURA DE PRUEBA
-  const requestTestCapture = useCallback(async () => {
-    if (!wsConnected) {
-      showSnackbar('❌ No conectado al ZK Agent', 'error');
-      return;
-    }
-    
-    if (isCapturing) {
-      showSnackbar('⚠️ Ya hay una captura en proceso', 'warning');
-      return;
-    }
+    setVerificationStatus('connecting');
+    setMessage('Conectando al lector de huellas...');
     
     try {
-      console.log('🧪 Solicitando captura de prueba para luishdz04...');
+      const ws = new WebSocket('ws://localhost:8080');
+      wsRef.current = ws;
       
-      setIsCapturing(true);
-      setCaptureMessage('🚀 Iniciando captura...');
-      
-      wsRef.current?.send(JSON.stringify({
-        action: 'capture_fingerprint',
-        test_mode: true,
-        timeout: CAPTURE_TIMEOUT,
-        timestamp: Date.now(),
-        user: 'luishdz04',
-        expected_user: 'luishdz04' // Para dar contexto al Agent
-      }));
-      
-      console.log('📤 Comando de captura enviado');
-      showSnackbar('🖐️ Coloque su dedo en el lector ZKTeco', 'info');
-      
-      // Timeout de seguridad
-      captureTimeoutRef.current = setTimeout(() => {
-        if (isCapturing) {
-          setIsCapturing(false);
-          setCaptureMessage(null);
-          showSnackbar('⏱️ Tiempo de captura agotado', 'warning');
+      ws.onopen = () => {
+        if (!isComponentMounted.current) return;
+        
+        console.log('✅ WebSocket conectado exitosamente');
+        setDeviceStatus('connected');
+        setVerificationStatus('ready');
+        setMessage('Lector conectado. Listo para verificar huellas.');
+        reconnectAttempts.current = 0;
+        isConnecting.current = false;
+        
+        // Enviar ping inicial
+        try {
+          ws.send(JSON.stringify({ 
+            type: 'ping',
+            source: 'access_verification_page',
+            timestamp: new Date().toISOString(),
+            user: CURRENT_USER
+          }));
+          
+          ws.send(JSON.stringify({ 
+            type: 'get_device_status',
+            source: 'access_verification_page',
+            timestamp: new Date().toISOString()
+          }));
+        } catch (error) {
+          console.error('Error enviando mensaje inicial:', error);
         }
-      }, CAPTURE_TIMEOUT + 2000);
+        
+        // Cargar huellas después de conectar
+        loadRegisteredFingerprints();
+      };
+      
+      ws.onmessage = async (event) => {
+        if (!isComponentMounted.current) return;
+        
+        try {
+          const data = JSON.parse(event.data);
+          console.log('📥 Mensaje recibido:', data);
+          setDebugInfo(prev => ({...prev, lastResponse: JSON.stringify(data, null, 2)}));
+          
+          // Manejar diferentes tipos de mensajes
+          if (data.type === 'pong') {
+            console.log('Conexión activa confirmada');
+          }
+          else if (data.type === 'device_status') {
+            const isConnected = data.data?.connected || data.connected || false;
+            setDeviceStatus(isConnected ? 'connected' : 'disconnected');
+            setMessage(isConnected 
+              ? `Dispositivo ZKTeco conectado y listo. ${fingerprintTemplates.length} huellas cargadas.` 
+              : 'Dispositivo desconectado. Reconectando...');
+          }
+          else if (data.type === 'capture_result' && data.success) {
+            // Para modo captura normal (no verificación)
+            const capturedTemplate = data.data?.template;
+            
+            if (!capturedTemplate) {
+              setVerificationStatus('error');
+              setMessage('Error: No se pudo obtener el template de la huella');
+              
+              setTimeout(() => {
+                if (isComponentMounted.current) {
+                  setVerificationStatus('ready');
+                  setMessage('Listo para verificar');
+                }
+              }, 2000);
+              return;
+            }
+            
+            // En modo verificación, el servidor debería enviar verification_result
+            console.log('⚠️ Recibido capture_result en modo verificación - verificar configuración del servidor');
+          }
+          else if (data.type === 'verification_result') {
+            // Resultado de verificación REAL del servidor
+            console.log('✅ Resultado de verificación recibido:', data);
+            
+            if (data.verified) {
+              // ACCESO PERMITIDO - Verificación exitosa
+              const userData = data.data.user;
+              
+              setVerificationStatus('success');
+              setLastVerifiedUser(userData);
+              setMessage(`ACCESO PERMITIDO: ${userData.name || 'Usuario'}`);
+              
+              setVerificationStats(prev => ({
+                ...prev,
+                total: prev.total + 1,
+                successful: prev.successful + 1,
+                lastVerified: new Date()
+              }));
+              
+              // Registrar acceso exitoso
+              await supabase
+                .from('access_logs')
+                .insert({
+                  user_id: userData.id,
+                  access_type: 'entry',
+                  access_method: 'fingerprint',
+                  success: true,
+                  confidence_score: parseFloat(data.data.matchScore || 0.85),
+                  membership_status: userData.membership_type || 'active',
+                  device_info: {
+                    name: 'ZKTeco-9500',
+                    location: 'Entrada Principal',
+                    verification_quality: data.data.quality || 85,
+                    finger: data.data.fingerName,
+                    match_confidence: data.data.confidence,
+                    verification_method: data.data.verificationMethod
+                  }
+                });
+              
+              // Recargar logs
+              loadAccessLogs();
+              
+              setTimeout(() => {
+                if (isComponentMounted.current) {
+                  setVerificationStatus('ready');
+                  setMessage(`Lector listo. ${fingerprintTemplates.length} huellas registradas.`);
+                }
+              }, 3000);
+              
+            } else {
+              // ACCESO DENEGADO - No hay coincidencia
+              setVerificationStatus('error');
+              setMessage(`ACCESO DENEGADO: ${data.data?.message || 'Huella no reconocida'}`);
+              
+              setVerificationStats(prev => ({
+                ...prev,
+                total: prev.total + 1,
+                failed: prev.failed + 1,
+                lastVerified: new Date()
+              }));
+              
+              // Registrar intento fallido
+              await supabase
+                .from('access_logs')
+                .insert({
+                  user_id: null,
+                  access_type: 'denied',
+                  access_method: 'fingerprint',
+                  success: false,
+                  confidence_score: 0,
+                  denial_reason: data.data?.message || 'Huella no reconocida',
+                  device_info: {
+                    name: 'ZKTeco-9500',
+                    location: 'Entrada Principal',
+                    total_compared: data.data?.totalCompared || 0
+                  }
+                });
+              
+              setTimeout(() => {
+                if (isComponentMounted.current) {
+                  setVerificationStatus('ready');
+                  setMessage('Listo para verificar');
+                }
+              }, 2000);
+            }
+          }
+          else if (data.type === 'error' || data.type === 'command_error') {
+            console.error('Error desde ZK-Access-Agent:', data.message);
+            setMessage(`Error: ${data.message || 'Error desconocido'}`);
+            setVerificationStatus('error');
+            
+            setTimeout(() => {
+              if (isComponentMounted.current) {
+                setVerificationStatus('ready');
+                setMessage('Listo para verificar');
+              }
+            }, 2000);
+          }
+        } catch (error) {
+          console.error('Error procesando mensaje:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('❌ Error WebSocket:', error);
+        isConnecting.current = false;
+        
+        if (!isComponentMounted.current) return;
+        
+        setDeviceStatus('error');
+        setVerificationStatus('error');
+        setMessage('Error de conexión con el lector. Verifica que ZK-Access-Agent esté ejecutándose.');
+        
+        if (!manualDisconnect.current && reconnectAttempts.current < 5) {
+          reconnectAttempts.current++;
+          const delay = Math.min(30000, reconnectAttempts.current * 2000 + 1000);
+          console.log(`Reintentando en ${delay/1000} segundos...`);
+          scheduleReconnect(delay);
+        }
+      };
+      
+      ws.onclose = (event) => {
+        console.log(`🔌 WebSocket desconectado (código: ${event.code})`);
+        isConnecting.current = false;
+        
+        if (!isComponentMounted.current) return;
+        
+        const isAbnormalClosure = event.code !== 1000 && event.code !== 1001;
+        
+        if (!manualDisconnect.current && isAbnormalClosure && reconnectAttempts.current < 5) {
+          setDeviceStatus('disconnected');
+          setMessage('Conexión perdida. Reconectando...');
+          setVerificationStatus('error');
+          
+          reconnectAttempts.current++;
+          const delay = Math.min(30000, reconnectAttempts.current * 3000 + 2000);
+          scheduleReconnect(delay);
+        } else {
+          setDeviceStatus('disconnected');
+          setMessage('Desconectado del lector');
+        }
+      };
       
     } catch (error) {
-      console.error('❌ Error solicitando captura:', error);
-      setIsCapturing(false);
-      setCaptureMessage(null);
-      showSnackbar('❌ Error solicitando captura', 'error');
+      console.error('Error al crear WebSocket:', error);
+      isConnecting.current = false;
+      
+      if (!isComponentMounted.current) return;
+      
+      setDeviceStatus('error');
+      setVerificationStatus('error');
+      setMessage(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
-  }, [wsConnected, isCapturing]);
-
-  // 📊 CARGAR DATOS INICIALES
-  const loadAccessData = useCallback(async () => {
-    try {
-      const response = await fetch('/api/access-control/recent-attempts');
-      if (response.ok) {
-        const data = await response.json();
-        setAccessAttempts(data.attempts || []);
-        setStats(data.stats || stats);
+  }, [loadRegisteredFingerprints, simulateVerification, fingerprintTemplates.length, loadAccessLogs, scheduleReconnect]);
+  
+  // Desconexión manual
+  const disconnectWebSocket = useCallback(() => {
+    manualDisconnect.current = true;
+    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    if (wsRef.current) {
+      try {
+        wsRef.current.close(1000, "Cierre manual");
+        wsRef.current = null;
+      } catch (e) {
+        console.error('Error al cerrar WebSocket:', e);
       }
-    } catch (error) {
-      console.error('❌ Error cargando datos:', error);
     }
-  }, [stats]);
-
-  // 🔔 MOSTRAR SNACKBAR
-  const showSnackbar = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
+    
+    setDeviceStatus('disconnected');
+    setVerificationStatus('idle');
+    setMessage('Desconectado del lector');
   }, []);
-
-  // 🔄 useEffect PRINCIPAL
-  useEffect(() => {
-    console.log('🔄 Componente inicializado');
-    console.log('👤 Usuario: luishdz04');
-    console.log('📅 Fecha: 2025-06-17 08:28:59 UTC');
-    
-    loadAccessData();
-    
-    return () => {
-      console.log('🧹 Limpiando componente...');
-      if (wsRef.current) {
-        wsRef.current.close();
+  
+  // Iniciar verificación
+  const startFingerVerification = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      setVerificationStatus('scanning');
+      setMessage('Coloca tu dedo en el lector...');
+      
+      const captureMessage = { 
+        type: 'capture_fingerprint',
+        userId: 'verification_scan',
+        userName: 'Verificación de Acceso',
+        fingerIndex: 1,
+        options: {
+          timeout: 15000,
+          qualityThreshold: 60
+        },
+        client_info: {
+          client_id: 'access_verification_page',
+          location: 'Entrada Principal',
+          timestamp: new Date().toISOString(),
+          user: CURRENT_USER,
+          mode: 'verification'
+        }
+      };
+      
+      try {
+        wsRef.current.send(JSON.stringify(captureMessage));
+        setDebugInfo(prev => ({...prev, lastCommand: 'capture_fingerprint'}));
+      } catch (error) {
+        console.error('Error enviando comando:', error);
+        setVerificationStatus('error');
+        setMessage(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`);
       }
+    } else {
+      setMessage('Error: Lector no conectado');
+      setVerificationStatus('error');
+      
+      if (!isConnecting.current) {
+        reconnectAttempts.current = 0;
+        connectWebSocket();
+      }
+    }
+  }, [connectWebSocket]);
+  
+  // Probar conexión
+  const testConnection = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      const testMessage = { 
+        type: 'test_connection',
+        timestamp: new Date().toISOString(),
+        client: 'access_verification_page'
+      };
+      
+      try {
+        wsRef.current.send(JSON.stringify(testMessage));
+        setDebugInfo(prev => ({...prev, lastCommand: 'test_connection'}));
+        setMessage('Probando conexión con el lector...');
+      } catch (error) {
+        console.error('Error:', error);
+        setMessage(`Error: ${error instanceof Error ? error.message : 'Error al enviar comando'}`);
+      }
+    } else {
+      setMessage('Error: WebSocket no conectado');
+      
+      if (!isConnecting.current) {
+        reconnectAttempts.current = 0;
+        connectWebSocket();
+      }
+    }
+  }, [connectWebSocket]);
+  
+  // Recargar huellas
+  const reloadFingerprints = useCallback(() => {
+    setFingerprintTemplates([]);
+    loadRegisteredFingerprints();
+  }, [loadRegisteredFingerprints]);
+  
+  // Efecto para conectar al montar - CORREGIDO PARA EVITAR BUCLES
+  useEffect(() => {
+    isComponentMounted.current = true;
+    
+    // Conectar una sola vez al montar
+    connectWebSocket();
+    
+    // Cargar logs iniciales
+    loadAccessLogs();
+    
+    // Cleanup al desmontar
+    return () => {
+      isComponentMounted.current = false;
+      manualDisconnect.current = true;
+      
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
-      if (captureTimeoutRef.current) {
-        clearTimeout(captureTimeoutRef.current);
+      
+      if (wsRef.current) {
+        try {
+          wsRef.current.close(1000, "Componente desmontado");
+          wsRef.current = null;
+        } catch (e) {
+          console.error('Error al cerrar WebSocket:', e);
+        }
       }
     };
-  }, [loadAccessData]);
-
-  // 🎨 FUNCIONES AUXILIARES
-  const getAccessIcon = (attempt: AccessAttempt) => {
-    if (!attempt.success) {
-      return <BlockIcon sx={{ color: darkProTokens.error }} />;
-    }
-    
-    switch (attempt.access_type) {
-      case 'entry':
-        return <LoginIcon sx={{ color: darkProTokens.success }} />;
-      case 'exit':
-        return <LogoutIcon sx={{ color: darkProTokens.warning }} />;
-      default:
-        return <SecurityIcon sx={{ color: darkProTokens.info }} />;
-    }
-  };
-
-  const getConfidenceColor = (score: number) => {
-    if (score >= 90) return darkProTokens.success;
-    if (score >= 75) return darkProTokens.warning;
-    return darkProTokens.error;
-  };
-
-  const getAgentStatusColor = () => {
-    switch (zkAgentStatus.status) {
-      case 'connected':
-        return darkProTokens.success;
-      case 'capturing':
-        return darkProTokens.primary;
-      case 'error':
-        return darkProTokens.error;
-      default:
-        return darkProTokens.textDisabled;
-    }
-  };
-
-  const getAgentStatusIcon = () => {
-    switch (zkAgentStatus.status) {
-      case 'connected':
-        return <WifiIcon />;
-      case 'capturing':
-        return <TouchAppIcon />;
-      case 'error':
-        return <CancelIcon />;
-      default:
-        return <WifiOffIcon />;
-    }
-  };
-
-  // 🎨 COMPONENTE DE ESTADÍSTICAS
-  const StatsCards = () => (
-    <Grid container spacing={3} sx={{ mb: 3 }}>
-      <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-        <Card sx={{ 
-          bgcolor: darkProTokens.surfaceLevel2, 
-          border: `1px solid ${darkProTokens.info}40`,
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: `0 8px 25px ${darkProTokens.info}30`
-          }
-        }}>
-          <CardContent sx={{ textAlign: 'center', p: 2 }}>
-            <Avatar sx={{ bgcolor: darkProTokens.info, mx: 'auto', mb: 1, width: 40, height: 40 }}>
-              <TrendingUpIcon />
-            </Avatar>
-            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-              {stats.totalToday}
-            </Typography>
-            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-              Total Hoy
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      
-      <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-        <Card sx={{ 
-          bgcolor: darkProTokens.surfaceLevel2, 
-          border: `1px solid ${darkProTokens.success}40`,
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: `0 8px 25px ${darkProTokens.success}30`
-          }
-        }}>
-          <CardContent sx={{ textAlign: 'center', p: 2 }}>
-            <Avatar sx={{ bgcolor: darkProTokens.success, mx: 'auto', mb: 1, width: 40, height: 40 }}>
-              <CheckCircleIcon />
-            </Avatar>
-            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-              {stats.successfulToday}
-            </Typography>
-            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-              Exitosos
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      
-      <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-        <Card sx={{ 
-          bgcolor: darkProTokens.surfaceLevel2, 
-          border: `1px solid ${darkProTokens.error}40`,
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: `0 8px 25px ${darkProTokens.error}30`
-          }
-        }}>
-          <CardContent sx={{ textAlign: 'center', p: 2 }}>
-            <Avatar sx={{ bgcolor: darkProTokens.error, mx: 'auto', mb: 1, width: 40, height: 40 }}>
-              <CancelIcon />
-            </Avatar>
-            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-              {stats.deniedToday}
-            </Typography>
-            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-              Denegados
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      
-      <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-        <Card sx={{ 
-          bgcolor: darkProTokens.surfaceLevel2, 
-          border: `1px solid ${darkProTokens.primary}40`,
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: `0 8px 25px ${darkProTokens.primary}30`
-          }
-        }}>
-          <CardContent sx={{ textAlign: 'center', p: 2 }}>
-            <Avatar sx={{ bgcolor: darkProTokens.primary, mx: 'auto', mb: 1, width: 40, height: 40 }}>
-              <GroupIcon />
-            </Avatar>
-            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-              {stats.currentlyInside}
-            </Typography>
-            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-              Dentro Ahora
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      
-      <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-        <Card sx={{ 
-          bgcolor: darkProTokens.surfaceLevel2, 
-          border: `1px solid ${darkProTokens.warning}40`,
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: `0 8px 25px ${darkProTokens.warning}30`
-          }
-        }}>
-          <CardContent sx={{ textAlign: 'center', p: 2 }}>
-            <Avatar sx={{ bgcolor: darkProTokens.warning, mx: 'auto', mb: 1, width: 40, height: 40 }}>
-              <FingerprintIcon />
-            </Avatar>
-            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-              {stats.averageConfidence}%
-            </Typography>
-            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-              Confianza Promedio
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-    </Grid>
+  }, []); // Array vacío - solo ejecutar al montar
+  
+  // Componentes auxiliares locales
+  const RefreshButton = ({ onRefresh, isConnected }: { onRefresh: () => void, isConnected: boolean }) => (
+    <Button 
+      size="small" 
+      variant="outlined"
+      onClick={() => {
+        if (isConnected) {
+          disconnectWebSocket();
+          setTimeout(() => {
+            reconnectAttempts.current = 0;
+            onRefresh();
+          }, 1000);
+        } else {
+          reconnectAttempts.current = 0;
+          onRefresh();
+        }
+      }}
+      color={isConnected ? "success" : "primary"}
+      sx={{ minWidth: 'auto', p: '4px 8px' }}
+    >
+      {isConnected ? "Conectado ✓" : "Reconectar"}
+    </Button>
   );
-
-  // 🎨 COMPONENTE DE ESTADO DE DISPOSITIVOS
-  const DeviceStatus = () => (
-    <Card sx={{ bgcolor: darkProTokens.surfaceLevel2, mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 700 }}>
-          Estado de Dispositivos ZKTeco
+  
+  const AccessLogItem = ({ log }: { log: any }) => (
+    <Box sx={{ p: 1.5, borderBottom: `1px solid ${grey[200]}` }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+        <Typography variant="subtitle2">
+          {log.Users?.name || 'Usuario desconocido'}
         </Typography>
-        
-        <Grid container spacing={2}>
-          {devices.length === 0 ? (
-            <Grid size={12}>
-              <Paper sx={{ 
-                p: 3, 
-                bgcolor: darkProTokens.surfaceLevel1,
-                border: `1px solid ${darkProTokens.grayDark}`,
-                textAlign: 'center'
-              }}>
-                <DeviceHubIcon sx={{ fontSize: 48, color: darkProTokens.textDisabled, mb: 2 }} />
-                <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
-                  {isMonitoring ? 'Conectando a dispositivos...' : 'Inicie el monitoreo para ver dispositivos'}
-                </Typography>
-              </Paper>
-            </Grid>
-          ) : (
-            devices.map((device) => (
-              <Grid key={device.id} size={{ xs: 12, md: 6, lg: 4 }}>
-                <Paper sx={{ 
-                  p: 2, 
-                  bgcolor: darkProTokens.surfaceLevel1,
-                  border: `1px solid ${device.status === 'connected' ? darkProTokens.success : darkProTokens.error}40`,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-1px)',
-                    boxShadow: `0 4px 15px ${device.status === 'connected' ? darkProTokens.success : darkProTokens.error}30`
-                  }
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Avatar sx={{
-                      bgcolor: device.status === 'connected' ? darkProTokens.success : darkProTokens.error,
-                      width: 32,
-                      height: 32
-                    }}>
-                      {device.status === 'connected' ? <WifiIcon /> : <WifiOffIcon />}
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        {device.name}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                        {device.ip_address} • {device.fingerprint_count} huellas
-                      </Typography>
-                    </Box>
-                    <Chip
-                      label={device.status}
-                      size="small"
-                      sx={{
-                        bgcolor: device.status === 'connected' ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
-                        color: device.status === 'connected' ? darkProTokens.success : darkProTokens.error,
-                        fontSize: '0.7rem',
-                        fontWeight: 600
-                      }}
-                    />
-                  </Box>
-                </Paper>
-              </Grid>
-            ))
-          )}
-        </Grid>
-      </CardContent>
-    </Card>
-  );
-
-  return (
-    <Box sx={{ p: 3, bgcolor: darkProTokens.background, minHeight: '100vh' }}>
-      {/* HEADER ACTUALIZADO */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ color: darkProTokens.textPrimary, fontWeight: 700, mb: 1 }}>
-            🔒 Control de Acceso ZKTeco Real
-          </Typography>
-          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-            Conectado al ZK Access Agent • Usuario: luishdz04 • {format(new Date(), 'dd/MM/yyyy HH:mm:ss', { locale: es })}
-          </Typography>
-        </Box>
-        
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* 🧪 BOTÓN CAPTURA DE PRUEBA */}
-          <Button
-            variant="outlined"
-            onClick={requestTestCapture}
-            disabled={!wsConnected || isCapturing}
-            startIcon={isCapturing ? <CircularProgress size={16} /> : <FingerprintIcon />}
-            sx={{
-              borderColor: isCapturing ? darkProTokens.warning : darkProTokens.primary,
-              color: isCapturing ? darkProTokens.warning : darkProTokens.primary,
-              minWidth: '180px',
-              '&:hover': {
-                borderColor: darkProTokens.primaryHover,
-                bgcolor: `${darkProTokens.primary}10`
-              },
-              '&:disabled': {
-                borderColor: darkProTokens.textDisabled,
-                color: darkProTokens.textDisabled
-              }
-            }}
-          >
-            {isCapturing ? 'Capturando...' : 'Capturar Huella Real'}
-          </Button>
-          
-          {lastUpdate && (
-            <Chip
-              icon={<AccessTimeIcon />}
-              label={`Actualizado: ${format(lastUpdate, 'HH:mm:ss', { locale: es })}`}
-              size="small"
-              sx={{
-                bgcolor: `${darkProTokens.info}20`,
-                color: darkProTokens.info,
-                border: `1px solid ${darkProTokens.info}40`
-              }}
-            />
-          )}
-          
-          {/* ESTADO DEL ZK AGENT */}
-          <Tooltip title={zkAgentStatus.lastMessage || 'Sin información'}>
-            <Chip
-              icon={getAgentStatusIcon()}
-              label={
-                zkAgentStatus.status === 'connected' ? 'ZK Agent Conectado' :
-                zkAgentStatus.status === 'capturing' ? 'Capturando Huella' :
-                zkAgentStatus.status === 'error' ? 'Error ZK Agent' : 
-                'ZK Agent Desconectado'
-              }
-              size="small"
-              sx={{
-                bgcolor: `${getAgentStatusColor()}20`,
-                color: getAgentStatusColor(),
-                border: `1px solid ${getAgentStatusColor()}40`,
-                fontWeight: 600,
-                ...(zkAgentStatus.status === 'capturing' && {
-                  animation: 'pulse 2s infinite'
-                })
-              }}
-            />
-          </Tooltip>
-          
-          {/* BOTÓN MONITOREO REAL */}
-          <Button
-            variant="contained"
-            onClick={isMonitoring ? stopRealMonitoring : startRealMonitoring}
-            startIcon={isMonitoring ? <StopIcon /> : <PlayArrowIcon />}
-            sx={{
-              bgcolor: isMonitoring ? darkProTokens.error : darkProTokens.primary,
-              color: darkProTokens.background,
-              fontWeight: 600,
-              minWidth: '160px',
-              boxShadow: `0 4px 15px ${isMonitoring ? darkProTokens.error : darkProTokens.primary}40`,
-              '&:hover': {
-                bgcolor: isMonitoring ? darkProTokens.errorHover : darkProTokens.primaryHover,
-                transform: 'translateY(-1px)',
-                boxShadow: `0 6px 20px ${isMonitoring ? darkProTokens.error : darkProTokens.primary}50`
-              },
-              transition: 'all 0.3s ease'
-            }}
-          >
-            {isMonitoring ? 'Detener' : 'Iniciar'} Monitoreo Real
-          </Button>
-        </Box>
+        <Chip 
+          size="small" 
+          label={log.success ? "Permitido" : "Denegado"} 
+          color={log.success ? "success" : "error"}
+          sx={{ height: 20, fontSize: '0.7rem' }}
+        />
       </Box>
-
-      {/* MENSAJE DE CAPTURA */}
-      {captureMessage && (
-        <Alert 
-          severity="info" 
-          sx={{ 
-            mb: 3,
-            bgcolor: `${darkProTokens.primary}20`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.primary}40`,
-            '& .MuiAlert-icon': { color: darkProTokens.primary },
-            animation: 'pulse 2s infinite'
-          }}
-        >
-          <Typography sx={{ fontWeight: 600 }}>
-            {captureMessage}
-          </Typography>
-        </Alert>
-      )}
-
-      {/* ESTADÍSTICAS */}
-      <StatsCards />
-
-      {/* ESTADO DE DISPOSITIVOS */}
-      <DeviceStatus />
-
-      {/* CONTROLES DE LISTA */}
-      <Card sx={{ bgcolor: darkProTokens.surfaceLevel2, mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-              Intentos de Acceso en Tiempo Real
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+        {new Date(log.created_at).toLocaleString()}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <FingerprintIcon sx={{ fontSize: 14 }} /> 
+        {log.access_method} • {log.access_type}
+      </Typography>
+    </Box>
+  );
+  
+  // Renderizar estado de verificación
+  const renderVerificationStatus = () => {
+    switch (verificationStatus) {
+      case 'connecting':
+        return (
+          <Box sx={{ textAlign: 'center', p: 3 }}>
+            <CircularProgress size={60} />
+            <Typography variant="h6" sx={{ mt: 2 }}>Conectando al lector...</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Intento {reconnectAttempts.current + 1} de conexión
+            </Typography>
+          </Box>
+        );
+      
+      case 'scanning':
+        return (
+          <Box sx={{ textAlign: 'center', p: 3 }}>
+            <CircularProgress size={60} sx={{ color: blue[500] }} />
+            <Typography variant="h6" sx={{ mt: 2 }}>Escaneando huella...</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Coloca tu dedo en el lector ZKTeco
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Verificando contra {fingerprintTemplates.length} huellas registradas
+            </Typography>
+          </Box>
+        );
+      
+      case 'success':
+        return (
+          <Box sx={{ textAlign: 'center', p: 3 }}>
+            <CheckCircle sx={{ fontSize: 60, color: green[500] }} />
+            <Typography variant="h6" sx={{ mt: 2 }}>¡Acceso Permitido!</Typography>
+            {lastVerifiedUser && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                <Typography variant="subtitle1">{lastVerifiedUser.name}</Typography>
+                <Typography variant="body2">{lastVerifiedUser.email}</Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <Chip 
+                    size="small" 
+                    label={lastVerifiedUser.membership_type || 'Miembro'} 
+                    color="primary" 
+                    sx={{ mr: 1 }}
+                  />
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Acceso verificado a las {new Date().toLocaleTimeString()}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        );
+      
+      case 'error':
+        return (
+          <Box sx={{ textAlign: 'center', p: 3 }}>
+            <Error sx={{ fontSize: 60, color: red[500] }} />
+            <Typography variant="h6" sx={{ mt: 2 }}>Acceso Denegado</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {message}
+            </Typography>
+            <Button 
+              variant="outlined" 
+              sx={{ mt: 2 }} 
+              onClick={() => {
+                reconnectAttempts.current = 0;
+                connectWebSocket();
+              }}
+              disabled={isConnecting.current}
+            >
+              Reintentar Conexión
+            </Button>
+          </Box>
+        );
+      
+      default: // 'idle' o 'ready'
+        return (
+          <Box sx={{ textAlign: 'center', p: 3 }}>
+            <FingerprintIcon sx={{ fontSize: 60, color: deviceStatus === 'connected' ? blue[500] : grey[500] }} />
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              {deviceStatus === 'connected' ? 'Lector Listo' : 'Lector Desconectado'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              {message}
             </Typography>
             
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={autoScroll}
-                    onChange={(e) => setAutoScroll(e.target.checked)}
-                    sx={{
-                      '& .MuiSwitch-switchBase.Mui-checked': {
-                        color: darkProTokens.primary,
-                      },
-                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                        backgroundColor: darkProTokens.primary,
-                      },
-                    }}
-                  />
-                }
-                label={
-                  <Typography sx={{ color: darkProTokens.textSecondary, fontSize: '0.875rem' }}>
-                    Auto-scroll
-                  </Typography>
-                }
-              />
-              
-              <IconButton
-                onClick={loadAccessData}
-                sx={{ 
-                  color: darkProTokens.textSecondary,
-                  '&:hover': {
-                    color: darkProTokens.textPrimary,
-                    bgcolor: darkProTokens.hoverOverlay
-                  }
+            {isLoading && (
+              <CircularProgress size={24} sx={{ mb: 2 }} />
+            )}
+            
+            {deviceStatus === 'connected' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+                <Tooltip title="Coloca tu dedo en el lector para verificar si está registrado">
+                  <Button 
+                    variant="contained" 
+                    color="primary"
+                    size="large"
+                    startIcon={<FingerprintIcon />}
+                    onClick={startFingerVerification}
+                    disabled={verificationStatus !== 'ready' || isLoading || fingerprintTemplates.length === 0}
+                    sx={{ minWidth: 200 }}
+                  >
+                    Verificar Acceso
+                  </Button>
+                </Tooltip>
+                
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  {fingerprintTemplates.length} huellas registradas en el sistema
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="info"
+                    onClick={testConnection}
+                    startIcon={<Security fontSize="small" />}
+                  >
+                    Probar Conexión
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="secondary"
+                    onClick={reloadFingerprints}
+                    startIcon={<PersonSearch fontSize="small" />}
+                    disabled={isLoading}
+                  >
+                    Recargar Huellas
+                  </Button>
+                </Box>
+              </Box>
+            )}
+            
+            {deviceStatus !== 'connected' && (
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  reconnectAttempts.current = 0;
+                  connectWebSocket();
                 }}
+                disabled={isConnecting.current}
+                sx={{ minWidth: 200 }}
               >
-                <RefreshIcon />
-              </IconButton>
-            </Box>
+                Conectar Lector
+              </Button>
+            )}
+            
+            {isConnecting.current && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Conexión en proceso...
+              </Typography>
+            )}
           </Box>
-        </CardContent>
-      </Card>
-
-      {/* LISTA DE INTENTOS DE ACCESO */}
-      <Card sx={{ bgcolor: darkProTokens.surfaceLevel2, height: '60vh', overflow: 'hidden' }}>
-        <Box 
-          ref={accessListRef}
+        );
+    }
+  };
+  
+  // UI Principal
+  return (
+    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        Verificación de Acceso por Huella
+      </Typography>
+      
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        {/* Panel de verificación */}
+        <Paper 
+          elevation={3} 
           sx={{ 
-            height: '100%', 
-            overflowY: 'auto',
-            '&::-webkit-scrollbar': { width: '8px' },
-            '&::-webkit-scrollbar-track': { bgcolor: darkProTokens.grayDark },
-            '&::-webkit-scrollbar-thumb': { 
-              bgcolor: darkProTokens.primary,
-              borderRadius: '4px',
-              '&:hover': { bgcolor: darkProTokens.primaryHover }
-            }
+            flex: '1 1 350px',
+            minHeight: 400,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
           }}
         >
-          {accessAttempts.length === 0 ? (
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              alignItems: 'center', 
-              justifyContent: 'center',
-              height: '100%',
-              gap: 2,
-              p: 4
-            }}>
-              <SecurityIcon sx={{ fontSize: 64, color: darkProTokens.textDisabled }} />
-              <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, textAlign: 'center' }}>
-                {isMonitoring ? 'Esperando detecciones del dispositivo ZKTeco...' : 'Inicie el monitoreo para detectar huellas en tiempo real'}
+          <Box sx={{ p: 2, borderBottom: `1px solid ${grey[200]}`, bgcolor: 'background.paper' }}>
+            <Typography variant="h6">
+              Verificación de Acceso
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Control de Acceso por Huella Digital
+            </Typography>
+          </Box>
+          
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {renderVerificationStatus()}
+          </Box>
+          
+          <Box sx={{ p: 2, bgcolor: grey[50], display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Estado: {deviceStatus === 'connected' ? 'Conectado' : (isConnecting.current ? 'Conectando...' : 'Desconectado')}
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, textAlign: 'center', maxWidth: 400 }}>
-                {isMonitoring 
-                  ? 'Coloque su dedo en el lector ZKTeco o use "Capturar Huella Real" para probar'
-                  : 'Active el sistema y el dispositivo ZKTeco detectará automáticamente las huellas'
-                }
-              </Typography>
-              {isMonitoring && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
-                  <CircularProgress sx={{ color: darkProTokens.primary }} size={20} />
-                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                    Sistema activo - Aguardando detecciones...
-                  </Typography>
+              
+              {verificationStats.total > 0 && (
+                <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                  <Chip 
+                    size="small" 
+                    label={`Total: ${verificationStats.total}`} 
+                    sx={{ height: 20, fontSize: '0.7rem' }}
+                  />
+                  <Chip 
+                    size="small" 
+                    color="success"
+                    label={`Éxito: ${verificationStats.successful}`} 
+                    sx={{ height: 20, fontSize: '0.7rem' }}
+                  />
+                  <Chip 
+                    size="small" 
+                    color="error"
+                    label={`Fallo: ${verificationStats.failed}`} 
+                    sx={{ height: 20, fontSize: '0.7rem' }}
+                  />
                 </Box>
               )}
             </Box>
-          ) : (
-            <List sx={{ p: 0 }}>
-              {accessAttempts.map((attempt, index) => (
-                <React.Fragment key={attempt.id}>
-                  <ListItem
-                    sx={{
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      '&:hover': { 
-                        bgcolor: darkProTokens.surfaceLevel3,
-                        transform: 'translateX(4px)'
-                      },
-                      borderLeft: `4px solid ${attempt.success ? darkProTokens.success : darkProTokens.error}`,
-                      py: 2
-                    }}
-                    onClick={() => {
-                      setSelectedAttempt(attempt);
-                      setDetailsOpen(true);
-                    }}
-                  >
-                    <ListItemAvatar>
-                      <Badge
-                        overlap="circular"
-                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                        badgeContent={
-                          <Avatar sx={{ 
-                            width: 16, 
-                            height: 16, 
-                            bgcolor: attempt.access_method === 'fingerprint' ? darkProTokens.primary : darkProTokens.info
-                          }}>
-                            <FingerprintIcon sx={{ fontSize: 10 }} />
-                          </Avatar>
-                        }
-                      >
-                        <Avatar 
-                          src={attempt.user?.profilePictureUrl}
-                          sx={{ 
-                            bgcolor: attempt.success ? darkProTokens.success : darkProTokens.error,
-                            color: darkProTokens.textPrimary,
-                            width: 48,
-                            height: 48
-                          }}
-                        >
-                          {attempt.user ? 
-                            `${attempt.user.firstName[0]}${attempt.user.lastName?.[0] || ''}` : 
-                            <PersonIcon />
-                          }
-                        </Avatar>
-                      </Badge>
-                    </ListItemAvatar>
-                    
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          {getAccessIcon(attempt)}
-                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600, fontSize: '1rem' }}>
-                            {attempt.user ? `${attempt.user.firstName} ${attempt.user.lastName}` : 'Usuario Desconocido'}
-                          </Typography>
-                          <Chip
-                            label={attempt.access_type}
-                            size="small"
-                            sx={{
-                              bgcolor: attempt.success ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
-                              color: attempt.success ? darkProTokens.success : darkProTokens.error,
-                              fontSize: '0.7rem',
-                              fontWeight: 600
-                            }}
-                          />
-                          {attempt.user?.id === 'luishdz04' && (
-                            <Chip
-                              label="TÚ"
-                              size="small"
-                              sx={{
-                                bgcolor: `${darkProTokens.primary}20`,
-                                color: darkProTokens.primary,
-                                fontSize: '0.65rem',
-                                fontWeight: 700
-                              }}
-                            />
-                          )}
-                        </Box>
-                      }
-                      secondary={
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                          <Box>
-                            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
-                              {format(new Date(attempt.created_at), 'HH:mm:ss dd/MM/yyyy', { locale: es })}
-                            </Typography>
-                            {attempt.denial_reason && (
-                              <Typography variant="caption" sx={{ color: darkProTokens.error, display: 'block', fontWeight: 600 }}>
-                                {attempt.denial_reason}
-                              </Typography>
-                            )}
-                          </Box>
-                          
-                          {attempt.confidence_score > 0 && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <LinearProgress
-                                variant="determinate"
-                                value={attempt.confidence_score}
-                                sx={{
-                                  width: 60,
-                                  height: 6,
-                                  borderRadius: 3,
-                                  bgcolor: darkProTokens.grayDark,
-                                  '& .MuiLinearProgress-bar': {
-                                    bgcolor: getConfidenceColor(attempt.confidence_score),
-                                    borderRadius: 3
-                                  }
-                                }}
-                              />
-                              <Typography 
-                                variant="caption" 
-                                sx={{ 
-                                  color: getConfidenceColor(attempt.confidence_score),
-                                  fontWeight: 600,
-                                  minWidth: '35px'
-                                }}
-                              >
-                                {attempt.confidence_score}%
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
-                      }
-                    />
-                    
-                    <IconButton size="small" sx={{ color: darkProTokens.textSecondary }}>
-                      <VisibilityIcon />
-                    </IconButton>
-                  </ListItem>
-                  
-                  {index < accessAttempts.length - 1 && (
-                    <Divider sx={{ bgcolor: darkProTokens.grayDark }} />
-                  )}
-                </React.Fragment>
-              ))}
-            </List>
-          )}
-        </Box>
+            
+            <RefreshButton 
+              onRefresh={connectWebSocket}
+              isConnected={deviceStatus === 'connected'}
+            />
+          </Box>
+        </Paper>
+        
+        {/* Historial de accesos */}
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            flex: '1 1 350px',
+            minHeight: 400,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <Box sx={{ p: 2, borderBottom: `1px solid ${grey[200]}`, bgcolor: 'background.paper', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              Historial de Accesos Recientes
+            </Typography>
+            <Badge badgeContent={logs.length} color="primary" max={99}>
+              <History />
+            </Badge>
+          </Box>
+          
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
+            {logs.length > 0 ? (
+              logs.map(log => (
+                <AccessLogItem key={log.id} log={log} />
+              ))
+            ) : (
+              <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  No hay registros de acceso recientes
+                </Typography>
+              </Box>
+            )}
+          </Box>
+          
+          <Box sx={{ p: 2, bgcolor: grey[50] }}>
+            <Button 
+              variant="text" 
+              size="small"
+              onClick={loadAccessLogs}
+              startIcon={<History fontSize="small" />}
+            >
+              Actualizar Historial
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+      
+      {/* Panel de información */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              Información del Sistema de Verificación
+            </Typography>
+            
+            <Tooltip title="Información de huellas registradas">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FingerprintIcon color="primary" />
+                <Typography variant="body2" color="primary.main">
+                  {fingerprintTemplates.length} huellas registradas
+                </Typography>
+              </Box>
+            </Tooltip>
+          </Box>
+          
+          <Divider sx={{ my: 1 }} />
+          
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ flex: '1 1 300px' }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Funcionamiento del Sistema
+              </Typography>
+              <Typography variant="body2">
+                • El sistema verifica si la huella escaneada coincide con alguna registrada en la base de datos
+              </Typography>
+              <Typography variant="body2">
+                • Se captura la huella y se compara con los templates almacenados en fingerprint_templates
+              </Typography>
+              <Typography variant="body2">
+                • Los accesos permitidos y denegados quedan registrados en access_logs
+              </Typography>
+              <Typography variant="body2">
+                • Si tienes problemas, usa el botón "Probar Conexión" para verificar la comunicación
+              </Typography>
+            </Box>
+            
+            <Box sx={{ flex: '1 1 300px' }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Huellas Registradas
+              </Typography>
+              
+              {fingerprintTemplates.length > 0 ? (
+                fingerprintTemplates.slice(0, 2).map((fp, index) => (
+                  <Box key={fp.id} sx={{ mb: 1 }}>
+                    <Typography variant="body2">
+                      <b>{fp.user?.name}</b> - {fp.finger_name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Calidad: {fp.average_quality}% • ID: {fp.id.substring(0, 8)}...
+                    </Typography>
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body2">
+                  No hay huellas registradas o están cargando...
+                </Typography>
+              )}
+              
+              {fingerprintTemplates.length > 2 && (
+                <Typography variant="caption" color="text.secondary">
+                  ... y {fingerprintTemplates.length - 2} más
+                </Typography>
+              )}
+            </Box>
+          </Box>
+          
+          <Divider sx={{ my: 1 }} />
+          
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Última actualización: {CURRENT_DATE} por {CURRENT_USER}
+            </Typography>
+            
+            <Tooltip title="Información de depuración">
+              <IconButton size="small" color="info">
+                <Info fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </CardContent>
       </Card>
-
-      {/* DIALOG DE DETALLES */}
-      <Dialog
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            bgcolor: darkProTokens.surfaceLevel2,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.grayDark}`
-          }
-        }}
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Detalles del Intento de Acceso
-          </Typography>
-          <IconButton onClick={() => setDetailsOpen(false)} sx={{ color: darkProTokens.textSecondary }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent>
-          {selectedAttempt && (
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle2" sx={{ color: darkProTokens.primary, mb: 1, fontWeight: 600 }}>
-                  👤 Información del Usuario
-                </Typography>
-                <Box sx={{ p: 2, bgcolor: darkProTokens.surfaceLevel1, borderRadius: 2 }}>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                    <strong>Nombre:</strong> {selectedAttempt.user?.firstName} {selectedAttempt.user?.lastName}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, mt: 1 }}>
-                    <strong>Rol:</strong> {selectedAttempt.user?.rol}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, mt: 1 }}>
-                    <strong>Estado Membresía:</strong> {selectedAttempt.membership_status || 'N/A'}
-                  </Typography>
-                  {selectedAttempt.user?.id === 'luishdz04' && (
-                    <Chip
-                      label="👤 TU ACCESO"
-                      size="small"
-                      sx={{
-                        mt: 1,
-                        bgcolor: `${darkProTokens.primary}20`,
-                        color: darkProTokens.primary,
-                        fontWeight: 700
-                      }}
-                    />
-                  )}
-                </Box>
-              </Grid>
-              
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle2" sx={{ color: darkProTokens.warning, mb: 1, fontWeight: 600 }}>
-                  🔒 Detalles del Acceso
-                </Typography>
-                <Box sx={{ p: 2, bgcolor: darkProTokens.surfaceLevel1, borderRadius: 2 }}>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                    <strong>Tipo:</strong> {selectedAttempt.access_type}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, mt: 1 }}>
-                    <strong>Método:</strong> {selectedAttempt.access_method}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, mt: 1 }}>
-                    <strong>Estado:</strong> 
-                    <Chip
-                      label={selectedAttempt.success ? 'Exitoso' : 'Denegado'}
-                      size="small"
-                      sx={{
-                        ml: 1,
-                        bgcolor: selectedAttempt.success ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
-                        color: selectedAttempt.success ? darkProTokens.success : darkProTokens.error
-                      }}
-                    />
-                  </Typography>
-                  {selectedAttempt.confidence_score > 0 && (
-                    <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, mt: 1 }}>
-                      <strong>Confianza:</strong> {selectedAttempt.confidence_score}%
-                    </Typography>
-                  )}
-                  {selectedAttempt.denial_reason && (
-                    <Typography variant="body2" sx={{ color: darkProTokens.error, mt: 1 }}>
-                      <strong>Razón de Denegación:</strong> {selectedAttempt.denial_reason}
-                    </Typography>
-                  )}
-                </Box>
-              </Grid>
-              
-              <Grid size={12}>
-                <Typography variant="subtitle2" sx={{ color: darkProTokens.info, mb: 1, fontWeight: 600 }}>
-                  ⏰ Información Temporal y Dispositivo
-                </Typography>
-                <Box sx={{ p: 2, bgcolor: darkProTokens.surfaceLevel1, borderRadius: 2 }}>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                    <strong>Fecha y Hora:</strong> {format(new Date(selectedAttempt.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: es })}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, mt: 1 }}>
-                    <strong>Timestamp del Dispositivo:</strong> {format(new Date(selectedAttempt.device_timestamp), 'dd/MM/yyyy HH:mm:ss', { locale: es })}
-                  </Typography>
-                  {selectedAttempt.device && (
-                    <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, mt: 1 }}>
-                      <strong>Dispositivo:</strong> {selectedAttempt.device.name} ({selectedAttempt.device.ip_address})
-                    </Typography>
-                  )}
-                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mt: 1 }}>
-                    <strong>Capturado desde:</strong> ZK Access Agent Real
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          )}
-        </DialogContent>
-        
-        <DialogActions>
-          <Button onClick={() => setDetailsOpen(false)} sx={{ color: darkProTokens.textSecondary }}>
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* SNACKBAR PARA NOTIFICACIONES */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={4000}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity={snackbarSeverity}
-          onClose={() => setSnackbarOpen(false)}
-          sx={{ 
-            width: '100%',
-            bgcolor: 
-              snackbarSeverity === 'success' ? darkProTokens.notifSuccessBg :
-              snackbarSeverity === 'error' ? darkProTokens.notifErrorBg :
-              snackbarSeverity === 'warning' ? darkProTokens.notifWarningBg :
-              darkProTokens.notifInfoBg,
-            color: darkProTokens.textPrimary,
-            '& .MuiAlert-icon': { 
-              color: 
-                snackbarSeverity === 'success' ? darkProTokens.success :
-                snackbarSeverity === 'error' ? darkProTokens.error :
-                snackbarSeverity === 'warning' ? darkProTokens.warning :
-                darkProTokens.info
-            }
-          }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
-
-      {/* ALERTA DE ESTADO */}
-      {!isMonitoring && (
-        <Alert 
-          severity="info" 
-          sx={{ 
-            position: 'fixed',
-            bottom: 20,
-            right: 20,
-            width: 350,
-            bgcolor: `${darkProTokens.info}20`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.info}40`,
-            '& .MuiAlert-icon': { color: darkProTokens.info }
-          }}
-        >
-          <Typography sx={{ fontWeight: 600, mb: 1 }}>
-            🖐️ Sistema ZKTeco Real Disponible
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
-            Usuario: luishdz04<br/>
-            Fecha: 2025-06-17 08:28:59 UTC
-          </Typography>
-          <Typography variant="caption">
-            1. Inicie el monitoreo real<br/>
-            2. Use "Capturar Huella Real" para probar<br/>
-            3. Coloque su dedo en el dispositivo ZKTeco físico
-          </Typography>
-        </Alert>
-      )}
-
-            {/* ESTILOS CSS PARA ANIMACIONES */}
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.7;
-          }
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        
-        .access-item-enter {
-          animation: slideInRight 0.3s ease-out;
-        }
-        
-        .capture-pulse {
-          animation: pulse 2s infinite;
-        }
-        
-        .stats-card-hover {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .stats-card-hover:hover {
-          transform: translateY(-4px) scale(1.02);
-        }
-      `}</style>
     </Box>
   );
 }

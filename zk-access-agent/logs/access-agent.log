@@ -1098,3 +1098,395 @@
 2025-06-17 02:26:31 [INFO]: ✅ Dispositivo 0 conectado exitosamente
 2025-06-17 02:26:31 [INFO]: ✅ Handle válido obtenido y almacenado
 2025-06-17 02:35:24 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 07:46:17 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 07:46:17 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 07:46:17 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 07:46:17 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 07:46:17 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 07:46:46 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 07:46:46 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 07:46:46 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 07:46:46 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 07:46:46 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 07:46:46 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 07:46:46 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 07:46:46 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 07:46:46 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 07:46:46 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 07:46:47 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 07:46:47 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 07:46:47 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 07:46:47 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 07:46:47 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 07:46:48 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 07:46:48 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 07:46:48 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 07:46:48 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 08:13:42 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 08:13:42 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 08:13:42 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 08:13:42 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 08:13:42 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 08:13:45 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 08:13:45 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 08:13:47 [INFO]: 🔍 Intento 85 - Código: -8
+2025-06-17 08:13:48 [INFO]: 🔍 Intento 100 - Código: 0
+2025-06-17 08:13:48 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 08:13:48 [INFO]: 📊 Tamaño del template: 1004 bytes
+2025-06-17 08:13:48 [INFO]: 📊 Template base64: 1340 caracteres
+2025-06-17 08:13:48 [INFO]: 📊 Intentos necesarios: 100
+2025-06-17 08:13:48 [INFO]: 📊 Tiempo total: 6013ms
+2025-06-17 08:13:50 [INFO]: Captura exitosa: Erick Francisco De Luna Hernández (fp_1750169630780_3fff5198-eb37-4f11-bcc7-4e6e9bb079d2)
+2025-06-17 08:13:54 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 08:13:54 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 08:13:54 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 08:13:54 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 08:13:54 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 08:13:54 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 08:13:54 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 08:13:54 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 08:13:54 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 08:13:54 [INFO]: 🔍 Intento 1 - Código: 0
+2025-06-17 08:13:54 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 08:13:54 [INFO]: 📊 Tamaño del template: 840 bytes
+2025-06-17 08:13:54 [INFO]: 📊 Template base64: 1120 caracteres
+2025-06-17 08:13:54 [INFO]: 📊 Intentos necesarios: 1
+2025-06-17 08:13:54 [INFO]: 📊 Tiempo total: 191ms
+2025-06-17 08:13:56 [INFO]: Captura exitosa: Erick Francisco De Luna Hernández (fp_1750169636129_3fff5198-eb37-4f11-bcc7-4e6e9bb079d2)
+2025-06-17 08:13:56 [INFO]: 🔍 Intento 33 - Código: -8
+2025-06-17 08:13:57 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 08:13:59 [INFO]: 🔍 Intento 85 - Código: -8
+2025-06-17 08:13:59 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 08:13:59 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 08:13:59 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 08:13:59 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 08:13:59 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 08:13:59 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 08:13:59 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 08:13:59 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 08:13:59 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 08:13:59 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 08:13:59 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 08:13:59 [INFO]: 📊 Tamaño del template: 1062 bytes
+2025-06-17 08:13:59 [INFO]: 📊 Template base64: 1416 caracteres
+2025-06-17 08:13:59 [INFO]: 📊 Intentos necesarios: 5
+2025-06-17 08:13:59 [INFO]: 📊 Tiempo total: 405ms
+2025-06-17 08:14:00 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 08:14:01 [INFO]: 🔍 Intento 34 - Código: -8
+2025-06-17 08:14:01 [INFO]: Captura exitosa: Erick Francisco De Luna Hernández (fp_1750169641701_3fff5198-eb37-4f11-bcc7-4e6e9bb079d2)
+2025-06-17 08:14:02 [INFO]: 🔍 Intento 135 - Código: -8
+2025-06-17 08:14:02 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 08:14:03 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 08:14:04 [INFO]: 🔍 Intento 85 - Código: -8
+2025-06-17 08:14:05 [INFO]: 🔍 Intento 184 - Código: -8
+2025-06-17 08:14:05 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 08:14:06 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 08:14:07 [INFO]: 🔍 Intento 134 - Código: -8
+2025-06-17 08:14:08 [INFO]: 🔍 Intento 233 - Código: -8
+2025-06-17 08:14:08 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 08:14:09 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 08:14:10 [INFO]: 🔍 Intento 184 - Código: -8
+2025-06-17 08:14:11 [INFO]: 🔍 Intento 284 - Código: -8
+2025-06-17 08:14:11 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 08:14:12 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 08:14:13 [INFO]: 🔍 Intento 235 - Código: -8
+2025-06-17 08:14:14 [WARN]: ⏰ Timeout después de 334 intentos y 20040ms
+2025-06-17 08:14:14 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 08:14:14 [ERROR]: Error captura Erick Francisco De Luna Hernández: Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 08:14:14 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 08:14:16 [INFO]: 🔍 Intento 283 - Código: -8
+2025-06-17 08:14:17 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 08:14:19 [INFO]: 🔍 Intento 334 - Código: -8
+2025-06-17 08:14:19 [WARN]: ⏰ Timeout después de 335 intentos y 20037ms
+2025-06-17 08:14:19 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 08:14:19 [ERROR]: Error captura Erick Francisco De Luna Hernández: Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 09:04:15 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:04:15 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:04:15 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:04:15 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:04:16 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:04:18 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 09:04:18 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:04:18 [INFO]: 📊 Tamaño del template: 992 bytes
+2025-06-17 09:04:18 [INFO]: 📊 Template base64: 1324 caracteres
+2025-06-17 09:04:18 [INFO]: 📊 Intentos necesarios: 44
+2025-06-17 09:04:18 [INFO]: 📊 Tiempo total: 3193ms
+2025-06-17 09:04:20 [INFO]: Captura exitosa: Verificación de Acceso (fp_1750172660731_verification_scan)
+2025-06-17 09:04:45 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:04:45 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:04:45 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:04:45 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:04:45 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:04:47 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 09:04:48 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 09:04:49 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:04:49 [INFO]: 📊 Tamaño del template: 1196 bytes
+2025-06-17 09:04:49 [INFO]: 📊 Template base64: 1596 caracteres
+2025-06-17 09:04:49 [INFO]: 📊 Intentos necesarios: 59
+2025-06-17 09:04:49 [INFO]: 📊 Tiempo total: 3546ms
+2025-06-17 09:04:51 [INFO]: Captura exitosa: Verificación de Acceso (fp_1750172691061_verification_scan)
+2025-06-17 09:35:21 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:35:21 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:35:21 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:35:21 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:35:21 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:35:22 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:35:22 [INFO]: 📊 Tamaño del template: 996 bytes
+2025-06-17 09:35:22 [INFO]: 📊 Template base64: 1328 caracteres
+2025-06-17 09:35:22 [INFO]: 📊 Intentos necesarios: 17
+2025-06-17 09:35:22 [INFO]: 📊 Tiempo total: 1173ms
+2025-06-17 09:35:24 [INFO]: Captura exitosa: Verificación de Acceso (fp_1750174524363_verification_scan)
+2025-06-17 09:35:30 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:35:30 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:35:30 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:35:30 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:35:30 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:35:31 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:35:31 [INFO]: 📊 Tamaño del template: 1184 bytes
+2025-06-17 09:35:31 [INFO]: 📊 Template base64: 1580 caracteres
+2025-06-17 09:35:31 [INFO]: 📊 Intentos necesarios: 18
+2025-06-17 09:35:31 [INFO]: 📊 Tiempo total: 1195ms
+2025-06-17 09:35:33 [INFO]: Captura exitosa: Verificación de Acceso (fp_1750174533553_verification_scan)
+2025-06-17 09:35:37 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:35:37 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:35:37 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:35:37 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:35:37 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:35:38 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:35:38 [INFO]: 📊 Tamaño del template: 1186 bytes
+2025-06-17 09:35:38 [INFO]: 📊 Template base64: 1584 caracteres
+2025-06-17 09:35:38 [INFO]: 📊 Intentos necesarios: 10
+2025-06-17 09:35:38 [INFO]: 📊 Tiempo total: 776ms
+2025-06-17 09:35:40 [INFO]: Captura exitosa: Verificación de Acceso (fp_1750174540223_verification_scan)
+2025-06-17 09:36:21 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:36:21 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:36:21 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:36:21 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:36:21 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:36:22 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:36:22 [INFO]: 📊 Tamaño del template: 1010 bytes
+2025-06-17 09:36:22 [INFO]: 📊 Template base64: 1348 caracteres
+2025-06-17 09:36:22 [INFO]: 📊 Intentos necesarios: 18
+2025-06-17 09:36:22 [INFO]: 📊 Tiempo total: 1161ms
+2025-06-17 09:36:24 [INFO]: Captura exitosa: Verificación de Acceso (fp_1750174584470_verification_scan)
+2025-06-17 09:36:36 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:36:36 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:36:36 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:36:36 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:36:36 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:36:38 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:36:38 [INFO]: 📊 Tamaño del template: 1022 bytes
+2025-06-17 09:36:38 [INFO]: 📊 Template base64: 1364 caracteres
+2025-06-17 09:36:38 [INFO]: 📊 Intentos necesarios: 23
+2025-06-17 09:36:38 [INFO]: 📊 Tiempo total: 1484ms
+2025-06-17 09:36:40 [INFO]: Captura exitosa: Verificación de Acceso (fp_1750174600031_verification_scan)
+2025-06-17 09:36:59 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:36:59 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:36:59 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:36:59 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:36:59 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:37:01 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 09:37:02 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 09:37:03 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:37:03 [INFO]: 📊 Tamaño del template: 948 bytes
+2025-06-17 09:37:03 [INFO]: 📊 Template base64: 1264 caracteres
+2025-06-17 09:37:03 [INFO]: 📊 Intentos necesarios: 67
+2025-06-17 09:37:03 [INFO]: 📊 Tiempo total: 4011ms
+2025-06-17 09:37:05 [INFO]: Captura exitosa: Verificación de Acceso (fp_1750174625410_verification_scan)
+2025-06-17 09:54:22 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 09:54:29 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 09:54:29 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 09:54:29 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 09:54:29 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 09:54:29 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 09:54:29 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 09:54:29 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 09:54:29 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 09:54:29 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 09:54:29 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 09:54:29 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 09:54:29 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 09:54:29 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 09:54:29 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 09:54:29 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 09:54:29 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 09:54:29 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 09:54:29 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 09:54:29 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 09:54:29 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 09:54:31 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 09:54:31 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 09:54:31 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 09:54:31 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 09:57:43 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 09:57:49 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 09:57:49 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 09:57:49 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 09:57:49 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 09:57:49 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 09:57:49 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 09:57:49 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 09:57:49 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 09:57:49 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 09:57:49 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 09:57:49 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 09:57:49 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 09:57:49 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 09:57:49 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 09:57:49 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 09:57:49 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 09:57:49 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 09:57:49 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 09:57:49 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 09:57:49 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 09:57:50 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 09:57:50 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 09:57:50 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 09:57:50 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 09:58:21 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 09:58:21 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 09:58:21 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 09:58:21 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 09:58:21 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 09:58:22 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 09:58:22 [INFO]: 📊 Tamaño del template: 994 bytes
+2025-06-17 09:58:22 [INFO]: 📊 Template base64: 1328 caracteres
+2025-06-17 09:58:22 [INFO]: 📊 Intentos necesarios: 20
+2025-06-17 09:58:22 [INFO]: 📊 Tiempo total: 1354ms
+2025-06-17 09:58:22 [INFO]: Verificación fallida: Usuario desconocido
+2025-06-17 10:08:33 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 10:16:12 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 10:16:12 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 10:16:12 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 10:16:12 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 10:16:12 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 10:16:12 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 10:16:12 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 10:16:12 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 10:16:12 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 10:16:12 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 10:16:12 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 10:16:12 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 10:16:12 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 10:16:12 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 10:16:12 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 10:16:12 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 10:16:12 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 10:16:12 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 10:16:12 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 10:16:12 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 10:16:12 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 10:16:12 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 10:16:12 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 10:16:12 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 10:16:13 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 10:16:13 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 10:16:13 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 10:16:13 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 10:17:52 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 10:17:52 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 10:17:52 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 10:17:52 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 10:17:52 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 10:17:54 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 10:17:54 [INFO]: 📊 Tamaño del template: 1006 bytes
+2025-06-17 10:17:54 [INFO]: 📊 Template base64: 1344 caracteres
+2025-06-17 10:17:54 [INFO]: 📊 Intentos necesarios: 30
+2025-06-17 10:17:54 [INFO]: 📊 Tiempo total: 1877ms
+2025-06-17 10:17:54 [INFO]: 🔍 Iniciando identificación entre 2 templates...
+2025-06-17 10:17:54 [INFO]: 🔍 Iniciando comparación de templates...
+2025-06-17 10:17:54 [INFO]: 📊 Template 1: 1006 bytes
+2025-06-17 10:17:54 [INFO]: 📊 Template 2: 1198 bytes
+2025-06-17 10:17:54 [INFO]: 🔍 Usando ZKFPM_DBMatch para comparación...
+2025-06-17 10:17:54 [WARN]: ⚠️ DBMatch falló con código: -7
+2025-06-17 10:17:54 [ERROR]: ❌ Error en comparación de templates:
+2025-06-17 10:17:54 [ERROR]: ❌ Error comparando con template 5c5d0f0c-a9a5-4271-aa4c-a8fd7afd771e:
+2025-06-17 10:17:54 [INFO]: 🔍 Iniciando comparación de templates...
+2025-06-17 10:17:54 [INFO]: 📊 Template 1: 1006 bytes
+2025-06-17 10:17:54 [INFO]: 📊 Template 2: 1004 bytes
+2025-06-17 10:17:54 [INFO]: 🔍 Usando ZKFPM_DBMatch para comparación...
+2025-06-17 10:17:54 [WARN]: ⚠️ DBMatch falló con código: -7
+2025-06-17 10:17:54 [ERROR]: ❌ Error en comparación de templates:
+2025-06-17 10:17:54 [ERROR]: ❌ Error comparando con template ba8bd9ea-5c61-4460-ba2d-4f6e06756557:
+2025-06-17 10:17:54 [INFO]: ❌ No se identificó la huella en ningún template
+2025-06-17 10:17:54 [INFO]: Verificación fallida: Usuario desconocido
+2025-06-17 10:18:35 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 10:18:35 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 10:18:35 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 10:18:35 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 10:18:35 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 10:18:35 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 10:18:35 [INFO]: 📊 Tamaño del template: 978 bytes
+2025-06-17 10:18:35 [INFO]: 📊 Template base64: 1304 caracteres
+2025-06-17 10:18:35 [INFO]: 📊 Intentos necesarios: 6
+2025-06-17 10:18:35 [INFO]: 📊 Tiempo total: 524ms
+2025-06-17 10:18:36 [INFO]: 🔍 Iniciando identificación entre 2 templates...
+2025-06-17 10:18:36 [INFO]: 🔍 Iniciando comparación de templates...
+2025-06-17 10:18:36 [INFO]: 📊 Template 1: 978 bytes
+2025-06-17 10:18:36 [INFO]: 📊 Template 2: 1198 bytes
+2025-06-17 10:18:36 [INFO]: 🔍 Usando ZKFPM_DBMatch para comparación...
+2025-06-17 10:18:36 [WARN]: ⚠️ DBMatch falló con código: -7
+2025-06-17 10:18:36 [ERROR]: ❌ Error en comparación de templates:
+2025-06-17 10:18:36 [ERROR]: ❌ Error comparando con template 5c5d0f0c-a9a5-4271-aa4c-a8fd7afd771e:
+2025-06-17 10:18:36 [INFO]: 🔍 Iniciando comparación de templates...
+2025-06-17 10:18:36 [INFO]: 📊 Template 1: 978 bytes
+2025-06-17 10:18:36 [INFO]: 📊 Template 2: 1004 bytes
+2025-06-17 10:18:36 [INFO]: 🔍 Usando ZKFPM_DBMatch para comparación...
+2025-06-17 10:18:36 [WARN]: ⚠️ DBMatch falló con código: -7
+2025-06-17 10:18:36 [ERROR]: ❌ Error en comparación de templates:
+2025-06-17 10:18:36 [ERROR]: ❌ Error comparando con template ba8bd9ea-5c61-4460-ba2d-4f6e06756557:
+2025-06-17 10:18:36 [INFO]: ❌ No se identificó la huella en ningún template
+2025-06-17 10:18:36 [INFO]: Verificación fallida: Usuario desconocido
+2025-06-17 10:24:49 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 10:27:37 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 10:27:37 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 10:27:37 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 10:27:37 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 10:27:37 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 10:27:37 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 10:27:37 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 10:27:37 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 10:27:37 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 10:27:37 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 10:27:37 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 10:27:37 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 10:27:37 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 10:27:37 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 10:27:37 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 10:27:37 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 10:27:37 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 10:27:37 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 10:27:37 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 10:27:37 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 10:27:37 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 10:27:37 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 10:27:37 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 10:27:37 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 10:27:38 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 10:27:38 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 10:27:38 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 10:27:38 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 10:28:05 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 10:28:05 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 10:28:05 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 10:28:05 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 10:28:05 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 10:28:07 [INFO]: 🔍 Intento 32 - Código: 0
+2025-06-17 10:28:07 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 10:28:07 [INFO]: 📊 Tamaño del template: 1020 bytes
+2025-06-17 10:28:07 [INFO]: 📊 Template base64: 1360 caracteres
+2025-06-17 10:28:07 [INFO]: 📊 Intentos necesarios: 32
+2025-06-17 10:28:07 [INFO]: 📊 Tiempo total: 2003ms
+2025-06-17 10:28:08 [INFO]: Verificación fallida: Usuario desconocido
+2025-06-17 10:28:48 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 10:28:48 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 10:28:48 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 10:28:48 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 10:28:48 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 10:28:49 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 10:28:49 [INFO]: 📊 Tamaño del template: 1172 bytes
+2025-06-17 10:28:49 [INFO]: 📊 Template base64: 1564 caracteres
+2025-06-17 10:28:49 [INFO]: 📊 Intentos necesarios: 16
+2025-06-17 10:28:49 [INFO]: 📊 Tiempo total: 1026ms
+2025-06-17 10:28:49 [INFO]: Verificación fallida: Usuario desconocido
+2025-06-17 10:38:22 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
