@@ -34,7 +34,8 @@ import {
   Chip,
   Snackbar,
   Slide,
-  Fade
+  Fade,
+  Tooltip
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -72,6 +73,9 @@ import BloodtypeIcon from '@mui/icons-material/Bloodtype';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import UpdateIcon from '@mui/icons-material/Update';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+
+// 🚀 IMPORTAR EL COMPONENTE DE HUELLA
+import FingerprintRegistration from './FingerprintRegistration';
 
 // 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
 const darkProTokens = {
@@ -587,6 +591,48 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     initialized: false,
     complete: false
   });
+
+  // 🖐️ ESTADOS PARA REGISTRO DE HUELLA DACTILAR
+  const [fingerprintDialogOpen, setFingerprintDialogOpen] = useState(false);
+  const [fingerprintMessage, setFingerprintMessage] = useState<string | null>(null);
+  const [fingerprintError, setFingerprintError] = useState<string | null>(null);
+  
+    // 🖐️ FUNCIONES PARA MANEJO DE HUELLA DACTILAR
+  const handleFingerprintDialogOpen = () => {
+    if (!user?.id) {
+      setFingerprintError('Se requiere un usuario válido para registrar huella');
+      return;
+    }
+    setFingerprintDialogOpen(true);
+  };
+
+  const handleFingerprintDialogClose = () => {
+    setFingerprintDialogOpen(false);
+  };
+
+  const handleFingerprintSuccess = (message: string) => {
+    setFingerprintMessage(message);
+    setFingerprintError(null);
+    
+    // Actualizar el estado de fingerprint en el formulario
+    setFormData(prev => ({ ...prev, fingerprint: true }));
+    setHasFormChanges(true);
+    
+    // Mostrar mensaje de éxito
+    setTimeout(() => {
+      setFingerprintMessage(null);
+    }, 5000);
+  };
+
+  const handleFingerprintError = (message: string) => {
+    setFingerprintError(message);
+    setFingerprintMessage(null);
+    
+    // Limpiar mensaje de error después de 5 segundos
+    setTimeout(() => {
+      setFingerprintError(null);
+    }, 5000);
+  };
   
   // 🔄 useEffect PARA CIERRE AUTOMÁTICO DESPUÉS DEL MENSAJE
   useEffect(() => {
@@ -1435,6 +1481,89 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       </Box>
     );
   };
+
+  // 🖐️ COMPONENTE DE CONTROL DE HUELLA DACTILAR
+  const FingerprintControl = () => {
+    return (
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        p: 2,
+        borderRadius: 2,
+        border: `2px solid ${formData.fingerprint ? darkProTokens.success : darkProTokens.warning}40`,
+        bgcolor: `${formData.fingerprint ? darkProTokens.success : darkProTokens.warning}10`,
+        transition: 'all 0.3s ease'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Avatar sx={{
+            bgcolor: formData.fingerprint ? darkProTokens.success : darkProTokens.warning,
+            color: darkProTokens.textPrimary,
+            width: 40,
+            height: 40
+          }}>
+            <FingerPrintIcon />
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle2" sx={{ 
+              color: darkProTokens.textPrimary, 
+              fontWeight: 600,
+              mb: 0.5
+            }}>
+              Huella Dactilar
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {formData.fingerprint ? (
+                <>
+                  <VerifiedIcon sx={{ color: darkProTokens.success, fontSize: '1rem' }} />
+                  <Typography variant="caption" sx={{ color: darkProTokens.success, fontWeight: 500 }}>
+                    Registrada
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <ErrorIcon sx={{ color: darkProTokens.warning, fontSize: '1rem' }} />
+                  <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 500 }}>
+                    No registrada
+                  </Typography>
+                </>
+              )}
+            </Box>
+          </Box>
+        </Box>
+        
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Tooltip title={formData.fingerprint ? "Gestionar huella dactilar" : "Registrar huella dactilar"}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleFingerprintDialogOpen}
+              disabled={!user?.id}
+              startIcon={<FingerPrintIcon />}
+              sx={{
+                bgcolor: formData.fingerprint ? darkProTokens.info : darkProTokens.primary,
+                color: darkProTokens.background,
+                fontWeight: 600,
+                px: 2,
+                '&:hover': {
+                  bgcolor: formData.fingerprint ? darkProTokens.infoHover : darkProTokens.primaryHover,
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px 15px ${formData.fingerprint ? darkProTokens.info : darkProTokens.primary}40`
+                },
+                '&:disabled': {
+                  bgcolor: darkProTokens.grayMedium,
+                  color: darkProTokens.textDisabled
+                },
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {formData.fingerprint ? 'Gestionar' : 'Registrar'}
+            </Button>
+          </Tooltip>
+        </Box>
+      </Box>
+    );
+  };
   
   // 🔧 MANEJADORES DE EVENTOS SIMPLIFICADOS
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -2153,7 +2282,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             
           } else {
             console.error('❌ Error regenerando contrato:', contractResult.error);
-            setContractRegenerationError(contractResult.error || 'Error desconocido en regeneración');
+                        setContractRegenerationError(contractResult.error || 'Error desconocido en regeneración');
           }
         } catch (error: any) {
           console.error('💥 Error crítico en regeneración de contrato:', error);
@@ -2933,7 +3062,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         );
 
       default:
-        // PASO DE ARCHIVOS CON DARK PRO SYSTEM
+        // PASO DE ARCHIVOS CON DARK PRO SYSTEM + HUELLA DACTILAR
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
@@ -3010,9 +3139,9 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   <ContractPdfDisplay />
                 </Box>
               </Grid>
-              
-              {/* 🔧 OPCIONES ADICIONALES */}
-              <Grid size={12}>
+
+              {/* 🖐️ REGISTRO DE HUELLA DACTILAR */}
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{
                   p: 3,
                   borderRadius: 2,
@@ -3021,6 +3150,44 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 }}>
                   <Typography variant="subtitle1" sx={{ 
                     color: darkProTokens.primary, 
+                    fontWeight: 600, 
+                    mb: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <FingerPrintIcon />
+                    Huella Dactilar
+                  </Typography>
+                  
+                  <FingerprintControl />
+                  
+                  {errors.fingerprint && (
+                    <Alert 
+                      severity="error" 
+                      sx={{ 
+                        mt: 2,
+                        bgcolor: darkProTokens.notifErrorBg,
+                        color: darkProTokens.textPrimary,
+                        '& .MuiAlert-icon': { color: darkProTokens.error }
+                      }}
+                    >
+                      {errors.fingerprint}
+                    </Alert>
+                  )}
+                </Box>
+              </Grid>
+              
+              {/* 🔧 OPCIONES ADICIONALES */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box sx={{
+                  p: 3,
+                  borderRadius: 2,
+                  border: `2px solid ${darkProTokens.success}40`,
+                  bgcolor: `${darkProTokens.success}10`
+                }}>
+                  <Typography variant="subtitle1" sx={{ 
+                    color: darkProTokens.success, 
                     fontWeight: 600, 
                     mb: 3,
                     display: 'flex',
@@ -3032,34 +3199,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   </Typography>
                   
                   <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.fingerprint}
-                            onChange={handleSwitchChange('fingerprint')}
-                            sx={{
-                              '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: darkProTokens.primary,
-                              },
-                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: darkProTokens.primary,
-                              },
-                            }}
-                          />
-                        }
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <FingerPrintIcon sx={{ color: darkProTokens.primary }} />
-                            <Typography sx={{ color: darkProTokens.textPrimary }}>
-                              Huella dactilar registrada
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={12}>
                       <FormControlLabel
                         control={
                           <Switch
@@ -3086,7 +3226,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                       />
                     </Grid>
                     
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={12}>
                       <FormControlLabel
                         control={
                           <Switch
@@ -3254,9 +3394,40 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               size="small"
               onClick={() => user?.id && loadExistingFiles(user.id)}
               sx={{ ml: 2, color: darkProTokens.warning }}
-                        >
+            >
               Reintentar
             </Button>
+          </Alert>
+        )}
+
+        {/* 🖐️ MENSAJES DE HUELLA DACTILAR */}
+        {fingerprintMessage && (
+          <Alert 
+            severity="success" 
+            sx={{ 
+              m: 3, 
+              mb: 0,
+              bgcolor: darkProTokens.notifSuccessBg,
+              color: darkProTokens.textPrimary,
+              '& .MuiAlert-icon': { color: darkProTokens.success }
+            }}
+          >
+            {fingerprintMessage}
+          </Alert>
+        )}
+
+        {fingerprintError && (
+          <Alert 
+            severity="error" 
+            sx={{ 
+              m: 3, 
+              mb: 0,
+              bgcolor: darkProTokens.notifErrorBg,
+              color: darkProTokens.textPrimary,
+              '& .MuiAlert-icon': { color: darkProTokens.error }
+            }}
+          >
+            {fingerprintError}
           </Alert>
         )}
 
@@ -3603,7 +3774,23 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         </Box>
       )}
 
-      {/* 🎨 ESTILOS CSS PERSONALIZADOS PARA ANIMACIONES DARK PRO */}
+      {/* 🖐️ MODAL DE REGISTRO DE HUELLA DACTILAR */}
+      {user && (
+        <FingerprintRegistration
+          open={fingerprintDialogOpen}
+          onClose={handleFingerprintDialogClose}
+          user={{
+            id: user.id || '',
+            firstName: user.firstName,
+            lastName: user.lastName,
+            fingerprint: formData.fingerprint
+          }}
+          onSuccess={handleFingerprintSuccess}
+          onError={handleFingerprintError}
+        />
+      )}
+
+           {/* 🎨 ESTILOS CSS PERSONALIZADOS PARA ANIMACIONES DARK PRO */}
       <style jsx>{`
         @keyframes pulse {
           0%, 100% { 
@@ -3911,6 +4098,178 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           opacity: 0.3;
           pointer-events: none;
           z-index: -1;
+        }
+        
+        /* Efectos especiales para huella dactilar */
+        .fingerprint-glow {
+          animation: fingerprint-pulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes fingerprint-pulse {
+          0%, 100% {
+            box-shadow: 0 0 15px ${darkProTokens.primary}40;
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 25px ${darkProTokens.primary}60, 0 0 35px ${darkProTokens.primary}30;
+            transform: scale(1.02);
+          }
+        }
+        
+        /* Efectos para el componente de huella */
+        .fingerprint-scanner {
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .fingerprint-scanner::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: linear-gradient(
+            45deg,
+            transparent,
+            ${darkProTokens.primary}20,
+            transparent
+          );
+          animation: scan 2s linear infinite;
+          pointer-events: none;
+        }
+        
+        @keyframes scan {
+          0% {
+            transform: translateX(-100%) translateY(-100%) rotate(45deg);
+          }
+          100% {
+            transform: translateX(100%) translateY(100%) rotate(45deg);
+          }
+        }
+        
+        /* Efectos de éxito para huella */
+        .fingerprint-success {
+          animation: success-bounce 1s ease-out;
+        }
+        
+        @keyframes success-bounce {
+          0% {
+            transform: scale(0.3);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.05);
+          }
+          70% {
+            transform: scale(0.9);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        /* Efectos de error para huella */
+        .fingerprint-error {
+          animation: error-shake 0.5s ease-in-out;
+        }
+        
+        @keyframes error-shake {
+          0%, 100% {
+            transform: translateX(0);
+          }
+          10%, 30%, 50%, 70%, 90% {
+            transform: translateX(-5px);
+          }
+          20%, 40%, 60%, 80% {
+            transform: translateX(5px);
+          }
+        }
+        
+        /* Efectos de conexión WebSocket */
+        .ws-connecting {
+          animation: connecting-dots 1.5s infinite;
+        }
+        
+        @keyframes connecting-dots {
+          0%, 20% {
+            color: ${darkProTokens.textDisabled};
+          }
+          40% {
+            color: ${darkProTokens.warning};
+          }
+          60% {
+            color: ${darkProTokens.primary};
+          }
+          80%, 100% {
+            color: ${darkProTokens.success};
+          }
+        }
+        
+        /* Efectos de calidad de huella */
+        .quality-excellent {
+          color: ${darkProTokens.success};
+          animation: quality-glow 2s ease-in-out infinite alternate;
+        }
+        
+        .quality-good {
+          color: ${darkProTokens.primary};
+        }
+        
+        .quality-poor {
+          color: ${darkProTokens.warning};
+          animation: quality-warning 1s ease-in-out infinite alternate;
+        }
+        
+        @keyframes quality-glow {
+          from {
+            text-shadow: 0 0 5px ${darkProTokens.success}60;
+          }
+          to {
+            text-shadow: 0 0 15px ${darkProTokens.success}80, 0 0 25px ${darkProTokens.success}40;
+          }
+        }
+        
+        @keyframes quality-warning {
+          from {
+            opacity: 1;
+          }
+          to {
+            opacity: 0.7;
+          }
+        }
+        
+        /* Efectos de progreso circular mejorado */
+        .progress-ring {
+          filter: drop-shadow(0 0 10px currentColor);
+        }
+        
+        /* Efectos de notificaciones flotantes */
+        .floating-notification {
+          animation: float-in 0.5s ease-out, float-out 0.5s ease-in 4.5s forwards;
+        }
+        
+        @keyframes float-in {
+          from {
+            transform: translateY(-100px) scale(0.8);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes float-out {
+          from {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+          }
+          to {
+            transform: translateY(-100px) scale(0.8);
+            opacity: 0;
+          }
         }
       `}</style>
     </Dialog>

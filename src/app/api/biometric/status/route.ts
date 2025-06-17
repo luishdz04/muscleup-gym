@@ -1,35 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const ZK_AGENT_CONFIG = {
-  host: process.env.ZK_AGENT_HOST || '127.0.0.1',
+  // ✅ CAMBIAR A LOCALHOST EN LUGAR DE 127.0.0.1
+  host: process.env.ZK_AGENT_HOST || 'localhost',
   port: process.env.ZK_AGENT_PORT || '4001',
   wsPort: process.env.ZK_AGENT_WS_PORT || '8080'
 };
 
-// ✅ FUNCIÓN PARA PROBAR WEBSOCKET
+// ✅ FUNCIÓN MEJORADA PARA PROBAR WEBSOCKET
 async function testWebSocketConnection(timeout: number = 5000): Promise<boolean> {
   return new Promise((resolve) => {
     try {
-      const WebSocket = require('ws');
-      const ws = new WebSocket(`ws://${ZK_AGENT_CONFIG.host}:${ZK_AGENT_CONFIG.wsPort}`);
+      // Intentar primero con localhost
+      const wsUrls = [
+        `ws://localhost:${ZK_AGENT_CONFIG.wsPort}`,
+        `ws://127.0.0.1:${ZK_AGENT_CONFIG.wsPort}`
+      ];
       
-      const timeoutId = setTimeout(() => {
-        ws.close();
-        resolve(false);
-      }, timeout);
+      let attemptCount = 0;
+      const maxAttempts = wsUrls.length;
       
-      ws.on('open', () => {
-        clearTimeout(timeoutId);
-        ws.close();
-        resolve(true);
-      });
+      function tryNextUrl() {
+        if (attemptCount >= maxAttempts) {
+          resolve(false);
+          return;
+        }
+        
+        const wsUrl = wsUrls[attemptCount];
+        attemptCount++;
+        
+        console.log(`🔌 Probando WebSocket: ${wsUrl}`);
+        
+        try {
+          const WebSocket = require('ws');
+          const ws = new WebSocket(wsUrl);
+          
+          const timeoutId = setTimeout(() => {
+            ws.close();
+            tryNextUrl(); // Intentar siguiente URL
+          }, timeout / maxAttempts);
+          
+          ws.on('open', () => {
+            console.log(`✅ WebSocket conectado: ${wsUrl}`);
+            clearTimeout(timeoutId);
+            ws.close();
+            resolve(true);
+          });
+          
+          ws.on('error', (error: any) => {
+            console.log(`❌ WebSocket error en ${wsUrl}:`, error.message);
+            clearTimeout(timeoutId);
+            tryNextUrl(); // Intentar siguiente URL
+          });
+          
+        } catch (error: any) {
+          console.log(`❌ Error creando WebSocket ${wsUrl}:`, error.message);
+          tryNextUrl(); // Intentar siguiente URL
+        }
+      }
       
-      ws.on('error', () => {
-        clearTimeout(timeoutId);
-        resolve(false);
-      });
+      tryNextUrl();
       
     } catch (error) {
+      console.log('❌ Error general en testWebSocketConnection:', error);
       resolve(false);
     }
   });
@@ -48,33 +81,55 @@ async function testZKAgentConnection(timeout: number = 10000) {
   const startTime = Date.now();
   
   try {
-    // TEST 1: API HTTP
+    // TEST 1: API HTTP - Probar múltiples URLs
     console.log('🔍 Probando conexión HTTP al ZK Access Agent...');
-    try {
-      const response = await fetch(`http://${ZK_AGENT_CONFIG.host}:${ZK_AGENT_CONFIG.port}/api/info`, {
-        signal: AbortSignal.timeout(timeout / 2)
-      });
-      
-      if (response.ok) {
-        results.apiConnected = true;
-        console.log('✅ ZK Access Agent HTTP conectado');
+    
+    const httpUrls = [
+      `http://localhost:${ZK_AGENT_CONFIG.port}/api/info`,
+      `http://127.0.0.1:${ZK_AGENT_CONFIG.port}/api/info`
+    ];
+    
+    let apiSuccess = false;
+    
+    for (const url of httpUrls) {
+      try {
+        console.log(`📡 Probando: ${url}`);
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(timeout / 2),
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
         
-        const data = await response.json();
-        results.deviceInfo = data;
-        console.log('📋 Respuesta:', data);
-        
-        // Verificar hardware desde la respuesta
-        if (data.data?.zkDevice?.isConnected) {
-          results.hardwareConnected = true;
-          console.log('✅ Hardware ZK detectado');
+        if (response.ok) {
+          results.apiConnected = true;
+          apiSuccess = true;
+          console.log(`✅ ZK Access Agent HTTP conectado: ${url}`);
+          
+          const data = await response.json();
+          results.deviceInfo = data;
+          console.log('📋 Respuesta exitosa del ZK Agent');
+          
+          // Verificar hardware desde la respuesta
+          if (data.data?.zkDevice?.isConnected) {
+            results.hardwareConnected = true;
+            console.log('✅ Hardware ZK detectado desde API');
+          }
+          break; // Salir del loop si es exitoso
         }
+      } catch (error: any) {
+        console.log(`❌ Error en ${url}: ${error.message}`);
+        continue; // Intentar siguiente URL
       }
-    } catch (error: any) {
-      console.log(`❌ Error conectando a ZK Agent: ${error.message}`);
-      results.errorMessage = `Conexión fallida al ZK Agent: ${error.message}`;
     }
     
-    // TEST 2: WebSocket
+    if (!apiSuccess) {
+      results.errorMessage = 'No se pudo conectar al ZK Agent en ninguna URL';
+      console.log('❌ Todas las URLs HTTP fallaron');
+    }
+    
+    // TEST 2: WebSocket con múltiples URLs
     console.log('🔍 Probando conexión WebSocket...');
     try {
       const wsConnected = await testWebSocketConnection(3000);
@@ -83,7 +138,7 @@ async function testZKAgentConnection(timeout: number = 10000) {
       if (wsConnected) {
         console.log('✅ WebSocket conectado exitosamente');
       } else {
-        console.log('⚠️ WebSocket: puerto no disponible o no responde');
+        console.log('⚠️ WebSocket: puerto no disponible en ninguna URL');
       }
     } catch (error: any) {
       console.log(`❌ WebSocket test falló: ${error.message}`);
@@ -94,12 +149,14 @@ async function testZKAgentConnection(timeout: number = 10000) {
     return results;
     
   } catch (error: any) {
+    console.error('❌ Error general en testZKAgentConnection:', error);
     results.responseTime = Date.now() - startTime;
     results.errorMessage = error.message;
     return results;
   }
 }
 
+// ✅ EL RESTO DEL CÓDIGO SE MANTIENE IGUAL...
 export async function GET(request: NextRequest) {
   try {
     console.log('📊 Obteniendo estado del sistema biométrico...');
@@ -207,7 +264,7 @@ export async function GET(request: NextRequest) {
 }
 
 // ===============================================
-// ✅ POST SIN AUTENTICACIÓN (TEMPORAL)
+// ✅ POST CON URLS MEJORADAS
 // ===============================================
 export async function POST(request: NextRequest) {
   try {
@@ -221,41 +278,61 @@ export async function POST(request: NextRequest) {
         try {
           const startTime = Date.now();
           
-          try {
-            const response = await fetch(`http://${ZK_AGENT_CONFIG.host}:${ZK_AGENT_CONFIG.port}/api/info`, {
-              method: 'GET',
-              signal: AbortSignal.timeout(5000)
-            });
-
-            const result = await response.json();
-            const responseTime = Date.now() - startTime;
-
-            if (response.ok) {
-              return NextResponse.json({
-                success: true,
-                message: 'Ping exitoso al dispositivo ZKTeco',
-                data: {
-                  deviceId,
-                  serialNumber: 'ZK-LUIS-001',
-                  responseTime,
-                  status: 'connected',
-                  model: 'ZKTeco ZK9500',
-                  location: 'Gimnasio Principal',
-                  owner: 'luishdz04',
-                  timestamp: new Date().toISOString(),
-                  agentInfo: result
+          // Probar múltiples URLs para ping
+          const urls = [
+            `http://localhost:${ZK_AGENT_CONFIG.port}/api/info`,
+            `http://127.0.0.1:${ZK_AGENT_CONFIG.port}/api/info`
+          ];
+          
+          let result = null;
+          let responseTime = 0;
+          let success = false;
+          
+          for (const url of urls) {
+            try {
+              console.log(`🏓 Ping a: ${url}`);
+              const response = await fetch(url, {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000),
+                headers: {
+                  'Accept': 'application/json'
                 }
               });
-            } else {
-              throw new Error(result.error || 'Error en ping');
-            }
 
-          } catch (error: any) {
-            console.error('❌ Error conectando al ZK Access Agent:', error);
-            
+              result = await response.json();
+              responseTime = Date.now() - startTime;
+
+              if (response.ok) {
+                success = true;
+                console.log(`✅ Ping exitoso: ${url} (${responseTime}ms)`);
+                break;
+              }
+            } catch (error: any) {
+              console.log(`❌ Ping falló en ${url}: ${error.message}`);
+              continue;
+            }
+          }
+
+          if (success && result) {
+            return NextResponse.json({
+              success: true,
+              message: 'Ping exitoso al dispositivo ZKTeco',
+              data: {
+                deviceId,
+                serialNumber: 'ZK-LUIS-001',
+                responseTime,
+                status: 'connected',
+                model: 'ZKTeco ZK9500',
+                location: 'Gimnasio Principal',
+                owner: 'luishdz04',
+                timestamp: new Date().toISOString(),
+                agentInfo: result
+              }
+            });
+          } else {
             return NextResponse.json({
               success: false,
-              error: `Error de conexión: ${error.message}`,
+              error: 'No se pudo conectar al ZK Access Agent',
               data: {
                 deviceId,
                 responseTime: Date.now() - startTime,
@@ -289,7 +366,9 @@ export async function POST(request: NextRequest) {
               model: 'ZKTeco ZK9500',
               location: 'Gimnasio Principal',
               owner: 'luishdz04',
-              responseTime: connectionTest.responseTime
+              responseTime: connectionTest.responseTime,
+              websocketConnected: connectionTest.websocketConnected,
+              hardwareConnected: connectionTest.hardwareConnected
             }
           });
 
