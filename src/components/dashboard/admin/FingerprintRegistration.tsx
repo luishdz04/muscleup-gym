@@ -14,10 +14,6 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
   Grid,
   Card,
   CardActionArea,
@@ -26,9 +22,8 @@ import {
   Fade,
   Zoom,
   Slide,
-  ButtonGroup,
   Avatar,
-  Badge
+  Divider
 } from '@mui/material';
 import {
   Fingerprint as FingerprintIcon,
@@ -40,7 +35,6 @@ import {
   Close as CloseIcon,
   Refresh as RefreshIcon,
   Delete as DeleteIcon,
-  Sensors as SensorsIcon,
   TouchApp as TouchAppIcon,
   CloudSync as CloudSyncIcon,
   Wifi as WifiIcon,
@@ -48,10 +42,18 @@ import {
   Timer as TimerIcon,
   TrendingUp as QualityIcon,
   Done as DoneIcon,
-  Replay as ReplayIcon
+  Replay as ReplayIcon,
+  Timeline as ProgressIcon,
+  LooksOne as OneIcon,
+  LooksTwo as TwoIcon,
+  Looks3 as ThreeIcon,
+  CameraAlt as CaptureIcon,
+  Merge as MergeIcon,
+  Save as SaveIcon,
+  Preview as PreviewIcon
 } from '@mui/icons-material';
 
-// 🎨 DARK PRO TOKENS (usando los mismos del archivo principal)
+// 🎨 DARK PRO TOKENS (mismo que antes)
 const darkProTokens = {
   background: '#000000',
   surfaceLevel1: '#121212',
@@ -86,7 +88,7 @@ const darkProTokens = {
   borderActive: '#E6B800'
 };
 
-// 🖐️ CONFIGURACIÓN DE DEDOS
+// 🖐️ CONFIGURACIÓN DE DEDOS (mismo que antes)
 const FINGER_CONFIG = [
   { id: 1, name: 'Pulgar Derecho', hand: 'right', finger: 'thumb', icon: '👍' },
   { id: 2, name: 'Índice Derecho', hand: 'right', finger: 'index', icon: '☝️' },
@@ -100,7 +102,7 @@ const FINGER_CONFIG = [
   { id: 10, name: 'Meñique Izquierdo', hand: 'left', finger: 'pinky', icon: '🤏' }
 ];
 
-// 📊 ESTADOS DEL PROCESO
+// 📊 ESTADOS DEL PROCESO ACTUALIZADOS
 const PROCESS_STEPS = [
   { 
     id: 'selection', 
@@ -110,45 +112,45 @@ const PROCESS_STEPS = [
     color: darkProTokens.info
   },
   { 
-    id: 'connecting', 
-    label: 'Conectando', 
-    description: 'Estableciendo conexión con sensor biométrico',
-    icon: <WifiIcon />,
+    id: 'preparation', 
+    label: 'Preparación', 
+    description: 'Preparando para captura múltiple',
+    icon: <ProgressIcon />,
     color: darkProTokens.warning
   },
   { 
-    id: 'waiting', 
-    label: 'Esperando', 
-    description: 'Coloque el dedo firmemente en el sensor',
-    icon: <SensorsIcon />,
+    id: 'capture1', 
+    label: 'Captura 1/3', 
+    description: 'Primera captura - Template principal',
+    icon: <OneIcon />,
     color: darkProTokens.primary
   },
   { 
-    id: 'capturing', 
-    label: 'Capturando', 
-    description: 'Procesando huella dactilar...',
-    icon: <FingerprintIcon />,
+    id: 'capture2', 
+    label: 'Captura 2/3', 
+    description: 'Segunda captura - Verificación',
+    icon: <TwoIcon />,
     color: darkProTokens.info
   },
   { 
-    id: 'verifying', 
-    label: 'Verificando', 
-    description: 'Validando calidad de la huella',
-    icon: <QualityIcon />,
+    id: 'capture3', 
+    label: 'Captura 3/3', 
+    description: 'Tercera captura - Respaldo',
+    icon: <ThreeIcon />,
     color: darkProTokens.warning
   },
   { 
-    id: 'saving', 
-    label: 'Guardando', 
-    description: 'Sincronizando con base de datos',
-    icon: <CloudSyncIcon />,
-    color: darkProTokens.primary
+    id: 'processing', 
+    label: 'Procesando', 
+    description: 'Combinando templates biométricos',
+    icon: <MergeIcon />,
+    color: darkProTokens.info
   },
   { 
-    id: 'complete', 
-    label: 'Completado', 
-    description: 'Huella registrada exitosamente',
-    icon: <CheckCircleIcon />,
+    id: 'ready', 
+    label: 'Datos Listos', 
+    description: 'Huella preparada para guardar',
+    icon: <PreviewIcon />,
     color: darkProTokens.success
   }
 ];
@@ -163,7 +165,7 @@ interface FingerprintRegistrationProps {
     lastName: string;
     fingerprint: boolean;
   };
-  onSuccess: (message: string) => void;
+  onFingerprintDataReady: (fingerprintData: any) => void; // ✅ NUEVO: Pasar datos al padre
   onError: (message: string) => void;
 }
 
@@ -176,14 +178,26 @@ interface WebSocketMessage {
   error?: string;
   progress?: number;
   timestamp?: string;
+  serverInfo?: any;
+  clientId?: string;
 }
 
-// 🚀 COMPONENTE PRINCIPAL
+interface CaptureResult {
+  success: boolean;
+  template: string;
+  templateSize: number;
+  quality: string;
+  qualityScore: number;
+  captureTime: number;
+  fingerprintId: string;
+}
+
+// 🚀 COMPONENTE PRINCIPAL MODIFICADO - ✅ SOLO PREPARAR DATOS
 export default function FingerprintRegistration({
   open,
   onClose,
   user,
-  onSuccess,
+  onFingerprintDataReady, // ✅ NUEVO
   onError
 }: FingerprintRegistrationProps) {
   // 📊 Estados principales
@@ -191,31 +205,343 @@ export default function FingerprintRegistration({
   const [selectedFinger, setSelectedFinger] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('');
-  const [quality, setQuality] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // 🔄 Estados de captura múltiple
+  const [currentCapture, setCurrentCapture] = useState<number>(0);
+  const [captureResults, setCaptureResults] = useState<CaptureResult[]>([]);
+  const [finalQuality, setFinalQuality] = useState<number | null>(null);
+  const [combinedTemplate, setCombinedTemplate] = useState<any>(null);
   
   // 🌐 Estados de WebSocket
   const [wsConnected, setWsConnected] = useState(false);
   const [wsReconnecting, setWsReconnecting] = useState(false);
   const [wsError, setWsError] = useState<string | null>(null);
+  const [deviceConnected, setDeviceConnected] = useState(false);
   
   // ⏱️ Estados de tiempo
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [estimatedTime, setEstimatedTime] = useState(0);
+  const [totalTime, setTotalTime] = useState(0);
+  const [captureStartTime, setCaptureStartTime] = useState(0);
   
   // 🔗 Referencias
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initializationRef = useRef(false);
   
   // 🎯 CONFIGURACIÓN WEBSOCKET
-  const WS_URL = 'ws://localhost:8080';
+  const WS_URL = 'ws://127.0.0.1:8080';
   const RECONNECT_INTERVAL = 3000;
   const MAX_RECONNECT_ATTEMPTS = 5;
   const reconnectAttemptsRef = useRef(0);
 
-  // 🔌 FUNCIONES DE WEBSOCKET
+  // ⏱️ FUNCIONES DE TIMER
+  const startTotalTimer = useCallback(() => {
+    if (totalTimerRef.current) {
+      clearInterval(totalTimerRef.current);
+    }
+    totalTimerRef.current = setInterval(() => {
+      setTotalTime(prev => prev + 1);
+    }, 1000);
+  }, []);
+
+  const stopTimers = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (totalTimerRef.current) {
+      clearInterval(totalTimerRef.current);
+      totalTimerRef.current = null;
+    }
+  }, []);
+
+  // 🔄 REINICIAR PROCESO
+  const resetProcess = useCallback(() => {
+    console.log('🔄 Reiniciando proceso...');
+    setCurrentStep('selection');
+    setSelectedFinger(null);
+    setProgress(0);
+    setMessage('');
+    setError(null);
+    setCurrentCapture(0);
+    setCaptureResults([]);
+    setFinalQuality(null);
+    setCombinedTemplate(null);
+    setElapsedTime(0);
+    setTotalTime(0);
+    setIsProcessing(false);
+    stopTimers();
+  }, [stopTimers]);
+
+  // 🚪 CERRAR MODAL
+  const handleClose = useCallback(() => {
+    console.log('🚪 Cerrando modal...');
+    
+    initializationRef.current = false;
+    resetProcess();
+    
+    if (wsRef.current) {
+      wsRef.current.close(1000, 'Closing fingerprint registration');
+      wsRef.current = null;
+    }
+    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    setWsConnected(false);
+    setWsReconnecting(false);
+    setDeviceConnected(false);
+    setWsError(null);
+    
+    onClose();
+  }, [resetProcess, onClose]);
+
+  // ✅ FUNCIÓN PARA CONFIRMAR Y PASAR DATOS AL PADRE - NO GUARDA EN BD
+  const confirmFingerprintData = useCallback(() => {
+    if (!combinedTemplate || !selectedFinger) {
+      setError('No hay datos de huella para confirmar');
+      return;
+    }
+
+    console.log('✅ Confirmando datos de huella para el padre...');
+    
+    // 📊 PREPARAR DATOS PARA EL PADRE
+    const fingerprintData = {
+      user_id: user.id,
+      finger_index: selectedFinger,
+      finger_name: FINGER_CONFIG.find(f => f.id === selectedFinger)?.name || 'Desconocido',
+      
+      // ✅ TEMPLATES MÚLTIPLES
+      template: combinedTemplate.primary.template,
+      primary_template: combinedTemplate.primary.template,
+      verification_template: combinedTemplate.verification.template,
+      backup_template: combinedTemplate.backup.template,
+      combined_template: combinedTemplate,
+      
+      // 📈 MÉTRICAS
+      average_quality: Math.round(combinedTemplate.averageQuality),
+      capture_count: 3,
+      capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
+      
+      // 🔒 METADATA
+      device_user_id: parseInt(user.id.slice(-6), 16) % 9999,
+      device_info: {
+        deviceType: 'ZKTeco',
+        captureMethod: 'multiple_capture',
+        totalCaptures: 3,
+        wsConnection: 'localhost:8080',
+        qualities: [
+          combinedTemplate.primary.qualityScore,
+          combinedTemplate.verification.qualityScore,
+          combinedTemplate.backup.qualityScore
+        ],
+        capturedBy: 'luishdz04',
+        capturedAt: new Date().toISOString()
+      }
+    };
+    
+    console.log('📤 Pasando datos al componente padre:', fingerprintData);
+    
+    // ✅ PASAR DATOS AL PADRE EN VEZ DE GUARDAR DIRECTAMENTE
+    onFingerprintDataReady(fingerprintData);
+    
+    // ✅ CERRAR MODAL
+    handleClose();
+    
+  }, [combinedTemplate, selectedFinger, user, onFingerprintDataReady, handleClose]);
+
+  // ✅ FUNCIÓN processFinalTemplate MODIFICADA - SOLO PREPARAR
+  const processFinalTemplate = useCallback(() => {
+    setCurrentStep('processing');
+    setMessage('Combinando templates biométricos...');
+    setProgress(0);
+    
+    setCaptureResults(currentResults => {
+      console.log('🔄 Procesando templates finales:', currentResults);
+      
+      if (currentResults.length !== 3) {
+        console.error('❌ Error: Se esperaban 3 capturas, se recibieron:', currentResults.length);
+        setError('Error en el proceso de captura múltiple');
+        setIsProcessing(false);
+        setCurrentStep('selection');
+        return currentResults;
+      }
+      
+      const processInterval = setInterval(() => {
+        setProgress(prev => {
+          const newProgress = prev + 10;
+          if (newProgress >= 100) {
+            clearInterval(processInterval);
+            
+            const avgQuality = currentResults.reduce((sum, result) => sum + result.qualityScore, 0) / currentResults.length;
+            setFinalQuality(Math.round(avgQuality));
+            
+            const combinedTemplateData = {
+              primary: currentResults[0],
+              verification: currentResults[1], 
+              backup: currentResults[2],
+              averageQuality: avgQuality,
+              totalCaptureTime: totalTime,
+              combinedAt: new Date().toISOString()
+            };
+            
+            // ✅ SOLO PREPARAR DATOS, NO GUARDAR
+            setCombinedTemplate(combinedTemplateData);
+            setCurrentStep('ready');
+            setMessage('¡Datos de huella listos! Presione "Confirmar" para agregar al formulario.');
+            setIsProcessing(false);
+            stopTimers();
+            
+            return 100;
+          }
+          return newProgress;
+        });
+      }, 200);
+      
+      return currentResults;
+    });
+  }, [totalTime, stopTimers]);
+
+  // ✅ FUNCIÓN startSingleCapture (misma)
+  const startSingleCapture = useCallback((captureNumber: number) => {
+    console.log(`🚀 Iniciando captura ${captureNumber}/3`);
+    
+    setCurrentCapture(captureNumber - 1);
+    setCurrentStep(`capture${captureNumber}`);
+    setMessage(`Coloque el dedo en el sensor - Captura ${captureNumber}/3`);
+    setProgress(0);
+    setCaptureStartTime(Date.now());
+    
+    const captureCommand = {
+      action: 'capture_fingerprint',
+      userId: user.id,
+      userName: `${user.firstName} ${user.lastName}`,
+      fingerIndex: selectedFinger,
+      captureNumber: captureNumber,
+      timestamp: Date.now()
+    };
+    
+    console.log(`📤 Enviando comando de captura ${captureNumber}/3:`, captureCommand);
+    
+    try {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(captureCommand));
+      } else {
+        throw new Error('WebSocket no está conectado');
+      }
+    } catch (error) {
+      console.error('❌ Error enviando comando:', error);
+      setError('Error de comunicación con el sensor');
+      setIsProcessing(false);
+      setCurrentStep('selection');
+      stopTimers();
+    }
+  }, [selectedFinger, user, stopTimers]);
+
+  // ✅ FUNCIÓN handleWebSocketMessage (misma, pero llama processFinalTemplate)
+  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
+    console.log('📨 Mensaje recibido:', message);
+    
+    switch (message.type) {
+      case 'welcome':
+        console.log('🎉 Conectado al ZK Access Agent:', message.serverInfo);
+        if (message.serverInfo?.deviceConnected) {
+          setDeviceConnected(true);
+          setWsError(null);
+        } else {
+          setDeviceConnected(false);
+          setWsError('Dispositivo ZKTeco no conectado al servidor');
+        }
+        break;
+        
+      case 'initial_status':
+        setDeviceConnected(message.data?.deviceConnected || false);
+        if (!message.data?.deviceConnected) {
+          setWsError('Dispositivo ZKTeco no está conectado');
+        }
+        break;
+        
+      case 'capture_status':
+        if (message.status && message.message) {
+          setMessage(message.message);
+          setProgress(message.progress || 0);
+        }
+        break;
+        
+      case 'capture_result':
+        if (message.success && message.data) {
+          const qualityMap: { [key: string]: number } = {
+            'good': 95, 'excellent': 98, 'fair': 75, 'poor': 50
+          };
+          const qualityScore = qualityMap[message.data.quality] || 85;
+          
+          const captureResult: CaptureResult = {
+            success: true,
+            template: message.data.template,
+            templateSize: message.data.templateSize,
+            quality: message.data.quality,
+            qualityScore: qualityScore,
+            captureTime: Date.now() - captureStartTime,
+            fingerprintId: message.data.fingerprintId
+          };
+          
+          setCaptureResults(prev => {
+            const newResults = [...prev, captureResult];
+            const capturesCompleted = newResults.length;
+            
+            console.log(`✅ Captura ${capturesCompleted}/3 completada:`, captureResult);
+            
+            setTimeout(() => {
+              if (capturesCompleted < 3) {
+                startSingleCapture(capturesCompleted + 1);
+              } else {
+                console.log('🎉 Todas las capturas completadas, procesando...');
+                processFinalTemplate();
+              }
+            }, capturesCompleted < 3 ? 1500 : 500);
+            
+            return newResults;
+          });
+          
+        } else {
+          setError(message.error || 'Error en captura de huella');
+          setIsProcessing(false);
+          setCurrentStep('selection');
+          stopTimers();
+        }
+        break;
+        
+      case 'command_error':
+      case 'error':
+        setIsProcessing(false);
+        setError(message.message || message.error || 'Error de comunicación');
+        setCurrentStep('selection');
+        stopTimers();
+        break;
+    }
+  }, [captureStartTime, stopTimers, startSingleCapture, processFinalTemplate]);
+
+  // ✅ Resto de funciones WebSocket (mismas)
+  const attemptReconnect = useCallback(() => {
+    if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttemptsRef.current++;
+      console.log(`🔄 Reintentando conexión (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`);
+      
+      reconnectTimeoutRef.current = setTimeout(() => {
+        connectWebSocket();
+      }, RECONNECT_INTERVAL);
+    } else {
+      setWsError('No se pudo establecer conexión con el sensor biométrico');
+      setWsReconnecting(false);
+    }
+  }, []);
+
   const connectWebSocket = useCallback(() => {
     try {
       console.log('🔌 Conectando a ZK Access Agent...');
@@ -245,8 +571,9 @@ export default function FingerprintRegistration({
         console.log('🔌 WebSocket desconectado:', event.code, event.reason);
         setWsConnected(false);
         setWsReconnecting(false);
+        setDeviceConnected(false);
         
-        if (event.code !== 1000) { // No fue cierre normal
+        if (event.code !== 1000) {
           setWsError('Conexión perdida con el sensor biométrico');
           attemptReconnect();
         }
@@ -257,6 +584,7 @@ export default function FingerprintRegistration({
         setWsError('Error de conexión con el sensor biométrico');
         setWsConnected(false);
         setWsReconnecting(false);
+        setDeviceConnected(false);
       };
       
     } catch (error) {
@@ -264,218 +592,72 @@ export default function FingerprintRegistration({
       setWsError('No se pudo conectar al sensor biométrico');
       setWsReconnecting(false);
     }
-  }, []);
+  }, [handleWebSocketMessage, attemptReconnect]);
 
-  const attemptReconnect = useCallback(() => {
-    if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-      reconnectAttemptsRef.current++;
-      console.log(`🔄 Reintentando conexión (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`);
-      
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connectWebSocket();
-      }, RECONNECT_INTERVAL);
-    } else {
-      setWsError('No se pudo establecer conexión con el sensor biométrico');
-      setWsReconnecting(false);
-    }
-  }, [connectWebSocket]);
-
-  const disconnectWebSocket = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close(1000, 'Closing fingerprint registration');
-      wsRef.current = null;
-    }
-    
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    
-    setWsConnected(false);
-    setWsReconnecting(false);
-  }, []);
-
-  // 📨 MANEJAR MENSAJES WEBSOCKET
-  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
-    console.log('📨 Mensaje recibido:', message);
-    
-    switch (message.type) {
-      case 'capture_status':
-        if (message.status && message.message) {
-          const step = mapStatusToStep(message.status);
-          setCurrentStep(step);
-          setMessage(message.message);
-          setProgress(message.progress || 0);
-          
-          if (step === 'waiting') {
-            setEstimatedTime(10); // 10 segundos estimados
-            startTimer();
-          }
-        }
-        break;
-        
-      case 'capture_result':
-        setIsProcessing(false);
-        stopTimer();
-        
-        if (message.success && message.data) {
-          setCurrentStep('complete');
-          setProgress(100);
-          setMessage('✅ ¡Huella registrada exitosamente!');
-          setQuality(message.data.quality || null);
-          
-          // Mostrar éxito por 2 segundos antes de cerrar
-          setTimeout(() => {
-            onSuccess(`Huella registrada para ${user.firstName} ${user.lastName}`);
-            handleClose();
-          }, 2000);
-        } else {
-          setCurrentStep('selection');
-          setError(message.error || 'Error en captura de huella');
-          setProgress(0);
-          onError(message.error || 'Error registrando huella');
-        }
-        break;
-        
-      case 'error':
-        setIsProcessing(false);
-        setError(message.message || 'Error de comunicación');
-        setCurrentStep('selection');
-        setProgress(0);
-        stopTimer();
-        break;
-        
-      default:
-        console.log('📨 Mensaje no manejado:', message.type);
-    }
-  }, [user, onSuccess, onError]);
-
-  // 🗺️ MAPEAR ESTADOS
-  const mapStatusToStep = (status: string): string => {
-    const statusMap: { [key: string]: string } = {
-      'initializing': 'connecting',
-      'waiting': 'waiting',
-      'capturing': 'capturing',
-      'processing': 'verifying',
-      'saving': 'saving'
-    };
-    
-    return statusMap[status] || status;
-  };
-
-  // ⏱️ FUNCIONES DE TIMER
-  const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    
-    timerRef.current = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
-  }, []);
-
-  const stopTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  // 🚀 INICIAR PROCESO
-  const startFingerprintCapture = useCallback(() => {
-    if (!selectedFinger || !wsConnected) {
-      setError('Seleccione un dedo y verifique la conexión');
+  // 🚀 INICIAR PROCESO (mismo)
+  const startMultipleCaptureProcess = useCallback(() => {
+    if (!selectedFinger || !wsConnected || !deviceConnected) {
+      setError('Seleccione un dedo y verifique la conexión del dispositivo');
       return;
     }
+    
+    console.log('🚀 Iniciando proceso de captura múltiple...');
     
     setIsProcessing(true);
     setError(null);
     setProgress(0);
     setElapsedTime(0);
-    setQuality(null);
-    setCurrentStep('connecting');
-    setMessage('Conectando con sensor biométrico...');
+    setTotalTime(0);
+    setCurrentCapture(0);
+    setCaptureResults([]);
+    setFinalQuality(null);
+    setCombinedTemplate(null);
     
-    const captureCommand = {
-      action: 'capture_fingerprint',
-      userId: user.id,
-      userName: `${user.firstName} ${user.lastName}`,
-      fingerIndex: selectedFinger,
-      timestamp: Date.now()
-    };
+    setCurrentStep('preparation');
+    setMessage('Preparando para registro de huella múltiple...');
     
-    console.log('📤 Enviando comando de captura:', captureCommand);
+    startTotalTimer();
     
-    try {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(captureCommand));
-      } else {
-        throw new Error('WebSocket no está conectado');
-      }
-    } catch (error) {
-      console.error('❌ Error enviando comando:', error);
-      setError('Error de comunicación con el sensor');
-      setIsProcessing(false);
-      setCurrentStep('selection');
-    }
-  }, [selectedFinger, wsConnected, user]);
+    setTimeout(() => {
+      startSingleCapture(1);
+    }, 2000);
+    
+  }, [selectedFinger, wsConnected, deviceConnected, startTotalTimer, startSingleCapture]);
 
-  // 🗑️ ELIMINAR HUELLA
-  const deleteFingerprintCapture = useCallback(async () => {
-    try {
-      setIsProcessing(true);
-      
-      const response = await fetch(`/api/biometric/fingerprint?userId=${user.id}`, {
-        method: 'DELETE'
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        onSuccess('Huella eliminada exitosamente');
-        handleClose();
-      } else {
-        onError(result.error || 'Error eliminando huella');
-      }
-    } catch (error) {
-      console.error('❌ Error eliminando huella:', error);
-      onError('Error eliminando huella');
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [user.id, onSuccess, onError]);
-
-  // 🔄 REINICIAR PROCESO
-  const resetProcess = useCallback(() => {
-    setCurrentStep('selection');
-    setSelectedFinger(null);
-    setProgress(0);
-    setMessage('');
-    setError(null);
-    setQuality(null);
-    setElapsedTime(0);
-    setEstimatedTime(0);
-    setIsProcessing(false);
-    stopTimer();
-  }, [stopTimer]);
-
-  // 🚪 CERRAR MODAL
-  const handleClose = useCallback(() => {
-    resetProcess();
-    disconnectWebSocket();
-    onClose();
-  }, [resetProcess, disconnectWebSocket, onClose]);
-
-  // 🔄 EFECTOS
+  // ✅ useEffect (mismo)
   useEffect(() => {
-    if (open) {
-      connectWebSocket();
+    if (open && !initializationRef.current) {
+      console.log('🚀 Inicializando modal de captura múltiple...');
+      initializationRef.current = true;
+      
       resetProcess();
+      
+      const connectTimeout = setTimeout(() => {
+        connectWebSocket();
+      }, 100);
+      
+      return () => {
+        clearTimeout(connectTimeout);
+      };
     }
     
-    return () => {
-      disconnectWebSocket();
-      stopTimer();
-    };
-  }, [open, connectWebSocket, disconnectWebSocket, resetProcess, stopTimer]);
+    if (!open && initializationRef.current) {
+      console.log('🧹 Limpiando recursos...');
+      initializationRef.current = false;
+      
+      if (wsRef.current) {
+        wsRef.current.close(1000, 'Component unmounting');
+        wsRef.current = null;
+      }
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      stopTimers();
+    }
+  }, [open, resetProcess, connectWebSocket, stopTimers]);
 
   // 🎨 OBTENER STEP ACTUAL
   const getCurrentStepInfo = () => {
@@ -502,7 +684,7 @@ export default function FingerprintRegistration({
         }
       }}
     >
-      {/* 🎯 HEADER */}
+      {/* HEADER - igual que antes */}
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -522,25 +704,32 @@ export default function FingerprintRegistration({
           </Avatar>
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
-              Registro de Huella Dactilar
+              Captura de Huella Dactilar
             </Typography>
             <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-              {user.firstName} {user.lastName}
+              {user.firstName} {user.lastName} • Los datos se agregarán al formulario
             </Typography>
           </Box>
         </Box>
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {/* Estado de conexión */}
-          <Tooltip title={wsConnected ? 'Sensor conectado' : 'Sensor desconectado'}>
+          <Tooltip title={
+            wsConnected && deviceConnected ? 'Sensor ZKTeco conectado y listo' :
+            wsConnected && !deviceConnected ? 'Servidor conectado, dispositivo ZKTeco desconectado' :
+            'Sensor desconectado'
+          }>
             <Chip
-              icon={wsConnected ? <WifiIcon /> : <WifiOffIcon />}
-              label={wsConnected ? 'Conectado' : 'Desconectado'}
+              icon={wsConnected && deviceConnected ? <WifiIcon /> : <WifiOffIcon />}
+              label={
+                wsConnected && deviceConnected ? 'ZKTeco Listo' :
+                wsConnected && !deviceConnected ? 'Sin ZKTeco' :
+                'Desconectado'
+              }
               size="small"
               sx={{
-                bgcolor: wsConnected ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
-                color: wsConnected ? darkProTokens.success : darkProTokens.error,
-                border: `1px solid ${wsConnected ? darkProTokens.success : darkProTokens.error}40`
+                bgcolor: wsConnected && deviceConnected ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
+                color: wsConnected && deviceConnected ? darkProTokens.success : darkProTokens.error,
+                border: `1px solid ${wsConnected && deviceConnected ? darkProTokens.success : darkProTokens.error}40`
               }}
             />
           </Tooltip>
@@ -561,7 +750,7 @@ export default function FingerprintRegistration({
       </DialogTitle>
 
       <DialogContent sx={{ p: 0 }}>
-        {/* 🔄 ESTADO ACTUAL */}
+        {/* ESTADO ACTUAL - igual que antes */}
         <Box sx={{
           p: 3,
           bgcolor: `${currentStepInfo.color}10`,
@@ -613,13 +802,42 @@ export default function FingerprintRegistration({
             />
           )}
           
-          {/* Timer y calidad */}
-          {(elapsedTime > 0 || quality !== null) && (
+          {/* Indicadores de progreso */}
+          {(currentStep.startsWith('capture') || currentStep === 'processing' || currentStep === 'ready') && (
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-              {elapsedTime > 0 && (
+              {[0, 1, 2].map((index) => (
+                <Chip
+                  key={index}
+                  icon={
+                    captureResults[index] ? <CheckCircleIcon /> : 
+                    currentCapture === index ? <CaptureIcon /> : 
+                    <FingerprintIcon />
+                  }
+                  label={`Captura ${index + 1}`}
+                  size="small"
+                  sx={{
+                    bgcolor: captureResults[index] ? `${darkProTokens.success}20` : 
+                             currentCapture === index ? `${darkProTokens.primary}20` : 
+                             `${darkProTokens.grayDark}20`,
+                    color: captureResults[index] ? darkProTokens.success : 
+                           currentCapture === index ? darkProTokens.primary : 
+                           darkProTokens.textDisabled,
+                    border: `1px solid ${captureResults[index] ? darkProTokens.success : 
+                                        currentCapture === index ? darkProTokens.primary : 
+                                        darkProTokens.grayDark}40`
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+          
+          {/* Métricas */}
+          {(totalTime > 0 || finalQuality !== null) && (
+            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+              {totalTime > 0 && (
                 <Chip
                   icon={<TimerIcon />}
-                  label={`${elapsedTime}s`}
+                  label={`${totalTime}s total`}
                   size="small"
                   sx={{
                     bgcolor: `${darkProTokens.info}20`,
@@ -628,15 +846,33 @@ export default function FingerprintRegistration({
                   }}
                 />
               )}
-              {quality !== null && (
+              {finalQuality !== null && (
                 <Chip
                   icon={<QualityIcon />}
-                  label={`Calidad: ${quality}%`}
+                  label={`Calidad: ${finalQuality}%`}
                   size="small"
                   sx={{
-                    bgcolor: quality >= 80 ? `${darkProTokens.success}20` : `${darkProTokens.warning}20`,
-                    color: quality >= 80 ? darkProTokens.success : darkProTokens.warning,
-                    border: `1px solid ${quality >= 80 ? darkProTokens.success : darkProTokens.warning}40`
+                    bgcolor: finalQuality >= 90 ? `${darkProTokens.success}20` : 
+                             finalQuality >= 75 ? `${darkProTokens.warning}20` : 
+                             `${darkProTokens.error}20`,
+                    color: finalQuality >= 90 ? darkProTokens.success : 
+                           finalQuality >= 75 ? darkProTokens.warning : 
+                           darkProTokens.error,
+                    border: `1px solid ${finalQuality >= 90 ? darkProTokens.success : 
+                                        finalQuality >= 75 ? darkProTokens.warning : 
+                                        darkProTokens.error}40`
+                  }}
+                />
+              )}
+              {captureResults.length > 0 && (
+                <Chip
+                  icon={<FingerprintIcon />}
+                  label={`${captureResults.length}/3 capturas`}
+                  size="small"
+                  sx={{
+                    bgcolor: `${darkProTokens.primary}20`,
+                    color: darkProTokens.primary,
+                    border: `1px solid ${darkProTokens.primary}40`
                   }}
                 />
               )}
@@ -644,9 +880,9 @@ export default function FingerprintRegistration({
           )}
         </Box>
 
-        {/* 📋 CONTENIDO PRINCIPAL */}
+        {/* CONTENIDO PRINCIPAL */}
         <Box sx={{ p: 3 }}>
-          {/* 🚨 ERRORES */}
+          {/* ERRORES */}
           {(error || wsError) && (
             <Fade in>
               <Alert 
@@ -678,12 +914,15 @@ export default function FingerprintRegistration({
             </Fade>
           )}
 
-          {/* 🖐️ SELECTOR DE DEDOS */}
+          {/* SELECTOR DE DEDOS */}
           {currentStep === 'selection' && (
             <Fade in>
               <Box>
-                <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 3, fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 1, fontWeight: 600 }}>
                   Seleccione el dedo a registrar:
+                </Typography>
+                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
+                  Se realizarán 3 capturas para máxima precisión
                 </Typography>
                 
                 <Grid container spacing={2}>
@@ -732,36 +971,12 @@ export default function FingerprintRegistration({
                     </Grid>
                   ))}
                 </Grid>
-
-                {/* Estado actual de huella */}
-                <Box sx={{ mt: 3, p: 2, bgcolor: `${darkProTokens.info}10`, borderRadius: 2 }}>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                    Estado actual:
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {user.fingerprint ? (
-                      <>
-                        <VerifiedIcon sx={{ color: darkProTokens.success, fontSize: '1.2rem' }} />
-                        <Typography sx={{ color: darkProTokens.success, fontWeight: 600 }}>
-                          Usuario tiene huella registrada
-                        </Typography>
-                      </>
-                    ) : (
-                      <>
-                        <WarningIcon sx={{ color: darkProTokens.warning, fontSize: '1.2rem' }} />
-                        <Typography sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
-                          Sin huella registrada
-                        </Typography>
-                      </>
-                    )}
-                  </Box>
-                </Box>
               </Box>
             </Fade>
           )}
 
-          {/* 🔄 PROCESO EN CURSO */}
-          {currentStep !== 'selection' && currentStep !== 'complete' && (
+          {/* PROCESO EN CURSO */}
+          {currentStep !== 'selection' && currentStep !== 'ready' && (
             <Zoom in>
               <Box sx={{ textAlign: 'center', py: 4 }}>
                 <Box sx={{
@@ -804,7 +1019,7 @@ export default function FingerprintRegistration({
                 <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
                   {currentStepInfo.label}
                 </Typography>
-                <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
                   {message || currentStepInfo.description}
                 </Typography>
 
@@ -815,52 +1030,58 @@ export default function FingerprintRegistration({
                       bgcolor: `${currentStepInfo.color}20`,
                       color: currentStepInfo.color,
                       border: `1px solid ${currentStepInfo.color}40`,
-                      fontWeight: 600
+                      fontWeight: 600,
+                      mb: 2
                     }}
                   />
+                )}
+
+                {/* Instrucciones */}
+                {currentStep.startsWith('capture') && (
+                  <Box sx={{ mt: 2, p: 2, bgcolor: `${darkProTokens.primary}10`, borderRadius: 2, maxWidth: 400, mx: 'auto' }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontSize: '0.9rem' }}>
+                      <strong>Instrucciones:</strong><br/>
+                      • Coloque el dedo firmemente en el centro del sensor<br/>
+                      • Mantenga la presión constante<br/>
+                      • No mueva el dedo hasta completar la captura<br/>
+                      • Use la misma posición en las 3 capturas
+                    </Typography>
+                  </Box>
                 )}
               </Box>
             </Zoom>
           )}
 
-          {/* ✅ PROCESO COMPLETADO */}
-          {currentStep === 'complete' && (
+          {/* ✅ DATOS LISTOS PARA CONFIRMAR */}
+          {currentStep === 'ready' && (
             <Slide direction="up" in>
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Avatar sx={{
-                  bgcolor: darkProTokens.success,
-                  color: darkProTokens.textPrimary,
-                  width: 80,
-                  height: 80,
-                  mx: 'auto',
-                  mb: 3,
-                  animation: 'pulse 2s infinite'
-                }}>
-                  <CheckCircleIcon sx={{ fontSize: 40 }} />
-                </Avatar>
-
-                <Typography variant="h5" sx={{ color: darkProTokens.success, mb: 2, fontWeight: 700 }}>
-                  ¡Huella Registrada!
+              <Box>
+                <Typography variant="h6" sx={{ color: darkProTokens.success, mb: 3, fontWeight: 600, textAlign: 'center' }}>
+                  🎯 ¡Datos de Huella Capturados Exitosamente!
                 </Typography>
-                <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
-                  La huella dactilar ha sido capturada y guardada exitosamente en el sistema
-                </Typography>
-
-                {quality && (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3 }}>
-                    <Chip
-                      icon={<QualityIcon />}
-                      label={`Calidad: ${quality}%`}
-                      sx={{
-                        bgcolor: `${darkProTokens.success}20`,
-                        color: darkProTokens.success,
-                        border: `1px solid ${darkProTokens.success}40`,
-                        fontWeight: 600
-                      }}
-                    />
+                
+                {/* Resumen */}
+                <Box sx={{ p: 3, bgcolor: `${darkProTokens.success}10`, borderRadius: 2, mb: 3 }}>
+                  <Typography variant="h6" sx={{ color: darkProTokens.success, mb: 2, fontWeight: 600 }}>
+                    ✅ Capturas Completadas
+                  </Typography>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                    {finalQuality && (
+                      <Chip
+                        icon={<QualityIcon />}
+                        label={`Calidad: ${finalQuality}%`}
+                        sx={{
+                          bgcolor: `${darkProTokens.success}20`,
+                          color: darkProTokens.success,
+                          border: `1px solid ${darkProTokens.success}40`,
+                          fontWeight: 600
+                        }}
+                      />
+                    )}
                     <Chip
                       icon={<TimerIcon />}
-                      label={`Tiempo: ${elapsedTime}s`}
+                      label={`Tiempo: ${totalTime}s`}
                       sx={{
                         bgcolor: `${darkProTokens.info}20`,
                         color: darkProTokens.info,
@@ -868,15 +1089,89 @@ export default function FingerprintRegistration({
                         fontWeight: 600
                       }}
                     />
+                    <Chip
+                      icon={<FingerprintIcon />}
+                      label={selectedFinger ? FINGER_CONFIG.find(f => f.id === selectedFinger)?.name : 'Dedo'}
+                      sx={{
+                        bgcolor: `${darkProTokens.primary}20`,
+                        color: darkProTokens.primary,
+                        border: `1px solid ${darkProTokens.primary}40`,
+                        fontWeight: 600
+                      }}
+                    />
                   </Box>
-                )}
+
+                  {/* Detalle de capturas */}
+                  {captureResults.length > 0 && (
+                    <Box>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
+                        📊 Resumen de Capturas:
+                      </Typography>
+                      {captureResults.map((result, index) => (
+                        <Box key={index} sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          mb: 1,
+                          p: 2,
+                          bgcolor: `${darkProTokens.surfaceLevel1}50`,
+                          borderRadius: 1
+                        }}>
+                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            Captura {index + 1}:
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                            <Chip
+                              label={`${result.qualityScore}%`}
+                              size="small"
+                              sx={{
+                                bgcolor: result.qualityScore >= 90 ? `${darkProTokens.success}20` : 
+                                         result.qualityScore >= 75 ? `${darkProTokens.warning}20` : 
+                                         `${darkProTokens.error}20`,
+                                color: result.qualityScore >= 90 ? darkProTokens.success : 
+                                       result.qualityScore >= 75 ? darkProTokens.warning : 
+                                       darkProTokens.error,
+                                fontSize: '0.75rem',
+                                fontWeight: 600
+                              }}
+                            />
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontSize: '0.8rem' }}>
+                              {(result.captureTime / 1000).toFixed(1)}s
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Información importante */}
+                <Alert 
+                  severity="info" 
+                  sx={{ 
+                    mb: 3,
+                    bgcolor: `${darkProTokens.info}15`,
+                    border: `1px solid ${darkProTokens.info}30`,
+                    color: darkProTokens.textPrimary,
+                    '& .MuiAlert-icon': {
+                      color: darkProTokens.info
+                    }
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    📋 Los datos de huella están listos para agregar al formulario
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Al confirmar, estos datos se añadirán al formulario y se guardarán cuando presione <strong>"Actualizar Usuario"</strong> en el formulario principal.
+                  </Typography>
+                </Alert>
               </Box>
             </Slide>
           )}
         </Box>
       </DialogContent>
 
-      {/* 🎯 ACCIONES */}
+      {/* ✅ ACCIONES MODIFICADAS */}
       <DialogActions sx={{ p: 3, gap: 2, borderTop: `1px solid ${darkProTokens.grayDark}` }}>
         {currentStep === 'selection' && (
           <>
@@ -895,30 +1190,11 @@ export default function FingerprintRegistration({
               Cancelar
             </Button>
 
-            {user.fingerprint && (
-              <Button
-                variant="outlined"
-                startIcon={<DeleteIcon />}
-                onClick={deleteFingerprintCapture}
-                disabled={isProcessing}
-                sx={{
-                  color: darkProTokens.error,
-                  borderColor: darkProTokens.error,
-                  '&:hover': {
-                    bgcolor: `${darkProTokens.error}10`,
-                    borderColor: darkProTokens.errorHover
-                  }
-                }}
-              >
-                Eliminar Huella
-              </Button>
-            )}
-
             <Button
               variant="contained"
               startIcon={<FingerprintIcon />}
-              onClick={startFingerprintCapture}
-              disabled={!selectedFinger || !wsConnected || isProcessing}
+              onClick={startMultipleCaptureProcess}
+              disabled={!selectedFinger || !wsConnected || !deviceConnected || isProcessing}
               sx={{
                 bgcolor: darkProTokens.primary,
                 color: darkProTokens.background,
@@ -935,12 +1211,12 @@ export default function FingerprintRegistration({
                 transition: 'all 0.3s ease'
               }}
             >
-              Registrar Huella
+              Iniciar Captura (3 Lecturas)
             </Button>
           </>
         )}
 
-        {currentStep !== 'selection' && currentStep !== 'complete' && (
+        {(currentStep !== 'selection' && currentStep !== 'ready') && (
           <>
             <Button
               onClick={resetProcess}
@@ -971,34 +1247,75 @@ export default function FingerprintRegistration({
                 }
               }}
             >
-              Cancelar Proceso
+              Cancelar
             </Button>
           </>
         )}
 
-        {currentStep === 'complete' && (
-          <Button
-            onClick={handleClose}
-            variant="contained"
-            startIcon={<DoneIcon />}
-            sx={{
-              bgcolor: darkProTokens.success,
-              color: darkProTokens.textPrimary,
-              fontWeight: 600,
-              '&:hover': {
-                bgcolor: darkProTokens.successHover,
-                transform: 'translateY(-2px)',
-                boxShadow: `0 6px 20px ${darkProTokens.success}50`
-              },
-              transition: 'all 0.3s ease'
-            }}
-          >
-            Finalizar
-          </Button>
+        {/* ✅ BOTONES PARA ESTADO 'ready' */}
+        {currentStep === 'ready' && (
+          <>
+            <Button
+              onClick={resetProcess}
+              variant="outlined"
+              startIcon={<ReplayIcon />}
+              sx={{
+                color: darkProTokens.warning,
+                borderColor: darkProTokens.warning,
+                '&:hover': {
+                  bgcolor: `${darkProTokens.warning}10`,
+                  borderColor: darkProTokens.warningHover
+                }
+              }}
+            >
+              Capturar Nuevamente
+            </Button>
+
+            <Button
+              onClick={handleClose}
+              variant="outlined"
+              sx={{
+                color: darkProTokens.textSecondary,
+                borderColor: darkProTokens.grayDark,
+                '&:hover': {
+                  borderColor: darkProTokens.textSecondary,
+                  bgcolor: darkProTokens.hoverOverlay
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+
+            {/* ✅ BOTÓN PRINCIPAL: CONFIRMAR DATOS */}
+            <Button
+              variant="contained"
+              startIcon={<CheckCircleIcon />}
+              onClick={confirmFingerprintData}
+              disabled={!combinedTemplate}
+              sx={{
+                bgcolor: darkProTokens.success,
+                color: darkProTokens.textPrimary,
+                fontWeight: 600,
+                minWidth: '180px',
+                '&:hover': {
+                  bgcolor: darkProTokens.successHover,
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 6px 20px ${darkProTokens.success}50`
+                },
+                '&:disabled': {
+                  bgcolor: darkProTokens.grayMedium,
+                  color: darkProTokens.textDisabled
+                },
+                transition: 'all 0.3s ease'
+              }}
+            >
+              Confirmar Huella
+            </Button>
+          </>
         )}
       </DialogActions>
 
-      {/* 🎨 CSS ANIMATIONS */}
+      {/* CSS ANIMATIONS (mismo que antes) */}
       <style jsx>{`
         @keyframes pulse {
           0%, 100% { 

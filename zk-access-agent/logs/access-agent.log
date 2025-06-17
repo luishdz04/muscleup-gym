@@ -458,3 +458,643 @@
 2025-06-17 04:13:39 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
 2025-06-17 04:13:39 [ERROR]: ❌ Error enviando estado del dispositivo:
 2025-06-17 04:13:45 [INFO]: 🧹 Cerrando ZK Access Agent...
+2025-06-17 00:06:23 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 00:06:23 [ERROR]: ❌ Error conectando dispositivo:
+2025-06-17 00:06:23 [WARN]: ⚠️ Continuando sin conexión inicial - reintentará cuando sea necesario
+2025-06-17 00:13:45 [INFO]: ZK Access Agent cerrado exitosamente
+2025-06-17 00:13:50 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 00:13:50 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 00:13:50 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 00:13:50 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 00:13:50 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 00:13:50 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 00:13:50 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 00:13:50 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 00:13:50 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 00:13:50 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 00:13:50 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 00:13:50 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 00:13:50 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 00:13:50 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 00:13:50 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 00:13:50 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 00:13:50 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 00:13:50 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 00:13:50 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 00:13:50 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 00:13:52 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 00:13:52 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 00:13:52 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 00:13:52 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 00:20:14 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:20:14 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:20:14 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:20:14 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:20:14 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:20:16 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 00:20:17 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:20:19 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 00:20:19 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 00:20:21 [INFO]: 🔍 Intento 135 - Código: -8
+2025-06-17 00:20:22 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 00:20:22 [INFO]: 📊 Tamaño del template: 1042 bytes
+2025-06-17 00:20:22 [INFO]: 📊 Template base64: 1392 caracteres
+2025-06-17 00:20:22 [INFO]: 📊 Intentos necesarios: 136
+2025-06-17 00:20:22 [INFO]: 📊 Tiempo total: 7928ms
+2025-06-17 00:20:23 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750141223939_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 00:21:49 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:21:49 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:21:49 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:21:49 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:21:49 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:21:51 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 00:21:51 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:21:53 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 00:21:54 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 00:21:55 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 00:21:55 [INFO]: 📊 Tamaño del template: 1066 bytes
+2025-06-17 00:21:55 [INFO]: 📊 Template base64: 1424 caracteres
+2025-06-17 00:21:55 [INFO]: 📊 Intentos necesarios: 108
+2025-06-17 00:21:55 [INFO]: 📊 Tiempo total: 6143ms
+2025-06-17 00:21:57 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750141317010_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 00:25:14 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:25:14 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:25:14 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:25:14 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:25:14 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:25:16 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 00:25:17 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:25:19 [INFO]: 🔍 Intento 85 - Código: -8
+2025-06-17 00:25:19 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 00:25:19 [INFO]: 📊 Tamaño del template: 930 bytes
+2025-06-17 00:25:19 [INFO]: 📊 Template base64: 1240 caracteres
+2025-06-17 00:25:19 [INFO]: 📊 Intentos necesarios: 86
+2025-06-17 00:25:19 [INFO]: 📊 Tiempo total: 4931ms
+2025-06-17 00:25:21 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750141521119_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 00:25:25 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:25:25 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:25:25 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:25:25 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:25:25 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:25:27 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 00:25:28 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:25:28 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 00:25:28 [INFO]: 📊 Tamaño del template: 988 bytes
+2025-06-17 00:25:28 [INFO]: 📊 Template base64: 1320 caracteres
+2025-06-17 00:25:28 [INFO]: 📊 Intentos necesarios: 53
+2025-06-17 00:25:28 [INFO]: 📊 Tiempo total: 3042ms
+2025-06-17 00:25:30 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750141530320_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 00:25:34 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:25:34 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:25:34 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:25:34 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:25:34 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:25:36 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 00:25:36 [INFO]: 📊 Tamaño del template: 990 bytes
+2025-06-17 00:25:36 [INFO]: 📊 Template base64: 1320 caracteres
+2025-06-17 00:25:36 [INFO]: 📊 Intentos necesarios: 29
+2025-06-17 00:25:36 [INFO]: 📊 Tiempo total: 1658ms
+2025-06-17 00:25:38 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750141538130_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 00:25:42 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:25:42 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:25:42 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:25:42 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:25:42 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:25:44 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 00:25:45 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:25:45 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 00:25:45 [INFO]: 📊 Tamaño del template: 1032 bytes
+2025-06-17 00:25:45 [INFO]: 📊 Template base64: 1376 caracteres
+2025-06-17 00:25:45 [INFO]: 📊 Intentos necesarios: 56
+2025-06-17 00:25:45 [INFO]: 📊 Tiempo total: 3227ms
+2025-06-17 00:25:47 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750141547510_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 00:25:51 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:25:51 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:25:51 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:25:51 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:25:51 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:25:53 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 00:25:54 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:25:56 [INFO]: 🔍 Intento 85 - Código: -8
+2025-06-17 00:25:57 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 00:25:58 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 00:25:58 [INFO]: 📊 Tamaño del template: 1036 bytes
+2025-06-17 00:25:58 [INFO]: 📊 Template base64: 1384 caracteres
+2025-06-17 00:25:58 [INFO]: 📊 Intentos necesarios: 111
+2025-06-17 00:25:58 [INFO]: 📊 Tiempo total: 6415ms
+2025-06-17 00:26:00 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750141560072_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 00:26:04 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:26:04 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:26:04 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:26:04 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:26:04 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:26:06 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 00:26:07 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:26:09 [INFO]: 🔍 Intento 85 - Código: -8
+2025-06-17 00:26:10 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 00:26:12 [INFO]: 🔍 Intento 136 - Código: -8
+2025-06-17 00:26:12 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 00:26:14 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 00:26:14 [INFO]: 📊 Tamaño del template: 1006 bytes
+2025-06-17 00:26:14 [INFO]: 📊 Template base64: 1344 caracteres
+2025-06-17 00:26:14 [INFO]: 📊 Intentos necesarios: 183
+2025-06-17 00:26:14 [INFO]: 📊 Tiempo total: 10489ms
+2025-06-17 00:26:16 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750141576711_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 00:26:21 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:26:21 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:26:21 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:26:21 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:26:21 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:26:23 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 00:26:23 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:26:25 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 00:26:26 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 00:26:28 [INFO]: 🔍 Intento 136 - Código: -8
+2025-06-17 00:26:29 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 00:26:31 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 00:26:32 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 00:26:34 [INFO]: 🔍 Intento 234 - Código: -8
+2025-06-17 00:26:35 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 00:26:37 [INFO]: 🔍 Intento 284 - Código: -8
+2025-06-17 00:26:38 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 00:26:40 [INFO]: 🔍 Intento 333 - Código: -8
+2025-06-17 00:26:41 [WARN]: ⏰ Timeout después de 348 intentos y 20054ms
+2025-06-17 00:26:41 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 00:26:41 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 00:35:54 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:35:54 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:35:54 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:35:54 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:35:54 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:35:56 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 00:35:57 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:35:59 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 00:36:00 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 00:36:00 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 00:36:00 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 00:36:00 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 00:36:00 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 00:36:00 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 00:36:02 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 00:36:02 [INFO]: 🔍 Intento 136 - Código: -8
+2025-06-17 00:36:03 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 00:36:03 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 00:36:05 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 00:36:05 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 00:36:06 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 00:36:06 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 00:36:08 [INFO]: 🔍 Intento 136 - Código: -8
+2025-06-17 00:36:08 [INFO]: 🔍 Intento 236 - Código: -8
+2025-06-17 00:36:08 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 00:36:09 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 00:36:10 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 00:36:11 [INFO]: 🔍 Intento 287 - Código: -8
+2025-06-17 00:36:11 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 00:36:11 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 00:36:13 [INFO]: 🔍 Intento 236 - Código: -8
+2025-06-17 00:36:13 [INFO]: 🔍 Intento 336 - Código: -8
+2025-06-17 00:36:14 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 00:36:14 [INFO]: 🔍 Intento 350 - Código: -8
+2025-06-17 00:36:14 [WARN]: ⏰ Timeout después de 352 intentos y 20030ms
+2025-06-17 00:36:14 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 00:36:14 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 00:36:16 [INFO]: 🔍 Intento 286 - Código: -8
+2025-06-17 00:36:17 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 00:36:19 [INFO]: 🔍 Intento 336 - Código: -8
+2025-06-17 00:36:20 [INFO]: 🔍 Intento 350 - Código: -8
+2025-06-17 00:36:20 [WARN]: ⏰ Timeout después de 353 intentos y 20036ms
+2025-06-17 00:36:20 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 00:36:20 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 01:15:24 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:15:24 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:15:24 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:15:24 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:15:25 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:15:27 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 01:15:28 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:15:30 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 01:15:31 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:15:33 [INFO]: 🔍 Intento 136 - Código: -8
+2025-06-17 01:15:34 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:15:36 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 01:15:36 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:15:36 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:15:36 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:15:36 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:15:36 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:15:36 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:15:38 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:15:38 [INFO]: 📊 Tamaño del template: 1316 bytes
+2025-06-17 01:15:38 [INFO]: 📊 Template base64: 1756 caracteres
+2025-06-17 01:15:38 [INFO]: 📊 Intentos necesarios: 218
+2025-06-17 01:15:38 [INFO]: 📊 Tiempo total: 13064ms
+2025-06-17 01:15:38 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 01:15:39 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:15:39 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750144539861_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:15:41 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:15:41 [INFO]: 📊 Tamaño del template: 1182 bytes
+2025-06-17 01:15:41 [INFO]: 📊 Template base64: 1576 caracteres
+2025-06-17 01:15:41 [INFO]: 📊 Intentos necesarios: 78
+2025-06-17 01:15:41 [INFO]: 📊 Tiempo total: 4523ms
+2025-06-17 01:15:42 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750144542840_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:15:46 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:15:46 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:15:46 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:15:46 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:15:46 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:15:46 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:15:46 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:15:46 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:15:46 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:15:46 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:15:47 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:15:47 [INFO]: 📊 Tamaño del template: 1188 bytes
+2025-06-17 01:15:47 [INFO]: 📊 Template base64: 1584 caracteres
+2025-06-17 01:15:47 [INFO]: 📊 Intentos necesarios: 22
+2025-06-17 01:15:47 [INFO]: 📊 Tiempo total: 1291ms
+2025-06-17 01:15:48 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 01:15:49 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:15:49 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750144549291_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:15:51 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 01:15:51 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:15:52 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:15:52 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:15:52 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:15:52 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:15:52 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:15:52 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:15:52 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:15:52 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:15:52 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:15:52 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:15:53 [INFO]: 🔍 Intento 135 - Código: -8
+2025-06-17 01:15:54 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 01:15:54 [INFO]: 🔍 Intento 37 - Código: -8
+2025-06-17 01:15:54 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:15:55 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:15:55 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:15:56 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 01:15:57 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 01:15:57 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 01:15:57 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:15:57 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:15:57 [INFO]: 📊 Tamaño del template: 1238 bytes
+2025-06-17 01:15:57 [INFO]: 📊 Template base64: 1652 caracteres
+2025-06-17 01:15:57 [INFO]: 📊 Intentos necesarios: 90
+2025-06-17 01:15:57 [INFO]: 📊 Tiempo total: 5154ms
+2025-06-17 01:15:58 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:15:59 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750144559590_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:15:59 [INFO]: 🔍 Intento 235 - Código: -8
+2025-06-17 01:16:00 [INFO]: 🔍 Intento 136 - Código: -8
+2025-06-17 01:16:00 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 01:16:01 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:16:02 [INFO]: 🔍 Intento 286 - Código: -8
+2025-06-17 01:16:03 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 01:16:03 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 01:16:03 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:16:05 [INFO]: 🔍 Intento 336 - Código: -8
+2025-06-17 01:16:06 [INFO]: 🔍 Intento 236 - Código: -8
+2025-06-17 01:16:06 [INFO]: 🔍 Intento 350 - Código: -8
+2025-06-17 01:16:06 [WARN]: ⏰ Timeout después de 350 intentos y 20046ms
+2025-06-17 01:16:06 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 01:16:06 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 01:16:06 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 01:16:08 [INFO]: 🔍 Intento 286 - Código: -8
+2025-06-17 01:16:09 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 01:16:11 [INFO]: 🔍 Intento 335 - Código: -8
+2025-06-17 01:16:12 [INFO]: 🔍 Intento 350 - Código: -8
+2025-06-17 01:16:12 [WARN]: ⏰ Timeout después de 351 intentos y 20028ms
+2025-06-17 01:16:12 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 01:16:12 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 01:25:40 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:25:40 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:25:40 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:25:40 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:25:40 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:25:41 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:25:41 [INFO]: 📊 Tamaño del template: 1148 bytes
+2025-06-17 01:25:41 [INFO]: 📊 Template base64: 1532 caracteres
+2025-06-17 01:25:41 [INFO]: 📊 Intentos necesarios: 34
+2025-06-17 01:25:41 [INFO]: 📊 Tiempo total: 1948ms
+2025-06-17 01:25:43 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750145143801_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:25:47 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:25:47 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:25:47 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:25:47 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:25:47 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:25:47 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:25:47 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:25:47 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:25:47 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:25:47 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:25:48 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:25:48 [INFO]: 📊 Tamaño del template: 1264 bytes
+2025-06-17 01:25:48 [INFO]: 📊 Template base64: 1688 caracteres
+2025-06-17 01:25:48 [INFO]: 📊 Intentos necesarios: 28
+2025-06-17 01:25:48 [INFO]: 📊 Tiempo total: 1669ms
+2025-06-17 01:25:49 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 01:25:49 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:25:50 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750145150612_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:25:51 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 01:25:52 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:25:53 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:25:53 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:25:53 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:25:53 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:25:53 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:25:53 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:25:53 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:25:53 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:25:53 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:25:53 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:25:54 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:25:54 [INFO]: 📊 Tamaño del template: 1232 bytes
+2025-06-17 01:25:54 [INFO]: 📊 Template base64: 1644 caracteres
+2025-06-17 01:25:54 [INFO]: 📊 Intentos necesarios: 10
+2025-06-17 01:25:54 [INFO]: 📊 Tiempo total: 606ms
+2025-06-17 01:25:54 [INFO]: 🔍 Intento 135 - Código: -8
+2025-06-17 01:25:55 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:25:55 [INFO]: 🔍 Intento 35 - Código: -8
+2025-06-17 01:25:56 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750145156362_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:25:56 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:25:57 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 01:25:58 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:25:58 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 01:25:59 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:26:00 [INFO]: 🔍 Intento 235 - Código: -8
+2025-06-17 01:26:01 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 01:26:01 [INFO]: 🔍 Intento 134 - Código: -8
+2025-06-17 01:26:02 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:26:03 [INFO]: 🔍 Intento 283 - Código: -8
+2025-06-17 01:26:04 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 01:26:04 [INFO]: 🔍 Intento 183 - Código: -8
+2025-06-17 01:26:05 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:26:06 [INFO]: 🔍 Intento 334 - Código: -8
+2025-06-17 01:26:07 [WARN]: ⏰ Timeout después de 344 intentos y 20052ms
+2025-06-17 01:26:07 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 01:26:07 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 01:26:07 [INFO]: 🔍 Intento 234 - Código: -8
+2025-06-17 01:26:08 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 01:26:10 [INFO]: 🔍 Intento 284 - Código: -8
+2025-06-17 01:26:11 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 01:26:13 [INFO]: 🔍 Intento 335 - Código: -8
+2025-06-17 01:26:14 [WARN]: ⏰ Timeout después de 340 intentos y 20054ms
+2025-06-17 01:26:14 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 01:26:14 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 01:30:49 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:30:49 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:30:49 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:30:49 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:30:49 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:30:49 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:30:49 [INFO]: 📊 Tamaño del template: 1104 bytes
+2025-06-17 01:30:49 [INFO]: 📊 Template base64: 1472 caracteres
+2025-06-17 01:30:49 [INFO]: 📊 Intentos necesarios: 4
+2025-06-17 01:30:49 [INFO]: 📊 Tiempo total: 248ms
+2025-06-17 01:30:51 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750145451198_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:30:54 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:30:54 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:30:54 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:30:54 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:30:54 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:30:54 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:30:54 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:30:54 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:30:54 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:30:54 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:30:55 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:30:55 [INFO]: 📊 Tamaño del template: 1186 bytes
+2025-06-17 01:30:55 [INFO]: 📊 Template base64: 1584 caracteres
+2025-06-17 01:30:55 [INFO]: 📊 Intentos necesarios: 8
+2025-06-17 01:30:55 [INFO]: 📊 Tiempo total: 497ms
+2025-06-17 01:30:56 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 01:30:56 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750145456839_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:30:57 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:30:59 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 01:31:00 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:31:00 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:31:00 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:31:00 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:31:00 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:31:00 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:31:00 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:31:00 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:31:00 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:31:00 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:31:00 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:31:00 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:31:00 [INFO]: 📊 Tamaño del template: 1328 bytes
+2025-06-17 01:31:00 [INFO]: 📊 Template base64: 1772 caracteres
+2025-06-17 01:31:00 [INFO]: 📊 Intentos necesarios: 4
+2025-06-17 01:31:00 [INFO]: 📊 Tiempo total: 251ms
+2025-06-17 01:31:02 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 01:31:02 [INFO]: 🔍 Intento 135 - Código: -8
+2025-06-17 01:31:02 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750145462230_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:31:02 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:31:03 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:31:04 [INFO]: 🔍 Intento 85 - Código: -8
+2025-06-17 01:31:05 [INFO]: 🔍 Intento 185 - Código: -8
+2025-06-17 01:31:05 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:31:05 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:31:07 [INFO]: 🔍 Intento 136 - Código: -8
+2025-06-17 01:31:07 [INFO]: 🔍 Intento 236 - Código: -8
+2025-06-17 01:31:08 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:31:08 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 01:31:10 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 01:31:10 [INFO]: 🔍 Intento 287 - Código: -8
+2025-06-17 01:31:11 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:31:11 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 01:31:13 [INFO]: 🔍 Intento 236 - Código: -8
+2025-06-17 01:31:13 [INFO]: 🔍 Intento 336 - Código: -8
+2025-06-17 01:31:14 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 01:31:14 [INFO]: 🔍 Intento 350 - Código: -8
+2025-06-17 01:31:14 [WARN]: ⏰ Timeout después de 352 intentos y 20017ms
+2025-06-17 01:31:14 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 01:31:14 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 01:31:16 [INFO]: 🔍 Intento 286 - Código: -8
+2025-06-17 01:31:17 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 01:31:19 [INFO]: 🔍 Intento 336 - Código: -8
+2025-06-17 01:31:19 [INFO]: 🔍 Intento 350 - Código: -8
+2025-06-17 01:31:20 [WARN]: ⏰ Timeout después de 353 intentos y 20045ms
+2025-06-17 01:31:20 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 01:31:20 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 01:43:05 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:43:05 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:43:05 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:43:05 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:43:05 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:43:07 [INFO]: 🔍 Intento 38 - Código: -8
+2025-06-17 01:43:07 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:43:07 [INFO]: 📊 Tamaño del template: 1210 bytes
+2025-06-17 01:43:07 [INFO]: 📊 Template base64: 1616 caracteres
+2025-06-17 01:43:07 [INFO]: 📊 Intentos necesarios: 42
+2025-06-17 01:43:07 [INFO]: 📊 Tiempo total: 2356ms
+2025-06-17 01:43:09 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750146189590_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:43:12 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:43:12 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:43:12 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:43:12 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:43:12 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:43:12 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:43:12 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:43:12 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:43:12 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:43:12 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:43:14 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:43:14 [INFO]: 📊 Tamaño del template: 1180 bytes
+2025-06-17 01:43:14 [INFO]: 📊 Template base64: 1576 caracteres
+2025-06-17 01:43:14 [INFO]: 📊 Intentos necesarios: 18
+2025-06-17 01:43:14 [INFO]: 📊 Tiempo total: 1054ms
+2025-06-17 01:43:15 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 01:43:15 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750146195810_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:43:15 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:43:17 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 01:43:18 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:43:19 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:43:19 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:43:19 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:43:19 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:43:19 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:43:19 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 01:43:19 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 01:43:19 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 01:43:19 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 01:43:19 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 01:43:19 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 01:43:19 [INFO]: 📊 Tamaño del template: 968 bytes
+2025-06-17 01:43:19 [INFO]: 📊 Template base64: 1292 caracteres
+2025-06-17 01:43:19 [INFO]: 📊 Intentos necesarios: 10
+2025-06-17 01:43:19 [INFO]: 📊 Tiempo total: 596ms
+2025-06-17 01:43:20 [INFO]: 🔍 Intento 134 - Código: -8
+2025-06-17 01:43:21 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 01:43:21 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750146201561_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 01:43:21 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:43:21 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 01:43:23 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 01:43:23 [INFO]: 🔍 Intento 85 - Código: -8
+2025-06-17 01:43:24 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:43:24 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 01:43:26 [INFO]: 🔍 Intento 233 - Código: -8
+2025-06-17 01:43:26 [INFO]: 🔍 Intento 133 - Código: -8
+2025-06-17 01:43:27 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 01:43:27 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 01:43:29 [INFO]: 🔍 Intento 284 - Código: -8
+2025-06-17 01:43:29 [INFO]: 🔍 Intento 184 - Código: -8
+2025-06-17 01:43:30 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 01:43:30 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 01:43:32 [INFO]: 🔍 Intento 333 - Código: -8
+2025-06-17 01:43:32 [INFO]: 🔍 Intento 233 - Código: -8
+2025-06-17 01:43:33 [WARN]: ⏰ Timeout después de 340 intentos y 20059ms
+2025-06-17 01:43:33 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 01:43:33 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 01:43:34 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 01:43:36 [INFO]: 🔍 Intento 285 - Código: -8
+2025-06-17 01:43:37 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 01:43:39 [INFO]: 🔍 Intento 333 - Código: -8
+2025-06-17 01:43:39 [WARN]: ⏰ Timeout después de 335 intentos y 20054ms
+2025-06-17 01:43:39 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 01:43:39 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 02:02:17 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 02:02:17 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 02:02:17 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 02:02:17 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 02:02:17 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 02:02:19 [INFO]: 🔍 Intento 35 - Código: 0
+2025-06-17 02:02:19 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 02:02:19 [INFO]: 📊 Tamaño del template: 1198 bytes
+2025-06-17 02:02:19 [INFO]: 📊 Template base64: 1600 caracteres
+2025-06-17 02:02:19 [INFO]: 📊 Intentos necesarios: 35
+2025-06-17 02:02:19 [INFO]: 📊 Tiempo total: 2069ms
+2025-06-17 02:02:20 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750147340971_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 02:02:24 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 02:02:24 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 02:02:24 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 02:02:24 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 02:02:24 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 02:02:24 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 02:02:24 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 02:02:24 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 02:02:24 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 02:02:24 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 02:02:25 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 02:02:25 [INFO]: 📊 Tamaño del template: 1260 bytes
+2025-06-17 02:02:25 [INFO]: 📊 Template base64: 1680 caracteres
+2025-06-17 02:02:25 [INFO]: 📊 Intentos necesarios: 19
+2025-06-17 02:02:25 [INFO]: 📊 Tiempo total: 1112ms
+2025-06-17 02:02:26 [INFO]: 🔍 Intento 35 - Código: -8
+2025-06-17 02:02:27 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 02:02:27 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750147347231_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 02:02:29 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 02:02:29 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 02:02:30 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 02:02:30 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 02:02:30 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 02:02:30 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 02:02:30 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 02:02:30 [INFO]: 👆 Iniciando captura de huella dactilar...
+2025-06-17 02:02:30 [INFO]: 🔍 Usando handle válido para captura
+2025-06-17 02:02:30 [INFO]: 📱 Coloca el dedo en el sensor ZK9500...
+2025-06-17 02:02:30 [INFO]: ⏳ Esperando detección de huella...
+2025-06-17 02:02:30 [INFO]: 🔍 Intento 1 - Código: -8
+2025-06-17 02:02:31 [INFO]: 🎉 ¡HUELLA CAPTURADA EXITOSAMENTE!
+2025-06-17 02:02:31 [INFO]: 📊 Tamaño del template: 1144 bytes
+2025-06-17 02:02:31 [INFO]: 📊 Template base64: 1528 caracteres
+2025-06-17 02:02:31 [INFO]: 📊 Intentos necesarios: 21
+2025-06-17 02:02:31 [INFO]: 📊 Tiempo total: 1233ms
+2025-06-17 02:02:32 [INFO]: 🔍 Intento 134 - Código: -8
+2025-06-17 02:02:32 [INFO]: 🔍 Intento 36 - Código: -8
+2025-06-17 02:02:32 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 02:02:33 [INFO]: 🔍 Intento 50 - Código: -8
+2025-06-17 02:02:33 [INFO]: Captura exitosa: Erick Francisco De Luna  (fp_1750147353650_67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-17 02:02:34 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 02:02:35 [INFO]: 🔍 Intento 86 - Código: -8
+2025-06-17 02:02:35 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 02:02:36 [INFO]: 🔍 Intento 100 - Código: -8
+2025-06-17 02:02:37 [INFO]: 🔍 Intento 235 - Código: -8
+2025-06-17 02:02:38 [INFO]: 🔍 Intento 135 - Código: -8
+2025-06-17 02:02:38 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 02:02:39 [INFO]: 🔍 Intento 150 - Código: -8
+2025-06-17 02:02:40 [INFO]: 🔍 Intento 286 - Código: -8
+2025-06-17 02:02:41 [INFO]: 🔍 Intento 186 - Código: -8
+2025-06-17 02:02:41 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 02:02:41 [INFO]: 🔍 Intento 200 - Código: -8
+2025-06-17 02:02:43 [INFO]: 🔍 Intento 336 - Código: -8
+2025-06-17 02:02:43 [INFO]: 🔍 Intento 236 - Código: -8
+2025-06-17 02:02:44 [INFO]: 🔍 Intento 350 - Código: -8
+2025-06-17 02:02:44 [WARN]: ⏰ Timeout después de 351 intentos y 20035ms
+2025-06-17 02:02:44 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 02:02:44 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 02:02:44 [INFO]: 🔍 Intento 250 - Código: -8
+2025-06-17 02:02:46 [INFO]: 🔍 Intento 286 - Código: -8
+2025-06-17 02:02:47 [INFO]: 🔍 Intento 300 - Código: -8
+2025-06-17 02:02:49 [INFO]: 🔍 Intento 336 - Código: -8
+2025-06-17 02:02:50 [INFO]: 🔍 Intento 350 - Código: -8
+2025-06-17 02:02:50 [WARN]: ⏰ Timeout después de 352 intentos y 20025ms
+2025-06-17 02:02:50 [ERROR]: ❌ Error en captura de huella:
+2025-06-17 02:02:50 [ERROR]: Error captura Erick Francisco De Luna : Timeout: No se detectó huella dactilar después de 20s
+2025-06-17 02:26:25 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 02:26:30 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 02:26:30 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 02:26:30 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 02:26:30 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 02:26:30 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 02:26:30 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 02:26:30 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 02:26:30 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 02:26:30 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 02:26:30 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 02:26:30 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 02:26:30 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 02:26:30 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 02:26:30 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 02:26:30 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 02:26:30 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 02:26:30 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 02:26:30 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 02:26:30 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 02:26:30 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 02:26:31 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 02:26:31 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 02:26:31 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 02:26:31 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 02:35:24 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...

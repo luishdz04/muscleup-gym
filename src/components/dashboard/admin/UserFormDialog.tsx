@@ -72,12 +72,13 @@ import MarkunreadMailboxIcon from '@mui/icons-material/MarkunreadMailbox';
 import BloodtypeIcon from '@mui/icons-material/Bloodtype';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import UpdateIcon from '@mui/icons-material/Update';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// 🚀 IMPORTAR EL COMPONENTE DE HUELLA
+// 🚀 IMPORTAR EL COMPONENTE DE HUELLA MODIFICADO
 import FingerprintRegistration from './FingerprintRegistration';
 
-// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
+// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES (mismo que antes)
 const darkProTokens = {
   // Base Colors
   background: '#000000',
@@ -154,7 +155,7 @@ const darkProTokens = {
   borderActive: '#E6B800'
 };
 
-// 🏗️ INTERFACES PRINCIPALES
+// 🏗️ INTERFACES PRINCIPALES (mismas que antes)
 interface User {
   id?: string;
   firstName: string;
@@ -223,9 +224,10 @@ interface DebugInfo {
   initialized: boolean;
   complete: boolean;
   hasChanges?: boolean;
+  fingerprintPending?: boolean; // ✅ NUEVO
 }
 
-// 🔧 FUNCIONES DE CONVERSIÓN
+// 🔧 FUNCIONES DE CONVERSIÓN (mismas que antes)
 const convertMaritalStatusToCode = (status: string): string => {
   switch (status) {
     case 'Soltero/a':
@@ -281,7 +283,7 @@ const convertTrainingLevelToDisplay = (code: string): string => {
   }
 };
 
-// 🚀 FUNCIÓN PARA REGENERAR CONTRATO MEJORADA
+// 🚀 FUNCIÓN PARA REGENERAR CONTRATO MEJORADA (misma que antes)
 const regenerateContract = async (userId: string): Promise<{ success: boolean; error?: string }> => {
   try {
     console.log('🔄 Iniciando regeneración de contrato para usuario:', userId);
@@ -313,7 +315,7 @@ const regenerateContract = async (userId: string): Promise<{ success: boolean; e
   }
 };
 
-// 🔧 FUNCIÓN CORREGIDA PARA ELIMINAR ARCHIVOS ANTIGUOS - NO ELIMINAR EL RECIÉN SUBIDO
+// 🔧 FUNCIÓN CORREGIDA PARA ELIMINAR ARCHIVOS ANTIGUOS (misma que antes)
 const deleteOldFiles = async (userId: string, fileType: 'profile' | 'signature', exceptFileName?: string) => {
   try {
     const supabase = createBrowserSupabaseClient();
@@ -337,7 +339,6 @@ const deleteOldFiles = async (userId: string, fileType: 'profile' | 'signature',
     
     console.log(`📁 Archivos encontrados de ${fileType}:`, oldFiles.map(f => f.name));
     
-    // 🚀 EXCLUIR el archivo que acabamos de subir
     if (exceptFileName) {
       oldFiles = oldFiles.filter(file => file.name !== exceptFileName);
       console.log(`🛡️ Excluyendo archivo recién subido: ${exceptFileName}`);
@@ -366,7 +367,7 @@ const deleteOldFiles = async (userId: string, fileType: 'profile' | 'signature',
   }
 };
 
-// 🚀 FUNCIÓN CORREGIDA PARA SUBIR ARCHIVOS - SUBIR PRIMERO, ELIMINAR DESPUÉS
+// 🚀 FUNCIÓN CORREGIDA PARA SUBIR ARCHIVOS (misma que antes)
 const uploadFileToStorage = async (
   file: File, 
   userId: string, 
@@ -382,7 +383,6 @@ const uploadFileToStorage = async (
     
     const supabase = createBrowserSupabaseClient();
     
-    // 1️⃣ GENERAR NOMBRE ÚNICO CON TIMESTAMP
     const timestamp = Date.now();
     const fileExtension = file.name.split('.').pop() || 'jpg';
     const fileName = `${fileType}-${timestamp}.${fileExtension}`;
@@ -391,7 +391,6 @@ const uploadFileToStorage = async (
     console.log(`📁 Nombre del archivo generado: ${fileName}`);
     console.log(`📁 Path completo: ${filePath}`);
     
-    // 2️⃣ SUBIR NUEVO ARCHIVO PRIMERO
     console.log(`⬆️ Subiendo archivo al storage...`);
     
     const { data, error } = await supabase.storage
@@ -408,11 +407,9 @@ const uploadFileToStorage = async (
     
     console.log(`✅ Archivo subido exitosamente al storage:`, data);
     
-    // 3️⃣ ELIMINAR ARCHIVOS ANTIGUOS DESPUÉS (excluyendo el que acabamos de subir)
     console.log(`🗑️ Eliminando archivos antiguos de ${fileType} (excepto ${fileName})...`);
     await deleteOldFiles(userId, fileType, fileName);
     
-    // 4️⃣ OBTENER URL PÚBLICA
     console.log(`🌐 Obteniendo URL pública...`);
     
     const { data: publicUrlData } = supabase.storage
@@ -433,6 +430,59 @@ const uploadFileToStorage = async (
   } catch (error) {
     console.error(`💥 Error crítico subiendo ${fileType}:`, error);
     throw error;
+  }
+};
+
+// ✅ NUEVA FUNCIÓN PARA GUARDAR HUELLA DACTILAR EN BD
+const saveFingerprintToDatabase = async (fingerprintData: any): Promise<{ success: boolean; error?: string }> => {
+  try {
+    console.log('💾 Guardando huella en base de datos...', fingerprintData);
+    
+    const response = await fetch('/api/biometric/fingerprint', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(fingerprintData)
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al guardar huella en base de datos');
+    }
+    
+    console.log('✅ Huella guardada exitosamente en base de datos:', result);
+    return { success: true };
+    
+  } catch (error: any) {
+    console.error('❌ Error guardando huella:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ✅ NUEVA FUNCIÓN PARA ELIMINAR HUELLA DACTILAR DESDE EL PADRE
+const deleteFingerprintFromDatabase = async (userId: string, fingerIndex?: number): Promise<{ success: boolean; error?: string }> => {
+  try {
+    console.log('🗑️ Eliminando huella desde el padre...', { userId, fingerIndex });
+    
+    const response = await fetch(
+      `/api/biometric/fingerprint?userId=${userId}${fingerIndex ? `&fingerIndex=${fingerIndex}` : ''}`, 
+      { method: 'DELETE' }
+    );
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Error eliminando huella');
+    }
+    
+    console.log('✅ Huella eliminada exitosamente:', result);
+    return { success: true };
+    
+  } catch (error: any) {
+    console.error('❌ Error eliminando huella:', error);
+    return { success: false, error: error.message };
   }
 };
 
@@ -569,7 +619,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     isFromStorage: false
   });
   
-  // 📁 ESTADOS PARA ARCHIVOS PENDIENTES - NO SUBEN INMEDIATAMENTE
+  // 📁 ESTADOS PARA ARCHIVOS PENDIENTES
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>('');
   const [signature, setSignature] = useState<File | null>(null);
@@ -592,12 +642,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     complete: false
   });
 
-  // 🖐️ ESTADOS PARA REGISTRO DE HUELLA DACTILAR
+  // ✅ NUEVOS ESTADOS PARA REGISTRO DE HUELLA DACTILAR MODIFICADOS
   const [fingerprintDialogOpen, setFingerprintDialogOpen] = useState(false);
   const [fingerprintMessage, setFingerprintMessage] = useState<string | null>(null);
   const [fingerprintError, setFingerprintError] = useState<string | null>(null);
-  
-    // 🖐️ FUNCIONES PARA MANEJO DE HUELLA DACTILAR
+  const [pendingFingerprintData, setPendingFingerprintData] = useState<any>(null); // ✅ NUEVO: Datos pendientes
+  const [isDeletingFingerprint, setIsDeletingFingerprint] = useState(false); // ✅ NUEVO: Estado de eliminación
+
+    // ✅ FUNCIONES MODIFICADAS PARA MANEJO DE HUELLA DACTILAR
   const handleFingerprintDialogOpen = () => {
     if (!user?.id) {
       setFingerprintError('Se requiere un usuario válido para registrar huella');
@@ -610,30 +662,78 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     setFingerprintDialogOpen(false);
   };
 
-  const handleFingerprintSuccess = (message: string) => {
-    setFingerprintMessage(message);
-    setFingerprintError(null);
+  // ✅ NUEVA FUNCIÓN: RECIBIR DATOS DEL MODAL (NO GUARDAR AÚN)
+  const handleFingerprintDataReady = useCallback((fingerprintData: any) => {
+    console.log('📥 Recibiendo datos de huella del modal:', fingerprintData);
     
-    // Actualizar el estado de fingerprint en el formulario
+    // ✅ GUARDAR DATOS PENDIENTES
+    setPendingFingerprintData(fingerprintData);
+    
+    // ✅ ACTUALIZAR ESTADO LOCAL PARA MOSTRAR EN UI
     setFormData(prev => ({ ...prev, fingerprint: true }));
     setHasFormChanges(true);
     
-    // Mostrar mensaje de éxito
+    // ✅ MOSTRAR MENSAJE DE ÉXITO
+    setFingerprintMessage('¡Huella capturada exitosamente! Los datos se guardarán al actualizar el usuario.');
+    setFingerprintError(null);
+    
+    // ✅ LIMPIAR MENSAJE DESPUÉS DE 5 SEGUNDOS
     setTimeout(() => {
       setFingerprintMessage(null);
     }, 5000);
-  };
+  }, []);
 
-  const handleFingerprintError = (message: string) => {
+  const handleFingerprintError = useCallback((message: string) => {
     setFingerprintError(message);
     setFingerprintMessage(null);
     
-    // Limpiar mensaje de error después de 5 segundos
     setTimeout(() => {
       setFingerprintError(null);
     }, 5000);
-  };
-  
+  }, []);
+
+  // ✅ NUEVA FUNCIÓN: ELIMINAR HUELLA DESDE EL PADRE
+  const handleDeleteFingerprint = useCallback(async () => {
+    if (!user?.id) {
+      setFingerprintError('Se requiere un usuario válido para eliminar huella');
+      return;
+    }
+
+    if (!window.confirm('¿Está seguro que desea eliminar la huella dactilar? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      setIsDeletingFingerprint(true);
+      setFingerprintError(null);
+      setFingerprintMessage(null);
+
+      console.log('🗑️ Eliminando huella dactilar del usuario:', user.id);
+
+      const result = await deleteFingerprintFromDatabase(user.id);
+
+      if (result.success) {
+        // ✅ ACTUALIZAR ESTADO LOCAL
+        setFormData(prev => ({ ...prev, fingerprint: false }));
+        setPendingFingerprintData(null);
+        setHasFormChanges(true);
+
+        setFingerprintMessage('Huella dactilar eliminada exitosamente. Los cambios se aplicarán al actualizar el usuario.');
+        
+        setTimeout(() => {
+          setFingerprintMessage(null);
+        }, 5000);
+      } else {
+        throw new Error(result.error || 'Error desconocido al eliminar huella');
+      }
+    } catch (error: any) {
+      console.error('❌ Error eliminando huella:', error);
+      setFingerprintError(`Error eliminando huella: ${error.message}`);
+    } finally {
+      setIsDeletingFingerprint(false);
+    }
+  }, [user?.id]);
+
   // 🔄 useEffect PARA CIERRE AUTOMÁTICO DESPUÉS DEL MENSAJE
   useEffect(() => {
     if (contractRegenerationSuccess) {
@@ -646,7 +746,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   }, [contractRegenerationSuccess, onClose]);
   
-  // 🧹 FUNCIÓN PARA LIMPIAR BLOB URLS
+  // 🧹 FUNCIÓN PARA LIMPIAR BLOB URLS (misma que antes)
   const cleanupBlobUrl = (url: string) => {
     if (url && url.startsWith('blob:') && blobUrlsRef.current.has(url)) {
       URL.revokeObjectURL(url);
@@ -654,7 +754,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
   
-  // 📥 FUNCIÓN PARA DESCARGAR IMAGEN DESDE STORAGE
+  // 📥 FUNCIÓN PARA DESCARGAR IMAGEN DESDE STORAGE (misma que antes)
   const downloadImageFromStorage = async (
     fileName: string,
     userId: string,
@@ -704,7 +804,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         isFromStorage: true
       }));
       
-      // Actualizar estados legacy para compatibilidad
       if (type === 'profile') {
         setProfilePicturePreview(objectUrl);
         setFormData(prev => ({ ...prev, profilePictureUrl: objectUrl }));
@@ -713,7 +812,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         setFormData(prev => ({ ...prev, signatureUrl: objectUrl }));
       }
       
-      // Actualizar debug info
       setDebugInfo(prev => ({
         ...prev,
         [type === 'profile' ? 'profileUrl' : 'signatureUrl']: objectUrl
@@ -736,7 +834,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
   
-  // 📄 FUNCIÓN PARA DESCARGAR PDF DESDE STORAGE
+  // 📄 FUNCIÓN PARA DESCARGAR PDF DESDE STORAGE (misma que antes)
   const downloadPdfFromStorage = async (fileName: string, userId: string) => {
     if (!fileName || !mountedRef.current) return;
     
@@ -764,14 +862,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       
       setFormData(prev => ({ ...prev, contractPdfUrl: objectUrl }));
       
-      // 📅 EXTRAER FECHA DE ÚLTIMA ACTUALIZACIÓN DEL NOMBRE DEL ARCHIVO
       const timestamp = fileName.match(/contrato-(\d+)\.pdf$/);
       if (timestamp) {
         const date = new Date(parseInt(timestamp[1]));
         setContractLastUpdated(date.toISOString());
       }
       
-      // Actualizar debug info
       setDebugInfo(prev => ({
         ...prev,
         contractUrl: objectUrl
@@ -784,7 +880,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
   
-  // 📁 FUNCIÓN CORREGIDA PARA CARGAR ARCHIVOS EXISTENTES - SOLO EL MÁS RECIENTE
+  // 📁 FUNCIÓN CORREGIDA PARA CARGAR ARCHIVOS EXISTENTES (misma que antes)
   const loadExistingFiles = async (userId: string) => {
     if (!mountedRef.current || initializedRef.current) return;
     
@@ -813,7 +909,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       if (files && files.length > 0) {
         const promises: Promise<void>[] = [];
         
-        // 🎯 BUSCAR SOLO EL ARCHIVO MÁS RECIENTE DE CADA TIPO
         const latestProfile = files.find(file => file.name.startsWith('profile-'));
         const latestSignature = files.find(file => file.name.startsWith('signature-'));
         const latestContract = files.find(file => file.name.startsWith('contrato-'));
@@ -915,7 +1010,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   }, [formData.contractPdfUrl, formData.firstName, formData.lastName]);
 
-  // 🔄 HANDLER PARA CAMBIO DE ARCHIVOS CORREGIDO
+  // 🔄 HANDLER PARA CAMBIO DE ARCHIVOS CORREGIDO (mismo que antes)
   const handleFileChange = (fileType: 'profilePicture' | 'signature' | 'contract') => 
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || !e.target.files[0]) return;
@@ -928,7 +1023,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         type: file.type
       });
       
-      // Validaciones básicas
       let isValid = true;
       let errorMessage = '';
       
@@ -958,14 +1052,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         return;
       }
       
-      // Limpiar errores previos
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[fileType];
         return newErrors;
       });
       
-      // Limpiar URL anterior si existe
       if (fileType === 'profilePicture' && profilePicturePreview.startsWith('blob:')) {
         URL.revokeObjectURL(profilePicturePreview);
         blobUrlsRef.current.delete(profilePicturePreview);
@@ -974,7 +1066,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         blobUrlsRef.current.delete(signaturePreview);
       }
       
-      // Crear preview local (NO SUBIR TODAVÍA)
       const objectUrl = URL.createObjectURL(file);
       blobUrlsRef.current.add(objectUrl);
       
@@ -1007,15 +1098,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         console.log('📄 Contrato seleccionado:', file.name);
       }
       
-      // Marcar que hay cambios
       setHasFormChanges(true);
       console.log('🔄 Cambios detectados, archivo pendiente de subida');
       
-      // Limpiar input
       e.target.value = '';
     };
   
-  // 🎨 COMPONENTE AVATAR ULTRA PRO CON DARK PRO SYSTEM
+  // 🎨 COMPONENTE AVATAR ULTRA PRO CON DARK PRO SYSTEM (mismo que antes)
   const ProfileAvatar = () => {
     if (!initializationComplete) {
       return (
@@ -1032,7 +1121,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       );
     }
     
-    // Determinar qué imagen mostrar
     const currentImageUrl = profilePicture ? profilePicturePreview : 
                            profileImage.isValid ? profileImage.url : 
                            profilePicturePreview || undefined;
@@ -1067,7 +1155,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Avatar>
           </Box>
           
-          {/* Indicador de archivo pendiente */}
           {profilePicture && (
             <Chip
               icon={<UpdateIcon />}
@@ -1087,7 +1174,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             />
           )}
           
-          {/* Indicador de carga */}
           {(profileImage.isLoading || fileUploading.profilePicture) && (
             <Box sx={{
               position: 'absolute',
@@ -1108,7 +1194,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Box>
           )}
           
-          {/* Indicador de error */}
           {profileImage.error && !profileImage.isLoading && (
             <Box sx={{
               position: 'absolute',
@@ -1128,7 +1213,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Box>
           )}
           
-          {/* Botón de cámara mejorado con Dark Pro */}
           <IconButton 
             sx={{ 
               position: 'absolute',
@@ -1172,7 +1256,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     );
   };
   
-  // 🖊️ COMPONENTE FIRMA ULTRA PRO CON DARK PRO SYSTEM
+  // 🖊️ COMPONENTE FIRMA ULTRA PRO CON DARK PRO SYSTEM (mismo que antes pero más compacto)
   const SignatureDisplay = () => {
     if (!initializationComplete) {
       return (
@@ -1188,7 +1272,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       );
     }
     
-    // Determinar qué imagen mostrar
     const currentSignatureUrl = signature ? signaturePreview : 
                                signatureImage.isValid ? signatureImage.url : 
                                signaturePreview || undefined;
@@ -1217,7 +1300,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             }}
           />
           
-          {/* Indicador de verificación o pendiente */}
           <Chip
             icon={signature ? <UpdateIcon /> : <VerifiedIcon />}
             label={signature ? "Pendiente" : "Verificada"}
@@ -1235,7 +1317,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             }}
           />
           
-          {/* Botón para cambiar firma */}
           <IconButton
             component="label"
             size="small"
@@ -1358,8 +1439,8 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       </Box>
     );
   };
-  
-  // 🚀 COMPONENTE CONTRATO PDF ULTRA PRO CON DARK PRO SYSTEM
+
+    // 🚀 COMPONENTE CONTRATO PDF ULTRA PRO CON DARK PRO SYSTEM (mismo que antes)
   const ContractPdfDisplay = () => {
     if (!initializationComplete) {
       return (
@@ -1408,7 +1489,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Box>
           </Box>
           
-          {/* 📅 FECHA DE ÚLTIMA ACTUALIZACIÓN */}
           {contractLastUpdated && (
             <Box sx={{ 
               display: 'flex', 
@@ -1435,7 +1515,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Box>
           )}
           
-          {/* Botón de acción */}
           <Button
             variant="contained"
             onClick={handlePdfView}
@@ -1482,7 +1561,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     );
   };
 
-  // 🖐️ COMPONENTE DE CONTROL DE HUELLA DACTILAR
+  // ✅ COMPONENTE DE CONTROL DE HUELLA DACTILAR MODIFICADO
   const FingerprintControl = () => {
     return (
       <Box sx={{
@@ -1517,7 +1596,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 <>
                   <VerifiedIcon sx={{ color: darkProTokens.success, fontSize: '1rem' }} />
                   <Typography variant="caption" sx={{ color: darkProTokens.success, fontWeight: 500 }}>
-                    Registrada
+                    {pendingFingerprintData ? 'Capturada (Pendiente de guardar)' : 'Registrada'}
                   </Typography>
                 </>
               ) : (
@@ -1529,22 +1608,43 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 </>
               )}
             </Box>
+            
+            {/* ✅ NUEVO: Indicador de datos pendientes */}
+            {pendingFingerprintData && (
+              <Box sx={{ mt: 0.5 }}>
+                <Chip
+                  icon={<UpdateIcon />}
+                  label="Datos listos para guardar"
+                  size="small"
+                  sx={{
+                    bgcolor: `${darkProTokens.primary}20`,
+                    color: darkProTokens.primary,
+                    border: `1px solid ${darkProTokens.primary}40`,
+                    fontSize: '0.7rem',
+                    height: 20,
+                    animation: 'pulse 2s infinite'
+                  }}
+                />
+              </Box>
+            )}
           </Box>
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+          {/* ✅ BOTÓN PRINCIPAL: REGISTRAR/GESTIONAR */}
           <Tooltip title={formData.fingerprint ? "Gestionar huella dactilar" : "Registrar huella dactilar"}>
             <Button
               variant="contained"
               size="small"
               onClick={handleFingerprintDialogOpen}
-              disabled={!user?.id}
+              disabled={!user?.id || isDeletingFingerprint}
               startIcon={<FingerPrintIcon />}
               sx={{
                 bgcolor: formData.fingerprint ? darkProTokens.info : darkProTokens.primary,
                 color: darkProTokens.background,
                 fontWeight: 600,
                 px: 2,
+                minWidth: '100px',
                 '&:hover': {
                   bgcolor: formData.fingerprint ? darkProTokens.infoHover : darkProTokens.primaryHover,
                   transform: 'translateY(-1px)',
@@ -1557,15 +1657,47 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 transition: 'all 0.3s ease'
               }}
             >
-              {formData.fingerprint ? 'Gestionar' : 'Registrar'}
+              {formData.fingerprint ? 'Reemplazar' : 'Registrar'}
             </Button>
           </Tooltip>
+          
+          {/* ✅ NUEVO: BOTÓN ELIMINAR */}
+          {formData.fingerprint && (
+            <Tooltip title="Eliminar huella dactilar registrada">
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleDeleteFingerprint}
+                disabled={!user?.id || isDeletingFingerprint}
+                startIcon={isDeletingFingerprint ? <CircularProgress size={16} /> : <DeleteIcon />}
+                sx={{
+                  borderColor: darkProTokens.error,
+                  color: darkProTokens.error,
+                  fontWeight: 600,
+                  px: 2,
+                  minWidth: '100px',
+                  '&:hover': {
+                    bgcolor: `${darkProTokens.error}10`,
+                    borderColor: darkProTokens.errorHover,
+                    transform: 'translateY(-1px)'
+                  },
+                  '&:disabled': {
+                    borderColor: darkProTokens.grayMedium,
+                    color: darkProTokens.textDisabled
+                  },
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {isDeletingFingerprint ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </Tooltip>
+          )}
         </Box>
       </Box>
     );
   };
   
-  // 🔧 MANEJADORES DE EVENTOS SIMPLIFICADOS
+  // 🔧 MANEJADORES DE EVENTOS SIMPLIFICADOS (mismos que antes)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name) {
@@ -1723,7 +1855,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
   
-  // 🔍 FUNCIÓN DE VALIDACIÓN MEJORADA
+  // 🔍 FUNCIÓN DE VALIDACIÓN MEJORADA (misma que antes)
   const validateStep = (step: number): boolean => {
     const newErrors: {[key: string]: string} = {};
     
@@ -1782,7 +1914,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         newErrors.address_postalCode = 'El código postal es obligatorio';
       }
     } else if (step === 2 && formData.rol === 'cliente') {
-           if (!emergencyData.name.trim()) {
+      if (!emergencyData.name.trim()) {
         newErrors.emergency_name = 'El nombre del contacto es obligatorio';
       }
       
@@ -1813,7 +1945,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
   
-  // 🔄 useEffect PRINCIPAL PARA INICIALIZACIÓN
+  // 🔄 useEffect PRINCIPAL PARA INICIALIZACIÓN (mismo que antes)
   useEffect(() => {
     if (!open) {
       initializedRef.current = false;
@@ -1867,6 +1999,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       setSignature(null);
       setContract(null);
       
+      // ✅ NUEVO: Limpiar datos de huella pendientes
+      setPendingFingerprintData(null);
+      setFingerprintMessage(null);
+      setFingerprintError(null);
+      
       setDebugInfo({
         profileUrl: '',
         signatureUrl: '',
@@ -1918,7 +2055,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     };
   }, [user?.id, open]);
 
-  // 🧹 CLEANUP useEffect
+  // 🧹 CLEANUP useEffect (mismo que antes)
   useEffect(() => {
     return () => {
       mountedRef.current = false;
@@ -1934,7 +2071,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     };
   }, []);
 
-  // 🔧 FUNCIÓN DE DETECCIÓN DE CAMBIOS
+  // ✅ FUNCIÓN DE DETECCIÓN DE CAMBIOS MODIFICADA
   const detectChanges = useCallback(() => {
     if (!initializationComplete) return false;
     
@@ -1973,7 +2110,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     
     const newFilesAdded = profilePicture !== null || signature !== null;
     
-    const hasChanges = userDataChanged || addressChanged || emergencyChanged || membershipChanged || newFilesAdded;
+    // ✅ NUEVO: DETECTAR DATOS DE HUELLA PENDIENTES
+    const fingerprintDataPending = pendingFingerprintData !== null;
+    
+    const hasChanges = userDataChanged || addressChanged || emergencyChanged || membershipChanged || newFilesAdded || fingerprintDataPending;
     
     return hasChanges;
   }, [
@@ -1982,22 +2122,24 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     emergencyData, originalEmergencyData,
     membershipData, originalMembershipData,
     profilePicture, signature,
+    pendingFingerprintData, // ✅ NUEVO
     initializationComplete
   ]);
 
-  // 🔄 useEffect PARA DETECTAR CAMBIOS
+  // 🔄 useEffect PARA DETECTAR CAMBIOS (mismo que antes pero actualizado)
   useEffect(() => {
     const changes = detectChanges();
     if (changes !== hasFormChanges) {
       setHasFormChanges(changes);
       setDebugInfo(prev => ({
         ...prev,
-        hasChanges: changes
+        hasChanges: changes,
+        fingerprintPending: !!pendingFingerprintData // ✅ NUEVO
       }));
     }
-  }, [detectChanges, hasFormChanges]);
+  }, [detectChanges, hasFormChanges, pendingFingerprintData]);
 
-  // 🔄 FUNCIÓN RESET DEL FORMULARIO
+  // 🔄 FUNCIÓN RESET DEL FORMULARIO ACTUALIZADA
   const resetForm = () => {
     blobUrlsRef.current.forEach(url => cleanupBlobUrl(url));
     blobUrlsRef.current.clear();
@@ -2063,6 +2205,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     setFilesLoaded(false);
     setInitializationComplete(false);
     
+    // ✅ NUEVO: Limpiar datos de huella
+    setPendingFingerprintData(null);
+    setFingerprintMessage(null);
+    setFingerprintError(null);
+    setIsDeletingFingerprint(false);
+    
     setProfileImage({
       url: '',
       fileName: '',
@@ -2084,7 +2232,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     initializedRef.current = false;
   };
 
-  // 📊 FUNCIÓN PARA CARGAR DATOS RELACIONADOS
+  // 📊 FUNCIÓN PARA CARGAR DATOS RELACIONADOS (misma que antes)
   const fetchRelatedData = async (userId: string) => {
     try {
       setFetchingRelated(true);
@@ -2151,7 +2299,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
 
-  // 📋 FUNCIÓN handleSubmit CORREGIDA CON FLUJO PERFECTO
+    // ✅ FUNCIÓN handleSubmit COMPLETAMENTE MODIFICADA PARA INCLUIR HUELLA
   const handleSubmit = async () => {
     try {
       setLoading(true);
@@ -2172,6 +2320,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       
       console.log('📊 Usuario ID:', userId);
       console.log('📁 Archivos pendientes - Foto:', !!profilePicture, 'Firma:', !!signature);
+      console.log('🖐️ Datos de huella pendientes:', !!pendingFingerprintData);
       
       // 2️⃣ SUBIR ARCHIVOS PENDIENTES PRIMERO (SI EXISTEN)
       if (profilePicture) {
@@ -2184,7 +2333,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             updatedFormData.profilePictureUrl = uploadResult.url;
             console.log('✅ Foto de perfil subida exitosamente:', uploadResult.url);
             
-            // Actualizar preview con URL real
             setProfilePicturePreview(uploadResult.url);
             setProfileImage(prev => ({
               ...prev,
@@ -2214,7 +2362,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             updatedFormData.signatureUrl = uploadResult.url;
             console.log('✅ Firma digital subida exitosamente:', uploadResult.url);
             
-            // Actualizar preview con URL real
             setSignaturePreview(uploadResult.url);
             setSignatureImage(prev => ({
               ...prev,
@@ -2234,7 +2381,32 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         }
       }
       
-      // 3️⃣ PREPARAR DATOS FINALES
+      // 3️⃣ ✅ NUEVO: GUARDAR DATOS DE HUELLA SI EXISTEN
+      if (pendingFingerprintData) {
+        console.log('🖐️ Guardando datos de huella dactilar...');
+        
+        try {
+          const fingerprintResult = await saveFingerprintToDatabase(pendingFingerprintData);
+          
+          if (fingerprintResult.success) {
+            console.log('✅ Huella dactilar guardada exitosamente en base de datos');
+            
+            // ✅ LIMPIAR DATOS PENDIENTES DESPUÉS DE GUARDAR
+            setPendingFingerprintData(null);
+            
+            // ✅ MANTENER EL ESTADO fingerprint: true EN EL FORM
+            updatedFormData.fingerprint = true;
+          } else {
+            throw new Error(fingerprintResult.error || 'Error guardando huella dactilar');
+          }
+        } catch (error: any) {
+          console.error('❌ Error guardando huella dactilar:', error);
+          setErrors(prev => ({ ...prev, fingerprint: `Error guardando huella: ${error.message}` }));
+          throw error;
+        }
+      }
+      
+      // 4️⃣ PREPARAR DATOS FINALES
       const processedFormData = {
         ...updatedFormData,
         gender: updatedFormData.gender ? updatedFormData.gender.charAt(0).toUpperCase() + updatedFormData.gender.slice(1) : '',
@@ -2255,12 +2427,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       
       console.log('📊 Datos finales a guardar:', userData);
       
-      // 4️⃣ GUARDAR USUARIO EN BASE DE DATOS
+      // 5️⃣ GUARDAR USUARIO EN BASE DE DATOS
       console.log('💾 Guardando usuario en base de datos...');
       await onSave(userData);
       console.log('✅ Usuario guardado exitosamente en base de datos');
       
-      // 5️⃣ REGENERAR CONTRATO INMEDIATAMENTE (SI ES CLIENTE Y HAY CAMBIOS)
+      // 6️⃣ REGENERAR CONTRATO INMEDIATAMENTE (SI ES CLIENTE Y HAY CAMBIOS)
       if (formData.rol === 'cliente' && hasFormChanges) {
         console.log('🔄 Iniciando regeneración inmediata de contrato...');
         setIsRegeneratingContract(true);
@@ -2273,7 +2445,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             setContractRegenerationSuccess(true);
             setContractRegenerationError(null);
             
-            // Recargar archivos para obtener el nuevo contrato
             setTimeout(() => {
               if (mountedRef.current) {
                 loadExistingFiles(userId);
@@ -2282,7 +2453,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             
           } else {
             console.error('❌ Error regenerando contrato:', contractResult.error);
-                        setContractRegenerationError(contractResult.error || 'Error desconocido en regeneración');
+            setContractRegenerationError(contractResult.error || 'Error desconocido en regeneración');
           }
         } catch (error: any) {
           console.error('💥 Error crítico en regeneración de contrato:', error);
@@ -2292,7 +2463,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         }
       }
       
-      // 6️⃣ LIMPIAR ARCHIVOS PENDIENTES Y ACTUALIZAR ESTADOS
+      // 7️⃣ LIMPIAR ARCHIVOS PENDIENTES Y ACTUALIZAR ESTADOS
       console.log('🧹 Limpiando estados y archivos pendientes...');
       
       // Limpiar archivos pendientes
@@ -2308,6 +2479,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       });
       blobUrlsRef.current.clear();
       
+      // ✅ NUEVO: Limpiar datos de huella pendientes y mensajes
+      setPendingFingerprintData(null);
+      setFingerprintMessage('¡Huella dactilar guardada exitosamente junto con el usuario!');
+      setFingerprintError(null);
+      
       // Actualizar estados originales para evitar detección de cambios falsos
       setOriginalFormData({...processedFormData});
       setOriginalAddressData({...addressData});
@@ -2322,6 +2498,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         setContractRegenerationSuccess(true);
       }
       
+      // ✅ NUEVO: Limpiar mensaje de huella después de 3 segundos
+      setTimeout(() => {
+        setFingerprintMessage(null);
+      }, 3000);
+      
     } catch (error: any) {
       console.error('💥 Error crítico en el proceso de guardado:', error);
       setErrors({ submit: error.message || 'Error al guardar usuario' });
@@ -2331,7 +2512,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
 
-  // 🎯 CONFIGURACIÓN DE PASOS
+  // 🎯 CONFIGURACIÓN DE PASOS (misma que antes)
   const getSteps = () => {
     const baseSteps = ['Información Personal'];
     
@@ -2344,9 +2525,9 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
 
   const steps = getSteps();
 
-  // 🎨 RENDERIZADO DE CONTENIDO POR PASO CON DARK PRO SYSTEM
+  // 🎨 RENDERIZADO DE CONTENIDO POR PASO CON DARK PRO SYSTEM (casos 0, 1, 2, 3 iguales que antes)
   const renderStepContent = (step: number) => {
-    // 🎨 ESTILOS DARK PRO PARA INPUTS
+    // 🎨 ESTILOS DARK PRO PARA INPUTS (mismos que antes)
     const darkProInputStyles = {
       '& .MuiOutlinedInput-root': {
         bgcolor: darkProTokens.surfaceLevel1,
@@ -2404,7 +2585,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       case 0:
         return (
           <Box sx={{ mt: 2 }}>
-            {/* 🎨 AVATAR PRINCIPAL */}
             <ProfileAvatar />
             
             <Grid container spacing={3}>
@@ -2575,7 +2755,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 </FormControl>
               </Grid>
               
-              {/* Indicador de menor de edad */}
               {formData.isMinor && (
                 <Grid size={12}>
                   <Alert 
@@ -2599,7 +2778,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
 
       case 1:
         if (formData.rol !== 'cliente') {
-          return renderStepContent(steps.length - 1); // Ir a archivos
+          return renderStepContent(steps.length - 1);
         }
         return (
           <Box sx={{ mt: 2 }}>
@@ -2794,7 +2973,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
 
       case 2:
         if (formData.rol !== 'cliente') {
-          return renderStepContent(steps.length - 1); // Ir a archivos
+          return renderStepContent(steps.length - 1);
         }
         return (
           <Box sx={{ mt: 2 }}>
@@ -2944,7 +3123,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
 
       case 3:
         if (formData.rol !== 'cliente') {
-          return renderStepContent(steps.length - 1); // Ir a archivos
+          return renderStepContent(steps.length - 1);
         }
         return (
           <Box sx={{ mt: 2 }}>
@@ -3061,8 +3240,8 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           </Box>
         );
 
-      default:
-        // PASO DE ARCHIVOS CON DARK PRO SYSTEM + HUELLA DACTILAR
+              default:
+        // ✅ PASO DE ARCHIVOS CON DARK PRO SYSTEM + HUELLA DACTILAR MODIFICADO
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
@@ -3140,7 +3319,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 </Box>
               </Grid>
 
-              {/* 🖐️ REGISTRO DE HUELLA DACTILAR */}
+              {/* ✅ REGISTRO DE HUELLA DACTILAR MODIFICADO */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{
                   p: 3,
@@ -3308,16 +3487,20 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* ✅ CHIP DE CAMBIOS PENDIENTES MEJORADO */}
           {hasFormChanges && (
             <Chip
               icon={<UpdateIcon />}
-              label="Cambios pendientes"
+              label={
+                pendingFingerprintData ? 'Cambios + Huella pendiente' : 'Cambios pendientes'
+              }
               size="small"
               sx={{
                 bgcolor: `${darkProTokens.warning}20`,
                 color: darkProTokens.warning,
                 border: `1px solid ${darkProTokens.warning}40`,
-                animation: 'pulse 2s infinite'
+                animation: 'pulse 2s infinite',
+                fontWeight: 600
               }}
             />
           )}
@@ -3400,7 +3583,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           </Alert>
         )}
 
-        {/* 🖐️ MENSAJES DE HUELLA DACTILAR */}
+        {/* ✅ MENSAJES DE HUELLA DACTILAR MEJORADOS */}
         {fingerprintMessage && (
           <Alert 
             severity="success" 
@@ -3412,7 +3595,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               '& .MuiAlert-icon': { color: darkProTokens.success }
             }}
           >
-            {fingerprintMessage}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FingerPrintIcon />
+              <Typography sx={{ fontWeight: 600 }}>
+                {fingerprintMessage}
+              </Typography>
+            </Box>
           </Alert>
         )}
 
@@ -3427,7 +3615,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               '& .MuiAlert-icon': { color: darkProTokens.error }
             }}
           >
-            {fingerprintError}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ErrorIcon />
+              <Typography sx={{ fontWeight: 600 }}>
+                {fingerprintError}
+              </Typography>
+            </Box>
           </Alert>
         )}
 
@@ -3476,7 +3669,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             ))}
           </Stepper>
 
-          {/* Contenido del paso (solo en desktop) */}
           {!isMobile && (
             <Box sx={{ mt: 4 }}>
               {renderStepContent(activeStep)}
@@ -3484,7 +3676,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           )}
         </Box>
 
-        {/* 🐛 DEBUG INFO CON DARK PRO */}
+        {/* ✅ DEBUG INFO MEJORADO CON DATOS DE HUELLA */}
         {showDebugInfo && debugInfo && (
           <Box sx={{ 
             m: 3, 
@@ -3506,13 +3698,22 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               borderRadius: '8px',
               border: `1px solid ${darkProTokens.grayDark}`
             }}>
-              {JSON.stringify(debugInfo, null, 2)}
+              {JSON.stringify({
+                ...debugInfo,
+                fingerprintPending: !!pendingFingerprintData,
+                fingerprintDataSample: pendingFingerprintData ? {
+                  fingerIndex: pendingFingerprintData.finger_index,
+                  fingerName: pendingFingerprintData.finger_name,
+                  quality: pendingFingerprintData.average_quality,
+                  captureCount: pendingFingerprintData.capture_count
+                } : null
+              }, null, 2)}
             </pre>
           </Box>
         )}
       </DialogContent>
 
-      {/* 🎮 ACCIONES CON DARK PRO SYSTEM */}
+      {/* ✅ ACCIONES CON DARK PRO SYSTEM MEJORADAS */}
       <DialogActions sx={{ 
         p: 3, 
         borderTop: `1px solid ${darkProTokens.grayDark}`,
@@ -3577,18 +3778,40 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Box>
           )}
           
-          {(profilePicture || signature) && (
-            <Chip
-              icon={<UpdateIcon />}
-              label={`${profilePicture && signature ? 'Archivos' : profilePicture ? 'Foto' : 'Firma'} pendiente${profilePicture && signature ? 's' : ''}`}
-              size="small"
-              sx={{
-                bgcolor: `${darkProTokens.warning}20`,
-                color: darkProTokens.warning,
-                border: `1px solid ${darkProTokens.warning}40`,
-                animation: 'pulse 2s infinite'
-              }}
-            />
+          {/* ✅ INDICADORES MEJORADOS */}
+          {(profilePicture || signature || pendingFingerprintData) && (
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {(profilePicture || signature) && (
+                <Chip
+                  icon={<UpdateIcon />}
+                  label={`${profilePicture && signature ? 'Archivos' : profilePicture ? 'Foto' : 'Firma'} pendiente${profilePicture && signature ? 's' : ''}`}
+                  size="small"
+                  sx={{
+                    bgcolor: `${darkProTokens.warning}20`,
+                    color: darkProTokens.warning,
+                    border: `1px solid ${darkProTokens.warning}40`,
+                    animation: 'pulse 2s infinite',
+                    fontSize: '0.75rem'
+                  }}
+                />
+              )}
+              
+              {pendingFingerprintData && (
+                <Chip
+                  icon={<FingerPrintIcon />}
+                  label="Huella capturada"
+                  size="small"
+                  sx={{
+                    bgcolor: `${darkProTokens.primary}20`,
+                    color: darkProTokens.primary,
+                    border: `1px solid ${darkProTokens.primary}40`,
+                    animation: 'pulse 2s infinite',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}
+                />
+              )}
+            </Box>
           )}
           
           <Button
@@ -3616,6 +3839,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             Cancelar
           </Button>
           
+          {/* ✅ BOTÓN ACTUALIZAR USUARIO MEJORADO */}
           <Button
             variant="contained"
             onClick={handleSubmit}
@@ -3634,6 +3858,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               px: 3,
               borderRadius: 2,
               boxShadow: `0 4px 20px ${darkProTokens.success}40`,
+              minWidth: '160px',
               '&:hover': {
                 background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
                 transform: 'translateY(-2px)',
@@ -3649,9 +3874,9 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             }}
           >
             {loading || isSavingChanges 
-              ? 'Guardando...' 
+              ? (pendingFingerprintData ? 'Guardando Todo...' : 'Guardando...')
               : user 
-                ? 'Actualizar Usuario' 
+                ? (pendingFingerprintData ? 'Actualizar + Huella' : 'Actualizar Usuario')
                 : 'Crear Usuario'
             }
           </Button>
@@ -3680,7 +3905,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <RocketLaunchIcon />
             <Typography sx={{ fontWeight: 600 }}>
-              ¡Usuario guardado y contrato regenerado exitosamente!
+              ¡Usuario guardado{pendingFingerprintData ? ' con huella' : ''} y contrato regenerado exitosamente!
             </Typography>
           </Box>
         </Alert>
@@ -3774,7 +3999,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         </Box>
       )}
 
-      {/* 🖐️ MODAL DE REGISTRO DE HUELLA DACTILAR */}
+      {/* ✅ MODAL DE REGISTRO DE HUELLA DACTILAR MODIFICADO */}
       {user && (
         <FingerprintRegistration
           open={fingerprintDialogOpen}
@@ -3785,12 +4010,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             lastName: user.lastName,
             fingerprint: formData.fingerprint
           }}
-          onSuccess={handleFingerprintSuccess}
+          onFingerprintDataReady={handleFingerprintDataReady} // ✅ NUEVO: Recibir datos en vez de guardar
           onError={handleFingerprintError}
         />
       )}
 
-           {/* 🎨 ESTILOS CSS PERSONALIZADOS PARA ANIMACIONES DARK PRO */}
+      {/* 🎨 ESTILOS CSS PERSONALIZADOS PARA ANIMACIONES DARK PRO (mismos que antes) */}
       <style jsx>{`
         @keyframes pulse {
           0%, 100% { 
@@ -3855,7 +4080,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Scrollbar personalizado para el modal */
         .MuiDialog-paper::-webkit-scrollbar {
           width: 8px;
         }
@@ -3875,7 +4099,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           box-shadow: 0 0 10px ${darkProTokens.primary}60;
         }
         
-        /* Efecto de resplandor en elementos interactivos */
         .glow-on-hover {
           transition: all 0.3s ease;
         }
@@ -3884,12 +4107,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           animation: glow 2s ease-in-out infinite alternate;
         }
         
-        /* Efecto de entrada para modales */
         .fade-in-scale {
           animation: fadeInScale 0.5s ease-out;
         }
         
-        /* Gradiente animado para elementos especiales */
         .gradient-animated {
           background: linear-gradient(
             -45deg,
@@ -3902,14 +4123,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           animation: gradientShift 3s ease infinite;
         }
         
-        /* Efecto de glassmorphism para modales */
         .glassmorphism {
           backdrop-filter: blur(16px) saturate(180%);
           background-color: ${darkProTokens.surfaceLevel2}CC;
           border: 1px solid ${darkProTokens.grayDark}40;
         }
         
-        /* Texto con efecto de degradado dorado */
         .golden-gradient-text {
           background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
           -webkit-background-clip: text;
@@ -3917,7 +4136,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           background-clip: text;
         }
         
-        /* Efecto de hover para inputs */
         .input-hover-glow:hover {
           box-shadow: 0 0 15px ${darkProTokens.primary}30;
         }
@@ -3926,7 +4144,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           box-shadow: 0 0 20px ${darkProTokens.primary}50;
         }
         
-        /* Efecto de typing para placeholders */
         @keyframes typing {
           from { width: 0; }
           to { width: 100%; }
@@ -3944,7 +4161,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           animation: typing 3.5s steps(40, end), blink 0.75s step-end infinite;
         }
         
-        /* Efecto de ondas para botones importantes */
         @keyframes ripple {
           0% {
             transform: scale(0);
@@ -3979,7 +4195,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           height: 300px;
         }
         
-        /* Estados de focus mejorados */
         .enhanced-focus:focus-visible {
           outline: none;
           box-shadow: 
@@ -3988,7 +4203,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           transform: translateY(-1px);
         }
         
-        /* Efecto de loading mejorado */
         @keyframes spin-glow {
           0% {
             transform: rotate(0deg);
@@ -4005,12 +4219,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           filter: drop-shadow(0 0 10px ${darkProTokens.primary}60);
         }
         
-        /* Transiciones suaves globales */
         * {
           transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        /* Media queries para responsive design con Dark Pro */
         @media (max-width: 768px) {
           .mobile-hidden {
             display: none !important;
@@ -4035,7 +4247,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Modo de alto contraste (opcional) */
         @media (prefers-contrast: high) {
           .high-contrast {
             border-width: 2px !important;
@@ -4043,7 +4254,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Modo de movimiento reducido */
         @media (prefers-reduced-motion: reduce) {
           * {
             animation-duration: 0.01ms !important;
@@ -4053,7 +4263,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Print styles */
         @media print {
           .no-print {
             display: none !important;
@@ -4066,7 +4275,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Elementos especiales con glow */
         .primary-glow {
           box-shadow: 0 0 20px ${darkProTokens.primary}40;
         }
@@ -4083,7 +4291,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           box-shadow: 0 0 20px ${darkProTokens.warning}40;
         }
         
-        /* Efectos de partículas para fondo (opcional) */
         .particles-bg::before {
           content: '';
           position: fixed;
@@ -4100,7 +4307,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           z-index: -1;
         }
         
-        /* Efectos especiales para huella dactilar */
         .fingerprint-glow {
           animation: fingerprint-pulse 3s ease-in-out infinite;
         }
@@ -4116,7 +4322,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Efectos para el componente de huella */
         .fingerprint-scanner {
           position: relative;
           overflow: hidden;
@@ -4148,7 +4353,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Efectos de éxito para huella */
         .fingerprint-success {
           animation: success-bounce 1s ease-out;
         }
@@ -4170,7 +4374,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Efectos de error para huella */
         .fingerprint-error {
           animation: error-shake 0.5s ease-in-out;
         }
@@ -4187,7 +4390,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Efectos de conexión WebSocket */
         .ws-connecting {
           animation: connecting-dots 1.5s infinite;
         }
@@ -4207,7 +4409,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Efectos de calidad de huella */
         .quality-excellent {
           color: ${darkProTokens.success};
           animation: quality-glow 2s ease-in-out infinite alternate;
@@ -4240,12 +4441,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
-        /* Efectos de progreso circular mejorado */
         .progress-ring {
           filter: drop-shadow(0 0 10px currentColor);
         }
         
-        /* Efectos de notificaciones flotantes */
         .floating-notification {
           animation: float-in 0.5s ease-out, float-out 0.5s ease-in 4.5s forwards;
         }
