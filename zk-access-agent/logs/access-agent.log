@@ -1,0 +1,460 @@
+2025-06-17 03:38:18 [INFO]: 🚀 Iniciando ZK Access Agent...
+2025-06-17 03:38:18 [INFO]: 📋 Configuración: Puerto 4001, WebSocket 8080
+2025-06-17 03:38:18 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:38:18 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 03:38:18 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:38:18 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 03:38:18 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 03:38:18 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 03:38:18 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 03:38:18 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 03:38:18 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 03:38:18 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 03:38:18 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 03:38:18 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 03:38:18 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 03:38:18 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 03:38:18 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 03:38:18 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 03:38:18 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 03:38:18 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 03:38:18 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 03:38:18 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 03:38:20 [ERROR]: ❌ Error conectando dispositivo:
+2025-06-17 03:38:20 [WARN]: ⚠️ No se pudo conectar al dispositivo ZK inicialmente:
+2025-06-17 03:38:20 [INFO]: 🔗 Inicializando cliente API...
+2025-06-17 03:38:20 [INFO]: 🔍 Verificando conexión con API...
+2025-06-17 03:38:20 [INFO]: 📤 API Request: GET /api/health
+2025-06-17 03:38:23 [ERROR]: ❌ API Error: 404 /api/health
+2025-06-17 03:38:23 [ERROR]: ❌ Error conectando con API:
+2025-06-17 03:38:23 [WARN]: ⚠️ No se pudo conectar con la API:
+2025-06-17 03:38:23 [INFO]: 🌐 Inicializando servidor WebSocket...
+2025-06-17 03:38:23 [INFO]: 🌐 Iniciando servidor WebSocket en puerto 8080...
+2025-06-17 03:38:23 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:38:23 [INFO]: ✅ Servidor WebSocket iniciado en ws://localhost:8080
+2025-06-17 03:38:23 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:38:23 [INFO]: 💓 Heartbeat iniciado
+2025-06-17 03:38:23 [INFO]: ✅ ZK Access Agent iniciado exitosamente
+2025-06-17 03:38:23 [INFO]: 🎉 ZK Access Agent listo para uso
+2025-06-17 03:38:23 [INFO]: 🌐 API HTTP disponible en http://localhost:4001
+2025-06-17 03:38:53 [ERROR]: ❌ Error en heartbeat:
+2025-06-17 03:39:23 [ERROR]: ❌ Error en heartbeat:
+2025-06-17 03:39:53 [ERROR]: ❌ Error en heartbeat:
+2025-06-17 03:40:17 [INFO]: 🛑 Iniciando shutdown del Access Agent...
+2025-06-17 03:40:25 [INFO]: 🚀 Iniciando ZK Access Agent...
+2025-06-17 03:40:25 [INFO]: 📋 Configuración: Puerto 4001, WebSocket 8080
+2025-06-17 03:40:25 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:40:25 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 03:40:25 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:40:25 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 03:40:25 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 03:40:25 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 03:40:25 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 03:40:25 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 03:40:25 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 03:40:25 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 03:40:25 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 03:40:25 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 03:40:25 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 03:40:25 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 03:40:25 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 03:40:25 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 03:40:25 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 03:40:25 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 03:40:25 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 03:40:25 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 03:40:26 [ERROR]: ❌ Error conectando dispositivo:
+2025-06-17 03:40:26 [WARN]: ⚠️ No se pudo conectar al dispositivo ZK inicialmente:
+2025-06-17 03:40:26 [INFO]: 🔗 Inicializando cliente API...
+2025-06-17 03:40:26 [INFO]: 🔍 Verificando conexión con API...
+2025-06-17 03:40:26 [INFO]: 📤 API Request: GET /api/health
+2025-06-17 03:40:27 [ERROR]: ❌ API Error: 404 /api/health
+2025-06-17 03:40:27 [ERROR]: ❌ Error conectando con API:
+2025-06-17 03:40:27 [WARN]: ⚠️ No se pudo conectar con la API:
+2025-06-17 03:40:27 [INFO]: 🌐 Inicializando servidor WebSocket...
+2025-06-17 03:40:27 [INFO]: 🌐 Iniciando servidor WebSocket en puerto 8080...
+2025-06-17 03:40:27 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:40:27 [INFO]: ✅ Servidor WebSocket iniciado en ws://localhost:8080
+2025-06-17 03:40:27 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:40:27 [INFO]: 💓 Heartbeat iniciado
+2025-06-17 03:40:27 [INFO]: ✅ ZK Access Agent iniciado exitosamente
+2025-06-17 03:40:27 [INFO]: 🎉 ZK Access Agent listo para uso
+2025-06-17 03:40:27 [INFO]: 🌐 API HTTP disponible en http://localhost:4001
+2025-06-17 03:40:57 [ERROR]: ❌ Error en heartbeat:
+2025-06-17 03:41:27 [ERROR]: ❌ Error en heartbeat:
+2025-06-17 03:41:42 [INFO]: 🛑 Iniciando shutdown del Access Agent...
+2025-06-17 03:41:49 [INFO]: 🚀 Iniciando ZK Access Agent...
+2025-06-17 03:41:49 [INFO]: 📋 Configuración: Puerto 4001, WebSocket 8080
+2025-06-17 03:41:49 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:41:49 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 03:41:49 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:41:49 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 03:41:49 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 03:41:49 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 03:41:49 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 03:41:49 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 03:41:49 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 03:41:49 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 03:41:49 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 03:41:49 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 03:41:49 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 03:41:49 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 03:41:49 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 03:41:49 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 03:41:49 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 03:41:49 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 03:41:49 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 03:41:49 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 03:41:50 [ERROR]: ❌ Error conectando dispositivo:
+2025-06-17 03:41:50 [WARN]: ⚠️ No se pudo conectar al dispositivo ZK inicialmente:
+2025-06-17 03:41:50 [INFO]: 🔗 Inicializando cliente API...
+2025-06-17 03:41:50 [INFO]: 🔍 Verificando conexión con API...
+2025-06-17 03:41:50 [INFO]: 📤 API Request: GET /api/health
+2025-06-17 03:41:51 [ERROR]: ❌ API Error: 404 /api/health
+2025-06-17 03:41:51 [ERROR]: ❌ Error conectando con API:
+2025-06-17 03:41:51 [WARN]: ⚠️ No se pudo conectar con la API:
+2025-06-17 03:41:51 [INFO]: 🌐 Inicializando servidor WebSocket...
+2025-06-17 03:41:51 [INFO]: 🌐 Iniciando servidor WebSocket en puerto 8080...
+2025-06-17 03:41:51 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:41:51 [INFO]: ✅ Servidor WebSocket iniciado en ws://localhost:8080
+2025-06-17 03:41:51 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:41:51 [INFO]: 💓 Heartbeat iniciado
+2025-06-17 03:41:51 [INFO]: ✅ ZK Access Agent iniciado exitosamente
+2025-06-17 03:41:51 [INFO]: 🎉 ZK Access Agent listo para uso
+2025-06-17 03:41:51 [INFO]: 🌐 API HTTP disponible en http://localhost:4001
+2025-06-17 03:42:21 [ERROR]: ❌ Error en heartbeat:
+2025-06-17 03:42:48 [INFO]: 🛑 Iniciando shutdown del Access Agent...
+2025-06-17 03:43:40 [INFO]: 🚀 Iniciando ZK Access Agent...
+2025-06-17 03:43:40 [INFO]: 📋 Configuración: Puerto 4001, WebSocket 8080
+2025-06-17 03:43:40 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:43:40 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 03:43:40 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:43:40 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 03:43:40 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 03:43:40 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 03:43:40 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 03:43:40 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 03:43:40 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 03:43:40 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 03:43:40 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 03:43:40 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 03:43:40 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 03:43:40 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 03:43:40 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 03:43:40 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 03:43:40 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 03:43:40 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 03:43:40 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 03:43:40 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 03:43:40 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 03:43:41 [ERROR]: ❌ Error en ZKFPM_OpenDevice: Cannot convert object to primitive value
+2025-06-17 03:43:41 [ERROR]: ❌ Error conectando dispositivo:
+2025-06-17 03:43:41 [ERROR]: 📋 Detalles del error:
+2025-06-17 03:43:41 [WARN]: ⚠️ Continuando sin conexión inicial - intentará reconectar cuando se necesite
+2025-06-17 03:43:41 [INFO]: ✅ Dispositivo ZK conectado
+2025-06-17 03:43:41 [INFO]: 🔗 Inicializando cliente API...
+2025-06-17 03:43:41 [INFO]: 🔍 Verificando conexión con API...
+2025-06-17 03:43:41 [INFO]: 📤 API Request: GET /api/health
+2025-06-17 03:43:42 [ERROR]: ❌ API Error: 404 /api/health
+2025-06-17 03:43:42 [ERROR]: ❌ Error conectando con API:
+2025-06-17 03:43:42 [WARN]: ⚠️ No se pudo conectar con la API:
+2025-06-17 03:43:42 [INFO]: 🌐 Inicializando servidor WebSocket...
+2025-06-17 03:43:42 [INFO]: 🌐 Iniciando servidor WebSocket en puerto 8080...
+2025-06-17 03:43:42 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:43:42 [INFO]: ✅ Servidor WebSocket iniciado en ws://localhost:8080
+2025-06-17 03:43:42 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:43:42 [INFO]: 💓 Heartbeat iniciado
+2025-06-17 03:43:42 [INFO]: ✅ ZK Access Agent iniciado exitosamente
+2025-06-17 03:43:42 [INFO]: 🎉 ZK Access Agent listo para uso
+2025-06-17 03:43:42 [INFO]: 🌐 API HTTP disponible en http://localhost:4001
+2025-06-17 03:44:12 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:44:12 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:44:12 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:44:12 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:44:42 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:44:42 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:44:42 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:44:42 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:45:12 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:45:12 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:45:12 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:45:12 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:45:42 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:45:42 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:45:42 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:45:42 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:46:12 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:46:12 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:46:12 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:46:12 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:46:13 [INFO]: 🛑 Iniciando shutdown del Access Agent...
+2025-06-17 03:46:16 [INFO]: 🚀 Iniciando ZK Access Agent...
+2025-06-17 03:46:16 [INFO]: 📋 Configuración: Puerto 4001, WebSocket 8080
+2025-06-17 03:46:16 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:46:16 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 03:46:16 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 03:46:16 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 03:46:16 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 03:46:16 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 03:46:16 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 03:46:16 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 03:46:16 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 03:46:16 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 03:46:16 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 03:46:16 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 03:46:16 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 03:46:16 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 03:46:16 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 03:46:16 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 03:46:16 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 03:46:16 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 03:46:16 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 03:46:16 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 03:46:16 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 03:46:17 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 03:46:17 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 03:46:17 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 03:46:17 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 03:46:17 [INFO]: ✅ Dispositivo ZK conectado
+2025-06-17 03:46:17 [INFO]: 🔗 Inicializando cliente API...
+2025-06-17 03:46:17 [INFO]: 🔍 Verificando conexión con API...
+2025-06-17 03:46:17 [INFO]: 📤 API Request: GET /api/health
+2025-06-17 03:46:17 [ERROR]: ❌ API Error: 404 /api/health
+2025-06-17 03:46:17 [ERROR]: ❌ Error conectando con API:
+2025-06-17 03:46:17 [WARN]: ⚠️ No se pudo conectar con la API:
+2025-06-17 03:46:17 [INFO]: 🌐 Inicializando servidor WebSocket...
+2025-06-17 03:46:17 [INFO]: 🌐 Iniciando servidor WebSocket en puerto 8080...
+2025-06-17 03:46:17 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:46:17 [INFO]: ✅ Servidor WebSocket iniciado en ws://localhost:8080
+2025-06-17 03:46:17 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 03:46:17 [INFO]: 💓 Heartbeat iniciado
+2025-06-17 03:46:17 [INFO]: ✅ ZK Access Agent iniciado exitosamente
+2025-06-17 03:46:17 [INFO]: 🎉 ZK Access Agent listo para uso
+2025-06-17 03:46:17 [INFO]: 🌐 API HTTP disponible en http://localhost:4001
+2025-06-17 03:46:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:46:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:46:47 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:46:47 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:47:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:47:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:47:17 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:47:17 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:47:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:47:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:47:47 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:47:47 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:48:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:48:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:48:17 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:48:17 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:48:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:48:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:48:47 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:48:47 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:49:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:49:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:49:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:49:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:49:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:49:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:49:53 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:49:53 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:50:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:50:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:50:21 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:50:21 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:50:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:50:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:50:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:50:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:51:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:51:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:51:19 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:51:19 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:51:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:51:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:51:47 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:51:47 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:52:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:52:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:52:17 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:52:17 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:52:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:52:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:52:57 [ERROR]: ❌ Network Error:
+2025-06-17 03:52:57 [WARN]: ⚠️ Reintentando request (1/3)...
+2025-06-17 03:52:58 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:53:00 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:53:00 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:53:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:53:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:53:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:53:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:53:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:53:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:53:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:53:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:54:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:54:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:54:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:54:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:54:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:54:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:54:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:54:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:55:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:55:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:55:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:55:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:55:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:55:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:55:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:55:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:56:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:56:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:56:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:56:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:56:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:56:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:56:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:56:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:57:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:57:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:57:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:57:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:57:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:57:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:57:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:57:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:58:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:58:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:58:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:58:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:58:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:58:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:58:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:58:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:59:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:59:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:59:21 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:59:21 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 03:59:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 03:59:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 03:59:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 03:59:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:00:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:00:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:00:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 04:00:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:00:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:00:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:00:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 04:00:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:01:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:01:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:01:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 04:01:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:01:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:01:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:01:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 04:01:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:02:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:02:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:02:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 04:02:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:02:47 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:02:47 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:02:48 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 04:02:48 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:03:17 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:03:17 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:03:18 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 04:03:18 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:03:48 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:03:48 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:03:53 [ERROR]: ❌ API Error: 404 /api/device/status
+2025-06-17 04:03:53 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:04:18 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:04:18 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:04:21 [INFO]: 📥 API Response: 200 /api/device/status
+2025-06-17 04:04:48 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:04:48 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:04:48 [INFO]: 📥 API Response: 200 /api/device/status
+2025-06-17 04:05:18 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:05:18 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:05:18 [INFO]: 📥 API Response: 200 /api/device/status
+2025-06-17 04:05:48 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:05:48 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:05:48 [INFO]: 📥 API Response: 200 /api/device/status
+2025-06-17 04:06:18 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:06:18 [INFO]: 📤 API Request: POST /api/device/status
+2025-06-17 04:06:18 [INFO]: 📥 API Response: 200 /api/device/status
+2025-06-17 04:06:37 [INFO]: 🛑 Iniciando shutdown del Access Agent...
+2025-06-17 04:08:37 [INFO]: 🚀 Iniciando ZK Access Agent...
+2025-06-17 04:08:37 [INFO]: 📋 Configuración: Puerto 4001, WebSocket 8080
+2025-06-17 04:08:37 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 04:08:37 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 04:08:37 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 04:08:37 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 04:08:37 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 04:08:37 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 04:08:37 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 04:08:37 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 04:08:37 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 04:08:37 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 04:08:37 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 04:08:37 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 04:08:37 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 04:08:37 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 04:08:37 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 04:08:37 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 04:08:37 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 04:08:37 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 04:08:37 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 04:08:37 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 04:08:37 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 04:08:37 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 04:08:37 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 04:08:39 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 04:08:39 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 04:08:39 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 04:08:39 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 04:08:39 [INFO]: ✅ Dispositivo ZK conectado
+2025-06-17 04:08:39 [INFO]: 🔗 Inicializando cliente API...
+2025-06-17 04:08:39 [INFO]: 🔍 Verificando conexión con API...
+2025-06-17 04:08:39 [WARN]: ⚠️ No se pudo conectar con la API:
+2025-06-17 04:08:39 [INFO]: 🌐 Inicializando servidor WebSocket...
+2025-06-17 04:08:39 [INFO]: 🌐 Iniciando servidor WebSocket en puerto 8080...
+2025-06-17 04:08:39 [INFO]: 📋 Manejadores de eventos configurados
+2025-06-17 04:08:39 [INFO]: ✅ Servidor WebSocket iniciado en ws://localhost:8080
+2025-06-17 04:08:39 [INFO]: 💓 Heartbeat iniciado
+2025-06-17 04:08:39 [INFO]: ✅ ZK Access Agent iniciado exitosamente
+2025-06-17 04:08:39 [INFO]: 🎉 ZK Access Agent listo para uso
+2025-06-17 04:08:39 [INFO]: ✅ Servidor HTTP iniciado en http://localhost:4001
+2025-06-17 04:08:39 [INFO]: 🌐 API HTTP disponible en http://localhost:4001
+2025-06-17 04:09:09 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:09:09 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:09:39 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:09:39 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:09:39 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:10:09 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:10:09 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:10:39 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:10:39 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:10:39 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:11:09 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:11:09 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:11:39 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:11:39 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:11:39 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:12:09 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:12:09 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:12:39 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:12:39 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:12:39 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:13:09 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:13:09 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:13:39 [INFO]: 📡 Mensaje enviado a 0 clientes
+2025-06-17 04:13:39 [INFO]: 📤 Enviando estado del dispositivo a Next.js...
+2025-06-17 04:13:39 [ERROR]: ❌ Error enviando estado del dispositivo:
+2025-06-17 04:13:45 [INFO]: 🧹 Cerrando ZK Access Agent...
