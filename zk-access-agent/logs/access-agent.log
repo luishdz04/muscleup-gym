@@ -1490,3 +1490,281 @@
 2025-06-17 10:28:49 [INFO]: 📊 Tiempo total: 1026ms
 2025-06-17 10:28:49 [INFO]: Verificación fallida: Usuario desconocido
 2025-06-17 10:38:22 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 14:17:10 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 14:17:10 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 14:17:10 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 14:17:10 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 14:17:10 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 14:17:10 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 14:17:10 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 14:17:10 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 14:17:10 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 14:17:10 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 14:17:10 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 14:17:10 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 14:17:10 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 14:17:10 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 14:17:10 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 14:17:10 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 14:17:10 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 14:17:10 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 14:17:10 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 14:17:10 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 14:17:10 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 14:17:10 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 14:17:10 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 14:17:10 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 14:17:11 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 14:17:11 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 14:17:11 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 14:17:11 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 14:19:01 [INFO]: Intentando conexión TCP con F22 en 192.168.1.201:4370
+2025-06-17 14:19:06 [ERROR]: Timeout conectando a 192.168.1.201:4370
+2025-06-17 17:19:14 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 18:36:02 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 18:36:02 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 18:36:02 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 18:36:02 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 18:36:02 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 18:36:02 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 18:36:02 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 18:36:02 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 18:36:02 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 18:36:02 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 18:36:02 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 18:36:02 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 18:36:02 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 18:36:02 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 18:36:02 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 18:36:02 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 18:36:02 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 18:36:02 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 18:36:02 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 18:36:02 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 18:36:02 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 18:36:02 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 18:36:02 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 18:36:02 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 18:36:03 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 18:36:03 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 18:36:03 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 18:36:03 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 18:36:15 [INFO]: 🧪 Iniciando test de conexión avanzado para F22...
+2025-06-17 18:36:15 [INFO]: 🔌 Intentando conexión TCP con F22 en 192.168.1.201:4370
+2025-06-17 18:36:20 [ERROR]: ⏰ Timeout conectando a 192.168.1.201:4370 (5 segundos)
+2025-06-17 18:36:20 [INFO]: 🔌 Conexión con F22 cerrada
+2025-06-17 18:44:43 [INFO]: 🧪 Iniciando test de conexión avanzado para F22...
+2025-06-17 18:44:43 [INFO]: 🔌 Intentando conexión TCP con F22 en 192.168.1.201:4370
+2025-06-17 18:44:43 [INFO]: ✅ Conectado exitosamente al F22 en 192.168.1.201:4370
+2025-06-17 18:44:43 [INFO]: ✅ Desconectado del F22 exitosamente
+2025-06-17 18:44:43 [INFO]: 🔌 Conexión con F22 cerrada
+2025-06-17 18:46:02 [INFO]: 🧪 Iniciando test de conexión avanzado para F22...
+2025-06-17 18:46:02 [INFO]: 🔌 Intentando conexión TCP con F22 en 192.168.1.201:4370
+2025-06-17 18:46:02 [INFO]: ✅ Conectado exitosamente al F22 en 192.168.1.201:4370
+2025-06-17 18:46:02 [INFO]: ✅ Desconectado del F22 exitosamente
+2025-06-17 18:46:02 [INFO]: 🔌 Conexión con F22 cerrada
+2025-06-17 18:56:03 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 19:10:02 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 19:10:02 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 19:10:02 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 19:10:02 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 19:10:02 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 19:10:02 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 19:10:02 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 19:10:02 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 19:10:02 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 19:10:02 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 19:10:02 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 19:10:02 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 19:10:02 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 19:10:02 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 19:10:02 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 19:10:02 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 19:10:02 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 19:10:02 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 19:10:02 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 19:10:02 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 19:10:02 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 19:10:02 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 19:10:02 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 19:10:02 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 19:10:03 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 19:10:03 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 19:10:03 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 19:10:03 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 19:15:28 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 19:25:32 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 19:25:32 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 19:25:32 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 19:25:32 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 19:25:32 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 19:25:32 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 19:25:32 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 19:25:32 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 19:25:32 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 19:25:32 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 19:25:32 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 19:25:32 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 19:25:32 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 19:25:32 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 19:25:32 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 19:25:32 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 19:25:32 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 19:25:32 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 19:25:32 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 19:25:32 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 19:25:32 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 19:25:32 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 19:25:32 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 19:25:32 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 19:25:33 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 19:25:33 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 19:25:33 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 19:25:33 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 19:27:54 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 19:42:42 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 19:42:42 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 19:42:42 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 19:42:42 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 19:42:42 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 19:42:42 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 19:42:42 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 19:42:42 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 19:42:42 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 19:42:42 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 19:42:42 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 19:42:42 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 19:42:42 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 19:42:42 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 19:42:42 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 19:42:42 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 19:42:42 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 19:42:42 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 19:42:42 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 19:42:42 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 19:42:42 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 19:42:42 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 19:42:42 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 19:42:42 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 19:42:43 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 19:42:43 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 19:42:43 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 19:42:43 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 19:43:48 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 19:43:53 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 19:43:53 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 19:43:53 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 19:43:53 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 19:43:53 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 19:43:53 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 19:43:53 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 19:43:53 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 19:43:53 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 19:43:53 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 19:43:53 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 19:43:53 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 19:43:53 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 19:43:53 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 19:43:53 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 19:43:53 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 19:43:53 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 19:43:53 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 19:43:53 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 19:43:53 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 19:43:53 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 19:43:53 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 19:43:53 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 19:43:53 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 19:43:54 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 19:43:54 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 19:43:54 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 19:43:54 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 19:46:26 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 19:56:51 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 19:56:51 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 19:56:51 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 19:56:51 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 19:56:51 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 19:56:51 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 19:56:51 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 19:56:51 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 19:56:51 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 19:56:51 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 19:56:51 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 19:56:51 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 19:56:51 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 19:56:51 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 19:56:51 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 19:56:51 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 19:56:51 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 19:56:51 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 19:56:51 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 19:56:51 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 19:56:51 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 19:56:51 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 19:56:51 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 19:56:51 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 19:56:53 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 19:56:53 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 19:56:53 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 19:56:53 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 19:59:40 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...
+2025-06-17 19:59:43 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 19:59:43 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 19:59:43 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 19:59:43 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 19:59:43 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 19:59:43 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 19:59:43 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 19:59:43 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 19:59:43 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 19:59:43 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 19:59:43 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 19:59:43 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 19:59:43 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 19:59:43 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 19:59:43 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 19:59:43 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 19:59:43 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 19:59:43 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 19:59:43 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 19:59:43 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 19:59:43 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 19:59:43 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 19:59:43 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 19:59:43 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 19:59:45 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 19:59:45 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 19:59:45 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 19:59:45 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 21:00:49 [INFO]: 🏗️ SDK ZKTeco constructor inicializado
+2025-06-17 21:00:49 [INFO]: 🔧 Inicializando SDK ZKTeco...
+2025-06-17 21:00:49 [INFO]: 📂 Ruta DLL: ./dll/libzkfp.dll
+2025-06-17 21:00:49 [INFO]: ✅ DLL encontrada: C:\Users\Muscle Up GYM\Desktop\muscleup-gym\zk-access-agent\dll\libzkfp.dll
+2025-06-17 21:00:49 [INFO]: 🔍 Intentando cargar DLL: ./dll/libzkfp.dll
+2025-06-17 21:00:49 [INFO]: ✅ DLL cargada exitosamente
+2025-06-17 21:00:49 [INFO]: 📝 Definiendo funciones ZKFPM...
+2025-06-17 21:00:49 [INFO]: ✅ ZKFPM_Init definida
+2025-06-17 21:00:49 [INFO]: ✅ ZKFPM_Terminate definida
+2025-06-17 21:00:49 [INFO]: ✅ ZKFPM_GetDeviceCount definida
+2025-06-17 21:00:49 [INFO]: ✅ ZKFPM_OpenDevice definida
+2025-06-17 21:00:49 [INFO]: ✅ ZKFPM_CloseDevice definida
+2025-06-17 21:00:49 [INFO]: ✅ ZKFPM_AcquireFingerprint definida
+2025-06-17 21:00:49 [INFO]: ✅ ZKFPM_DBMatch definida
+2025-06-17 21:00:49 [WARN]: ⚠️ No se pudo definir ZKFPM_DBMatchEx: Cannot find function 'ZKFPM_DBMatchEx' in shared library
+2025-06-17 21:00:49 [WARN]: ⚠️ No se pudo definir ZKFPM_Verify: Cannot find function 'ZKFPM_Verify' in shared library
+2025-06-17 21:00:49 [INFO]: 🎯 Todas las funciones ZKFPM definidas correctamente
+2025-06-17 21:00:49 [INFO]: 🚀 Llamando ZKFPM_Init...
+2025-06-17 21:00:50 [INFO]: ✅ ZKFPM_Init exitoso
+2025-06-17 21:00:50 [INFO]: ✅ SDK ZKTeco inicializado correctamente
+2025-06-17 21:00:50 [INFO]: ✅ Umbral de verificación configurado a: 60
+2025-06-17 21:00:50 [INFO]: 🔌 Conectando al dispositivo ZK...
+2025-06-17 21:00:50 [INFO]: 📱 Dispositivos detectados: 2
+2025-06-17 21:00:50 [INFO]: 🔍 Intentando abrir dispositivo índice: 0
+2025-06-17 21:00:51 [INFO]: 🔍 OpenDevice ejecutado exitosamente
+2025-06-17 21:00:51 [INFO]: 🔍 Handle obtenido - tipo: object
+2025-06-17 21:00:51 [INFO]: ✅ Dispositivo 0 conectado exitosamente
+2025-06-17 21:00:51 [INFO]: ✅ Handle válido obtenido y almacenado
+2025-06-17 21:00:57 [INFO]: Intentando conexión TCP con F22 en 192.168.1.201:4370
+2025-06-17 21:00:57 [INFO]: Conectado exitosamente a 192.168.1.201:4370
+2025-06-17 23:34:03 [INFO]: 🧹 Limpiando recursos del SDK ZKTeco...

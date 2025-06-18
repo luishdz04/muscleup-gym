@@ -1,4 +1,4 @@
-const express = require('express');
+ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const WebSocketServer = require('websocket').server;
@@ -32,6 +32,9 @@ console.log(`👤 luishdz04 - Muscle Up GYM`);
 console.log(`📂 Directorio: ${__dirname}`);
 console.log('📊 Cliente Supabase inicializado');
 
+// Importar el controlador F22
+const F22Controller = require('./src/devices/f22Controller');
+
 // ===============================================
 // ✅ VARIABLES GLOBALES
 // ===============================================
@@ -43,6 +46,7 @@ let fingerprintCapture = null;
 let logger = null;
 let isZkConnected = false;
 let deviceInfo = null;
+let f22Controller = null; // Controlador para F22
 
 // Módulos SDK
 let ZKFingerprintSDK = null;
@@ -951,8 +955,7 @@ async function handleWebSocketMessage(connection, data) {
                     timestamp: new Date().toISOString()
                 }));
                 break;
-                
-            case 'get_device_status':
+                case 'get_device_status':
                 let statusData = {
                     connected: isZkConnected,
                     deviceInfo: deviceInfo,
@@ -1328,6 +1331,76 @@ app.get('/', (req, res) => {
     });
 });
 
+// ===============================================
+// ✅ RUTAS F22 - NUEVAS
+// ===============================================
+
+// Ruta para probar la conexión con F22
+app.get('/api/test-f22-connection', async (req, res) => {
+  try {
+    const f22Ip = req.query.ip || process.env.F22_IP || '192.168.1.201';
+    const f22Port = parseInt(req.query.port || process.env.F22_PORT || '4370');
+    
+    if (!f22Controller) {
+      f22Controller = new F22Controller();
+    }
+    
+    const result = await f22Controller.testConnection(f22Ip, f22Port);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: `Error al probar conexión con F22: ${error.message}`,
+      error: error.message
+    });
+  }
+});
+
+// Ruta para sincronizar huellas con F22
+app.post('/api/sync-fingerprint', async (req, res) => {
+  try {
+    const { userId, deviceUserId, userName, template } = req.body;
+    
+    if (!deviceUserId || !userName || !template) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan datos requeridos (deviceUserId, userName, template)'
+      });
+    }
+    
+    if (!f22Controller) {
+      f22Controller = new F22Controller();
+    }
+    
+    const f22Ip = process.env.F22_IP || '192.168.1.201';
+    const f22Port = parseInt(process.env.F22_PORT || '4370');
+    
+    // Conectar
+    const connectResult = await f22Controller.connect(f22Ip, f22Port);
+    if (!connectResult.success) {
+      return res.status(500).json(connectResult);
+    }
+    
+    // Sincronizar huella
+    const syncResult = await f22Controller.syncFingerprint(
+      deviceUserId,
+      userName,
+      template
+    );
+    
+    // Desconectar después de sincronizar
+    await f22Controller.disconnect();
+    
+    res.json(syncResult);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: `Error sincronizando huella: ${error.message}`,
+      error: error.message
+    });
+  }
+});
+
 // Información del sistema con más detalles
 app.get('/api/info', (req, res) => {
     const memUsage = process.memoryUsage();
@@ -1527,7 +1600,7 @@ app.get('/api/health', async (req, res) => {
     if (memoryUsage > 500) {
         health.checks.memory = 'warning';
     }
-    if (memoryUsage > 1000) {
+        if (memoryUsage > 1000) {
         health.checks.memory = 'error';
     }
     
@@ -1589,7 +1662,7 @@ app.get('/api/logs', (req, res) => {
         events: {
             serverStarted: true,
             sdkLoaded: !!ZKFingerprintSDK,
-                        sdkInitialized: zkSDK ? true : false,
+            sdkInitialized: zkSDK ? true : false,
             deviceConnected: isZkConnected,
             websocketActive: !!wsServer,
             currentClients: connectedClients.size,
@@ -1597,7 +1670,7 @@ app.get('/api/logs', (req, res) => {
         },
         lastActivity: new Date().toISOString(),
         version: '4.0.0-production',
-        timestamp: '2025-06-17 16:25:53',
+        timestamp: '2025-06-17 20:11:52',
         user: 'luishdz04'
     };
     
@@ -1691,7 +1764,9 @@ app.use((req, res) => {
             '/api/health',
             '/api/logs',
             '/api/verify',
-            '/api/access/recent'
+            '/api/access/recent',
+            '/api/test-f22-connection',
+            '/api/sync-fingerprint'
         ],
         suggestion: 'Verificar la URL y método HTTP',
         timestamp: new Date().toISOString()
@@ -1726,7 +1801,7 @@ async function startServer() {
         console.log(`  Desarrollado por: luishdz04`);
         console.log(`  Ubicación: Muscle Up GYM`);
         console.log(`  Versión: 4.0.0-production`);
-        console.log(`  Fecha: 2025-06-17 16:25:53`);
+        console.log(`  Fecha: 2025-06-17 20:11:52`);
         console.log('🎉 ========================================= 🎉');
         console.log('');
         
@@ -1783,8 +1858,20 @@ async function startServer() {
         }
         console.log('');
         
-        // Paso 6: Iniciar servidor HTTP
-        console.log('📋 PASO 6: Iniciando servidor HTTP...');
+        // Paso 6: Inicializar controlador F22
+        console.log('📋 PASO 6: Inicializando controlador F22...');
+        try {
+            f22Controller = new F22Controller();
+            console.log('✅ Controlador F22 inicializado correctamente');
+        } catch (f22Error) {
+            console.warn('⚠️ Error inicializando controlador F22:', f22Error.message);
+            console.log('   Verificar que zkemkeeper.dll está en la carpeta dll/');
+            f22Controller = null;
+        }
+        console.log('');
+        
+        // Paso 7: Iniciar servidor HTTP
+        console.log('📋 PASO 7: Iniciando servidor HTTP...');
         
         // Manejo de errores del servidor HTTP
         const server = app.listen(PORT, HOST, () => {
@@ -1807,8 +1894,8 @@ async function startServer() {
         
         console.log('');
         
-        // Paso 7: Iniciar WebSocket
-        console.log('📋 PASO 7: Iniciando WebSocket Server...');
+        // Paso 8: Iniciar WebSocket
+        console.log('📋 PASO 8: Iniciando WebSocket Server...');
         const wsOk = initializeWebSocket();
         if (wsOk) {
             console.log('✅ WebSocket Server activo');
@@ -1826,6 +1913,7 @@ async function startServer() {
         console.log(`SDK Modules:     ${modulesOk ? '✅' : '❌'}`);
         console.log(`SDK Initialized: ${zkSDK ? '✅' : '❌'} ${zkSDK ? 'Inicializado' : 'No inicializado'}`);
         console.log(`ZKTeco Device:   ${isZkConnected ? '✅' : '⚠️'} ${isZkConnected ? 'Conectado' : 'No conectado'}`);
+        console.log(`F22 Controller:  ${f22Controller ? '✅' : '⚠️'} ${f22Controller ? 'Inicializado' : 'No inicializado'}`);
         console.log(`Supabase:        ${supabase ? '✅' : '❌'} ${supabase ? 'Conectado' : 'No conectado'}`);
         console.log(`Dependencies:    ${depsOk ? '✅' : '❌'}`);
         console.log(`File Structure:  ${structureOk ? '✅' : '❌'}`);
@@ -1841,6 +1929,7 @@ async function startServer() {
             console.log('🖐️ Funcionalidades activas:');
             console.log(`   ${isZkConnected ? '✅' : '⚠️'} Captura de huellas dactilares`);
             console.log(`   ${supabase ? '✅' : '⚠️'} Verificación de huellas con Supabase`);
+            console.log(`   ${f22Controller ? '✅' : '⚠️'} Control de acceso F22`);
             console.log('   ✅ Comunicación WebSocket');
             console.log('   ✅ API REST completa');
             console.log('   ✅ Monitoreo de dispositivos');
@@ -1868,6 +1957,20 @@ async function startServer() {
                 console.log('');
             }
             
+            if (!f22Controller) {
+                console.log('⚠️ NOTAS SOBRE F22:');
+                console.log('   • Controlador F22 no inicializado');
+                console.log('   • Verificar que zkemkeeper.dll existe en dll/');
+                console.log('   • Asegurarse de instalar node-ffi-napi y ref-napi');
+                console.log('   • Verificar IP y puerto del F22 en .env');
+                console.log('');
+            } else {
+                console.log('🎉 ¡CONTROLADOR F22 INICIALIZADO!');
+                console.log('   • Puedes sincronizar huellas con el F22');
+                console.log('   • Usa /api/test-f22-connection para verificar conexión');
+                console.log('   • Usa /api/sync-fingerprint para enviar huellas al dispositivo');
+                console.log('');
+            }
         } else {
             console.log('⚠️ SERVIDOR INICIADO CON LIMITACIONES');
             console.log('   Revisar errores arriba para más detalles');
@@ -1884,7 +1987,7 @@ async function startServer() {
         console.log('');
         console.log('🔧 POSIBLES SOLUCIONES:');
         console.log('   1. Verificar que todos los archivos estén presentes');
-        console.log('   2. Ejecutar: npm install @supabase/supabase-js dotenv');
+        console.log('   2. Ejecutar: npm install @supabase/supabase-js dotenv node-ffi-napi ref-napi');
         console.log('   3. Verificar permisos de archivos');
         console.log('   4. Ejecutar como administrador');
         console.log('   5. Verificar puerto no esté en uso');
@@ -1935,6 +2038,16 @@ process.on('SIGINT', async () => {
                 console.log('✅ Módulo de captura limpiado');
             } catch (error) {
                 console.error('⚠️ Error limpiando módulo de captura:', error.message);
+            }
+        }
+        
+        // Desconectar F22 si está conectado
+        if (f22Controller) {
+            try {
+                await f22Controller.disconnect();
+                console.log('✅ F22 desconectado correctamente');
+            } catch (error) {
+                console.error('⚠️ Error desconectando F22:', error.message);
             }
         }
         
@@ -2001,7 +2114,7 @@ process.on('warning', (warning) => {
 console.log('🖐️ ZK Access Agent - Inicializando...');
 console.log('👨‍💻 Desarrollado por luishdz04 para Muscle Up GYM');
 console.log(`📅 ${new Date().toLocaleString()}`);
-console.log(`📅 Actualizado: 2025-06-17 16:25:53 UTC`);
+console.log(`📅 Actualizado: 2025-06-17 20:11:52 UTC`);
 console.log(`🔧 Node.js ${process.version} - ${process.platform} ${process.arch}`);
 console.log('');
 
