@@ -1,0 +1,16 @@
+# Unified Fingerprint Service F22 v5.1 - Dependencies
+# Core dependencies
+asyncio-python>=3.8
+websockets>=10.0
+pywin32>=305
+python-dotenv>=0.19.0
+
+# Supabase client
+supabase>=1.0.0
+
+# Optional ZK SDK dependencies
+# zklib>=1.0.0  # Uncomment if available
+# pyzk>=0.9.0   # Alternative ZK library
+
+# Logging and utilities
+colorama>=0.4.4
