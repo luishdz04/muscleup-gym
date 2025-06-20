@@ -41,3 +41,18 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# F22 Service logs
+f22_service.log
