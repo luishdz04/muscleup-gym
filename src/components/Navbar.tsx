@@ -39,22 +39,18 @@ export default function Navbar() {
 
   return (
     <>
-      <motion.nav 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled 
-            ? 'bg-black/95 backdrop-blur-md border-b border-yellow-400/20 shadow-lg' 
-            : 'bg-black/90 backdrop-blur-sm'
-        }`}
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 lg:h-20">
+     <motion.nav 
+  className="fixed top-0 left-0 right-0 z-50 bg-black shadow-lg border-b border-yellow-400/20"
+  initial={{ y: -100 }}
+  animate={{ y: 0 }}
+  transition={{ duration: 0.5 }}
+>
+  <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+    <div className="flex items-center justify-between h-16 lg:h-20">
             
             {/* 🏋️ SOLO LOGO (SIN TEXTO) */}
             <motion.div 
-              className="flex items-center"
+              className="flex items-center -ml-2 lg:-ml-4"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
             >
