@@ -1,459 +1,274 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, Paper, Grid, Button, CircularProgress, Avatar, Alert } from '@mui/material';
-import { useRouter } from 'next/navigation';
-import LogoutIcon from '@mui/icons-material/Logout';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
-import PaymentIcon from '@mui/icons-material/Payment';
-import PersonIcon from '@mui/icons-material/Person';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { motion } from 'framer-motion';
+import { 
+  FaUser, 
+  FaEnvelope, 
+  FaPhone, 
+  FaCalendar, 
+  FaIdCard,
+  FaDumbbell,
+  FaEdit,
+  FaCheckCircle,
+  FaClock
+} from 'react-icons/fa';
+
+interface UserInfo {
+  nombre: string;
+  apellidos: string;
+  email: string;
+  telefono: string;
+  fechaNacimiento: string;
+  numeroCliente: string;
+  fechaRegistro: string;
+  membresia: {
+    tipo: string;
+    estado: string;
+    vencimiento: string;
+  };
+}
 
 export default function ClienteDashboard() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const router = useRouter();
-  
-  // Obtener datos del usuario autenticado
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setLoading(true);
-        const supabase = createBrowserSupabaseClient();
-        
-        console.log("Obteniendo sesión de usuario...");
-        // Verificar sesión
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error("Error de sesión:", sessionError);
-          setDebugInfo({ sessionError });
-          throw new Error('Error al obtener la sesión: ' + sessionError.message);
-        }
-        
-        if (!session) {
-          console.error("No hay sesión activa");
-          setDebugInfo({ noSession: true });
-          throw new Error('No se encontró sesión activa');
-        }
-        
-        console.log("Sesión encontrada para usuario:", session.user.id);
-        setUser(session.user);
-        
-        // Mostrar información de sesión
-        setDebugInfo({
-          sessionFound: true,
-          userId: session.user.id,
-          userEmail: session.user.email,
-          userAppMetadata: session.user.app_metadata,
-          timestamp: new Date().toISOString()
-        });
-        
-        // Usar la API para obtener el perfil (evitando RLS)
-        console.log("Obteniendo datos de usuario a través de API...");
-        try {
-          const response = await fetch(`/api/user-profile?userId=${session.user.id}`);
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Error en respuesta API:", errorData);
-            throw new Error(errorData.message || 'Error al obtener datos del usuario');
-          }
-          
-          const userData = await response.json();
-          console.log("Datos obtenidos a través de API:", userData);
-          
-          setUserProfile(userData);
-          setError(null);
-        } catch (apiError: any) {
-          console.error("Error en API:", apiError);
-          
-          // Usar datos básicos del usuario como alternativa
-          console.log("Usando datos básicos de usuario...");
-          setUserProfile({
-            firstName: session.user.email?.split('@')[0] || 'Usuario',
-            lastName: '',
-            email: session.user.email,
-            rol: 'cliente'
-          });
-          
-          // No mostrar error para no interrumpir la experiencia del usuario
-        }
-        
-      } catch (err: any) {
-        console.error('Error detallado:', err);
-        setError(err.message || 'Error desconocido al cargar datos');
-      } finally {
-        setLoading(false);
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    nombre: "Juan",
+    apellidos: "Pérez García",
+    email: "juan.perez@email.com",
+    telefono: "+52 123 456 7890",
+    fechaNacimiento: "1990-05-15",
+    numeroCliente: "MUP-2024-0001",
+    fechaRegistro: "2024-01-15",
+    membresia: {
+      tipo: "Mensualidad Regular",
+      estado: "Activa",
+      vencimiento: "2025-02-15"
+    }
+  });
+
+  const [editMode, setEditMode] = useState(false);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
       }
-    };
-    
-    fetchUserData();
-  }, [router]);
-  
-  // Manejar cierre de sesión
-  const handleLogout = async () => {
-    try {
-      const supabase = createBrowserSupabaseClient();
-      await supabase.auth.signOut();
-      router.push('/login');
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-      alert('Error al cerrar sesión. Por favor intenta de nuevo.');
     }
   };
-  
-  // Si está cargando, mostrar spinner
-  if (loading) {
-    return (
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          background: '#f5f5f5'
-        }}
-      >
-        <CircularProgress sx={{ color: '#ffcc00', mb: 2 }} />
-        <Typography>Cargando datos del usuario...</Typography>
-      </Box>
-    );
-  }
-  
-  // Si hay error, mostrar mensaje con opción de volver
-  if (error) {
-    return (
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          padding: 3,
-          background: '#f5f5f5'
-        }}
-      >
-        <Alert severity="error" sx={{ mb: 3, width: '100%', maxWidth: 600 }}>
-          {error}
-        </Alert>
-        
-        {debugInfo && (
-          <Box sx={{ mb: 3, width: '100%', maxWidth: 600, bgcolor: '#f8f8f8', p: 2, borderRadius: 1 }}>
-            <Typography variant="subtitle2" gutterBottom>Información de diagnóstico:</Typography>
-            <pre style={{ overflow: 'auto', fontSize: '0.8rem' }}>
-              {JSON.stringify(debugInfo, null, 2)}
-            </pre>
-          </Box>
-        )}
-        
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button 
-            variant="contained"
-            onClick={() => router.refresh()}
-            sx={{ bgcolor: '#ffcc00', color: 'black', '&:hover': { bgcolor: '#e6b800' } }}
-          >
-            Reintentar
-          </Button>
-          
-          <Button 
-            variant="outlined"
-            onClick={() => router.push('/login')}
-          >
-            Volver al inicio de sesión
-          </Button>
-        </Box>
-      </Box>
-    );
-  }
-  
-  // Renderizar el dashboard si todo está bien
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1
+    }
+  };
+
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: 'linear-gradient(145deg, #f5f5f5 0%, #e6e6e6 100%)',
-      py: 4
-    }}>
-      <Container>
-        {/* Cabecera con info del usuario */}
-        <Paper 
-          elevation={2}
-          sx={{ 
-            p: 3, 
-            mb: 4, 
-            borderRadius: '12px',
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: { xs: 'center', sm: 'flex-start' },
-            justifyContent: 'space-between',
-            background: 'linear-gradient(145deg, #ffffff 0%, #f9f9f9 100%)'
-          }}
+    <div className="max-w-7xl mx-auto">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <h1 className="text-4xl font-bold text-white mb-2">
+          Mi <span className="text-[#FFCC00]">Información</span>
+        </h1>
+        <p className="text-gray-400">Gestiona tu perfil y configuración personal</p>
+      </motion.div>
+
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+      >
+        {/* Tarjeta de Perfil Principal */}
+        <motion.div
+          variants={itemVariants}
+          className="lg:col-span-2 bg-gray-900 rounded-2xl border border-gray-800 p-6"
         >
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            mb: { xs: 2, sm: 0 },
-            flexDirection: { xs: 'column', sm: 'row' },
-            textAlign: { xs: 'center', sm: 'left' }
-          }}>
-            <Avatar 
-              src={userProfile?.profilePictureUrl || "/default-avatar.png"} 
-              alt={userProfile?.firstName || "Usuario"}
-              sx={{ 
-                width: 70, 
-                height: 70, 
-                mr: { xs: 0, sm: 2 },
-                mb: { xs: 2, sm: 0 },
-                border: '3px solid #ffcc00'
-              }} 
-            />
-            <Box>
-              <Typography variant="h5" fontWeight={600}>
-                Hola, {userProfile?.firstName || 'Usuario'}
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Membresía: <span style={{ fontWeight: 500, color: '#ffcc00' }}>Cliente</span>
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Button 
-            variant="outlined" 
-            startIcon={<LogoutIcon />}
-            onClick={handleLogout}
-            sx={{ 
-              borderColor: '#ffcc00',
-              color: '#000000',
-              '&:hover': {
-                borderColor: '#e6b800',
-                backgroundColor: 'rgba(255, 204, 0, 0.1)'
-              }
-            }}
-          >
-            Cerrar sesión
-          </Button>
-        </Paper>
-        
-        {/* Menú de opciones */}
-        <Grid container spacing={3}>
-          {/* Tarjeta de asistencias */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 3, 
-                textAlign: 'center',
-                borderRadius: '12px',
-                height: '100%',
-                transition: 'transform 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.1)'
-                },
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onClick={() => alert('Funcionalidad de asistencias en desarrollo')}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-[#FFCC00]">Datos Personales</h2>
+            <button
+              onClick={() => setEditMode(!editMode)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#FFCC00] text-black rounded-lg hover:bg-yellow-500 transition-colors"
             >
-              <Box 
-                sx={{ 
-                  bgcolor: 'rgba(255, 204, 0, 0.1)', 
-                  borderRadius: '50%', 
-                  p: 2, 
-                  mb: 2 
-                }}
-              >
-                <CalendarTodayIcon sx={{ fontSize: 40, color: '#ffcc00' }} />
-              </Box>
-              <Typography variant="h6" fontWeight={600}>
-                Mis Asistencias
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mt={1}>
-                Ver historial de asistencias
-              </Typography>
-            </Paper>
-          </Grid>
-          
-          {/* Tarjeta de rutinas */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 3, 
-                textAlign: 'center',
-                borderRadius: '12px',
-                height: '100%',
-                transition: 'transform 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.1)'
-                },
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onClick={() => alert('Funcionalidad de rutinas en desarrollo')}
-            >
-              <Box 
-                sx={{ 
-                  bgcolor: 'rgba(255, 204, 0, 0.1)', 
-                  borderRadius: '50%', 
-                  p: 2, 
-                  mb: 2 
-                }}
-              >
-                <FitnessCenterIcon sx={{ fontSize: 40, color: '#ffcc00' }} />
-              </Box>
-              <Typography variant="h6" fontWeight={600}>
-                Mis Rutinas
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mt={1}>
-                Ver planes de entrenamiento
-              </Typography>
-            </Paper>
-          </Grid>
-          
-          {/* Tarjeta de pagos */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 3, 
-                textAlign: 'center',
-                borderRadius: '12px',
-                height: '100%',
-                transition: 'transform 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.1)'
-                },
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onClick={() => alert('Funcionalidad de pagos en desarrollo')}
-            >
-              <Box 
-                sx={{ 
-                  bgcolor: 'rgba(255, 204, 0, 0.1)', 
-                  borderRadius: '50%', 
-                  p: 2, 
-                  mb: 2 
-                }}
-              >
-                <PaymentIcon sx={{ fontSize: 40, color: '#ffcc00' }} />
-              </Box>
-              <Typography variant="h6" fontWeight={600}>
-                Mis Pagos
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mt={1}>
-                Historial de pagos y facturas
-              </Typography>
-            </Paper>
-          </Grid>
-          
-          {/* Tarjeta de perfil */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 3, 
-                textAlign: 'center',
-                borderRadius: '12px',
-                height: '100%',
-                transition: 'transform 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.1)'
-                },
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onClick={() => alert('Funcionalidad de perfil en desarrollo')}
-            >
-              <Box 
-                sx={{ 
-                  bgcolor: 'rgba(255, 204, 0, 0.1)', 
-                  borderRadius: '50%', 
-                  p: 2, 
-                  mb: 2 
-                }}
-              >
-                <PersonIcon sx={{ fontSize: 40, color: '#ffcc00' }} />
-              </Box>
-              <Typography variant="h6" fontWeight={600}>
-                Mi Perfil
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mt={1}>
-                Editar mis datos personales
-              </Typography>
-            </Paper>
-          </Grid>
-        </Grid>
-        
-        {/* Próximas clases */}
-        <Paper 
-          elevation={2}
-          sx={{ 
-            p: 3, 
-            mt: 4, 
-            borderRadius: '12px',
-            background: 'linear-gradient(145deg, #ffffff 0%, #f9f9f9 100%)'
-          }}
+              <FaEdit />
+              {editMode ? 'Guardar' : 'Editar'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Nombre */}
+            <div className="space-y-2">
+              <label className="text-gray-400 text-sm flex items-center gap-2">
+                <FaUser className="text-[#FFCC00]" />
+                Nombre
+              </label>
+              {editMode ? (
+                <input
+                  type="text"
+                  value={userInfo.nombre}
+                  onChange={(e) => setUserInfo({...userInfo, nombre: e.target.value})}
+                  className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-[#FFCC00] focus:outline-none"
+                />
+              ) : (
+                <p className="text-white text-lg">{userInfo.nombre}</p>
+              )}
+            </div>
+
+            {/* Apellidos */}
+            <div className="space-y-2">
+              <label className="text-gray-400 text-sm flex items-center gap-2">
+                <FaUser className="text-[#FFCC00]" />
+                Apellidos
+              </label>
+              {editMode ? (
+                <input
+                  type="text"
+                  value={userInfo.apellidos}
+                  onChange={(e) => setUserInfo({...userInfo, apellidos: e.target.value})}
+                  className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-[#FFCC00] focus:outline-none"
+                />
+              ) : (
+                <p className="text-white text-lg">{userInfo.apellidos}</p>
+              )}
+            </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <label className="text-gray-400 text-sm flex items-center gap-2">
+                <FaEnvelope className="text-[#FFCC00]" />
+                Email
+              </label>
+              {editMode ? (
+                <input
+                  type="email"
+                  value={userInfo.email}
+                  onChange={(e) => setUserInfo({...userInfo, email: e.target.value})}
+                  className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-[#FFCC00] focus:outline-none"
+                />
+              ) : (
+                <p className="text-white text-lg">{userInfo.email}</p>
+              )}
+            </div>
+
+            {/* Teléfono */}
+            <div className="space-y-2">
+              <label className="text-gray-400 text-sm flex items-center gap-2">
+                <FaPhone className="text-[#FFCC00]" />
+                Teléfono
+              </label>
+              {editMode ? (
+                <input
+                  type="tel"
+                  value={userInfo.telefono}
+                  onChange={(e) => setUserInfo({...userInfo, telefono: e.target.value})}
+                  className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-[#FFCC00] focus:outline-none"
+                />
+              ) : (
+                <p className="text-white text-lg">{userInfo.telefono}</p>
+              )}
+            </div>
+
+            {/* Fecha de Nacimiento */}
+            <div className="space-y-2">
+              <label className="text-gray-400 text-sm flex items-center gap-2">
+                <FaCalendar className="text-[#FFCC00]" />
+                Fecha de Nacimiento
+              </label>
+              <p className="text-white text-lg">
+                {new Date(userInfo.fechaNacimiento).toLocaleDateString('es-MX', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+
+            {/* Número de Cliente */}
+            <div className="space-y-2">
+              <label className="text-gray-400 text-sm flex items-center gap-2">
+                <FaIdCard className="text-[#FFCC00]" />
+                Número de Cliente
+              </label>
+              <p className="text-white text-lg font-mono">{userInfo.numeroCliente}</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Tarjeta de Membresía */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-gradient-to-br from-[#FFCC00] to-yellow-600 rounded-2xl p-6 text-black"
         >
-          <Typography variant="h5" fontWeight={600} mb={3}>
-            Próximas clases
-          </Typography>
-          
-          <Box sx={{ 
-            p: 2, 
-            bgcolor: 'rgba(255, 204, 0, 0.1)', 
-            borderRadius: '8px',
-            textAlign: 'center',
-            border: '1px dashed #ffcc00'
-          }}>
-            <Typography>
-              No hay clases programadas. ¡Consulta los horarios disponibles!
-            </Typography>
-          </Box>
-        </Paper>
-        
-        {/* Footer */}
-        <Box 
-          sx={{ 
-            mt: 5, 
-            pt: 2, 
-            borderTop: '1px solid rgba(0,0,0,0.1)',
-            textAlign: 'center'
-          }}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-2xl font-bold">Mi Membresía</h3>
+            <FaDumbbell className="text-3xl" />
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm opacity-80">Tipo de Plan</p>
+              <p className="text-xl font-bold">{userInfo.membresia.tipo}</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <FaCheckCircle className="text-green-800" />
+              <span className="font-semibold">{userInfo.membresia.estado}</span>
+            </div>
+
+            <div className="pt-4 border-t border-black/20">
+              <p className="text-sm opacity-80">Vence el</p>
+              <p className="text-lg font-bold">
+                {new Date(userInfo.membresia.vencimiento).toLocaleDateString('es-MX', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+
+            <button className="w-full mt-4 bg-black text-[#FFCC00] py-3 rounded-lg font-bold hover:bg-gray-900 transition-colors">
+              Renovar Membresía
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Estadísticas Rápidas */}
+        <motion.div
+          variants={itemVariants}
+          className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6"
         >
-          <Typography variant="body2" color="text.secondary">
-            © {new Date().getFullYear()} Muscle Up Gym | Todos los derechos reservados
-          </Typography>
-          <Typography 
-            variant="body2" 
-            sx={{ mt: 1, fontStyle: 'italic', fontWeight: 500 }}
-          >
-            "Tu salud y bienestar es nuestra misión"
-          </Typography>
-        </Box>
-      </Container>
-    </Box>
+          {/* Días como miembro */}
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-center">
+            <FaClock className="text-4xl text-[#FFCC00] mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">Miembro desde hace</p>
+            <p className="text-2xl font-bold text-white">
+              {Math.floor((new Date().getTime() - new Date(userInfo.fechaRegistro).getTime()) / (1000 * 60 * 60 * 24))} días
+            </p>
+          </div>
+
+          {/* Visitas este mes */}
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-center">
+            <FaDumbbell className="text-4xl text-[#FFCC00] mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">Visitas este mes</p>
+            <p className="text-2xl font-bold text-white">12</p>
+          </div>
+
+          {/* Próximo pago */}
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-center">
+            <FaCalendar className="text-4xl text-[#FFCC00] mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">Días para renovar</p>
+            <p className="text-2xl font-bold text-white">
+              {Math.ceil((new Date(userInfo.membresia.vencimiento).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+            </p>
+          </div>
+        </motion.div>
+      </motion.div>
+    </div>
   );
 }
