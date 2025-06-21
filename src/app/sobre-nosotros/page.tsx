@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import Image from 'next/image';
 import { 
   FaBullseye, 
   FaEye, 
@@ -67,19 +68,75 @@ export default function SobreNosotrosPage() {
           transition={{ duration: 1 }}
           className="relative z-10 text-center px-4"
         >
-          <motion.h1 
-            className="text-6xl md:text-8xl font-bold text-white mb-4"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, type: "spring" }}
+          {/* Logo con animaciones profesionales */}
+          <motion.div
+            className="relative w-64 h-64 md:w-80 md:h-80 mx-auto mb-8"
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ 
+              duration: 1.2, 
+              type: "spring",
+              stiffness: 100,
+              damping: 15
+            }}
           >
-            MUSCLE <span className="text-[#FFCC00]">UP</span> GYM
-          </motion.h1>
+            {/* Efecto de resplandor pulsante */}
+            <motion.div
+              className="absolute inset-0 bg-[#FFCC00] rounded-full blur-3xl opacity-30"
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.5, 0.3]
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
+            
+            {/* Logo principal */}
+            <motion.div
+              className="relative w-full h-full"
+              animate={{
+                rotateY: [0, 360]
+              }}
+              transition={{
+                duration: 20,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            >
+              <Image
+                src="/logo.png"
+                alt="MuscleUp Gym Logo"
+                fill
+                className="object-contain drop-shadow-2xl"
+                priority
+              />
+            </motion.div>
+
+            {/* Anillo orbital */}
+            <motion.div
+              className="absolute inset-0"
+              animate={{ rotate: 360 }}
+              transition={{
+                duration: 10,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            >
+              <div className="absolute top-0 left-1/2 w-2 h-2 bg-[#FFCC00] rounded-full transform -translate-x-1/2 -translate-y-4" />
+              <div className="absolute bottom-0 left-1/2 w-2 h-2 bg-[#FFCC00] rounded-full transform -translate-x-1/2 translate-y-4" />
+              <div className="absolute left-0 top-1/2 w-2 h-2 bg-[#FFCC00] rounded-full transform -translate-y-1/2 -translate-x-4" />
+              <div className="absolute right-0 top-1/2 w-2 h-2 bg-[#FFCC00] rounded-full transform -translate-y-1/2 translate-x-4" />
+            </motion.div>
+          </motion.div>
+
           <motion.p 
             className="text-xl md:text-2xl text-gray-300"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
+            transition={{ delay: 1.2, duration: 0.8 }}
           >
             Más que un gimnasio, una familia
           </motion.p>
@@ -264,7 +321,7 @@ export default function SobreNosotrosPage() {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => window.location.href = '/registromup'}
+          onClick={() => window.location.href = '/registro/paso1'}
           className="bg-gradient-to-r from-[#FFCC00] to-yellow-500 text-black font-bold py-4 px-8 rounded-full text-lg shadow-lg hover:shadow-[#FFCC00]/50 transition-all duration-300"
         >
           ÚNETE AHORA
