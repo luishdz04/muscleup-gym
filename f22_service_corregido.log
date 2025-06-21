@@ -1,0 +1,171 @@
+2025-06-19 02:27:19,657 [INFO] 🚀================================================================================
+2025-06-19 02:27:19,657 [INFO] 🚀 INICIANDO F22 WEBSOCKET SERVICE - VERSIÓN DEFINITIVA CORREGIDA
+2025-06-19 02:27:19,658 [INFO] 🚀================================================================================
+2025-06-19 02:27:19,658 [INFO] 📅 Fecha: 2025-06-19 07:55:45 UTC
+2025-06-19 02:27:19,658 [INFO] 👤 Desarrollado por: luishdz04
+2025-06-19 02:27:19,658 [INFO] 🔧 SDK: Oficial ZKTeco (zkemkeeper.dll)
+2025-06-19 02:27:19,658 [INFO] 🌐 Puerto WebSocket: 8082
+2025-06-19 02:27:19,660 [INFO] 🏢 Dispositivo F22: 192.168.1.201:4370
+2025-06-19 02:27:19,661 [INFO] 🎯 Máquina: 1
+2025-06-19 02:27:19,661 [INFO] 
+2025-06-19 02:27:19,661 [INFO] ✅ FUNCIONES OFICIALES CORREGIDAS VERIFICADAS:
+2025-06-19 02:27:19,661 [INFO]    🔧 SetUserTmpExStr - Template como string base64 (CONFIRMADO FUNCIONAL)
+2025-06-19 02:27:19,661 [INFO]    🔧 SSR_DelUserTmpExt - Eliminación específica de templates (PRINCIPAL)
+2025-06-19 02:27:19,661 [INFO]    🔧 SSR_DelUserTmp - Eliminación fallback
+2025-06-19 02:27:19,661 [INFO]    🔧 SSR_DeleteEnrollData - Eliminación por BackupNumber
+2025-06-19 02:27:19,661 [INFO]    🔧 ClearData - Limpieza total del dispositivo
+2025-06-19 02:27:19,661 [INFO]    🔧 SSR_SetUserInfo - Información de usuario
+2025-06-19 02:27:19,661 [INFO]    🔧 RefreshData - Actualización de dispositivo
+2025-06-19 02:27:19,661 [INFO]    🔧 Connect_Net, Disconnect, EnableDevice
+2025-06-19 02:27:19,661 [INFO]    🔧 GetLastError, GetVendor, GetFirmwareVersion
+2025-06-19 02:27:19,661 [INFO]    🏢 Integración Supabase - Nombres formato 'MUP - Nombre Apellido'
+2025-06-19 02:27:19,661 [INFO]    🛡️ Manejo COM robusto con interpretación correcta de códigos
+2025-06-19 02:27:19,661 [INFO]    📊 Logging completo - Trazabilidad total con códigos específicos
+2025-06-19 02:27:19,661 [INFO] ✅ Configuración Supabase: ACTIVA
+2025-06-19 02:27:19,661 [INFO]    📡 URL: https://tyuuyqypgwvdtpfvumxx.supabase.co
+2025-06-19 02:27:19,661 [INFO] 🚀================================================================================
+2025-06-19 02:27:19,674 [INFO] server listening on 127.0.0.1:8082
+2025-06-19 02:27:19,674 [INFO] ✅ Servidor WebSocket ACTIVO en ws://127.0.0.1:8082
+2025-06-19 02:27:19,674 [INFO] ⏳ Esperando conexiones de clientes...
+2025-06-19 02:27:19,675 [INFO] 🔄 Servicio listo para operaciones de sincronización...
+2025-06-19 02:27:19,675 [INFO] 🎯 GARANTÍA: Funciones oficiales ZKTeco corregidas y verificadas
+2025-06-19 02:27:19,675 [INFO] ✅ GUARDADO: SetUserTmpExStr confirmado funcional en logs
+2025-06-19 02:27:19,675 [INFO] 🗑️ BORRADO: SSR_DelUserTmpExt implementado según documentación
+2025-06-19 02:29:39,084 [INFO] connection open
+2025-06-19 02:29:39,085 [INFO] 🔌 [WS] Cliente conectado: 1570450351040
+2025-06-19 02:29:39,087 [INFO] 🎯 [MSG] Acción recibida: connect_device
+2025-06-19 02:29:39,088 [INFO] 🔌 [CONNECT] Conectando a F22 en 192.168.1.201:4370...
+2025-06-19 02:29:39,816 [INFO] ✅ [CONNECT] Conexión exitosa con F22 usando SDK oficial
+2025-06-19 02:29:39,951 [INFO] 🎯 [MSG] Acción recibida: sync_template_from_db
+2025-06-19 02:29:39,952 [INFO] 🔄 [MSG] Iniciando sync_template_from_db para usuario 7265
+2025-06-19 02:29:39,952 [INFO] 🔄 [SYNC] Iniciando sincronización de template desde BD...
+2025-06-19 02:29:39,952 [INFO] 🔍 [SYNC] Consultando nombre para usuario UUID: 67378a76-78dc-49d9-9864-83aef6754961
+2025-06-19 02:29:39,952 [INFO] 🔍 [SUPABASE] Consultando usuario: 67378a76-78dc-49d9-9864-83aef6754961
+2025-06-19 02:29:41,019 [INFO] HTTP Request: GET https://tyuuyqypgwvdtpfvumxx.supabase.co/rest/v1/Users?select=firstName%2ClastName&id=eq.67378a76-78dc-49d9-9864-83aef6754961 "HTTP/1.1 200 OK"
+2025-06-19 02:29:41,020 [INFO] ✅ [SUPABASE] Nombre obtenido: 'MUP - Erick Francisco De Luna'
+2025-06-19 02:29:41,021 [INFO] 🔄 [SYNC] === DATOS DE SINCRONIZACIÓN ===
+2025-06-19 02:29:41,021 [INFO] 👤 [SYNC] Usuario: 7265 - 'MUP - Erick Francisco De Luna'
+2025-06-19 02:29:41,021 [INFO] 🖐️ [SYNC] Dedo: Frontend 8 → ZKTeco 7 (Medio Izquierdo)
+2025-06-19 02:29:41,022 [INFO] 👤 [SYNC] Configurando usuario en F22...
+2025-06-19 02:29:41,940 [INFO] ✅ [SYNC] Usuario configurado en F22: MUP - Erick Francisco De Luna
+2025-06-19 02:29:41,940 [INFO] 🖐️ [SYNC] Guardando template de huella en F22...
+2025-06-19 02:29:41,940 [INFO] 🔧 [SYNC] Método 1: SetUserTmpExStr (CONFIRMADO FUNCIONAL)...
+2025-06-19 02:29:42,969 [INFO] ✅ [SYNC] Template guardado exitosamente con SetUserTmpExStr
+2025-06-19 02:29:42,970 [INFO] 🔄 [SYNC] Refrescando datos del dispositivo...
+2025-06-19 02:29:43,018 [INFO] ✅ [SYNC] Datos del dispositivo refrescados
+2025-06-19 02:29:43,018 [INFO] 🎉 [SYNC] === SINCRONIZACIÓN COMPLETADA EXITOSAMENTE ===
+2025-06-19 02:29:43,022 [INFO] ℹ️ [WS] No hay más clientes, desconectando del F22...
+2025-06-19 02:29:43,023 [INFO] 🔌 [DISCONNECT] Desconectando del F22...
+2025-06-19 02:29:43,171 [INFO] ✅ [DISCONNECT] Desconectado de F22
+2025-06-19 02:35:31,200 [INFO] connection open
+2025-06-19 02:35:31,200 [INFO] 🔌 [WS] Cliente conectado: 1570450205072
+2025-06-19 02:35:31,259 [INFO] 🎯 [MSG] Acción recibida: connect_device
+2025-06-19 02:35:31,263 [INFO] 🔌 [CONNECT] Conectando a F22 en 192.168.1.201:4370...
+2025-06-19 02:35:31,897 [INFO] ✅ [CONNECT] Conexión exitosa con F22 usando SDK oficial
+2025-06-19 02:35:32,012 [INFO] 🎯 [MSG] Acción recibida: delete_user
+2025-06-19 02:35:32,012 [INFO] 🗑️ [MSG] Solicitud eliminación: Usuario 7265, Dedo None
+2025-06-19 02:35:32,013 [INFO] 🗑️ [DELETE-ALL] Eliminando todas las huellas del usuario 7265...
+2025-06-19 02:35:32,047 [INFO] ✅ [DELETE-ALL] Template FID:0 eliminado
+2025-06-19 02:35:32,088 [INFO] ✅ [DELETE-ALL] Template FID:1 eliminado
+2025-06-19 02:35:32,127 [INFO] ✅ [DELETE-ALL] Template FID:2 eliminado
+2025-06-19 02:35:32,178 [INFO] ✅ [DELETE-ALL] Template FID:3 eliminado
+2025-06-19 02:35:32,218 [INFO] ✅ [DELETE-ALL] Template FID:4 eliminado
+2025-06-19 02:35:32,307 [INFO] ✅ [DELETE-ALL] Template FID:6 eliminado
+2025-06-19 02:35:32,588 [INFO] ✅ [DELETE-ALL] Template FID:8 eliminado
+2025-06-19 02:35:32,638 [INFO] ✅ [DELETE-ALL] Template FID:9 eliminado
+2025-06-19 02:35:32,681 [INFO] ℹ️ [WS] No hay más clientes, desconectando del F22...
+2025-06-19 02:35:32,681 [INFO] 🔌 [DISCONNECT] Desconectando del F22...
+2025-06-19 02:35:32,808 [INFO] ✅ [DISCONNECT] Desconectado de F22
+2025-06-19 02:40:00,780 [INFO] server closing
+2025-06-19 02:40:00,781 [INFO] server closed
+2025-06-19 02:40:00,782 [INFO] ⛔ Servicio detenido por el usuario
+2025-06-19 02:53:38,524 [INFO] 🚀================================================================================
+2025-06-19 02:53:38,525 [INFO] 🚀 INICIANDO F22 WEBSOCKET SERVICE - VERSIÓN DEFINITIVA CORREGIDA
+2025-06-19 02:53:38,525 [INFO] 🚀================================================================================
+2025-06-19 02:53:38,525 [INFO] 📅 Fecha: 2025-06-19 07:55:45 UTC
+2025-06-19 02:53:38,525 [INFO] 👤 Desarrollado por: luishdz04
+2025-06-19 02:53:38,525 [INFO] 🔧 SDK: Oficial ZKTeco (zkemkeeper.dll)
+2025-06-19 02:53:38,525 [INFO] 🌐 Puerto WebSocket: 8082
+2025-06-19 02:53:38,526 [INFO] 🏢 Dispositivo F22: 192.168.1.201:4370
+2025-06-19 02:53:38,526 [INFO] 🎯 Máquina: 1
+2025-06-19 02:53:38,526 [INFO] 
+2025-06-19 02:53:38,526 [INFO] ✅ FUNCIONES OFICIALES CORREGIDAS VERIFICADAS:
+2025-06-19 02:53:38,526 [INFO]    🔧 SetUserTmpExStr - Template como string base64 (CONFIRMADO FUNCIONAL)
+2025-06-19 02:53:38,526 [INFO]    🔧 SSR_DelUserTmpExt - Eliminación específica de templates (PRINCIPAL)
+2025-06-19 02:53:38,526 [INFO]    🔧 SSR_DelUserTmp - Eliminación fallback
+2025-06-19 02:53:38,526 [INFO]    🔧 SSR_DeleteEnrollData - Eliminación por BackupNumber
+2025-06-19 02:53:38,527 [INFO]    🔧 ClearData - Limpieza total del dispositivo
+2025-06-19 02:53:38,527 [INFO]    🔧 SSR_SetUserInfo - Información de usuario
+2025-06-19 02:53:38,527 [INFO]    🔧 RefreshData - Actualización de dispositivo
+2025-06-19 02:53:38,527 [INFO]    🔧 Connect_Net, Disconnect, EnableDevice
+2025-06-19 02:53:38,527 [INFO]    🔧 GetLastError, GetVendor, GetFirmwareVersion
+2025-06-19 02:53:38,527 [INFO]    🏢 Integración Supabase - Nombres formato 'MUP - Nombre Apellido'
+2025-06-19 02:53:38,527 [INFO]    🛡️ Manejo COM robusto con interpretación correcta de códigos
+2025-06-19 02:53:38,528 [INFO]    📊 Logging completo - Trazabilidad total con códigos específicos
+2025-06-19 02:53:38,528 [INFO] ✅ Configuración Supabase: ACTIVA
+2025-06-19 02:53:38,528 [INFO]    📡 URL: https://tyuuyqypgwvdtpfvumxx.supabase.co
+2025-06-19 02:53:38,528 [INFO] 🚀================================================================================
+2025-06-19 02:53:38,546 [INFO] server listening on 127.0.0.1:8082
+2025-06-19 02:53:38,546 [INFO] ✅ Servidor WebSocket ACTIVO en ws://127.0.0.1:8082
+2025-06-19 02:53:38,546 [INFO] ⏳ Esperando conexiones de clientes...
+2025-06-19 02:53:38,546 [INFO] 🔄 Servicio listo para operaciones de sincronización...
+2025-06-19 02:53:38,546 [INFO] 🎯 GARANTÍA: Funciones oficiales ZKTeco corregidas y verificadas
+2025-06-19 02:53:38,546 [INFO] ✅ GUARDADO: SetUserTmpExStr confirmado funcional en logs
+2025-06-19 02:53:38,546 [INFO] 🗑️ BORRADO: SSR_DelUserTmpExt implementado según documentación
+2025-06-19 02:53:44,145 [INFO] connection open
+2025-06-19 02:53:44,145 [INFO] 🔌 [WS] Cliente conectado: 2746153411520
+2025-06-19 02:53:44,146 [INFO] 🎯 [MSG] Acción recibida: connect_device
+2025-06-19 02:53:44,147 [INFO] 🔌 [CONNECT] Conectando a F22 en 192.168.1.201:4370...
+2025-06-19 02:53:44,907 [INFO] ✅ [CONNECT] Conexión exitosa con F22 usando SDK oficial
+2025-06-19 02:53:45,004 [INFO] 🎯 [MSG] Acción recibida: sync_template_from_db
+2025-06-19 02:53:45,004 [INFO] 🔄 [MSG] Iniciando sync_template_from_db para usuario 7265
+2025-06-19 02:53:45,004 [INFO] 🔄 [SYNC] Iniciando sincronización de template desde BD...
+2025-06-19 02:53:45,004 [INFO] 🔍 [SYNC] Consultando nombre para usuario UUID: 67378a76-78dc-49d9-9864-83aef6754961
+2025-06-19 02:53:45,005 [INFO] 🔍 [SUPABASE] Consultando usuario: 67378a76-78dc-49d9-9864-83aef6754961
+2025-06-19 02:53:46,079 [INFO] HTTP Request: GET https://tyuuyqypgwvdtpfvumxx.supabase.co/rest/v1/Users?select=firstName%2ClastName&id=eq.67378a76-78dc-49d9-9864-83aef6754961 "HTTP/1.1 200 OK"
+2025-06-19 02:53:46,081 [INFO] ✅ [SUPABASE] Nombre obtenido: 'MUP - Erick Francisco De Luna'
+2025-06-19 02:53:46,081 [INFO] 🔄 [SYNC] === DATOS DE SINCRONIZACIÓN ===
+2025-06-19 02:53:46,082 [INFO] 👤 [SYNC] Usuario: 7265 - 'MUP - Erick Francisco De Luna'
+2025-06-19 02:53:46,082 [INFO] 🖐️ [SYNC] Dedo: Frontend 8 → ZKTeco 7 (Medio Izquierdo)
+2025-06-19 02:53:46,082 [INFO] 👤 [SYNC] Configurando usuario en F22...
+2025-06-19 02:53:46,944 [INFO] ✅ [SYNC] Usuario configurado en F22: MUP - Erick Francisco De Luna
+2025-06-19 02:53:46,945 [INFO] 🖐️ [SYNC] Guardando template de huella en F22...
+2025-06-19 02:53:46,945 [INFO] 🔧 [SYNC] Método 1: SetUserTmpExStr (CONFIRMADO FUNCIONAL)...
+2025-06-19 02:53:47,929 [INFO] ✅ [SYNC] Template guardado exitosamente con SetUserTmpExStr
+2025-06-19 02:53:47,929 [INFO] 🔄 [SYNC] Refrescando datos del dispositivo...
+2025-06-19 02:53:47,976 [INFO] ✅ [SYNC] Datos del dispositivo refrescados
+2025-06-19 02:53:47,977 [INFO] 🎉 [SYNC] === SINCRONIZACIÓN COMPLETADA EXITOSAMENTE ===
+2025-06-19 02:53:47,983 [INFO] ℹ️ [WS] No hay más clientes, desconectando del F22...
+2025-06-19 02:53:47,983 [INFO] 🔌 [DISCONNECT] Desconectando del F22...
+2025-06-19 02:53:48,121 [INFO] ✅ [DISCONNECT] Desconectado de F22
+2025-06-19 02:55:19,370 [INFO] connection open
+2025-06-19 02:55:19,370 [INFO] 🔌 [WS] Cliente conectado: 2746153265552
+2025-06-19 02:55:19,430 [INFO] 🎯 [MSG] Acción recibida: connect_device
+2025-06-19 02:55:19,430 [INFO] 🔌 [CONNECT] Conectando a F22 en 192.168.1.201:4370...
+2025-06-19 02:55:20,139 [INFO] ✅ [CONNECT] Conexión exitosa con F22 usando SDK oficial
+2025-06-19 02:55:20,232 [INFO] 🎯 [MSG] Acción recibida: delete_user
+2025-06-19 02:55:20,232 [INFO] 🗑️ [MSG] Solicitud eliminación: Usuario 7265, Dedo 8
+2025-06-19 02:55:20,233 [INFO] 🗑️ [DELETE] === INICIANDO ELIMINACIÓN DE HUELLA ESPECÍFICA ===
+2025-06-19 02:55:20,233 [INFO] 👤 [DELETE] Usuario: 7265
+2025-06-19 02:55:20,233 [INFO] 🖐️ [DELETE] Dedo solicitado: 8
+2025-06-19 02:55:20,233 [INFO] 🔄 [DELETE] Conversión: Frontend 8 → ZKTeco 7 (Medio Izquierdo)
+2025-06-19 02:55:20,234 [INFO] 🗑️ [DELETE] Eliminando template del F22...
+2025-06-19 02:55:20,234 [INFO] 🔧 [DELETE] Método 1: SSR_DelUserTmpExt (PRINCIPAL)...
+2025-06-19 02:55:20,540 [INFO] 📊 [DELETE] Resultado SSR_DelUserTmpExt: True, Error Code: 1
+2025-06-19 02:55:20,540 [WARNING] ⚠️ [DELETE] SSR_DelUserTmpExt retornó código: 1
+2025-06-19 02:55:20,541 [INFO] 🔧 [DELETE] Método 2: SSR_DelUserTmp (fallback 1)...
+2025-06-19 02:55:21,289 [INFO] 📊 [DELETE] Resultado SSR_DelUserTmp: True, Error Code: 1
+2025-06-19 02:55:21,290 [WARNING] ⚠️ [DELETE] SSR_DelUserTmp código: 1
+2025-06-19 02:55:21,291 [INFO] 🔧 [DELETE] Método 3: SSR_DeleteEnrollData (fallback 2)...
+2025-06-19 02:55:23,889 [INFO] 📊 [DELETE] Resultado SSR_DeleteEnrollData: True, Error Code: 1
+2025-06-19 02:55:23,890 [WARNING] ⚠️ [DELETE] SSR_DeleteEnrollData código: 1
+2025-06-19 02:55:23,891 [INFO] 🔄 [DELETE] Refrescando datos del dispositivo...
+2025-06-19 02:55:23,929 [INFO] ✅ [DELETE] Datos del dispositivo refrescados
+2025-06-19 02:55:23,930 [INFO] 🎉 [DELETE] === ELIMINACIÓN DE HUELLA COMPLETADA ===
+2025-06-19 02:55:23,930 [WARNING] ⚠️ [DELETE] No se pudo confirmar eliminación: SSR_DeleteEnrollData código: 1
+2025-06-19 02:55:23,933 [INFO] ℹ️ [WS] No hay más clientes, desconectando del F22...
+2025-06-19 02:55:23,934 [INFO] 🔌 [DISCONNECT] Desconectando del F22...
+2025-06-19 02:55:24,080 [INFO] ✅ [DISCONNECT] Desconectado de F22
+2025-06-19 03:15:17,205 [INFO] server closing
+2025-06-19 03:15:17,206 [INFO] server closed
+2025-06-19 03:15:17,208 [INFO] ⛔ Servicio detenido por el usuario

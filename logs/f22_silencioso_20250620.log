@@ -1,0 +1,1257 @@
+2025-06-20 02:37:22,698 [INFO] 
+🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:37:22,698 [INFO] [STARTUP] SERVICIO F22 v5.2 SILENCIOSO - FEEDBACK MANUAL
+2025-06-20 02:37:22,698 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:37:22,698 [INFO] [INFO] 📅 Fecha/Hora: 2025-06-20 08:33:53 UTC
+2025-06-20 02:37:22,701 [INFO] [INFO] 👤 Usuario: mupai555
+2025-06-20 02:37:22,701 [INFO] [INFO] 🔒 Modo de seguridad: ULTRA_STRICT
+2025-06-20 02:37:22,701 [INFO] [INFO] 🔇 Modo silencioso: True (TRUE = ACTIVO)
+2025-06-20 02:37:22,702 [INFO] [INFO] 🔊 Feedback manual: True (TRUE = ACTIVO)
+2025-06-20 02:37:22,702 [INFO] [INFO] 🌐 Dispositivo F22: 192.168.1.201:4370
+2025-06-20 02:37:22,702 [INFO] [INFO] 🎯 Puerto WebSocket: 8082
+2025-06-20 02:37:22,702 [INFO] 
+2025-06-20 02:37:22,702 [INFO] [DIAGNOSIS] ✅ EVENTOS COM CONFIRMADOS + MODO SILENCIOSO:
+2025-06-20 02:37:22,702 [INFO]    🎯 OnAttTransactionEx: FUNCIONANDO
+2025-06-20 02:37:22,702 [INFO]    👤 Usuario 7265: DETECTADO
+2025-06-20 02:37:22,702 [INFO]    ✅ Huella válida: CONFIRMADA
+2025-06-20 02:37:22,702 [INFO]    🔇 F22 SILENCIOSO: Sin feedback automático
+2025-06-20 02:37:22,702 [INFO]    🔊 SOFTWARE controla: Sonidos + Apertura
+2025-06-20 02:37:22,702 [INFO] 
+2025-06-20 02:37:22,702 [INFO] [FEATURES] 🛡️ CARACTERÍSTICAS SILENCIOSAS FUNCIONALES:
+2025-06-20 02:37:22,702 [INFO]    ✅ STA Thread para eventos COM SILENCIOSOS
+2025-06-20 02:37:22,702 [INFO]    ✅ F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:37:22,702 [INFO]    ✅ 🔇 F22 NO da feedback hasta que SOFTWARE decida
+2025-06-20 02:37:22,702 [INFO]    ✅ 🔊 Control MANUAL de sonidos por SOFTWARE
+2025-06-20 02:37:22,703 [INFO]    ✅ 🔓 Control MANUAL de apertura por SOFTWARE
+2025-06-20 02:37:22,703 [INFO]    ✅ 🔐 Validación BULLETPROOF con horarios corregidos
+2025-06-20 02:37:22,703 [INFO]    ✅ 📋 Integración completa con BD
+2025-06-20 02:37:22,703 [INFO]    ✅ 📊 Logs automáticos en access_logs
+2025-06-20 02:37:22,703 [INFO]    ✅ 🎯 Feedback personalizado según decisión software
+2025-06-20 02:37:22,703 [INFO]    ✅ 🚨 CERO confusión para usuarios
+2025-06-20 02:37:22,703 [INFO]    ✅ 🎮 API WebSocket completa con control manual
+2025-06-20 02:37:22,703 [INFO]    ✅ 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:37:22,703 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:37:22,703 [INFO] [STARTUP] 🔗 Iniciando conexión F22 SILENCIOSA...
+2025-06-20 02:37:22,703 [INFO] [SERVICE] 🚀 Iniciando servicio F22 SILENCIOSO FUNCIONAL v5.2...
+2025-06-20 02:37:22,703 [INFO] [VERIFY] 🔍 Verificando conexión a Supabase...
+2025-06-20 02:37:23,586 [INFO] [VERIFY] ✅ Conexión a Supabase verificada
+2025-06-20 02:37:23,587 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL inicializado
+2025-06-20 02:37:23,588 [INFO] [STA_THREAD] ✅ COM inicializado en modo STA
+2025-06-20 02:37:23,589 [INFO] [STA_THREAD] 🔗 Conectando a F22 SILENCIOSO en 192.168.1.201:4370
+2025-06-20 02:37:24,312 [INFO] [STA_THREAD] ✅ Conectado al F22
+2025-06-20 02:37:24,312 [INFO] [STA_THREAD] 📋 Info dispositivo: {'serial': 'BOCK192461543', 'firmware': 'Unknown'}
+2025-06-20 02:37:24,312 [INFO] [SILENT] 🔧 Aplicando configuración SILENCIOSA FUNCIONAL...
+2025-06-20 02:37:24,503 [INFO] [SILENT] ✅ VerifyMode = 1
+2025-06-20 02:37:24,593 [INFO] [SUCCESS] ✅ Servicio F22 SILENCIOSO FUNCIONAL iniciado
+2025-06-20 02:37:24,594 [INFO] [SUCCESS] 🔇 Eventos COM SILENCIOSOS activos
+2025-06-20 02:37:24,595 [INFO] [SUCCESS] 🎯 Validación con tu BD activa
+2025-06-20 02:37:24,596 [INFO] [SUCCESS] 🔊 Control manual de sonidos por SOFTWARE
+2025-06-20 02:37:24,596 [INFO] [SUCCESS] 🔓 Control de puerta funcional
+2025-06-20 02:37:24,597 [INFO] [SUCCESS] 🚨 F22 configurado en VERIFICACIÓN SILENCIOSA
+2025-06-20 02:37:24,597 [INFO] [SUCCESS] 💡 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:37:24,598 [INFO] [STARTUP] ✅ Conexión F22 SILENCIOSA establecida
+2025-06-20 02:37:24,599 [INFO] [STARTUP] 🌐 Iniciando WebSocket F22 SILENCIOSO...
+2025-06-20 02:37:24,615 [INFO] [SUCCESS] 🚀 Sistema F22 SILENCIOSO activo en puerto 8082
+2025-06-20 02:37:24,616 [INFO] 
+2025-06-20 02:37:24,616 [INFO] [READY] 🔇 Sistema listo - CON VERIFICACIÓN SILENCIOSA
+2025-06-20 02:37:24,616 [INFO] [READY] 🎯 F22 configurado para NO dar feedback automático
+2025-06-20 02:37:24,616 [INFO] [READY] 🔊 SOFTWARE controla sonidos y apertura
+2025-06-20 02:37:24,616 [INFO] [READY] 📊 Logs automáticos en access_logs activos
+2025-06-20 02:37:24,616 [INFO] [READY] 🚨 CERO confusión para usuarios
+2025-06-20 02:37:24,616 [INFO] 
+2025-06-20 02:37:24,616 [INFO] [CONFIRMED] 🎉 FUNCIONAMIENTO SILENCIOSO CONFIRMADO:
+2025-06-20 02:37:24,616 [INFO]    1. ✅ Eventos COM funcionando perfectamente
+2025-06-20 02:37:24,616 [INFO]    2. ✅ F22 configurado en modo silencioso
+2025-06-20 02:37:24,617 [INFO]    3. ✅ Validación BULLETPROOF lista
+2025-06-20 02:37:24,617 [INFO]    4. ✅ Control manual de feedback funcional
+2025-06-20 02:37:24,617 [INFO]    5. ✅ Logs automáticos activos
+2025-06-20 02:37:24,617 [INFO] 
+2025-06-20 02:37:24,617 [INFO] [BEHAVIOR] 🔇 COMPORTAMIENTO ESPERADO:
+2025-06-20 02:37:24,617 [INFO]    1. 👆 Usuario pone dedo → F22: 🔇 (silencio total)
+2025-06-20 02:37:24,617 [INFO]    2. 💻 SOFTWARE valida → Membresía/horario/etc
+2025-06-20 02:37:24,617 [INFO]    3a. ✅ SI autorizado → SOFTWARE: 🔊 beep éxito + 🔓 abre puerta
+2025-06-20 02:37:24,617 [INFO]    3b. ❌ SI denegado → SOFTWARE: 🔊 beep error + 🚪 puerta cerrada
+2025-06-20 02:37:24,617 [INFO]    4. 👤 Usuario recibe feedback CORRECTO según decisión
+2025-06-20 02:37:24,617 [INFO] 
+2025-06-20 02:37:24,617 [INFO] [TEST] 🧪 PRUEBA LAS FUNCIONALIDADES:
+2025-06-20 02:37:24,617 [INFO]    1. 👤 Usuario CON membresía → F22 silencioso → SOFTWARE autoriza con sonido
+2025-06-20 02:37:24,618 [INFO]    2. ❌ Usuario SIN membresía → F22 silencioso → SOFTWARE deniega con sonido
+2025-06-20 02:37:24,618 [INFO]    3. 🔊 Probar sonidos manuales → 'test_success_sound', 'test_denied_sound'
+2025-06-20 02:37:24,618 [INFO]    4. 🔓 Probar apertura manual → 'open_door'
+2025-06-20 02:37:24,618 [INFO]    5. 📊 Verificar logs en access_logs automáticamente
+2025-06-20 02:37:24,618 [INFO] 
+2025-06-20 02:37:24,618 [INFO] [WEBSOCKET] 🌐 API SILENCIOSA disponible en:
+2025-06-20 02:37:24,618 [INFO]    ws://127.0.0.1:8082
+2025-06-20 02:37:24,618 [INFO] 
+2025-06-20 02:37:24,618 [INFO] [API] 🎮 Acciones disponibles:
+2025-06-20 02:37:24,618 [INFO]    - get_device_info: Info del dispositivo + modo silencioso
+2025-06-20 02:37:24,618 [INFO]    - test_access: Probar validación de usuario (ej: 7265)
+2025-06-20 02:37:24,618 [INFO]    - open_door: Abrir puerta + sonido éxito manual
+2025-06-20 02:37:24,618 [INFO]    - test_success_sound: Probar sonido de éxito
+2025-06-20 02:37:24,618 [INFO]    - test_denied_sound: Probar sonido de error
+2025-06-20 02:37:24,618 [INFO]    - connect_device: Conectar dispositivo
+2025-06-20 02:37:24,618 [INFO]    - disconnect_device: Desconectar dispositivo
+2025-06-20 02:37:24,618 [INFO]    - get_service_status: Estado completo del servicio
+2025-06-20 02:37:24,619 [INFO] 
+2025-06-20 02:37:24,619 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:37:24,619 [INFO] [STATUS] ✅ SISTEMA F22 SILENCIOSO FUNCIONAL ACTIVO
+2025-06-20 02:37:24,619 [INFO] [STATUS] 👆 PON TU DEDO EN EL F22 - MODO SILENCIOSO
+2025-06-20 02:37:24,619 [INFO] [STATUS] 🔇 F22 NO dará feedback hasta SOFTWARE decidir
+2025-06-20 02:37:24,619 [INFO] [STATUS] 🔊 SOFTWARE reproducirá sonido según validación
+2025-06-20 02:37:24,619 [INFO] [STATUS] 🔓 SOFTWARE abrirá puerta solo si autorizado
+2025-06-20 02:37:24,619 [INFO] [STATUS] 🎯 CERO CONFUSIÓN - Feedback correcto siempre
+2025-06-20 02:37:24,619 [INFO] [STATUS] 📝 EVENTOS COM FUNCIONANDO AL 100%
+2025-06-20 02:37:24,619 [INFO] [STATUS] 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:37:24,619 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:37:24,735 [INFO] [SILENT] ✅ AttState = 255
+2025-06-20 02:37:24,783 [INFO] [SILENT] ✅ WorkCode = 0
+2025-06-20 02:37:25,070 [INFO] [SILENT] ✅ AutoOpenDoor = 0
+2025-06-20 02:37:25,162 [INFO] [SILENT] ✅ VoiceOn = 0
+2025-06-20 02:37:25,268 [INFO] [SILENT] ✅ AutoUpdate = 0
+2025-06-20 02:37:25,365 [INFO] [SILENT] ✅ AutoBell = 0
+2025-06-20 02:37:25,462 [INFO] [SILENT] ✅ KeyVoice = 0
+2025-06-20 02:37:25,557 [INFO] [SILENT] ✅ Realtime = 1
+2025-06-20 02:37:25,653 [INFO] [SILENT] ✅ TransFlag = 0000000000
+2025-06-20 02:37:25,749 [INFO] [SILENT] ✅ TransInterval = 0
+2025-06-20 02:37:25,845 [INFO] [SILENT] ✅ LockOn = 0
+2025-06-20 02:37:25,892 [INFO] [SILENT] ✅ MThreshold = 0
+2025-06-20 02:37:25,988 [INFO] [SILENT] ✅ RFCardOn = 0
+2025-06-20 02:37:26,036 [INFO] [SILENT] ✅ NetworkOn = 0
+2025-06-20 02:37:26,094 [INFO] [SILENT] ✅ Encrypt = 0
+2025-06-20 02:37:26,178 [INFO] [SILENT] ✅ MultiVerify = 0
+2025-06-20 02:37:26,227 [INFO] [SILENT] ✅ FaceFunOn = 0
+2025-06-20 02:37:26,275 [INFO] [SILENT] ✅ AlarmAttLog = 0
+2025-06-20 02:37:26,370 [INFO] [SILENT] ✅ AlarmOpLog = 0
+2025-06-20 02:37:26,423 [INFO] [SILENT] ✅ UseDoorSensor = 0
+2025-06-20 02:37:26,514 [INFO] [SILENT] ✅ DoorDelay = 0
+2025-06-20 02:37:26,568 [INFO] [SILENT] ✅ LockDelay = 0
+2025-06-20 02:37:26,609 [INFO] [SILENT] ✅ Dispositivo ACTIVO en modo SILENCIOSO
+2025-06-20 02:37:26,657 [INFO] [SILENT] ✅ Configuración SILENCIOSA refrescada
+2025-06-20 02:37:26,662 [INFO] [SILENT] ✅ Configuración SILENCIOSA aplicada: 25 opciones
+2025-06-20 02:37:26,663 [INFO] [SILENT] 🔇 F22 configurado como VERIFICADOR SILENCIOSO
+2025-06-20 02:37:26,664 [INFO] [SILENT] 🎯 F22 NO dará feedback hasta autorización software
+2025-06-20 02:37:26,664 [INFO] [SILENT] ⚡ Control de sonidos/luces/puerta: MANUAL por software
+2025-06-20 02:37:26,721 [INFO] [STA_THREAD] ✅ Eventos COM registrados (SILENCIOSO)
+2025-06-20 02:37:26,722 [INFO] [STA_THREAD] 🚀 Monitoreo SILENCIOSO con eventos COM activo
+2025-06-20 02:37:26,722 [INFO] [STA_THREAD] 🔇 F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:37:26,723 [INFO] [STA_THREAD] 🎯 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:37:26,723 [INFO] [STA_THREAD] 🔓 Control de puerta + sonidos: MANUAL por software
+2025-06-20 02:37:26,723 [INFO] [STA_THREAD] 🔄 Iniciando loop STA SILENCIOSO FUNCIONAL
+2025-06-20 02:38:33,307 [INFO] [SHUTDOWN] 🛑 Iniciando apagado SILENCIOSO (SIGINT)
+2025-06-20 02:38:33,316 [INFO] [STA_THREAD] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:38:33,446 [INFO] [STA_THREAD] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:38:33,449 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL finalizado
+2025-06-20 02:38:34,159 [INFO] [SHUTDOWN] 🛑 Cerrando WebSocket F22 SILENCIOSO...
+2025-06-20 02:38:34,160 [INFO] [SERVICE] 🛑 Deteniendo servicio SILENCIOSO...
+2025-06-20 02:38:34,161 [INFO] [SERVICE] ✅ Servicio SILENCIOSO detenido
+2025-06-20 02:38:34,161 [INFO] [SHUTDOWN] ✅ Sistema F22 SILENCIOSO cerrado limpiamente
+2025-06-20 02:38:34,168 [INFO] [SHUTDOWN] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:38:34,168 [INFO] [SHUTDOWN] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:39:07,125 [INFO] 
+🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:39:07,125 [INFO] [STARTUP] SERVICIO F22 v5.2 SILENCIOSO - FEEDBACK MANUAL
+2025-06-20 02:39:07,126 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:39:07,126 [INFO] [INFO] 📅 Fecha/Hora: 2025-06-20 08:33:53 UTC
+2025-06-20 02:39:07,126 [INFO] [INFO] 👤 Usuario: mupai555
+2025-06-20 02:39:07,126 [INFO] [INFO] 🔒 Modo de seguridad: ULTRA_STRICT
+2025-06-20 02:39:07,126 [INFO] [INFO] 🔇 Modo silencioso: True (TRUE = ACTIVO)
+2025-06-20 02:39:07,126 [INFO] [INFO] 🔊 Feedback manual: True (TRUE = ACTIVO)
+2025-06-20 02:39:07,126 [INFO] [INFO] 🌐 Dispositivo F22: 192.168.1.201:4370
+2025-06-20 02:39:07,126 [INFO] [INFO] 🎯 Puerto WebSocket: 8082
+2025-06-20 02:39:07,126 [INFO] 
+2025-06-20 02:39:07,126 [INFO] [DIAGNOSIS] ✅ EVENTOS COM CONFIRMADOS + MODO SILENCIOSO:
+2025-06-20 02:39:07,126 [INFO]    🎯 OnAttTransactionEx: FUNCIONANDO
+2025-06-20 02:39:07,126 [INFO]    👤 Usuario 7265: DETECTADO
+2025-06-20 02:39:07,126 [INFO]    ✅ Huella válida: CONFIRMADA
+2025-06-20 02:39:07,126 [INFO]    🔇 F22 SILENCIOSO: Sin feedback automático
+2025-06-20 02:39:07,126 [INFO]    🔊 SOFTWARE controla: Sonidos + Apertura
+2025-06-20 02:39:07,126 [INFO] 
+2025-06-20 02:39:07,126 [INFO] [FEATURES] 🛡️ CARACTERÍSTICAS SILENCIOSAS FUNCIONALES:
+2025-06-20 02:39:07,126 [INFO]    ✅ STA Thread para eventos COM SILENCIOSOS
+2025-06-20 02:39:07,127 [INFO]    ✅ F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:39:07,127 [INFO]    ✅ 🔇 F22 NO da feedback hasta que SOFTWARE decida
+2025-06-20 02:39:07,127 [INFO]    ✅ 🔊 Control MANUAL de sonidos por SOFTWARE
+2025-06-20 02:39:07,127 [INFO]    ✅ 🔓 Control MANUAL de apertura por SOFTWARE
+2025-06-20 02:39:07,127 [INFO]    ✅ 🔐 Validación BULLETPROOF con horarios corregidos
+2025-06-20 02:39:07,127 [INFO]    ✅ 📋 Integración completa con BD
+2025-06-20 02:39:07,127 [INFO]    ✅ 📊 Logs automáticos en access_logs
+2025-06-20 02:39:07,127 [INFO]    ✅ 🎯 Feedback personalizado según decisión software
+2025-06-20 02:39:07,127 [INFO]    ✅ 🚨 CERO confusión para usuarios
+2025-06-20 02:39:07,127 [INFO]    ✅ 🎮 API WebSocket completa con control manual
+2025-06-20 02:39:07,127 [INFO]    ✅ 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:39:07,127 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:39:07,127 [INFO] [STARTUP] 🔗 Iniciando conexión F22 SILENCIOSA...
+2025-06-20 02:39:07,127 [INFO] [SERVICE] 🚀 Iniciando servicio F22 SILENCIOSO FUNCIONAL v5.2...
+2025-06-20 02:39:07,127 [INFO] [VERIFY] 🔍 Verificando conexión a Supabase...
+2025-06-20 02:39:08,025 [INFO] [VERIFY] ✅ Conexión a Supabase verificada
+2025-06-20 02:39:08,027 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL inicializado
+2025-06-20 02:39:08,029 [INFO] [STA_THREAD] ✅ COM inicializado en modo STA
+2025-06-20 02:39:08,029 [INFO] [STA_THREAD] 🔗 Conectando a F22 SILENCIOSO en 192.168.1.201:4370
+2025-06-20 02:39:08,748 [INFO] [STA_THREAD] ✅ Conectado al F22
+2025-06-20 02:39:08,748 [INFO] [STA_THREAD] 📋 Info dispositivo: {'serial': 'BOCK192461543', 'firmware': 'Unknown'}
+2025-06-20 02:39:08,749 [INFO] [SILENT] 🔧 Aplicando configuración SILENCIOSA FUNCIONAL...
+2025-06-20 02:39:08,949 [INFO] [SILENT] ✅ VerifyMode = 1
+2025-06-20 02:39:09,044 [INFO] [SUCCESS] ✅ Servicio F22 SILENCIOSO FUNCIONAL iniciado
+2025-06-20 02:39:09,045 [INFO] [SUCCESS] 🔇 Eventos COM SILENCIOSOS activos
+2025-06-20 02:39:09,046 [INFO] [SUCCESS] 🎯 Validación con tu BD activa
+2025-06-20 02:39:09,048 [INFO] [SUCCESS] 🔊 Control manual de sonidos por SOFTWARE
+2025-06-20 02:39:09,050 [INFO] [SUCCESS] 🔓 Control de puerta funcional
+2025-06-20 02:39:09,052 [INFO] [SUCCESS] 🚨 F22 configurado en VERIFICACIÓN SILENCIOSA
+2025-06-20 02:39:09,054 [INFO] [SUCCESS] 💡 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:39:09,056 [INFO] [STARTUP] ✅ Conexión F22 SILENCIOSA establecida
+2025-06-20 02:39:09,058 [INFO] [STARTUP] 🌐 Iniciando WebSocket F22 SILENCIOSO...
+2025-06-20 02:39:09,073 [INFO] [SUCCESS] 🚀 Sistema F22 SILENCIOSO activo en puerto 8082
+2025-06-20 02:39:09,073 [INFO] 
+2025-06-20 02:39:09,073 [INFO] [READY] 🔇 Sistema listo - CON VERIFICACIÓN SILENCIOSA
+2025-06-20 02:39:09,074 [INFO] [READY] 🎯 F22 configurado para NO dar feedback automático
+2025-06-20 02:39:09,074 [INFO] [READY] 🔊 SOFTWARE controla sonidos y apertura
+2025-06-20 02:39:09,074 [INFO] [READY] 📊 Logs automáticos en access_logs activos
+2025-06-20 02:39:09,074 [INFO] [READY] 🚨 CERO confusión para usuarios
+2025-06-20 02:39:09,074 [INFO] 
+2025-06-20 02:39:09,074 [INFO] [CONFIRMED] 🎉 FUNCIONAMIENTO SILENCIOSO CONFIRMADO:
+2025-06-20 02:39:09,075 [INFO]    1. ✅ Eventos COM funcionando perfectamente
+2025-06-20 02:39:09,075 [INFO]    2. ✅ F22 configurado en modo silencioso
+2025-06-20 02:39:09,075 [INFO]    3. ✅ Validación BULLETPROOF lista
+2025-06-20 02:39:09,075 [INFO]    4. ✅ Control manual de feedback funcional
+2025-06-20 02:39:09,075 [INFO]    5. ✅ Logs automáticos activos
+2025-06-20 02:39:09,075 [INFO] 
+2025-06-20 02:39:09,075 [INFO] [BEHAVIOR] 🔇 COMPORTAMIENTO ESPERADO:
+2025-06-20 02:39:09,075 [INFO]    1. 👆 Usuario pone dedo → F22: 🔇 (silencio total)
+2025-06-20 02:39:09,075 [INFO]    2. 💻 SOFTWARE valida → Membresía/horario/etc
+2025-06-20 02:39:09,075 [INFO]    3a. ✅ SI autorizado → SOFTWARE: 🔊 beep éxito + 🔓 abre puerta
+2025-06-20 02:39:09,075 [INFO]    3b. ❌ SI denegado → SOFTWARE: 🔊 beep error + 🚪 puerta cerrada
+2025-06-20 02:39:09,075 [INFO]    4. 👤 Usuario recibe feedback CORRECTO según decisión
+2025-06-20 02:39:09,075 [INFO] 
+2025-06-20 02:39:09,075 [INFO] [TEST] 🧪 PRUEBA LAS FUNCIONALIDADES:
+2025-06-20 02:39:09,076 [INFO]    1. 👤 Usuario CON membresía → F22 silencioso → SOFTWARE autoriza con sonido
+2025-06-20 02:39:09,076 [INFO]    2. ❌ Usuario SIN membresía → F22 silencioso → SOFTWARE deniega con sonido
+2025-06-20 02:39:09,076 [INFO]    3. 🔊 Probar sonidos manuales → 'test_success_sound', 'test_denied_sound'
+2025-06-20 02:39:09,076 [INFO]    4. 🔓 Probar apertura manual → 'open_door'
+2025-06-20 02:39:09,076 [INFO]    5. 📊 Verificar logs en access_logs automáticamente
+2025-06-20 02:39:09,076 [INFO] 
+2025-06-20 02:39:09,076 [INFO] [WEBSOCKET] 🌐 API SILENCIOSA disponible en:
+2025-06-20 02:39:09,077 [INFO]    ws://127.0.0.1:8082
+2025-06-20 02:39:09,077 [INFO] 
+2025-06-20 02:39:09,077 [INFO] [API] 🎮 Acciones disponibles:
+2025-06-20 02:39:09,077 [INFO]    - get_device_info: Info del dispositivo + modo silencioso
+2025-06-20 02:39:09,077 [INFO]    - test_access: Probar validación de usuario (ej: 7265)
+2025-06-20 02:39:09,077 [INFO]    - open_door: Abrir puerta + sonido éxito manual
+2025-06-20 02:39:09,077 [INFO]    - test_success_sound: Probar sonido de éxito
+2025-06-20 02:39:09,077 [INFO]    - test_denied_sound: Probar sonido de error
+2025-06-20 02:39:09,077 [INFO]    - connect_device: Conectar dispositivo
+2025-06-20 02:39:09,077 [INFO]    - disconnect_device: Desconectar dispositivo
+2025-06-20 02:39:09,077 [INFO]    - get_service_status: Estado completo del servicio
+2025-06-20 02:39:09,077 [INFO] 
+2025-06-20 02:39:09,077 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:39:09,077 [INFO] [STATUS] ✅ SISTEMA F22 SILENCIOSO FUNCIONAL ACTIVO
+2025-06-20 02:39:09,077 [INFO] [STATUS] 👆 PON TU DEDO EN EL F22 - MODO SILENCIOSO
+2025-06-20 02:39:09,077 [INFO] [STATUS] 🔇 F22 NO dará feedback hasta SOFTWARE decidir
+2025-06-20 02:39:09,077 [INFO] [STATUS] 🔊 SOFTWARE reproducirá sonido según validación
+2025-06-20 02:39:09,077 [INFO] [STATUS] 🔓 SOFTWARE abrirá puerta solo si autorizado
+2025-06-20 02:39:09,077 [INFO] [STATUS] 🎯 CERO CONFUSIÓN - Feedback correcto siempre
+2025-06-20 02:39:09,077 [INFO] [STATUS] 📝 EVENTOS COM FUNCIONANDO AL 100%
+2025-06-20 02:39:09,077 [INFO] [STATUS] 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:39:09,077 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:39:09,145 [INFO] [SILENT] ✅ AttState = 255
+2025-06-20 02:39:09,188 [INFO] [SILENT] ✅ WorkCode = 0
+2025-06-20 02:39:09,476 [INFO] [SILENT] ✅ AutoOpenDoor = 1
+2025-06-20 02:39:09,523 [INFO] [SILENT] ✅ VoiceOn = 0
+2025-06-20 02:39:09,619 [INFO] [SILENT] ✅ AutoUpdate = 0
+2025-06-20 02:39:09,714 [INFO] [SILENT] ✅ AutoBell = 0
+2025-06-20 02:39:09,795 [INFO] [SILENT] ✅ KeyVoice = 0
+2025-06-20 02:39:09,891 [INFO] [SILENT] ✅ Realtime = 1
+2025-06-20 02:39:09,985 [INFO] [SILENT] ✅ TransFlag = 0000000000
+2025-06-20 02:39:10,081 [INFO] [SILENT] ✅ TransInterval = 0
+2025-06-20 02:39:10,129 [INFO] [SILENT] ✅ LockOn = 0
+2025-06-20 02:39:10,176 [INFO] [SILENT] ✅ MThreshold = 0
+2025-06-20 02:39:10,225 [INFO] [SILENT] ✅ RFCardOn = 0
+2025-06-20 02:39:10,272 [INFO] [SILENT] ✅ NetworkOn = 0
+2025-06-20 02:39:10,331 [INFO] [SILENT] ✅ Encrypt = 0
+2025-06-20 02:39:10,415 [INFO] [SILENT] ✅ MultiVerify = 0
+2025-06-20 02:39:10,463 [INFO] [SILENT] ✅ FaceFunOn = 0
+2025-06-20 02:39:10,510 [INFO] [SILENT] ✅ AlarmAttLog = 0
+2025-06-20 02:39:10,566 [INFO] [SILENT] ✅ AlarmOpLog = 0
+2025-06-20 02:39:10,653 [INFO] [SILENT] ✅ UseDoorSensor = 0
+2025-06-20 02:39:10,749 [INFO] [SILENT] ✅ DoorDelay = 0
+2025-06-20 02:39:10,843 [INFO] [SILENT] ✅ LockDelay = 0
+2025-06-20 02:39:10,891 [INFO] [SILENT] ✅ Dispositivo ACTIVO en modo SILENCIOSO
+2025-06-20 02:39:10,939 [INFO] [SILENT] ✅ Configuración SILENCIOSA refrescada
+2025-06-20 02:39:10,939 [INFO] [SILENT] ✅ Configuración SILENCIOSA aplicada: 25 opciones
+2025-06-20 02:39:10,939 [INFO] [SILENT] 🔇 F22 configurado como VERIFICADOR SILENCIOSO
+2025-06-20 02:39:10,940 [INFO] [SILENT] 🎯 F22 NO dará feedback hasta autorización software
+2025-06-20 02:39:10,940 [INFO] [SILENT] ⚡ Control de sonidos/luces/puerta: MANUAL por software
+2025-06-20 02:39:10,987 [INFO] [STA_THREAD] ✅ Eventos COM registrados (SILENCIOSO)
+2025-06-20 02:39:10,988 [INFO] [STA_THREAD] 🚀 Monitoreo SILENCIOSO con eventos COM activo
+2025-06-20 02:39:10,988 [INFO] [STA_THREAD] 🔇 F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:39:10,988 [INFO] [STA_THREAD] 🎯 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:39:10,989 [INFO] [STA_THREAD] 🔓 Control de puerta + sonidos: MANUAL por software
+2025-06-20 02:39:10,989 [INFO] [STA_THREAD] 🔄 Iniciando loop STA SILENCIOSO FUNCIONAL
+2025-06-20 02:40:20,827 [INFO] [SHUTDOWN] 🛑 Iniciando apagado SILENCIOSO (SIGINT)
+2025-06-20 02:40:20,830 [INFO] [STA_THREAD] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:40:20,958 [INFO] [STA_THREAD] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:40:20,959 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL finalizado
+2025-06-20 02:40:21,606 [INFO] [SHUTDOWN] 🛑 Cerrando WebSocket F22 SILENCIOSO...
+2025-06-20 02:40:21,607 [INFO] [SERVICE] 🛑 Deteniendo servicio SILENCIOSO...
+2025-06-20 02:40:21,608 [INFO] [SERVICE] ✅ Servicio SILENCIOSO detenido
+2025-06-20 02:40:21,608 [INFO] [SHUTDOWN] ✅ Sistema F22 SILENCIOSO cerrado limpiamente
+2025-06-20 02:40:21,615 [INFO] [SHUTDOWN] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:40:21,615 [INFO] [SHUTDOWN] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:40:56,052 [INFO] 
+🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:40:56,052 [INFO] [STARTUP] SERVICIO F22 v5.2 SILENCIOSO - FEEDBACK MANUAL
+2025-06-20 02:40:56,053 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:40:56,053 [INFO] [INFO] 📅 Fecha/Hora: 2025-06-20 08:33:53 UTC
+2025-06-20 02:40:56,053 [INFO] [INFO] 👤 Usuario: mupai555
+2025-06-20 02:40:56,053 [INFO] [INFO] 🔒 Modo de seguridad: ULTRA_STRICT
+2025-06-20 02:40:56,053 [INFO] [INFO] 🔇 Modo silencioso: True (TRUE = ACTIVO)
+2025-06-20 02:40:56,053 [INFO] [INFO] 🔊 Feedback manual: True (TRUE = ACTIVO)
+2025-06-20 02:40:56,054 [INFO] [INFO] 🌐 Dispositivo F22: 192.168.1.201:4370
+2025-06-20 02:40:56,054 [INFO] [INFO] 🎯 Puerto WebSocket: 8082
+2025-06-20 02:40:56,054 [INFO] 
+2025-06-20 02:40:56,054 [INFO] [DIAGNOSIS] ✅ EVENTOS COM CONFIRMADOS + MODO SILENCIOSO:
+2025-06-20 02:40:56,054 [INFO]    🎯 OnAttTransactionEx: FUNCIONANDO
+2025-06-20 02:40:56,054 [INFO]    👤 Usuario 7265: DETECTADO
+2025-06-20 02:40:56,054 [INFO]    ✅ Huella válida: CONFIRMADA
+2025-06-20 02:40:56,054 [INFO]    🔇 F22 SILENCIOSO: Sin feedback automático
+2025-06-20 02:40:56,054 [INFO]    🔊 SOFTWARE controla: Sonidos + Apertura
+2025-06-20 02:40:56,054 [INFO] 
+2025-06-20 02:40:56,054 [INFO] [FEATURES] 🛡️ CARACTERÍSTICAS SILENCIOSAS FUNCIONALES:
+2025-06-20 02:40:56,055 [INFO]    ✅ STA Thread para eventos COM SILENCIOSOS
+2025-06-20 02:40:56,055 [INFO]    ✅ F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:40:56,055 [INFO]    ✅ 🔇 F22 NO da feedback hasta que SOFTWARE decida
+2025-06-20 02:40:56,055 [INFO]    ✅ 🔊 Control MANUAL de sonidos por SOFTWARE
+2025-06-20 02:40:56,055 [INFO]    ✅ 🔓 Control MANUAL de apertura por SOFTWARE
+2025-06-20 02:40:56,055 [INFO]    ✅ 🔐 Validación BULLETPROOF con horarios corregidos
+2025-06-20 02:40:56,055 [INFO]    ✅ 📋 Integración completa con BD
+2025-06-20 02:40:56,055 [INFO]    ✅ 📊 Logs automáticos en access_logs
+2025-06-20 02:40:56,055 [INFO]    ✅ 🎯 Feedback personalizado según decisión software
+2025-06-20 02:40:56,055 [INFO]    ✅ 🚨 CERO confusión para usuarios
+2025-06-20 02:40:56,055 [INFO]    ✅ 🎮 API WebSocket completa con control manual
+2025-06-20 02:40:56,055 [INFO]    ✅ 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:40:56,055 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:40:56,055 [INFO] [STARTUP] 🔗 Iniciando conexión F22 SILENCIOSA...
+2025-06-20 02:40:56,055 [INFO] [SERVICE] 🚀 Iniciando servicio F22 SILENCIOSO FUNCIONAL v5.2...
+2025-06-20 02:40:56,055 [INFO] [VERIFY] 🔍 Verificando conexión a Supabase...
+2025-06-20 02:40:57,085 [INFO] [VERIFY] ✅ Conexión a Supabase verificada
+2025-06-20 02:40:57,086 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL inicializado
+2025-06-20 02:40:57,087 [INFO] [STA_THREAD] ✅ COM inicializado en modo STA
+2025-06-20 02:40:57,088 [INFO] [STA_THREAD] 🔗 Conectando a F22 SILENCIOSO en 192.168.1.201:4370
+2025-06-20 02:40:57,811 [INFO] [STA_THREAD] ✅ Conectado al F22
+2025-06-20 02:40:57,812 [INFO] [STA_THREAD] 📋 Info dispositivo: {'serial': 'BOCK192461543', 'firmware': 'Unknown'}
+2025-06-20 02:40:57,812 [INFO] [SILENT] 🔧 Aplicando configuración SILENCIOSA FUNCIONAL...
+2025-06-20 02:40:57,998 [INFO] [SILENT] ✅ VerifyMode = 1
+2025-06-20 02:40:58,093 [INFO] [SUCCESS] ✅ Servicio F22 SILENCIOSO FUNCIONAL iniciado
+2025-06-20 02:40:58,094 [INFO] [SUCCESS] 🔇 Eventos COM SILENCIOSOS activos
+2025-06-20 02:40:58,095 [INFO] [SUCCESS] 🎯 Validación con tu BD activa
+2025-06-20 02:40:58,095 [INFO] [SUCCESS] 🔊 Control manual de sonidos por SOFTWARE
+2025-06-20 02:40:58,096 [INFO] [SUCCESS] 🔓 Control de puerta funcional
+2025-06-20 02:40:58,097 [INFO] [SUCCESS] 🚨 F22 configurado en VERIFICACIÓN SILENCIOSA
+2025-06-20 02:40:58,097 [INFO] [SUCCESS] 💡 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:40:58,097 [INFO] [STARTUP] ✅ Conexión F22 SILENCIOSA establecida
+2025-06-20 02:40:58,098 [INFO] [STARTUP] 🌐 Iniciando WebSocket F22 SILENCIOSO...
+2025-06-20 02:40:58,114 [INFO] [SUCCESS] 🚀 Sistema F22 SILENCIOSO activo en puerto 8082
+2025-06-20 02:40:58,114 [INFO] 
+2025-06-20 02:40:58,115 [INFO] [READY] 🔇 Sistema listo - CON VERIFICACIÓN SILENCIOSA
+2025-06-20 02:40:58,115 [INFO] [READY] 🎯 F22 configurado para NO dar feedback automático
+2025-06-20 02:40:58,115 [INFO] [READY] 🔊 SOFTWARE controla sonidos y apertura
+2025-06-20 02:40:58,115 [INFO] [READY] 📊 Logs automáticos en access_logs activos
+2025-06-20 02:40:58,115 [INFO] [READY] 🚨 CERO confusión para usuarios
+2025-06-20 02:40:58,115 [INFO] 
+2025-06-20 02:40:58,115 [INFO] [CONFIRMED] 🎉 FUNCIONAMIENTO SILENCIOSO CONFIRMADO:
+2025-06-20 02:40:58,115 [INFO]    1. ✅ Eventos COM funcionando perfectamente
+2025-06-20 02:40:58,115 [INFO]    2. ✅ F22 configurado en modo silencioso
+2025-06-20 02:40:58,115 [INFO]    3. ✅ Validación BULLETPROOF lista
+2025-06-20 02:40:58,115 [INFO]    4. ✅ Control manual de feedback funcional
+2025-06-20 02:40:58,115 [INFO]    5. ✅ Logs automáticos activos
+2025-06-20 02:40:58,115 [INFO] 
+2025-06-20 02:40:58,115 [INFO] [BEHAVIOR] 🔇 COMPORTAMIENTO ESPERADO:
+2025-06-20 02:40:58,116 [INFO]    1. 👆 Usuario pone dedo → F22: 🔇 (silencio total)
+2025-06-20 02:40:58,116 [INFO]    2. 💻 SOFTWARE valida → Membresía/horario/etc
+2025-06-20 02:40:58,116 [INFO]    3a. ✅ SI autorizado → SOFTWARE: 🔊 beep éxito + 🔓 abre puerta
+2025-06-20 02:40:58,116 [INFO]    3b. ❌ SI denegado → SOFTWARE: 🔊 beep error + 🚪 puerta cerrada
+2025-06-20 02:40:58,116 [INFO]    4. 👤 Usuario recibe feedback CORRECTO según decisión
+2025-06-20 02:40:58,116 [INFO] 
+2025-06-20 02:40:58,116 [INFO] [TEST] 🧪 PRUEBA LAS FUNCIONALIDADES:
+2025-06-20 02:40:58,116 [INFO]    1. 👤 Usuario CON membresía → F22 silencioso → SOFTWARE autoriza con sonido
+2025-06-20 02:40:58,116 [INFO]    2. ❌ Usuario SIN membresía → F22 silencioso → SOFTWARE deniega con sonido
+2025-06-20 02:40:58,116 [INFO]    3. 🔊 Probar sonidos manuales → 'test_success_sound', 'test_denied_sound'
+2025-06-20 02:40:58,116 [INFO]    4. 🔓 Probar apertura manual → 'open_door'
+2025-06-20 02:40:58,116 [INFO]    5. 📊 Verificar logs en access_logs automáticamente
+2025-06-20 02:40:58,116 [INFO] 
+2025-06-20 02:40:58,116 [INFO] [WEBSOCKET] 🌐 API SILENCIOSA disponible en:
+2025-06-20 02:40:58,116 [INFO]    ws://127.0.0.1:8082
+2025-06-20 02:40:58,116 [INFO] 
+2025-06-20 02:40:58,116 [INFO] [API] 🎮 Acciones disponibles:
+2025-06-20 02:40:58,116 [INFO]    - get_device_info: Info del dispositivo + modo silencioso
+2025-06-20 02:40:58,116 [INFO]    - test_access: Probar validación de usuario (ej: 7265)
+2025-06-20 02:40:58,116 [INFO]    - open_door: Abrir puerta + sonido éxito manual
+2025-06-20 02:40:58,116 [INFO]    - test_success_sound: Probar sonido de éxito
+2025-06-20 02:40:58,117 [INFO]    - test_denied_sound: Probar sonido de error
+2025-06-20 02:40:58,117 [INFO]    - connect_device: Conectar dispositivo
+2025-06-20 02:40:58,117 [INFO]    - disconnect_device: Desconectar dispositivo
+2025-06-20 02:40:58,117 [INFO]    - get_service_status: Estado completo del servicio
+2025-06-20 02:40:58,117 [INFO] 
+2025-06-20 02:40:58,117 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:40:58,117 [INFO] [STATUS] ✅ SISTEMA F22 SILENCIOSO FUNCIONAL ACTIVO
+2025-06-20 02:40:58,117 [INFO] [STATUS] 👆 PON TU DEDO EN EL F22 - MODO SILENCIOSO
+2025-06-20 02:40:58,117 [INFO] [STATUS] 🔇 F22 NO dará feedback hasta SOFTWARE decidir
+2025-06-20 02:40:58,117 [INFO] [STATUS] 🔊 SOFTWARE reproducirá sonido según validación
+2025-06-20 02:40:58,117 [INFO] [STATUS] 🔓 SOFTWARE abrirá puerta solo si autorizado
+2025-06-20 02:40:58,117 [INFO] [STATUS] 🎯 CERO CONFUSIÓN - Feedback correcto siempre
+2025-06-20 02:40:58,117 [INFO] [STATUS] 📝 EVENTOS COM FUNCIONANDO AL 100%
+2025-06-20 02:40:58,117 [INFO] [STATUS] 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:40:58,117 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:40:58,237 [INFO] [SILENT] ✅ AttState = 255
+2025-06-20 02:40:58,285 [INFO] [SILENT] ✅ WorkCode = 0
+2025-06-20 02:40:58,569 [INFO] [SILENT] ✅ AutoOpenDoor = 1
+2025-06-20 02:40:58,617 [INFO] [SILENT] ✅ VoiceOn = 0
+2025-06-20 02:40:58,723 [INFO] [SILENT] ✅ AutoUpdate = 0
+2025-06-20 02:40:58,809 [INFO] [SILENT] ✅ AutoBell = 0
+2025-06-20 02:40:58,905 [INFO] [SILENT] ✅ KeyVoice = 0
+2025-06-20 02:40:59,000 [INFO] [SILENT] ✅ Realtime = 1
+2025-06-20 02:40:59,096 [INFO] [SILENT] ✅ TransFlag = 0000000000
+2025-06-20 02:40:59,192 [INFO] [SILENT] ✅ TransInterval = 0
+2025-06-20 02:40:59,240 [INFO] [SILENT] ✅ LockOn = 0
+2025-06-20 02:40:59,289 [INFO] [SILENT] ✅ MThreshold = 0
+2025-06-20 02:40:59,379 [INFO] [SILENT] ✅ RFCardOn = 0
+2025-06-20 02:40:59,426 [INFO] [SILENT] ✅ NetworkOn = 0
+2025-06-20 02:40:59,486 [INFO] [SILENT] ✅ Encrypt = 0
+2025-06-20 02:40:59,569 [INFO] [SILENT] ✅ MultiVerify = 0
+2025-06-20 02:40:59,617 [INFO] [SILENT] ✅ FaceFunOn = 0
+2025-06-20 02:40:59,665 [INFO] [SILENT] ✅ AlarmAttLog = 0
+2025-06-20 02:40:59,761 [INFO] [SILENT] ✅ AlarmOpLog = 0
+2025-06-20 02:40:59,857 [INFO] [SILENT] ✅ UseDoorSensor = 0
+2025-06-20 02:40:59,953 [INFO] [SILENT] ✅ DoorDelay = 0
+2025-06-20 02:41:00,001 [INFO] [SILENT] ✅ LockDelay = 0
+2025-06-20 02:41:00,048 [INFO] [SILENT] ✅ Dispositivo ACTIVO en modo SILENCIOSO
+2025-06-20 02:41:00,096 [INFO] [SILENT] ✅ Configuración SILENCIOSA refrescada
+2025-06-20 02:41:00,097 [INFO] [SILENT] ✅ Configuración SILENCIOSA aplicada: 25 opciones
+2025-06-20 02:41:00,098 [INFO] [SILENT] 🔇 F22 configurado como VERIFICADOR SILENCIOSO
+2025-06-20 02:41:00,098 [INFO] [SILENT] 🎯 F22 NO dará feedback hasta autorización software
+2025-06-20 02:41:00,098 [INFO] [SILENT] ⚡ Control de sonidos/luces/puerta: MANUAL por software
+2025-06-20 02:41:00,144 [INFO] [STA_THREAD] ✅ Eventos COM registrados (SILENCIOSO)
+2025-06-20 02:41:00,145 [INFO] [STA_THREAD] 🚀 Monitoreo SILENCIOSO con eventos COM activo
+2025-06-20 02:41:00,146 [INFO] [STA_THREAD] 🔇 F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:41:00,146 [INFO] [STA_THREAD] 🎯 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:41:00,146 [INFO] [STA_THREAD] 🔓 Control de puerta + sonidos: MANUAL por software
+2025-06-20 02:41:00,147 [INFO] [STA_THREAD] 🔄 Iniciando loop STA SILENCIOSO FUNCIONAL
+2025-06-20 02:41:44,771 [INFO] [SHUTDOWN] 🛑 Iniciando apagado SILENCIOSO (SIGINT)
+2025-06-20 02:41:44,773 [INFO] [STA_THREAD] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:41:44,911 [INFO] [STA_THREAD] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:41:44,912 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL finalizado
+2025-06-20 02:41:45,518 [INFO] [SHUTDOWN] 🛑 Cerrando WebSocket F22 SILENCIOSO...
+2025-06-20 02:41:45,520 [INFO] [SERVICE] 🛑 Deteniendo servicio SILENCIOSO...
+2025-06-20 02:41:45,520 [INFO] [SERVICE] ✅ Servicio SILENCIOSO detenido
+2025-06-20 02:41:45,521 [INFO] [SHUTDOWN] ✅ Sistema F22 SILENCIOSO cerrado limpiamente
+2025-06-20 02:41:45,528 [INFO] [SHUTDOWN] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:41:45,528 [INFO] [SHUTDOWN] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:47:55,386 [INFO] 
+🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:47:55,386 [INFO] [STARTUP] SERVICIO F22 v5.2 SILENCIOSO - FEEDBACK MANUAL
+2025-06-20 02:47:55,386 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:47:55,386 [INFO] [INFO] 📅 Fecha/Hora: 2025-06-20 08:33:53 UTC
+2025-06-20 02:47:55,386 [INFO] [INFO] 👤 Usuario: mupai555
+2025-06-20 02:47:55,386 [INFO] [INFO] 🔒 Modo de seguridad: ULTRA_STRICT
+2025-06-20 02:47:55,387 [INFO] [INFO] 🔇 Modo silencioso: True (TRUE = ACTIVO)
+2025-06-20 02:47:55,387 [INFO] [INFO] 🔊 Feedback manual: True (TRUE = ACTIVO)
+2025-06-20 02:47:55,387 [INFO] [INFO] 🌐 Dispositivo F22: 192.168.1.201:4370
+2025-06-20 02:47:55,387 [INFO] [INFO] 🎯 Puerto WebSocket: 8082
+2025-06-20 02:47:55,387 [INFO] 
+2025-06-20 02:47:55,387 [INFO] [DIAGNOSIS] ✅ EVENTOS COM CONFIRMADOS + MODO SILENCIOSO:
+2025-06-20 02:47:55,387 [INFO]    🎯 OnAttTransactionEx: FUNCIONANDO
+2025-06-20 02:47:55,387 [INFO]    👤 Usuario 7265: DETECTADO
+2025-06-20 02:47:55,387 [INFO]    ✅ Huella válida: CONFIRMADA
+2025-06-20 02:47:55,387 [INFO]    🔇 F22 SILENCIOSO: Sin feedback automático
+2025-06-20 02:47:55,387 [INFO]    🔊 SOFTWARE controla: Sonidos + Apertura
+2025-06-20 02:47:55,387 [INFO] 
+2025-06-20 02:47:55,387 [INFO] [FEATURES] 🛡️ CARACTERÍSTICAS SILENCIOSAS FUNCIONALES:
+2025-06-20 02:47:55,387 [INFO]    ✅ STA Thread para eventos COM SILENCIOSOS
+2025-06-20 02:47:55,387 [INFO]    ✅ F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:47:55,387 [INFO]    ✅ 🔇 F22 NO da feedback hasta que SOFTWARE decida
+2025-06-20 02:47:55,387 [INFO]    ✅ 🔊 Control MANUAL de sonidos por SOFTWARE
+2025-06-20 02:47:55,387 [INFO]    ✅ 🔓 Control MANUAL de apertura por SOFTWARE
+2025-06-20 02:47:55,387 [INFO]    ✅ 🔐 Validación BULLETPROOF con horarios corregidos
+2025-06-20 02:47:55,387 [INFO]    ✅ 📋 Integración completa con BD
+2025-06-20 02:47:55,388 [INFO]    ✅ 📊 Logs automáticos en access_logs
+2025-06-20 02:47:55,388 [INFO]    ✅ 🎯 Feedback personalizado según decisión software
+2025-06-20 02:47:55,388 [INFO]    ✅ 🚨 CERO confusión para usuarios
+2025-06-20 02:47:55,388 [INFO]    ✅ 🎮 API WebSocket completa con control manual
+2025-06-20 02:47:55,388 [INFO]    ✅ 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:47:55,388 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:47:55,388 [INFO] [STARTUP] 🔗 Iniciando conexión F22 SILENCIOSA...
+2025-06-20 02:47:55,388 [INFO] [SERVICE] 🚀 Iniciando servicio F22 SILENCIOSO FUNCIONAL v5.2...
+2025-06-20 02:47:55,388 [INFO] [VERIFY] 🔍 Verificando conexión a Supabase...
+2025-06-20 02:47:56,412 [INFO] [VERIFY] ✅ Conexión a Supabase verificada
+2025-06-20 02:47:56,413 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL inicializado
+2025-06-20 02:47:56,414 [INFO] [STA_THREAD] ✅ COM inicializado en modo STA
+2025-06-20 02:47:56,415 [INFO] [STA_THREAD] 🔗 Conectando a F22 SILENCIOSO en 192.168.1.201:4370
+2025-06-20 02:47:57,136 [INFO] [STA_THREAD] ✅ Conectado al F22
+2025-06-20 02:47:57,137 [INFO] [STA_THREAD] 📋 Info dispositivo: {'serial': 'BOCK192461543', 'firmware': 'Unknown'}
+2025-06-20 02:47:57,137 [INFO] [SILENT] 🔧 Aplicando configuración SILENCIOSA FUNCIONAL...
+2025-06-20 02:47:57,184 [INFO] [SILENT] ✅ VerifyMode = 1
+2025-06-20 02:47:57,274 [INFO] [SILENT] ✅ AttState = 255
+2025-06-20 02:47:57,369 [INFO] [SILENT] ✅ WorkCode = 0
+2025-06-20 02:47:57,416 [INFO] [SUCCESS] ✅ Servicio F22 SILENCIOSO FUNCIONAL iniciado
+2025-06-20 02:47:57,418 [INFO] [SUCCESS] 🔇 Eventos COM SILENCIOSOS activos
+2025-06-20 02:47:57,419 [INFO] [SUCCESS] 🎯 Validación con tu BD activa
+2025-06-20 02:47:57,419 [INFO] [SUCCESS] 🔊 Control manual de sonidos por SOFTWARE
+2025-06-20 02:47:57,420 [INFO] [SUCCESS] 🔓 Control de puerta funcional
+2025-06-20 02:47:57,420 [INFO] [SUCCESS] 🚨 F22 configurado en VERIFICACIÓN SILENCIOSA
+2025-06-20 02:47:57,420 [INFO] [SUCCESS] 💡 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:47:57,421 [INFO] [STARTUP] ✅ Conexión F22 SILENCIOSA establecida
+2025-06-20 02:47:57,421 [INFO] [STARTUP] 🌐 Iniciando WebSocket F22 SILENCIOSO...
+2025-06-20 02:47:57,438 [INFO] [SUCCESS] 🚀 Sistema F22 SILENCIOSO activo en puerto 8082
+2025-06-20 02:47:57,439 [INFO] 
+2025-06-20 02:47:57,439 [INFO] [READY] 🔇 Sistema listo - CON VERIFICACIÓN SILENCIOSA
+2025-06-20 02:47:57,439 [INFO] [READY] 🎯 F22 configurado para NO dar feedback automático
+2025-06-20 02:47:57,440 [INFO] [READY] 🔊 SOFTWARE controla sonidos y apertura
+2025-06-20 02:47:57,440 [INFO] [READY] 📊 Logs automáticos en access_logs activos
+2025-06-20 02:47:57,440 [INFO] [READY] 🚨 CERO confusión para usuarios
+2025-06-20 02:47:57,441 [INFO] 
+2025-06-20 02:47:57,441 [INFO] [CONFIRMED] 🎉 FUNCIONAMIENTO SILENCIOSO CONFIRMADO:
+2025-06-20 02:47:57,441 [INFO]    1. ✅ Eventos COM funcionando perfectamente
+2025-06-20 02:47:57,441 [INFO]    2. ✅ F22 configurado en modo silencioso
+2025-06-20 02:47:57,441 [INFO]    3. ✅ Validación BULLETPROOF lista
+2025-06-20 02:47:57,442 [INFO]    4. ✅ Control manual de feedback funcional
+2025-06-20 02:47:57,442 [INFO]    5. ✅ Logs automáticos activos
+2025-06-20 02:47:57,442 [INFO] 
+2025-06-20 02:47:57,442 [INFO] [BEHAVIOR] 🔇 COMPORTAMIENTO ESPERADO:
+2025-06-20 02:47:57,442 [INFO]    1. 👆 Usuario pone dedo → F22: 🔇 (silencio total)
+2025-06-20 02:47:57,442 [INFO]    2. 💻 SOFTWARE valida → Membresía/horario/etc
+2025-06-20 02:47:57,442 [INFO]    3a. ✅ SI autorizado → SOFTWARE: 🔊 beep éxito + 🔓 abre puerta
+2025-06-20 02:47:57,442 [INFO]    3b. ❌ SI denegado → SOFTWARE: 🔊 beep error + 🚪 puerta cerrada
+2025-06-20 02:47:57,442 [INFO]    4. 👤 Usuario recibe feedback CORRECTO según decisión
+2025-06-20 02:47:57,443 [INFO] 
+2025-06-20 02:47:57,443 [INFO] [TEST] 🧪 PRUEBA LAS FUNCIONALIDADES:
+2025-06-20 02:47:57,443 [INFO]    1. 👤 Usuario CON membresía → F22 silencioso → SOFTWARE autoriza con sonido
+2025-06-20 02:47:57,443 [INFO]    2. ❌ Usuario SIN membresía → F22 silencioso → SOFTWARE deniega con sonido
+2025-06-20 02:47:57,443 [INFO]    3. 🔊 Probar sonidos manuales → 'test_success_sound', 'test_denied_sound'
+2025-06-20 02:47:57,443 [INFO]    4. 🔓 Probar apertura manual → 'open_door'
+2025-06-20 02:47:57,443 [INFO]    5. 📊 Verificar logs en access_logs automáticamente
+2025-06-20 02:47:57,443 [INFO] 
+2025-06-20 02:47:57,443 [INFO] [WEBSOCKET] 🌐 API SILENCIOSA disponible en:
+2025-06-20 02:47:57,443 [INFO]    ws://127.0.0.1:8082
+2025-06-20 02:47:57,443 [INFO] 
+2025-06-20 02:47:57,443 [INFO] [API] 🎮 Acciones disponibles:
+2025-06-20 02:47:57,443 [INFO]    - get_device_info: Info del dispositivo + modo silencioso
+2025-06-20 02:47:57,444 [INFO]    - test_access: Probar validación de usuario (ej: 7265)
+2025-06-20 02:47:57,444 [INFO]    - open_door: Abrir puerta + sonido éxito manual
+2025-06-20 02:47:57,444 [INFO]    - test_success_sound: Probar sonido de éxito
+2025-06-20 02:47:57,444 [INFO]    - test_denied_sound: Probar sonido de error
+2025-06-20 02:47:57,444 [INFO]    - connect_device: Conectar dispositivo
+2025-06-20 02:47:57,444 [INFO]    - disconnect_device: Desconectar dispositivo
+2025-06-20 02:47:57,444 [INFO]    - get_service_status: Estado completo del servicio
+2025-06-20 02:47:57,444 [INFO] 
+2025-06-20 02:47:57,444 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:47:57,444 [INFO] [STATUS] ✅ SISTEMA F22 SILENCIOSO FUNCIONAL ACTIVO
+2025-06-20 02:47:57,444 [INFO] [STATUS] 👆 PON TU DEDO EN EL F22 - MODO SILENCIOSO
+2025-06-20 02:47:57,444 [INFO] [STATUS] 🔇 F22 NO dará feedback hasta SOFTWARE decidir
+2025-06-20 02:47:57,444 [INFO] [STATUS] 🔊 SOFTWARE reproducirá sonido según validación
+2025-06-20 02:47:57,444 [INFO] [STATUS] 🔓 SOFTWARE abrirá puerta solo si autorizado
+2025-06-20 02:47:57,444 [INFO] [STATUS] 🎯 CERO CONFUSIÓN - Feedback correcto siempre
+2025-06-20 02:47:57,444 [INFO] [STATUS] 📝 EVENTOS COM FUNCIONANDO AL 100%
+2025-06-20 02:47:57,445 [INFO] [STATUS] 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:47:57,445 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:47:57,464 [INFO] [SILENT] ✅ AutoOpenDoor = 1
+2025-06-20 02:47:57,560 [INFO] [SILENT] ✅ VoiceOn = 0
+2025-06-20 02:47:57,655 [INFO] [SILENT] ✅ AutoUpdate = 0
+2025-06-20 02:47:57,750 [INFO] [SILENT] ✅ AutoBell = 0
+2025-06-20 02:47:57,846 [INFO] [SILENT] ✅ KeyVoice = 0
+2025-06-20 02:47:57,942 [INFO] [SILENT] ✅ Realtime = 1
+2025-06-20 02:47:58,038 [INFO] [SILENT] ✅ TransFlag = 0000000000
+2025-06-20 02:47:58,134 [INFO] [SILENT] ✅ TransInterval = 0
+2025-06-20 02:47:58,199 [INFO] [SILENT] ✅ LockOn = 0
+2025-06-20 02:47:58,261 [INFO] [SILENT] ✅ MThreshold = 0
+2025-06-20 02:47:58,342 [INFO] [SILENT] ✅ RFCardOn = 0
+2025-06-20 02:47:58,390 [INFO] [SILENT] ✅ NetworkOn = 0
+2025-06-20 02:47:58,486 [INFO] [SILENT] ✅ Encrypt = 0
+2025-06-20 02:47:58,540 [INFO] [SILENT] ✅ MultiVerify = 0
+2025-06-20 02:47:58,581 [INFO] [SILENT] ✅ FaceFunOn = 0
+2025-06-20 02:47:58,641 [INFO] [SILENT] ✅ AlarmAttLog = 0
+2025-06-20 02:47:58,735 [INFO] [SILENT] ✅ AlarmOpLog = 0
+2025-06-20 02:47:58,831 [INFO] [SILENT] ✅ UseDoorSensor = 0
+2025-06-20 02:47:58,884 [INFO] [SILENT] ✅ DoorDelay = 0
+2025-06-20 02:47:58,974 [INFO] [SILENT] ✅ LockDelay = 0
+2025-06-20 02:47:59,022 [INFO] [SILENT] ✅ Dispositivo ACTIVO en modo SILENCIOSO
+2025-06-20 02:47:59,070 [INFO] [SILENT] ✅ Configuración SILENCIOSA refrescada
+2025-06-20 02:47:59,070 [INFO] [SILENT] ✅ Configuración SILENCIOSA aplicada: 25 opciones
+2025-06-20 02:47:59,071 [INFO] [SILENT] 🔇 F22 configurado como VERIFICADOR SILENCIOSO
+2025-06-20 02:47:59,071 [INFO] [SILENT] 🎯 F22 NO dará feedback hasta autorización software
+2025-06-20 02:47:59,072 [INFO] [SILENT] ⚡ Control de sonidos/luces/puerta: MANUAL por software
+2025-06-20 02:47:59,117 [INFO] [STA_THREAD] ✅ Eventos COM registrados (SILENCIOSO)
+2025-06-20 02:47:59,118 [INFO] [STA_THREAD] 🚀 Monitoreo SILENCIOSO con eventos COM activo
+2025-06-20 02:47:59,118 [INFO] [STA_THREAD] 🔇 F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:47:59,118 [INFO] [STA_THREAD] 🎯 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:47:59,118 [INFO] [STA_THREAD] 🔓 Control de puerta + sonidos: MANUAL por software
+2025-06-20 02:47:59,118 [INFO] [STA_THREAD] 🔄 Iniciando loop STA SILENCIOSO FUNCIONAL
+2025-06-20 02:48:20,081 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 1 RECIBIDO!
+2025-06-20 02:48:20,082 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:48:20,082 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:48:20,083 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:48:20,083 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:48:20,083 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:48:20,084 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:48:20,085 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:48:20,085 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:48:20,086 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:48:20,087 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:48:21,192 [INFO] [SECURITY] 👤 Usuario encontrado: Erick Francisco De Luna (UUID: 67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-20 02:48:22,007 [WARNING] [SECURITY] ❌ Membresía inválida: Sin membresía activa registrada
+2025-06-20 02:48:22,007 [WARNING] [SECURITY] ⚠️ Intento fallido #1 para 7265: membership_invalid
+2025-06-20 02:48:22,008 [WARNING] [ACCESS] ❌ ACCESO DENEGADO POR SOFTWARE
+2025-06-20 02:48:22,008 [WARNING] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:48:22,009 [WARNING] [ACCESS] 📝 Razón: Sin membresía activa registrada
+2025-06-20 02:48:22,009 [INFO] [SOUND] 🔊 Reproduciendo sonido de ERROR manual...
+2025-06-20 02:48:22,063 [INFO] [SOUND] ✅ Sonido de ERROR reproducido
+2025-06-20 02:48:23,650 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:48:23,651 [INFO] [ACCESS] 🔊 Feedback de ERROR reproducido por SOFTWARE
+2025-06-20 02:48:23,651 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:48:25,883 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 2 RECIBIDO!
+2025-06-20 02:48:25,884 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:48:25,884 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:48:25,885 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:48:25,885 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:48:25,886 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:48:25,886 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:48:25,888 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:48:25,888 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:48:25,889 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:48:25,890 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:48:25,890 [WARNING] [ACCESS] ❌ ACCESO DENEGADO POR SOFTWARE
+2025-06-20 02:48:25,891 [WARNING] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:48:25,891 [WARNING] [ACCESS] 📝 Razón: Sin membresía activa registrada
+2025-06-20 02:48:25,892 [INFO] [SOUND] 🔊 Reproduciendo sonido de ERROR manual...
+2025-06-20 02:48:25,940 [INFO] [SOUND] ✅ Sonido de ERROR reproducido
+2025-06-20 02:48:27,441 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:48:27,442 [INFO] [ACCESS] 🔊 Feedback de ERROR reproducido por SOFTWARE
+2025-06-20 02:48:27,443 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:48:30,824 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 3 RECIBIDO!
+2025-06-20 02:48:30,824 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:48:30,825 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:48:30,825 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:48:30,826 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:48:30,826 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:48:30,826 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:48:30,827 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:48:30,828 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:48:30,828 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:48:30,829 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:48:30,829 [WARNING] [ACCESS] ❌ ACCESO DENEGADO POR SOFTWARE
+2025-06-20 02:48:30,830 [WARNING] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:48:30,830 [WARNING] [ACCESS] 📝 Razón: Sin membresía activa registrada
+2025-06-20 02:48:30,830 [INFO] [SOUND] 🔊 Reproduciendo sonido de ERROR manual...
+2025-06-20 02:48:30,881 [INFO] [SOUND] ✅ Sonido de ERROR reproducido
+2025-06-20 02:48:32,356 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:48:32,356 [INFO] [ACCESS] 🔊 Feedback de ERROR reproducido por SOFTWARE
+2025-06-20 02:48:32,357 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:49:02,434 [INFO] [SHUTDOWN] 🛑 Iniciando apagado SILENCIOSO (SIGINT)
+2025-06-20 02:49:02,444 [INFO] [STA_THREAD] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:49:02,539 [INFO] [SHUTDOWN] 🛑 Cerrando WebSocket F22 SILENCIOSO...
+2025-06-20 02:49:02,541 [INFO] [SERVICE] 🛑 Deteniendo servicio SILENCIOSO...
+2025-06-20 02:49:02,542 [INFO] [STA_THREAD] 🛑 Deteniendo thread SILENCIOSO...
+2025-06-20 02:49:02,542 [INFO] [STA_THREAD] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:49:02,544 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL finalizado
+2025-06-20 02:49:05,556 [INFO] [SERVICE] ✅ Servicio SILENCIOSO detenido
+2025-06-20 02:49:05,557 [INFO] [SHUTDOWN] ✅ Sistema F22 SILENCIOSO cerrado limpiamente
+2025-06-20 02:49:05,562 [INFO] [SHUTDOWN] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:49:05,562 [INFO] [SHUTDOWN] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:51:11,757 [INFO] 
+🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:51:11,757 [INFO] [STARTUP] SERVICIO F22 v5.2 SILENCIOSO - FEEDBACK MANUAL
+2025-06-20 02:51:11,758 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:51:11,758 [INFO] [INFO] 📅 Fecha/Hora: 2025-06-20 08:33:53 UTC
+2025-06-20 02:51:11,758 [INFO] [INFO] 👤 Usuario: mupai555
+2025-06-20 02:51:11,758 [INFO] [INFO] 🔒 Modo de seguridad: ULTRA_STRICT
+2025-06-20 02:51:11,758 [INFO] [INFO] 🔇 Modo silencioso: True (TRUE = ACTIVO)
+2025-06-20 02:51:11,758 [INFO] [INFO] 🔊 Feedback manual: True (TRUE = ACTIVO)
+2025-06-20 02:51:11,758 [INFO] [INFO] 🌐 Dispositivo F22: 192.168.1.201:4370
+2025-06-20 02:51:11,758 [INFO] [INFO] 🎯 Puerto WebSocket: 8082
+2025-06-20 02:51:11,758 [INFO] 
+2025-06-20 02:51:11,758 [INFO] [DIAGNOSIS] ✅ EVENTOS COM CONFIRMADOS + MODO SILENCIOSO:
+2025-06-20 02:51:11,759 [INFO]    🎯 OnAttTransactionEx: FUNCIONANDO
+2025-06-20 02:51:11,759 [INFO]    👤 Usuario 7265: DETECTADO
+2025-06-20 02:51:11,759 [INFO]    ✅ Huella válida: CONFIRMADA
+2025-06-20 02:51:11,759 [INFO]    🔇 F22 SILENCIOSO: Sin feedback automático
+2025-06-20 02:51:11,759 [INFO]    🔊 SOFTWARE controla: Sonidos + Apertura
+2025-06-20 02:51:11,759 [INFO] 
+2025-06-20 02:51:11,759 [INFO] [FEATURES] 🛡️ CARACTERÍSTICAS SILENCIOSAS FUNCIONALES:
+2025-06-20 02:51:11,759 [INFO]    ✅ STA Thread para eventos COM SILENCIOSOS
+2025-06-20 02:51:11,759 [INFO]    ✅ F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:51:11,759 [INFO]    ✅ 🔇 F22 NO da feedback hasta que SOFTWARE decida
+2025-06-20 02:51:11,759 [INFO]    ✅ 🔊 Control MANUAL de sonidos por SOFTWARE
+2025-06-20 02:51:11,759 [INFO]    ✅ 🔓 Control MANUAL de apertura por SOFTWARE
+2025-06-20 02:51:11,759 [INFO]    ✅ 🔐 Validación BULLETPROOF con horarios corregidos
+2025-06-20 02:51:11,759 [INFO]    ✅ 📋 Integración completa con BD
+2025-06-20 02:51:11,759 [INFO]    ✅ 📊 Logs automáticos en access_logs
+2025-06-20 02:51:11,759 [INFO]    ✅ 🎯 Feedback personalizado según decisión software
+2025-06-20 02:51:11,759 [INFO]    ✅ 🚨 CERO confusión para usuarios
+2025-06-20 02:51:11,760 [INFO]    ✅ 🎮 API WebSocket completa con control manual
+2025-06-20 02:51:11,760 [INFO]    ✅ 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:51:11,760 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:51:11,760 [INFO] [STARTUP] 🔗 Iniciando conexión F22 SILENCIOSA...
+2025-06-20 02:51:11,760 [INFO] [SERVICE] 🚀 Iniciando servicio F22 SILENCIOSO FUNCIONAL v5.2...
+2025-06-20 02:51:11,760 [INFO] [VERIFY] 🔍 Verificando conexión a Supabase...
+2025-06-20 02:51:12,818 [INFO] [VERIFY] ✅ Conexión a Supabase verificada
+2025-06-20 02:51:12,819 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL inicializado
+2025-06-20 02:51:12,821 [INFO] [STA_THREAD] ✅ COM inicializado en modo STA
+2025-06-20 02:51:12,821 [INFO] [STA_THREAD] 🔗 Conectando a F22 SILENCIOSO en 192.168.1.201:4370
+2025-06-20 02:51:13,518 [INFO] [STA_THREAD] ✅ Conectado al F22
+2025-06-20 02:51:13,518 [INFO] [STA_THREAD] 📋 Info dispositivo: {'serial': 'BOCK192461543', 'firmware': 'Unknown'}
+2025-06-20 02:51:13,519 [INFO] [SILENT] 🔧 Aplicando configuración SILENCIOSA FUNCIONAL...
+2025-06-20 02:51:13,738 [INFO] [SILENT] ✅ VerifyMode = 1
+2025-06-20 02:51:13,834 [INFO] [SUCCESS] ✅ Servicio F22 SILENCIOSO FUNCIONAL iniciado
+2025-06-20 02:51:13,835 [INFO] [SUCCESS] 🔇 Eventos COM SILENCIOSOS activos
+2025-06-20 02:51:13,837 [INFO] [SUCCESS] 🎯 Validación con tu BD activa
+2025-06-20 02:51:13,837 [INFO] [SUCCESS] 🔊 Control manual de sonidos por SOFTWARE
+2025-06-20 02:51:13,837 [INFO] [SUCCESS] 🔓 Control de puerta funcional
+2025-06-20 02:51:13,838 [INFO] [SUCCESS] 🚨 F22 configurado en VERIFICACIÓN SILENCIOSA
+2025-06-20 02:51:13,838 [INFO] [SUCCESS] 💡 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:51:13,839 [INFO] [STARTUP] ✅ Conexión F22 SILENCIOSA establecida
+2025-06-20 02:51:13,840 [INFO] [STARTUP] 🌐 Iniciando WebSocket F22 SILENCIOSO...
+2025-06-20 02:51:13,857 [INFO] [SUCCESS] 🚀 Sistema F22 SILENCIOSO activo en puerto 8082
+2025-06-20 02:51:13,857 [INFO] 
+2025-06-20 02:51:13,857 [INFO] [READY] 🔇 Sistema listo - CON VERIFICACIÓN SILENCIOSA
+2025-06-20 02:51:13,858 [INFO] [READY] 🎯 F22 configurado para NO dar feedback automático
+2025-06-20 02:51:13,858 [INFO] [READY] 🔊 SOFTWARE controla sonidos y apertura
+2025-06-20 02:51:13,858 [INFO] [READY] 📊 Logs automáticos en access_logs activos
+2025-06-20 02:51:13,858 [INFO] [READY] 🚨 CERO confusión para usuarios
+2025-06-20 02:51:13,858 [INFO] 
+2025-06-20 02:51:13,858 [INFO] [CONFIRMED] 🎉 FUNCIONAMIENTO SILENCIOSO CONFIRMADO:
+2025-06-20 02:51:13,858 [INFO]    1. ✅ Eventos COM funcionando perfectamente
+2025-06-20 02:51:13,858 [INFO]    2. ✅ F22 configurado en modo silencioso
+2025-06-20 02:51:13,858 [INFO]    3. ✅ Validación BULLETPROOF lista
+2025-06-20 02:51:13,858 [INFO]    4. ✅ Control manual de feedback funcional
+2025-06-20 02:51:13,858 [INFO]    5. ✅ Logs automáticos activos
+2025-06-20 02:51:13,859 [INFO] 
+2025-06-20 02:51:13,859 [INFO] [BEHAVIOR] 🔇 COMPORTAMIENTO ESPERADO:
+2025-06-20 02:51:13,859 [INFO]    1. 👆 Usuario pone dedo → F22: 🔇 (silencio total)
+2025-06-20 02:51:13,859 [INFO]    2. 💻 SOFTWARE valida → Membresía/horario/etc
+2025-06-20 02:51:13,859 [INFO]    3a. ✅ SI autorizado → SOFTWARE: 🔊 beep éxito + 🔓 abre puerta
+2025-06-20 02:51:13,859 [INFO]    3b. ❌ SI denegado → SOFTWARE: 🔊 beep error + 🚪 puerta cerrada
+2025-06-20 02:51:13,859 [INFO]    4. 👤 Usuario recibe feedback CORRECTO según decisión
+2025-06-20 02:51:13,859 [INFO] 
+2025-06-20 02:51:13,859 [INFO] [TEST] 🧪 PRUEBA LAS FUNCIONALIDADES:
+2025-06-20 02:51:13,859 [INFO]    1. 👤 Usuario CON membresía → F22 silencioso → SOFTWARE autoriza con sonido
+2025-06-20 02:51:13,859 [INFO]    2. ❌ Usuario SIN membresía → F22 silencioso → SOFTWARE deniega con sonido
+2025-06-20 02:51:13,859 [INFO]    3. 🔊 Probar sonidos manuales → 'test_success_sound', 'test_denied_sound'
+2025-06-20 02:51:13,859 [INFO]    4. 🔓 Probar apertura manual → 'open_door'
+2025-06-20 02:51:13,859 [INFO]    5. 📊 Verificar logs en access_logs automáticamente
+2025-06-20 02:51:13,859 [INFO] 
+2025-06-20 02:51:13,859 [INFO] [WEBSOCKET] 🌐 API SILENCIOSA disponible en:
+2025-06-20 02:51:13,859 [INFO]    ws://127.0.0.1:8082
+2025-06-20 02:51:13,859 [INFO] 
+2025-06-20 02:51:13,859 [INFO] [API] 🎮 Acciones disponibles:
+2025-06-20 02:51:13,859 [INFO]    - get_device_info: Info del dispositivo + modo silencioso
+2025-06-20 02:51:13,859 [INFO]    - test_access: Probar validación de usuario (ej: 7265)
+2025-06-20 02:51:13,860 [INFO]    - open_door: Abrir puerta + sonido éxito manual
+2025-06-20 02:51:13,860 [INFO]    - test_success_sound: Probar sonido de éxito
+2025-06-20 02:51:13,860 [INFO]    - test_denied_sound: Probar sonido de error
+2025-06-20 02:51:13,860 [INFO]    - connect_device: Conectar dispositivo
+2025-06-20 02:51:13,860 [INFO]    - disconnect_device: Desconectar dispositivo
+2025-06-20 02:51:13,860 [INFO]    - get_service_status: Estado completo del servicio
+2025-06-20 02:51:13,860 [INFO] 
+2025-06-20 02:51:13,860 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:51:13,860 [INFO] [STATUS] ✅ SISTEMA F22 SILENCIOSO FUNCIONAL ACTIVO
+2025-06-20 02:51:13,860 [INFO] [STATUS] 👆 PON TU DEDO EN EL F22 - MODO SILENCIOSO
+2025-06-20 02:51:13,860 [INFO] [STATUS] 🔇 F22 NO dará feedback hasta SOFTWARE decidir
+2025-06-20 02:51:13,860 [INFO] [STATUS] 🔊 SOFTWARE reproducirá sonido según validación
+2025-06-20 02:51:13,860 [INFO] [STATUS] 🔓 SOFTWARE abrirá puerta solo si autorizado
+2025-06-20 02:51:13,860 [INFO] [STATUS] 🎯 CERO CONFUSIÓN - Feedback correcto siempre
+2025-06-20 02:51:13,860 [INFO] [STATUS] 📝 EVENTOS COM FUNCIONANDO AL 100%
+2025-06-20 02:51:13,860 [INFO] [STATUS] 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:51:13,860 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:51:14,026 [INFO] [SILENT] ✅ AttState = 255
+2025-06-20 02:51:14,074 [INFO] [SILENT] ✅ WorkCode = 0
+2025-06-20 02:51:14,171 [INFO] [SILENT] ✅ AutoOpenDoor = 1
+2025-06-20 02:51:14,219 [INFO] [SILENT] ✅ VoiceOn = 0
+2025-06-20 02:51:14,316 [INFO] [SILENT] ✅ AutoUpdate = 0
+2025-06-20 02:51:14,410 [INFO] [SILENT] ✅ AutoBell = 0
+2025-06-20 02:51:14,506 [INFO] [SILENT] ✅ KeyVoice = 0
+2025-06-20 02:51:14,595 [INFO] [SILENT] ✅ Realtime = 1
+2025-06-20 02:51:14,692 [INFO] [SILENT] ✅ TransFlag = 0000000000
+2025-06-20 02:51:14,787 [INFO] [SILENT] ✅ TransInterval = 0
+2025-06-20 02:51:14,883 [INFO] [SILENT] ✅ LockOn = 0
+2025-06-20 02:51:14,932 [INFO] [SILENT] ✅ MThreshold = 0
+2025-06-20 02:51:15,027 [INFO] [SILENT] ✅ RFCardOn = 0
+2025-06-20 02:51:15,076 [INFO] [SILENT] ✅ NetworkOn = 0
+2025-06-20 02:51:15,129 [INFO] [SILENT] ✅ Encrypt = 0
+2025-06-20 02:51:15,219 [INFO] [SILENT] ✅ MultiVerify = 0
+2025-06-20 02:51:15,268 [INFO] [SILENT] ✅ FaceFunOn = 0
+2025-06-20 02:51:15,315 [INFO] [SILENT] ✅ AlarmAttLog = 0
+2025-06-20 02:51:15,368 [INFO] [SILENT] ✅ AlarmOpLog = 0
+2025-06-20 02:51:15,459 [INFO] [SILENT] ✅ UseDoorSensor = 0
+2025-06-20 02:51:15,517 [INFO] [SILENT] ✅ DoorDelay = 0
+2025-06-20 02:51:15,600 [INFO] [SILENT] ✅ LockDelay = 0
+2025-06-20 02:51:15,648 [INFO] [SILENT] ✅ Dispositivo ACTIVO en modo SILENCIOSO
+2025-06-20 02:51:15,695 [INFO] [SILENT] ✅ Configuración SILENCIOSA refrescada
+2025-06-20 02:51:15,696 [INFO] [SILENT] ✅ Configuración SILENCIOSA aplicada: 25 opciones
+2025-06-20 02:51:15,697 [INFO] [SILENT] 🔇 F22 configurado como VERIFICADOR SILENCIOSO
+2025-06-20 02:51:15,697 [INFO] [SILENT] 🎯 F22 NO dará feedback hasta autorización software
+2025-06-20 02:51:15,697 [INFO] [SILENT] ⚡ Control de sonidos/luces/puerta: MANUAL por software
+2025-06-20 02:51:15,744 [INFO] [STA_THREAD] ✅ Eventos COM registrados (SILENCIOSO)
+2025-06-20 02:51:15,745 [INFO] [STA_THREAD] 🚀 Monitoreo SILENCIOSO con eventos COM activo
+2025-06-20 02:51:15,745 [INFO] [STA_THREAD] 🔇 F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:51:15,746 [INFO] [STA_THREAD] 🎯 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:51:15,746 [INFO] [STA_THREAD] 🔓 Control de puerta + sonidos: MANUAL por software
+2025-06-20 02:51:15,746 [INFO] [STA_THREAD] 🔄 Iniciando loop STA SILENCIOSO FUNCIONAL
+2025-06-20 02:51:39,239 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 1 RECIBIDO!
+2025-06-20 02:51:39,240 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:51:39,240 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:51:39,240 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:51:39,241 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:51:39,241 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:51:39,241 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:51:39,242 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:51:39,243 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:51:39,243 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:51:39,243 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:51:40,466 [INFO] [SECURITY] 👤 Usuario encontrado: Erick Francisco De Luna (UUID: 67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-20 02:51:41,390 [WARNING] [SECURITY] ❌ Membresía inválida: Sin membresía activa registrada
+2025-06-20 02:51:41,390 [WARNING] [SECURITY] ⚠️ Intento fallido #1 para 7265: membership_invalid
+2025-06-20 02:51:41,391 [WARNING] [ACCESS] ❌ ACCESO DENEGADO POR SOFTWARE
+2025-06-20 02:51:41,391 [WARNING] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:51:41,391 [WARNING] [ACCESS] 📝 Razón: Sin membresía activa registrada
+2025-06-20 02:51:41,392 [INFO] [SOUND] 🔊 Reproduciendo sonido de ERROR manual...
+2025-06-20 02:51:41,455 [INFO] [SOUND] ✅ Sonido de ERROR reproducido
+2025-06-20 02:51:43,033 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:51:43,034 [INFO] [ACCESS] 🔊 Feedback de ERROR reproducido por SOFTWARE
+2025-06-20 02:51:43,035 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:51:45,126 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 2 RECIBIDO!
+2025-06-20 02:51:45,127 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:51:45,127 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:51:45,127 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:51:45,127 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:51:45,128 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:51:45,128 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:51:45,128 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:51:45,128 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:51:45,128 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:51:45,129 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:51:45,129 [WARNING] [ACCESS] ❌ ACCESO DENEGADO POR SOFTWARE
+2025-06-20 02:51:45,129 [WARNING] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:51:45,129 [WARNING] [ACCESS] 📝 Razón: Sin membresía activa registrada
+2025-06-20 02:51:45,129 [INFO] [SOUND] 🔊 Reproduciendo sonido de ERROR manual...
+2025-06-20 02:51:45,174 [INFO] [SOUND] ✅ Sonido de ERROR reproducido
+2025-06-20 02:51:46,711 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:51:46,712 [INFO] [ACCESS] 🔊 Feedback de ERROR reproducido por SOFTWARE
+2025-06-20 02:51:46,712 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:52:20,848 [INFO] [SHUTDOWN] 🛑 Iniciando apagado SILENCIOSO (SIGINT)
+2025-06-20 02:52:20,855 [INFO] [STA_THREAD] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:52:20,904 [INFO] [SHUTDOWN] 🛑 Cerrando WebSocket F22 SILENCIOSO...
+2025-06-20 02:52:20,910 [INFO] [SERVICE] 🛑 Deteniendo servicio SILENCIOSO...
+2025-06-20 02:52:20,910 [INFO] [STA_THREAD] 🛑 Deteniendo thread SILENCIOSO...
+2025-06-20 02:52:20,986 [INFO] [STA_THREAD] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:52:20,987 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL finalizado
+2025-06-20 02:52:23,914 [INFO] [SERVICE] ✅ Servicio SILENCIOSO detenido
+2025-06-20 02:52:23,915 [INFO] [SHUTDOWN] ✅ Sistema F22 SILENCIOSO cerrado limpiamente
+2025-06-20 02:52:23,921 [INFO] [SHUTDOWN] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:52:23,922 [INFO] [SHUTDOWN] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:53:12,939 [INFO] 
+🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:53:12,939 [INFO] [STARTUP] SERVICIO F22 v5.2 SILENCIOSO - FEEDBACK MANUAL
+2025-06-20 02:53:12,939 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:53:12,939 [INFO] [INFO] 📅 Fecha/Hora: 2025-06-20 08:33:53 UTC
+2025-06-20 02:53:12,940 [INFO] [INFO] 👤 Usuario: mupai555
+2025-06-20 02:53:12,940 [INFO] [INFO] 🔒 Modo de seguridad: ULTRA_STRICT
+2025-06-20 02:53:12,940 [INFO] [INFO] 🔇 Modo silencioso: True (TRUE = ACTIVO)
+2025-06-20 02:53:12,940 [INFO] [INFO] 🔊 Feedback manual: True (TRUE = ACTIVO)
+2025-06-20 02:53:12,940 [INFO] [INFO] 🌐 Dispositivo F22: 192.168.1.201:4370
+2025-06-20 02:53:12,940 [INFO] [INFO] 🎯 Puerto WebSocket: 8082
+2025-06-20 02:53:12,940 [INFO] 
+2025-06-20 02:53:12,940 [INFO] [DIAGNOSIS] ✅ EVENTOS COM CONFIRMADOS + MODO SILENCIOSO:
+2025-06-20 02:53:12,940 [INFO]    🎯 OnAttTransactionEx: FUNCIONANDO
+2025-06-20 02:53:12,940 [INFO]    👤 Usuario 7265: DETECTADO
+2025-06-20 02:53:12,940 [INFO]    ✅ Huella válida: CONFIRMADA
+2025-06-20 02:53:12,940 [INFO]    🔇 F22 SILENCIOSO: Sin feedback automático
+2025-06-20 02:53:12,940 [INFO]    🔊 SOFTWARE controla: Sonidos + Apertura
+2025-06-20 02:53:12,940 [INFO] 
+2025-06-20 02:53:12,940 [INFO] [FEATURES] 🛡️ CARACTERÍSTICAS SILENCIOSAS FUNCIONALES:
+2025-06-20 02:53:12,940 [INFO]    ✅ STA Thread para eventos COM SILENCIOSOS
+2025-06-20 02:53:12,940 [INFO]    ✅ F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:53:12,940 [INFO]    ✅ 🔇 F22 NO da feedback hasta que SOFTWARE decida
+2025-06-20 02:53:12,941 [INFO]    ✅ 🔊 Control MANUAL de sonidos por SOFTWARE
+2025-06-20 02:53:12,941 [INFO]    ✅ 🔓 Control MANUAL de apertura por SOFTWARE
+2025-06-20 02:53:12,941 [INFO]    ✅ 🔐 Validación BULLETPROOF con horarios corregidos
+2025-06-20 02:53:12,941 [INFO]    ✅ 📋 Integración completa con BD
+2025-06-20 02:53:12,941 [INFO]    ✅ 📊 Logs automáticos en access_logs
+2025-06-20 02:53:12,941 [INFO]    ✅ 🎯 Feedback personalizado según decisión software
+2025-06-20 02:53:12,941 [INFO]    ✅ 🚨 CERO confusión para usuarios
+2025-06-20 02:53:12,941 [INFO]    ✅ 🎮 API WebSocket completa con control manual
+2025-06-20 02:53:12,941 [INFO]    ✅ 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:53:12,941 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:53:12,941 [INFO] [STARTUP] 🔗 Iniciando conexión F22 SILENCIOSA...
+2025-06-20 02:53:12,941 [INFO] [SERVICE] 🚀 Iniciando servicio F22 SILENCIOSO FUNCIONAL v5.2...
+2025-06-20 02:53:12,941 [INFO] [VERIFY] 🔍 Verificando conexión a Supabase...
+2025-06-20 02:53:13,758 [INFO] [VERIFY] ✅ Conexión a Supabase verificada
+2025-06-20 02:53:13,759 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL inicializado
+2025-06-20 02:53:13,760 [INFO] [STA_THREAD] ✅ COM inicializado en modo STA
+2025-06-20 02:53:13,760 [INFO] [STA_THREAD] 🔗 Conectando a F22 SILENCIOSO en 192.168.1.201:4370
+2025-06-20 02:53:14,474 [INFO] [STA_THREAD] ✅ Conectado al F22
+2025-06-20 02:53:14,474 [INFO] [STA_THREAD] 📋 Info dispositivo: {'serial': 'BOCK192461543', 'firmware': 'Unknown'}
+2025-06-20 02:53:14,474 [INFO] [SILENT] 🔧 Aplicando configuración SILENCIOSA FUNCIONAL...
+2025-06-20 02:53:14,661 [INFO] [SILENT] ✅ VerifyMode = 1
+2025-06-20 02:53:14,773 [INFO] [SUCCESS] ✅ Servicio F22 SILENCIOSO FUNCIONAL iniciado
+2025-06-20 02:53:14,774 [INFO] [SUCCESS] 🔇 Eventos COM SILENCIOSOS activos
+2025-06-20 02:53:14,775 [INFO] [SUCCESS] 🎯 Validación con tu BD activa
+2025-06-20 02:53:14,776 [INFO] [SUCCESS] 🔊 Control manual de sonidos por SOFTWARE
+2025-06-20 02:53:14,776 [INFO] [SUCCESS] 🔓 Control de puerta funcional
+2025-06-20 02:53:14,777 [INFO] [SUCCESS] 🚨 F22 configurado en VERIFICACIÓN SILENCIOSA
+2025-06-20 02:53:14,777 [INFO] [SUCCESS] 💡 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:53:14,778 [INFO] [STARTUP] ✅ Conexión F22 SILENCIOSA establecida
+2025-06-20 02:53:14,778 [INFO] [STARTUP] 🌐 Iniciando WebSocket F22 SILENCIOSO...
+2025-06-20 02:53:14,796 [INFO] [SUCCESS] 🚀 Sistema F22 SILENCIOSO activo en puerto 8082
+2025-06-20 02:53:14,796 [INFO] 
+2025-06-20 02:53:14,796 [INFO] [READY] 🔇 Sistema listo - CON VERIFICACIÓN SILENCIOSA
+2025-06-20 02:53:14,796 [INFO] [READY] 🎯 F22 configurado para NO dar feedback automático
+2025-06-20 02:53:14,796 [INFO] [READY] 🔊 SOFTWARE controla sonidos y apertura
+2025-06-20 02:53:14,796 [INFO] [READY] 📊 Logs automáticos en access_logs activos
+2025-06-20 02:53:14,796 [INFO] [READY] 🚨 CERO confusión para usuarios
+2025-06-20 02:53:14,797 [INFO] 
+2025-06-20 02:53:14,797 [INFO] [CONFIRMED] 🎉 FUNCIONAMIENTO SILENCIOSO CONFIRMADO:
+2025-06-20 02:53:14,797 [INFO]    1. ✅ Eventos COM funcionando perfectamente
+2025-06-20 02:53:14,797 [INFO]    2. ✅ F22 configurado en modo silencioso
+2025-06-20 02:53:14,797 [INFO]    3. ✅ Validación BULLETPROOF lista
+2025-06-20 02:53:14,797 [INFO]    4. ✅ Control manual de feedback funcional
+2025-06-20 02:53:14,797 [INFO]    5. ✅ Logs automáticos activos
+2025-06-20 02:53:14,797 [INFO] 
+2025-06-20 02:53:14,797 [INFO] [BEHAVIOR] 🔇 COMPORTAMIENTO ESPERADO:
+2025-06-20 02:53:14,797 [INFO]    1. 👆 Usuario pone dedo → F22: 🔇 (silencio total)
+2025-06-20 02:53:14,797 [INFO]    2. 💻 SOFTWARE valida → Membresía/horario/etc
+2025-06-20 02:53:14,797 [INFO]    3a. ✅ SI autorizado → SOFTWARE: 🔊 beep éxito + 🔓 abre puerta
+2025-06-20 02:53:14,797 [INFO]    3b. ❌ SI denegado → SOFTWARE: 🔊 beep error + 🚪 puerta cerrada
+2025-06-20 02:53:14,797 [INFO]    4. 👤 Usuario recibe feedback CORRECTO según decisión
+2025-06-20 02:53:14,797 [INFO] 
+2025-06-20 02:53:14,797 [INFO] [TEST] 🧪 PRUEBA LAS FUNCIONALIDADES:
+2025-06-20 02:53:14,797 [INFO]    1. 👤 Usuario CON membresía → F22 silencioso → SOFTWARE autoriza con sonido
+2025-06-20 02:53:14,797 [INFO]    2. ❌ Usuario SIN membresía → F22 silencioso → SOFTWARE deniega con sonido
+2025-06-20 02:53:14,797 [INFO]    3. 🔊 Probar sonidos manuales → 'test_success_sound', 'test_denied_sound'
+2025-06-20 02:53:14,797 [INFO]    4. 🔓 Probar apertura manual → 'open_door'
+2025-06-20 02:53:14,797 [INFO]    5. 📊 Verificar logs en access_logs automáticamente
+2025-06-20 02:53:14,798 [INFO] 
+2025-06-20 02:53:14,798 [INFO] [WEBSOCKET] 🌐 API SILENCIOSA disponible en:
+2025-06-20 02:53:14,798 [INFO]    ws://127.0.0.1:8082
+2025-06-20 02:53:14,798 [INFO] 
+2025-06-20 02:53:14,798 [INFO] [API] 🎮 Acciones disponibles:
+2025-06-20 02:53:14,798 [INFO]    - get_device_info: Info del dispositivo + modo silencioso
+2025-06-20 02:53:14,798 [INFO]    - test_access: Probar validación de usuario (ej: 7265)
+2025-06-20 02:53:14,798 [INFO]    - open_door: Abrir puerta + sonido éxito manual
+2025-06-20 02:53:14,798 [INFO]    - test_success_sound: Probar sonido de éxito
+2025-06-20 02:53:14,798 [INFO]    - test_denied_sound: Probar sonido de error
+2025-06-20 02:53:14,798 [INFO]    - connect_device: Conectar dispositivo
+2025-06-20 02:53:14,798 [INFO]    - disconnect_device: Desconectar dispositivo
+2025-06-20 02:53:14,798 [INFO]    - get_service_status: Estado completo del servicio
+2025-06-20 02:53:14,798 [INFO] 
+2025-06-20 02:53:14,798 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:53:14,798 [INFO] [STATUS] ✅ SISTEMA F22 SILENCIOSO FUNCIONAL ACTIVO
+2025-06-20 02:53:14,798 [INFO] [STATUS] 👆 PON TU DEDO EN EL F22 - MODO SILENCIOSO
+2025-06-20 02:53:14,798 [INFO] [STATUS] 🔇 F22 NO dará feedback hasta SOFTWARE decidir
+2025-06-20 02:53:14,798 [INFO] [STATUS] 🔊 SOFTWARE reproducirá sonido según validación
+2025-06-20 02:53:14,798 [INFO] [STATUS] 🔓 SOFTWARE abrirá puerta solo si autorizado
+2025-06-20 02:53:14,798 [INFO] [STATUS] 🎯 CERO CONFUSIÓN - Feedback correcto siempre
+2025-06-20 02:53:14,799 [INFO] [STATUS] 📝 EVENTOS COM FUNCIONANDO AL 100%
+2025-06-20 02:53:14,799 [INFO] [STATUS] 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:53:14,799 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:53:14,899 [INFO] [SILENT] ✅ AttState = 255
+2025-06-20 02:53:14,947 [INFO] [SILENT] ✅ WorkCode = 0
+2025-06-20 02:53:15,043 [INFO] [SILENT] ✅ AutoOpenDoor = 1
+2025-06-20 02:53:15,090 [INFO] [SILENT] ✅ VoiceOn = 0
+2025-06-20 02:53:15,169 [INFO] [SILENT] ✅ AutoUpdate = 0
+2025-06-20 02:53:15,263 [INFO] [SILENT] ✅ AutoBell = 0
+2025-06-20 02:53:15,359 [INFO] [SILENT] ✅ KeyVoice = 0
+2025-06-20 02:53:15,454 [INFO] [SILENT] ✅ Realtime = 1
+2025-06-20 02:53:15,550 [INFO] [SILENT] ✅ TransFlag = 0000000000
+2025-06-20 02:53:15,646 [INFO] [SILENT] ✅ TransInterval = 0
+2025-06-20 02:53:15,694 [INFO] [SILENT] ✅ LockOn = 0
+2025-06-20 02:53:15,742 [INFO] [SILENT] ✅ MThreshold = 0
+2025-06-20 02:53:15,837 [INFO] [SILENT] ✅ RFCardOn = 0
+2025-06-20 02:53:15,885 [INFO] [SILENT] ✅ NetworkOn = 0
+2025-06-20 02:53:15,943 [INFO] [SILENT] ✅ Encrypt = 0
+2025-06-20 02:53:16,028 [INFO] [SILENT] ✅ MultiVerify = 0
+2025-06-20 02:53:16,076 [INFO] [SILENT] ✅ FaceFunOn = 0
+2025-06-20 02:53:16,124 [INFO] [SILENT] ✅ AlarmAttLog = 0
+2025-06-20 02:53:16,178 [INFO] [SILENT] ✅ AlarmOpLog = 0
+2025-06-20 02:53:16,274 [INFO] [SILENT] ✅ UseDoorSensor = 0
+2025-06-20 02:53:16,326 [INFO] [SILENT] ✅ DoorDelay = 0
+2025-06-20 02:53:16,382 [INFO] [SILENT] ✅ LockDelay = 0
+2025-06-20 02:53:16,417 [INFO] [SILENT] ✅ Dispositivo ACTIVO en modo SILENCIOSO
+2025-06-20 02:53:16,465 [INFO] [SILENT] ✅ Configuración SILENCIOSA refrescada
+2025-06-20 02:53:16,466 [INFO] [SILENT] ✅ Configuración SILENCIOSA aplicada: 25 opciones
+2025-06-20 02:53:16,466 [INFO] [SILENT] 🔇 F22 configurado como VERIFICADOR SILENCIOSO
+2025-06-20 02:53:16,466 [INFO] [SILENT] 🎯 F22 NO dará feedback hasta autorización software
+2025-06-20 02:53:16,467 [INFO] [SILENT] ⚡ Control de sonidos/luces/puerta: MANUAL por software
+2025-06-20 02:53:16,514 [INFO] [STA_THREAD] ✅ Eventos COM registrados (SILENCIOSO)
+2025-06-20 02:53:16,515 [INFO] [STA_THREAD] 🚀 Monitoreo SILENCIOSO con eventos COM activo
+2025-06-20 02:53:16,515 [INFO] [STA_THREAD] 🔇 F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:53:16,516 [INFO] [STA_THREAD] 🎯 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:53:16,516 [INFO] [STA_THREAD] 🔓 Control de puerta + sonidos: MANUAL por software
+2025-06-20 02:53:16,516 [INFO] [STA_THREAD] 🔄 Iniciando loop STA SILENCIOSO FUNCIONAL
+2025-06-20 02:53:36,234 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 1 RECIBIDO!
+2025-06-20 02:53:36,235 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:53:36,235 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:53:36,236 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:53:36,236 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:53:36,237 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:53:36,237 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:53:36,238 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:53:36,238 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:53:36,239 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:53:36,239 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:53:37,410 [INFO] [SECURITY] 👤 Usuario encontrado: Erick Francisco De Luna (UUID: 67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-20 02:53:39,380 [WARNING] [SECURITY] ⏰ Fuera de horario: Fuera de horario nocturno (06:00 - 02:00)
+2025-06-20 02:53:39,380 [WARNING] [ACCESS] ❌ ACCESO DENEGADO POR SOFTWARE
+2025-06-20 02:53:39,380 [WARNING] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:53:39,381 [WARNING] [ACCESS] 📝 Razón: Fuera de horario nocturno (06:00 - 02:00)
+2025-06-20 02:53:39,381 [INFO] [SOUND] 🔊 Reproduciendo sonido de ERROR manual...
+2025-06-20 02:53:39,430 [INFO] [SOUND] ✅ Sonido de ERROR reproducido
+2025-06-20 02:53:41,098 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:53:41,098 [INFO] [ACCESS] 🔊 Feedback de ERROR reproducido por SOFTWARE
+2025-06-20 02:53:41,099 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:53:42,860 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 2 RECIBIDO!
+2025-06-20 02:53:42,861 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:53:42,862 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:53:42,863 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:53:42,864 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:53:42,864 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:53:42,864 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:53:42,865 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:53:42,866 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:53:42,867 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:53:42,867 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:53:42,867 [WARNING] [ACCESS] ❌ ACCESO DENEGADO POR SOFTWARE
+2025-06-20 02:53:42,868 [WARNING] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:53:42,868 [WARNING] [ACCESS] 📝 Razón: Fuera de horario nocturno (06:00 - 02:00)
+2025-06-20 02:53:42,868 [INFO] [SOUND] 🔊 Reproduciendo sonido de ERROR manual...
+2025-06-20 02:53:42,918 [INFO] [SOUND] ✅ Sonido de ERROR reproducido
+2025-06-20 02:53:44,476 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:53:44,477 [INFO] [ACCESS] 🔊 Feedback de ERROR reproducido por SOFTWARE
+2025-06-20 02:53:44,478 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:53:46,596 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 3 RECIBIDO!
+2025-06-20 02:53:46,597 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:53:46,597 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:53:46,598 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:53:46,598 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:53:46,598 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:53:46,599 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:53:46,600 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:53:46,600 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:53:46,600 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:53:46,601 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:53:46,601 [WARNING] [ACCESS] ❌ ACCESO DENEGADO POR SOFTWARE
+2025-06-20 02:53:46,601 [WARNING] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:53:46,601 [WARNING] [ACCESS] 📝 Razón: Fuera de horario nocturno (06:00 - 02:00)
+2025-06-20 02:53:46,601 [INFO] [SOUND] 🔊 Reproduciendo sonido de ERROR manual...
+2025-06-20 02:53:46,657 [INFO] [SOUND] ✅ Sonido de ERROR reproducido
+2025-06-20 02:53:48,060 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:53:48,062 [INFO] [ACCESS] 🔊 Feedback de ERROR reproducido por SOFTWARE
+2025-06-20 02:53:48,062 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:54:23,784 [INFO] [SHUTDOWN] 🛑 Iniciando apagado SILENCIOSO (SIGINT)
+2025-06-20 02:54:23,790 [INFO] [STA_THREAD] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:54:23,931 [INFO] [STA_THREAD] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:54:23,932 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL finalizado
+2025-06-20 02:54:24,312 [INFO] [SHUTDOWN] 🛑 Cerrando WebSocket F22 SILENCIOSO...
+2025-06-20 02:54:24,314 [INFO] [SERVICE] 🛑 Deteniendo servicio SILENCIOSO...
+2025-06-20 02:54:24,314 [INFO] [SERVICE] ✅ Servicio SILENCIOSO detenido
+2025-06-20 02:54:24,314 [INFO] [SHUTDOWN] ✅ Sistema F22 SILENCIOSO cerrado limpiamente
+2025-06-20 02:54:24,320 [INFO] [SHUTDOWN] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:54:24,320 [INFO] [SHUTDOWN] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:54:55,460 [INFO] 
+🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:54:55,460 [INFO] [STARTUP] SERVICIO F22 v5.2 SILENCIOSO - FEEDBACK MANUAL
+2025-06-20 02:54:55,460 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:54:55,460 [INFO] [INFO] 📅 Fecha/Hora: 2025-06-20 08:33:53 UTC
+2025-06-20 02:54:55,460 [INFO] [INFO] 👤 Usuario: mupai555
+2025-06-20 02:54:55,461 [INFO] [INFO] 🔒 Modo de seguridad: ULTRA_STRICT
+2025-06-20 02:54:55,461 [INFO] [INFO] 🔇 Modo silencioso: True (TRUE = ACTIVO)
+2025-06-20 02:54:55,461 [INFO] [INFO] 🔊 Feedback manual: True (TRUE = ACTIVO)
+2025-06-20 02:54:55,461 [INFO] [INFO] 🌐 Dispositivo F22: 192.168.1.201:4370
+2025-06-20 02:54:55,461 [INFO] [INFO] 🎯 Puerto WebSocket: 8082
+2025-06-20 02:54:55,461 [INFO] 
+2025-06-20 02:54:55,461 [INFO] [DIAGNOSIS] ✅ EVENTOS COM CONFIRMADOS + MODO SILENCIOSO:
+2025-06-20 02:54:55,461 [INFO]    🎯 OnAttTransactionEx: FUNCIONANDO
+2025-06-20 02:54:55,461 [INFO]    👤 Usuario 7265: DETECTADO
+2025-06-20 02:54:55,461 [INFO]    ✅ Huella válida: CONFIRMADA
+2025-06-20 02:54:55,461 [INFO]    🔇 F22 SILENCIOSO: Sin feedback automático
+2025-06-20 02:54:55,461 [INFO]    🔊 SOFTWARE controla: Sonidos + Apertura
+2025-06-20 02:54:55,461 [INFO] 
+2025-06-20 02:54:55,461 [INFO] [FEATURES] 🛡️ CARACTERÍSTICAS SILENCIOSAS FUNCIONALES:
+2025-06-20 02:54:55,461 [INFO]    ✅ STA Thread para eventos COM SILENCIOSOS
+2025-06-20 02:54:55,461 [INFO]    ✅ F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:54:55,461 [INFO]    ✅ 🔇 F22 NO da feedback hasta que SOFTWARE decida
+2025-06-20 02:54:55,461 [INFO]    ✅ 🔊 Control MANUAL de sonidos por SOFTWARE
+2025-06-20 02:54:55,461 [INFO]    ✅ 🔓 Control MANUAL de apertura por SOFTWARE
+2025-06-20 02:54:55,462 [INFO]    ✅ 🔐 Validación BULLETPROOF con horarios corregidos
+2025-06-20 02:54:55,462 [INFO]    ✅ 📋 Integración completa con BD
+2025-06-20 02:54:55,462 [INFO]    ✅ 📊 Logs automáticos en access_logs
+2025-06-20 02:54:55,462 [INFO]    ✅ 🎯 Feedback personalizado según decisión software
+2025-06-20 02:54:55,462 [INFO]    ✅ 🚨 CERO confusión para usuarios
+2025-06-20 02:54:55,462 [INFO]    ✅ 🎮 API WebSocket completa con control manual
+2025-06-20 02:54:55,462 [INFO]    ✅ 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:54:55,462 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:54:55,462 [INFO] [STARTUP] 🔗 Iniciando conexión F22 SILENCIOSA...
+2025-06-20 02:54:55,462 [INFO] [SERVICE] 🚀 Iniciando servicio F22 SILENCIOSO FUNCIONAL v5.2...
+2025-06-20 02:54:55,462 [INFO] [VERIFY] 🔍 Verificando conexión a Supabase...
+2025-06-20 02:54:56,772 [INFO] [VERIFY] ✅ Conexión a Supabase verificada
+2025-06-20 02:54:56,773 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL inicializado
+2025-06-20 02:54:56,775 [INFO] [STA_THREAD] ✅ COM inicializado en modo STA
+2025-06-20 02:54:56,775 [INFO] [STA_THREAD] 🔗 Conectando a F22 SILENCIOSO en 192.168.1.201:4370
+2025-06-20 02:54:57,509 [INFO] [STA_THREAD] ✅ Conectado al F22
+2025-06-20 02:54:57,510 [INFO] [STA_THREAD] 📋 Info dispositivo: {'serial': 'BOCK192461543', 'firmware': 'Unknown'}
+2025-06-20 02:54:57,511 [INFO] [SILENT] 🔧 Aplicando configuración SILENCIOSA FUNCIONAL...
+2025-06-20 02:54:57,565 [INFO] [SILENT] ✅ VerifyMode = 1
+2025-06-20 02:54:57,624 [INFO] [SILENT] ✅ AttState = 255
+2025-06-20 02:54:57,659 [INFO] [SILENT] ✅ WorkCode = 0
+2025-06-20 02:54:57,757 [INFO] [SILENT] ✅ AutoOpenDoor = 1
+2025-06-20 02:54:57,789 [INFO] [SUCCESS] ✅ Servicio F22 SILENCIOSO FUNCIONAL iniciado
+2025-06-20 02:54:57,790 [INFO] [SUCCESS] 🔇 Eventos COM SILENCIOSOS activos
+2025-06-20 02:54:57,791 [INFO] [SUCCESS] 🎯 Validación con tu BD activa
+2025-06-20 02:54:57,791 [INFO] [SUCCESS] 🔊 Control manual de sonidos por SOFTWARE
+2025-06-20 02:54:57,792 [INFO] [SUCCESS] 🔓 Control de puerta funcional
+2025-06-20 02:54:57,793 [INFO] [SUCCESS] 🚨 F22 configurado en VERIFICACIÓN SILENCIOSA
+2025-06-20 02:54:57,793 [INFO] [SUCCESS] 💡 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:54:57,794 [INFO] [STARTUP] ✅ Conexión F22 SILENCIOSA establecida
+2025-06-20 02:54:57,794 [INFO] [STARTUP] 🌐 Iniciando WebSocket F22 SILENCIOSO...
+2025-06-20 02:54:57,804 [INFO] [SILENT] ✅ VoiceOn = 0
+2025-06-20 02:54:57,806 [INFO] [SUCCESS] 🚀 Sistema F22 SILENCIOSO activo en puerto 8082
+2025-06-20 02:54:57,806 [INFO] 
+2025-06-20 02:54:57,807 [INFO] [READY] 🔇 Sistema listo - CON VERIFICACIÓN SILENCIOSA
+2025-06-20 02:54:57,807 [INFO] [READY] 🎯 F22 configurado para NO dar feedback automático
+2025-06-20 02:54:57,807 [INFO] [READY] 🔊 SOFTWARE controla sonidos y apertura
+2025-06-20 02:54:57,807 [INFO] [READY] 📊 Logs automáticos en access_logs activos
+2025-06-20 02:54:57,807 [INFO] [READY] 🚨 CERO confusión para usuarios
+2025-06-20 02:54:57,807 [INFO] 
+2025-06-20 02:54:57,808 [INFO] [CONFIRMED] 🎉 FUNCIONAMIENTO SILENCIOSO CONFIRMADO:
+2025-06-20 02:54:57,808 [INFO]    1. ✅ Eventos COM funcionando perfectamente
+2025-06-20 02:54:57,808 [INFO]    2. ✅ F22 configurado en modo silencioso
+2025-06-20 02:54:57,808 [INFO]    3. ✅ Validación BULLETPROOF lista
+2025-06-20 02:54:57,808 [INFO]    4. ✅ Control manual de feedback funcional
+2025-06-20 02:54:57,808 [INFO]    5. ✅ Logs automáticos activos
+2025-06-20 02:54:57,808 [INFO] 
+2025-06-20 02:54:57,808 [INFO] [BEHAVIOR] 🔇 COMPORTAMIENTO ESPERADO:
+2025-06-20 02:54:57,808 [INFO]    1. 👆 Usuario pone dedo → F22: 🔇 (silencio total)
+2025-06-20 02:54:57,808 [INFO]    2. 💻 SOFTWARE valida → Membresía/horario/etc
+2025-06-20 02:54:57,808 [INFO]    3a. ✅ SI autorizado → SOFTWARE: 🔊 beep éxito + 🔓 abre puerta
+2025-06-20 02:54:57,808 [INFO]    3b. ❌ SI denegado → SOFTWARE: 🔊 beep error + 🚪 puerta cerrada
+2025-06-20 02:54:57,808 [INFO]    4. 👤 Usuario recibe feedback CORRECTO según decisión
+2025-06-20 02:54:57,808 [INFO] 
+2025-06-20 02:54:57,808 [INFO] [TEST] 🧪 PRUEBA LAS FUNCIONALIDADES:
+2025-06-20 02:54:57,809 [INFO]    1. 👤 Usuario CON membresía → F22 silencioso → SOFTWARE autoriza con sonido
+2025-06-20 02:54:57,809 [INFO]    2. ❌ Usuario SIN membresía → F22 silencioso → SOFTWARE deniega con sonido
+2025-06-20 02:54:57,809 [INFO]    3. 🔊 Probar sonidos manuales → 'test_success_sound', 'test_denied_sound'
+2025-06-20 02:54:57,809 [INFO]    4. 🔓 Probar apertura manual → 'open_door'
+2025-06-20 02:54:57,809 [INFO]    5. 📊 Verificar logs en access_logs automáticamente
+2025-06-20 02:54:57,809 [INFO] 
+2025-06-20 02:54:57,809 [INFO] [WEBSOCKET] 🌐 API SILENCIOSA disponible en:
+2025-06-20 02:54:57,809 [INFO]    ws://127.0.0.1:8082
+2025-06-20 02:54:57,809 [INFO] 
+2025-06-20 02:54:57,809 [INFO] [API] 🎮 Acciones disponibles:
+2025-06-20 02:54:57,809 [INFO]    - get_device_info: Info del dispositivo + modo silencioso
+2025-06-20 02:54:57,809 [INFO]    - test_access: Probar validación de usuario (ej: 7265)
+2025-06-20 02:54:57,809 [INFO]    - open_door: Abrir puerta + sonido éxito manual
+2025-06-20 02:54:57,809 [INFO]    - test_success_sound: Probar sonido de éxito
+2025-06-20 02:54:57,810 [INFO]    - test_denied_sound: Probar sonido de error
+2025-06-20 02:54:57,810 [INFO]    - connect_device: Conectar dispositivo
+2025-06-20 02:54:57,810 [INFO]    - disconnect_device: Desconectar dispositivo
+2025-06-20 02:54:57,810 [INFO]    - get_service_status: Estado completo del servicio
+2025-06-20 02:54:57,810 [INFO] 
+2025-06-20 02:54:57,810 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:54:57,810 [INFO] [STATUS] ✅ SISTEMA F22 SILENCIOSO FUNCIONAL ACTIVO
+2025-06-20 02:54:57,810 [INFO] [STATUS] 👆 PON TU DEDO EN EL F22 - MODO SILENCIOSO
+2025-06-20 02:54:57,810 [INFO] [STATUS] 🔇 F22 NO dará feedback hasta SOFTWARE decidir
+2025-06-20 02:54:57,810 [INFO] [STATUS] 🔊 SOFTWARE reproducirá sonido según validación
+2025-06-20 02:54:57,810 [INFO] [STATUS] 🔓 SOFTWARE abrirá puerta solo si autorizado
+2025-06-20 02:54:57,810 [INFO] [STATUS] 🎯 CERO CONFUSIÓN - Feedback correcto siempre
+2025-06-20 02:54:57,810 [INFO] [STATUS] 📝 EVENTOS COM FUNCIONANDO AL 100%
+2025-06-20 02:54:57,810 [INFO] [STATUS] 🎉 BASADO EN DIAGNÓSTICO EXITOSO
+2025-06-20 02:54:57,810 [INFO] 🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇🔇
+2025-06-20 02:54:57,900 [INFO] [SILENT] ✅ AutoUpdate = 0
+2025-06-20 02:54:57,997 [INFO] [SILENT] ✅ AutoBell = 0
+2025-06-20 02:54:58,093 [INFO] [SILENT] ✅ KeyVoice = 0
+2025-06-20 02:54:58,189 [INFO] [SILENT] ✅ Realtime = 1
+2025-06-20 02:54:58,285 [INFO] [SILENT] ✅ TransFlag = 0000000000
+2025-06-20 02:54:58,380 [INFO] [SILENT] ✅ TransInterval = 0
+2025-06-20 02:54:58,428 [INFO] [SILENT] ✅ LockOn = 0
+2025-06-20 02:54:58,476 [INFO] [SILENT] ✅ MThreshold = 0
+2025-06-20 02:54:58,572 [INFO] [SILENT] ✅ RFCardOn = 0
+2025-06-20 02:54:58,619 [INFO] [SILENT] ✅ NetworkOn = 0
+2025-06-20 02:54:58,699 [INFO] [SILENT] ✅ Encrypt = 0
+2025-06-20 02:54:58,796 [INFO] [SILENT] ✅ MultiVerify = 0
+2025-06-20 02:54:58,844 [INFO] [SILENT] ✅ FaceFunOn = 0
+2025-06-20 02:54:58,891 [INFO] [SILENT] ✅ AlarmAttLog = 0
+2025-06-20 02:54:58,945 [INFO] [SILENT] ✅ AlarmOpLog = 0
+2025-06-20 02:54:59,035 [INFO] [SILENT] ✅ UseDoorSensor = 0
+2025-06-20 02:54:59,131 [INFO] [SILENT] ✅ DoorDelay = 0
+2025-06-20 02:54:59,189 [INFO] [SILENT] ✅ LockDelay = 0
+2025-06-20 02:54:59,227 [INFO] [SILENT] ✅ Dispositivo ACTIVO en modo SILENCIOSO
+2025-06-20 02:54:59,275 [INFO] [SILENT] ✅ Configuración SILENCIOSA refrescada
+2025-06-20 02:54:59,275 [INFO] [SILENT] ✅ Configuración SILENCIOSA aplicada: 25 opciones
+2025-06-20 02:54:59,276 [INFO] [SILENT] 🔇 F22 configurado como VERIFICADOR SILENCIOSO
+2025-06-20 02:54:59,277 [INFO] [SILENT] 🎯 F22 NO dará feedback hasta autorización software
+2025-06-20 02:54:59,277 [INFO] [SILENT] ⚡ Control de sonidos/luces/puerta: MANUAL por software
+2025-06-20 02:54:59,323 [INFO] [STA_THREAD] ✅ Eventos COM registrados (SILENCIOSO)
+2025-06-20 02:54:59,324 [INFO] [STA_THREAD] 🚀 Monitoreo SILENCIOSO con eventos COM activo
+2025-06-20 02:54:59,324 [INFO] [STA_THREAD] 🔇 F22 configurado en MODO VERIFICACIÓN SILENCIOSA
+2025-06-20 02:54:59,325 [INFO] [STA_THREAD] 🎯 F22 NO dará feedback hasta que SOFTWARE decida
+2025-06-20 02:54:59,325 [INFO] [STA_THREAD] 🔓 Control de puerta + sonidos: MANUAL por software
+2025-06-20 02:54:59,326 [INFO] [STA_THREAD] 🔄 Iniciando loop STA SILENCIOSO FUNCIONAL
+2025-06-20 02:55:17,067 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 1 RECIBIDO!
+2025-06-20 02:55:17,067 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:55:17,068 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:55:17,068 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:55:17,069 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:55:17,069 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:55:17,069 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:55:17,070 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:55:17,071 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:55:17,071 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:55:17,072 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:55:18,276 [INFO] [SECURITY] 👤 Usuario encontrado: Erick Francisco De Luna (UUID: 67378a76-78dc-49d9-9864-83aef6754961)
+2025-06-20 02:55:20,143 [INFO] [SECURITY] ✅ ACCESO AUTORIZADO para Erick Francisco De Luna (3.07s)
+2025-06-20 02:55:20,143 [INFO] [ACCESS] ✅ ACCESO AUTORIZADO POR SOFTWARE
+2025-06-20 02:55:20,145 [INFO] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:55:20,147 [INFO] [ACCESS] 💳 Membresía: PRUEBA
+2025-06-20 02:55:20,149 [INFO] [SOUND] 🔊 Reproduciendo sonido de ÉXITO manual...
+2025-06-20 02:55:20,202 [INFO] [SOUND] ✅ Sonido de ÉXITO reproducido
+2025-06-20 02:55:20,713 [INFO] [DOOR] ⚡ Activando apertura con feedback manual por 5 segundos...
+2025-06-20 02:55:20,713 [INFO] [DOOR] 🔓 MÉTODO 1: ACUnlock
+2025-06-20 02:55:20,714 [INFO] [DOOR] 🔓 MÉTODO 2: ControlDevice
+2025-06-20 02:55:20,714 [INFO] [DOOR] 🔓 MÉTODO 3: AutoOpenDoor temporal
+2025-06-20 02:55:24,365 [INFO] [COM_EVENT] 🔇 EVENTO SILENCIOSO 2 RECIBIDO!
+2025-06-20 02:55:24,366 [INFO] [COM_EVENT] 👤 Usuario: 7265
+2025-06-20 02:55:24,367 [INFO] [COM_EVENT] ✅ Válido: True
+2025-06-20 02:55:24,367 [INFO] [COM_EVENT] 🔍 Método: 1
+2025-06-20 02:55:24,368 [INFO] [COM_EVENT] 🔇 F22 en MODO SILENCIOSO - Sin feedback automático
+2025-06-20 02:55:24,368 [INFO] 🔇 HUELLA VERIFICADA - SOFTWARE DECIDE FEEDBACK Y ACCESO
+2025-06-20 02:55:24,368 [INFO] [STA_THREAD] 🔄 Procesando verificación SILENCIOSA para usuario 7265
+2025-06-20 02:55:24,369 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL INICIADA ===
+2025-06-20 02:55:24,370 [INFO] [ACCESS] 👤 Usuario: 7265
+2025-06-20 02:55:24,370 [INFO] [ACCESS] 🔇 F22 NO dio feedback - ESPERANDO DECISIÓN SOFTWARE
+2025-06-20 02:55:24,371 [INFO] [SECURITY] 🔐 Validación BULLETPROOF para usuario 7265
+2025-06-20 02:55:24,371 [INFO] [ACCESS] ✅ ACCESO AUTORIZADO POR SOFTWARE
+2025-06-20 02:55:24,372 [INFO] [ACCESS] 👤 Usuario: Erick Francisco De Luna
+2025-06-20 02:55:24,372 [INFO] [ACCESS] 💳 Membresía: PRUEBA
+2025-06-20 02:55:24,373 [INFO] [SOUND] 🔊 Reproduciendo sonido de ÉXITO manual...
+2025-06-20 02:55:24,425 [INFO] [SOUND] ✅ Sonido de ÉXITO reproducido
+2025-06-20 02:55:24,926 [INFO] [DOOR] ⚡ Activando apertura con feedback manual por 5 segundos...
+2025-06-20 02:55:24,929 [INFO] [DOOR] 🔓 MÉTODO 1: ACUnlock
+2025-06-20 02:55:24,929 [INFO] [DOOR] 🔓 MÉTODO 2: ControlDevice
+2025-06-20 02:55:24,930 [INFO] [DOOR] 🔓 MÉTODO 3: AutoOpenDoor temporal
+2025-06-20 02:55:25,895 [INFO] [DOOR] ✅ PUERTA ABIERTA con AutoOpenDoor temporal
+2025-06-20 02:55:26,877 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:55:26,879 [INFO] [ACCESS] 🔊 Feedback de ÉXITO reproducido por SOFTWARE
+2025-06-20 02:55:26,879 [INFO] [ACCESS] 🚪 Puerta ABIERTA ✅
+2025-06-20 02:55:26,879 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:55:30,536 [INFO] [DOOR] ✅ PUERTA ABIERTA con AutoOpenDoor temporal
+2025-06-20 02:55:31,692 [WARNING] [LOG] ⚠️ Error registrando acceso: 400
+2025-06-20 02:55:31,693 [INFO] [ACCESS] 🔊 Feedback de ÉXITO reproducido por SOFTWARE
+2025-06-20 02:55:31,693 [INFO] [ACCESS] 🚪 Puerta ABIERTA ✅
+2025-06-20 02:55:31,694 [INFO] [ACCESS] 🔇 === VERIFICACIÓN SILENCIOSA FUNCIONAL COMPLETADA ===
+2025-06-20 02:57:04,962 [INFO] [SHUTDOWN] 🛑 Iniciando apagado SILENCIOSO (SIGINT)
+2025-06-20 02:57:04,971 [INFO] [STA_THREAD] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:57:05,086 [INFO] [STA_THREAD] ✅ Recursos SILENCIOSOS liberados
+2025-06-20 02:57:05,087 [INFO] [STA_THREAD] 🧵 Thread STA SILENCIOSO FUNCIONAL finalizado
+2025-06-20 02:57:05,845 [INFO] [SHUTDOWN] 🛑 Cerrando WebSocket F22 SILENCIOSO...
+2025-06-20 02:57:05,847 [INFO] [SERVICE] 🛑 Deteniendo servicio SILENCIOSO...
+2025-06-20 02:57:05,848 [INFO] [SERVICE] ✅ Servicio SILENCIOSO detenido
+2025-06-20 02:57:05,848 [INFO] [SHUTDOWN] ✅ Sistema F22 SILENCIOSO cerrado limpiamente
+2025-06-20 02:57:05,855 [INFO] [SHUTDOWN] 🧹 Limpiando recursos SILENCIOSOS...
+2025-06-20 02:57:05,856 [INFO] [SHUTDOWN] ✅ Recursos SILENCIOSOS liberados

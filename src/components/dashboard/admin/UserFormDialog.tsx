@@ -35,7 +35,8 @@ import {
   Snackbar,
   Slide,
   Fade,
-  Tooltip
+  Tooltip,
+  LinearProgress
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -73,12 +74,15 @@ import BloodtypeIcon from '@mui/icons-material/Bloodtype';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import UpdateIcon from '@mui/icons-material/Update';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
+import SyncIcon from '@mui/icons-material/Sync';
+import WifiOffIcon from '@mui/icons-material/WifiOff';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// 🚀 IMPORTAR EL COMPONENTE DE HUELLA MODIFICADO
+// 🚀 IMPORTAR EL COMPONENTE DE HUELLA
 import FingerprintRegistration from './FingerprintRegistration';
 
-// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES (mismo que antes)
+// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES MEJORADOS
 const darkProTokens = {
   // Base Colors
   background: '#000000',
@@ -107,44 +111,16 @@ const darkProTokens = {
   // Semantic Colors
   success: '#388E3C',
   successHover: '#2E7D32',
+  successDark: '#1B5E20',
   error: '#D32F2F',
   errorHover: '#B71C1C',
+  errorDark: '#8B0000',
   warning: '#FFB300',
   warningHover: '#E6A700',
+  warningDark: '#CC9200',
   info: '#1976D2',
   infoHover: '#1565C0',
-  
-  // Document Status
-  docMissing: '#B00020',
-  docPending: '#FFB300',
-  docApproved: '#388E3C',
-  docRejected: '#D32F2F',
-  docExpired: '#555555',
-  docExpiringSoon: '#FFA000',
-  docUploading: '#2196F3',
-  
-  // User Roles
-  roleAdmin: '#FFCC00',
-  roleStaff: '#1976D2',
-  roleTrainer: '#009688',
-  roleUser: '#777777',
-  roleModerator: '#9C27B0',
-  roleGuest: '#444444',
-  
-  // Profile Status
-  profileComplete: '#388E3C',
-  profileIncomplete: '#FFB300',
-  profileSuspended: '#B00020',
-  profilePending: '#1976D2',
-  profileVerified: '#43A047',
-  
-  // Notifications
-  notifNewBg: 'rgba(255,204,0,0.1)',
-  notifCriticalBg: 'rgba(176,0,32,0.2)',
-  notifWarningBg: 'rgba(255,160,0,0.1)',
-  notifSuccessBg: 'rgba(56,142,60,0.1)',
-  notifErrorBg: 'rgba(211,47,47,0.1)',
-  notifInfoBg: 'rgba(25,118,210,0.1)',
+  infoDark: '#0D47A1',
   
   // Focus & Interactions
   focusRing: 'rgba(255,204,0,0.4)',
@@ -152,10 +128,26 @@ const darkProTokens = {
   activeOverlay: 'rgba(255,204,0,0.1)',
   borderDefault: '#333333',
   borderHover: '#FFCC00',
-  borderActive: '#E6B800'
+  borderActive: '#E6B800',
+  
+  // ✅ AGREGAR ESTOS COLORES DE ROLES QUE FALTAN
+  roleModerator: '#9C27B0',  // Púrpura para moderador
+  roleModeratorHover: '#7B1FA2',
+  roleStaff: '#FF9800',      // Naranja para staff
+  roleStaffHover: '#F57C00',
+  roleAdmin: '#F44336',      // Rojo para admin
+  roleAdminHover: '#D32F2F',
+  
+  // ✅ AGREGAR TAMBIÉN LOS FONDOS DE NOTIFICACIONES
+  notifSuccessBg: 'rgba(56,142,60,0.1)',
+  notifErrorBg: 'rgba(211,47,47,0.1)', 
+  notifWarningBg: 'rgba(255,179,0,0.1)',
+  notifInfoBg: 'rgba(25,118,210,0.1)'
 };
 
-// 🏗️ INTERFACES PRINCIPALES (mismas que antes)
+
+
+// ✅ INTERFACES CORREGIDAS Y MEJORADAS
 interface User {
   id?: string;
   firstName: string;
@@ -174,7 +166,31 @@ interface User {
   whatsappSentAt?: string;
   signatureUrl?: string;
   contractPdfUrl?: string;
-  fingerprint: boolean;
+  fingerprint: boolean; // ✅ SOLO BOOLEAN
+}
+
+// ✅ NUEVA INTERFAZ PARA ESTADO DE HUELLA
+interface FingerprintState {
+  status: 'none' | 'captured' | 'saving' | 'saved' | 'error';
+  deviceUserId: string | null;
+  fingerIndex: number | null;
+  fingerName: string | null;
+  message: string | null;
+  error: string | null;
+  syncStatus: 'idle' | 'syncing' | 'success' | 'error';
+  pendingData: any | null;
+}
+
+// ✅ INTERFAZ PARA WEBSOCKET
+interface WebSocketMessage {
+  action: string;
+  device_user_id?: string;
+  userId?: string;
+  finger_index?: number;
+  deleteAll?: boolean;
+  templateData?: any;
+  source?: string;
+  updated_by?: string;
 }
 
 interface Address {
@@ -224,46 +240,43 @@ interface DebugInfo {
   initialized: boolean;
   complete: boolean;
   hasChanges?: boolean;
-  fingerprintPending?: boolean; // ✅ NUEVO
+  fingerprintState?: FingerprintState;
+  wsConnected?: boolean;
 }
 
-// 🔧 FUNCIONES DE CONVERSIÓN (mismas que antes)
+// ✅ CONSTANTES MEJORADAS
+const WS_TIMEOUT = 15000; // 15 segundos en lugar de 45
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
+const VALID_FINGER_INDICES = Array.from({ length: 10 }, (_, i) => i); // 0-9
+
+// 🔧 FUNCIONES DE CONVERSIÓN (sin cambios)
 const convertMaritalStatusToCode = (status: string): string => {
-  switch (status) {
-    case 'Soltero/a':
-    case 'Soltero':
-    case 'Soltera':
-      return 'soltero';
-    case 'Casado/a':
-    case 'Casado':
-    case 'Casada':
-      return 'casado';
-    case 'Divorciado/a':
-    case 'Divorciado':
-    case 'Divorciada':
-      return 'divorciado';
-    case 'Viudo/a':
-    case 'Viudo':
-    case 'Viuda':
-      return 'viudo';
-    default:
-      return status.toLowerCase();
-  }
+  const statusMap: { [key: string]: string } = {
+    'Soltero/a': 'soltero',
+    'Soltero': 'soltero',
+    'Soltera': 'soltero',
+    'Casado/a': 'casado',
+    'Casado': 'casado',
+    'Casada': 'casado',
+    'Divorciado/a': 'divorciado',
+    'Divorciado': 'divorciado',
+    'Divorciada': 'divorciado',
+    'Viudo/a': 'viudo',
+    'Viudo': 'viudo',
+    'Viuda': 'viudo'
+  };
+  return statusMap[status] || status.toLowerCase();
 };
 
 const convertMaritalStatusToDisplay = (code: string): string => {
-  switch (code) {
-    case 'soltero':
-      return 'Soltero/a';
-    case 'casado':
-      return 'Casado/a';
-    case 'divorciado':
-      return 'Divorciado/a';
-    case 'viudo':
-      return 'Viudo/a';
-    default:
-      return code;
-  }
+  const codeMap: { [key: string]: string } = {
+    'soltero': 'Soltero/a',
+    'casado': 'Casado/a',
+    'divorciado': 'Divorciado/a',
+    'viudo': 'Viudo/a'
+  };
+  return codeMap[code] || code;
 };
 
 const convertTrainingLevelToCode = (level: string): string => {
@@ -271,22 +284,18 @@ const convertTrainingLevelToCode = (level: string): string => {
 };
 
 const convertTrainingLevelToDisplay = (code: string): string => {
-  switch (code) {
-    case 'principiante':
-      return 'Principiante';
-    case 'intermedio':
-      return 'Intermedio';
-    case 'avanzado':
-      return 'Avanzado';
-    default:
-      return code;
-  }
+  const levelMap: { [key: string]: string } = {
+    'principiante': 'Principiante',
+    'intermedio': 'Intermedio',
+    'avanzado': 'Avanzado'
+  };
+  return levelMap[code] || code;
 };
 
-// 🚀 FUNCIÓN PARA REGENERAR CONTRATO MEJORADA (misma que antes)
+// ✅ FUNCIÓN REGENERAR CONTRATO MEJORADA
 const regenerateContract = async (userId: string): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('🔄 Iniciando regeneración de contrato para usuario:', userId);
+    console.log('🔄 [CONTRACT] Iniciando regeneración para usuario:', userId);
     
     const response = await fetch('/api/generate-contract', {
       method: 'POST',
@@ -296,7 +305,7 @@ const regenerateContract = async (userId: string): Promise<{ success: boolean; e
       body: JSON.stringify({ 
         userId,
         forceRegenerate: true,
-        isUpdate: true
+        isUpdate: true,
       }),
     });
 
@@ -306,21 +315,21 @@ const regenerateContract = async (userId: string): Promise<{ success: boolean; e
     }
 
     const result = await response.json();
-    console.log('✅ Contrato regenerado exitosamente:', result);
+    console.log('✅ [CONTRACT] Contrato regenerado exitosamente:', result);
     
     return { success: true };
   } catch (error: any) {
-    console.error('❌ Error en regeneración de contrato:', error);
+    console.error('❌ [CONTRACT] Error en regeneración:', error);
     return { success: false, error: error.message };
   }
 };
 
-// 🔧 FUNCIÓN CORREGIDA PARA ELIMINAR ARCHIVOS ANTIGUOS (misma que antes)
+// ✅ FUNCIÓN CORREGIDA PARA ELIMINAR ARCHIVOS ANTIGUOS
 const deleteOldFiles = async (userId: string, fileType: 'profile' | 'signature', exceptFileName?: string) => {
   try {
     const supabase = createBrowserSupabaseClient();
     
-    console.log(`🔍 Listando archivos existentes para ${fileType}...`);
+    console.log(`🔍 [FILES] Listando archivos existentes para ${fileType}...`);
     
     const { data: files, error } = await supabase.storage
       .from('user-files')
@@ -330,56 +339,45 @@ const deleteOldFiles = async (userId: string, fileType: 'profile' | 'signature',
       });
     
     if (error) {
-      console.error('❌ Error listing files:', error);
+      console.error('❌ [FILES] Error listing files:', error);
       return;
     }
     
     const filePrefix = fileType === 'profile' ? 'profile-' : 'signature-';
     let oldFiles = files?.filter(file => file.name.startsWith(filePrefix)) || [];
     
-    console.log(`📁 Archivos encontrados de ${fileType}:`, oldFiles.map(f => f.name));
-    
     if (exceptFileName) {
       oldFiles = oldFiles.filter(file => file.name !== exceptFileName);
-      console.log(`🛡️ Excluyendo archivo recién subido: ${exceptFileName}`);
-      console.log(`📁 Archivos a eliminar:`, oldFiles.map(f => f.name));
     }
     
     if (oldFiles.length > 0) {
       const filesToDelete = oldFiles.map(file => `${userId}/${file.name}`);
       
-      console.log(`🗑️ Eliminando ${filesToDelete.length} archivos antiguos de ${fileType}:`, filesToDelete);
+      console.log(`🗑️ [FILES] Eliminando ${filesToDelete.length} archivos antiguos...`);
       
       const { error: deleteError } = await supabase.storage
         .from('user-files')
         .remove(filesToDelete);
       
       if (deleteError) {
-        console.error('❌ Error deleting old files:', deleteError);
+        console.error('❌ [FILES] Error deleting old files:', deleteError);
       } else {
-        console.log(`✅ Eliminados exitosamente ${filesToDelete.length} archivos antiguos de ${fileType}`);
+        console.log(`✅ [FILES] Eliminados ${filesToDelete.length} archivos antiguos`);
       }
-    } else {
-      console.log(`ℹ️ No hay archivos antiguos de ${fileType} para eliminar`);
     }
   } catch (error) {
-    console.error('💥 Error in deleteOldFiles:', error);
+    console.error('💥 [FILES] Error in deleteOldFiles:', error);
   }
 };
 
-// 🚀 FUNCIÓN CORREGIDA PARA SUBIR ARCHIVOS (misma que antes)
+// ✅ FUNCIÓN MEJORADA PARA SUBIR ARCHIVOS
 const uploadFileToStorage = async (
   file: File, 
   userId: string, 
   fileType: 'profile' | 'signature'
 ): Promise<{ url: string; path: string } | null> => {
   try {
-    console.log(`📤 Iniciando subida de ${fileType} para usuario ${userId}`);
-    console.log(`📋 Detalles del archivo:`, { 
-      name: file.name, 
-      size: file.size, 
-      type: file.type 
-    });
+    console.log(`📤 [UPLOAD] Iniciando subida de ${fileType} para usuario ${userId}`);
     
     const supabase = createBrowserSupabaseClient();
     
@@ -388,10 +386,7 @@ const uploadFileToStorage = async (
     const fileName = `${fileType}-${timestamp}.${fileExtension}`;
     const filePath = `${userId}/${fileName}`;
     
-    console.log(`📁 Nombre del archivo generado: ${fileName}`);
-    console.log(`📁 Path completo: ${filePath}`);
-    
-    console.log(`⬆️ Subiendo archivo al storage...`);
+    console.log(`📁 [UPLOAD] Subiendo archivo: ${fileName}`);
     
     const { data, error } = await supabase.storage
       .from('user-files')
@@ -401,17 +396,16 @@ const uploadFileToStorage = async (
       });
     
     if (error) {
-      console.error('❌ Error en upload:', error);
+      console.error('❌ [UPLOAD] Error:', error);
       throw new Error(`Error subiendo archivo: ${error.message}`);
     }
     
-    console.log(`✅ Archivo subido exitosamente al storage:`, data);
+    console.log(`✅ [UPLOAD] Archivo subido exitosamente`);
     
-    console.log(`🗑️ Eliminando archivos antiguos de ${fileType} (excepto ${fileName})...`);
+    // Eliminar archivos antiguos
     await deleteOldFiles(userId, fileType, fileName);
     
-    console.log(`🌐 Obteniendo URL pública...`);
-    
+    // Obtener URL pública
     const { data: publicUrlData } = supabase.storage
       .from('user-files')
       .getPublicUrl(filePath);
@@ -420,7 +414,7 @@ const uploadFileToStorage = async (
       throw new Error('Error obteniendo URL pública');
     }
     
-    console.log(`🎉 Archivo ${fileType} subido y limpiado exitosamente:`, publicUrlData.publicUrl);
+    console.log(`🎉 [UPLOAD] ${fileType} subido exitosamente`);
     
     return {
       url: publicUrlData.publicUrl,
@@ -428,77 +422,437 @@ const uploadFileToStorage = async (
     };
     
   } catch (error) {
-    console.error(`💥 Error crítico subiendo ${fileType}:`, error);
+    console.error(`💥 [UPLOAD] Error crítico subiendo ${fileType}:`, error);
     throw error;
   }
 };
 
-// ✅ NUEVA FUNCIÓN PARA GUARDAR HUELLA DACTILAR EN BD
-const saveFingerprintToDatabase = async (fingerprintData: any): Promise<{ success: boolean; error?: string }> => {
+// ✅ FUNCIÓN saveFingerprintToDatabase CORREGIDA Y OPTIMIZADA
+const saveFingerprintToDatabase = async (fingerprintData: any): Promise<{ success: boolean; error?: string; data?: any }> => {
+  let retryCount = 0;
+
+  while (retryCount < MAX_RETRIES) {
+    try {
+      console.log(`💾 [DB-SAVE] Intento ${retryCount + 1}/${MAX_RETRIES} - Guardando huella...`, {
+        user_id: fingerprintData.user_id,
+        device_user_id: fingerprintData.device_user_id,
+        finger_index: fingerprintData.finger_index,
+        template_size: fingerprintData.template?.length || 0
+      });
+      
+      const response = await fetch('/api/biometric/fingerprint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...fingerprintData,
+          created_at: new Date().toISOString(),
+          updated_by: 'luishdz04'
+        })
+      });
+      
+      // Manejar respuesta vacía (204)
+      if (response.status === 204) {
+        console.log('✅ [DB-SAVE] Guardado exitoso (204 No Content)');
+        return { success: true, data: fingerprintData };
+      }
+      
+      // Intentar parsear respuesta
+      let result: any = {};
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          result = await response.json();
+        } catch (jsonError) {
+          console.warn('⚠️ [DB-SAVE] Error parseando JSON, usando respuesta vacía');
+          result = {};
+        }
+      }
+      
+      if (!response.ok) {
+        const errorMsg = result.error || result.message || `HTTP ${response.status}`;
+        throw new Error(errorMsg);
+      }
+      
+      console.log('✅ [DB-SAVE] Huella guardada exitosamente:', result);
+      return { success: true, data: result.data || fingerprintData };
+      
+    } catch (error: any) {
+      retryCount++;
+      console.error(`❌ [DB-SAVE] Error intento ${retryCount}:`, error.message);
+      
+      if (retryCount >= MAX_RETRIES) {
+        console.error(`💥 [DB-SAVE] Falló después de ${MAX_RETRIES} intentos`);
+        
+        let errorMessage = error.message;
+        if (error.message.includes('duplicate key')) {
+          errorMessage = 'Ya existe una huella para este usuario y dedo';
+        } else if (error.message.includes('foreign key')) {
+          errorMessage = 'Usuario no encontrado en base de datos';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Error de conexión con base de datos';
+        }
+        
+        return { success: false, error: errorMessage };
+      }
+      
+      // Esperar antes del retry
+      console.log(`🔄 [DB-SAVE] Esperando ${retryCount * 1000}ms antes del retry...`);
+      await new Promise(resolve => setTimeout(resolve, retryCount * 1000));
+    }
+  }
+  
+  return { success: false, error: 'Error inesperado en guardado' };
+};
+
+// ✅ FUNCIÓN deleteFingerprintFromDatabase CORREGIDA
+const deleteFingerprintFromDatabase = async (
+  userId: string, 
+  fingerIndex?: number
+): Promise<{ success: boolean; error?: string; deletedCount?: number }> => {
   try {
-    console.log('💾 Guardando huella en base de datos...', fingerprintData);
+    console.log('🗑️ [DB-DELETE] Eliminando de BD...', { userId, fingerIndex });
     
-    const response = await fetch('/api/biometric/fingerprint', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(fingerprintData)
-    });
+    // Construir URL con parámetros correctos
+    let url = `/api/biometric/fingerprint?userId=${userId}`;
     
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Error al guardar huella en base de datos');
+    // ✅ CORREGIDO: Manejar fingerIndex 0 correctamente
+    if (fingerIndex !== undefined && fingerIndex !== null) {
+      url += `&fingerIndex=${fingerIndex}`;
+    } else {
+      url += '&deleteAll=true';
     }
     
-    console.log('✅ Huella guardada exitosamente en base de datos:', result);
-    return { success: true };
+    const response = await fetch(url, { method: 'DELETE' });
+    
+    // Manejar respuesta
+    if (response.status === 204 || response.status === 200) {
+      console.log('✅ [DB-DELETE] Eliminado exitosamente');
+      return { success: true, deletedCount: 1 };
+    }
+    
+    let result: any = {};
+    try {
+      result = await response.json();
+    } catch {
+      // Si no hay JSON, continuar
+    }
+    
+    if (!response.ok) {
+      throw new Error(result.error || `Error HTTP ${response.status}`);
+    }
+    
+    console.log('✅ [DB-DELETE] Resultado:', result);
+    return { 
+      success: true, 
+      deletedCount: result.deleted_count || result.deletedCount || 1 
+    };
     
   } catch (error: any) {
-    console.error('❌ Error guardando huella:', error);
+    console.error('❌ [DB-DELETE] Error:', error);
     return { success: false, error: error.message };
   }
 };
 
-// ✅ NUEVA FUNCIÓN PARA ELIMINAR HUELLA DACTILAR DESDE EL PADRE
-const deleteFingerprintFromDatabase = async (userId: string, fingerIndex?: number): Promise<{ success: boolean; error?: string }> => {
-  try {
-    console.log('🗑️ Eliminando huella desde el padre...', { userId, fingerIndex });
-    
-    const response = await fetch(
-      `/api/biometric/fingerprint?userId=${userId}${fingerIndex ? `&fingerIndex=${fingerIndex}` : ''}`, 
-      { method: 'DELETE' }
-    );
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Error eliminando huella');
+// ✅ FUNCIÓN F22 SYNC COMPLETAMENTE CORREGIDA
+const syncFingerprintToF22Service = async (
+  templateData: any,
+  wsUrl: string = 'ws://127.0.0.1:8082'
+): Promise<{ 
+  success: boolean; 
+  uid?: number; 
+  device_user_id?: number; 
+  finger_name?: string; 
+  message?: string; 
+  error?: string 
+}> => {
+  return new Promise((resolve, reject) => {
+    let ws: WebSocket | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+    let isResolved = false;
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+      ws = null;
+    };
+
+    const resolveOnce = (result: any) => {
+      if (!isResolved) {
+        isResolved = true;
+        cleanup();
+        resolve(result);
+      }
+    };
+
+    const rejectOnce = (error: Error) => {
+      if (!isResolved) {
+        isResolved = true;
+        cleanup();
+        reject(error);
+      }
+    };
+
+    try {
+      console.log('🔄 [F22-SYNC] Iniciando sincronización con F22...', {
+        device_user_id: templateData.device_user_id,
+        finger_index: templateData.finger_index,
+        user_id: templateData.user_id
+      });
+      
+      ws = new WebSocket(wsUrl);
+      
+      // Timeout corregido
+      timeoutId = setTimeout(() => {
+        rejectOnce(new Error(`Timeout en conexión con F22 (${WS_TIMEOUT/1000}s)`));
+      }, WS_TIMEOUT);
+      
+      ws.onopen = () => {
+        console.log('✅ [F22-SYNC] WebSocket conectado');
+        
+        // Enviar comando de conexión
+        ws!.send(JSON.stringify({
+          action: 'connect_device'
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const response = JSON.parse(event.data);
+          console.log('📨 [F22-SYNC] Respuesta:', response.type);
+          
+          if (response.type === 'device_connected') {
+            console.log('🔒 [F22-SYNC] F22 conectado, enviando template...');
+            
+            // ✅ PAYLOAD CORREGIDO CON TODOS LOS DATOS NECESARIOS
+            const templatePayload = {
+              template: templateData.template,
+              device_user_id: templateData.device_user_id,
+              finger_index: templateData.finger_index,
+              user_id: templateData.user_id,
+              first_name: templateData.first_name || '',
+              last_name: templateData.last_name || '',
+              name: templateData.name || `${templateData.first_name} ${templateData.last_name}`.trim()
+            };
+            
+            ws!.send(JSON.stringify({
+              action: 'sync_template_from_db',
+              templateData: templatePayload
+            }));
+          }
+          
+          else if (response.type === 'sync_template_result') {
+            if (response.data && response.data.success) {
+              console.log('✅ [F22-SYNC] Template sincronizado exitosamente');
+              resolveOnce({
+                success: true,
+                uid: response.data.uid,
+                device_user_id: response.data.device_user_id,
+                finger_name: response.data.finger_name,
+                message: response.data.message
+              });
+            } else {
+              rejectOnce(new Error(response.data?.error || 'Error desconocido en F22'));
+            }
+          }
+          
+          else if (response.type === 'device_connection_error') {
+            rejectOnce(new Error('F22 no conectado al servicio'));
+          }
+          
+          else if (response.type === 'error' || response.type === 'command_error') {
+            rejectOnce(new Error(response.message || response.error || 'Error en comando F22'));
+          }
+          
+        } catch (parseError) {
+          console.error('❌ [F22-SYNC] Error parseando respuesta:', parseError);
+          rejectOnce(new Error('Error en comunicación con F22'));
+        }
+      };
+      
+      ws.onclose = (event) => {
+        console.log('🔌 [F22-SYNC] WebSocket cerrado:', event.code, event.reason);
+        
+        if (!isResolved && event.code !== 1000) {
+          rejectOnce(new Error(`Conexión perdida con F22 (código: ${event.code})`));
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('❌ [F22-SYNC] Error WebSocket:', error);
+        rejectOnce(new Error('Error de conexión con servicio F22'));
+      };
+      
+    } catch (error: any) {
+      console.error('💥 [F22-SYNC] Error crítico:', error);
+      rejectOnce(error);
     }
-    
-    console.log('✅ Huella eliminada exitosamente:', result);
-    return { success: true };
-    
-  } catch (error: any) {
-    console.error('❌ Error eliminando huella:', error);
-    return { success: false, error: error.message };
-  }
+  });
 };
 
-// 🚀 COMPONENTE PRINCIPAL CON DARK PRO SYSTEM
+// ✅ FUNCIÓN F22 DELETE COMPLETAMENTE CORREGIDA
+const deleteFingerprintFromF22Service = async (
+  deviceUserId: string,
+  userId: string,
+  fingerIndex?: number,
+  wsUrl: string = 'ws://127.0.0.1:8082'
+): Promise<{ 
+  success: boolean; 
+  error?: string; 
+  deletedTemplates?: number;
+  userDeleted?: boolean;
+}> => {
+  return new Promise((resolve, reject) => {
+    let ws: WebSocket | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+    let isResolved = false;
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+      ws = null;
+    };
+
+    const resolveOnce = (result: any) => {
+      if (!isResolved) {
+        isResolved = true;
+        cleanup();
+        resolve(result);
+      }
+    };
+
+    const rejectOnce = (error: Error) => {
+      if (!isResolved) {
+        isResolved = true;
+        cleanup();
+        reject(error);
+      }
+    };
+
+    try {
+      console.log('🗑️ [F22-DELETE] Iniciando eliminación...', {
+        deviceUserId,
+        userId,
+        fingerIndex,
+        deleteAll: fingerIndex === undefined
+      });
+      
+      ws = new WebSocket(wsUrl);
+      
+      timeoutId = setTimeout(() => {
+        rejectOnce(new Error(`Timeout eliminando del F22 (${WS_TIMEOUT/1000}s)`));
+      }, WS_TIMEOUT);
+      
+      ws.onopen = () => {
+        console.log('🔌 [F22-DELETE] WebSocket conectado');
+        
+        ws!.send(JSON.stringify({
+          action: 'connect_device'
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const response = JSON.parse(event.data);
+          console.log('📨 [F22-DELETE] Respuesta:', response.type);
+          
+          if (response.type === 'device_connected') {
+            console.log('🔒 [F22-DELETE] F22 conectado, enviando comando delete...');
+            
+            // ✅ COMANDO CORREGIDO CON TODOS LOS PARÁMETROS
+            const deleteCommand: WebSocketMessage = {
+              action: 'delete_user',
+              device_user_id: deviceUserId,
+              userId: userId, // ✅ AGREGADO
+              source: 'frontend_userform',
+              updated_by: 'luishdz04'
+            };
+            
+            // ✅ MANEJO CORRECTO DE fingerIndex
+            if (fingerIndex !== undefined && fingerIndex !== null) {
+              deleteCommand.finger_index = fingerIndex;
+              console.log('🖐️ [F22-DELETE] Eliminando dedo específico:', fingerIndex);
+            } else {
+              deleteCommand.deleteAll = true;
+              console.log('🗑️ [F22-DELETE] Eliminando todas las huellas');
+            }
+            
+            ws!.send(JSON.stringify(deleteCommand));
+          }
+          
+          else if (response.type === 'delete_user_result') {
+            if (response.data && response.data.success) {
+              console.log('✅ [F22-DELETE] Eliminación exitosa');
+              resolveOnce({
+                success: true,
+                deletedTemplates: response.data.deleted_templates || 0,
+                userDeleted: response.data.user_deleted || false
+              });
+            } else {
+              rejectOnce(new Error(response.data?.error || 'Error eliminando del F22'));
+            }
+          }
+          
+          else if (response.type === 'device_connection_error') {
+            rejectOnce(new Error('F22 no conectado'));
+          }
+          
+          else if (response.type === 'error' || response.type === 'command_error') {
+            rejectOnce(new Error(response.message || response.error || 'Error en comando F22'));
+          }
+          
+        } catch (parseError) {
+          console.error('❌ [F22-DELETE] Error parseando respuesta:', parseError);
+          rejectOnce(new Error('Error en comunicación con F22'));
+        }
+      };
+      
+      ws.onclose = (event) => {
+        console.log('🔌 [F22-DELETE] WebSocket cerrado:', event.code);
+        
+        if (!isResolved && event.code !== 1000) {
+          rejectOnce(new Error(`Conexión perdida con F22 (código: ${event.code})`));
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('❌ [F22-DELETE] Error WebSocket:', error);
+        rejectOnce(new Error('Error de conexión con F22'));
+      };
+      
+    } catch (error: any) {
+      console.error('💥 [F22-DELETE] Error crítico:', error);
+      rejectOnce(error);
+    }
+  });
+};
+
+// 🚀 COMPONENTE PRINCIPAL ULTRA FUNCIONAL
 export default function UserFormDialog({ open, onClose, user, onSave }: UserFormDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
-  // 🔗 REFERENCIAS PARA CONTROL DE COMPONENTE
+  // 🔗 REFERENCIAS MEJORADAS
   const mountedRef = useRef(true);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const blobUrlsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
+  const savingRef = useRef(false); // ✅ NUEVO: Prevenir doble guardado
   
-  // 📊 ESTADOS PRINCIPALES DE DATOS
+  // 📊 ESTADOS PRINCIPALES CORREGIDOS
   const [formData, setFormData] = useState<User>({
     firstName: '',
     lastName: '',
@@ -511,7 +865,19 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     isMinor: false,
     emailSent: false,
     whatsappSent: false,
-    fingerprint: false
+    fingerprint: false // ✅ SOLO BOOLEAN
+  });
+  
+  // ✅ ESTADO DE HUELLA MEJORADO
+  const [fingerprintState, setFingerprintState] = useState<FingerprintState>({
+    status: 'none',
+    deviceUserId: null,
+    fingerIndex: null,
+    fingerName: null,
+    message: null,
+    error: null,
+    syncStatus: 'idle',
+    pendingData: null
   });
   
   // 🔧 DETECCIÓN DE CAMBIOS MEJORADA
@@ -580,7 +946,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     trainingLevel: 'principiante'
   });
   
-  // 🎮 ESTADOS DE CONTROL
+  // 🎮 ESTADOS DE CONTROL MEJORADOS
   const [loading, setLoading] = useState(false);
   const [fetchingRelated, setFetchingRelated] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
@@ -633,128 +999,40 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
   const [retryCount, setRetryCount] = useState(0);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   
-  // 🐛 ESTADO PARA DEBUG INFO
+  // 🐛 ESTADO PARA DEBUG INFO MEJORADO
   const [debugInfo, setDebugInfo] = useState<DebugInfo>({
     profileUrl: '',
     signatureUrl: '',
     contractUrl: '',
     initialized: false,
-    complete: false
+    complete: false,
+    fingerprintState: undefined,
+    wsConnected: false
   });
 
-  // ✅ NUEVOS ESTADOS PARA REGISTRO DE HUELLA DACTILAR MODIFICADOS
+  // ✅ ESTADOS PARA DIALOGS
   const [fingerprintDialogOpen, setFingerprintDialogOpen] = useState(false);
-  const [fingerprintMessage, setFingerprintMessage] = useState<string | null>(null);
-  const [fingerprintError, setFingerprintError] = useState<string | null>(null);
-  const [pendingFingerprintData, setPendingFingerprintData] = useState<any>(null); // ✅ NUEVO: Datos pendientes
-  const [isDeletingFingerprint, setIsDeletingFingerprint] = useState(false); // ✅ NUEVO: Estado de eliminación
+  const [isDeletingFingerprint, setIsDeletingFingerprint] = useState(false);
 
-    // ✅ FUNCIONES MODIFICADAS PARA MANEJO DE HUELLA DACTILAR
-  const handleFingerprintDialogOpen = () => {
-    if (!user?.id) {
-      setFingerprintError('Se requiere un usuario válido para registrar huella');
-      return;
-    }
-    setFingerprintDialogOpen(true);
-  };
-
-  const handleFingerprintDialogClose = () => {
-    setFingerprintDialogOpen(false);
-  };
-
-  // ✅ NUEVA FUNCIÓN: RECIBIR DATOS DEL MODAL (NO GUARDAR AÚN)
-  const handleFingerprintDataReady = useCallback((fingerprintData: any) => {
-    console.log('📥 Recibiendo datos de huella del modal:', fingerprintData);
-    
-    // ✅ GUARDAR DATOS PENDIENTES
-    setPendingFingerprintData(fingerprintData);
-    
-    // ✅ ACTUALIZAR ESTADO LOCAL PARA MOSTRAR EN UI
-    setFormData(prev => ({ ...prev, fingerprint: true }));
-    setHasFormChanges(true);
-    
-    // ✅ MOSTRAR MENSAJE DE ÉXITO
-    setFingerprintMessage('¡Huella capturada exitosamente! Los datos se guardarán al actualizar el usuario.');
-    setFingerprintError(null);
-    
-    // ✅ LIMPIAR MENSAJE DESPUÉS DE 5 SEGUNDOS
-    setTimeout(() => {
-      setFingerprintMessage(null);
-    }, 5000);
-  }, []);
-
-  const handleFingerprintError = useCallback((message: string) => {
-    setFingerprintError(message);
-    setFingerprintMessage(null);
-    
-    setTimeout(() => {
-      setFingerprintError(null);
-    }, 5000);
-  }, []);
-
-  // ✅ NUEVA FUNCIÓN: ELIMINAR HUELLA DESDE EL PADRE
-  const handleDeleteFingerprint = useCallback(async () => {
-    if (!user?.id) {
-      setFingerprintError('Se requiere un usuario válido para eliminar huella');
-      return;
-    }
-
-    if (!window.confirm('¿Está seguro que desea eliminar la huella dactilar? Esta acción no se puede deshacer.')) {
-      return;
-    }
-
-    try {
-      setIsDeletingFingerprint(true);
-      setFingerprintError(null);
-      setFingerprintMessage(null);
-
-      console.log('🗑️ Eliminando huella dactilar del usuario:', user.id);
-
-      const result = await deleteFingerprintFromDatabase(user.id);
-
-      if (result.success) {
-        // ✅ ACTUALIZAR ESTADO LOCAL
-        setFormData(prev => ({ ...prev, fingerprint: false }));
-        setPendingFingerprintData(null);
-        setHasFormChanges(true);
-
-        setFingerprintMessage('Huella dactilar eliminada exitosamente. Los cambios se aplicarán al actualizar el usuario.');
-        
-        setTimeout(() => {
-          setFingerprintMessage(null);
-        }, 5000);
-      } else {
-        throw new Error(result.error || 'Error desconocido al eliminar huella');
-      }
-    } catch (error: any) {
-      console.error('❌ Error eliminando huella:', error);
-      setFingerprintError(`Error eliminando huella: ${error.message}`);
-    } finally {
-      setIsDeletingFingerprint(false);
-    }
-  }, [user?.id]);
-
-  // 🔄 useEffect PARA CIERRE AUTOMÁTICO DESPUÉS DEL MENSAJE
-  useEffect(() => {
-    if (contractRegenerationSuccess) {
-      const timer = setTimeout(() => {
-        onClose();
-        setContractRegenerationSuccess(false);
-      }, 3500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [contractRegenerationSuccess, onClose]);
-  
-  // 🧹 FUNCIÓN PARA LIMPIAR BLOB URLS (misma que antes)
-  const cleanupBlobUrl = (url: string) => {
+  // ✅ FUNCIÓN PARA LIMPIAR BLOB URLS MEJORADA
+  const cleanupBlobUrl = useCallback((url: string) => {
     if (url && url.startsWith('blob:') && blobUrlsRef.current.has(url)) {
       URL.revokeObjectURL(url);
       blobUrlsRef.current.delete(url);
+      console.log('🧹 [CLEANUP] Blob URL limpiada:', url.substring(0, 50) + '...');
     }
-  };
-  
-  // 📥 FUNCIÓN PARA DESCARGAR IMAGEN DESDE STORAGE (misma que antes)
+  }, []);
+
+  // ✅ FUNCIÓN PARA LIMPIAR TODAS LAS BLOB URLS
+  const cleanupAllBlobUrls = useCallback(() => {
+    blobUrlsRef.current.forEach(url => {
+      URL.revokeObjectURL(url);
+    });
+    blobUrlsRef.current.clear();
+    console.log('🧹 [CLEANUP] Todas las Blob URLs limpiadas');
+  }, []);
+
+  // 📥 FUNCIÓN MEJORADA PARA DESCARGAR IMAGEN DESDE STORAGE
   const downloadImageFromStorage = async (
     fileName: string,
     userId: string,
@@ -777,7 +1055,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       const supabase = createBrowserSupabaseClient();
       const filePath = `${userId}/${fileName}`;
       
-      console.log(`📥 Descargando ${type} desde storage:`, filePath);
+      console.log(`📥 [DOWNLOAD] Descargando ${type} desde storage:`, filePath);
       
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('user-files')
@@ -803,7 +1081,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         error: null,
         isFromStorage: true
       }));
-      
+
       if (type === 'profile') {
         setProfilePicturePreview(objectUrl);
         setFormData(prev => ({ ...prev, profilePictureUrl: objectUrl }));
@@ -817,12 +1095,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         [type === 'profile' ? 'profileUrl' : 'signatureUrl']: objectUrl
       }));
       
-      console.log(`✅ ${type} descargado y cargado exitosamente:`, fileName);
+      console.log(`✅ [DOWNLOAD] ${type} descargado exitosamente`);
       
     } catch (error: any) {
       if (!mountedRef.current) return;
       
-      console.error(`❌ Error descargando ${type}:`, error);
+      console.error(`❌ [DOWNLOAD] Error descargando ${type}:`, error);
       
       setter(prev => ({
         ...prev,
@@ -834,7 +1112,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
   
-  // 📄 FUNCIÓN PARA DESCARGAR PDF DESDE STORAGE (misma que antes)
+  // 📄 FUNCIÓN PARA DESCARGAR PDF DESDE STORAGE
   const downloadPdfFromStorage = async (fileName: string, userId: string) => {
     if (!fileName || !mountedRef.current) return;
     
@@ -842,7 +1120,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       const supabase = createBrowserSupabaseClient();
       const filePath = `${userId}/${fileName}`;
       
-      console.log(`📥 Descargando contrato PDF desde storage:`, filePath);
+      console.log(`📥 [PDF] Descargando contrato desde storage:`, filePath);
       
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('user-files')
@@ -856,7 +1134,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       blobUrlsRef.current.add(objectUrl);
       
       if (!mountedRef.current) {
-        URL.revokeObjectURL(objectUrl);
+        cleanupBlobUrl(objectUrl);
         return;
       }
       
@@ -873,14 +1151,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         contractUrl: objectUrl
       }));
       
-      console.log(`✅ Contrato PDF descargado exitosamente:`, fileName);
+      console.log(`✅ [PDF] Contrato descargado exitosamente`);
       
     } catch (error: any) {
-      console.log(`ℹ️ No se pudo descargar el contrato PDF (normal si no existe):`, fileName);
+      console.log(`ℹ️ [PDF] No se pudo descargar el contrato (normal si no existe):`, error.message);
     }
   };
-  
-  // 📁 FUNCIÓN CORREGIDA PARA CARGAR ARCHIVOS EXISTENTES (misma que antes)
+
+    // 📁 FUNCIÓN PARA CARGAR ARCHIVOS EXISTENTES
   const loadExistingFiles = async (userId: string) => {
     if (!mountedRef.current || initializedRef.current) return;
     
@@ -888,7 +1166,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       setFilesLoaded(false);
       setRetryCount(0);
       
-      console.log(`📂 Cargando archivos existentes para usuario: ${userId}`);
+      console.log(`📂 [LOAD-FILES] Cargando archivos existentes para usuario: ${userId}`);
       
       const supabase = createBrowserSupabaseClient();
       
@@ -904,7 +1182,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         throw new Error(`Error listando archivos: ${error.message}`);
       }
       
-      console.log(`📁 Archivos encontrados en storage:`, files?.map(f => f.name) || []);
+      console.log(`📁 [LOAD-FILES] Archivos encontrados:`, files?.length || 0);
       
       if (files && files.length > 0) {
         const promises: Promise<void>[] = [];
@@ -914,29 +1192,21 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         const latestContract = files.find(file => file.name.startsWith('contrato-'));
         
         if (latestProfile) {
-          console.log('📸 Cargando foto de perfil más reciente:', latestProfile.name);
+          console.log('📸 [LOAD-FILES] Cargando foto de perfil:', latestProfile.name);
           promises.push(downloadImageFromStorage(latestProfile.name, userId, 'profile'));
-        } else {
-          console.log('📸 No se encontró foto de perfil');
         }
         
         if (latestSignature) {
-          console.log('✍️ Cargando firma más reciente:', latestSignature.name);
+          console.log('✍️ [LOAD-FILES] Cargando firma:', latestSignature.name);
           promises.push(downloadImageFromStorage(latestSignature.name, userId, 'signature'));
-        } else {
-          console.log('✍️ No se encontró firma digital');
         }
         
         if (latestContract) {
-          console.log('📄 Cargando contrato más reciente:', latestContract.name);
+          console.log('📄 [LOAD-FILES] Cargando contrato:', latestContract.name);
           promises.push(downloadPdfFromStorage(latestContract.name, userId));
-        } else {
-          console.log('📄 No se encontró contrato PDF');
         }
         
         await Promise.allSettled(promises);
-      } else {
-        console.log('📁 No se encontraron archivos en storage para este usuario');
       }
       
       if (mountedRef.current) {
@@ -947,15 +1217,15 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         setDebugInfo(prev => ({
           ...prev,
           initialized: true,
-          complete: true
+          complete: true,
         }));
         
-        console.log('✅ Carga de archivos completada exitosamente');
+        console.log('✅ [LOAD-FILES] Carga de archivos completada');
       }
       
     } catch (error: any) {
       if (mountedRef.current) {
-        console.error('💥 Error cargando archivos:', error);
+        console.error('💥 [LOAD-FILES] Error:', error);
         
         setErrors(prev => ({
           ...prev,
@@ -963,16 +1233,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         }));
         
         if (retryCount < 2) {
-          console.log(`🔄 Reintentando carga de archivos (intento ${retryCount + 1}/3)...`);
+          console.log(`🔄 [LOAD-FILES] Reintentando (${retryCount + 1}/3)...`);
           setRetryCount(prev => prev + 1);
           
           retryTimeoutRef.current = setTimeout(() => {
             if (mountedRef.current) {
               loadExistingFiles(userId);
             }
-          }, 3000);
+          }, RETRY_DELAY);
         } else {
-          console.log('⚠️ Máximo de reintentos alcanzado, continuando sin archivos');
+          console.log('⚠️ [LOAD-FILES] Máximo de reintentos alcanzado');
           setFilesLoaded(true);
           setInitializationComplete(true);
           initializedRef.current = true;
@@ -980,7 +1250,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       }
     }
   };
-  
+
   // 🔄 FUNCIÓN PARA REINTENTAR CARGA DE IMAGEN
   const retryImageLoad = useCallback((type: 'profile' | 'signature') => {
     const imageState = type === 'profile' ? profileImage : signatureImage;
@@ -989,7 +1259,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   }, [profileImage, signatureImage, user?.id]);
   
-  // 👀 FUNCIÓN MEJORADA PARA MANEJAR VISUALIZACIÓN DE PDF
+  // 👀 FUNCIÓN PARA MANEJAR VISUALIZACIÓN DE PDF
   const handlePdfView = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1010,14 +1280,387 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   }, [formData.contractPdfUrl, formData.firstName, formData.lastName]);
 
-  // 🔄 HANDLER PARA CAMBIO DE ARCHIVOS CORREGIDO (mismo que antes)
+  // ✅ CALLBACK MEJORADO PARA MANEJO DE ERROR EN HUELLA
+  const handleFingerprintError = useCallback((message: string) => {
+    setFingerprintState(prev => ({
+      ...prev,
+      status: 'error',
+      error: message,
+      message: null,
+      syncStatus: 'idle'
+    }));
+    
+    // Auto-limpiar después de 5 segundos
+    setTimeout(() => {
+      if (mountedRef.current) {
+        setFingerprintState(prev => ({
+          ...prev,
+          error: null
+        }));
+      }
+    }, 5000);
+  }, []);
+
+  // ✅ FUNCIONES PARA MANEJO DE HUELLA DACTILAR CORREGIDAS
+  const handleFingerprintDialogOpen = useCallback(() => {
+    if (!user?.id) {
+      handleFingerprintError('Se requiere un usuario válido para registrar huella');
+      return;
+    }
+    setFingerprintDialogOpen(true);
+  }, [user?.id, handleFingerprintError]);
+
+  const handleFingerprintDialogClose = useCallback(() => {
+    setFingerprintDialogOpen(false);
+  }, []);
+
+  // ✅ FUNCIÓN CORREGIDA: handleFingerprintDataReady
+  const handleFingerprintDataReady = useCallback(async (fingerprintData: any) => {
+    try {
+      console.log('📥 [FINGERPRINT] Huella capturada, almacenando temporalmente...', {
+        device_user_id: fingerprintData.device_user_id,
+        finger_index: fingerprintData.finger_index,
+        finger_name: fingerprintData.finger_name
+      });
+      
+      // Validar datos
+      if (!fingerprintData.template) {
+        throw new Error('Template de huella vacío');
+      }
+      
+      if (!fingerprintData.device_user_id) {
+        throw new Error('device_user_id requerido');
+      }
+      
+      // ✅ Validar finger_index
+      if (fingerprintData.finger_index === undefined || 
+          fingerprintData.finger_index === null ||
+          !VALID_FINGER_INDICES.includes(fingerprintData.finger_index)) {
+        throw new Error('finger_index inválido');
+      }
+      
+      // Actualizar estado
+      setFingerprintState({
+        status: 'captured',
+        deviceUserId: fingerprintData.device_user_id,
+        fingerIndex: fingerprintData.finger_index,
+        fingerName: fingerprintData.finger_name,
+        message: `🎉 ¡Huella ${fingerprintData.finger_name} capturada! Presiona "Actualizar Usuario" para guardar.`,
+        error: null,
+        syncStatus: 'idle',
+        pendingData: {
+          ...fingerprintData,
+          captured_at: new Date().toISOString()
+        }
+      });
+      
+      // Marcar cambios
+      setHasFormChanges(true);
+      
+      console.log('✅ [FINGERPRINT] Huella almacenada temporalmente');
+      
+    } catch (error: any) {
+      console.error('❌ [FINGERPRINT] Error:', error);
+      handleFingerprintError(`Error: ${error.message}`);
+    }
+  }, [handleFingerprintError]);
+
+  // ✅ FUNCIÓN COMPLETAMENTE CORREGIDA PARA ELIMINAR HUELLA
+  const handleDeleteFingerprint = useCallback(async () => {
+    if (!user?.id) {
+      handleFingerprintError('Se requiere un usuario válido');
+      return;
+    }
+
+    if (!window.confirm('¿Eliminar la huella de BD y F22? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      setIsDeletingFingerprint(true);
+      setFingerprintState(prev => ({
+        ...prev,
+        status: 'none',
+        error: null,
+        message: null,
+        syncStatus: 'syncing'
+      }));
+
+      console.log('🗑️ [DELETE] Iniciando eliminación para usuario:', user.id);
+
+      // ✅ PASO 1: Obtener device_user_id y finger_index de BD
+      let deviceUserId = null;
+      let fingerIndex = null;
+      
+      // Primero verificar si tenemos datos pendientes
+      if (fingerprintState.pendingData) {
+        deviceUserId = fingerprintState.pendingData.device_user_id;
+        fingerIndex = fingerprintState.pendingData.finger_index;
+        console.log('📊 [DELETE] Usando datos pendientes:', { deviceUserId, fingerIndex });
+      } else {
+        // Si no, obtener de BD
+        console.log('🔍 [DELETE] Obteniendo device_user_id de BD...');
+        
+        const response = await fetch(
+          `/api/biometric/fingerprint?userId=${user.id}&getDeviceId=true`,
+          { method: 'GET' }
+        );
+        
+        if (response.ok) {
+          const fingerprintInfo = await response.json();
+          deviceUserId = fingerprintInfo.device_user_id;
+          fingerIndex = fingerprintInfo.finger_index;
+          
+          console.log('✅ [DELETE] Información obtenida:', {
+            device_user_id: deviceUserId,
+            finger_index: fingerIndex,
+            finger_name: fingerprintInfo.finger_name
+          });
+        } else {
+          console.warn('⚠️ [DELETE] No se pudo obtener device_user_id de BD');
+        }
+      }
+
+      // ✅ PASO 2: Eliminar de BD
+      console.log('💾 [DELETE] Eliminando de base de datos...');
+      
+      const dbResult = await deleteFingerprintFromDatabase(user.id, fingerIndex || undefined);
+
+      if (dbResult.success) {
+        console.log('✅ [DELETE] Eliminado de BD exitosamente');
+        
+        // ✅ PASO 3: Eliminar del F22 si tenemos device_user_id
+        if (deviceUserId) {
+          try {
+            console.log('🔄 [DELETE] Eliminando del F22...', {
+              deviceUserId,
+              userId: user.id,
+              fingerIndex
+            });
+            
+            const f22Result = await deleteFingerprintFromF22Service(
+              deviceUserId.toString(),
+              user.id,
+              fingerIndex || undefined
+            );
+            
+            if (f22Result.success) {
+              console.log('✅ [DELETE] Eliminación F22 exitosa');
+              setFingerprintState(prev => ({
+                ...prev,
+                status: 'none',
+                syncStatus: 'success',
+                message: `✅ Huella eliminada completamente (BD + F22)\n${f22Result.deletedTemplates || 0} plantillas eliminadas del dispositivo`,
+                deviceUserId: null,
+                fingerIndex: null,
+                fingerName: null,
+                pendingData: null
+              }));
+            } else {
+              throw new Error(f22Result.error || 'Error eliminando del F22');
+            }
+            
+          } catch (f22Error: any) {
+            console.warn('⚠️ [DELETE] Error en F22 (BD ya limpio):', f22Error.message);
+            setFingerprintState(prev => ({
+              ...prev,
+              status: 'none',
+              syncStatus: 'error',
+              error: `⚠️ Eliminada de BD pero error en F22: ${f22Error.message}`,
+              deviceUserId: null,
+              fingerIndex: null,
+              fingerName: null,
+              pendingData: null
+            }));
+          }
+        } else {
+          setFingerprintState(prev => ({
+            ...prev,
+            status: 'none',
+            syncStatus: 'error',
+            message: '⚠️ Eliminada de BD (sin device_user_id para F22)',
+            deviceUserId: null,
+            fingerIndex: null,
+            fingerName: null,
+            pendingData: null
+          }));
+        }
+
+        // Actualizar estado del formulario
+        setFormData(prev => ({ ...prev, fingerprint: false }));
+        setHasFormChanges(true);
+
+      } else {
+        throw new Error(dbResult.error || 'Error eliminando de BD');
+      }
+      
+    } catch (error: any) {
+      console.error('💥 [DELETE] Error crítico:', error);
+      handleFingerprintError(`Error eliminando: ${error.message}`);
+    } finally {
+      setIsDeletingFingerprint(false);
+      
+      // Limpiar mensajes después de 8 segundos
+      setTimeout(() => {
+        if (mountedRef.current) {
+          setFingerprintState(prev => ({
+            ...prev,
+            message: null,
+            syncStatus: 'idle'
+          }));
+        }
+      }, 8000);
+    }
+  }, [user?.id, fingerprintState.pendingData, handleFingerprintError]);
+
+  // ✅ FUNCIÓN PARA ELIMINAR TODAS LAS HUELLAS
+  const handleDeleteAllFingerprints = useCallback(async () => {
+    if (!user?.id) {
+      handleFingerprintError('Se requiere un usuario válido');
+      return;
+    }
+
+    if (!window.confirm(
+      '⚠️ ¿Eliminar TODAS las huellas?\n\n' +
+      '• Se eliminarán de la base de datos\n' +
+      '• Se eliminarán del dispositivo F22\n' +
+      '• Esta acción no se puede deshacer'
+    )) {
+      return;
+    }
+
+    try {
+      setIsDeletingFingerprint(true);
+      setFingerprintState(prev => ({
+        ...prev,
+        error: null,
+        message: null,
+        syncStatus: 'syncing'
+      }));
+
+      console.log('🗑️ [DELETE-ALL] Iniciando eliminación completa para:', user.id);
+
+      // Obtener device_user_id
+      let deviceUserId = fingerprintState.deviceUserId;
+      
+      if (!deviceUserId) {
+        try {
+          const response = await fetch(
+            `/api/biometric/fingerprint?userId=${user.id}&getDeviceId=true`,
+            { method: 'GET' }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            deviceUserId = data.device_user_id;
+          }
+        } catch {
+          console.warn('⚠️ [DELETE-ALL] No se pudo obtener device_user_id');
+        }
+      }
+
+      // Eliminar TODAS de BD
+      console.log('💾 [DELETE-ALL] Eliminando todas las huellas de BD...');
+      
+      const dbResult = await deleteFingerprintFromDatabase(user.id); // Sin fingerIndex
+
+      if (dbResult.success) {
+        console.log('✅ [DELETE-ALL] BD limpia');
+        
+        // Eliminar del F22
+        if (deviceUserId) {
+          try {
+            const f22Result = await deleteFingerprintFromF22Service(
+              deviceUserId.toString(),
+              user.id
+              // Sin fingerIndex = eliminar todas
+            );
+            
+            if (f22Result.success) {
+              setFingerprintState({
+                status: 'none',
+                deviceUserId: null,
+                fingerIndex: null,
+                fingerName: null,
+                message: `🎉 Limpieza completa exitosa!\n✅ BD: Todas eliminadas\n✅ F22: ${f22Result.deletedTemplates || 0} plantillas eliminadas`,
+                error: null,
+                syncStatus: 'success',
+                pendingData: null
+              });
+            } else {
+              throw new Error(f22Result.error);
+            }
+            
+          } catch (f22Error: any) {
+            setFingerprintState(prev => ({
+              ...prev,
+              status: 'none',
+              syncStatus: 'error',
+              error: `⚠️ BD limpia pero error en F22: ${f22Error.message}`,
+              deviceUserId: null,
+              fingerIndex: null,
+              fingerName: null,
+              pendingData: null
+            }));
+          }
+        } else {
+          setFingerprintState(prev => ({
+            ...prev,
+            status: 'none',
+            message: '⚠️ BD limpia (sin device_user_id para F22)',
+            deviceUserId: null,
+            fingerIndex: null,
+            fingerName: null,
+            pendingData: null
+          }));
+        }
+
+        // Actualizar formulario
+        setFormData(prev => ({ ...prev, fingerprint: false }));
+        setHasFormChanges(true);
+
+      } else {
+        throw new Error(dbResult.error);
+      }
+      
+    } catch (error: any) {
+      console.error('💥 [DELETE-ALL] Error:', error);
+      handleFingerprintError(`Error: ${error.message}`);
+    } finally {
+      setIsDeletingFingerprint(false);
+      
+      setTimeout(() => {
+        if (mountedRef.current) {
+          setFingerprintState(prev => ({
+            ...prev,
+            message: null,
+            syncStatus: 'idle'
+          }));
+        }
+      }, 8000);
+    }
+  }, [user?.id, fingerprintState.deviceUserId, handleFingerprintError]);
+
+  // 🔄 useEffect para cierre automático después del éxito
+  useEffect(() => {
+    if (contractRegenerationSuccess) {
+      const timer = setTimeout(() => {
+        onClose();
+        setContractRegenerationSuccess(false);
+      }, 3500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [contractRegenerationSuccess, onClose]);
+
+  // 🔄 HANDLER MEJORADO PARA CAMBIO DE ARCHIVOS
   const handleFileChange = (fileType: 'profilePicture' | 'signature' | 'contract') => 
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || !e.target.files[0]) return;
       
       const file = e.target.files[0];
       
-      console.log(`📁 Archivo ${fileType} seleccionado:`, {
+      console.log(`📁 [FILE] ${fileType} seleccionado:`, {
         name: file.name,
         size: file.size,
         type: file.type
@@ -1026,6 +1669,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       let isValid = true;
       let errorMessage = '';
       
+      // Validación mejorada
       if (fileType === 'profilePicture' || fileType === 'signature') {
         if (!file.type.startsWith('image/')) {
           isValid = false;
@@ -1049,26 +1693,29 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           ...prev,
           [fileType]: errorMessage
         }));
+        e.target.value = ''; // Limpiar input
         return;
       }
       
+      // Limpiar errores
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[fileType];
         return newErrors;
       });
       
-      if (fileType === 'profilePicture' && profilePicturePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(profilePicturePreview);
-        blobUrlsRef.current.delete(profilePicturePreview);
-      } else if (fileType === 'signature' && signaturePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(signaturePreview);
-        blobUrlsRef.current.delete(signaturePreview);
+      // Limpiar blob URLs anteriores
+      if (fileType === 'profilePicture' && profilePicturePreview) {
+        cleanupBlobUrl(profilePicturePreview);
+      } else if (fileType === 'signature' && signaturePreview) {
+        cleanupBlobUrl(signaturePreview);
       }
       
+      // Crear nueva blob URL
       const objectUrl = URL.createObjectURL(file);
       blobUrlsRef.current.add(objectUrl);
       
+      // Actualizar estados
       if (fileType === 'profilePicture') {
         setProfilePicture(file);
         setProfilePicturePreview(objectUrl);
@@ -1080,7 +1727,6 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           error: null,
           isFromStorage: false
         }));
-        console.log('📸 Preview de foto de perfil creado:', objectUrl);
       } else if (fileType === 'signature') {
         setSignature(file);
         setSignaturePreview(objectUrl);
@@ -1092,19 +1738,17 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           error: null,
           isFromStorage: false
         }));
-        console.log('✍️ Preview de firma creado:', objectUrl);
       } else if (fileType === 'contract') {
         setContract(file);
-        console.log('📄 Contrato seleccionado:', file.name);
       }
       
       setHasFormChanges(true);
-      console.log('🔄 Cambios detectados, archivo pendiente de subida');
+      console.log('🔄 [FILE] Archivo pendiente de subida');
       
+      // Limpiar input
       e.target.value = '';
     };
-  
-  // 🎨 COMPONENTE AVATAR ULTRA PRO CON DARK PRO SYSTEM (mismo que antes)
+      // 🎨 COMPONENTE AVATAR MEJORADO
   const ProfileAvatar = () => {
     if (!initializationComplete) {
       return (
@@ -1168,12 +1812,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 color: darkProTokens.background,
                 fontSize: '0.7rem',
                 height: 24,
-                animation: 'pulse 2s infinite',
-                border: `1px solid ${darkProTokens.warningHover}`
+                border: `1px solid ${darkProTokens.warningHover}`,
+                '@keyframes pulse': {
+                  '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                  '50%': { opacity: 0.8, transform: 'scale(1.05)' }
+                },
+                animation: 'pulse 2s infinite'
               }}
             />
           )}
-          
+
           {(profileImage.isLoading || fileUploading.profilePicture) && (
             <Box sx={{
               position: 'absolute',
@@ -1195,24 +1843,29 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           )}
           
           {profileImage.error && !profileImage.isLoading && (
-            <Box sx={{
-              position: 'absolute',
-              top: -8,
-              right: -8,
-              bgcolor: darkProTokens.error,
-              borderRadius: '50%',
-              width: 28,
-              height: 28,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 4px 12px ${darkProTokens.error}40`,
-              border: `2px solid ${darkProTokens.background}`
-            }}>
-              <ErrorIcon sx={{ fontSize: 16, color: darkProTokens.textPrimary }} />
-            </Box>
+            <Tooltip title={profileImage.error}>
+              <Box sx={{
+                position: 'absolute',
+                top: -8,
+                right: -8,
+                bgcolor: darkProTokens.error,
+                borderRadius: '50%',
+                width: 28,
+                height: 28,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `0 4px 12px ${darkProTokens.error}40`,
+                border: `2px solid ${darkProTokens.background}`,
+                cursor: 'pointer'
+              }}
+              onClick={() => retryImageLoad('profile')}
+              >
+                <ErrorIcon sx={{ fontSize: 16, color: darkProTokens.textPrimary }} />
+              </Box>
+            </Tooltip>
           )}
-          
+
           <IconButton 
             sx={{ 
               position: 'absolute',
@@ -1232,6 +1885,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               '&:active': {
                 transform: 'scale(0.95)',
               },
+              '&:disabled': {
+                opacity: 0.5,
+                cursor: 'not-allowed'
+              },
               transition: 'all 0.2s ease'
             }}
             component="label"
@@ -1246,6 +1903,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   accept="image/*"
                   type="file"
                   onChange={handleFileChange('profilePicture')}
+                  disabled={fileUploading.profilePicture}
                 />
                 <PhotoCamera sx={{ fontSize: 20 }} />
               </>
@@ -1255,8 +1913,8 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       </Box>
     );
   };
-  
-  // 🖊️ COMPONENTE FIRMA ULTRA PRO CON DARK PRO SYSTEM (mismo que antes pero más compacto)
+
+  // 🖊️ COMPONENTE FIRMA MEJORADO
   const SignatureDisplay = () => {
     if (!initializationComplete) {
       return (
@@ -1313,7 +1971,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               fontWeight: 600,
               fontSize: '0.75rem',
               '& .MuiChip-icon': { color: darkProTokens.textPrimary, fontSize: 14 },
-              ...(signature ? { animation: 'pulse 2s infinite' } : {})
+              ...(signature && {
+                '@keyframes pulse': {
+                  '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                  '50%': { opacity: 0.8, transform: 'scale(1.05)' }
+                },
+                animation: 'pulse 2s infinite'
+              })
             }}
           />
           
@@ -1343,25 +2007,27 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           </IconButton>
           
           {signatureImage.error && (
-            <IconButton
-              size="small"
-              onClick={() => retryImageLoad('signature')}
-              sx={{
-                position: 'absolute',
-                top: 8,
-                left: 8,
-                bgcolor: `${darkProTokens.error}E6`,
-                color: darkProTokens.textPrimary,
-                '&:hover': { bgcolor: darkProTokens.error }
-              }}
-            >
-              <RefreshIcon fontSize="small" />
-            </IconButton>
+            <Tooltip title="Reintentar carga">
+              <IconButton
+                size="small"
+                onClick={() => retryImageLoad('signature')}
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  left: 8,
+                  bgcolor: `${darkProTokens.error}E6`,
+                  color: darkProTokens.textPrimary,
+                  '&:hover': { bgcolor: darkProTokens.error }
+                }}
+              >
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           )}
         </Box>
       );
     }
-    
+
     return (
       <Box sx={{ 
         width: '100%',
@@ -1440,7 +2106,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     );
   };
 
-    // 🚀 COMPONENTE CONTRATO PDF ULTRA PRO CON DARK PRO SYSTEM (mismo que antes)
+  // 🚀 COMPONENTE CONTRATO PDF MEJORADO
   const ContractPdfDisplay = () => {
     if (!initializationComplete) {
       return (
@@ -1561,8 +2227,52 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     );
   };
 
-  // ✅ COMPONENTE DE CONTROL DE HUELLA DACTILAR MODIFICADO
+  // ✅ COMPONENTE DE CONTROL DE HUELLA COMPLETAMENTE CORREGIDO
   const FingerprintControl = () => {
+    const hasFingerprintInDB = formData.fingerprint;
+    const hasPendingFingerprint = fingerprintState.status === 'captured';
+    const isSyncing = fingerprintState.syncStatus === 'syncing';
+    const isDeleting = isDeletingFingerprint;
+    
+    // Determinar estado visual
+    const getStatusColor = () => {
+      if (hasFingerprintInDB) return darkProTokens.success;
+      if (hasPendingFingerprint) return darkProTokens.warning;
+      return darkProTokens.error;
+    };
+    
+    const getStatusIcon = () => {
+      if (hasFingerprintInDB && fingerprintState.syncStatus === 'success') {
+        return <VerifiedIcon sx={{ color: darkProTokens.success, fontSize: '1rem' }} />;
+      }
+      if (hasFingerprintInDB && fingerprintState.syncStatus === 'error') {
+        return <ErrorIcon sx={{ color: darkProTokens.warning, fontSize: '1rem' }} />;
+      }
+      if (hasFingerprintInDB) {
+        return <SecurityIcon sx={{ color: darkProTokens.info, fontSize: '1rem' }} />;
+      }
+      if (hasPendingFingerprint) {
+        return <AccessTimeIcon sx={{ color: darkProTokens.warning, fontSize: '1rem' }} />;
+      }
+      return <ErrorIcon sx={{ color: darkProTokens.error, fontSize: '1rem' }} />;
+    };
+    
+    const getStatusText = () => {
+      if (hasFingerprintInDB && fingerprintState.syncStatus === 'success') {
+        return 'Registrada + F22 sincronizado';
+      }
+      if (hasFingerprintInDB && fingerprintState.syncStatus === 'error') {
+        return 'En BD - Error sincronizando F22';
+      }
+      if (hasFingerprintInDB) {
+        return 'Registrada en BD';
+      }
+      if (hasPendingFingerprint) {
+        return 'Capturada - Pendiente de guardar';
+      }
+      return 'No registrada';
+    };
+    
     return (
       <Box sx={{
         display: 'flex',
@@ -1570,13 +2280,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         justifyContent: 'space-between',
         p: 2,
         borderRadius: 2,
-        border: `2px solid ${formData.fingerprint ? darkProTokens.success : darkProTokens.warning}40`,
-        bgcolor: `${formData.fingerprint ? darkProTokens.success : darkProTokens.warning}10`,
+        border: `2px solid ${getStatusColor()}40`,
+        bgcolor: `${getStatusColor()}10`,
         transition: 'all 0.3s ease'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{
-            bgcolor: formData.fingerprint ? darkProTokens.success : darkProTokens.warning,
+            bgcolor: getStatusColor(),
             color: darkProTokens.textPrimary,
             width: 40,
             height: 40
@@ -1589,32 +2299,48 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               fontWeight: 600,
               mb: 0.5
             }}>
-              Huella Dactilar
+              Huella Dactilar (F22 SDK)
             </Typography>
+            
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {formData.fingerprint ? (
-                <>
-                  <VerifiedIcon sx={{ color: darkProTokens.success, fontSize: '1rem' }} />
-                  <Typography variant="caption" sx={{ color: darkProTokens.success, fontWeight: 500 }}>
-                    {pendingFingerprintData ? 'Capturada (Pendiente de guardar)' : 'Registrada'}
-                  </Typography>
-                </>
-              ) : (
-                <>
-                  <ErrorIcon sx={{ color: darkProTokens.warning, fontSize: '1rem' }} />
-                  <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 500 }}>
-                    No registrada
-                  </Typography>
-                </>
-              )}
+              {getStatusIcon()}
+              <Typography variant="caption" sx={{ 
+                color: getStatusColor(), 
+                fontWeight: 500 
+              }}>
+                {getStatusText()}
+              </Typography>
             </Box>
             
-            {/* ✅ NUEVO: Indicador de datos pendientes */}
-            {pendingFingerprintData && (
+            {/* Mensajes adicionales */}
+            {fingerprintState.message && (
+              <Typography variant="caption" sx={{ 
+                color: darkProTokens.textSecondary,
+                fontSize: '0.7rem',
+                display: 'block',
+                mt: 0.5
+              }}>
+                {fingerprintState.message}
+              </Typography>
+            )}
+            
+            {fingerprintState.error && (
+              <Typography variant="caption" sx={{ 
+                color: darkProTokens.error,
+                fontSize: '0.7rem',
+                display: 'block',
+                mt: 0.5
+              }}>
+                {fingerprintState.error}
+              </Typography>
+            )}
+            
+            {/* Indicador de datos pendientes */}
+            {hasPendingFingerprint && (
               <Box sx={{ mt: 0.5 }}>
                 <Chip
                   icon={<UpdateIcon />}
-                  label="Datos listos para guardar"
+                  label={`${fingerprintState.fingerName || 'Huella'} lista para guardar`}
                   size="small"
                   sx={{
                     bgcolor: `${darkProTokens.primary}20`,
@@ -1622,6 +2348,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                     border: `1px solid ${darkProTokens.primary}40`,
                     fontSize: '0.7rem',
                     height: 20,
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                      '50%': { opacity: 0.8, transform: 'scale(1.05)' }
+                    },
                     animation: 'pulse 2s infinite'
                   }}
                 />
@@ -1631,24 +2361,26 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         </Box>
         
         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-          {/* ✅ BOTÓN PRINCIPAL: REGISTRAR/GESTIONAR */}
-          <Tooltip title={formData.fingerprint ? "Gestionar huella dactilar" : "Registrar huella dactilar"}>
+          {/* Botón principal */}
+          <Tooltip title={hasFingerprintInDB ? "Reemplazar huella" : "Registrar nueva huella"}>
             <Button
               variant="contained"
               size="small"
               onClick={handleFingerprintDialogOpen}
-              disabled={!user?.id || isDeletingFingerprint}
-              startIcon={<FingerPrintIcon />}
+              disabled={!user?.id || isDeleting || isSyncing}
+              startIcon={
+                isSyncing ? <CircularProgress size={16} /> : <FingerPrintIcon />
+              }
               sx={{
-                bgcolor: formData.fingerprint ? darkProTokens.info : darkProTokens.primary,
+                bgcolor: hasFingerprintInDB ? darkProTokens.info : darkProTokens.primary,
                 color: darkProTokens.background,
                 fontWeight: 600,
                 px: 2,
-                minWidth: '100px',
+                minWidth: '120px',
                 '&:hover': {
-                  bgcolor: formData.fingerprint ? darkProTokens.infoHover : darkProTokens.primaryHover,
+                  bgcolor: hasFingerprintInDB ? darkProTokens.infoHover : darkProTokens.primaryHover,
                   transform: 'translateY(-1px)',
-                  boxShadow: `0 4px 15px ${formData.fingerprint ? darkProTokens.info : darkProTokens.primary}40`
+                  boxShadow: `0 4px 15px ${hasFingerprintInDB ? darkProTokens.info : darkProTokens.primary}40`
                 },
                 '&:disabled': {
                   bgcolor: darkProTokens.grayMedium,
@@ -1657,25 +2389,28 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 transition: 'all 0.3s ease'
               }}
             >
-              {formData.fingerprint ? 'Reemplazar' : 'Registrar'}
+              {isSyncing ? 'Sincronizando...' : hasFingerprintInDB ? 'Reemplazar' : 'Registrar'}
             </Button>
           </Tooltip>
           
-          {/* ✅ NUEVO: BOTÓN ELIMINAR */}
-          {formData.fingerprint && (
-            <Tooltip title="Eliminar huella dactilar registrada">
+          {/* Botón eliminar específico */}
+          {(hasFingerprintInDB || hasPendingFingerprint) && (
+            <Tooltip title="Eliminar huella actual">
               <Button
                 variant="outlined"
                 size="small"
                 onClick={handleDeleteFingerprint}
-                disabled={!user?.id || isDeletingFingerprint}
-                startIcon={isDeletingFingerprint ? <CircularProgress size={16} /> : <DeleteIcon />}
+                disabled={!user?.id || isDeleting || isSyncing}
+                startIcon={
+                  isDeleting ? <CircularProgress size={16} /> : <DeleteIcon />
+                }
                 sx={{
                   borderColor: darkProTokens.error,
                   color: darkProTokens.error,
                   fontWeight: 600,
                   px: 2,
-                  minWidth: '100px',
+                  minWidth: '120px',
+                  fontSize: '0.75rem',
                   '&:hover': {
                     bgcolor: `${darkProTokens.error}10`,
                     borderColor: darkProTokens.errorHover,
@@ -1688,7 +2423,43 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   transition: 'all 0.3s ease'
                 }}
               >
-                {isDeletingFingerprint ? 'Eliminando...' : 'Eliminar'}
+                {isDeleting ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </Tooltip>
+          )}
+
+          {/* Botón limpiar todas */}
+          {hasFingerprintInDB && (
+            <Tooltip title="Eliminar TODAS las huellas del usuario">
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleDeleteAllFingerprints}
+                disabled={!user?.id || isDeleting || isSyncing}
+                startIcon={
+                  isDeleting ? <CircularProgress size={16} /> : <CleaningServicesIcon />
+                }
+                sx={{
+                  borderColor: darkProTokens.error,
+                  color: darkProTokens.error,
+                  fontWeight: 600,
+                  px: 2,
+                  minWidth: '120px',
+                  fontSize: '0.7rem',
+                  background: `${darkProTokens.error}05`,
+                  '&:hover': {
+                    bgcolor: `${darkProTokens.error}15`,
+                    borderColor: darkProTokens.errorHover,
+                    transform: 'translateY(-1px)'
+                  },
+                  '&:disabled': {
+                    borderColor: darkProTokens.grayMedium,
+                    color: darkProTokens.textDisabled
+                  },
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {isDeleting ? 'Limpiando...' : 'Limpiar TODAS'}
               </Button>
             </Tooltip>
           )}
@@ -1696,8 +2467,280 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       </Box>
     );
   };
-  
-  // 🔧 MANEJADORES DE EVENTOS SIMPLIFICADOS (mismos que antes)
+
+  // ✅ FUNCIÓN handleSubmit COMPLETAMENTE CORREGIDA
+  const handleSubmit = async () => {
+    // Prevenir doble guardado
+    if (savingRef.current) {
+      console.log('⚠️ [SUBMIT] Ya se está guardando, ignorando...');
+      return;
+    }
+    
+    try {
+      savingRef.current = true;
+      setLoading(true);
+      setIsSavingChanges(true);
+      setContractRegenerationError(null);
+      
+      console.log('🚀 [SUBMIT] Iniciando proceso de guardado...');
+      console.log('📊 [SUBMIT] Estado actual:', {
+        hasFormChanges,
+        hasPendingFingerprint: !!fingerprintState.pendingData,
+        fingerprintStatus: fingerprintState.status
+      });
+      
+      // Validar formulario
+      if (!validateStep(activeStep)) {
+        setLoading(false);
+        setIsSavingChanges(false);
+        savingRef.current = false;
+        return;
+      }
+      
+      const userId = formData.id || user?.id || crypto.randomUUID();
+      let updatedFormData = { ...formData, id: userId };
+      
+      // 1️⃣ SUBIR ARCHIVOS PENDIENTES
+      if (profilePicture) {
+        console.log('📤 [SUBMIT] Subiendo foto de perfil...');
+        setFileUploading(prev => ({ ...prev, profilePicture: true }));
+        
+        try {
+          const uploadResult = await uploadFileToStorage(profilePicture, userId, 'profile');
+          if (uploadResult) {
+            updatedFormData.profilePictureUrl = uploadResult.url;
+            console.log('✅ [SUBMIT] Foto subida');
+            
+            setProfilePicturePreview(uploadResult.url);
+            setProfileImage(prev => ({
+              ...prev,
+              url: uploadResult.url,
+              fileName: uploadResult.path.split('/').pop() || '',
+              isFromStorage: true
+            }));
+          }
+        } catch (error: any) {
+          console.error('❌ [SUBMIT] Error subiendo foto:', error);
+          setErrors(prev => ({ ...prev, profilePicture: error.message }));
+          throw error;
+        } finally {
+          setFileUploading(prev => ({ ...prev, profilePicture: false }));
+        }
+      }
+      
+      if (signature) {
+        console.log('📤 [SUBMIT] Subiendo firma...');
+        setFileUploading(prev => ({ ...prev, signature: true }));
+        
+        try {
+          const uploadResult = await uploadFileToStorage(signature, userId, 'signature');
+          if (uploadResult) {
+            updatedFormData.signatureUrl = uploadResult.url;
+            console.log('✅ [SUBMIT] Firma subida');
+            
+            setSignaturePreview(uploadResult.url);
+            setSignatureImage(prev => ({
+              ...prev,
+              url: uploadResult.url,
+              fileName: uploadResult.path.split('/').pop() || '',
+              isFromStorage: true
+            }));
+          }
+        } catch (error: any) {
+          console.error('❌ [SUBMIT] Error subiendo firma:', error);
+          setErrors(prev => ({ ...prev, signature: error.message }));
+          throw error;
+        } finally {
+          setFileUploading(prev => ({ ...prev, signature: false }));
+        }
+      }
+      
+      // 2️⃣ PREPARAR DATOS FINALES
+      const processedFormData = {
+        ...updatedFormData,
+        gender: updatedFormData.gender ? 
+          updatedFormData.gender.charAt(0).toUpperCase() + updatedFormData.gender.slice(1) : '',
+        maritalStatus: convertMaritalStatusToDisplay(updatedFormData.maritalStatus)
+      };
+      
+      const processedMembershipData = {
+        ...membershipData,
+        trainingLevel: convertTrainingLevelToDisplay(membershipData.trainingLevel)
+      };
+      
+      const userData = {
+        ...processedFormData,
+        address: formData.rol === 'cliente' ? addressData : null,
+        emergency: formData.rol === 'cliente' ? emergencyData : null,
+        membership: formData.rol === 'cliente' ? processedMembershipData : null,
+      };
+      
+      // 3️⃣ GUARDAR USUARIO EN BD
+      console.log('💾 [SUBMIT] Guardando usuario en BD...');
+      await onSave(userData);
+      console.log('✅ [SUBMIT] Usuario guardado en BD');
+      
+      // 4️⃣ PROCESAR HUELLA PENDIENTE
+      if (fingerprintState.pendingData && fingerprintState.status === 'captured') {
+        console.log('🖐️ [SUBMIT] Procesando huella pendiente...');
+        setFingerprintState(prev => ({
+          ...prev,
+          syncStatus: 'syncing'
+        }));
+        
+        try {
+          // Preparar datos para BD
+          const templateDataForDB = {
+            user_id: userId,
+            template: fingerprintState.pendingData.template,
+            device_user_id: fingerprintState.pendingData.device_user_id,
+            finger_index: fingerprintState.pendingData.finger_index,
+            finger_name: fingerprintState.pendingData.finger_name,
+            primary_template: fingerprintState.pendingData.primary_template,
+            verification_template: fingerprintState.pendingData.verification_template,
+            backup_template: fingerprintState.pendingData.backup_template,
+            combined_template: fingerprintState.pendingData.combined_template,
+            average_quality: fingerprintState.pendingData.average_quality,
+            capture_count: fingerprintState.pendingData.capture_count,
+            capture_time_ms: fingerprintState.pendingData.capture_time_ms,
+            device_info: fingerprintState.pendingData.device_info || {},
+            sdk_version: 'official_zkteco',
+            enrolled_at: new Date().toISOString(),
+          };
+
+          // Guardar en BD
+          const dbResult = await saveFingerprintToDatabase(templateDataForDB);
+          
+          if (dbResult.success) {
+            console.log('✅ [SUBMIT] Huella guardada en BD');
+            
+            // Sincronizar con F22
+            const f22SyncData = {
+              ...templateDataForDB,
+              name: `${processedFormData.firstName || ''} ${processedFormData.lastName || ''}`.trim(),
+              first_name: processedFormData.firstName,
+              last_name: processedFormData.lastName
+            };
+
+            try {
+              const f22Result = await syncFingerprintToF22Service(f22SyncData);
+              
+              if (f22Result.success) {
+                console.log('✅ [SUBMIT] Huella sincronizada con F22');
+                setFingerprintState(prev => ({
+                  ...prev,
+                  status: 'saved',
+                  syncStatus: 'success',
+                  message: '🎉 Usuario y huella guardados exitosamente!',
+                  pendingData: null
+                }));
+                updatedFormData.fingerprint = true;
+              } else {
+                throw new Error(f22Result.error || 'Error en F22');
+              }
+            } catch (f22Error: any) {
+              console.warn('⚠️ [SUBMIT] Error F22:', f22Error.message);
+              setFingerprintState(prev => ({
+                ...prev,
+                status: 'saved',
+                syncStatus: 'error',
+                error: `BD actualizada, error F22: ${f22Error.message}`,
+                pendingData: null
+              }));
+              updatedFormData.fingerprint = true; // BD actualizada
+            }
+            
+          } else {
+            throw new Error(dbResult.error || 'Error guardando en BD');
+          }
+          
+        } catch (fingerprintError: any) {
+          console.error('💥 [SUBMIT] Error procesando huella:', fingerprintError);
+          setFingerprintState(prev => ({
+            ...prev,
+            syncStatus: 'error',
+            error: `Error: ${fingerprintError.message}`
+          }));
+        }
+      }
+      
+      // 5️⃣ REGENERAR CONTRATO SI ES NECESARIO
+      if (formData.rol === 'cliente' && (hasFormChanges || fingerprintState.status === 'saved')) {
+        console.log('🔄 [SUBMIT] Regenerando contrato...');
+        setIsRegeneratingContract(true);
+        
+        try {
+          const contractResult = await regenerateContract(userId);
+          
+          if (contractResult.success) {
+            console.log('✅ [SUBMIT] Contrato regenerado');
+            setContractRegenerationSuccess(true);
+            
+            // Recargar archivos después de un momento
+            setTimeout(() => {
+              if (mountedRef.current) {
+                loadExistingFiles(userId);
+              }
+            }, 1000);
+          }
+        } catch (error: any) {
+          console.error('❌ [SUBMIT] Error regenerando contrato:', error);
+          setContractRegenerationError(error.message);
+        } finally {
+          setIsRegeneratingContract(false);
+        }
+      }
+      
+      // 6️⃣ LIMPIAR Y ACTUALIZAR ESTADOS
+      console.log('🧹 [SUBMIT] Limpiando estados...');
+      
+      // Limpiar archivos pendientes
+      setProfilePicture(null);
+      setSignature(null);
+      setContract(null);
+      
+      // Limpiar blob URLs
+      cleanupAllBlobUrls();
+      
+      // Actualizar formData
+      setFormData(updatedFormData);
+      
+      // Actualizar estados originales
+      setOriginalFormData({...updatedFormData});
+      setOriginalAddressData({...addressData});
+      setOriginalEmergencyData({...emergencyData});
+      setOriginalMembershipData({...membershipData});
+      setHasFormChanges(false);
+      
+      console.log('🎉 [SUBMIT] Proceso completado exitosamente');
+      
+      // Mostrar mensaje de éxito
+      if (formData.rol !== 'cliente') {
+        setContractRegenerationSuccess(true);
+      }
+      
+      // Limpiar mensajes después de 5 segundos
+      setTimeout(() => {
+        if (mountedRef.current) {
+          setFingerprintState(prev => ({
+            ...prev,
+            message: null,
+            error: null
+          }));
+        }
+      }, 5000);
+      
+    } catch (error: any) {
+      console.error('💥 [SUBMIT] Error crítico:', error);
+      setErrors({ submit: error.message || 'Error al guardar usuario' });
+    } finally {
+      setLoading(false);
+      setIsSavingChanges(false);
+      savingRef.current = false;
+    }
+  };
+
+    // 🔧 MANEJADORES DE EVENTOS MEJORADOS
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name) {
@@ -1706,11 +2749,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         [name]: value
       }));
       
+      // Limpiar error si existe
       if (errors[name]) {
-        setErrors(prev => ({
-          ...prev,
-          [name]: ''
-        }));
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
       }
     }
   };
@@ -1724,10 +2769,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       }));
       
       if (errors[name]) {
-        setErrors(prev => ({
-          ...prev,
-          [name]: ''
-        }));
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
       }
     }
   };
@@ -1741,10 +2787,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       }));
       
       if (errors[`address_${name}`]) {
-        setErrors(prev => ({
-          ...prev,
-          [`address_${name}`]: ''
-        }));
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[`address_${name}`];
+          return newErrors;
+        });
       }
     }
   };
@@ -1758,10 +2805,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       }));
       
       if (errors[`emergency_${name}`]) {
-        setErrors(prev => ({
-          ...prev,
-          [`emergency_${name}`]: ''
-        }));
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[`emergency_${name}`];
+          return newErrors;
+        });
       }
     }
   };
@@ -1775,10 +2823,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       }));
       
       if (errors[`emergency_${name}`]) {
-        setErrors(prev => ({
-          ...prev,
-          [`emergency_${name}`]: ''
-        }));
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[`emergency_${name}`];
+          return newErrors;
+        });
       }
     }
   };
@@ -1792,10 +2841,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       }));
       
       if (errors[`membership_${name}`]) {
-        setErrors(prev => ({
-          ...prev,
-          [`membership_${name}`]: ''
-        }));
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[`membership_${name}`];
+          return newErrors;
+        });
       }
     }
   };
@@ -1809,10 +2859,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       }));
       
       if (errors[`membership_${name}`]) {
-        setErrors(prev => ({
-          ...prev,
-          [`membership_${name}`]: ''
-        }));
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[`membership_${name}`];
+          return newErrors;
+        });
       }
     }
   };
@@ -1839,6 +2890,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         birthDate: date.format('YYYY-MM-DD')
       }));
       
+      // Calcular si es menor de edad
       const today = dayjs();
       const age = today.diff(date, 'year');
       setFormData(prev => ({
@@ -1846,40 +2898,57 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         isMinor: age < 18
       }));
       
+      // Limpiar error
       if (errors.birthDate) {
-        setErrors(prev => ({
-          ...prev,
-          birthDate: ''
-        }));
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.birthDate;
+          return newErrors;
+        });
       }
     }
   };
   
-  // 🔍 FUNCIÓN DE VALIDACIÓN MEJORADA (misma que antes)
+  // 🔍 FUNCIÓN DE VALIDACIÓN MEJORADA
   const validateStep = (step: number): boolean => {
     const newErrors: {[key: string]: string} = {};
     
     if (step === 0) {
+      // Validaciones básicas
       if (!formData.firstName.trim()) {
         newErrors.firstName = 'El nombre es obligatorio';
+      } else if (formData.firstName.trim().length < 2) {
+        newErrors.firstName = 'El nombre debe tener al menos 2 caracteres';
       }
       
       if (!formData.lastName.trim()) {
         newErrors.lastName = 'El apellido es obligatorio';
+      } else if (formData.lastName.trim().length < 2) {
+        newErrors.lastName = 'El apellido debe tener al menos 2 caracteres';
       }
       
       if (!formData.email.trim()) {
         newErrors.email = 'El email es obligatorio';
-      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         newErrors.email = 'Email inválido';
       }
       
       if (!formData.whatsapp.trim()) {
         newErrors.whatsapp = 'El WhatsApp es obligatorio';
+      } else if (!/^\+?\d{10,15}$/.test(formData.whatsapp.replace(/[\s-]/g, ''))) {
+        newErrors.whatsapp = 'Número de WhatsApp inválido';
       }
       
       if (!formData.birthDate) {
         newErrors.birthDate = 'La fecha de nacimiento es obligatoria';
+      } else {
+        const birthDate = dayjs(formData.birthDate);
+        const today = dayjs();
+        if (birthDate.isAfter(today)) {
+          newErrors.birthDate = 'La fecha no puede ser futura';
+        } else if (today.diff(birthDate, 'year') > 120) {
+          newErrors.birthDate = 'Fecha de nacimiento inválida';
+        }
       }
       
       if (!formData.gender) {
@@ -1890,6 +2959,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         newErrors.maritalStatus = 'El estado civil es obligatorio';
       }
     } else if (step === 1 && formData.rol === 'cliente') {
+      // Validaciones de dirección
       if (!addressData.street.trim()) {
         newErrors.address_street = 'La calle es obligatoria';
       }
@@ -1912,22 +2982,30 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       
       if (!addressData.postalCode.trim()) {
         newErrors.address_postalCode = 'El código postal es obligatorio';
+      } else if (!/^\d{5}$/.test(addressData.postalCode)) {
+        newErrors.address_postalCode = 'Código postal debe ser de 5 dígitos';
       }
     } else if (step === 2 && formData.rol === 'cliente') {
+      // Validaciones de emergencia
       if (!emergencyData.name.trim()) {
         newErrors.emergency_name = 'El nombre del contacto es obligatorio';
       }
       
       if (!emergencyData.phone.trim()) {
         newErrors.emergency_phone = 'El teléfono del contacto es obligatorio';
+      } else if (!/^\+?\d{10,15}$/.test(emergencyData.phone.replace(/[\s-]/g, ''))) {
+        newErrors.emergency_phone = 'Número de teléfono inválido';
       }
       
       if (!emergencyData.bloodType.trim()) {
         newErrors.emergency_bloodType = 'El tipo de sangre es obligatorio';
       }
     } else if (step === 3 && formData.rol === 'cliente') {
+      // Validaciones de membresía
       if (!membershipData.mainMotivation.trim()) {
         newErrors.membership_mainMotivation = 'La motivación principal es obligatoria';
+      } else if (membershipData.mainMotivation.trim().length < 10) {
+        newErrors.membership_mainMotivation = 'Por favor proporciona más detalles (mínimo 10 caracteres)';
       }
     }
     
@@ -1944,8 +3022,78 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
-  
-  // 🔄 useEffect PRINCIPAL PARA INICIALIZACIÓN (mismo que antes)
+
+  // 📊 FUNCIÓN PARA CARGAR DATOS RELACIONADOS
+  const fetchRelatedData = async (userId: string) => {
+    try {
+      setFetchingRelated(true);
+      const supabase = createBrowserSupabaseClient();
+      
+      // Cargar dirección
+      const { data: address, error: addressError } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+      
+      if (address && !addressError) {
+        const addressObj = {
+          street: address.street || '',
+          number: address.number || '',
+          neighborhood: address.neighborhood || '',
+          city: address.city || '',
+          state: address.state || '',
+          postalCode: address.postalCode || '',
+          country: address.country || 'México'
+        };
+        setAddressData(addressObj);
+        setOriginalAddressData({...addressObj});
+      }
+      
+      // Cargar contacto de emergencia
+      const { data: emergency, error: emergencyError } = await supabase
+        .from('emergency_contacts')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+      
+      if (emergency && !emergencyError) {
+        const emergencyObj = {
+          name: emergency.name || '',
+          phone: emergency.phone || '',
+          medicalCondition: emergency.medicalCondition || '',
+          bloodType: emergency.bloodType || ''
+        };
+        setEmergencyData(emergencyObj);
+        setOriginalEmergencyData({...emergencyObj});
+      }
+      
+      // Cargar información de membresía
+      const { data: membership, error: membershipError } = await supabase
+        .from('membership_info')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+      
+      if (membership && !membershipError) {
+        const membershipObj = {
+          referredBy: membership.referredBy || '',
+          mainMotivation: membership.mainMotivation || '',
+          receivePlans: membership.receivePlans || false,
+          trainingLevel: convertTrainingLevelToCode(membership.trainingLevel || 'principiante')
+        };
+        setMembershipData(membershipObj);
+        setOriginalMembershipData({...membershipObj});
+      }
+      
+    } catch (error) {
+      console.error('❌ [FETCH] Error cargando datos relacionados:', error);
+    } finally {
+      setFetchingRelated(false);
+    }
+  };
+
+  // 🔄 useEffect PRINCIPAL PARA INICIALIZACIÓN
   useEffect(() => {
     if (!open) {
       initializedRef.current = false;
@@ -1971,9 +3119,22 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       setContractRegenerationError(null);
       setContractLastUpdated(null);
       
-      blobUrlsRef.current.forEach(url => cleanupBlobUrl(url));
-      blobUrlsRef.current.clear();
+      // Limpiar estado de huella
+      setFingerprintState({
+        status: 'none',
+        deviceUserId: null,
+        fingerIndex: null,
+        fingerName: null,
+        message: null,
+        error: null,
+        syncStatus: 'idle',
+        pendingData: null
+      });
       
+      // Limpiar blob URLs
+      cleanupAllBlobUrls();
+      
+      // Resetear estados de imagen
       setProfileImage({
         url: '',
         fileName: '',
@@ -1999,19 +3160,15 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       setSignature(null);
       setContract(null);
       
-      // ✅ NUEVO: Limpiar datos de huella pendientes
-      setPendingFingerprintData(null);
-      setFingerprintMessage(null);
-      setFingerprintError(null);
-      
       setDebugInfo({
         profileUrl: '',
         signatureUrl: '',
         contractUrl: '',
         initialized: false,
-        complete: false
+        complete: false,
       });
       
+      // Cargar datos del usuario
       const userData = {
         id: user.id,
         firstName: user.firstName || '',
@@ -2040,6 +3197,15 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         setBirthDate(dayjs(user.birthDate));
       }
       
+      // Actualizar estado de huella si existe
+      if (user.fingerprint) {
+        setFingerprintState(prev => ({
+          ...prev,
+          status: 'saved'
+        }));
+      }
+      
+      // Cargar datos relacionados y archivos
       await fetchRelatedData(user.id);
       await loadExistingFiles(user.id);
     };
@@ -2055,26 +3221,26 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     };
   }, [user?.id, open]);
 
-  // 🧹 CLEANUP useEffect (mismo que antes)
+  // 🧹 CLEANUP useEffect
   useEffect(() => {
     return () => {
       mountedRef.current = false;
       initializedRef.current = false;
+      savingRef.current = false;
+      
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
       
-      blobUrlsRef.current.forEach(url => {
-        URL.revokeObjectURL(url);
-      });
-      blobUrlsRef.current.clear();
+      cleanupAllBlobUrls();
     };
-  }, []);
+  }, [cleanupAllBlobUrls]);
 
-  // ✅ FUNCIÓN DE DETECCIÓN DE CAMBIOS MODIFICADA
+  // ✅ FUNCIÓN DE DETECCIÓN DE CAMBIOS CORREGIDA
   const detectChanges = useCallback(() => {
     if (!initializationComplete) return false;
     
+    // Comparar datos básicos
     const fieldsToCompare = [
       'firstName', 'lastName', 'email', 'whatsapp', 'birthDate', 
       'gender', 'maritalStatus', 'rol', 'isMinor', 'emailSent', 
@@ -2087,6 +3253,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       return current !== original;
     });
     
+    // Comparar dirección
     const addressFieldsToCompare = ['street', 'number', 'neighborhood', 'city', 'state', 'postalCode', 'country'];
     const addressChanged = addressFieldsToCompare.some(field => {
       const current = addressData[field as keyof Address];
@@ -2094,6 +3261,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       return current !== original;
     });
     
+    // Comparar emergencia
     const emergencyFieldsToCompare = ['name', 'phone', 'medicalCondition', 'bloodType'];
     const emergencyChanged = emergencyFieldsToCompare.some(field => {
       const current = emergencyData[field as keyof EmergencyContact];
@@ -2101,6 +3269,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       return current !== original;
     });
     
+    // Comparar membresía
     const membershipFieldsToCompare = ['referredBy', 'mainMotivation', 'receivePlans', 'trainingLevel'];
     const membershipChanged = membershipFieldsToCompare.some(field => {
       const current = membershipData[field as keyof MembershipInfo];
@@ -2108,12 +3277,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       return current !== original;
     });
     
+    // Verificar archivos nuevos
     const newFilesAdded = profilePicture !== null || signature !== null;
     
-    // ✅ NUEVO: DETECTAR DATOS DE HUELLA PENDIENTES
-    const fingerprintDataPending = pendingFingerprintData !== null;
+    // Verificar huella pendiente
+    const fingerprintPending = fingerprintState.status === 'captured' && !!fingerprintState.pendingData;
     
-    const hasChanges = userDataChanged || addressChanged || emergencyChanged || membershipChanged || newFilesAdded || fingerprintDataPending;
+    const hasChanges = userDataChanged || addressChanged || emergencyChanged || 
+                      membershipChanged || newFilesAdded || fingerprintPending;
     
     return hasChanges;
   }, [
@@ -2122,11 +3293,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     emergencyData, originalEmergencyData,
     membershipData, originalMembershipData,
     profilePicture, signature,
-    pendingFingerprintData, // ✅ NUEVO
+    fingerprintState,
     initializationComplete
   ]);
 
-  // 🔄 useEffect PARA DETECTAR CAMBIOS (mismo que antes pero actualizado)
+  // 🔄 useEffect para detectar cambios
   useEffect(() => {
     const changes = detectChanges();
     if (changes !== hasFormChanges) {
@@ -2134,15 +3305,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       setDebugInfo(prev => ({
         ...prev,
         hasChanges: changes,
-        fingerprintPending: !!pendingFingerprintData // ✅ NUEVO
+        fingerprintState: fingerprintState
       }));
     }
-  }, [detectChanges, hasFormChanges, pendingFingerprintData]);
+  }, [detectChanges, hasFormChanges, fingerprintState]);
 
-  // 🔄 FUNCIÓN RESET DEL FORMULARIO ACTUALIZADA
+  // 🔄 FUNCIÓN RESET DEL FORMULARIO
   const resetForm = () => {
-    blobUrlsRef.current.forEach(url => cleanupBlobUrl(url));
-    blobUrlsRef.current.clear();
+    cleanupAllBlobUrls();
     
     const emptyFormData = {
       firstName: '',
@@ -2205,10 +3375,19 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     setFilesLoaded(false);
     setInitializationComplete(false);
     
-    // ✅ NUEVO: Limpiar datos de huella
-    setPendingFingerprintData(null);
-    setFingerprintMessage(null);
-    setFingerprintError(null);
+    // Limpiar estado de huella
+    setFingerprintState({
+      status: 'none',
+      deviceUserId: null,
+      fingerIndex: null,
+      fingerName: null,
+      message: null,
+      error: null,
+      syncStatus: 'idle',
+      pendingData: null
+    });
+    
+    setFingerprintDialogOpen(false);
     setIsDeletingFingerprint(false);
     
     setProfileImage({
@@ -2230,289 +3409,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     });
     
     initializedRef.current = false;
+    savingRef.current = false;
   };
 
-  // 📊 FUNCIÓN PARA CARGAR DATOS RELACIONADOS (misma que antes)
-  const fetchRelatedData = async (userId: string) => {
-    try {
-      setFetchingRelated(true);
-      const supabase = createBrowserSupabaseClient();
-      
-      const { data: address, error: addressError } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('userId', userId)
-        .single();
-      
-      if (address && !addressError) {
-        const addressObj = {
-          street: address.street || '',
-          number: address.number || '',
-          neighborhood: address.neighborhood || '',
-          city: address.city || '',
-          state: address.state || '',
-          postalCode: address.postalCode || '',
-          country: address.country || 'México'
-        };
-        setAddressData(addressObj);
-        setOriginalAddressData({...addressObj});
-      }
-      
-      const { data: emergency, error: emergencyError } = await supabase
-        .from('emergency_contacts')
-        .select('*')
-        .eq('userId', userId)
-        .single();
-      
-      if (emergency && !emergencyError) {
-        const emergencyObj = {
-          name: emergency.name || '',
-          phone: emergency.phone || '',
-          medicalCondition: emergency.medicalCondition || '',
-          bloodType: emergency.bloodType || ''
-        };
-        setEmergencyData(emergencyObj);
-        setOriginalEmergencyData({...emergencyObj});
-      }
-      
-      const { data: membership, error: membershipError } = await supabase
-        .from('membership_info')
-        .select('*')
-        .eq('userId', userId)
-        .single();
-      
-      if (membership && !membershipError) {
-        const membershipObj = {
-          referredBy: membership.referredBy || '',
-          mainMotivation: membership.mainMotivation || '',
-          receivePlans: membership.receivePlans || false,
-          trainingLevel: convertTrainingLevelToCode(membership.trainingLevel || 'principiante')
-        };
-        setMembershipData(membershipObj);
-        setOriginalMembershipData({...membershipObj});
-      }
-      
-    } catch (error) {
-      // Error silencioso
-    } finally {
-      setFetchingRelated(false);
-    }
-  };
-
-    // ✅ FUNCIÓN handleSubmit COMPLETAMENTE MODIFICADA PARA INCLUIR HUELLA
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      setIsSavingChanges(true);
-      setContractRegenerationError(null);
-      
-      console.log('🚀 Iniciando proceso de guardado completo...');
-      
-      // 1️⃣ VALIDAR FORMULARIO
-      if (!validateStep(activeStep)) {
-        setLoading(false);
-        setIsSavingChanges(false);
-        return;
-      }
-      
-      const userId = formData.id || user?.id || crypto.randomUUID();
-      let updatedFormData = { ...formData, id: userId };
-      
-      console.log('📊 Usuario ID:', userId);
-      console.log('📁 Archivos pendientes - Foto:', !!profilePicture, 'Firma:', !!signature);
-      console.log('🖐️ Datos de huella pendientes:', !!pendingFingerprintData);
-      
-      // 2️⃣ SUBIR ARCHIVOS PENDIENTES PRIMERO (SI EXISTEN)
-      if (profilePicture) {
-        console.log('📤 Subiendo foto de perfil...');
-        setFileUploading(prev => ({ ...prev, profilePicture: true }));
-        
-        try {
-          const uploadResult = await uploadFileToStorage(profilePicture, userId, 'profile');
-          if (uploadResult) {
-            updatedFormData.profilePictureUrl = uploadResult.url;
-            console.log('✅ Foto de perfil subida exitosamente:', uploadResult.url);
-            
-            setProfilePicturePreview(uploadResult.url);
-            setProfileImage(prev => ({
-              ...prev,
-              url: uploadResult.url,
-              fileName: uploadResult.path.split('/').pop() || '',
-              isFromStorage: true
-            }));
-          } else {
-            throw new Error('Error al subir foto de perfil');
-          }
-        } catch (error: any) {
-          console.error('❌ Error subiendo foto:', error);
-          setErrors(prev => ({ ...prev, profilePicture: `Error subiendo foto: ${error.message}` }));
-          throw error;
-        } finally {
-          setFileUploading(prev => ({ ...prev, profilePicture: false }));
-        }
-      }
-      
-      if (signature) {
-        console.log('📤 Subiendo firma digital...');
-        setFileUploading(prev => ({ ...prev, signature: true }));
-        
-        try {
-          const uploadResult = await uploadFileToStorage(signature, userId, 'signature');
-          if (uploadResult) {
-            updatedFormData.signatureUrl = uploadResult.url;
-            console.log('✅ Firma digital subida exitosamente:', uploadResult.url);
-            
-            setSignaturePreview(uploadResult.url);
-            setSignatureImage(prev => ({
-              ...prev,
-              url: uploadResult.url,
-              fileName: uploadResult.path.split('/').pop() || '',
-              isFromStorage: true
-            }));
-          } else {
-            throw new Error('Error al subir firma digital');
-          }
-        } catch (error: any) {
-          console.error('❌ Error subiendo firma:', error);
-          setErrors(prev => ({ ...prev, signature: `Error subiendo firma: ${error.message}` }));
-          throw error;
-        } finally {
-          setFileUploading(prev => ({ ...prev, signature: false }));
-        }
-      }
-      
-      // 3️⃣ ✅ NUEVO: GUARDAR DATOS DE HUELLA SI EXISTEN
-      if (pendingFingerprintData) {
-        console.log('🖐️ Guardando datos de huella dactilar...');
-        
-        try {
-          const fingerprintResult = await saveFingerprintToDatabase(pendingFingerprintData);
-          
-          if (fingerprintResult.success) {
-            console.log('✅ Huella dactilar guardada exitosamente en base de datos');
-            
-            // ✅ LIMPIAR DATOS PENDIENTES DESPUÉS DE GUARDAR
-            setPendingFingerprintData(null);
-            
-            // ✅ MANTENER EL ESTADO fingerprint: true EN EL FORM
-            updatedFormData.fingerprint = true;
-          } else {
-            throw new Error(fingerprintResult.error || 'Error guardando huella dactilar');
-          }
-        } catch (error: any) {
-          console.error('❌ Error guardando huella dactilar:', error);
-          setErrors(prev => ({ ...prev, fingerprint: `Error guardando huella: ${error.message}` }));
-          throw error;
-        }
-      }
-      
-      // 4️⃣ PREPARAR DATOS FINALES
-      const processedFormData = {
-        ...updatedFormData,
-        gender: updatedFormData.gender ? updatedFormData.gender.charAt(0).toUpperCase() + updatedFormData.gender.slice(1) : '',
-        maritalStatus: convertMaritalStatusToDisplay(updatedFormData.maritalStatus)
-      };
-      
-      const processedMembershipData = {
-        ...membershipData,
-        trainingLevel: convertTrainingLevelToDisplay(membershipData.trainingLevel)
-      };
-      
-      const userData = {
-        ...processedFormData,
-        address: formData.rol === 'cliente' ? addressData : null,
-        emergency: formData.rol === 'cliente' ? emergencyData : null,
-        membership: formData.rol === 'cliente' ? processedMembershipData : null
-      };
-      
-      console.log('📊 Datos finales a guardar:', userData);
-      
-      // 5️⃣ GUARDAR USUARIO EN BASE DE DATOS
-      console.log('💾 Guardando usuario en base de datos...');
-      await onSave(userData);
-      console.log('✅ Usuario guardado exitosamente en base de datos');
-      
-      // 6️⃣ REGENERAR CONTRATO INMEDIATAMENTE (SI ES CLIENTE Y HAY CAMBIOS)
-      if (formData.rol === 'cliente' && hasFormChanges) {
-        console.log('🔄 Iniciando regeneración inmediata de contrato...');
-        setIsRegeneratingContract(true);
-        
-        try {
-          const contractResult = await regenerateContract(userId);
-          
-          if (contractResult.success) {
-            console.log('✅ Contrato regenerado exitosamente en tiempo real');
-            setContractRegenerationSuccess(true);
-            setContractRegenerationError(null);
-            
-            setTimeout(() => {
-              if (mountedRef.current) {
-                loadExistingFiles(userId);
-              }
-            }, 1000);
-            
-          } else {
-            console.error('❌ Error regenerando contrato:', contractResult.error);
-            setContractRegenerationError(contractResult.error || 'Error desconocido en regeneración');
-          }
-        } catch (error: any) {
-          console.error('💥 Error crítico en regeneración de contrato:', error);
-          setContractRegenerationError(error.message || 'Error crítico en regeneración');
-        } finally {
-          setIsRegeneratingContract(false);
-        }
-      }
-      
-      // 7️⃣ LIMPIAR ARCHIVOS PENDIENTES Y ACTUALIZAR ESTADOS
-      console.log('🧹 Limpiando estados y archivos pendientes...');
-      
-      // Limpiar archivos pendientes
-      setProfilePicture(null);
-      setSignature(null);
-      setContract(null);
-      
-      // Limpiar URLs de blob locales
-      blobUrlsRef.current.forEach(url => {
-        if (url.startsWith('blob:')) {
-          URL.revokeObjectURL(url);
-        }
-      });
-      blobUrlsRef.current.clear();
-      
-      // ✅ NUEVO: Limpiar datos de huella pendientes y mensajes
-      setPendingFingerprintData(null);
-      setFingerprintMessage('¡Huella dactilar guardada exitosamente junto con el usuario!');
-      setFingerprintError(null);
-      
-      // Actualizar estados originales para evitar detección de cambios falsos
-      setOriginalFormData({...processedFormData});
-      setOriginalAddressData({...addressData});
-      setOriginalEmergencyData({...emergencyData});
-      setOriginalMembershipData({...membershipData});
-      setHasFormChanges(false);
-      
-      console.log('🎉 Proceso de guardado completado exitosamente');
-      
-      // Mostrar mensaje de éxito si no es cliente (cliente ya tiene su mensaje de contrato)
-      if (formData.rol !== 'cliente') {
-        setContractRegenerationSuccess(true);
-      }
-      
-      // ✅ NUEVO: Limpiar mensaje de huella después de 3 segundos
-      setTimeout(() => {
-        setFingerprintMessage(null);
-      }, 3000);
-      
-    } catch (error: any) {
-      console.error('💥 Error crítico en el proceso de guardado:', error);
-      setErrors({ submit: error.message || 'Error al guardar usuario' });
-    } finally {
-      setLoading(false);
-      setIsSavingChanges(false);
-    }
-  };
-
-  // 🎯 CONFIGURACIÓN DE PASOS (misma que antes)
+  // 🎯 CONFIGURACIÓN DE PASOS
   const getSteps = () => {
     const baseSteps = ['Información Personal'];
     
@@ -2525,23 +3425,45 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
 
   const steps = getSteps();
 
-  // 🎨 RENDERIZADO DE CONTENIDO POR PASO CON DARK PRO SYSTEM (casos 0, 1, 2, 3 iguales que antes)
+    // 🎨 RENDERIZADO DE CONTENIDO POR PASO
   const renderStepContent = (step: number) => {
-    // 🎨 ESTILOS DARK PRO PARA INPUTS (mismos que antes)
+    // 🎨 ESTILOS MEJORADOS PARA INPUTS
     const darkProInputStyles = {
       '& .MuiOutlinedInput-root': {
         bgcolor: darkProTokens.surfaceLevel1,
         color: darkProTokens.textPrimary,
-        '& fieldset': { borderColor: darkProTokens.borderDefault, borderWidth: '2px' },
-        '&:hover fieldset': { borderColor: darkProTokens.borderHover },
+        '& fieldset': { 
+          borderColor: darkProTokens.borderDefault, 
+          borderWidth: '2px' 
+        },
+        '&:hover fieldset': { 
+          borderColor: darkProTokens.borderHover 
+        },
         '&.Mui-focused fieldset': { 
           borderColor: darkProTokens.primary,
           boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
         },
+        '&.Mui-error fieldset': {
+          borderColor: darkProTokens.error
+        },
         transition: 'all 0.2s ease'
       },
-      '& .MuiInputLabel-root': { color: darkProTokens.textSecondary },
-      '& .MuiFormHelperText-root': { color: darkProTokens.error }
+      '& .MuiInputLabel-root': { 
+        color: darkProTokens.textSecondary,
+        '&.Mui-focused': {
+          color: darkProTokens.primary
+        },
+        '&.Mui-error': {
+          color: darkProTokens.error
+        }
+      },
+      '& .MuiFormHelperText-root': { 
+        color: darkProTokens.error,
+        fontWeight: 500
+      },
+      '& .MuiInputAdornment-root .MuiSvgIcon-root': {
+        color: darkProTokens.iconMuted
+      }
     };
 
     const darkProSelectStyles = {
@@ -2558,7 +3480,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         borderColor: darkProTokens.primary,
         boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
       },
-      '& .MuiSvgIcon-root': { color: darkProTokens.iconMuted },
+      '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+        borderColor: darkProTokens.error
+      },
+      '& .MuiSvgIcon-root': { 
+        color: darkProTokens.iconMuted 
+      },
       transition: 'all 0.2s ease'
     };
 
@@ -2569,12 +3496,17 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           border: `1px solid ${darkProTokens.grayDark}`,
           borderRadius: 2,
           backdropFilter: 'blur(10px)',
+          boxShadow: `0 8px 32px ${darkProTokens.background}80`,
           '& .MuiMenuItem-root': {
             color: darkProTokens.textPrimary,
-            '&:hover': { bgcolor: darkProTokens.hoverOverlay },
+            '&:hover': { 
+              bgcolor: darkProTokens.hoverOverlay 
+            },
             '&.Mui-selected': {
               bgcolor: `${darkProTokens.primary}20`,
-              '&:hover': { bgcolor: `${darkProTokens.primary}30` }
+              '&:hover': { 
+                bgcolor: `${darkProTokens.primary}30` 
+              }
             }
           }
         }
@@ -2627,7 +3559,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <AlternateEmailIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <AlternateEmailIcon />
                       </InputAdornment>
                     ),
                   }}
@@ -2644,10 +3576,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   onChange={handleInputChange}
                   error={!!errors.whatsapp}
                   helperText={errors.whatsapp}
+                  placeholder="+52 999 999 9999"
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PhoneIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <PhoneIcon />
                       </InputAdornment>
                     ),
                   }}
@@ -2661,31 +3594,24 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                     label="Fecha de Nacimiento"
                     value={birthDate}
                     onChange={handleBirthDateChange}
-                    sx={{
-                      width: '100%',
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: darkProTokens.surfaceLevel1,
-                        color: darkProTokens.textPrimary,
-                        '& fieldset': { borderColor: darkProTokens.borderDefault, borderWidth: '2px' },
-                        '&:hover fieldset': { borderColor: darkProTokens.borderHover },
-                        '&.Mui-focused fieldset': { 
-                          borderColor: darkProTokens.primary,
-                          boxShadow: `0 0 0 3px ${darkProTokens.focusRing}`
-                        },
-                      },
-                      '& .MuiInputLabel-root': { color: darkProTokens.textSecondary },
-                      '& .MuiSvgIcon-root': { color: darkProTokens.iconMuted }
+                    format="DD/MM/YYYY"
+                    maxDate={dayjs()}
+                    minDate={dayjs().subtract(120, 'year')}
+                    slotProps={{
+                      textField: {
+                        error: !!errors.birthDate,
+                        helperText: errors.birthDate,
+                        sx: darkProInputStyles
+                      }
                     }}
+                    sx={{ width: '100%' }}
                   />
                 </LocalizationProvider>
-                {errors.birthDate && (
-                  <FormHelperText error>{errors.birthDate}</FormHelperText>
-                )}
               </Grid>
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth error={!!errors.gender}>
-                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Género</InputLabel>
+                  <InputLabel>Género</InputLabel>
                   <Select
                     name="gender"
                     value={formData.gender}
@@ -2704,7 +3630,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth error={!!errors.maritalStatus}>
-                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Estado Civil</InputLabel>
+                  <InputLabel>Estado Civil</InputLabel>
                   <Select
                     name="maritalStatus"
                     value={formData.maritalStatus}
@@ -2724,7 +3650,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth>
-                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Rol</InputLabel>
+                  <InputLabel>Rol</InputLabel>
                   <Select
                     name="rol"
                     value={formData.rol}
@@ -2760,15 +3686,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   <Alert 
                     severity="warning" 
                     sx={{ 
-                      bgcolor: darkProTokens.notifWarningBg, 
-                      border: `1px solid ${darkProTokens.warning}40`,
+                      bgcolor: darkProTokens.warningDark,
                       color: darkProTokens.textPrimary,
-                      '& .MuiAlert-icon': { color: darkProTokens.warning }
+                      border: `2px solid ${darkProTokens.warning}`,
+                      '& .MuiAlert-icon': { 
+                        color: darkProTokens.warning 
+                      },
+                      fontWeight: 600
                     }}
                   >
-                    <Typography sx={{ color: darkProTokens.textPrimary }}>
-                      ⚠️ Este usuario es menor de edad. Se requiere autorización del tutor legal.
-                    </Typography>
+                    ⚠️ Este usuario es menor de edad. Se requiere autorización del tutor legal.
                   </Alert>
                 </Grid>
               )}
@@ -2807,21 +3734,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <HomeIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <HomeIcon />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.warning,
-                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
-                      },
-                    }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -2834,17 +3751,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   onChange={handleAddressChange}
                   error={!!errors.address_number}
                   helperText={errors.address_number}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.warning,
-                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
-                      },
-                    }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -2860,24 +3767,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <BusinessIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <BusinessIcon />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.warning,
-                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
-                      },
-                    }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
-              
+
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
@@ -2890,21 +3787,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <LocationCityIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <LocationCityIcon />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.warning,
-                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
-                      },
-                    }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -2920,21 +3807,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PublicIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <PublicIcon />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.warning,
-                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
-                      },
-                    }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -2947,24 +3824,15 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   onChange={handleAddressChange}
                   error={!!errors.address_postalCode}
                   helperText={errors.address_postalCode}
+                  placeholder="12345"
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <MarkunreadMailboxIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <MarkunreadMailboxIcon />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.warning}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.warning,
-                        boxShadow: `0 0 0 3px ${darkProTokens.warning}40`
-                      },
-                    }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
             </Grid>
@@ -3002,21 +3870,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PersonIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <PersonIcon />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.error}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.error,
-                        boxShadow: `0 0 0 3px ${darkProTokens.error}40`
-                      },
-                    }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -3029,30 +3887,21 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   onChange={handleEmergencyChange}
                   error={!!errors.emergency_phone}
                   helperText={errors.emergency_phone}
+                  placeholder="+52 999 999 9999"
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PhoneIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <PhoneIcon />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.error}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.error,
-                        boxShadow: `0 0 0 3px ${darkProTokens.error}40`
-                      },
-                    }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth error={!!errors.emergency_bloodType}>
-                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Tipo de Sangre</InputLabel>
+                  <InputLabel>Tipo de Sangre</InputLabel>
                   <Select
                     name="bloodType"
                     value={emergencyData.bloodType}
@@ -3060,17 +3909,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                     label="Tipo de Sangre"
                     startAdornment={
                       <InputAdornment position="start">
-                        <BloodtypeIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <BloodtypeIcon />
                       </InputAdornment>
                     }
-                    sx={{
-                      ...darkProSelectStyles,
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: `${darkProTokens.error}80` },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
-                        borderColor: darkProTokens.error,
-                        boxShadow: `0 0 0 3px ${darkProTokens.error}40`
-                      },
-                    }}
+                    sx={darkProSelectStyles}
                     MenuProps={darkProMenuProps}
                   >
                     <MenuItem value="A+">A+</MenuItem>
@@ -3085,7 +3927,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   {errors.emergency_bloodType && <FormHelperText>{errors.emergency_bloodType}</FormHelperText>}
                 </FormControl>
               </Grid>
-              
+
               <Grid size={12}>
                 <TextField
                   fullWidth
@@ -3099,22 +3941,11 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
-                        <FavoriteIcon sx={{ color: darkProTokens.iconMuted }} />
+                        <FavoriteIcon />
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.error}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.error,
-                        boxShadow: `0 0 0 3px ${darkProTokens.error}40`
-                      },
-                    },
-                    '& .MuiInputBase-input::placeholder': { color: darkProTokens.textDisabled }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
             </Grid>
@@ -3147,36 +3978,20 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   name="referredBy"
                   value={membershipData.referredBy}
                   onChange={handleMembershipChange}
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.roleModerator}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.roleModerator,
-                        boxShadow: `0 0 0 3px ${darkProTokens.roleModerator}40`
-                      },
-                    }
-                  }}
+                  placeholder="Nombre de quien te recomendó"
+                  sx={darkProInputStyles}
                 />
               </Grid>
               
               <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth>
-                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Nivel de Entrenamiento</InputLabel>
+                  <InputLabel>Nivel de Entrenamiento</InputLabel>
                   <Select
                     name="trainingLevel"
                     value={membershipData.trainingLevel}
                     onChange={handleMembershipSelectChange}
                     label="Nivel de Entrenamiento"
-                    sx={{
-                      ...darkProSelectStyles,
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: `${darkProTokens.roleModerator}80` },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
-                        borderColor: darkProTokens.roleModerator,
-                        boxShadow: `0 0 0 3px ${darkProTokens.roleModerator}40`
-                      },
-                    }}
+                    sx={darkProSelectStyles}
                     MenuProps={darkProMenuProps}
                   >
                     <MenuItem value="principiante">🥉 Principiante</MenuItem>
@@ -3222,26 +4037,15 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                   error={!!errors.membership_mainMotivation}
                   helperText={errors.membership_mainMotivation}
                   placeholder="¿Cuál es tu objetivo principal? (ej: perder peso, ganar músculo, mejorar resistencia...)"
-                  sx={{
-                    ...darkProInputStyles,
-                    '& .MuiOutlinedInput-root': {
-                      ...darkProInputStyles['& .MuiOutlinedInput-root'],
-                      '&:hover fieldset': { borderColor: `${darkProTokens.roleModerator}80` },
-                      '&.Mui-focused fieldset': { 
-                        borderColor: darkProTokens.roleModerator,
-                        boxShadow: `0 0 0 3px ${darkProTokens.roleModerator}40`
-                      },
-                    },
-                    '& .MuiInputBase-input::placeholder': { color: darkProTokens.textDisabled }
-                  }}
+                  sx={darkProInputStyles}
                 />
               </Grid>
             </Grid>
           </Box>
         );
 
-              default:
-        // ✅ PASO DE ARCHIVOS CON DARK PRO SYSTEM + HUELLA DACTILAR MODIFICADO
+      default:
+        // PASO DE ARCHIVOS Y HUELLA
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
@@ -3257,7 +4061,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Typography>
             
             <Grid container spacing={3}>
-              {/* 🖊️ FIRMA DIGITAL */}
+              {/* FIRMA DIGITAL */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{
                   p: 3,
@@ -3284,9 +4088,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                       severity="error" 
                       sx={{ 
                         mt: 2,
-                        bgcolor: darkProTokens.notifErrorBg,
+                        bgcolor: darkProTokens.errorDark,
                         color: darkProTokens.textPrimary,
-                        '& .MuiAlert-icon': { color: darkProTokens.error }
+                        border: `2px solid ${darkProTokens.error}`,
+                        '& .MuiAlert-icon': { 
+                          color: darkProTokens.textPrimary 
+                        },
+                        fontWeight: 600
                       }}
                     >
                       {errors.signature}
@@ -3295,7 +4103,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 </Box>
               </Grid>
               
-              {/* 📄 CONTRATO PDF */}
+              {/* CONTRATO PDF */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{
                   p: 3,
@@ -3319,7 +4127,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 </Box>
               </Grid>
 
-              {/* ✅ REGISTRO DE HUELLA DACTILAR MODIFICADO */}
+              {/* REGISTRO DE HUELLA DACTILAR */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{
                   p: 3,
@@ -3336,7 +4144,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                     gap: 1
                   }}>
                     <FingerPrintIcon />
-                    Huella Dactilar
+                    Huella Dactilar + F22
                   </Typography>
                   
                   <FingerprintControl />
@@ -3346,9 +4154,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                       severity="error" 
                       sx={{ 
                         mt: 2,
-                        bgcolor: darkProTokens.notifErrorBg,
+                        bgcolor: darkProTokens.errorDark,
                         color: darkProTokens.textPrimary,
-                        '& .MuiAlert-icon': { color: darkProTokens.error }
+                        border: `2px solid ${darkProTokens.error}`,
+                        '& .MuiAlert-icon': { 
+                          color: darkProTokens.textPrimary 
+                        },
+                        fontWeight: 600
                       }}
                     >
                       {errors.fingerprint}
@@ -3357,7 +4169,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 </Box>
               </Grid>
               
-              {/* 🔧 OPCIONES ADICIONALES */}
+              {/* OPCIONES ADICIONALES */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{
                   p: 3,
@@ -3440,7 +4252,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
 
-  return (
+    return (
     <Dialog
       open={open}
       onClose={() => {
@@ -3465,7 +4277,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         }
       }}
     >
-      {/* 📋 HEADER CON DARK PRO SYSTEM */}
+      {/* 📋 HEADER MEJORADO */}
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -3487,25 +4299,74 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {/* ✅ CHIP DE CAMBIOS PENDIENTES MEJORADO */}
+          {/* CHIP DE CAMBIOS PENDIENTES */}
           {hasFormChanges && (
             <Chip
               icon={<UpdateIcon />}
               label={
-                pendingFingerprintData ? 'Cambios + Huella pendiente' : 'Cambios pendientes'
+                fingerprintState.status === 'captured' ? 
+                'Cambios + Huella pendiente' : 
+                'Cambios pendientes'
               }
               size="small"
               sx={{
                 bgcolor: `${darkProTokens.warning}20`,
                 color: darkProTokens.warning,
                 border: `1px solid ${darkProTokens.warning}40`,
-                animation: 'pulse 2s infinite',
-                fontWeight: 600
+                fontWeight: 600,
+                '@keyframes pulse': {
+                  '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                  '50%': { opacity: 0.8, transform: 'scale(1.05)' }
+                },
+                animation: 'pulse 2s infinite'
               }}
             />
           )}
+
+          {/* INDICADOR F22 SYNC STATUS */}
+          {fingerprintState.syncStatus !== 'idle' && (
+            <Tooltip title={
+              fingerprintState.syncStatus === 'syncing' ? 'Sincronizando con F22...' :
+              fingerprintState.syncStatus === 'success' ? 'F22 sincronizado correctamente' :
+              'Error sincronizando con F22'
+            }>
+              <Chip
+                icon={
+                  fingerprintState.syncStatus === 'syncing' ? 
+                    <CircularProgress size={14} sx={{ color: darkProTokens.background }} /> :
+                  fingerprintState.syncStatus === 'success' ? 
+                    <CheckCircleIcon sx={{ fontSize: 14 }} /> :
+                    <ErrorIcon sx={{ fontSize: 14 }} />
+                }
+                label={
+                  fingerprintState.syncStatus === 'syncing' ? 'F22 Sync...' :
+                  fingerprintState.syncStatus === 'success' ? 'F22 OK' :
+                  'F22 Error'
+                }
+                size="small"
+                sx={{
+                  bgcolor: 
+                    fingerprintState.syncStatus === 'syncing' ? darkProTokens.info :
+                    fingerprintState.syncStatus === 'success' ? darkProTokens.success :
+                    darkProTokens.error,
+                  color: darkProTokens.background,
+                  fontSize: '0.7rem',
+                  height: 24,
+                  fontWeight: 600,
+                  ...(fingerprintState.syncStatus === 'syncing' && {
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                      '50%': { opacity: 0.8, transform: 'scale(1.05)' }
+                    },
+                    animation: 'pulse 1.5s infinite'
+                  })
+                }}
+              />
+            </Tooltip>
+          )}
           
-          {showDebugInfo && debugInfo && (
+          {/* DEBUG MODE */}
+          {process.env.NODE_ENV === 'development' && (
             <Chip
               icon={<SecurityIcon />}
               label="Debug"
@@ -3515,7 +4376,10 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
                 bgcolor: `${darkProTokens.info}20`,
                 color: darkProTokens.info,
                 border: `1px solid ${darkProTokens.info}40`,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: `${darkProTokens.info}30`
+                }
               }}
             />
           )}
@@ -3545,16 +4409,21 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
 
       {/* 📝 CONTENIDO */}
       <DialogContent sx={{ p: 0 }}>
-        {/* 🚨 MENSAJES DE ERROR */}
+        {/* MENSAJES DE ERROR GLOBALES */}
         {errors.submit && (
           <Alert 
             severity="error" 
             sx={{ 
               m: 3, 
               mb: 0,
-              bgcolor: darkProTokens.notifErrorBg,
+              bgcolor: darkProTokens.errorDark,
               color: darkProTokens.textPrimary,
-              '& .MuiAlert-icon': { color: darkProTokens.error }
+              border: `2px solid ${darkProTokens.error}`,
+              '& .MuiAlert-icon': { 
+                color: darkProTokens.textPrimary 
+              },
+              fontWeight: 600,
+              boxShadow: `0 4px 20px ${darkProTokens.error}40`
             }}
           >
             {errors.submit}
@@ -3567,64 +4436,85 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             sx={{ 
               m: 3, 
               mb: 0,
-              bgcolor: darkProTokens.notifWarningBg,
+              bgcolor: darkProTokens.warningDark,
               color: darkProTokens.textPrimary,
-              '& .MuiAlert-icon': { color: darkProTokens.warning }
+              border: `2px solid ${darkProTokens.warning}`,
+              '& .MuiAlert-icon': { 
+                color: darkProTokens.textPrimary 
+              },
+              fontWeight: 600
             }}
           >
             {errors.fileLoading}
             <Button
               size="small"
               onClick={() => user?.id && loadExistingFiles(user.id)}
-              sx={{ ml: 2, color: darkProTokens.warning }}
+              sx={{ 
+                ml: 2, 
+                color: darkProTokens.textPrimary,
+                borderColor: darkProTokens.warning,
+                '&:hover': {
+                  bgcolor: `${darkProTokens.warning}20`
+                }
+              }}
             >
               Reintentar
             </Button>
           </Alert>
         )}
 
-        {/* ✅ MENSAJES DE HUELLA DACTILAR MEJORADOS */}
-        {fingerprintMessage && (
+        {/* MENSAJES DE HUELLA MEJORADOS */}
+        {fingerprintState.message && (
           <Alert 
             severity="success" 
             sx={{ 
               m: 3, 
               mb: 0,
-              bgcolor: darkProTokens.notifSuccessBg,
+              bgcolor: darkProTokens.successDark,
               color: darkProTokens.textPrimary,
-              '& .MuiAlert-icon': { color: darkProTokens.success }
+              border: `2px solid ${darkProTokens.success}`,
+              fontWeight: 600,
+              boxShadow: `0 4px 20px ${darkProTokens.success}40`,
+              '& .MuiAlert-icon': { 
+                color: darkProTokens.textPrimary 
+              }
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <FingerPrintIcon />
               <Typography sx={{ fontWeight: 600 }}>
-                {fingerprintMessage}
+                {fingerprintState.message}
               </Typography>
             </Box>
           </Alert>
         )}
 
-        {fingerprintError && (
+        {fingerprintState.error && (
           <Alert 
             severity="error" 
             sx={{ 
               m: 3, 
               mb: 0,
-              bgcolor: darkProTokens.notifErrorBg,
+              bgcolor: darkProTokens.errorDark,
               color: darkProTokens.textPrimary,
-              '& .MuiAlert-icon': { color: darkProTokens.error }
+              border: `2px solid ${darkProTokens.error}`,
+              fontWeight: 600,
+              boxShadow: `0 4px 20px ${darkProTokens.error}40`,
+              '& .MuiAlert-icon': { 
+                color: darkProTokens.textPrimary 
+              }
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ErrorIcon />
               <Typography sx={{ fontWeight: 600 }}>
-                {fingerprintError}
+                {fingerprintState.error}
               </Typography>
             </Box>
           </Alert>
         )}
 
-        {/* 🔄 STEPPER CON DARK PRO SYSTEM */}
+        {/* STEPPER */}
         <Box sx={{ p: 3 }}>
           <Stepper 
             activeStep={activeStep} 
@@ -3632,18 +4522,24 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             sx={{
               '& .MuiStepLabel-label': { 
                 color: darkProTokens.textSecondary,
-                '&.Mui-active': { color: darkProTokens.primary },
-                '&.Mui-completed': { color: darkProTokens.success }
+                '&.Mui-active': { 
+                  color: darkProTokens.primary,
+                  fontWeight: 600 
+                },
+                '&.Mui-completed': { 
+                  color: darkProTokens.success,
+                  fontWeight: 600 
+                }
               },
               '& .MuiStepIcon-root': {
                 color: darkProTokens.grayMedium,
                 '&.Mui-active': { 
                   color: darkProTokens.primary,
-                  boxShadow: `0 0 10px ${darkProTokens.primary}40`
+                  filter: `drop-shadow(0 0 8px ${darkProTokens.primary}60)`
                 },
                 '&.Mui-completed': { 
                   color: darkProTokens.success,
-                  boxShadow: `0 0 10px ${darkProTokens.success}40`
+                  filter: `drop-shadow(0 0 8px ${darkProTokens.success}60)`
                 }
               },
               '& .MuiStepConnector-line': {
@@ -3676,8 +4572,8 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           )}
         </Box>
 
-        {/* ✅ DEBUG INFO MEJORADO CON DATOS DE HUELLA */}
-        {showDebugInfo && debugInfo && (
+        {/* DEBUG INFO */}
+        {showDebugInfo && (
           <Box sx={{ 
             m: 3, 
             p: 2, 
@@ -3700,20 +4596,23 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             }}>
               {JSON.stringify({
                 ...debugInfo,
-                fingerprintPending: !!pendingFingerprintData,
-                fingerprintDataSample: pendingFingerprintData ? {
-                  fingerIndex: pendingFingerprintData.finger_index,
-                  fingerName: pendingFingerprintData.finger_name,
-                  quality: pendingFingerprintData.average_quality,
-                  captureCount: pendingFingerprintData.capture_count
-                } : null
+                formChanges: hasFormChanges,
+                fingerprintState: {
+                  status: fingerprintState.status,
+                  hasDeviceUserId: !!fingerprintState.deviceUserId,
+                  fingerIndex: fingerprintState.fingerIndex,
+                  syncStatus: fingerprintState.syncStatus,
+                  hasPendingData: !!fingerprintState.pendingData
+                },
+                currentUser: user?.id,
+                timestamp: new Date().toISOString()
               }, null, 2)}
             </pre>
           </Box>
         )}
       </DialogContent>
 
-      {/* ✅ ACCIONES CON DARK PRO SYSTEM MEJORADAS */}
+      {/* ACCIONES */}
       <DialogActions sx={{ 
         p: 3, 
         borderTop: `1px solid ${darkProTokens.grayDark}`,
@@ -3778,36 +4677,67 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             </Box>
           )}
           
-          {/* ✅ INDICADORES MEJORADOS */}
-          {(profilePicture || signature || pendingFingerprintData) && (
+          {/* INDICADORES DE CAMBIOS */}
+          {(profilePicture || signature || fingerprintState.status === 'captured') && (
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {(profilePicture || signature) && (
                 <Chip
                   icon={<UpdateIcon />}
-                  label={`${profilePicture && signature ? 'Archivos' : profilePicture ? 'Foto' : 'Firma'} pendiente${profilePicture && signature ? 's' : ''}`}
+                  label={
+                    profilePicture && signature ? 'Archivos pendientes' : 
+                    profilePicture ? 'Foto pendiente' : 
+                    'Firma pendiente'
+                  }
                   size="small"
                   sx={{
                     bgcolor: `${darkProTokens.warning}20`,
                     color: darkProTokens.warning,
                     border: `1px solid ${darkProTokens.warning}40`,
-                    animation: 'pulse 2s infinite',
-                    fontSize: '0.75rem'
+                    fontSize: '0.75rem',
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                      '50%': { opacity: 0.8, transform: 'scale(1.05)' }
+                    },
+                    animation: 'pulse 2s infinite'
                   }}
                 />
               )}
               
-              {pendingFingerprintData && (
+              {fingerprintState.status === 'captured' && (
                 <Chip
                   icon={<FingerPrintIcon />}
-                  label="Huella capturada"
+                  label={`${fingerprintState.fingerName || 'Huella'} capturada`}
                   size="small"
                   sx={{
                     bgcolor: `${darkProTokens.primary}20`,
                     color: darkProTokens.primary,
                     border: `1px solid ${darkProTokens.primary}40`,
-                    animation: 'pulse 2s infinite',
                     fontSize: '0.75rem',
-                    fontWeight: 600
+                    fontWeight: 600,
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                      '50%': { opacity: 0.8, transform: 'scale(1.05)' }
+                    },
+                    animation: 'pulse 2s infinite'
+                  }}
+                />
+              )}
+              
+              {fingerprintState.syncStatus === 'syncing' && (
+                <Chip
+                  icon={<CircularProgress size={12} />}
+                  label="Sincronizando F22..."
+                  size="small"
+                  sx={{
+                    bgcolor: `${darkProTokens.info}20`,
+                    color: darkProTokens.info,
+                    border: `1px solid ${darkProTokens.info}40`,
+                    fontSize: '0.75rem',
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                      '50%': { opacity: 0.8, transform: 'scale(1.05)' }
+                    },
+                    animation: 'pulse 1.5s infinite'
                   }}
                 />
               )}
@@ -3839,11 +4769,17 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             Cancelar
           </Button>
           
-          {/* ✅ BOTÓN ACTUALIZAR USUARIO MEJORADO */}
+          {/* BOTÓN PRINCIPAL DE GUARDADO */}
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={loading || isSavingChanges || !hasFormChanges}
+            disabled={
+              loading || 
+              isSavingChanges || 
+              !hasFormChanges || 
+              fingerprintState.syncStatus === 'syncing' ||
+              savingRef.current
+            }
             startIcon={
               loading || isSavingChanges ? (
                 <CircularProgress size={20} sx={{ color: darkProTokens.textPrimary }} />
@@ -3858,7 +4794,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               px: 3,
               borderRadius: 2,
               boxShadow: `0 4px 20px ${darkProTokens.success}40`,
-              minWidth: '160px',
+              minWidth: '180px',
               '&:hover': {
                 background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
                 transform: 'translateY(-2px)',
@@ -3874,16 +4810,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             }}
           >
             {loading || isSavingChanges 
-              ? (pendingFingerprintData ? 'Guardando Todo...' : 'Guardando...')
+              ? 'Guardando...'
               : user 
-                ? (pendingFingerprintData ? 'Actualizar + Huella' : 'Actualizar Usuario')
+                ? 'Actualizar Usuario'
                 : 'Crear Usuario'
             }
           </Button>
         </Box>
       </DialogActions>
 
-      {/* 🎉 SNACKBAR DE ÉXITO PARA REGENERACIÓN DE CONTRATO */}
+      {/* SNACKBAR DE ÉXITO */}
       <Snackbar
         open={contractRegenerationSuccess}
         autoHideDuration={3000}
@@ -3895,23 +4831,27 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           severity="success" 
           sx={{ 
             width: '100%',
-            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+            bgcolor: darkProTokens.successDark,
             color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.success}60`,
+            border: `2px solid ${darkProTokens.success}`,
             boxShadow: `0 8px 32px ${darkProTokens.success}40`,
-            '& .MuiAlert-icon': { color: darkProTokens.textPrimary }
+            fontWeight: 600,
+            '& .MuiAlert-icon': { 
+              color: darkProTokens.textPrimary 
+            }
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <RocketLaunchIcon />
             <Typography sx={{ fontWeight: 600 }}>
-              ¡Usuario guardado{pendingFingerprintData ? ' con huella' : ''} y contrato regenerado exitosamente!
+              ¡Usuario guardado exitosamente!
+              {formData.rol === 'cliente' && ' Contrato regenerado.'}
             </Typography>
           </Box>
         </Alert>
       </Snackbar>
 
-      {/* 🚨 SNACKBAR DE ERROR PARA REGENERACIÓN DE CONTRATO */}
+      {/* SNACKBAR DE ERROR */}
       <Snackbar
         open={!!contractRegenerationError}
         autoHideDuration={5000}
@@ -3923,11 +4863,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           severity="error" 
           sx={{ 
             width: '100%',
-            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
+            bgcolor: darkProTokens.errorDark,
             color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.error}60`,
+            border: `2px solid ${darkProTokens.error}`,
             boxShadow: `0 8px 32px ${darkProTokens.error}40`,
-            '& .MuiAlert-icon': { color: darkProTokens.textPrimary }
+            fontWeight: 600,
+            '& .MuiAlert-icon': { 
+              color: darkProTokens.textPrimary 
+            }
           }}
         >
           <Typography sx={{ fontWeight: 600 }}>
@@ -3936,7 +4879,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         </Alert>
       </Snackbar>
 
-      {/* 🔄 OVERLAY DE REGENERACIÓN DE CONTRATO CON DARK PRO */}
+      {/* OVERLAY DE REGENERACIÓN DE CONTRATO */}
       {isRegeneratingContract && (
         <Box sx={{
           position: 'fixed',
@@ -3973,10 +4916,16 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               }} 
             />
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600, mb: 1 }}>
+              <Typography variant="h6" sx={{ 
+                color: darkProTokens.textPrimary, 
+                fontWeight: 600, 
+                mb: 1 
+              }}>
                 🔄 Regenerando Contrato
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+              <Typography variant="body2" sx={{ 
+                color: darkProTokens.textSecondary 
+              }}>
                 Generando documentación actualizada...
               </Typography>
             </Box>
@@ -3990,8 +4939,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
               bgcolor: `${darkProTokens.primary}15`,
               border: `1px solid ${darkProTokens.primary}40`
             }}>
-              <AssignmentIcon sx={{ color: darkProTokens.primary, fontSize: 20 }} />
-              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+              <AssignmentIcon sx={{ 
+                color: darkProTokens.primary, 
+                fontSize: 20 
+              }} />
+              <Typography variant="caption" sx={{ 
+                color: darkProTokens.textSecondary 
+              }}>
                 Este proceso puede tomar unos segundos
               </Typography>
             </Box>
@@ -3999,7 +4953,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         </Box>
       )}
 
-      {/* ✅ MODAL DE REGISTRO DE HUELLA DACTILAR MODIFICADO */}
+      {/* MODAL DE REGISTRO DE HUELLA */}
       {user && (
         <FingerprintRegistration
           open={fingerprintDialogOpen}
@@ -4010,12 +4964,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             lastName: user.lastName,
             fingerprint: formData.fingerprint
           }}
-          onFingerprintDataReady={handleFingerprintDataReady} // ✅ NUEVO: Recibir datos en vez de guardar
+          onFingerprintDataReady={handleFingerprintDataReady}
           onError={handleFingerprintError}
         />
       )}
 
-      {/* 🎨 ESTILOS CSS PERSONALIZADOS PARA ANIMACIONES DARK PRO (mismos que antes) */}
+      {/* 🎨 ESTILOS CSS PERSONALIZADOS */}
       <style jsx>{`
         @keyframes pulse {
           0%, 100% { 
@@ -4042,7 +4996,8 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             box-shadow: 0 0 5px ${darkProTokens.primary}40;
           }
           50% {
-            box-shadow: 0 0 20px ${darkProTokens.primary}60, 0 0 30px ${darkProTokens.primary}40;
+            box-shadow: 0 0 20px ${darkProTokens.primary}60, 
+                       0 0 30px ${darkProTokens.primary}40;
           }
         }
         
@@ -4080,6 +5035,51 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
+        /* F22 SDK ANIMATIONS */
+        @keyframes f22-sync {
+          0% {
+            transform: rotate(0deg) scale(1);
+          }
+          25% {
+            transform: rotate(90deg) scale(1.1);
+          }
+          50% {
+            transform: rotate(180deg) scale(1);
+          }
+          75% {
+            transform: rotate(270deg) scale(1.1);
+          }
+          100% {
+            transform: rotate(360deg) scale(1);
+          }
+        }
+        
+        @keyframes f22-success {
+          0% {
+            box-shadow: 0 0 5px ${darkProTokens.success}40;
+          }
+          50% {
+            box-shadow: 0 0 25px ${darkProTokens.success}80, 
+                       0 0 35px ${darkProTokens.success}40;
+          }
+          100% {
+            box-shadow: 0 0 5px ${darkProTokens.success}40;
+          }
+        }
+        
+        @keyframes f22-error {
+          0%, 100% {
+            transform: translateX(0);
+          }
+          10%, 30%, 50%, 70%, 90% {
+            transform: translateX(-3px);
+          }
+          20%, 40%, 60%, 80% {
+            transform: translateX(3px);
+          }
+        }
+        
+        /* SCROLLBAR STYLES */
         .MuiDialog-paper::-webkit-scrollbar {
           width: 8px;
         }
@@ -4090,52 +5090,24 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         }
         
         .MuiDialog-paper::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
+          background: linear-gradient(
+            135deg, 
+            ${darkProTokens.primary}, 
+            ${darkProTokens.primaryHover}
+          );
           border-radius: 4px;
         }
         
         .MuiDialog-paper::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
+          background: linear-gradient(
+            135deg, 
+            ${darkProTokens.primaryHover}, 
+            ${darkProTokens.primaryActive}
+          );
           box-shadow: 0 0 10px ${darkProTokens.primary}60;
         }
         
-        .glow-on-hover {
-          transition: all 0.3s ease;
-        }
-        
-        .glow-on-hover:hover {
-          animation: glow 2s ease-in-out infinite alternate;
-        }
-        
-        .fade-in-scale {
-          animation: fadeInScale 0.5s ease-out;
-        }
-        
-        .gradient-animated {
-          background: linear-gradient(
-            -45deg,
-            ${darkProTokens.primary},
-            ${darkProTokens.primaryHover},
-            ${darkProTokens.primary},
-            ${darkProTokens.primaryActive}
-          );
-          background-size: 400% 400%;
-          animation: gradientShift 3s ease infinite;
-        }
-        
-        .glassmorphism {
-          backdrop-filter: blur(16px) saturate(180%);
-          background-color: ${darkProTokens.surfaceLevel2}CC;
-          border: 1px solid ${darkProTokens.grayDark}40;
-        }
-        
-        .golden-gradient-text {
-          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        
+        /* INPUT ANIMATIONS */
         .input-hover-glow:hover {
           box-shadow: 0 0 15px ${darkProTokens.primary}30;
         }
@@ -4144,23 +5116,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           box-shadow: 0 0 20px ${darkProTokens.primary}50;
         }
         
-        @keyframes typing {
-          from { width: 0; }
-          to { width: 100%; }
-        }
-        
-        @keyframes blink {
-          50% { border-color: transparent; }
-        }
-        
-        .typing-effect {
-          overflow: hidden;
-          border-right: 2px solid ${darkProTokens.primary};
-          white-space: nowrap;
-          margin: 0 auto;
-          animation: typing 3.5s steps(40, end), blink 0.75s step-end infinite;
-        }
-        
+        /* RIPPLE EFFECT */
         @keyframes ripple {
           0% {
             transform: scale(0);
@@ -4195,6 +5151,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           height: 300px;
         }
         
+        /* FOCUS STYLES */
         .enhanced-focus:focus-visible {
           outline: none;
           box-shadow: 
@@ -4203,6 +5160,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           transform: translateY(-1px);
         }
         
+        /* LOADING SPINNER */
         @keyframes spin-glow {
           0% {
             transform: rotate(0deg);
@@ -4219,10 +5177,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           filter: drop-shadow(0 0 10px ${darkProTokens.primary}60);
         }
         
+        /* TRANSITIONS */
         * {
           transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         }
         
+        /* RESPONSIVE STYLES */
         @media (max-width: 768px) {
           .mobile-hidden {
             display: none !important;
@@ -4247,6 +5207,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
+        /* ACCESSIBILITY */
         @media (prefers-contrast: high) {
           .high-contrast {
             border-width: 2px !important;
@@ -4263,6 +5224,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
+        /* PRINT STYLES */
         @media print {
           .no-print {
             display: none !important;
@@ -4275,6 +5237,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           }
         }
         
+        /* GLOW EFFECTS */
         .primary-glow {
           box-shadow: 0 0 20px ${darkProTokens.primary}40;
         }
@@ -4291,22 +5254,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
           box-shadow: 0 0 20px ${darkProTokens.warning}40;
         }
         
-        .particles-bg::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-image: 
-            radial-gradient(circle at 25% 25%, ${darkProTokens.primary}10 1px, transparent 1px),
-            radial-gradient(circle at 75% 75%, ${darkProTokens.success}10 1px, transparent 1px);
-          background-size: 100px 100px;
-          opacity: 0.3;
-          pointer-events: none;
-          z-index: -1;
-        }
-        
+        /* FINGERPRINT SPECIFIC */
         .fingerprint-glow {
           animation: fingerprint-pulse 3s ease-in-out infinite;
         }
@@ -4317,159 +5265,37 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             transform: scale(1);
           }
           50% {
-            box-shadow: 0 0 25px ${darkProTokens.primary}60, 0 0 35px ${darkProTokens.primary}30;
+            box-shadow: 0 0 25px ${darkProTokens.primary}60, 
+                       0 0 35px ${darkProTokens.primary}30;
             transform: scale(1.02);
           }
         }
         
-        .fingerprint-scanner {
-          position: relative;
-          overflow: hidden;
-        }
-        
-        .fingerprint-scanner::before {
-          content: '';
-          position: absolute;
-          top: -50%;
-          left: -50%;
-          width: 200%;
-          height: 200%;
-          background: linear-gradient(
-            45deg,
-            transparent,
-            ${darkProTokens.primary}20,
-            transparent
-          );
-          animation: scan 2s linear infinite;
-          pointer-events: none;
-        }
-        
-        @keyframes scan {
-          0% {
-            transform: translateX(-100%) translateY(-100%) rotate(45deg);
-          }
-          100% {
-            transform: translateX(100%) translateY(100%) rotate(45deg);
-          }
-        }
-        
-        .fingerprint-success {
-          animation: success-bounce 1s ease-out;
-        }
-        
-        @keyframes success-bounce {
-          0% {
-            transform: scale(0.3);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.05);
-          }
-          70% {
-            transform: scale(0.9);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        .fingerprint-error {
-          animation: error-shake 0.5s ease-in-out;
-        }
-        
-        @keyframes error-shake {
-          0%, 100% {
-            transform: translateX(0);
-          }
-          10%, 30%, 50%, 70%, 90% {
-            transform: translateX(-5px);
-          }
-          20%, 40%, 60%, 80% {
-            transform: translateX(5px);
-          }
-        }
-        
-        .ws-connecting {
-          animation: connecting-dots 1.5s infinite;
-        }
-        
-        @keyframes connecting-dots {
-          0%, 20% {
-            color: ${darkProTokens.textDisabled};
-          }
-          40% {
-            color: ${darkProTokens.warning};
-          }
-          60% {
-            color: ${darkProTokens.primary};
-          }
-          80%, 100% {
-            color: ${darkProTokens.success};
-          }
-        }
-        
-        .quality-excellent {
-          color: ${darkProTokens.success};
-          animation: quality-glow 2s ease-in-out infinite alternate;
-        }
-        
-        .quality-good {
+        /* TIMESTAMP INDICATOR */
+        .timestamp-indicator::before {
+  content: '🚀 Versión Corregida - ${new Date().toISOString()} por luishdz04';
+          position: fixed;
+          bottom: 10px;
+          right: 10px;
+          background: ${darkProTokens.primary}20;
           color: ${darkProTokens.primary};
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 0.7rem;
+          font-weight: 600;
+          z-index: 10000;
+          border: 1px solid ${darkProTokens.primary}40;
+          backdrop-filter: blur(10px);
+          opacity: 0.8;
+          display: none; /* Solo visible en desarrollo */
         }
         
-        .quality-poor {
-          color: ${darkProTokens.warning};
-          animation: quality-warning 1s ease-in-out infinite alternate;
-        }
-        
-        @keyframes quality-glow {
-          from {
-            text-shadow: 0 0 5px ${darkProTokens.success}60;
+        /* Mostrar solo en desarrollo */
+        ${process.env.NODE_ENV === 'development' ? `
+          .timestamp-indicator::before {
+            display: block;
           }
-          to {
-            text-shadow: 0 0 15px ${darkProTokens.success}80, 0 0 25px ${darkProTokens.success}40;
-          }
-        }
-        
-        @keyframes quality-warning {
-          from {
-            opacity: 1;
-          }
-          to {
-            opacity: 0.7;
-          }
-        }
-        
-        .progress-ring {
-          filter: drop-shadow(0 0 10px currentColor);
-        }
-        
-        .floating-notification {
-          animation: float-in 0.5s ease-out, float-out 0.5s ease-in 4.5s forwards;
-        }
-        
-        @keyframes float-in {
-          from {
-            transform: translateY(-100px) scale(0.8);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0) scale(1);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes float-out {
-          from {
-            transform: translateY(0) scale(1);
-            opacity: 1;
-          }
-          to {
-            transform: translateY(-100px) scale(0.8);
-            opacity: 0;
-          }
-        }
+        ` : ''}
       `}</style>
     </Dialog>
   );

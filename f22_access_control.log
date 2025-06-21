@@ -1,0 +1,34 @@
+2025-06-19 13:23:30,146 [INFO] ================================================================================
+2025-06-19 13:23:30,147 [INFO] 🚀 F22 ACCESS CONTROL SERVICE
+2025-06-19 13:23:30,147 [INFO] ================================================================================
+2025-06-19 13:23:30,147 [INFO] 📅 Versión: 1.0.0 - 2025-06-19 13:23:30.147571
+2025-06-19 13:23:30,147 [INFO] 👤 Autor: luishdz04
+2025-06-19 13:23:30,148 [INFO] 🌐 Puerto WebSocket: 8083
+2025-06-19 13:23:30,148 [INFO] 🏢 Dispositivo: 192.168.1.201:4370
+2025-06-19 13:23:30,148 [INFO] 🌍 Zona horaria: America/Mexico_City
+2025-06-19 13:23:30,151 [INFO] 
+2025-06-19 13:23:30,151 [INFO] ✅ CARACTERÍSTICAS:
+2025-06-19 13:23:30,151 [INFO]    🔐 Control de acceso en tiempo real
+2025-06-19 13:23:30,151 [INFO]    📊 Validación de membresías activas
+2025-06-19 13:23:30,151 [INFO]    ⏰ Restricciones de horarios globales y por plan
+2025-06-19 13:23:30,151 [INFO]    🎫 Soporte para accesos temporales
+2025-06-19 13:23:30,151 [INFO]    📝 Registro completo de eventos en BD
+2025-06-19 13:23:30,152 [INFO]    🔄 Cache inteligente de validaciones
+2025-06-19 13:23:30,152 [INFO]    📡 Notificaciones en tiempo real vía WebSocket
+2025-06-19 13:23:30,152 [INFO] ================================================================================
+2025-06-19 13:23:30,162 [INFO] server listening on 127.0.0.1:8083
+2025-06-19 13:23:30,162 [INFO] ✅ Servidor WebSocket activo en ws://127.0.0.1:8083
+2025-06-19 13:23:30,162 [INFO] ⏳ Esperando conexiones...
+2025-06-19 13:30:50,504 [INFO] connection open
+2025-06-19 13:30:50,505 [INFO] 🔌 Cliente conectado: 2993318878848
+2025-06-19 13:30:50,506 [INFO] 🔌 Conectando a F22 para control de acceso...
+2025-06-19 13:30:51,286 [INFO] ✅ Conexión exitosa para control de acceso
+2025-06-19 13:30:52,683 [INFO] HTTP Request: GET https://tyuuyqypgwvdtpfvumxx.supabase.co/rest/v1/access_control_config?select=%2A&limit=1 "HTTP/1.1 200 OK"
+2025-06-19 13:30:52,685 [INFO] ✅ Configuración de acceso cargada
+2025-06-19 13:30:52,687 [INFO] 🔄 Iniciando monitoreo de accesos...
+2025-06-19 13:30:52,740 [ERROR] ❌ Error iniciando monitoreo: Property 'zkemkeeper.ZKEM.OnVerify' can not be set.
+2025-06-19 13:31:44,735 [INFO] 🔌 Cliente desconectado: 2993318878848
+2025-06-19 13:35:25,293 [INFO] server closing
+2025-06-19 13:35:25,294 [INFO] server closed
+2025-06-19 13:35:25,295 [INFO] ⛔ Servicio detenido por el usuario
+2025-06-19 13:35:25,415 [INFO] ✅ Desconectado del dispositivo

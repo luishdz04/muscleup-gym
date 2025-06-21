@@ -1,0 +1,50 @@
+2025-06-19 21:11:36,494 [INFO] 
+🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐
+2025-06-19 21:11:36,494 [INFO] [STARTUP] SERVICIO F22 v5.1 COMPLETO FINAL - ALL FEATURES
+2025-06-19 21:11:36,494 [INFO] 🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐
+2025-06-19 21:11:36,494 [INFO] [INFO] 📅 Fecha/Hora: 2025-06-20 03:08:39 UTC
+2025-06-19 21:11:36,497 [INFO] [INFO] 👤 Usuario: luishdz04
+2025-06-19 21:11:36,497 [INFO] [INFO] 🔒 Modo de seguridad: ULTRA_STRICT
+2025-06-19 21:11:36,497 [INFO] [INFO] 🚫 Offline mode: False (FALSE = SEGURO)
+2025-06-19 21:11:36,497 [INFO] [INFO] 🌐 Dispositivo F22: 192.168.1.201:4370
+2025-06-19 21:11:36,497 [INFO] [INFO] 🎯 Puerto WebSocket: 8082
+2025-06-19 21:11:36,497 [INFO] [INFO] 🧵 STA Thread: True
+2025-06-19 21:11:36,497 [INFO] [INFO] 📡 Eventos COM: True
+2025-06-19 21:11:36,497 [INFO] 
+2025-06-19 21:11:36,497 [INFO] [FEATURES] 🛡️ TODAS LAS CARACTERÍSTICAS INCLUIDAS:
+2025-06-19 21:11:36,497 [INFO]    ✅ STA Thread para eventos COM REALES (OnAttTransactionEx)
+2025-06-19 21:11:36,497 [INFO]    ✅ pythoncom.PumpMessages() para callbacks en tiempo real
+2025-06-19 21:11:36,497 [INFO]    ✅ 👆 REGISTRO DE HUELLAS con formato MUP (firstName lastName)
+2025-06-19 21:11:36,497 [INFO]    ✅ 🗑️ ELIMINACIÓN DE HUELLAS completa (dispositivo + BD)
+2025-06-19 21:11:36,497 [INFO]    ✅ 🔄 SINCRONIZACIÓN COMPLETA desde Supabase al F22
+2025-06-19 21:11:36,497 [INFO]    ✅ 🔐 Validación BULLETPROOF con tu esquema de BD
+2025-06-19 21:11:36,497 [INFO]    ✅ 📋 fingerprint_templates -> Users -> user_memberships
+2025-06-19 21:11:36,497 [INFO]    ✅ 📊 Logs automáticos en access_logs
+2025-06-19 21:11:36,497 [INFO]    ✅ 🎯 Monitoreo en tiempo real con validación inmediata
+2025-06-19 21:11:36,497 [INFO]    ✅ 🚪 Control REAL del dispositivo F22
+2025-06-19 21:11:36,497 [INFO]    ✅ 🔒 CERO tolerancia a errores de seguridad
+2025-06-19 21:11:36,498 [INFO]    ✅ 🔐 Lockout automático tras intentos fallidos
+2025-06-19 21:11:36,498 [INFO]    ✅ ⏰ Validación de horarios desde access_control_config
+2025-06-19 21:11:36,498 [INFO]    ✅ 🎮 WebSocket API completa para todas las operaciones
+2025-06-19 21:11:36,498 [INFO] 🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐
+2025-06-19 21:11:36,498 [INFO] [STARTUP] 🔗 Iniciando conexión F22 COMPLETA...
+2025-06-19 21:11:36,498 [INFO] [SERVICE] 🚀 Iniciando servicio F22 COMPLETO v5.1...
+2025-06-19 21:11:36,498 [INFO] [VERIFY] 🔍 Verificando conexión a Supabase...
+2025-06-19 21:11:37,677 [INFO] [VERIFY] ✅ Conexión a Supabase verificada
+2025-06-19 21:11:37,678 [INFO] [STA_THREAD] 🧵 Thread STA COMPLETO inicializado
+2025-06-19 21:11:37,679 [INFO] [STA_THREAD] ✅ COM inicializado en modo STA
+2025-06-19 21:11:37,679 [INFO] [STA_THREAD] 🔗 Conectando a F22 COMPLETO en 192.168.1.201:4370
+2025-06-19 21:11:37,679 [INFO] [COM_EVENTS] ✅ Handler de eventos COM inicializado
+2025-06-19 21:11:37,700 [ERROR] [STA_THREAD] Error conectando: ZKEventHandler.__init__() missing 1 required positional argument: 'validator'
+2025-06-19 21:11:37,700 [ERROR] [STA_THREAD] ❌ No se pudo conectar
+2025-06-19 21:11:37,700 [INFO] [STA_THREAD] 🧹 Limpiando recursos COMPLETOS...
+2025-06-19 21:11:37,700 [INFO] [STA_THREAD] ✅ Recursos COMPLETOS liberados
+2025-06-19 21:11:37,700 [INFO] [STA_THREAD] 🧵 Thread STA COMPLETO finalizado
+2025-06-19 21:11:57,838 [ERROR] [SERVICE] ❌ No se pudo conectar al F22
+2025-06-19 21:11:57,839 [ERROR] [ERROR] ❌ No se pudo establecer conexión F22 COMPLETA
+2025-06-19 21:11:57,839 [ERROR] [ERROR] 🔍 Verificar:
+2025-06-19 21:11:57,839 [ERROR] [ERROR]    - Variables de entorno de Supabase (.env.local)
+2025-06-19 21:11:57,839 [ERROR] [ERROR]    - Conectividad de red al F22
+2025-06-19 21:11:57,840 [ERROR] [ERROR]    - zkemkeeper.dll registrado correctamente
+2025-06-19 21:11:57,840 [ERROR] [ERROR]    - Dispositivo F22 encendido y en red
+2025-06-19 21:11:57,840 [ERROR] [ERROR]    - Esquema de BD correcto en Supabase

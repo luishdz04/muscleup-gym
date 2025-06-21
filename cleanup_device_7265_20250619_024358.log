@@ -1,0 +1,9 @@
+2025-06-19 02:44:01,058 - [INFO] - Usuario confirmo la ejecucion
+2025-06-19 02:44:01,058 - [INFO] - INICIANDO LIMPIEZA DIRECTA F22 SDK OFICIAL
+2025-06-19 02:44:01,058 - [INFO] - Timestamp: 2025-06-19 08:42:31 UTC
+2025-06-19 02:44:01,059 - [INFO] - Ejecutado por: luishdz04
+2025-06-19 02:44:01,059 - [INFO] - Target device_user_id: 7265
+2025-06-19 02:44:01,059 - [INFO] - Dispositivo F22: 192.168.100.201:4370
+2025-06-19 02:44:01,060 - [INFO] - PASO 1: Conectando al dispositivo F22...
+2025-06-19 02:44:05,000 - [ERROR] - CRITICAL ERROR en limpieza F22: can't reach device (ping 192.168.100.201)
+2025-06-19 02:44:05,034 - [ERROR] - Tipo de error: ZKNetworkError
