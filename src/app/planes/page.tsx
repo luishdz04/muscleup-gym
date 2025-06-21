@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { FaCheck, FaStar, FaClock } from 'react-icons/fa';
+import { FaCheck, FaStar, FaClock, FaBolt, FaCrown } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 interface Plan {
   id: number;
@@ -131,44 +132,104 @@ export default function PlanesPage() {
   const router = useRouter();
 
   const handleInscribirse = () => {
-    router.push('/registro/paso1');
+    router.push('/registromup');
+  };
+
+  // Animaciones para el contenedor
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  // Animaciones para las cards
+  const cardVariants = {
+    hidden: { y: 50, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        damping: 12,
+        stiffness: 100
+      }
+    }
+  };
+
+  // Animación para el título
+  const titleVariants = {
+    hidden: { y: -50, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        damping: 10,
+        stiffness: 100
+      }
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-black py-12 px-4 sm:px-6 lg:px-8">
       {/* Header Section */}
-      <div className="max-w-7xl mx-auto text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-          Elige el plan que se adapte a tus objetivos
+      <motion.div 
+        initial="hidden"
+        animate="visible"
+        variants={titleVariants}
+        className="max-w-7xl mx-auto text-center mb-12"
+      >
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          Elige el plan que se adapte a tus 
+          <span className="text-[#FFCC00] ml-2">objetivos</span>
         </h1>
-        
-        {/* Widget de Membresía */}
-        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-full shadow-lg">
-          <FaStar className="text-yellow-400" />
-          <span className="font-semibold">Membresías Premium</span>
-          <FaStar className="text-yellow-400" />
-        </div>
-      </div>
+      </motion.div>
 
       {/* Plans Grid */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {planes.map((plan) => (
-          <div
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+      >
+        {planes.map((plan, index) => (
+          <motion.div
             key={plan.id}
-            className="relative bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+            variants={cardVariants}
+            whileHover={{ 
+              scale: 1.05,
+              transition: { duration: 0.2 }
+            }}
+            whileTap={{ scale: 0.95 }}
+            className="relative bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden transform transition-all duration-300 hover:border-[#FFCC00] hover:shadow-2xl hover:shadow-[#FFCC00]/20"
           >
             {/* Popular Badge */}
             {plan.popular && (
-              <div className="absolute top-4 right-4 z-10">
-                <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-4 py-1 rounded-full text-sm font-bold shadow-md">
+              <motion.div 
+                initial={{ rotate: -10, scale: 0 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ delay: index * 0.1 + 0.5, type: "spring" }}
+                className="absolute top-4 right-4 z-10"
+              >
+                <div className="bg-gradient-to-r from-[#FFCC00] to-yellow-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg flex items-center gap-1">
+                  <FaCrown className="text-xs" />
                   POPULAR
                 </div>
-              </div>
+              </motion.div>
             )}
 
             <div className="p-6">
               {/* Logo Section */}
-              <div className="text-center mb-4">
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: index * 0.1 + 0.3, type: "spring" }}
+                className="text-center mb-4"
+              >
                 <div className="w-20 h-20 mx-auto mb-3 relative">
                   <Image
                     src="/img/testimonios.png"
@@ -177,67 +238,88 @@ export default function PlanesPage() {
                     className="object-contain"
                   />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">{plan.tipo}</h3>
-                <p className="text-sm text-gray-600 mt-2 italic">
+                <h3 className="text-xl font-bold text-[#FFCC00]">{plan.tipo}</h3>
+                <p className="text-sm text-gray-400 mt-2 italic">
                   "Tu salud y bienestar es nuestra misión"
                 </p>
-              </div>
+              </motion.div>
 
               {/* Price Section */}
-              <div className="text-center mb-6">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: index * 0.1 + 0.4 }}
+                className="text-center mb-6"
+              >
                 {plan.precioOriginal && (
-                  <p className="text-gray-400 line-through text-sm">
+                  <p className="text-gray-500 line-through text-sm">
                     ${plan.precioOriginal.toLocaleString()} MXN
                   </p>
                 )}
-                <p className="text-3xl font-bold text-red-600">
+                <p className="text-3xl font-bold text-white">
                   ${plan.precio.toLocaleString()}
-                  <span className="text-lg text-gray-600"> MXN</span>
+                  <span className="text-lg text-gray-400"> MXN</span>
                 </p>
                 {plan.descuento && (
-                  <p className="text-green-600 text-sm font-semibold mt-1">
+                  <motion.p 
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1 }}
+                    transition={{ repeat: Infinity, duration: 2, repeatType: "reverse" }}
+                    className="text-green-400 text-sm font-semibold mt-1 flex items-center justify-center gap-1"
+                  >
+                    <FaBolt className="text-yellow-400" />
                     {plan.descuento}
-                  </p>
+                  </motion.p>
                 )}
                 {plan.restriccion && (
-                  <div className="flex items-center justify-center mt-2 text-orange-600 text-sm">
+                  <div className="flex items-center justify-center mt-2 text-orange-400 text-sm">
                     <FaClock className="mr-1" />
                     <span>{plan.restriccion}</span>
                   </div>
                 )}
-              </div>
+              </motion.div>
 
               {/* Features List */}
               <div className="space-y-2 mb-6">
-                {plan.caracteristicas.map((caracteristica, index) => (
-                  <div key={index} className="flex items-start">
-                    <FaCheck className="text-green-500 mt-0.5 mr-2 flex-shrink-0" />
-                    <span className="text-gray-700 text-sm">{caracteristica}</span>
-                  </div>
+                {plan.caracteristicas.map((caracteristica, idx) => (
+                  <motion.div 
+                    key={idx}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.1 + 0.5 + idx * 0.05 }}
+                    className="flex items-start"
+                  >
+                    <FaCheck className="text-[#FFCC00] mt-0.5 mr-2 flex-shrink-0" />
+                    <span className="text-gray-300 text-sm">{caracteristica}</span>
+                  </motion.div>
                 ))}
               </div>
 
               {/* CTA Button */}
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleInscribirse}
-                className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-bold py-3 px-4 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-md hover:shadow-lg"
+                className="w-full bg-gradient-to-r from-[#FFCC00] to-yellow-500 text-black font-bold py-3 px-4 rounded-lg hover:from-yellow-500 hover:to-[#FFCC00] transition-all duration-300 shadow-lg hover:shadow-[#FFCC00]/50"
               >
                 Inscribirse ahora
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* Footer Note */}
-      <div className="max-w-4xl mx-auto mt-12 text-center">
-        <p className="text-gray-600">
-          Todos los planes incluyen acceso completo a nuestras instalaciones y asesoría personalizada.
-        </p>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1 }}
+        className="max-w-4xl mx-auto mt-12 text-center"
+      >
         <p className="text-gray-500 text-sm mt-2">
           Los precios están expresados en pesos mexicanos (MXN) y pueden estar sujetos a cambios.
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
