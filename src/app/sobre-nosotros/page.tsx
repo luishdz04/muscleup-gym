@@ -68,13 +68,13 @@ export default function SobreNosotrosPage() {
           transition={{ duration: 1 }}
           className="relative z-10 text-center px-4"
         >
-          {/* Logo con animaciones profesionales */}
+          {/* Logo con animación suave */}
           <motion.div
-            className="relative w-64 h-64 md:w-80 md:h-80 mx-auto mb-8"
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
+            className="relative w-80 h-80 md:w-96 md:h-96 mx-auto mb-8"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
             transition={{ 
-              duration: 1.2, 
+              duration: 0.8, 
               type: "spring",
               stiffness: 100,
               damping: 15
@@ -94,20 +94,20 @@ export default function SobreNosotrosPage() {
               }}
             />
             
-            {/* Logo principal */}
+            {/* Logo principal con movimiento suave */}
             <motion.div
               className="relative w-full h-full"
               animate={{
-                rotateY: [0, 360]
+                y: [0, -10, 0]
               }}
               transition={{
-                duration: 20,
+                duration: 4,
                 repeat: Infinity,
-                ease: "linear"
+                ease: "easeInOut"
               }}
             >
               <Image
-                src="/logo.png"
+                src="/logo2.png"
                 alt="MuscleUp Gym Logo"
                 fill
                 className="object-contain drop-shadow-2xl"
@@ -115,7 +115,7 @@ export default function SobreNosotrosPage() {
               />
             </motion.div>
 
-            {/* Anillo orbital */}
+            {/* Partículas orbitales */}
             <motion.div
               className="absolute inset-0"
               animate={{ rotate: 360 }}
@@ -125,10 +125,73 @@ export default function SobreNosotrosPage() {
                 ease: "linear"
               }}
             >
-              <div className="absolute top-0 left-1/2 w-2 h-2 bg-[#FFCC00] rounded-full transform -translate-x-1/2 -translate-y-4" />
-              <div className="absolute bottom-0 left-1/2 w-2 h-2 bg-[#FFCC00] rounded-full transform -translate-x-1/2 translate-y-4" />
-              <div className="absolute left-0 top-1/2 w-2 h-2 bg-[#FFCC00] rounded-full transform -translate-y-1/2 -translate-x-4" />
-              <div className="absolute right-0 top-1/2 w-2 h-2 bg-[#FFCC00] rounded-full transform -translate-y-1/2 translate-x-4" />
+              <motion.div 
+                className="absolute top-0 left-1/2 w-3 h-3 bg-[#FFCC00] rounded-full transform -translate-x-1/2 -translate-y-8"
+                animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [1, 0.5, 1]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
+              <motion.div 
+                className="absolute bottom-0 left-1/2 w-3 h-3 bg-[#FFCC00] rounded-full transform -translate-x-1/2 translate-y-8"
+                animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [1, 0.5, 1]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 0.5
+                }}
+              />
+              <motion.div 
+                className="absolute left-0 top-1/2 w-3 h-3 bg-[#FFCC00] rounded-full transform -translate-y-1/2 -translate-x-8"
+                animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [1, 0.5, 1]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 1
+                }}
+              />
+              <motion.div 
+                className="absolute right-0 top-1/2 w-3 h-3 bg-[#FFCC00] rounded-full transform -translate-y-1/2 translate-x-8"
+                animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [1, 0.5, 1]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 1.5
+                }}
+              />
+            </motion.div>
+
+            {/* Partículas adicionales en diferentes órbitas */}
+            <motion.div
+              className="absolute inset-0"
+              animate={{ rotate: -360 }}
+              transition={{
+                duration: 15,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            >
+              <div className="absolute top-10 right-10 w-2 h-2 bg-yellow-400 rounded-full opacity-70" />
+              <div className="absolute bottom-10 left-10 w-2 h-2 bg-yellow-400 rounded-full opacity-70" />
+              <div className="absolute top-10 left-10 w-2 h-2 bg-yellow-400 rounded-full opacity-70" />
+              <div className="absolute bottom-10 right-10 w-2 h-2 bg-yellow-400 rounded-full opacity-70" />
             </motion.div>
           </motion.div>
 
@@ -136,7 +199,7 @@ export default function SobreNosotrosPage() {
             className="text-xl md:text-2xl text-gray-300"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.2, duration: 0.8 }}
+            transition={{ delay: 1, duration: 0.8 }}
           >
             Más que un gimnasio, una familia
           </motion.p>
