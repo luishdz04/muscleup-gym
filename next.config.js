@@ -6,17 +6,23 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // 🚀 CONFIGURACIÓN PARA IMÁGENES EN VERCEL
+  // 🚀 CONFIGURACIÓN ESPECÍFICA PARA VERCEL
   images: {
     unoptimized: true,
-    domains: [], // Agregar dominios externos si usas imágenes externas
+    domains: [],
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60,
   },
   // 📁 CONFIGURACIÓN PARA ARCHIVOS ESTÁTICOS
-  assetPrefix: '',
-  // 🔧 CONFIGURACIÓN ADICIONAL PARA VERCEL
+  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
+  basePath: '',
   trailingSlash: false,
-  // ✅ Removed deprecated experimental.esmExternals
-  // This option is no longer needed in Next.js 15+
+  // 🔧 CONFIGURACIONES ADICIONALES PARA VERCEL
+  experimental: {
+    optimizePackageImports: ['@mui/material', '@mui/icons-material'],
+  },
+  // 📦 CONFIGURACIÓN DE SALIDA
+  output: 'standalone',
 }
 
 module.exports = nextConfig
