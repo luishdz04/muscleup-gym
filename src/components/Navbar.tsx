@@ -10,8 +10,11 @@ const navItems = [
   { href: '/suplementos', label: 'Suplementos' },
   { href: '/bolsa-trabajo', label: 'Bolsa de Trabajo' },
   { href: '/ejercicios', label: 'Ejercicios' },
-  { href: '/login', label: 'Acceso MUP' },
-  { href: '/registro/paso1', label: 'Registro MUP' },
+];
+
+const actionItems = [
+  { href: '/login', label: 'Acceso MUP', style: 'outline' },
+  { href: '/registro/paso1', label: 'Registro MUP', style: 'solid' },
 ];
 
 export default function Navbar() {
@@ -49,60 +52,74 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
             
-            {/* 🏋️ LOGO */}
+            {/* 🏋️ SOLO LOGO (SIN TEXTO) */}
             <motion.div 
-              className="flex items-center space-x-3"
+              className="flex items-center"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
             >
-              <Link href="/" className="flex items-center space-x-3 group">
+              <Link href="/" className="flex items-center group">
                 <motion.img 
                   src="/logo.png" 
                   alt="Muscle Up Gym" 
-                  className="h-10 lg:h-12 w-auto drop-shadow-lg"
+                  className="h-12 lg:h-14 w-auto drop-shadow-lg"
                   whileHover={{ rotate: 5 }}
                   transition={{ duration: 0.3 }}
                 />
-                <div className="hidden sm:block">
-                  <motion.span 
-                    className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-white to-yellow-400 bg-clip-text text-transparent"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    Muscle Up
-                  </motion.span>
-                  <div className="text-xs lg:text-sm text-yellow-400/80 font-medium tracking-wider">
-                    GYM
-                  </div>
-                </div>
               </Link>
             </motion.div>
 
-            {/* 🖥️ MENÚ DESKTOP */}
-            <div className="hidden lg:flex items-center space-x-1">
-              {navItems.map(({ href, label }, index) => (
-                <motion.div
-                  key={href}
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Link
-                    href={href}
-                    className={`px-4 py-2 rounded-lg text-sm lg:text-base font-medium transition-all duration-300 relative group ${
-                      href === '/login' || href === '/registro/paso1'
-                        ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-black hover:from-yellow-300 hover:to-yellow-400 shadow-lg hover:shadow-yellow-400/25'
-                        : 'text-white hover:text-yellow-400 hover:bg-white/5'
-                    }`}
+            {/* 🖥️ MENÚ DESKTOP - DISTRIBUIDO MEJOR */}
+            <div className="hidden lg:flex items-center space-x-8">
+              
+              {/* Enlaces de navegación normales */}
+              <div className="flex items-center space-x-6">
+                {navItems.map(({ href, label }, index) => (
+                  <motion.div
+                    key={href}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
                   >
-                    {label}
-                    
-                    {/* Animación de subrayado para enlaces normales */}
-                    {href !== '/login' && href !== '/registro/paso1' && (
+                    <Link
+                      href={href}
+                      className="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 relative group text-white hover:text-yellow-400 hover:bg-white/5"
+                    >
+                      {label}
                       <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-yellow-400 transition-all duration-300 group-hover:w-full" />
-                    )}
-                  </Link>
-                </motion.div>
-              ))}
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Separador visual */}
+              <div className="w-px h-6 bg-gradient-to-b from-transparent via-yellow-400/30 to-transparent" />
+              
+              {/* Botones de acción */}
+              <div className="flex items-center space-x-3">
+                {actionItems.map(({ href, label, style }, index) => (
+                  <motion.div
+                    key={href}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
+                  >
+                    <Link
+                      href={href}
+                      className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 shadow-lg relative overflow-hidden group ${
+                        style === 'solid'
+                          ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-black hover:from-yellow-300 hover:to-yellow-400 hover:shadow-yellow-400/25'
+                          : 'border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black hover:shadow-yellow-400/25'
+                      }`}
+                    >
+                      <span className="relative z-10">{label}</span>
+                      {style === 'outline' && (
+                        <span className="absolute inset-0 bg-yellow-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+                      )}
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
             </div>
 
             {/* 📱 BOTÓN HAMBURGUESA MÓVIL */}
@@ -156,6 +173,7 @@ export default function Navbar() {
               transition={{ duration: 0.2 }}
             >
               <div className="py-6">
+                {/* Enlaces normales */}
                 {navItems.map(({ href, label }, index) => (
                   <motion.div
                     key={href}
@@ -166,26 +184,39 @@ export default function Navbar() {
                     <Link
                       href={href}
                       onClick={handleLinkClick}
-                      className={`block px-6 py-4 text-base font-medium transition-all duration-300 border-l-4 border-transparent hover:border-yellow-400 hover:bg-yellow-400/5 ${
-                        href === '/login' || href === '/registro/paso1'
-                          ? 'text-yellow-400 bg-yellow-400/10'
-                          : 'text-white hover:text-yellow-400'
-                      }`}
+                      className="block px-6 py-4 text-base font-medium transition-all duration-300 border-l-4 border-transparent hover:border-yellow-400 hover:bg-yellow-400/5 text-white hover:text-yellow-400"
                     >
-                      <div className="flex items-center justify-between">
-                        <span>{label}</span>
-                        {(href === '/login' || href === '/registro/paso1') && (
-                          <motion.span
-                            className="text-xs bg-yellow-400 text-black px-2 py-1 rounded-full font-bold"
-                            whileHover={{ scale: 1.1 }}
-                          >
-                            MUP
-                          </motion.span>
-                        )}
-                      </div>
+                      {label}
                     </Link>
                   </motion.div>
                 ))}
+                
+                {/* Separador */}
+                <div className="mx-6 my-4 h-px bg-gradient-to-r from-transparent via-yellow-400/30 to-transparent" />
+                
+                {/* Botones de acción en móvil */}
+                <div className="px-6 space-y-3">
+                  {actionItems.map(({ href, label, style }, index) => (
+                    <motion.div
+                      key={href}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: (navItems.length + index) * 0.05 }}
+                    >
+                      <Link
+                        href={href}
+                        onClick={handleLinkClick}
+                        className={`block w-full px-4 py-3 rounded-lg text-center font-bold transition-all duration-300 ${
+                          style === 'solid'
+                            ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-black hover:from-yellow-300 hover:to-yellow-400'
+                            : 'border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black'
+                        }`}
+                      >
+                        {label}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
               
               {/* Footer del menú móvil */}
