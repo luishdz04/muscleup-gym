@@ -233,7 +233,7 @@ export default function FingerprintRegistration({
   const initializationRef = useRef(false);
   
   // 🎯 CONFIGURACIÓN WEBSOCKET
-  const WS_URL = 'ws://127.0.0.1:8080';
+  const WS_URL = 'wss://127.0.0.1:8081';
   const RECONNECT_INTERVAL = 3000;
   const MAX_RECONNECT_ATTEMPTS = 5;
   const reconnectAttemptsRef = useRef(0);
@@ -335,7 +335,7 @@ export default function FingerprintRegistration({
         deviceType: 'ZKTeco',
         captureMethod: 'multiple_capture',
         totalCaptures: 3,
-        wsConnection: 'localhost:8080',
+        wsConnection: 'localhost:8081',
         qualities: [
           combinedTemplate.primary.qualityScore,
           combinedTemplate.verification.qualityScore,
