@@ -21,11 +21,14 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   useEffect(() => {
     const loadPDFLib = async () => {
       try {
+        // Importar tanto la biblioteca principal como el worker
         const pdfjsLib = await import('pdfjs-dist');
         
-        // Configurar worker desde CDN
-     pdfjsLib.GlobalWorkerOptions.workerSrc = 
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.js';
+        // Utilizar el worker incluido en el paquete instalado
+        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
+        
+        // Configurar el worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
         
         setPdfLib(pdfjsLib);
       } catch (error) {
@@ -62,8 +65,17 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error en respuesta API:', response.status, errorData);
+        console.error('Error en respuesta API:', response.status);
+        const errorText = await response.text();
+        console.error('Detalles del error:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: 'Error desconocido' };
+        }
+        
         throw new Error(`Error del servidor: ${response.status} - ${errorData.error || 'Error desconocido'}`);
       }
       
