@@ -38,17 +38,12 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
 
   // Cargar PDF.js y establecer el worker
   useEffect(() => {
-    // Comprobar que estamos en el navegador antes de cargar PDF.js
     if (typeof window === 'undefined') return;
 
     const loadPDFJS = async () => {
       try {
-        // Cargar la biblioteca
         const pdfjsLib = await import('pdfjs-dist');
-        
-        // Establecer el worker desde CDN (la URL que encontraste que funciona)
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs';
-        
         setPdfLib(pdfjsLib);
       } catch (error) {
         console.error('Error al cargar PDF.js:', error);
@@ -67,7 +62,6 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       try {
         setLoading(true);
         
-        // Obtener el PDF a través de la API
         const response = await fetch(`/api/pdf/${encodeURIComponent(filename)}`, {
           headers: { 'Authorization': `Bearer ${password}` }
         });
@@ -77,11 +71,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         }
         
         const pdfData = await response.arrayBuffer();
-        
-        // Crear la tarea de carga
         const loadingTask = pdfLib.getDocument(pdfData);
-        
-        // Obtener el documento
         const pdfDocument = await loadingTask.promise;
         
         setPdf(pdfDocument);
@@ -105,44 +95,32 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       try {
         setLoading(true);
         
-        // Obtener la página
         const page = await pdf.getPage(currentPage);
-        
-        // Crear viewport con la escala especificada
         const viewport = page.getViewport({ scale });
         
-        // Preparar el canvas considerando la densidad de píxeles
         const canvas = canvasRef.current!;
         const context = canvas.getContext('2d')!;
         
-        // Soporte para pantallas HiDPI
         const outputScale = window.devicePixelRatio || 1;
         
-        // Establecer las dimensiones del canvas
         canvas.width = Math.floor(viewport.width * outputScale);
         canvas.height = Math.floor(viewport.height * outputScale);
-        
-        // Establecer el tamaño visual del canvas
         canvas.style.width = Math.floor(viewport.width) + "px";
         canvas.style.height = Math.floor(viewport.height) + "px";
         
-        // Transformación para pantallas HiDPI
         const transform = outputScale !== 1 
           ? [outputScale, 0, 0, outputScale, 0, 0] 
           : null;
         
-        // Configurar el contexto de renderizado
         const renderContext = {
           canvasContext: context,
           transform: transform,
           viewport: viewport
         };
         
-        // Renderizar la página
         const renderTask = page.render(renderContext);
         await renderTask.promise;
         
-        // Añadir marca de agua después de renderizar
         addWatermark(context, canvas.width, canvas.height);
         
         setLoading(false);
@@ -169,31 +147,26 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
     context.restore();
   };
 
-  // Navegar a la página anterior
   const prevPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
   };
 
-  // Navegar a la página siguiente
   const nextPage = () => {
     if (currentPage < numPages) {
       setCurrentPage(currentPage + 1);
     }
   };
 
-  // Cambiar el nivel de zoom
   const changeZoom = (newScale: number) => {
     setScale(newScale);
   };
 
-  // Reintentar en caso de error
   const retry = () => {
     window.location.reload();
   };
 
-  // Mostrar mensajes de error si los hay
   if (error) {
     return (
       <div className="flex justify-center items-center h-screen bg-black px-4">
@@ -212,9 +185,9 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black p-2 sm:p-4">
-      {/* Controles de navegación - Mejorado para móviles */}
-      <div className="fixed top-[72px] left-0 right-0 z-20 bg-black/90 border-b border-[#FFCC00]/20 p-2 sm:p-4">
+    <div className="bg-black">
+      {/* Controles de navegación PDF - Sin el header superior */}
+      <div className="sticky top-0 z-20 bg-black/90 border-b border-[#FFCC00]/20 p-2 sm:p-4">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-4">
           {/* Controles de página */}
           <div className="flex items-center space-x-2 sm:space-x-4">
@@ -262,8 +235,8 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         </div>
       </div>
       
-      {/* Área del PDF - Ajustada para móviles */}
-      <div className="pt-28 sm:pt-24 flex justify-center items-center">
+      {/* Área del PDF */}
+      <div className="p-2 sm:p-4 flex justify-center items-center min-h-[calc(100vh-120px)]">
         {loading && (
           <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/80">
             <div className="flex flex-col items-center">
@@ -273,7 +246,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
           </div>
         )}
         
-        {/* Canvas para renderizar el PDF - Con scroll en móviles */}
+        {/* Canvas para renderizar el PDF */}
         <div className="pdf-container bg-white rounded-lg shadow-lg overflow-auto max-w-full">
           <canvas 
             ref={canvasRef}
