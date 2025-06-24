@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Script from 'next/script';
+import Link from 'next/link';
 
 interface PDFViewerProps {
   filename: string;
@@ -11,6 +11,7 @@ interface PDFViewerProps {
 // Componente interno que usa PDF.js directamente
 function PDFViewerCore({ filename, password }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
@@ -18,6 +19,43 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   const [scale, setScale] = useState<number>(1.5);
   const [pdfLib, setPdfLib] = useState<any>(null);
   const [pdf, setPdf] = useState<any>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+
+  // Detectar ancho del contenedor para responsividad
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+    
+    // Inicializar
+    updateWidth();
+    
+    // Actualizar cuando cambie el tamaño de la ventana
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  // Ajustar escala automáticamente en dispositivos pequeños
+  useEffect(() => {
+    if (containerWidth === 0) return;
+    
+    // Calcular escala automática basada en el ancho del contenedor
+    // Solo si estamos en dispositivos pequeños (< 768px)
+    if (containerWidth < 768) {
+      // Ajustar cuando tengamos el PDF cargado
+      if (pdf) {
+        pdf.getPage(currentPage).then((page: any) => {
+          const viewport = page.getViewport({ scale: 1.0 });
+          const idealScale = (containerWidth - 40) / viewport.width;
+          setScale(Math.min(idealScale, 1.5)); // Limitar a 1.5 máximo
+        });
+      }
+    }
+  }, [containerWidth, pdf, currentPage]);
 
   // Cargar PDF.js y establecer el worker
   useEffect(() => {
@@ -29,7 +67,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         // Cargar la biblioteca
         const pdfjsLib = await import('pdfjs-dist');
         
-        // Establecer el worker desde CDN (la URL que encontraste que funciona)
+        // Establecer el worker desde CDN
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs';
         
         setPdfLib(pdfjsLib);
@@ -179,57 +217,80 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   // Mostrar mensajes de error si los hay
   if (error) {
     return (
-      <div className="flex justify-center items-center h-screen bg-black">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-black px-4 pt-20 pb-8">
         <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-6 max-w-md mx-auto text-center">
           <h3 className="text-xl font-bold text-red-300 mb-4">Error</h3>
           <p className="text-red-200 mb-6">{error}</p>
-          <button
-            onClick={retry}
-            className="px-4 py-2 bg-[#FFCC00] text-black rounded-lg font-bold hover:bg-[#FFD700] transition-colors"
-          >
-            Intentar nuevamente
-          </button>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <Link
+              href="/rutinas/viewer"
+              className="px-4 py-2 bg-neutral-800 text-white rounded-lg font-bold hover:bg-neutral-700 transition-colors"
+            >
+              Volver a la lista
+            </Link>
+            <button
+              onClick={retry}
+              className="px-4 py-2 bg-[#FFCC00] text-black rounded-lg font-bold hover:bg-[#FFD700] transition-colors"
+            >
+              Intentar nuevamente
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black p-4">
+    <div className="min-h-screen bg-black">
+      {/* Botón Regresar (visible en todas las pantallas) */}
+      <div className="fixed top-0 left-0 z-30 p-4 md:p-6">
+        <Link
+          href="/rutinas/viewer"
+          className="flex items-center gap-2 bg-black/80 text-[#FFCC00] px-3 py-2 md:px-4 md:py-2 rounded-lg border border-[#FFCC00]/30 hover:bg-[#FFCC00]/10 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          <span className="hidden sm:inline">Volver a la lista</span>
+        </Link>
+      </div>
+
       {/* Controles de navegación */}
-      <div className="fixed top-[72px] left-0 right-0 z-20 bg-black/90 border-b border-[#FFCC00]/20 p-4">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-4">
+      <div className="fixed top-[72px] left-0 right-0 z-20 bg-black/90 border-b border-[#FFCC00]/20 p-3 md:p-4">
+        <div className="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-3">
+          {/* Navegación de páginas - ocupa todo el ancho en móviles */}
+          <div className="flex items-center space-x-2 md:space-x-4 w-full md:w-auto">
             <button
               onClick={prevPage}
               disabled={currentPage <= 1 || loading}
-              className="px-4 py-2 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors"
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors text-sm md:text-base"
             >
               ← Anterior
             </button>
             
-            <span className="text-white bg-black/60 px-3 py-1 rounded border border-[#FFCC00]/20">
+            <span className="text-white bg-black/60 px-3 py-1 rounded border border-[#FFCC00]/20 text-sm md:text-base whitespace-nowrap">
               {loading ? "Cargando..." : `Página ${currentPage} de ${numPages}`}
             </span>
             
             <button
               onClick={nextPage}
               disabled={currentPage >= numPages || loading}
-              className="px-4 py-2 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors"
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors text-sm md:text-base"
             >
               Siguiente →
             </button>
           </div>
           
-          <div className="flex items-center space-x-3">
+          {/* Controles de zoom - van abajo en móviles */}
+          <div className="flex items-center space-x-3 mt-2 md:mt-0 w-full md:w-auto justify-center">
             <button
               onClick={() => changeZoom(Math.max(0.5, scale - 0.25))}
               className="px-3 py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10"
             >
-              -
+              <span className="text-lg">−</span>
             </button>
             
-            <span className="text-white">
+            <span className="text-white text-sm md:text-base whitespace-nowrap">
               {Math.round(scale * 100)}%
             </span>
             
@@ -237,14 +298,14 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
               onClick={() => changeZoom(Math.min(3, scale + 0.25))}
               className="px-3 py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10"
             >
-              +
+              <span className="text-lg">+</span>
             </button>
           </div>
         </div>
       </div>
       
-      {/* Área del PDF */}
-      <div className="pt-24 flex justify-center items-center">
+      {/* Área del PDF - Con referencia para detectar el tamaño del contenedor */}
+      <div className="pt-32 sm:pt-28 pb-6 px-2 md:px-4" ref={containerRef}>
         {loading && (
           <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/80">
             <div className="flex flex-col items-center">
@@ -254,12 +315,14 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
           </div>
         )}
         
-        {/* Canvas para renderizar el PDF */}
-        <div className="pdf-container bg-white rounded-lg shadow-lg overflow-hidden">
-          <canvas 
-            ref={canvasRef}
-            className="block"
-          />
+        {/* Canvas para renderizar el PDF - centrado y responsive */}
+        <div className="flex justify-center">
+          <div className="pdf-container bg-white rounded-lg shadow-lg overflow-auto max-w-full">
+            <canvas 
+              ref={canvasRef}
+              className="max-w-full inline-block"
+            />
+          </div>
         </div>
       </div>
     </div>
