@@ -22,16 +22,18 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   useEffect(() => {
     async function loadPdfJs() {
       try {
+        // Importar la biblioteca principal
         const pdfjsLib = await import('pdfjs-dist');
         
-        // Configurar el worker
-        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+        // Usar una URL de CDN para el worker, asegurándonos de que sea la misma versión
+        // Nota: Usamos 5.3.31 porque esa es la versión en tu package.json
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs';
         
         return pdfjsLib;
       } catch (error) {
         console.error('Error cargando PDF.js:', error);
         setError('Error al inicializar el visor de PDF');
+        setErrorDetails(String(error));
         return null;
       }
     }
@@ -217,6 +219,13 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
           -moz-user-drag: none;
           -o-user-drag: none;
           user-drag: none;
+        }
+        .canvas-container {
+          display: inline-block;
+          background-color: white;
+          border-radius: 4px;
+          box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+          margin: 20px;
         }
       `}</style>
       
