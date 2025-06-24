@@ -8,7 +8,6 @@ const navItems = [
   { href: '/sobre-nosotros', label: 'Sobre Nosotros' },
   { href: '/planes', label: 'Planes' },
   { href: '/suplementos', label: 'Suplementos' },
-  { href: '/bolsa-trabajo', label: 'Bolsa de Trabajo' },
   { href: '/rutinas', label: 'Rutinas' },
 ];
 
