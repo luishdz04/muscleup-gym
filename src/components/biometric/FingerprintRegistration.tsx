@@ -210,7 +210,7 @@ export default function FingerprintRegistration({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // 🎯 CONFIGURACIÓN WEBSOCKET
-  const WS_URL = 'ws://localhost:8081';
+  const WS_URL = 'wss://localhost:8081';
   const RECONNECT_INTERVAL = 3000;
   const MAX_RECONNECT_ATTEMPTS = 5;
   const reconnectAttemptsRef = useRef(0);
