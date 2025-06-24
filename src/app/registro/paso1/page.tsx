@@ -681,14 +681,14 @@ const RegistroPage = () => {
     <div className="min-h-screen bg-black text-white px-4 py-8">
       {/* Logo y lema */}
       <div className="flex flex-col items-center mb-6">
-        <Image
-          src="/logo.png"
-          alt="Muscle Up Gym"
-          width={150}
-          height={150}
-          priority
-          style={{ width: 'auto', height: 'auto' }}
-        />
+     <Image
+  src="/logo.png"
+  alt="Muscle Up Gym"
+  width={144}
+  height={144}
+  priority
+  className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 object-contain"
+/>
         <p className="mt-4 text-xl text-white">
           Tu salud y bienestar es nuestra misión.
         </p>
