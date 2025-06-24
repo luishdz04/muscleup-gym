@@ -1,8 +1,7 @@
-'use client';
+ 'use client';
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 
 interface PDFViewerProps {
   filename: string;
@@ -11,32 +10,28 @@ interface PDFViewerProps {
 
 // Componente interno que usa PDF.js directamente
 function PDFViewerCore({ filename, password }: PDFViewerProps) {
-  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [scale, setScale] = useState<number>(1.0);
-  const [baseScale, setBaseScale] = useState<number>(1.0);
+  const [scale, setScale] = useState<number>(1.5);
   const [pdfLib, setPdfLib] = useState<any>(null);
   const [pdf, setPdf] = useState<any>(null);
 
-  // Función para cerrar sesión
-  const handleLogout = () => {
-    localStorage.removeItem('rutinasPassword');
-    router.push('/rutinas');
-  };
-
   // Cargar PDF.js y establecer el worker
   useEffect(() => {
+    // Comprobar que estamos en el navegador antes de cargar PDF.js
     if (typeof window === 'undefined') return;
 
     const loadPDFJS = async () => {
       try {
+        // Cargar la biblioteca
         const pdfjsLib = await import('pdfjs-dist');
+        
+        // Establecer el worker desde CDN (la URL que encontraste que funciona)
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs';
+        
         setPdfLib(pdfjsLib);
       } catch (error) {
         console.error('Error al cargar PDF.js:', error);
@@ -55,6 +50,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       try {
         setLoading(true);
         
+        // Obtener el PDF a través de la API
         const response = await fetch(`/api/pdf/${encodeURIComponent(filename)}`, {
           headers: { 'Authorization': `Bearer ${password}` }
         });
@@ -64,7 +60,11 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         }
         
         const pdfData = await response.arrayBuffer();
+        
+        // Crear la tarea de carga
         const loadingTask = pdfLib.getDocument(pdfData);
+        
+        // Obtener el documento
         const pdfDocument = await loadingTask.promise;
         
         setPdf(pdfDocument);
@@ -80,49 +80,6 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
     loadDocument();
   }, [pdfLib, filename, password]);
 
-  // Calcular escala base para ajustar al ancho del contenedor
-  const calculateBaseScale = async () => {
-    if (!pdf || !containerRef.current) return;
-    
-    try {
-      const page = await pdf.getPage(currentPage);
-      const viewport = page.getViewport({ scale: 1 });
-      
-      // Obtener el ancho disponible del contenedor
-      const containerWidth = containerRef.current.clientWidth;
-      const padding = window.innerWidth < 768 ? 16 : 32; // Menos padding en móvil
-      const availableWidth = containerWidth - padding;
-      
-      // Calcular la escala base para que el PDF se ajuste al ancho
-      const calculatedScale = availableWidth / viewport.width;
-      
-      // En móviles, limitar la escala inicial
-      const maxInitialScale = window.innerWidth < 768 ? 0.9 : 1.5;
-      const newBaseScale = Math.min(calculatedScale, maxInitialScale);
-      
-      setBaseScale(newBaseScale);
-      
-      // Ajustar la escala inicial solo si es la primera vez
-      if (scale === 1.0) {
-        setScale(1.0);
-      }
-    } catch (err) {
-      console.error('Error calculando escala:', err);
-    }
-  };
-
-  // Recalcular escala cuando cambie el tamaño de la ventana
-  useEffect(() => {
-    calculateBaseScale();
-    
-    const handleResize = () => {
-      calculateBaseScale();
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [pdf, currentPage]);
-
   // Renderizar la página actual cuando cambie
   useEffect(() => {
     if (!pdf || !canvasRef.current) return;
@@ -131,37 +88,45 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       try {
         setLoading(true);
         
+        // Obtener la página
         const page = await pdf.getPage(currentPage);
         
-        // Usar la escala base multiplicada por el zoom del usuario
-        const effectiveScale = baseScale * scale;
-        const viewport = page.getViewport({ scale: effectiveScale });
+        // Crear viewport con la escala especificada
+        const viewport = page.getViewport({ scale });
         
+        // Preparar el canvas considerando la densidad de píxeles
         const canvas = canvasRef.current!;
         const context = canvas.getContext('2d')!;
         
         // Soporte para pantallas HiDPI
         const outputScale = window.devicePixelRatio || 1;
         
+        // Establecer las dimensiones del canvas
         canvas.width = Math.floor(viewport.width * outputScale);
         canvas.height = Math.floor(viewport.height * outputScale);
+        
+        // Establecer el tamaño visual del canvas
         canvas.style.width = Math.floor(viewport.width) + "px";
         canvas.style.height = Math.floor(viewport.height) + "px";
         
+        // Transformación para pantallas HiDPI
         const transform = outputScale !== 1 
           ? [outputScale, 0, 0, outputScale, 0, 0] 
           : null;
         
+        // Configurar el contexto de renderizado
         const renderContext = {
           canvasContext: context,
           transform: transform,
           viewport: viewport
         };
         
+        // Renderizar la página
         const renderTask = page.render(renderContext);
         await renderTask.promise;
         
-        addWatermark(context, canvas.width, canvas.height, outputScale);
+        // Añadir marca de agua después de renderizar
+        addWatermark(context, canvas.width, canvas.height);
         
         setLoading(false);
       } catch (err) {
@@ -172,14 +137,13 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
     };
     
     renderCurrentPage();
-  }, [pdf, currentPage, scale, baseScale]);
+  }, [pdf, currentPage, scale]);
 
   // Añadir marca de agua
-  const addWatermark = (context: CanvasRenderingContext2D, width: number, height: number, scale: number) => {
+  const addWatermark = (context: CanvasRenderingContext2D, width: number, height: number) => {
     context.save();
     context.globalAlpha = 0.1;
-    const fontSize = Math.floor((width / scale) / 25);
-    context.font = fontSize + 'px Arial';
+    context.font = Math.floor(width/20) + 'px Arial';
     context.fillStyle = '#FFCC00';
     context.textAlign = 'center';
     context.translate(width/2, height/2);
@@ -188,192 +152,114 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
     context.restore();
   };
 
-  // Navegación
+  // Navegar a la página anterior
   const prevPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
   };
 
+  // Navegar a la página siguiente
   const nextPage = () => {
     if (currentPage < numPages) {
       setCurrentPage(currentPage + 1);
     }
   };
 
+  // Cambiar el nivel de zoom
   const changeZoom = (newScale: number) => {
     setScale(newScale);
   };
 
-  const resetZoom = () => {
-    setScale(1.0);
-  };
-
+  // Reintentar en caso de error
   const retry = () => {
     window.location.reload();
   };
 
-  // Manejo de gestos táctiles para zoom
-  useEffect(() => {
-    const element = canvasRef.current;
-    if (!element) return;
-
-    let initialDistance = 0;
-    let initialScale = scale;
-
-    const getDistance = (touches: TouchList) => {
-      return Math.hypot(
-        touches[0].clientX - touches[1].clientX,
-        touches[0].clientY - touches[1].clientY
-      );
-    };
-
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        initialDistance = getDistance(e.touches);
-        initialScale = scale;
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && initialDistance > 0) {
-        e.preventDefault();
-        const currentDistance = getDistance(e.touches);
-        const newScale = (currentDistance / initialDistance) * initialScale;
-        setScale(Math.min(Math.max(0.5, newScale), 3));
-      }
-    };
-
-    element.addEventListener('touchstart', handleTouchStart, { passive: true });
-    element.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-    return () => {
-      element.removeEventListener('touchstart', handleTouchStart);
-      element.removeEventListener('touchmove', handleTouchMove);
-    };
-  }, [scale]);
-
-  // Mostrar mensajes de error
+  // Mostrar mensajes de error si los hay
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-black px-4">
-        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-6 max-w-md w-full text-center">
+      <div className="flex justify-center items-center h-screen bg-black">
+        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-6 max-w-md mx-auto text-center">
           <h3 className="text-xl font-bold text-red-300 mb-4">Error</h3>
           <p className="text-red-200 mb-6">{error}</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/rutinas/viewer"
-              className="px-4 py-2 bg-neutral-800 text-white rounded-lg font-bold hover:bg-neutral-700 transition-colors"
-            >
-              Volver a la lista
-            </Link>
-            <button
-              onClick={retry}
-              className="px-4 py-2 bg-[#FFCC00] text-black rounded-lg font-bold hover:bg-[#FFD700] transition-colors"
-            >
-              Intentar nuevamente
-            </button>
-          </div>
+          <button
+            onClick={retry}
+            className="px-4 py-2 bg-[#FFCC00] text-black rounded-lg font-bold hover:bg-[#FFD700] transition-colors"
+          >
+            Intentar nuevamente
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Barra superior fija */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-black border-b border-[#FFCC00]/30 py-2 sm:py-3 px-3">
-        <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <Link
-            href="/rutinas/viewer"
-            className="flex items-center gap-1 sm:gap-2 bg-[#FFCC00] text-black px-2 py-1 sm:px-4 sm:py-2 rounded-lg font-bold hover:bg-[#FFD700] transition-colors text-xs sm:text-base"
-          >
-            ← Volver
-          </Link>
-          
-          <button
-            onClick={handleLogout}
-            className="px-2 py-1 sm:px-4 sm:py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors text-xs sm:text-base"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
-      </div>
-
-      {/* Controles de navegación - Responsivos */}
-      <div className="fixed top-[44px] sm:top-[56px] left-0 right-0 z-30 bg-black/90 border-b border-[#FFCC00]/20 p-2 sm:p-3">
-        <div className="max-w-5xl mx-auto">
-          {/* Controles de página */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-center justify-between">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                onClick={prevPage}
-                disabled={currentPage <= 1 || loading}
-                className="px-2 py-1 sm:px-4 sm:py-2 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors text-xs sm:text-base flex-1 sm:flex-none"
-              >
-                ← Ant
-              </button>
-              
-              <span className="text-white bg-black/60 px-2 py-1 sm:px-3 sm:py-1 rounded border border-[#FFCC00]/20 text-xs sm:text-base whitespace-nowrap">
-                {loading ? "..." : `${currentPage}/${numPages}`}
-              </span>
-              
-              <button
-                onClick={nextPage}
-                disabled={currentPage >= numPages || loading}
-                className="px-2 py-1 sm:px-4 sm:py-2 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors text-xs sm:text-base flex-1 sm:flex-none"
-              >
-                Sig →
-              </button>
-            </div>
+    <div className="min-h-screen bg-black p-4">
+      {/* Controles de navegación */}
+      <div className="fixed top-[72px] left-0 right-0 z-20 bg-black/90 border-b border-[#FFCC00]/20 p-4">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={prevPage}
+              disabled={currentPage <= 1 || loading}
+              className="px-4 py-2 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors"
+            >
+              ← Anterior
+            </button>
             
-            {/* Controles de zoom */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                onClick={() => changeZoom(Math.max(0.5, scale - 0.25))}
-                className="px-2 py-1 sm:px-3 sm:py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10 text-sm"
-              >
-                −
-              </button>
-              
-              <button
-                onClick={resetZoom}
-                className="text-white text-xs sm:text-sm min-w-[50px] sm:min-w-[60px]"
-              >
-                {Math.round(scale * 100)}%
-              </button>
-              
-              <button
-                onClick={() => changeZoom(Math.min(3, scale + 0.25))}
-                className="px-2 py-1 sm:px-3 sm:py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10 text-sm"
-              >
-                +
-              </button>
-            </div>
+            <span className="text-white bg-black/60 px-3 py-1 rounded border border-[#FFCC00]/20">
+              {loading ? "Cargando..." : `Página ${currentPage} de ${numPages}`}
+            </span>
+            
+            <button
+              onClick={nextPage}
+              disabled={currentPage >= numPages || loading}
+              className="px-4 py-2 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors"
+            >
+              Siguiente →
+            </button>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => changeZoom(Math.max(0.5, scale - 0.25))}
+              className="px-3 py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10"
+            >
+              -
+            </button>
+            
+            <span className="text-white">
+              {Math.round(scale * 100)}%
+            </span>
+            
+            <button
+              onClick={() => changeZoom(Math.min(3, scale + 0.25))}
+              className="px-3 py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10"
+            >
+              +
+            </button>
           </div>
         </div>
       </div>
       
-      {/* Área del PDF con contenedor responsivo */}
-      <div className="pt-[100px] sm:pt-[120px] px-2 sm:px-4 pb-4" ref={containerRef}>
+      {/* Área del PDF */}
+      <div className="pt-24 flex justify-center items-center">
         {loading && (
           <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/80">
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 border-t-4 border-b-4 border-[#FFCC00] rounded-full animate-spin mb-4"></div>
-              <p className="text-[#FFCC00] text-lg sm:text-xl">Cargando...</p>
+              <div className="w-16 h-16 border-t-4 border-b-4 border-[#FFCC00] rounded-full animate-spin mb-4"></div>
+              <p className="text-[#FFCC00] text-xl">Cargando...</p>
             </div>
           </div>
         )}
         
-        {/* Canvas centrado y responsivo */}
-        <div className="flex justify-center">
-          <div className="bg-white rounded-lg shadow-lg overflow-auto max-w-full">
-            <canvas 
-              ref={canvasRef}
-              className="block max-w-full"
-              style={{ touchAction: 'pinch-zoom' }}
-            />
-          </div>
+        {/* Canvas para renderizar el PDF */}
+        <div className="pdf-container bg-white rounded-lg shadow-lg overflow-hidden">
+          <canvas 
+            ref={canvasRef}
+            className="block"
+          />
         </div>
       </div>
     </div>
