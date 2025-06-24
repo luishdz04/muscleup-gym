@@ -7,19 +7,22 @@ export default function SuplementosPage() {
   const controls = useAnimationControls();
   const [isHovered, setIsHovered] = useState(false);
 
-  // Lista de logos - actualiza con tus archivos reales
+  // Lista de logos - actualizada con tus archivos reales
   useEffect(() => {
     const logoFiles = [
-      'muscletech-logo-3DBC4BBC88-seeklogo.com_.png', 'descarga.jpg', 'descarga-1.png', 'bpinew.webp'
+      'muscletech-logo-3DBC4BBC88-seeklogo.com_.png', 
+      'descarga.jpg', 
+      'descarga-1.png', 
+      'bpinew.webp'
     ];
     setLogos(logoFiles);
     
     // Iniciar animación del carrusel solo en el cliente
     if (typeof window !== 'undefined') {
       controls.start({
-        x: [0, -100 * logoFiles.length * 10],
+        x: [0, -100 * logoFiles.length * 15],
         transition: {
-          duration: 30,
+          duration: 40,
           ease: "linear",
           repeat: Infinity,
         }
@@ -35,9 +38,9 @@ export default function SuplementosPage() {
       controls.stop();
     } else {
       controls.start({
-        x: [0, -100 * logos.length * 10],
+        x: [0, -100 * logos.length * 15],
         transition: {
-          duration: 30,
+          duration: 40,
           ease: "linear",
           repeat: Infinity,
         }
@@ -56,9 +59,7 @@ export default function SuplementosPage() {
         "Ayuda a mantener la masa muscular en déficit calórico",
         "Mejora la saciedad y control del apetito"
       ],
-      science: "Estudios demuestran que consumir 20-40g de proteína post-ejercicio optimiza la síntesis proteica muscular durante las siguientes 3-4 horas.",
-      gradientFrom: "#f59e0b",
-      gradientTo: "#d97706"
+      science: "Estudios demuestran que consumir 20-40g de proteína post-ejercicio optimiza la síntesis proteica muscular durante las siguientes 3-4 horas."
     },
     {
       title: "Creatina",
@@ -70,9 +71,7 @@ export default function SuplementosPage() {
         "Acelera la regeneración de ATP",
         "Puede incrementar la masa muscular magra"
       ],
-      science: "Más de 1000 estudios respaldan la eficacia de 3-5g diarios de monohidrato de creatina para mejorar el rendimiento deportivo.",
-      gradientFrom: "#f59e0b",
-      gradientTo: "#d97706"
+      science: "Más de 1000 estudios respaldan la eficacia de 3-5g diarios de monohidrato de creatina para mejorar el rendimiento deportivo."
     },
     {
       title: "Quemadores de Grasa",
@@ -84,9 +83,7 @@ export default function SuplementosPage() {
         "Pueden suprimir el apetito naturalmente",
         "Aumentan los niveles de energía y concentración"
       ],
-      science: "Ingredientes como la cafeína, té verde y L-carnitina han demostrado científicamente incrementar el gasto energético y la movilización de grasas.",
-      gradientFrom: "#f59e0b",
-      gradientTo: "#d97706"
+      science: "Ingredientes como la cafeína, té verde y L-carnitina han demostrado científicamente incrementar el gasto energético y la movilización de grasas."
     },
     {
       title: "BCAA / EAA",
@@ -98,9 +95,7 @@ export default function SuplementosPage() {
         "Aceleran la síntesis de proteína muscular",
         "Disminuyen el dolor muscular post-ejercicio"
       ],
-      science: "Los aminoácidos de cadena ramificada, especialmente la leucina, activan la vía mTOR, clave para la síntesis proteica.",
-      gradientFrom: "#f59e0b",
-      gradientTo: "#d97706"
+      science: "Los aminoácidos de cadena ramificada, especialmente la leucina, activan la vía mTOR, clave para la síntesis proteica."
     }
   ];
 
@@ -169,10 +164,7 @@ Saludos.`);
           style={{
             fontSize: '3.5rem',
             fontWeight: 'bold',
-            background: 'linear-gradient(135deg, #ffffff, #f59e0b)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
+            color: '#FFCC00',
             marginBottom: '1rem'
           }}
         >
@@ -184,10 +176,9 @@ Saludos.`);
           transition={{ duration: 0.6, delay: 0.3 }}
           style={{
             fontSize: '1.25rem',
-            color: '#f59e0b',
+            color: '#ffffff',
             maxWidth: '48rem',
-            margin: '0 auto',
-            opacity: 0.8
+            margin: '0 auto'
           }}
         >
           Las mejores marcas y productos para optimizar tus resultados
@@ -205,11 +196,11 @@ Saludos.`);
       >
         <motion.h2
           style={{
-            fontSize: '1.5rem',
+            fontSize: '2rem',
             fontWeight: '600',
             textAlign: 'center',
             marginBottom: '2rem',
-            color: '#ffffff'
+            color: '#FFCC00'
           }}
         >
           Marcas de Confianza
@@ -218,7 +209,7 @@ Saludos.`);
         <div
           style={{
             position: 'relative',
-            height: '6rem',
+            height: '8rem',
             overflow: 'hidden'
           }}
           onMouseEnter={() => setIsHovered(true)}
@@ -230,7 +221,7 @@ Saludos.`);
               position: 'absolute',
               left: 0,
               top: 0,
-              width: '6rem',
+              width: '8rem',
               height: '100%',
               background: 'linear-gradient(to right, #000000, transparent)',
               zIndex: 10,
@@ -242,7 +233,7 @@ Saludos.`);
               position: 'absolute',
               right: 0,
               top: 0,
-              width: '6rem',
+              width: '8rem',
               height: '100%',
               background: 'linear-gradient(to left, #000000, transparent)',
               zIndex: 10,
@@ -254,7 +245,7 @@ Saludos.`);
             animate={controls}
             style={{
               display: 'flex',
-              gap: '2rem',
+              gap: '3rem',
               width: 'max-content'
             }}
           >
@@ -262,20 +253,29 @@ Saludos.`);
             {logos.map((logo, index) => (
               <motion.div
                 key={index}
-                whileHover={{ scale: 1.1, y: -5 }}
+                whileHover={{ scale: 1.1, y: -10 }}
                 transition={{ type: "spring", stiffness: 300 }}
                 style={{
                   flexShrink: 0,
-                  width: '8rem',
-                  height: '5rem',
+                  width: '12rem',
+                  height: '7rem',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: '#27272a',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '1rem',
+                  boxShadow: '0 8px 16px -1px rgba(255, 204, 0, 0.2)',
                   cursor: 'pointer',
-                  border: '1px solid #3f3f46'
+                  border: '2px solid transparent',
+                  padding: '1rem'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#FFCC00';
+                  e.currentTarget.style.boxShadow = '0 12px 24px -1px rgba(255, 204, 0, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.boxShadow = '0 8px 16px -1px rgba(255, 204, 0, 0.2)';
                 }}
               >
                 <img
@@ -285,8 +285,7 @@ Saludos.`);
                     maxWidth: '100%',
                     maxHeight: '100%',
                     objectFit: 'contain',
-                    filter: isHovered ? 'grayscale(0)' : 'grayscale(1)',
-                    transition: 'filter 0.3s ease'
+                    transition: 'all 0.3s ease'
                   }}
                 />
               </motion.div>
@@ -296,20 +295,29 @@ Saludos.`);
             {logos.map((logo, index) => (
               <motion.div
                 key={`duplicate-${index}`}
-                whileHover={{ scale: 1.1, y: -5 }}
+                whileHover={{ scale: 1.1, y: -10 }}
                 transition={{ type: "spring", stiffness: 300 }}
                 style={{
                   flexShrink: 0,
-                  width: '8rem',
-                  height: '5rem',
+                  width: '12rem',
+                  height: '7rem',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: '#27272a',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '1rem',
+                  boxShadow: '0 8px 16px -1px rgba(255, 204, 0, 0.2)',
                   cursor: 'pointer',
-                  border: '1px solid #3f3f46'
+                  border: '2px solid transparent',
+                  padding: '1rem'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#FFCC00';
+                  e.currentTarget.style.boxShadow = '0 12px 24px -1px rgba(255, 204, 0, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.boxShadow = '0 8px 16px -1px rgba(255, 204, 0, 0.2)';
                 }}
               >
                 <img
@@ -319,8 +327,49 @@ Saludos.`);
                     maxWidth: '100%',
                     maxHeight: '100%',
                     objectFit: 'contain',
-                    filter: isHovered ? 'grayscale(0)' : 'grayscale(1)',
-                    transition: 'filter 0.3s ease'
+                    transition: 'all 0.3s ease'
+                  }}
+                />
+              </motion.div>
+            ))}
+            
+            {/* Tercera serie para mejor continuidad */}
+            {logos.map((logo, index) => (
+              <motion.div
+                key={`triple-${index}`}
+                whileHover={{ scale: 1.1, y: -10 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                style={{
+                  flexShrink: 0,
+                  width: '12rem',
+                  height: '7rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '1rem',
+                  boxShadow: '0 8px 16px -1px rgba(255, 204, 0, 0.2)',
+                  cursor: 'pointer',
+                  border: '2px solid transparent',
+                  padding: '1rem'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#FFCC00';
+                  e.currentTarget.style.boxShadow = '0 12px 24px -1px rgba(255, 204, 0, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.boxShadow = '0 8px 16px -1px rgba(255, 204, 0, 0.2)';
+                }}
+              >
+                <img
+                  src={`/logos/${logo}`}
+                  alt={`Marca ${index + 1}`}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    transition: 'all 0.3s ease'
                   }}
                 />
               </motion.div>
@@ -344,7 +393,7 @@ Saludos.`);
             style={{
               fontSize: '2.5rem',
               fontWeight: 'bold',
-              color: '#ffffff',
+              color: '#FFCC00',
               marginBottom: '1rem'
             }}
           >
@@ -353,10 +402,9 @@ Saludos.`);
           <motion.p
             style={{
               fontSize: '1.125rem',
-              color: '#f59e0b',
+              color: '#ffffff',
               maxWidth: '48rem',
-              margin: '0 auto',
-              opacity: 0.8
+              margin: '0 auto'
             }}
           >
             Información respaldada por estudios científicos sobre los suplementos más efectivos
@@ -377,7 +425,7 @@ Saludos.`);
               variants={itemVariants}
               whileHover={{ 
                 scale: 1.03,
-                boxShadow: '0 25px 50px -12px rgba(245, 158, 11, 0.25)'
+                boxShadow: '0 25px 50px -12px rgba(255, 204, 0, 0.25)'
               }}
               transition={{ type: "spring", stiffness: 300 }}
               style={{
@@ -410,10 +458,7 @@ Saludos.`);
                     style={{
                       fontSize: '1.5rem',
                       fontWeight: 'bold',
-                      background: `linear-gradient(135deg, ${suplemento.gradientFrom}, ${suplemento.gradientTo})`,
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text'
+                      color: '#FFCC00'
                     }}
                   >
                     {suplemento.title}
@@ -421,7 +466,7 @@ Saludos.`);
                 </motion.div>
                 <motion.p
                   style={{
-                    color: '#a1a1aa',
+                    color: '#ffffff',
                     fontWeight: '500'
                   }}
                 >
@@ -436,7 +481,7 @@ Saludos.`);
                   style={{
                     fontSize: '1.125rem',
                     fontWeight: '600',
-                    color: '#ffffff',
+                    color: '#FFCC00',
                     marginBottom: '0.75rem'
                   }}
                 >
@@ -457,7 +502,7 @@ Saludos.`);
                     >
                       <motion.span
                         style={{
-                          color: '#f59e0b',
+                          color: '#FFCC00',
                           marginRight: '0.5rem',
                           fontWeight: 'bold',
                           fontSize: '1.2rem'
@@ -465,7 +510,7 @@ Saludos.`);
                       >
                         •
                       </motion.span>
-                      <span style={{ color: '#d4d4d8' }}>{benefit}</span>
+                      <span style={{ color: '#ffffff' }}>{benefit}</span>
                     </motion.li>
                   ))}
                 </motion.ul>
@@ -484,7 +529,7 @@ Saludos.`);
                   style={{
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    color: '#ffffff',
+                    color: '#FFCC00',
                     marginBottom: '0.5rem',
                     display: 'flex',
                     alignItems: 'center'
@@ -502,7 +547,7 @@ Saludos.`);
                 <motion.p
                   style={{
                     fontSize: '0.875rem',
-                    color: '#a1a1aa',
+                    color: '#ffffff',
                     lineHeight: '1.6'
                   }}
                 >
@@ -532,7 +577,7 @@ Saludos.`);
             fontSize: '2rem',
             fontWeight: 'bold',
             marginBottom: '1rem',
-            color: '#ffffff'
+            color: '#FFCC00'
           }}
         >
           ¿Listo para optimizar tus resultados?
@@ -541,7 +586,7 @@ Saludos.`);
           style={{
             fontSize: '1.125rem',
             marginBottom: '1.5rem',
-            color: '#a1a1aa'
+            color: '#ffffff'
           }}
         >
           Contáctanos para una asesoría personalizada sobre suplementación
@@ -550,18 +595,18 @@ Saludos.`);
           onClick={handleSolicitarCotizacion}
           whileHover={{ 
             scale: 1.05,
-            boxShadow: '0 20px 25px -5px rgba(245, 158, 11, 0.3)'
+            boxShadow: '0 20px 25px -5px rgba(255, 204, 0, 0.4)'
           }}
           whileTap={{ scale: 0.95 }}
           style={{
-            backgroundColor: '#f59e0b',
+            backgroundColor: '#FFCC00',
             color: '#000000',
             fontWeight: 'bold',
             padding: '0.75rem 2rem',
             borderRadius: '0.5rem',
             border: 'none',
             cursor: 'pointer',
-            boxShadow: '0 10px 15px -3px rgba(245, 158, 11, 0.3)',
+            boxShadow: '0 10px 15px -3px rgba(255, 204, 0, 0.3)',
             transition: 'all 0.3s ease'
           }}
         >
@@ -570,8 +615,9 @@ Saludos.`);
         <motion.p
           style={{
             fontSize: '0.875rem',
-            color: '#71717a',
-            marginTop: '1rem'
+            color: '#ffffff',
+            marginTop: '1rem',
+            opacity: 0.7
           }}
         >
           Te redirigiremos a tu cliente de correo para contactar directamente
@@ -587,7 +633,7 @@ Saludos.`);
               position: 'absolute',
               width: '2px',
               height: '2px',
-              backgroundColor: '#f59e0b',
+              backgroundColor: '#FFCC00',
               borderRadius: '50%',
               opacity: 0.3,
               left: `${15 + (i * 4) % 70}%`,
