@@ -10,7 +10,8 @@ export default function SuplementosPage() {
   // Lista de logos - actualiza con tus archivos reales
   useEffect(() => {
     const logoFiles = [
-      'muscletech-logo-3DBC4BBC88-seeklogo.com_.png', 'descarga.jpg', 'descarga-1.png', 'bpinew.webp'
+      'logo1.png', 'logo2.jpg', 'logo3.webp', 'logo4.png', 'logo5.jpg',
+      'logo6.png', 'logo7.jpg', 'logo8.webp', 'logo9.png', 'logo10.jpg'
     ];
     setLogos(logoFiles);
     
@@ -57,8 +58,8 @@ export default function SuplementosPage() {
         "Mejora la saciedad y control del apetito"
       ],
       science: "Estudios demuestran que consumir 20-40g de proteína post-ejercicio optimiza la síntesis proteica muscular durante las siguientes 3-4 horas.",
-      gradientFrom: "#3B82F6",
-      gradientTo: "#1E40AF"
+      gradientFrom: "#f59e0b",
+      gradientTo: "#d97706"
     },
     {
       title: "Creatina",
@@ -71,8 +72,8 @@ export default function SuplementosPage() {
         "Puede incrementar la masa muscular magra"
       ],
       science: "Más de 1000 estudios respaldan la eficacia de 3-5g diarios de monohidrato de creatina para mejorar el rendimiento deportivo.",
-      gradientFrom: "#10B981",
-      gradientTo: "#059669"
+      gradientFrom: "#f59e0b",
+      gradientTo: "#d97706"
     },
     {
       title: "Quemadores de Grasa",
@@ -85,8 +86,8 @@ export default function SuplementosPage() {
         "Aumentan los niveles de energía y concentración"
       ],
       science: "Ingredientes como la cafeína, té verde y L-carnitina han demostrado científicamente incrementar el gasto energético y la movilización de grasas.",
-      gradientFrom: "#EF4444",
-      gradientTo: "#DC2626"
+      gradientFrom: "#f59e0b",
+      gradientTo: "#d97706"
     },
     {
       title: "BCAA / EAA",
@@ -99,8 +100,8 @@ export default function SuplementosPage() {
         "Disminuyen el dolor muscular post-ejercicio"
       ],
       science: "Los aminoácidos de cadena ramificada, especialmente la leucina, activan la vía mTOR, clave para la síntesis proteica.",
-      gradientFrom: "#8B5CF6",
-      gradientTo: "#7C3AED"
+      gradientFrom: "#f59e0b",
+      gradientTo: "#d97706"
     }
   ];
 
@@ -123,6 +124,24 @@ export default function SuplementosPage() {
     }
   };
 
+  const handleSolicitarCotizacion = () => {
+    const subject = encodeURIComponent("Consulta sobre Suplementos - Muscle Up GYM");
+    const body = encodeURIComponent(`Hola,
+
+Me interesa recibir más información sobre los suplementos que manejan en Muscle Up GYM.
+
+Específicamente me gustaría conocer:
+- Marcas disponibles
+- Precios y promociones
+- Asesoría personalizada sobre suplementación
+
+¡Espero su respuesta!
+
+Saludos.`);
+    
+    window.location.href = `mailto:administracion@muscleupgym.com.mx?subject=${subject}&body=${body}`;
+  };
+
   return (
     <motion.section 
       initial="hidden"
@@ -131,7 +150,9 @@ export default function SuplementosPage() {
       style={{
         maxWidth: '80rem',
         margin: '0 auto',
-        padding: '1.5rem'
+        padding: '1.5rem',
+        backgroundColor: '#000000',
+        minHeight: '100vh'
       }}
     >
       {/* Header */}
@@ -149,7 +170,7 @@ export default function SuplementosPage() {
           style={{
             fontSize: '3.5rem',
             fontWeight: 'bold',
-            background: 'linear-gradient(135deg, #3B82F6, #1E40AF)',
+            background: 'linear-gradient(135deg, #ffffff, #f59e0b)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -164,9 +185,10 @@ export default function SuplementosPage() {
           transition={{ duration: 0.6, delay: 0.3 }}
           style={{
             fontSize: '1.25rem',
-            color: '#6B7280',
+            color: '#f59e0b',
             maxWidth: '48rem',
-            margin: '0 auto'
+            margin: '0 auto',
+            opacity: 0.8
           }}
         >
           Las mejores marcas y productos para optimizar tus resultados
@@ -188,7 +210,7 @@ export default function SuplementosPage() {
             fontWeight: '600',
             textAlign: 'center',
             marginBottom: '2rem',
-            color: '#1F2937'
+            color: '#ffffff'
           }}
         >
           Marcas de Confianza
@@ -211,7 +233,7 @@ export default function SuplementosPage() {
               top: 0,
               width: '6rem',
               height: '100%',
-              background: 'linear-gradient(to right, white, transparent)',
+              background: 'linear-gradient(to right, #000000, transparent)',
               zIndex: 10,
               pointerEvents: 'none'
             }}
@@ -223,7 +245,7 @@ export default function SuplementosPage() {
               top: 0,
               width: '6rem',
               height: '100%',
-              background: 'linear-gradient(to left, white, transparent)',
+              background: 'linear-gradient(to left, #000000, transparent)',
               zIndex: 10,
               pointerEvents: 'none'
             }}
@@ -250,10 +272,11 @@ export default function SuplementosPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: 'white',
+                  backgroundColor: '#27272a',
                   borderRadius: '0.5rem',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  cursor: 'pointer'
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                  cursor: 'pointer',
+                  border: '1px solid #3f3f46'
                 }}
               >
                 <img
@@ -283,10 +306,11 @@ export default function SuplementosPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: 'white',
+                  backgroundColor: '#27272a',
                   borderRadius: '0.5rem',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  cursor: 'pointer'
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                  cursor: 'pointer',
+                  border: '1px solid #3f3f46'
                 }}
               >
                 <img
@@ -321,7 +345,7 @@ export default function SuplementosPage() {
             style={{
               fontSize: '2.5rem',
               fontWeight: 'bold',
-              color: '#1F2937',
+              color: '#ffffff',
               marginBottom: '1rem'
             }}
           >
@@ -330,9 +354,10 @@ export default function SuplementosPage() {
           <motion.p
             style={{
               fontSize: '1.125rem',
-              color: '#6B7280',
+              color: '#f59e0b',
               maxWidth: '48rem',
-              margin: '0 auto'
+              margin: '0 auto',
+              opacity: 0.8
             }}
           >
             Información respaldada por estudios científicos sobre los suplementos más efectivos
@@ -353,15 +378,15 @@ export default function SuplementosPage() {
               variants={itemVariants}
               whileHover={{ 
                 scale: 1.03,
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                boxShadow: '0 25px 50px -12px rgba(245, 158, 11, 0.25)'
               }}
               transition={{ type: "spring", stiffness: 300 }}
               style={{
-                backgroundColor: 'white',
+                backgroundColor: '#18181b',
                 borderRadius: '1rem',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
                 padding: '2rem',
-                border: '1px solid #F3F4F6',
+                border: '1px solid #3f3f46',
                 cursor: 'pointer'
               }}
             >
@@ -397,7 +422,7 @@ export default function SuplementosPage() {
                 </motion.div>
                 <motion.p
                   style={{
-                    color: '#6B7280',
+                    color: '#a1a1aa',
                     fontWeight: '500'
                   }}
                 >
@@ -412,7 +437,7 @@ export default function SuplementosPage() {
                   style={{
                     fontSize: '1.125rem',
                     fontWeight: '600',
-                    color: '#1F2937',
+                    color: '#ffffff',
                     marginBottom: '0.75rem'
                   }}
                 >
@@ -433,7 +458,7 @@ export default function SuplementosPage() {
                     >
                       <motion.span
                         style={{
-                          color: '#3B82F6',
+                          color: '#f59e0b',
                           marginRight: '0.5rem',
                           fontWeight: 'bold',
                           fontSize: '1.2rem'
@@ -441,16 +466,16 @@ export default function SuplementosPage() {
                       >
                         •
                       </motion.span>
-                      <span style={{ color: '#374151' }}>{benefit}</span>
+                      <span style={{ color: '#d4d4d8' }}>{benefit}</span>
                     </motion.li>
                   ))}
                 </motion.ul>
               </motion.div>
 
               <motion.div
-                whileHover={{ backgroundColor: '#F9FAFB' }}
+                whileHover={{ backgroundColor: '#27272a' }}
                 style={{
-                  backgroundColor: '#F9FAFB',
+                  backgroundColor: '#27272a',
                   borderRadius: '0.5rem',
                   padding: '1rem',
                   transition: 'background-color 0.3s ease'
@@ -460,7 +485,7 @@ export default function SuplementosPage() {
                   style={{
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    color: '#1F2937',
+                    color: '#ffffff',
                     marginBottom: '0.5rem',
                     display: 'flex',
                     alignItems: 'center'
@@ -478,7 +503,7 @@ export default function SuplementosPage() {
                 <motion.p
                   style={{
                     fontSize: '0.875rem',
-                    color: '#6B7280',
+                    color: '#a1a1aa',
                     lineHeight: '1.6'
                   }}
                 >
@@ -496,7 +521,8 @@ export default function SuplementosPage() {
         whileHover={{ scale: 1.02 }}
         style={{
           textAlign: 'center',
-          background: 'linear-gradient(135deg, #3B82F6, #1E40AF)',
+          background: 'linear-gradient(135deg, #27272a, #18181b)',
+          border: '1px solid #3f3f46',
           borderRadius: '1rem',
           padding: '2rem',
           color: 'white'
@@ -506,7 +532,8 @@ export default function SuplementosPage() {
           style={{
             fontSize: '2rem',
             fontWeight: 'bold',
-            marginBottom: '1rem'
+            marginBottom: '1rem',
+            color: '#ffffff'
           }}
         >
           ¿Listo para optimizar tus resultados?
@@ -515,32 +542,72 @@ export default function SuplementosPage() {
           style={{
             fontSize: '1.125rem',
             marginBottom: '1.5rem',
-            opacity: 0.9
+            color: '#a1a1aa'
           }}
         >
           Contáctanos para una asesoría personalizada sobre suplementación
         </motion.p>
         <motion.button
+          onClick={handleSolicitarCotizacion}
           whileHover={{ 
             scale: 1.05,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 20px 25px -5px rgba(245, 158, 11, 0.3)'
           }}
           whileTap={{ scale: 0.95 }}
           style={{
-            backgroundColor: 'white',
-            color: '#3B82F6',
+            backgroundColor: '#f59e0b',
+            color: '#000000',
             fontWeight: 'bold',
             padding: '0.75rem 2rem',
             borderRadius: '0.5rem',
             border: 'none',
             cursor: 'pointer',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 10px 15px -3px rgba(245, 158, 11, 0.3)',
             transition: 'all 0.3s ease'
           }}
         >
-          Solicitar Cotización
+          📧 Solicitar Cotización
         </motion.button>
+        <motion.p
+          style={{
+            fontSize: '0.875rem',
+            color: '#71717a',
+            marginTop: '1rem'
+          }}
+        >
+          Te redirigiremos a tu cliente de correo para contactar directamente
+        </motion.p>
       </motion.div>
+
+      {/* Partículas de fondo */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            style={{
+              position: 'absolute',
+              width: '2px',
+              height: '2px',
+              backgroundColor: '#f59e0b',
+              borderRadius: '50%',
+              opacity: 0.3,
+              left: `${15 + (i * 4) % 70}%`,
+              top: `${20 + (i * 7) % 60}%`,
+            }}
+            animate={{
+              y: [0, -20, 0],
+              opacity: [0.3, 0.7, 0.3],
+              scale: [1, 1.5, 1],
+            }}
+            transition={{
+              duration: 3 + (i % 3) * 0.5,
+              repeat: Infinity,
+              delay: (i % 5) * 0.4,
+              ease: "easeInOut"
+            }}
+          />
+        ))}
+      </div>
     </motion.section>
   );
 }
