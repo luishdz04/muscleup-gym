@@ -21,20 +21,18 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   useEffect(() => {
     const loadPDFLib = async () => {
       try {
-        // Importar tanto la biblioteca principal como el worker
+        // Importar la biblioteca principal
         const pdfjsLib = await import('pdfjs-dist');
         
-        // Utilizar el worker incluido en el paquete instalado
-        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
-        
-        // Configurar el worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+        // Configurar el worker usando una CDN pública de una versión estable
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 
+          'https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
         
         setPdfLib(pdfjsLib);
       } catch (error) {
         console.error('Error loading PDF.js:', error);
         setError('Error al cargar el visor de PDF');
-        setErrorDetails('No se pudo cargar la biblioteca PDF.js');
+        setErrorDetails(String(error));
       }
     };
 
@@ -66,8 +64,13 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       
       if (!response.ok) {
         console.error('Error en respuesta API:', response.status);
-        const errorText = await response.text();
-        console.error('Detalles del error:', errorText);
+        let errorText;
+        try {
+          errorText = await response.text();
+          console.error('Detalles del error:', errorText);
+        } catch (e) {
+          errorText = 'No se pudo obtener detalles del error';
+        }
         
         let errorData;
         try {
@@ -86,39 +89,44 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         throw new Error('El archivo PDF está vacío');
       }
       
-      // Cargar documento PDF
-      const loadingTask = pdfLib.getDocument(arrayBuffer);
-      const pdf = await loadingTask.promise;
-      
-      setNumPages(pdf.numPages);
-      
-      // Renderizar página actual
-      const page = await pdf.getPage(currentPage);
-      const viewport = page.getViewport({ scale: 1.2 });
-      
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        throw new Error('Canvas no disponible');
+      // Cargar documento PDF con opciones y manejo de errores mejorado
+      try {
+        const loadingTask = pdfLib.getDocument({data: arrayBuffer});
+        const pdf = await loadingTask.promise;
+        
+        setNumPages(pdf.numPages);
+        
+        // Renderizar página actual
+        const page = await pdf.getPage(currentPage);
+        const viewport = page.getViewport({ scale: 1.2 });
+        
+        const canvas = canvasRef.current;
+        if (!canvas) {
+          throw new Error('Canvas no disponible');
+        }
+        
+        const context = canvas.getContext('2d');
+        if (!context) {
+          throw new Error('Contexto 2D no disponible');
+        }
+        
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        // Renderizar
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+        
+        // Agregar watermark
+        addWatermark(context, canvas.width, canvas.height);
+        
+        setLoading(false);
+      } catch (pdfError) {
+        console.error('Error procesando PDF:', pdfError);
+        throw new Error(`Error procesando PDF: ${pdfError.message || 'Error desconocido'}`);
       }
-      
-      const context = canvas.getContext('2d');
-      if (!context) {
-        throw new Error('Contexto 2D no disponible');
-      }
-      
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      
-      // Renderizar
-      await page.render({
-        canvasContext: context,
-        viewport: viewport
-      }).promise;
-      
-      // Agregar watermark
-      addWatermark(context, canvas.width, canvas.height);
-      
-      setLoading(false);
     } catch (error: any) {
       console.error('Error cargando PDF:', error);
       setError('Error al cargar el PDF');
