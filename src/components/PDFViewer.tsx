@@ -1,29 +1,50 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configurar worker - URL del CDN
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
+import dynamic from 'next/dynamic';
 
 interface PDFViewerProps {
   filename: string;
   password: string;
 }
 
-export default function PDFViewer({ filename, password }: PDFViewerProps) {
+// Componente interno que usa PDF.js
+function PDFViewerCore({ filename, password }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfLib, setPdfLib] = useState<any>(null);
+
+  // Cargar PDF.js dinámicamente solo en el cliente
+  useEffect(() => {
+    const loadPDFLib = async () => {
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        
+        // Configurar worker desde CDN
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        setPdfLib(pdfjsLib);
+      } catch (error) {
+        console.error('Error loading PDF.js:', error);
+        setError('Error al cargar el visor de PDF');
+      }
+    };
+
+    loadPDFLib();
+  }, []);
 
   useEffect(() => {
-    loadPDF();
-  }, [filename, currentPage]);
+    if (pdfLib) {
+      loadPDF();
+    }
+  }, [pdfLib, filename, currentPage]);
 
   const loadPDF = async () => {
+    if (!pdfLib) return;
+    
     try {
       setLoading(true);
       setError(null);
@@ -40,7 +61,7 @@ export default function PDFViewer({ filename, password }: PDFViewerProps) {
       }
       
       const arrayBuffer = await response.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      const pdf = await pdfLib.getDocument(arrayBuffer).promise;
       
       setNumPages(pdf.numPages);
       
@@ -78,7 +99,7 @@ export default function PDFViewer({ filename, password }: PDFViewerProps) {
     context.save();
     context.globalAlpha = 0.1;
     context.font = '20px Arial';
-    context.fillStyle = '#FFCC00'; // Usar el color amarillo corporativo
+    context.fillStyle = '#FFCC00';
     context.textAlign = 'center';
     context.translate(width/2, height/2);
     context.rotate(-Math.PI/4);
@@ -90,7 +111,6 @@ export default function PDFViewer({ filename, password }: PDFViewerProps) {
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Deshabilitar F12, Ctrl+Shift+I, Ctrl+U, PrtScn
       if (
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && e.key === 'I') ||
@@ -110,6 +130,14 @@ export default function PDFViewer({ filename, password }: PDFViewerProps) {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  if (!pdfLib) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="text-[#FFCC00] text-xl">Inicializando visor PDF...</div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -181,3 +209,15 @@ export default function PDFViewer({ filename, password }: PDFViewerProps) {
     </div>
   );
 }
+
+// Exportar con dynamic import para evitar SSR
+const PDFViewer = dynamic(() => Promise.resolve(PDFViewerCore), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center items-center py-20 bg-black min-h-screen">
+      <div className="text-[#FFCC00] text-xl">Cargando visor...</div>
+    </div>
+  )
+});
+
+export default PDFViewer;
