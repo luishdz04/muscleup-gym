@@ -9,7 +9,7 @@ interface PDFViewerProps {
   password: string;
 }
 
-// Componente interno que usa PDF.js siguiendo los ejemplos oficiales de Mozilla
+// Componente interno que usa PDF.js
 function PDFViewerCore({ filename, password }: PDFViewerProps) {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -18,8 +18,9 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [scale, setScale] = useState<number>(1.0);
-  const [pdfLib, setPdfLib] = useState<any>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [pageRendering, setPageRendering] = useState<boolean>(false);
+  const pageNumPending = useRef<number | null>(null);
 
   // Función para cerrar sesión
   const handleLogout = () => {
@@ -27,36 +28,23 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
     router.push('/rutinas');
   };
 
-  // Cargar PDF.js siguiendo los ejemplos oficiales
+  // Inicializar PDF.js y cargar el documento
   useEffect(() => {
-    const loadPDFJS = async () => {
+    let mounted = true;
+    
+    const initPdfJs = async () => {
       try {
-        // Importar la biblioteca principal
+        // Importar PDF.js
         const pdfjsLib = await import('pdfjs-dist');
         
-        // Configurar el worker (siguiendo el enfoque de los ejemplos de Mozilla)
-        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs');
-        pdfjsLib.GlobalWorkerOptions.workerPort = pdfjsWorker;
+        // Configurar el worker - esta es la forma correcta para Next.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
         
-        setPdfLib(pdfjsLib);
-      } catch (error) {
-        console.error('Error al cargar PDF.js:', error);
-        setError('No se pudo inicializar el visor de PDF');
-      }
-    };
-
-    loadPDFJS();
-  }, []);
-
-  // Cargar el documento PDF cuando pdfLib esté disponible
-  useEffect(() => {
-    if (!pdfLib) return;
-
-    const loadDocument = async () => {
-      try {
+        if (!mounted) return;
+        
+        // Cargar el documento PDF
         setLoading(true);
         
-        // Obtener el PDF a través de la API
         const response = await fetch(`/api/pdf/${encodeURIComponent(filename)}`, {
           headers: { 'Authorization': `Bearer ${password}` }
         });
@@ -67,112 +55,124 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         
         const pdfData = await response.arrayBuffer();
         
-        // Siguiendo el ejemplo básico de Mozilla para cargar un documento
-        const loadingTask = pdfLib.getDocument({
+        // Cargar el documento
+        const loadingTask = pdfjsLib.getDocument({
           data: pdfData,
           cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
           cMapPacked: true,
         });
         
-        loadingTask.promise.then(
-          (doc) => {
-            setPdfDoc(doc);
-            setNumPages(doc.numPages);
-            setLoading(false);
-          },
-          (reason) => {
-            setError(`Error al cargar el PDF: ${reason}`);
-            setLoading(false);
-          }
-        );
-      } catch (err) {
-        console.error('Error al cargar el documento PDF:', err);
-        setError(`No se pudo cargar el documento PDF. ${err instanceof Error ? err.message : ''}`);
+        const pdfDocument = await loadingTask.promise;
+        
+        if (!mounted) return;
+        
+        setPdfDoc(pdfDocument);
+        setNumPages(pdfDocument.numPages);
         setLoading(false);
+        
+      } catch (err) {
+        console.error('Error al inicializar PDF.js:', err);
+        if (mounted) {
+          setError(`Error al cargar el PDF: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+          setLoading(false);
+        }
       }
     };
+    
+    initPdfJs();
+    
+    return () => {
+      mounted = false;
+      // Limpiar el documento PDF si existe
+      if (pdfDoc) {
+        pdfDoc.destroy();
+      }
+    };
+  }, [filename, password]);
 
-    loadDocument();
-  }, [pdfLib, filename, password]);
-
-  // Renderizar la página actual cuando cambie
-  useEffect(() => {
+  // Función para renderizar una página
+  const renderPage = async (pageNum: number) => {
     if (!pdfDoc || !canvasRef.current) return;
     
-    const renderCurrentPage = async () => {
-      try {
-        setLoading(true);
-        
-        // Obtener la página siguiendo el ejemplo oficial
-        pdfDoc.getPage(currentPage).then((page) => {
-          const viewport = page.getViewport({ scale });
-          
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          
-          const context = canvas.getContext('2d');
-          if (!context) return;
-          
-          // Siguiendo el ejemplo oficial de Mozilla para el renderizado
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          
-          // Añadir soporte para pantallas HiDPI como en los ejemplos oficiales
-          const outputScale = window.devicePixelRatio || 1;
-          
-          if (outputScale > 1) {
-            canvas.width = Math.floor(viewport.width * outputScale);
-            canvas.height = Math.floor(viewport.height * outputScale);
-            canvas.style.width = Math.floor(viewport.width) + 'px';
-            canvas.style.height = Math.floor(viewport.height) + 'px';
-            
-            // Escalar el contexto para coincidir con la densidad de píxeles
-            context.scale(outputScale, outputScale);
-          }
-          
-          // Configuración de renderizado estándar
-          const renderContext = {
-            canvasContext: context,
-            viewport: viewport,
-            enableWebGL: true,
-            renderInteractiveForms: true
-          };
-          
-          // Renderizar la página
-          const renderTask = page.render(renderContext);
-          renderTask.promise.then(
-            () => {
-              // Añadir marca de agua
-              addWatermark(context, viewport.width, viewport.height);
-              setLoading(false);
-            },
-            (error) => {
-              console.error('Error al renderizar la página:', error);
-              setError(`Error al mostrar la página ${currentPage}`);
-              setLoading(false);
-            }
-          );
-        });
-      } catch (err) {
-        console.error('Error al renderizar la página:', err);
-        setError(`Error al mostrar la página ${currentPage}`);
-        setLoading(false);
-      }
-    };
+    setPageRendering(true);
     
-    renderCurrentPage();
+    try {
+      const page = await pdfDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+      
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      if (!context) {
+        throw new Error('No se pudo obtener el contexto del canvas');
+      }
+      
+      // Soporte para pantallas de alta resolución
+      const outputScale = window.devicePixelRatio || 1;
+      
+      canvas.width = Math.floor(viewport.width * outputScale);
+      canvas.height = Math.floor(viewport.height * outputScale);
+      canvas.style.width = Math.floor(viewport.width) + 'px';
+      canvas.style.height = Math.floor(viewport.height) + 'px';
+      
+      const transform = outputScale !== 1 
+        ? [outputScale, 0, 0, outputScale, 0, 0] 
+        : null;
+      
+      // Renderizar la página
+      const renderContext = {
+        canvasContext: context,
+        transform: transform,
+        viewport: viewport,
+      };
+      
+      await page.render(renderContext).promise;
+      
+      // Añadir marca de agua
+      addWatermark(context, canvas.width, canvas.height, outputScale);
+      
+      setPageRendering(false);
+      
+      // Si hay una página pendiente, renderizarla
+      if (pageNumPending.current !== null) {
+        const pendingPage = pageNumPending.current;
+        pageNumPending.current = null;
+        renderPage(pendingPage);
+      }
+      
+    } catch (err) {
+      console.error('Error al renderizar la página:', err);
+      setError(`Error al mostrar la página ${pageNum}`);
+      setPageRendering(false);
+    }
+  };
+
+  // Renderizar cuando cambie la página o la escala
+  useEffect(() => {
+    if (!pdfDoc) return;
+    
+    if (pageRendering) {
+      pageNumPending.current = currentPage;
+    } else {
+      renderPage(currentPage);
+    }
   }, [pdfDoc, currentPage, scale]);
 
   // Añadir marca de agua
-  const addWatermark = (context: CanvasRenderingContext2D, width: number, height: number) => {
+  const addWatermark = (
+    context: CanvasRenderingContext2D, 
+    width: number, 
+    height: number,
+    scale: number
+  ) => {
     context.save();
     context.globalAlpha = 0.1;
-    const fontSize = Math.floor(width/25);
+    const fontSize = Math.floor((width / scale) / 25);
     context.font = `${fontSize}px Arial`;
     context.fillStyle = '#FFCC00';
     context.textAlign = 'center';
-    context.translate(width/2, height/2);
-    context.rotate(-Math.PI/4);
+    context.translate(width / 2, height / 2);
+    context.rotate(-Math.PI / 4);
     context.fillText(`Muscle Up Gym - ${new Date().toLocaleDateString()}`, 0, 0);
     context.restore();
   };
@@ -198,13 +198,24 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
 
   // Reintentar en caso de error
   const retry = () => {
-    if (scale > 0.8) {
-      setScale(0.8);
-    }
     setError(null);
-    setLoading(true);
     window.location.reload();
   };
+
+  // Ajustar escala al tamaño de la ventana
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setScale(0.8);
+      } else {
+        setScale(1.0);
+      }
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Mostrar mensajes de error si los hay
   if (error) {
@@ -259,8 +270,8 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
           <div className="flex items-center space-x-2 w-full md:w-auto">
             <button
               onClick={prevPage}
-              disabled={currentPage <= 1 || loading}
-              className="px-2 py-1 sm:px-3 sm:py-1.5 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors text-xs sm:text-sm"
+              disabled={currentPage <= 1 || loading || pageRendering}
+              className="px-2 py-1 sm:px-3 sm:py-1.5 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors text-xs sm:text-sm disabled:cursor-not-allowed"
             >
               ← Anterior
             </button>
@@ -271,8 +282,8 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
             
             <button
               onClick={nextPage}
-              disabled={currentPage >= numPages || loading}
-              className="px-2 py-1 sm:px-3 sm:py-1.5 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors text-xs sm:text-sm"
+              disabled={currentPage >= numPages || loading || pageRendering}
+              className="px-2 py-1 sm:px-3 sm:py-1.5 bg-[#FFCC00] text-black rounded-lg disabled:opacity-50 font-bold hover:bg-[#FFD700] transition-colors text-xs sm:text-sm disabled:cursor-not-allowed"
             >
               Siguiente →
             </button>
@@ -281,7 +292,8 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
           <div className="flex items-center space-x-2 mt-2 md:mt-0 w-full md:w-auto justify-center">
             <button
               onClick={() => changeZoom(Math.max(0.5, scale - 0.2))}
-              className="px-2 py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10 text-sm"
+              disabled={loading || pageRendering}
+              className="px-2 py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="text-lg">−</span>
             </button>
@@ -292,7 +304,8 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
             
             <button
               onClick={() => changeZoom(Math.min(2.5, scale + 0.2))}
-              className="px-2 py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10 text-sm"
+              disabled={loading || pageRendering}
+              className="px-2 py-1 bg-black border border-[#FFCC00] text-[#FFCC00] rounded hover:bg-[#FFCC00]/10 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="text-lg">+</span>
             </button>
@@ -302,11 +315,13 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       
       {/* Área del PDF */}
       <div className="pt-[110px] pb-6 px-1 sm:px-2 md:px-4">
-        {loading && (
+        {(loading || pageRendering) && (
           <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/80">
             <div className="flex flex-col items-center">
               <div className="w-12 h-12 border-t-4 border-b-4 border-yellow-400 rounded-full animate-spin mb-4"></div>
-              <p className="text-[#FFCC00] text-base sm:text-xl">Cargando documento...</p>
+              <p className="text-[#FFCC00] text-base sm:text-xl">
+                {loading ? 'Cargando documento...' : 'Renderizando página...'}
+              </p>
             </div>
           </div>
         )}
@@ -316,7 +331,8 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
           <div className="bg-white rounded-lg shadow-lg">
             <canvas 
               ref={canvasRef}
-              className="block"
+              className="block max-w-full h-auto"
+              style={{ touchAction: 'manipulation' }}
             />
           </div>
         </div>
