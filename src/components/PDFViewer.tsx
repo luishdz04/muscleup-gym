@@ -24,8 +24,8 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         const pdfjsLib = await import('pdfjs-dist');
         
         // Configurar worker desde CDN
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+     pdfjsLib.GlobalWorkerOptions.workerSrc = 
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.js';
         
         setPdfLib(pdfjsLib);
       } catch (error) {
