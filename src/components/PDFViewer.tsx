@@ -21,18 +21,18 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   useEffect(() => {
     const loadPDFLib = async () => {
       try {
-        // Importar la biblioteca principal
+        // Importar la biblioteca principal usando dynamic import
         const pdfjsLib = await import('pdfjs-dist');
         
-        // Configurar el worker usando una CDN pública de una versión estable
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 
-          'https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
+        // Usar la CDN correcta para la versión 5.3.31
+        // Nota: si pdf.min.mjs existe, el worker debería ser pdf.worker.min.mjs o pdf.worker.min.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs';
         
         setPdfLib(pdfjsLib);
       } catch (error) {
         console.error('Error loading PDF.js:', error);
         setError('Error al cargar el visor de PDF');
-        setErrorDetails(String(error));
+        setErrorDetails(`Detalle: ${error instanceof Error ? error.message : String(error)}`);
       }
     };
 
@@ -72,14 +72,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
           errorText = 'No se pudo obtener detalles del error';
         }
         
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch (e) {
-          errorData = { error: 'Error desconocido' };
-        }
-        
-        throw new Error(`Error del servidor: ${response.status} - ${errorData.error || 'Error desconocido'}`);
+        throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
       }
       
       const arrayBuffer = await response.arrayBuffer();
@@ -91,6 +84,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       
       // Cargar documento PDF con opciones y manejo de errores mejorado
       try {
+        // Intentamos cargar el PDF con la propiedad data explícita
         const loadingTask = pdfLib.getDocument({data: arrayBuffer});
         const pdf = await loadingTask.promise;
         
@@ -125,7 +119,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         setLoading(false);
       } catch (pdfError) {
         console.error('Error procesando PDF:', pdfError);
-        throw new Error(`Error procesando PDF: ${pdfError.message || 'Error desconocido'}`);
+        throw new Error(`Error procesando PDF: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`);
       }
     } catch (error: any) {
       console.error('Error cargando PDF:', error);
