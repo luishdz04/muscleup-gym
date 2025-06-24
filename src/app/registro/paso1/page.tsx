@@ -684,8 +684,8 @@ const RegistroPage = () => {
      <Image
   src="/logo.png"
   alt="Muscle Up Gym"
-  width={144}
-  height={144}
+  width={300}
+  height={300}
   priority
   className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 object-contain"
 />
