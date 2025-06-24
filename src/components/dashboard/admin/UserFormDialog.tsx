@@ -130,22 +130,20 @@ const darkProTokens = {
   borderHover: '#FFCC00',
   borderActive: '#E6B800',
   
-  // ✅ AGREGAR ESTOS COLORES DE ROLES QUE FALTAN
-  roleModerator: '#9C27B0',  // Púrpura para moderador
+  // Roles
+  roleModerator: '#9C27B0',
   roleModeratorHover: '#7B1FA2',
-  roleStaff: '#FF9800',      // Naranja para staff
+  roleStaff: '#FF9800',
   roleStaffHover: '#F57C00',
-  roleAdmin: '#F44336',      // Rojo para admin
+  roleAdmin: '#F44336',
   roleAdminHover: '#D32F2F',
   
-  // ✅ AGREGAR TAMBIÉN LOS FONDOS DE NOTIFICACIONES
+  // Notifications
   notifSuccessBg: 'rgba(56,142,60,0.1)',
   notifErrorBg: 'rgba(211,47,47,0.1)', 
   notifWarningBg: 'rgba(255,179,0,0.1)',
   notifInfoBg: 'rgba(25,118,210,0.1)'
 };
-
-
 
 // ✅ INTERFACES CORREGIDAS Y MEJORADAS
 interface User {
@@ -166,7 +164,7 @@ interface User {
   whatsappSentAt?: string;
   signatureUrl?: string;
   contractPdfUrl?: string;
-  fingerprint: boolean; // ✅ SOLO BOOLEAN
+  fingerprint: boolean;
 }
 
 // ✅ NUEVA INTERFAZ PARA ESTADO DE HUELLA
@@ -245,12 +243,12 @@ interface DebugInfo {
 }
 
 // ✅ CONSTANTES MEJORADAS
-const WS_TIMEOUT = 15000; // 15 segundos en lugar de 45
+const WS_TIMEOUT = 15000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000;
-const VALID_FINGER_INDICES = Array.from({ length: 10 }, (_, i) => i); // 0-9
+const VALID_FINGER_INDICES = Array.from({ length: 10 }, (_, i) => i);
 
-// 🔧 FUNCIONES DE CONVERSIÓN (sin cambios)
+// 🔧 FUNCIONES DE CONVERSIÓN
 const convertMaritalStatusToCode = (status: string): string => {
   const statusMap: { [key: string]: string } = {
     'Soltero/a': 'soltero',
@@ -775,7 +773,7 @@ const deleteFingerprintFromF22Service = async (
             const deleteCommand: WebSocketMessage = {
               action: 'delete_user',
               device_user_id: deviceUserId,
-              userId: userId, // ✅ AGREGADO
+              userId: userId,
               source: 'frontend_userform',
               updated_by: 'luishdz04'
             };
@@ -850,7 +848,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const blobUrlsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
-  const savingRef = useRef(false); // ✅ NUEVO: Prevenir doble guardado
+  const savingRef = useRef(false);
   
   // 📊 ESTADOS PRINCIPALES CORREGIDOS
   const [formData, setFormData] = useState<User>({
@@ -865,7 +863,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     isMinor: false,
     emailSent: false,
     whatsappSent: false,
-    fingerprint: false // ✅ SOLO BOOLEAN
+    fingerprint: false
   });
   
   // ✅ ESTADO DE HUELLA MEJORADO
@@ -1032,7 +1030,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     console.log('🧹 [CLEANUP] Todas las Blob URLs limpiadas');
   }, []);
 
-  // 📥 FUNCIÓN MEJORADA PARA DESCARGAR IMAGEN DESDE STORAGE
+  // ✅ FUNCIÓN CORREGIDA PARA DESCARGAR IMAGEN DESDE STORAGE
   const downloadImageFromStorage = async (
     fileName: string,
     userId: string,
@@ -1053,13 +1051,65 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     
     try {
       const supabase = createBrowserSupabaseClient();
-      const filePath = `${userId}/${fileName}`;
       
-      console.log(`📥 [DOWNLOAD] Descargando ${type} desde storage:`, filePath);
+      // ✅ PASO 1: Intentar usar URL pública directa (sin blob)
+      const publicUrlPath = `${userId}/${fileName}`;
+      const { data: publicUrlData } = supabase.storage
+        .from('user-files')
+        .getPublicUrl(publicUrlPath);
+      
+      if (publicUrlData?.publicUrl) {
+        console.log(`📸 [STORAGE-URL] Usando URL pública para ${type}:`, publicUrlData.publicUrl);
+        
+        // ✅ VERIFICAR QUE LA URL SEA ACCESIBLE
+        try {
+          const testResponse = await fetch(publicUrlData.publicUrl, { method: 'HEAD' });
+          if (testResponse.ok) {
+            // ✅ URL pública válida - NO crear blob
+            setter(prev => ({
+              ...prev,
+              url: publicUrlData.publicUrl,
+              isLoading: false,
+              isValid: true,
+              error: null,
+              isFromStorage: true
+            }));
+
+            // ✅ USAR DIRECTAMENTE PARA PREVIEW (sin blob)
+            if (type === 'profile') {
+              setProfilePicturePreview(publicUrlData.publicUrl);
+              // ✅ SOLO actualizar formData con URL pública válida
+              setFormData(prev => ({ 
+                ...prev, 
+                profilePictureUrl: publicUrlData.publicUrl 
+              }));
+            } else {
+              setSignaturePreview(publicUrlData.publicUrl);
+              setFormData(prev => ({ 
+                ...prev, 
+                signatureUrl: publicUrlData.publicUrl 
+              }));
+            }
+            
+            setDebugInfo(prev => ({
+              ...prev,
+              [type === 'profile' ? 'profileUrl' : 'signatureUrl']: publicUrlData.publicUrl
+            }));
+            
+            console.log(`✅ [STORAGE-URL] ${type} cargado con URL pública`);
+            return;
+          }
+        } catch (testError) {
+          console.warn(`⚠️ [STORAGE-URL] URL pública no accesible para ${type}, intentando descarga`);
+        }
+      }
+      
+      // ✅ PASO 2: FALLBACK - Descargar archivo y crear blob
+      console.log(`🔄 [STORAGE-DOWNLOAD] Descargando ${type} como fallback...`);
       
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('user-files')
-        .download(filePath);
+        .download(publicUrlPath);
       
       if (downloadError || !fileData) {
         throw new Error(`Error descargando archivo: ${downloadError?.message || 'Archivo no encontrado'}`);
@@ -1082,12 +1132,13 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         isFromStorage: true
       }));
 
+      // ✅ SOLO para preview, NO para formData principal (evita blob en dashboard)
       if (type === 'profile') {
         setProfilePicturePreview(objectUrl);
-        setFormData(prev => ({ ...prev, profilePictureUrl: objectUrl }));
+        // ✅ NO asignar blob URL al formData principal
       } else {
         setSignaturePreview(objectUrl);
-        setFormData(prev => ({ ...prev, signatureUrl: objectUrl }));
+        // ✅ NO asignar blob URL al formData principal
       }
       
       setDebugInfo(prev => ({
@@ -1095,12 +1146,12 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         [type === 'profile' ? 'profileUrl' : 'signatureUrl']: objectUrl
       }));
       
-      console.log(`✅ [DOWNLOAD] ${type} descargado exitosamente`);
+      console.log(`✅ [STORAGE-DOWNLOAD] ${type} descargado como blob (fallback)`);
       
     } catch (error: any) {
       if (!mountedRef.current) return;
       
-      console.error(`❌ [DOWNLOAD] Error descargando ${type}:`, error);
+      console.error(`❌ [STORAGE] Error cargando ${type}:`, error);
       
       setter(prev => ({
         ...prev,
@@ -1118,13 +1169,40 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     
     try {
       const supabase = createBrowserSupabaseClient();
-      const filePath = `${userId}/${fileName}`;
       
-      console.log(`📥 [PDF] Descargando contrato desde storage:`, filePath);
+      // ✅ INTENTAR URL PÚBLICA PRIMERO
+      const publicUrlPath = `${userId}/${fileName}`;
+      const { data: publicUrlData } = supabase.storage
+        .from('user-files')
+        .getPublicUrl(publicUrlPath);
+      
+      if (publicUrlData?.publicUrl) {
+        console.log(`📄 [PDF-URL] Usando URL pública para contrato:`, publicUrlData.publicUrl);
+        
+        // ✅ USAR URL PÚBLICA DIRECTAMENTE
+        setFormData(prev => ({ ...prev, contractPdfUrl: publicUrlData.publicUrl }));
+        
+        const timestamp = fileName.match(/contrato-(\d+)\.pdf$/);
+        if (timestamp) {
+          const date = new Date(parseInt(timestamp[1]));
+          setContractLastUpdated(date.toISOString());
+        }
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          contractUrl: publicUrlData.publicUrl
+        }));
+        
+        console.log(`✅ [PDF-URL] Contrato cargado con URL pública`);
+        return;
+      }
+      
+      // ✅ FALLBACK: Descargar si es necesario
+      console.log(`🔄 [PDF-DOWNLOAD] Descargando contrato como fallback...`);
       
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('user-files')
-        .download(filePath);
+        .download(publicUrlPath);
       
       if (downloadError || !fileData) {
         throw new Error(`Error descargando PDF: ${downloadError?.message || 'Archivo no encontrado'}`);
@@ -1151,14 +1229,14 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         contractUrl: objectUrl
       }));
       
-      console.log(`✅ [PDF] Contrato descargado exitosamente`);
+      console.log(`✅ [PDF-DOWNLOAD] Contrato descargado como blob (fallback)`);
       
     } catch (error: any) {
       console.log(`ℹ️ [PDF] No se pudo descargar el contrato (normal si no existe):`, error.message);
     }
   };
 
-    // 📁 FUNCIÓN PARA CARGAR ARCHIVOS EXISTENTES
+  // 📁 FUNCIÓN PARA CARGAR ARCHIVOS EXISTENTES
   const loadExistingFiles = async (userId: string) => {
     if (!mountedRef.current || initializedRef.current) return;
     
@@ -1748,7 +1826,8 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       // Limpiar input
       e.target.value = '';
     };
-      // 🎨 COMPONENTE AVATAR MEJORADO
+
+  // ✅ COMPONENTE AVATAR CORREGIDO
   const ProfileAvatar = () => {
     if (!initializationComplete) {
       return (
@@ -1765,9 +1844,28 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       );
     }
     
-    const currentImageUrl = profilePicture ? profilePicturePreview : 
-                           profileImage.isValid ? profileImage.url : 
-                           profilePicturePreview || undefined;
+    // ✅ LÓGICA CORREGIDA para URLs (evita blob URLs incorrectas)
+    const getCurrentImageUrl = () => {
+      // 1. Si hay archivo nuevo pendiente -> usar blob preview
+      if (profilePicture && profilePicturePreview) {
+        return profilePicturePreview;
+      }
+      
+      // 2. Si hay imagen válida del storage -> usar su URL
+      if (profileImage.isValid && profileImage.url) {
+        return profileImage.url;
+      }
+      
+      // 3. Si hay URL en formData (desde BD) y NO es blob -> usarla
+      if (formData.profilePictureUrl && !formData.profilePictureUrl.startsWith('blob:')) {
+        return formData.profilePictureUrl;
+      }
+      
+      // 4. Sin imagen
+      return undefined;
+    };
+    
+    const currentImageUrl = getCurrentImageUrl();
     
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
@@ -1914,7 +2012,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     );
   };
 
-  // 🖊️ COMPONENTE FIRMA MEJORADO
+  // ✅ COMPONENTE FIRMA CORREGIDO
   const SignatureDisplay = () => {
     if (!initializationComplete) {
       return (
@@ -1930,9 +2028,28 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       );
     }
     
-    const currentSignatureUrl = signature ? signaturePreview : 
-                               signatureImage.isValid ? signatureImage.url : 
-                               signaturePreview || undefined;
+    // ✅ LÓGICA CORREGIDA para URLs de firma
+    const getCurrentSignatureUrl = () => {
+      // 1. Si hay archivo nuevo pendiente -> usar blob preview
+      if (signature && signaturePreview) {
+        return signaturePreview;
+      }
+      
+      // 2. Si hay imagen válida del storage -> usar su URL
+      if (signatureImage.isValid && signatureImage.url) {
+        return signatureImage.url;
+      }
+      
+      // 3. Si hay URL en formData (desde BD) y NO es blob -> usarla
+      if (formData.signatureUrl && !formData.signatureUrl.startsWith('blob:')) {
+        return formData.signatureUrl;
+      }
+      
+      // 4. Sin firma
+      return undefined;
+    };
+    
+    const currentSignatureUrl = getCurrentSignatureUrl();
     
     if (currentSignatureUrl) {
       return (
@@ -2740,7 +2857,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
 
-    // 🔧 MANEJADORES DE EVENTOS MEJORADOS
+  // 🔧 MANEJADORES DE EVENTOS MEJORADOS
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name) {
@@ -3093,7 +3210,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
 
-  // 🔄 useEffect PRINCIPAL PARA INICIALIZACIÓN
+  // ✅ useEffect PRINCIPAL PARA INICIALIZACIÓN CORREGIDO
   useEffect(() => {
     if (!open) {
       initializedRef.current = false;
@@ -3197,6 +3314,22 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         setBirthDate(dayjs(user.birthDate));
       }
       
+      // ✅ VERIFICACIÓN DE ROL CORREGIDA
+      const userRole = userData?.rol || user?.role || user?.userType || '';
+      const isCliente = userRole.toLowerCase() === 'cliente' || 
+                        userRole.toLowerCase() === 'client' ||
+                        userRole === 'cliente';
+
+      console.log('🔍 [ROL-DEBUG] Verificando rol de usuario:', {
+        userData_rol: userData?.rol,
+        user_rol: user?.rol,
+        user_role: user?.role,
+        user_userType: user?.userType,
+        userRole,
+        isCliente,
+        userId: user.id
+      });
+      
       // Actualizar estado de huella si existe
       if (user.fingerprint) {
         setFingerprintState(prev => ({
@@ -3205,8 +3338,18 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         }));
       }
       
-      // Cargar datos relacionados y archivos
-      await fetchRelatedData(user.id);
+      // ✅ CARGAR DATOS RELACIONADOS SOLO SI ES CLIENTE
+      if (isCliente) {
+        console.log('✅ [ROL] Usuario confirmado como CLIENTE - Cargando datos adicionales...');
+        await fetchRelatedData(user.id);
+      } else {
+        console.log('ℹ️ [ROL] Usuario NO es cliente, saltando datos adicionales:', {
+          rol: userRole,
+          userId: user.id
+        });
+      }
+      
+      // Cargar archivos existentes
       await loadExistingFiles(user.id);
     };
 
@@ -3425,7 +3568,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
 
   const steps = getSteps();
 
-    // 🎨 RENDERIZADO DE CONTENIDO POR PASO
+  // 🎨 RENDERIZADO DE CONTENIDO POR PASO
   const renderStepContent = (step: number) => {
     // 🎨 ESTILOS MEJORADOS PARA INPUTS
     const darkProInputStyles = {
@@ -4252,7 +4395,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
     }
   };
 
-    return (
+  return (
     <Dialog
       open={open}
       onClose={() => {
@@ -5273,7 +5416,7 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
         
         /* TIMESTAMP INDICATOR */
         .timestamp-indicator::before {
-  content: '🚀 Versión Corregida - ${new Date().toISOString()} por luishdz04';
+          content: '🚀 UserFormDialog v2.1 Corregido - ${new Date().toISOString()} by @luishdz044';
           position: fixed;
           bottom: 10px;
           right: 10px;
@@ -5296,7 +5439,325 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
             display: block;
           }
         ` : ''}
+
+        /* 🎨 BLOB URL SAFETY INDICATORS */
+        .blob-url-warning {
+          position: relative;
+        }
+        
+        .blob-url-warning::after {
+          content: '⚠️ Blob URL detectada';
+          position: absolute;
+          top: -25px;
+          left: 0;
+          background: ${darkProTokens.warning};
+          color: ${darkProTokens.background};
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.6rem;
+          font-weight: 600;
+          z-index: 1000;
+          display: ${process.env.NODE_ENV === 'development' ? 'block' : 'none'};
+        }
+
+        /* ✅ SUCCESS INDICATORS */
+        .storage-url-success {
+          position: relative;
+        }
+        
+        .storage-url-success::after {
+          content: '✅ Storage URL';
+          position: absolute;
+          top: -25px;
+          right: 0;
+          background: ${darkProTokens.success};
+          color: ${darkProTokens.textPrimary};
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.6rem;
+          font-weight: 600;
+          z-index: 1000;
+          display: ${process.env.NODE_ENV === 'development' ? 'block' : 'none'};
+        }
+
+        /* 🔧 ENHANCED FORM VALIDATION */
+        .form-field-error {
+          animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* 📱 IMPROVED MOBILE EXPERIENCE */
+        @media (max-width: 768px) {
+          .dialog-mobile-optimized {
+            margin: 8px !important;
+            max-height: calc(100vh - 16px) !important;
+            width: calc(100vw - 16px) !important;
+          }
+          
+          .stepper-mobile-compact .MuiStepLabel-label {
+            font-size: 0.75rem !important;
+          }
+          
+          .avatar-mobile-smaller {
+            width: 80px !important;
+            height: 80px !important;
+            font-size: 1.5rem !important;
+          }
+        }
+
+        /* 🎯 ENHANCED ACCESSIBILITY */
+        .focus-visible-enhanced:focus-visible {
+          outline: 3px solid ${darkProTokens.primary} !important;
+          outline-offset: 2px !important;
+          border-radius: 4px !important;
+        }
+        
+        .high-contrast-mode {
+          filter: contrast(150%) !important;
+        }
+        
+        .reduced-motion * {
+          animation-duration: 0.1s !important;
+          transition-duration: 0.1s !important;
+        }
+
+        /* 🚀 PERFORMANCE OPTIMIZATIONS */
+        .gpu-accelerated {
+          will-change: transform, opacity;
+          backface-visibility: hidden;
+          perspective: 1000px;
+        }
+        
+        .contain-layout {
+          contain: layout style paint;
+        }
+        
+        /* 🎨 ENHANCED VISUAL FEEDBACK */
+        .loading-skeleton {
+          background: linear-gradient(
+            90deg,
+            ${darkProTokens.grayMedium} 25%,
+            ${darkProTokens.grayLight} 50%,
+            ${darkProTokens.grayMedium} 75%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 2s infinite;
+        }
+        
+        .success-ripple {
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .success-ripple::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            ${darkProTokens.success}30,
+            transparent
+          );
+          animation: success-sweep 1s ease-out;
+        }
+        
+        @keyframes success-sweep {
+          0% { left: -100%; }
+          100% { left: 100%; }
+        }
+
+        /* 🔒 SECURITY VISUAL INDICATORS */
+        .secure-connection {
+          border-left: 4px solid ${darkProTokens.success} !important;
+        }
+        
+        .insecure-connection {
+          border-left: 4px solid ${darkProTokens.error} !important;
+        }
+        
+        .fingerprint-secure::before {
+          content: '🔒';
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          background: ${darkProTokens.success};
+          color: white;
+          border-radius: 50%;
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          z-index: 10;
+        }
+
+        /* 📊 STATUS INDICATORS */
+        .status-indicator {
+          position: relative;
+        }
+        
+        .status-indicator.online::before {
+          content: '';
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          width: 12px;
+          height: 12px;
+          background: ${darkProTokens.success};
+          border: 2px solid ${darkProTokens.background};
+          border-radius: 50%;
+          animation: pulse-status 2s infinite;
+        }
+        
+        .status-indicator.offline::before {
+          content: '';
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          width: 12px;
+          height: 12px;
+          background: ${darkProTokens.error};
+          border: 2px solid ${darkProTokens.background};
+          border-radius: 50%;
+        }
+        
+        @keyframes pulse-status {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.2);
+            opacity: 0.7;
+          }
+        }
+
+        /* 🎭 THEME TRANSITIONS */
+        .theme-transition * {
+          transition: 
+            background-color 0.3s ease,
+            border-color 0.3s ease,
+            color 0.3s ease,
+            box-shadow 0.3s ease !important;
+        }
+
+        /* 📝 FORM ENHANCEMENT */
+        .form-field-success {
+          border-color: ${darkProTokens.success} !important;
+          box-shadow: 0 0 0 2px ${darkProTokens.success}20 !important;
+        }
+        
+        .form-field-warning {
+          border-color: ${darkProTokens.warning} !important;
+          box-shadow: 0 0 0 2px ${darkProTokens.warning}20 !important;
+        }
+        
+        .form-progress-indicator {
+          background: linear-gradient(
+            to right,
+            ${darkProTokens.success} 0%,
+            ${darkProTokens.success} var(--progress, 0%),
+            ${darkProTokens.grayMedium} var(--progress, 0%),
+            ${darkProTokens.grayMedium} 100%
+          );
+          height: 4px;
+          transition: all 0.3s ease;
+        }
+
+        /* 🎪 ADVANCED ANIMATIONS */
+        .bounce-in {
+          animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        @keyframes bounceIn {
+          0% {
+            transform: scale(0.3) rotate(-10deg);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.05) rotate(2deg);
+          }
+          70% {
+            transform: scale(0.9) rotate(-1deg);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        .slide-up {
+          animation: slideUp 0.4s ease-out;
+        }
+        
+        @keyframes slideUp {
+          from {
+            transform: translateY(30px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        /* ⚡ PERFORMANCE HINTS */
+        .optimized-render {
+          contain: strict;
+          content-visibility: auto;
+          contain-intrinsic-size: 0 500px;
+        }
+        
+        .will-change-transform {
+          will-change: transform;
+        }
+        
+        .will-change-opacity {
+          will-change: opacity;
+        }
+        
+        /* 🎨 FINAL POLISH */
+        .glass-effect {
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .text-gradient {
+          background: linear-gradient(
+            135deg,
+            ${darkProTokens.primary},
+            ${darkProTokens.primaryHover}
+          );
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          font-weight: 700;
+        }
+        
+        .hover-lift {
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .hover-lift:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
       `}</style>
+      
+      {/* 🏷️ TIMESTAMP INDICATOR FOR DEBUGGING */}
+      <div className="timestamp-indicator" />
     </Dialog>
   );
 }
