@@ -63,6 +63,7 @@ interface UserInfo {
   isMinor: boolean;
   created_at: string;
   profilePictureUrl?: string;
+  rol?: string;
 }
 
 interface UserAddress {
@@ -111,54 +112,93 @@ export default function ClienteDashboard() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIÓN PARA CALCULAR EDAD
+  // ✅ FUNCIÓN PARA CALCULAR EDAD CON VALIDACIÓN
   const calculateAge = useCallback((birthDate: string): number => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+    try {
+      if (!birthDate) return 0;
+      
+      const today = new Date();
+      const birth = new Date(birthDate);
+      
+      // Verificar que la fecha sea válida
+      if (isNaN(birth.getTime())) return 0;
+      
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      
+      return Math.max(0, age); // No devolver edades negativas
+    } catch (error) {
+      console.error('Error calculando edad:', error);
+      return 0;
     }
-    
-    return age;
   }, []);
 
-  // ✅ FUNCIÓN PARA CALCULAR DÍAS COMO MIEMBRO
+  // ✅ FUNCIÓN PARA CALCULAR DÍAS COMO MIEMBRO CON VALIDACIÓN
   const calculateDaysAsMember = useCallback((registrationDate: string): number => {
-    const today = new Date();
-    const registration = new Date(registrationDate);
-    const diffTime = today.getTime() - registration.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    try {
+      if (!registrationDate) return 0;
+      
+      const today = new Date();
+      const registration = new Date(registrationDate);
+      
+      // Verificar que la fecha sea válida
+      if (isNaN(registration.getTime())) return 0;
+      
+      const diffTime = today.getTime() - registration.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return Math.max(0, diffDays); // No devolver días negativos
+    } catch (error) {
+      console.error('Error calculando días como miembro:', error);
+      return 0;
+    }
   }, []);
 
-  // ✅ FUNCIÓN PARA CALCULAR DÍAS RESTANTES DE MEMBRESÍA
+  // ✅ FUNCIÓN PARA CALCULAR DÍAS RESTANTES CON VALIDACIÓN
   const calculateDaysRemaining = useCallback((endDate: string | null): number => {
-    if (!endDate) return 0;
-    
-    const today = new Date();
-    const end = new Date(endDate);
-    const diffTime = end.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    try {
+      if (!endDate) return 0;
+      
+      const today = new Date();
+      const end = new Date(endDate);
+      
+      // Verificar que la fecha sea válida
+      if (isNaN(end.getTime())) return 0;
+      
+      const diffTime = end.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return diffDays; // Puede ser negativo si ya venció
+    } catch (error) {
+      console.error('Error calculando días restantes:', error);
+      return 0;
+    }
   }, []);
 
-  // ✅ FUNCIÓN PARA FORMATEAR FECHAS
+  // ✅ FUNCIÓN PARA FORMATEAR FECHAS CON FALLBACK
   const formatDate = useCallback((dateString: string): string => {
     try {
+      if (!dateString) return 'Fecha no disponible';
+      
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Fecha inválida';
+      
       return formatMexicoDateTime(dateString, {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
     } catch (error) {
+      console.error('Error formateando fecha:', error);
       return 'Fecha no disponible';
     }
   }, []);
 
-  // ✅ CARGAR DATOS DEL USUARIO AUTENTICADO
+  // ✅ CARGAR DATOS CON MEJOR MANEJO DE ERRORES
   const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
@@ -167,9 +207,15 @@ export default function ClienteDashboard() {
       // Obtener usuario autenticado
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (authError || !user) {
-        throw new Error('No se pudo obtener el usuario autenticado');
+      if (authError) {
+        throw new Error(`Error de autenticación: ${authError.message}`);
       }
+      
+      if (!user) {
+        throw new Error('No hay usuario autenticado');
+      }
+
+      console.log('Usuario autenticado:', user.id);
 
       // Cargar información básica del usuario
       const { data: userData, error: userError } = await supabase
@@ -178,73 +224,116 @@ export default function ClienteDashboard() {
         .eq('id', user.id)
         .single();
 
-      if (userError) throw userError;
-      
-      if (userData) {
-        setUserInfo(userData);
+      if (userError) {
+        console.error('Error cargando datos de usuario:', userError);
+        throw new Error(`Error al cargar datos del usuario: ${userError.message}`);
       }
+      
+      if (!userData) {
+        throw new Error('No se encontraron datos del usuario');
+      }
+
+      console.log('Datos del usuario cargados:', userData);
+      setUserInfo(userData);
 
       // Solo cargar datos adicionales si es un cliente
       if (userData?.rol === 'cliente') {
-        // Cargar dirección
-        const { data: addressData } = await supabase
-          .from('addresses')
-          .select('*')
-          .eq('userId', user.id)
-          .single();
+        console.log('Cargando datos adicionales para cliente...');
+        
+        // Cargar dirección (sin lanzar error si no existe)
+        try {
+          const { data: addressData, error: addressError } = await supabase
+            .from('addresses')
+            .select('*')
+            .eq('userId', user.id)
+            .maybeSingle(); // maybeSingle permite que no exista
 
-        if (addressData) setAddress(addressData);
+          if (addressError && addressError.code !== 'PGRST116') {
+            console.error('Error cargando dirección:', addressError);
+          } else if (addressData) {
+            console.log('Dirección cargada:', addressData);
+            setAddress(addressData);
+          }
+        } catch (err) {
+          console.error('Error en carga de dirección:', err);
+        }
 
         // Cargar contacto de emergencia
-        const { data: emergencyData } = await supabase
-          .from('emergency_contacts')
-          .select('*')
-          .eq('userId', user.id)
-          .single();
+        try {
+          const { data: emergencyData, error: emergencyError } = await supabase
+            .from('emergency_contacts')
+            .select('*')
+            .eq('userId', user.id)
+            .maybeSingle();
 
-        if (emergencyData) setEmergency(emergencyData);
+          if (emergencyError && emergencyError.code !== 'PGRST116') {
+            console.error('Error cargando contacto de emergencia:', emergencyError);
+          } else if (emergencyData) {
+            console.log('Contacto de emergencia cargado:', emergencyData);
+            setEmergency(emergencyData);
+          }
+        } catch (err) {
+          console.error('Error en carga de contacto de emergencia:', err);
+        }
 
         // Cargar información de membresía
-        const { data: membershipData } = await supabase
-          .from('membership_info')
-          .select('*')
-          .eq('userId', user.id)
-          .single();
+        try {
+          const { data: membershipData, error: membershipError } = await supabase
+            .from('membership_info')
+            .select('*')
+            .eq('userId', user.id)
+            .maybeSingle();
 
-        if (membershipData) setMembershipInfo(membershipData);
+          if (membershipError && membershipError.code !== 'PGRST116') {
+            console.error('Error cargando info de membresía:', membershipError);
+          } else if (membershipData) {
+            console.log('Info de membresía cargada:', membershipData);
+            setMembershipInfo(membershipData);
+          }
+        } catch (err) {
+          console.error('Error en carga de info de membresía:', err);
+        }
 
         // Cargar membresía activa
-        const { data: activeMembershipData } = await supabase
-          .from('user_memberships')
-          .select(`
-            *,
-            membership_plans!planid (name)
-          `)
-          .eq('userid', user.id)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1);
+        try {
+          const { data: activeMembershipData, error: activeMembershipError } = await supabase
+            .from('user_memberships')
+            .select(`
+              *,
+              membership_plans!planid (name)
+            `)
+            .eq('userid', user.id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-        if (activeMembershipData && activeMembershipData.length > 0) {
-          const membership = activeMembershipData[0];
-          const daysRemaining = calculateDaysRemaining(membership.end_date);
-          
-          setActiveMembership({
-            id: membership.id,
-            planName: membership.membership_plans?.name || 'Plan No Disponible',
-            status: membership.status,
-            startDate: membership.start_date,
-            endDate: membership.end_date,
-            daysRemaining,
-            isActive: daysRemaining > 0,
-            totalFrozenDays: membership.total_frozen_days || 0
-          });
+          if (activeMembershipError) {
+            console.error('Error cargando membresía activa:', activeMembershipError);
+          } else if (activeMembershipData && activeMembershipData.length > 0) {
+            const membership = activeMembershipData[0];
+            const daysRemaining = calculateDaysRemaining(membership.end_date);
+            
+            console.log('Membresía activa cargada:', membership);
+            
+            setActiveMembership({
+              id: membership.id,
+              planName: membership.membership_plans?.name || 'Plan No Disponible',
+              status: membership.status,
+              startDate: membership.start_date,
+              endDate: membership.end_date,
+              daysRemaining,
+              isActive: daysRemaining > 0,
+              totalFrozenDays: membership.total_frozen_days || 0
+            });
+          }
+        } catch (err) {
+          console.error('Error en carga de membresía activa:', err);
         }
       }
 
     } catch (err: any) {
-      console.error('Error cargando datos del usuario:', err);
-      setError(`Error al cargar información: ${err.message}`);
+      console.error('Error general cargando datos:', err);
+      setError(err.message || 'Error desconocido al cargar información');
     } finally {
       setLoading(false);
     }
@@ -308,6 +397,12 @@ export default function ClienteDashboard() {
     );
   }
 
+  // Calcular valores con validación
+  const userAge = calculateAge(userInfo.birthDate);
+  const daysAsMember = calculateDaysAsMember(userInfo.created_at);
+  const formattedBirthDate = formatDate(userInfo.birthDate);
+  const formattedRegistrationDate = formatDate(userInfo.created_at);
+
   return (
     <Box sx={{ 
       maxWidth: '1400px', 
@@ -362,7 +457,10 @@ export default function ClienteDashboard() {
                         color: darkProTokens.background
                       }}
                     >
-                      {`${userInfo.firstName[0]}${userInfo.lastName[0]}`}
+                      {userInfo.firstName && userInfo.lastName ? 
+                        `${userInfo.firstName[0]}${userInfo.lastName[0]}` : 
+                        '??'
+                      }
                     </Avatar>
                     
                     <Box>
@@ -375,25 +473,29 @@ export default function ClienteDashboard() {
                       </Typography>
                       
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip 
-                          label={`${calculateAge(userInfo.birthDate)} años`}
-                          sx={{
-                            backgroundColor: darkProTokens.info,
-                            color: darkProTokens.textPrimary,
-                            fontWeight: 600
-                          }}
-                          size="small"
-                        />
+                        {userAge > 0 && (
+                          <Chip 
+                            label={`${userAge} años`}
+                            sx={{
+                              backgroundColor: darkProTokens.info,
+                              color: darkProTokens.textPrimary,
+                              fontWeight: 600
+                            }}
+                            size="small"
+                          />
+                        )}
                         
-                        <Chip 
-                          label={userInfo.gender}
-                          sx={{
-                            backgroundColor: darkProTokens.success,
-                            color: darkProTokens.textPrimary,
-                            fontWeight: 600
-                          }}
-                          size="small"
-                        />
+                        {userInfo.gender && (
+                          <Chip 
+                            label={userInfo.gender}
+                            sx={{
+                              backgroundColor: darkProTokens.success,
+                              color: darkProTokens.textPrimary,
+                              fontWeight: 600
+                            }}
+                            size="small"
+                          />
+                        )}
                         
                         {userInfo.isMinor && (
                           <Chip 
@@ -428,7 +530,7 @@ export default function ClienteDashboard() {
                         </Typography>
                       </Box>
                       <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        {userInfo.email}
+                        {userInfo.email || 'No disponible'}
                       </Typography>
                     </Grid>
 
@@ -441,7 +543,7 @@ export default function ClienteDashboard() {
                         </Typography>
                       </Box>
                       <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        {userInfo.whatsapp}
+                        {userInfo.whatsapp || 'No disponible'}
                       </Typography>
                     </Grid>
 
@@ -454,7 +556,7 @@ export default function ClienteDashboard() {
                         </Typography>
                       </Box>
                       <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        {formatDate(userInfo.birthDate)}
+                        {formattedBirthDate}
                       </Typography>
                     </Grid>
 
@@ -467,7 +569,7 @@ export default function ClienteDashboard() {
                         </Typography>
                       </Box>
                       <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        {userInfo.maritalStatus}
+                        {userInfo.maritalStatus || 'No especificado'}
                       </Typography>
                     </Grid>
 
@@ -591,7 +693,7 @@ export default function ClienteDashboard() {
                         color: darkProTokens.textPrimary, 
                         fontWeight: 800 
                       }}>
-                        {calculateDaysAsMember(userInfo.created_at)} días
+                        {daysAsMember} días
                       </Typography>
                     </CardContent>
                   </Card>
@@ -648,7 +750,7 @@ export default function ClienteDashboard() {
                         color: darkProTokens.textPrimary, 
                         fontWeight: 700 
                       }}>
-                        {formatDate(userInfo.created_at)}
+                        {formattedRegistrationDate}
                       </Typography>
                     </CardContent>
                   </Card>
