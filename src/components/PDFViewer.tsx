@@ -7,7 +7,7 @@ interface PDFViewerProps {
   password: string;
 }
 
-// Componente interno que usa PDF.js
+// Componente interno que usa PDF.js directamente
 function PDFViewerCore({ filename, password }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [numPages, setNumPages] = useState(0);
@@ -15,120 +15,126 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const [pdfLib, setPdfLib] = useState<any>(null);
+  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [scale, setScale] = useState(1.2);
 
-  // Cargar PDF.js dinámicamente solo en el cliente
+  // Cargar PDF.js
   useEffect(() => {
-    const loadPDFLib = async () => {
+    async function loadPdfJs() {
       try {
-        // Importar la biblioteca principal usando dynamic import
         const pdfjsLib = await import('pdfjs-dist');
         
-        // Usar la CDN correcta para la versión 5.3.31
-        // Nota: si pdf.min.mjs existe, el worker debería ser pdf.worker.min.mjs o pdf.worker.min.js
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs';
+        // Configurar el worker
+        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
         
-        setPdfLib(pdfjsLib);
+        return pdfjsLib;
       } catch (error) {
-        console.error('Error loading PDF.js:', error);
-        setError('Error al cargar el visor de PDF');
-        setErrorDetails(`Detalle: ${error instanceof Error ? error.message : String(error)}`);
+        console.error('Error cargando PDF.js:', error);
+        setError('Error al inicializar el visor de PDF');
+        return null;
       }
-    };
-
-    loadPDFLib();
-  }, []);
-
-  useEffect(() => {
-    if (pdfLib) {
-      loadPDF();
     }
-  }, [pdfLib, filename, currentPage]);
-
-  const loadPDF = async () => {
-    if (!pdfLib) return;
     
+    loadPdfJs().then((pdfjsLib) => {
+      if (pdfjsLib) {
+        loadPdfDocument(pdfjsLib);
+      }
+    });
+  }, [filename, password]);
+
+  // Cargar el documento PDF
+  const loadPdfDocument = async (pdfjsLib: any) => {
     try {
       setLoading(true);
       setError(null);
       setErrorDetails(null);
       
-      console.log('Cargando PDF:', filename);
-      
-      // Cargar PDF desde API protegida
-      const response = await fetch(`/api/pdf/${filename}`, {
-        headers: {
-          'Authorization': `Bearer ${password}`
-        }
+      // Obtener el PDF a través de la API
+      const response = await fetch(`/api/pdf/${encodeURIComponent(filename)}`, {
+        headers: { 'Authorization': `Bearer ${password}` }
       });
       
       if (!response.ok) {
-        console.error('Error en respuesta API:', response.status);
-        let errorText;
-        try {
-          errorText = await response.text();
-          console.error('Detalles del error:', errorText);
-        } catch (e) {
-          errorText = 'No se pudo obtener detalles del error';
-        }
-        
+        const errorText = await response.text();
         throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
       }
       
       const arrayBuffer = await response.arrayBuffer();
-      console.log('PDF cargado, tamaño:', arrayBuffer.byteLength);
-      
       if (arrayBuffer.byteLength === 0) {
         throw new Error('El archivo PDF está vacío');
       }
       
-      // Cargar documento PDF con opciones y manejo de errores mejorado
-      try {
-        // Intentamos cargar el PDF con la propiedad data explícita
-        const loadingTask = pdfLib.getDocument({data: arrayBuffer});
-        const pdf = await loadingTask.promise;
-        
-        setNumPages(pdf.numPages);
-        
-        // Renderizar página actual
-        const page = await pdf.getPage(currentPage);
-        const viewport = page.getViewport({ scale: 1.2 });
-        
-        const canvas = canvasRef.current;
-        if (!canvas) {
-          throw new Error('Canvas no disponible');
-        }
-        
-        const context = canvas.getContext('2d');
-        if (!context) {
-          throw new Error('Contexto 2D no disponible');
-        }
-        
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        
-        // Renderizar
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise;
-        
-        // Agregar watermark
-        addWatermark(context, canvas.width, canvas.height);
-        
-        setLoading(false);
-      } catch (pdfError) {
-        console.error('Error procesando PDF:', pdfError);
-        throw new Error(`Error procesando PDF: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`);
-      }
+      // Cargar el PDF con PDF.js
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdfDocument = await loadingTask.promise;
+      setPdfDoc(pdfDocument);
+      setNumPages(pdfDocument.numPages);
+      
+      // Renderizar la primera página
+      await renderPage(pdfDocument, currentPage);
     } catch (error: any) {
       console.error('Error cargando PDF:', error);
       setError('Error al cargar el PDF');
-      setErrorDetails(error.message || 'No se pudo cargar o mostrar el archivo PDF');
+      setErrorDetails(error.message || 'No se pudo cargar el archivo');
       setLoading(false);
     }
   };
 
+  // Renderizar una página específica
+  const renderPage = async (pdf: any, pageNum: number) => {
+    if (!pdf) return;
+    
+    try {
+      setLoading(true);
+      
+      // Obtener la página
+      const page = await pdf.getPage(pageNum);
+      
+      // Configurar el viewport
+      const viewport = page.getViewport({ scale });
+      
+      // Configurar el canvas
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        throw new Error('Canvas no disponible');
+      }
+      
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error('Contexto 2D no disponible');
+      }
+      
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      // Renderizar la página en el canvas
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
+      
+      // Añadir marca de agua
+      addWatermark(context, canvas.width, canvas.height);
+      
+      setCurrentPage(pageNum);
+      setLoading(false);
+    } catch (error: any) {
+      console.error('Error renderizando página:', error);
+      setError('Error al mostrar la página');
+      setErrorDetails(error.message);
+      setLoading(false);
+    }
+  };
+
+  // Cambiar página
+  useEffect(() => {
+    if (pdfDoc) {
+      renderPage(pdfDoc, currentPage);
+    }
+  }, [currentPage, pdfDoc, scale]);
+
+  // Añadir marca de agua
   const addWatermark = (context: CanvasRenderingContext2D, width: number, height: number) => {
     context.save();
     context.globalAlpha = 0.1;
@@ -137,45 +143,45 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
     context.textAlign = 'center';
     context.translate(width/2, height/2);
     context.rotate(-Math.PI/4);
-    context.fillText(`@luishdz044 - ${new Date().toLocaleDateString()}`, 0, 0);
+    context.fillText(`Muscle Up Gym - ${new Date().toLocaleDateString()}`, 0, 0);
     context.restore();
   };
 
-  const retryLoading = () => {
-    loadPDF();
+  // Ir a página anterior
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
   };
 
-  // Deshabilitar clic derecho y teclas de screenshot
+  // Ir a página siguiente
+  const goToNextPage = () => {
+    if (currentPage < numPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Aumentar zoom
+  const zoomIn = () => {
+    setScale(prevScale => Math.min(prevScale + 0.2, 3));
+  };
+
+  // Reducir zoom
+  const zoomOut = () => {
+    setScale(prevScale => Math.max(prevScale - 0.2, 0.6));
+  };
+
+  // Reintentar cargar el PDF
+  const retryLoading = () => {
+    window.location.reload();
+  };
+
+  // Deshabilitar clic derecho
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === 'F12' ||
-        (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-        (e.ctrlKey && e.key === 'u') ||
-        e.key === 'PrintScreen'
-      ) {
-        e.preventDefault();
-        alert('Esta acción está deshabilitada');
-      }
-    };
-
     document.addEventListener('contextmenu', handleContextMenu);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('contextmenu', handleContextMenu);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => document.removeEventListener('contextmenu', handleContextMenu);
   }, []);
-
-  if (!pdfLib) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <div className="text-[#FFCC00] text-xl">Inicializando visor PDF...</div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -214,47 +220,72 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
         }
       `}</style>
       
-      {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="text-[#FFCC00] text-xl">Cargando PDF...</div>
-        </div>
-      ) : (
-        <>
-          {/* Controles */}
-          <div className="bg-black/90 p-4 border-b border-[#FFCC00]/20">
-            <div className="flex justify-center items-center space-x-4">
-              <button 
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage <= 1}
-                className="px-4 py-2 bg-[#FFCC00] text-black rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:bg-[#FFD700] transition-colors"
-              >
-                ← Anterior
-              </button>
-              
-              <span className="text-white">
-                Página {currentPage} de {numPages}
-              </span>
-              
-              <button 
-                onClick={() => setCurrentPage(Math.min(numPages, currentPage + 1))}
-                disabled={currentPage >= numPages}
-                className="px-4 py-2 bg-[#FFCC00] text-black rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:bg-[#FFD700] transition-colors"
-              >
-                Siguiente →
-              </button>
+      {/* Controles de navegación */}
+      <div className="fixed top-[72px] left-0 right-0 z-20 bg-black bg-opacity-90 border-b border-yellow-400/20 px-4 py-3">
+        <div className="max-w-5xl mx-auto flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={goToPreviousPage}
+              disabled={currentPage <= 1 || loading}
+              className="px-3 py-2 bg-[#FFCC00] text-black rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:bg-[#FFD700] transition-colors"
+            >
+              ← Anterior
+            </button>
+            
+            <div className="text-white bg-black/60 px-3 py-1 rounded border border-yellow-400/20">
+              {loading ? "Cargando..." : `Página ${currentPage} de ${numPages}`}
             </div>
+            
+            <button
+              onClick={goToNextPage}
+              disabled={currentPage >= numPages || loading}
+              className="px-3 py-2 bg-[#FFCC00] text-black rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:bg-[#FFD700] transition-colors"
+            >
+              Siguiente →
+            </button>
           </div>
           
-          {/* Área del PDF */}
-          <div className="p-4 flex justify-center">
-            <canvas 
-              ref={canvasRef}
-              className="border border-[#FFCC00]/20 shadow-2xl max-w-full"
-              style={{ maxHeight: 'calc(100vh - 200px)' }}
-            />
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={zoomOut}
+              disabled={scale <= 0.6 || loading}
+              className="px-3 py-2 bg-black text-[#FFCC00] border border-[#FFCC00] rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:bg-[#FFCC00]/10"
+            >
+              <span className="text-lg">−</span>
+            </button>
+            
+            <div className="text-white bg-black/60 px-3 py-1 rounded border border-yellow-400/20">
+              {Math.round(scale * 100)}%
+            </div>
+            
+            <button
+              onClick={zoomIn}
+              disabled={scale >= 3 || loading}
+              className="px-3 py-2 bg-black text-[#FFCC00] border border-[#FFCC00] rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:bg-[#FFCC00]/10"
+            >
+              <span className="text-lg">+</span>
+            </button>
           </div>
-        </>
-      )}
+        </div>
+      </div>
+      
+      {/* Contenedor principal con espacio para la barra de navegación fija */}
+      <div className="pt-16 pb-6">
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 border-t-4 border-b-4 border-yellow-400 rounded-full animate-spin mb-4"></div>
+              <div className="text-[#FFCC00] text-xl">Cargando PDF...</div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <div className="canvas-container border border-yellow-400/20 shadow-2xl">
+              <canvas ref={canvasRef} />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -264,7 +295,7 @@ const PDFViewer = dynamic(() => Promise.resolve(PDFViewerCore), {
   ssr: false,
   loading: () => (
     <div className="flex justify-center items-center py-20 bg-black min-h-screen">
-      <div className="text-[#FFCC00] text-xl">Cargando visor...</div>
+      <div className="text-[#FFCC00] text-xl">Inicializando visor...</div>
     </div>
   )
 });
