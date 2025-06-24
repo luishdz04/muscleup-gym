@@ -10,23 +10,28 @@ export default function SuplementosPage() {
   // Lista de logos - actualiza con tus archivos reales
   useEffect(() => {
     const logoFiles = [
-      'muscletech-logo-3DBC4BBC88-seeklogo.com_.png', 'descarga.jpg', 'descarga-1.png', 'bpinew.webp'
+      'logo1.png', 'logo2.jpg', 'logo3.webp', 'logo4.png', 'logo5.jpg',
+      'logo6.png', 'logo7.jpg', 'logo8.webp', 'logo9.png', 'logo10.jpg'
     ];
     setLogos(logoFiles);
     
-    // Iniciar animación del carrusel
-    controls.start({
-      x: [0, -100 * logoFiles.length * 10], // Ajusta según cantidad de logos
-      transition: {
-        duration: 30,
-        ease: "linear",
-        repeat: Infinity,
-      }
-    });
+    // Iniciar animación del carrusel solo en el cliente
+    if (typeof window !== 'undefined') {
+      controls.start({
+        x: [0, -100 * logoFiles.length * 10],
+        transition: {
+          duration: 30,
+          ease: "linear",
+          repeat: Infinity,
+        }
+      });
+    }
   }, [controls]);
 
   // Controlar pausa del carrusel
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     if (isHovered) {
       controls.stop();
     } else {
@@ -53,7 +58,8 @@ export default function SuplementosPage() {
         "Mejora la saciedad y control del apetito"
       ],
       science: "Estudios demuestran que consumir 20-40g de proteína post-ejercicio optimiza la síntesis proteica muscular durante las siguientes 3-4 horas.",
-      color: "from-blue-500 to-blue-600"
+      gradientFrom: "#3B82F6",
+      gradientTo: "#1E40AF"
     },
     {
       title: "Creatina",
@@ -66,7 +72,8 @@ export default function SuplementosPage() {
         "Puede incrementar la masa muscular magra"
       ],
       science: "Más de 1000 estudios respaldan la eficacia de 3-5g diarios de monohidrato de creatina para mejorar el rendimiento deportivo.",
-      color: "from-green-500 to-green-600"
+      gradientFrom: "#10B981",
+      gradientTo: "#059669"
     },
     {
       title: "Quemadores de Grasa",
@@ -79,7 +86,8 @@ export default function SuplementosPage() {
         "Aumentan los niveles de energía y concentración"
       ],
       science: "Ingredientes como la cafeína, té verde y L-carnitina han demostrado científicamente incrementar el gasto energético y la movilización de grasas.",
-      color: "from-red-500 to-red-600"
+      gradientFrom: "#EF4444",
+      gradientTo: "#DC2626"
     },
     {
       title: "BCAA / EAA",
@@ -92,7 +100,8 @@ export default function SuplementosPage() {
         "Disminuyen el dolor muscular post-ejercicio"
       ],
       science: "Los aminoácidos de cadena ramificada, especialmente la leucina, activan la vía mTOR, clave para la síntesis proteica.",
-      color: "from-purple-500 to-purple-600"
+      gradientFrom: "#8B5CF6",
+      gradientTo: "#7C3AED"
     }
   ];
 
@@ -144,6 +153,7 @@ export default function SuplementosPage() {
             background: 'linear-gradient(135deg, #3B82F6, #1E40AF)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
             marginBottom: '1rem'
           }}
         >
@@ -377,9 +387,10 @@ export default function SuplementosPage() {
                     style={{
                       fontSize: '1.5rem',
                       fontWeight: 'bold',
-                      background: `linear-gradient(135deg, ${suplemento.color.split(' ')[0].replace('from-', '')}, ${suplemento.color.split(' ')[2].replace('to-', '')})`,
+                      background: `linear-gradient(135deg, ${suplemento.gradientFrom}, ${suplemento.gradientTo})`,
                       WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent'
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
                     }}
                   >
                     {suplemento.title}
