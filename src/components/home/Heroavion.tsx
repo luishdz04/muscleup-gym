@@ -81,7 +81,7 @@ const heroContent = {
 };
 
 // ==========================================
-// 🎨 SCENE CLASS
+// 🎨 SCENE CLASS (SIN CAMBIOS)
 // ==========================================
 
 class Scene {
@@ -266,29 +266,23 @@ export default function AnimatedHero() {
     const scene = new Scene(model, canvasRef.current);
     const plane = scene.modelGroup;
 
-    gsap.set(canvasRef.current, { autoAlpha: 0 });
+    // EXACTAMENTE COMO EL ORIGINAL
+    gsap.fromTo(canvasRef.current, 
+      { x: "50%", autoAlpha: 0 }, 
+      { duration: 1, x: "0%", autoAlpha: 1 }
+    );
+    
     gsap.to('.loading', { autoAlpha: 0 });
     gsap.to('.scroll-cta', { opacity: 1 });
     gsap.set('svg', { autoAlpha: 1 });
 
     const tau = Math.PI * 2;
 
+    // Posición inicial EXACTA del original
     gsap.set(plane.rotation, { y: tau * -0.25 });
     gsap.set(plane.position, { x: 80, y: -32, z: -60 });
 
     scene.render();
-
-    // Hacer aparecer el canvas cuando la sección esté visible
-    ScrollTrigger.create({
-      trigger: contentRef.current,
-      start: "top bottom",
-      onEnter: () => {
-        gsap.to(canvasRef.current, { duration: 1, autoAlpha: 1 });
-      },
-      onLeaveBack: () => {
-        gsap.to(canvasRef.current, { duration: 0.5, autoAlpha: 0 });
-      }
-    });
 
     // Hacer desaparecer el avión antes de la última sección
     ScrollTrigger.create({
@@ -302,7 +296,7 @@ export default function AnimatedHero() {
       }
     });
 
-    // Views animation for blueprint section
+    // Views animation EXACTA del original
     gsap.fromTo(scene.views[1], 
       { height: 1, bottom: 0 }, 
       {
@@ -420,19 +414,19 @@ export default function AnimatedHero() {
       console.log('DrawSVG animations skipped');
     }
 
-    // Timeline principal ajustado para terminar antes del final
+    // TIMELINE PRINCIPAL - EXACTAMENTE COMO EL ORIGINAL
     const tl = gsap.timeline({
       onUpdate: scene.render,
       scrollTrigger: {
-        trigger: contentRef.current,
+        trigger: ".content", // COMO EL ORIGINAL
         scrub: true,
-        start: "top bottom",
-        end: "bottom bottom",
-        endTrigger: ".blueprint" // Termina en la sección blueprint
+        start: "top top",    // COMO EL ORIGINAL
+        end: "bottom bottom" // COMO EL ORIGINAL
       },
       defaults: { duration: 1, ease: 'power2.inOut' }
     });
 
+    // MISMA ANIMACIÓN EXACTA DEL ORIGINAL
     let delay = 0;
 
     tl.to('.scroll-cta', { duration: 0.25, opacity: 0 }, delay);
@@ -504,10 +498,11 @@ export default function AnimatedHero() {
         </div>
       )}
 
-      {/* Canvas */}
+      {/* Canvas - VISIBLE COMO EL ORIGINAL */}
       <canvas 
         ref={canvasRef}
-        className="fixed top-0 left-0 z-[2] pointer-events-none opacity-0"
+        className="fixed top-0 left-0 z-[2] pointer-events-none"
+        style={{ visibility: 'hidden', opacity: 0 }}
       />
 
       {/* Trigger */}
@@ -541,7 +536,7 @@ export default function AnimatedHero() {
         </div>
       ))}
 
-      {/* Ground container con más secciones */}
+      {/* Ground container */}
       <div className="ground-container relative overflow-hidden">
         <div className="parallax ground absolute top-0 left-0 right-0 bottom-[-100px] bg-cover bg-top bg-no-repeat z-[-1]"
              style={{ 
@@ -550,7 +545,7 @@ export default function AnimatedHero() {
              }}>
         </div>
         
-        {heroContent.sections.slice(2, 6).map((section, index) => (
+        {heroContent.sections.slice(2).map((section, index) => (
           <div key={index + 2} className={`section relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] ${index % 2 === 1 ? 'text-right' : ''}`}>
             <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
               {section.main}
@@ -560,15 +555,6 @@ export default function AnimatedHero() {
             </p>
           </div>
         ))}
-        
-        <div className="section relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] text-right">
-          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
-            {heroContent.sections[6].main}
-          </h2>
-          <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px] text-[#666] mt-4">
-            {heroContent.sections[6].sub}
-          </p>
-        </div>
         
         <div className="parallax clouds absolute top-0 left-0 right-0 bottom-[-100px] bg-cover bg-top bg-no-repeat z-[2] pointer-events-none"
              style={{ 
@@ -659,7 +645,7 @@ export default function AnimatedHero() {
         </div>
       </div>
 
-      {/* Sunset - Sección final sin avión */}
+      {/* Sunset - Sin avión */}
       <div className="sunset bg-cover bg-top bg-no-repeat"
            style={{ 
              backgroundImage: "url('https://assets.codepen.io/557388/sunset-reduced.jpg')",
