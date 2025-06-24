@@ -1,9 +1,19 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import PDFViewer from '@/components/PDFViewer';
+import dynamic from 'next/dynamic';
 
-// Lista de rutinas disponibles (ajusta según tus PDFs)
+// Importar PDFViewer dinámicamente
+const PDFViewer = dynamic(() => import('@/components/PDFViewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center items-center py-20 bg-black min-h-screen">
+      <div className="text-[#FFCC00] text-xl">Cargando visor PDF...</div>
+    </div>
+  )
+});
+
+// Lista de rutinas disponibles
 const RUTINAS_DISPONIBLES = [
   { filename: 'rutina-principiante.pdf', nombre: 'Rutina Principiante', descripcion: 'Perfecta para empezar tu journey fitness' },
   { filename: 'rutina-intermedio.pdf', nombre: 'Rutina Intermedio', descripcion: 'Para quienes ya tienen experiencia' },
@@ -14,24 +24,35 @@ const RUTINAS_DISPONIBLES = [
 export default function RutinasViewer() {
   const [selectedPDF, setSelectedPDF] = useState<string | null>(null);
   const [password, setPassword] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
+  // Evitar hydration mismatch
   useEffect(() => {
-    // Verificar autenticación
-    const authPassword = sessionStorage.getItem('rutinas_auth');
-    if (!authPassword) {
-      router.push('/rutinas');
-      return;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      // Verificar autenticación
+      const authPassword = sessionStorage.getItem('rutinas_auth');
+      if (!authPassword) {
+        router.push('/rutinas');
+        return;
+      }
+      setPassword(authPassword);
     }
-    setPassword(authPassword);
-  }, [router]);
+  }, [mounted, router]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('rutinas_auth');
-    router.push('/rutinas');
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('rutinas_auth');
+      router.push('/rutinas');
+    }
   };
 
-  if (!password) {
+  // Mostrar loading hasta que el componente esté montado
+  if (!mounted || !password) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-[#FFCC00] text-xl">Cargando...</div>
