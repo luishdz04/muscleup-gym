@@ -9,7 +9,7 @@ const navItems = [
   { href: '/planes', label: 'Planes' },
   { href: '/suplementos', label: 'Suplementos' },
   { href: '/bolsa-trabajo', label: 'Bolsa de Trabajo' },
-  { href: '/ejercicios', label: 'Ejercicios' },
+  { href: '/rutinas', label: 'Rutinas' },
 ];
 
 const actionItems = [
