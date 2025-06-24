@@ -10,8 +10,7 @@ export default function SuplementosPage() {
   // Lista de logos - actualiza con tus archivos reales
   useEffect(() => {
     const logoFiles = [
-      'logo1.png', 'logo2.jpg', 'logo3.webp', 'logo4.png', 'logo5.jpg',
-      'logo6.png', 'logo7.jpg', 'logo8.webp', 'logo9.png', 'logo10.jpg'
+      'muscletech-logo-3DBC4BBC88-seeklogo.com_.png', 'descarga.jpg', 'descarga-1.png', 'bpinew.webp'
     ];
     setLogos(logoFiles);
     
