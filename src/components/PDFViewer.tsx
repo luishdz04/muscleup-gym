@@ -14,6 +14,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [pdfLib, setPdfLib] = useState<any>(null);
 
   // Cargar PDF.js dinámicamente solo en el cliente
@@ -30,6 +31,7 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       } catch (error) {
         console.error('Error loading PDF.js:', error);
         setError('Error al cargar el visor de PDF');
+        setErrorDetails('No se pudo cargar la biblioteca PDF.js');
       }
     };
 
@@ -48,6 +50,9 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
     try {
       setLoading(true);
       setError(null);
+      setErrorDetails(null);
+      
+      console.log('Cargando PDF:', filename);
       
       // Cargar PDF desde API protegida
       const response = await fetch(`/api/pdf/${filename}`, {
@@ -57,11 +62,21 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       });
       
       if (!response.ok) {
-        throw new Error('Error al cargar PDF');
+        const errorData = await response.json();
+        console.error('Error en respuesta API:', response.status, errorData);
+        throw new Error(`Error del servidor: ${response.status} - ${errorData.error || 'Error desconocido'}`);
       }
       
       const arrayBuffer = await response.arrayBuffer();
-      const pdf = await pdfLib.getDocument(arrayBuffer).promise;
+      console.log('PDF cargado, tamaño:', arrayBuffer.byteLength);
+      
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error('El archivo PDF está vacío');
+      }
+      
+      // Cargar documento PDF
+      const loadingTask = pdfLib.getDocument(arrayBuffer);
+      const pdf = await loadingTask.promise;
       
       setNumPages(pdf.numPages);
       
@@ -70,10 +85,14 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       const viewport = page.getViewport({ scale: 1.2 });
       
       const canvas = canvasRef.current;
-      if (!canvas) return;
+      if (!canvas) {
+        throw new Error('Canvas no disponible');
+      }
       
       const context = canvas.getContext('2d');
-      if (!context) return;
+      if (!context) {
+        throw new Error('Contexto 2D no disponible');
+      }
       
       canvas.height = viewport.height;
       canvas.width = viewport.width;
@@ -88,9 +107,10 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
       addWatermark(context, canvas.width, canvas.height);
       
       setLoading(false);
-    } catch (error) {
-      console.error('Error loading PDF:', error);
+    } catch (error: any) {
+      console.error('Error cargando PDF:', error);
       setError('Error al cargar el PDF');
+      setErrorDetails(error.message || 'No se pudo cargar o mostrar el archivo PDF');
       setLoading(false);
     }
   };
@@ -105,6 +125,10 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
     context.rotate(-Math.PI/4);
     context.fillText(`@luishdz044 - ${new Date().toLocaleDateString()}`, 0, 0);
     context.restore();
+  };
+
+  const retryLoading = () => {
+    loadPDF();
   };
 
   // Deshabilitar clic derecho y teclas de screenshot
@@ -141,8 +165,19 @@ function PDFViewerCore({ filename, password }: PDFViewerProps) {
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <p className="text-red-500">{error}</p>
+      <div className="text-center py-8 px-4">
+        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-6 max-w-md mx-auto">
+          <p className="text-red-300 text-xl mb-2">{error}</p>
+          {errorDetails && (
+            <p className="text-red-200/70 text-sm mb-4">{errorDetails}</p>
+          )}
+          <button
+            onClick={retryLoading}
+            className="mt-4 px-4 py-2 bg-[#FFCC00] text-black rounded hover:bg-[#FFD700] transition-colors font-semibold"
+          >
+            Intentar nuevamente
+          </button>
+        </div>
       </div>
     );
   }
