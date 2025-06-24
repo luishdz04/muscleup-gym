@@ -21,18 +21,25 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid filename' }, { status: 400 });
     }
     
+    // Imprimir información de depuración (quitar en producción)
+    console.log('Intentando cargar PDF:', filename);
+    
     // Ruta del archivo en public/pdfs
     const filePath = path.join(process.cwd(), 'public', 'pdfs', filename);
+    console.log('Ruta del archivo:', filePath);
     
     // Verificar si el archivo existe
     try {
       await fs.access(filePath);
-    } catch {
+      console.log('Archivo encontrado');
+    } catch (error) {
+      console.error('Archivo no encontrado:', error);
       return NextResponse.json({ error: 'PDF not found' }, { status: 404 });
     }
     
     // Leer el archivo
     const fileBuffer = await fs.readFile(filePath);
+    console.log('Archivo leído correctamente, tamaño:', fileBuffer.length);
     
     // Headers para seguridad y tipo de contenido
     const headers = new Headers();
