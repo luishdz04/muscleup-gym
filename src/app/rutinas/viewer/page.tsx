@@ -3,6 +3,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
+// Interfaz para rutinas
+interface Rutina {
+  filename: string;
+  nombre: string;
+  descripcion: string;
+}
+
 // Importar PDFViewer dinámicamente
 const PDFViewer = dynamic(() => import('@/components/PDFViewer'), {
   ssr: false,
@@ -13,18 +20,13 @@ const PDFViewer = dynamic(() => import('@/components/PDFViewer'), {
   )
 });
 
-// Lista de rutinas disponibles
-const RUTINAS_DISPONIBLES = [
-  { filename: 'rutina-principiante.pdf', nombre: 'Rutina Principiante', descripcion: 'Perfecta para empezar tu journey fitness' },
-  { filename: 'rutina-intermedio.pdf', nombre: 'Rutina Intermedio', descripcion: 'Para quienes ya tienen experiencia' },
-  { filename: 'rutina-avanzado.pdf', nombre: 'Rutina Avanzado', descripcion: 'Máximo nivel de entrenamiento' },
-  { filename: 'rutina-fuerza.pdf', nombre: 'Rutina de Fuerza', descripcion: 'Enfocada en ganar potencia' },
-];
-
 export default function RutinasViewer() {
   const [selectedPDF, setSelectedPDF] = useState<string | null>(null);
   const [password, setPassword] = useState<string>('');
   const [mounted, setMounted] = useState(false);
+  const [rutinas, setRutinas] = useState<Rutina[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Evitar hydration mismatch
@@ -41,8 +43,34 @@ export default function RutinasViewer() {
         return;
       }
       setPassword(authPassword);
+      
+      // Cargar lista de PDFs disponibles
+      fetchPDFs(authPassword);
     }
   }, [mounted, router]);
+
+  const fetchPDFs = async (authPassword: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/pdfs', {
+        headers: {
+          'Authorization': `Bearer ${authPassword}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar la lista de PDFs');
+      }
+      
+      const data = await response.json();
+      setRutinas(data.pdfs);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error al cargar PDFs:', err);
+      setError('No se pudieron cargar las rutinas disponibles');
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
@@ -112,25 +140,46 @@ export default function RutinasViewer() {
       
       {/* Lista de rutinas */}
       <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {RUTINAS_DISPONIBLES.map((rutina) => (
-            <div
-              key={rutina.filename}
-              className="bg-zinc-900 border border-[#FFCC00]/20 rounded-lg p-6 hover:border-[#FFCC00]/50 transition-all cursor-pointer group"
-              onClick={() => setSelectedPDF(rutina.filename)}
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="text-[#FFCC00] text-xl">Cargando rutinas disponibles...</div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-center">
+            <p className="text-red-300">{error}</p>
+            <button 
+              onClick={() => fetchPDFs(password)}
+              className="mt-4 px-4 py-2 bg-[#FFCC00] text-black rounded hover:bg-[#FFD700] transition-colors"
             >
-              <h3 className="text-xl font-semibold text-[#FFCC00] mb-2 group-hover:text-[#FFD700]">
-                {rutina.nombre}
-              </h3>
-              <p className="text-gray-300 mb-4">
-                {rutina.descripcion}
-              </p>
-              <div className="text-[#FFCC00] text-sm font-medium">
-                Click para abrir →
+              Reintentar
+            </button>
+          </div>
+        ) : rutinas.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-300 text-lg">No se encontraron rutinas disponibles</p>
+            <p className="text-gray-500 mt-2">Contacta al administrador para más información</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rutinas.map((rutina) => (
+              <div
+                key={rutina.filename}
+                className="bg-zinc-900 border border-[#FFCC00]/20 rounded-lg p-6 hover:border-[#FFCC00]/50 transition-all cursor-pointer group"
+                onClick={() => setSelectedPDF(rutina.filename)}
+              >
+                <h3 className="text-xl font-semibold text-[#FFCC00] mb-2 group-hover:text-[#FFD700]">
+                  {rutina.nombre}
+                </h3>
+                <p className="text-gray-300 mb-4">
+                  {rutina.descripcion}
+                </p>
+                <div className="text-[#FFCC00] text-sm font-medium">
+                  Click para abrir →
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
