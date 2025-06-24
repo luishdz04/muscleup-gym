@@ -4,39 +4,79 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
 // ==========================================
-// 🎯 CONFIGURACIÓN - EDITA AQUÍ TUS TEXTOS
+// 🎯 CONFIGURACIÓN - TEXTOS ACTUALIZADOS
 // ==========================================
 
 const heroContent = {
-  loading: "Loading",
+  loading: "Cargando...",
   intro: {
-    title: "Muscle Up GYM.",
-    subtitle: "Tu guía hacia la transformación.",
-    description: "Probablemente has olvidado lo que es sentirte fuerte.",
-    scroll: "Scroll"
+    title: "Muscle Up GYM",
+    subtitle: "Forma parte de la familia Muscle Up GYM",
+    description: "El viaje comienza aquí",
+    scroll: "Tu salud y bienestar es nuestra misión"
   },
   sections: [
-    "Son como gimnasios normales...",
-    "...excepto que te transforman completamente.",
-    "Te hacen volar hacia tus metas.",
-    "Desafiando todos los límites conocidos."
+    {
+      main: "Son como gimnasios normales...",
+      sub: "Listo para darlo todo, sin fallas ni pausas..."
+    },
+    {
+      main: "...excepto que te transforman completamente.",
+      sub: "No se trata del gimnasio..."
+    },
+    {
+      main: "¡En serio!",
+      sub: "...se trata de construir tu mejor versión"
+    },
+    {
+      main: "Te hacen volar hacia tus metas.",
+      sub: "Cada gota de sudor te acerca a tus metas"
+    },
+    {
+      main: "¡De verdad!",
+      sub: "Transforma el \"no puedo\" en lo haré"
+    },
+    {
+      main: "Desafiando todos los límites conocidos.",
+      sub: "La disciplina vence al talento cuando el talento no es disciplinado"
+    },
+    {
+      main: "¡Es pura magia!",
+      sub: "¡No te rindas!"
+    }
   ],
   blueprint: {
-    intro: "Los hechos y las cifras.",
-    description: "Vamos a los detalles...",
+    intro: {
+      title: "Los hechos y las cifras.",
+      subtitle: "DISEÑA TU ÉXITO",
+      description: "Entrenamientos científicamente probados para resultados reales"
+    },
     sections: [
-      { title: "Fuerza.", description: "Intensa." },
-      { title: "Resistencia.", description: "Sin límites, más fuerte que un león." },
-      { title: "Músculo Izquierdo", description: "Creciendo" },
-      { title: "Cardio", description: "Diversión cardiovascular" }
+      { 
+        title: "Fuerza.", 
+        subtitle: "RESISTENCIA MENTAL",
+        description: "Supera tus propios récords cada semana" 
+      },
+      { 
+        title: "Resistencia", 
+        subtitle: "POTENCIA TOTAL",
+        description: "Convierte lo imposible en tu calentamiento" 
+      },
+      { 
+        title: "Músculo Izquierdo", 
+        subtitle: "CONSTANCIA DIARIA",
+        description: "La rutina constante es el secreto de los campeones" 
+      },
+      { 
+        title: "Cardio", 
+        subtitle: "VOLUNTAD INQUEBRANTABLE",
+        description: "Tu mente es el músculo más poderoso que entrenarás" 
+      }
     ]
   },
   end: {
     title: "Fin.",
-    credits: [
-      'Modelo de avión por <a href="https://poly.google.com/view/8ciDd9k8wha" target="_blank">Google</a>',
-      'Animado usando <a href="https://greensock.com/scrolltrigger/" target="_blank">GSAP ScrollTrigger</a>'
-    ]
+    subtitle: "¿LISTO PARA REDEFINIR TUS LÍMITES?"
   }
 };
 
@@ -71,10 +111,8 @@ class Scene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setPixelRatio(window.devicePixelRatio);
 
-    // Scene
     this.scene = new THREE.Scene();
 
-    // Cameras
     for (let ii = 0; ii < this.views.length; ++ii) {
       const view = this.views[ii];
       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
@@ -85,7 +123,6 @@ class Scene {
       camera.lookAt(new THREE.Vector3(0, 5, 0));
     }
 
-    // Light
     this.light = new THREE.PointLight(0xffffff, 0.75);
     this.light.position.z = 150;
     this.light.position.x = 70;
@@ -95,7 +132,6 @@ class Scene {
     this.softLight = new THREE.AmbientLight(0xffffff, 1.5);
     this.scene.add(this.softLight);
 
-    // Model setup
     this.onResize();
     window.addEventListener('resize', this.onResize, false);
 
@@ -108,7 +144,6 @@ class Scene {
     }
 
     this.modelGroup = new THREE.Group();
-
     model.layers.set(0);
     
     if (edges) {
@@ -169,17 +204,13 @@ class Scene {
 
 export default function AnimatedHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null); // ✅ Nueva ref para el contenedor
+  const contentRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  // ==========================================
-  // ✈️ LOAD MODEL FUNCTION
-  // ==========================================
 
   const loadModel = async () => {
     if (typeof window === 'undefined') return;
@@ -219,18 +250,12 @@ export default function AnimatedHero() {
     };
 
     const manager = new THREE.LoadingManager(onModelLoaded);
-    manager.onProgress = (item, loaded, total) => console.log(item, loaded, total);
-
     const loader = new OBJLoader(manager);
     
     loader.load('https://assets.codepen.io/557388/1405+Plane_1.obj', (obj) => {
       object = obj;
     });
   };
-
-  // ==========================================
-  // 🎬 SETUP ANIMATION
-  // ==========================================
 
   const setupAnimation = async (model: THREE.Group) => {
     if (!canvasRef.current || !contentRef.current) return;
@@ -241,22 +266,19 @@ export default function AnimatedHero() {
     const scene = new Scene(model, canvasRef.current);
     const plane = scene.modelGroup;
 
-    // ✅ CAMBIO PRINCIPAL: El canvas aparece cuando su sección está visible
     gsap.set(canvasRef.current, { autoAlpha: 0 });
-    
     gsap.to('.loading', { autoAlpha: 0 });
     gsap.to('.scroll-cta', { opacity: 1 });
     gsap.set('svg', { autoAlpha: 1 });
 
     const tau = Math.PI * 2;
 
-    // ✅ Posición inicial del avión
     gsap.set(plane.rotation, { y: tau * -0.25 });
     gsap.set(plane.position, { x: 80, y: -32, z: -60 });
 
     scene.render();
 
-    // ✅ NUEVO: Hacer aparecer el canvas cuando la sección esté visible
+    // Hacer aparecer el canvas cuando la sección esté visible
     ScrollTrigger.create({
       trigger: contentRef.current,
       start: "top bottom",
@@ -265,6 +287,18 @@ export default function AnimatedHero() {
       },
       onLeaveBack: () => {
         gsap.to(canvasRef.current, { duration: 0.5, autoAlpha: 0 });
+      }
+    });
+
+    // Hacer desaparecer el avión antes de la última sección
+    ScrollTrigger.create({
+      trigger: ".sunset",
+      start: "top center",
+      onEnter: () => {
+        gsap.to(canvasRef.current, { duration: 1, autoAlpha: 0 });
+      },
+      onLeaveBack: () => {
+        gsap.to(canvasRef.current, { duration: 1, autoAlpha: 1 });
       }
     });
 
@@ -386,22 +420,21 @@ export default function AnimatedHero() {
       console.log('DrawSVG animations skipped');
     }
 
-    // ✅ CAMBIO PRINCIPAL: Timeline ajustado para empezar cuando la sección sea visible
+    // Timeline principal ajustado para terminar antes del final
     const tl = gsap.timeline({
       onUpdate: scene.render,
       scrollTrigger: {
-        trigger: contentRef.current, // ✅ Cambio de trigger
+        trigger: contentRef.current,
         scrub: true,
-        start: "top bottom", // ✅ Empieza cuando la sección entra en vista
-        end: "bottom top",   // ✅ Termina cuando la sección sale de vista
-        pin: false           // ✅ No hacer pin para que fluya con el scroll
+        start: "top bottom",
+        end: "bottom bottom",
+        endTrigger: ".blueprint" // Termina en la sección blueprint
       },
       defaults: { duration: 1, ease: 'power2.inOut' }
     });
 
     let delay = 0;
 
-    // Animación del avión
     tl.to('.scroll-cta', { duration: 0.25, opacity: 0 }, delay);
     tl.to(plane.position, { x: -10, ease: 'power1.in' }, delay);
 
@@ -466,12 +499,12 @@ export default function AnimatedHero() {
     <div ref={contentRef} className="content relative font-serif bg-[#D0CBC7] text-black overflow-x-hidden min-h-[100vh]">
       {/* Loading */}
       {isLoading && (
-        <div className="loading fixed w-full h-full top-0 left-0 flex items-center justify-center text-[4vw] lg:text-[32px] z-50 bg-[#D0CBC7]">
+        <div className="loading fixed w-full h-full top-0 left-0 flex items-center justify-center text-[3vw] lg:text-[24px] z-50 bg-[#D0CBC7]">
           {heroContent.loading}
         </div>
       )}
 
-      {/* ✅ Canvas con opacity inicial 0 */}
+      {/* Canvas */}
       <canvas 
         ref={canvasRef}
         className="fixed top-0 left-0 z-[2] pointer-events-none opacity-0"
@@ -481,29 +514,34 @@ export default function AnimatedHero() {
       <div className="trigger absolute top-0 h-full"></div>
 
       {/* Primera sección */}
-      <div className="section relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2]">
-        <h1 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
+      <div className="section relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2]">
+        <h1 className="text-[10vw] sm:text-[8vw] lg:text-[64px] font-bold m-0 mb-[1vmin] sm:mb-[2vmin] inline leading-none">
           {heroContent.intro.title}
         </h1>
-        <h3 className="text-[4vw] lg:text-[32px] font-normal m-0 mb-[1vmin]">
+        <h3 className="text-[4vw] sm:text-[3.5vw] lg:text-[28px] font-normal m-0 mb-[1vmin] text-[#333]">
           {heroContent.intro.subtitle}
         </h3>
-        <p className="text-[2vw] lg:text-[16px] mb-[2vmin]">
+        <p className="text-[3vw] sm:text-[2.5vw] lg:text-[18px] mb-[2vmin] text-[#666]">
           {heroContent.intro.description}
         </p>
-        <div className="scroll-cta absolute bottom-[10vmin] text-[4vw] lg:text-[32px] opacity-0">
+        <div className="scroll-cta absolute bottom-[5vmin] sm:bottom-[8vmin] lg:bottom-[10vmin] text-[3vw] sm:text-[2.5vw] lg:text-[20px] opacity-0 text-[#FFCC00] font-semibold">
           {heroContent.intro.scroll}
         </div>
       </div>
 
-      {/* Secciones intermedias */}
-      <div className="section relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2] text-right">
-        <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
-          {heroContent.sections[0]}
-        </h2>
-      </div>
+      {/* Secciones principales */}
+      {heroContent.sections.slice(0, 2).map((section, index) => (
+        <div key={index} className={`section relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] ${index % 2 === 1 ? 'text-right' : ''}`}>
+          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
+            {section.main}
+          </h2>
+          <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px] text-[#666] mt-4">
+            {section.sub}
+          </p>
+        </div>
+      ))}
 
-      {/* Ground container */}
+      {/* Ground container con más secciones */}
       <div className="ground-container relative overflow-hidden">
         <div className="parallax ground absolute top-0 left-0 right-0 bottom-[-100px] bg-cover bg-top bg-no-repeat z-[-1]"
              style={{ 
@@ -512,25 +550,24 @@ export default function AnimatedHero() {
              }}>
         </div>
         
-        <div className="section relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2] text-right">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
-            {heroContent.sections[1]}
-          </h2>
-          <p className="text-[2vw] lg:text-[16px]">¡En serio!</p>
-        </div>
-
-        <div className="section relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2]">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
-            {heroContent.sections[2]}
-          </h2>
-          <p className="text-[2vw] lg:text-[16px]">¡De verdad!</p>
-        </div>
+        {heroContent.sections.slice(2, 6).map((section, index) => (
+          <div key={index + 2} className={`section relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] ${index % 2 === 1 ? 'text-right' : ''}`}>
+            <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
+              {section.main}
+            </h2>
+            <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px] text-[#666] mt-4">
+              {section.sub}
+            </p>
+          </div>
+        ))}
         
-        <div className="section relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2] text-right">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
-            {heroContent.sections[3]}
+        <div className="section relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] text-right">
+          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
+            {heroContent.sections[6].main}
           </h2>
-          <p className="text-[2vw] lg:text-[16px]">¡Es pura magia!</p>
+          <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px] text-[#666] mt-4">
+            {heroContent.sections[6].sub}
+          </p>
         </div>
         
         <div className="parallax clouds absolute top-0 left-0 right-0 bottom-[-100px] bg-cover bg-top bg-no-repeat z-[2] pointer-events-none"
@@ -561,58 +598,81 @@ export default function AnimatedHero() {
           <circle id="circle-phalange" cx="60" cy="60" r="15" fill="transparent" strokeWidth="0.5"></circle>
         </svg>
 
-        <div className="section dark relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
-            {heroContent.blueprint.intro}
+        <div className="section dark relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
+          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
+            {heroContent.blueprint.intro.title}
           </h2>
-          <p className="text-[2vw] lg:text-[16px]">{heroContent.blueprint.description}</p>
+          <h3 className="text-[#FFCC00] text-[4vw] sm:text-[3.5vw] lg:text-[28px] font-bold mb-[1vmin]">
+            {heroContent.blueprint.intro.subtitle}
+          </h3>
+          <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px]">
+            {heroContent.blueprint.intro.description}
+          </p>
         </div>
 
-        <div className="section dark length relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
+        <div className="section dark length relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
+          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
             {heroContent.blueprint.sections[0].title}
           </h2>
-          <p className="text-[2vw] lg:text-[16px]">{heroContent.blueprint.sections[0].description}</p>
+          <h3 className="text-[#FFCC00] text-[4vw] sm:text-[3.5vw] lg:text-[28px] font-bold mb-[1vmin]">
+            {heroContent.blueprint.sections[0].subtitle}
+          </h3>
+          <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px]">
+            {heroContent.blueprint.sections[0].description}
+          </p>
         </div>
 
-        <div className="section dark wingspan relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
+        <div className="section dark wingspan relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
+          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
             {heroContent.blueprint.sections[1].title}
           </h2>
-          <p className="text-[2vw] lg:text-[16px]">{heroContent.blueprint.sections[1].description}</p>
+          <h3 className="text-[#FFCC00] text-[4vw] sm:text-[3.5vw] lg:text-[28px] font-bold mb-[1vmin]">
+            {heroContent.blueprint.sections[1].subtitle}
+          </h3>
+          <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px]">
+            {heroContent.blueprint.sections[1].description}
+          </p>
         </div>
 
-        <div className="section dark phalange relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
+        <div className="section dark phalange relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
+          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
             {heroContent.blueprint.sections[2].title}
           </h2>
-          <p className="text-[2vw] lg:text-[16px]">{heroContent.blueprint.sections[2].description}</p>
+          <h3 className="text-[#FFCC00] text-[4vw] sm:text-[3.5vw] lg:text-[28px] font-bold mb-[1vmin]">
+            {heroContent.blueprint.sections[2].subtitle}
+          </h3>
+          <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px]">
+            {heroContent.blueprint.sections[2].description}
+          </p>
         </div>
 
-        <div className="section dark relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[2vmin] inline leading-none">
+        <div className="section dark relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2] text-white bg-transparent">
+          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[2vmin] inline leading-tight">
             {heroContent.blueprint.sections[3].title}
           </h2>
-          <p className="text-[2vw] lg:text-[16px]">{heroContent.blueprint.sections[3].description}</p>
+          <h3 className="text-[#FFCC00] text-[4vw] sm:text-[3.5vw] lg:text-[28px] font-bold mb-[1vmin]">
+            {heroContent.blueprint.sections[3].subtitle}
+          </h3>
+          <p className="text-[2.5vw] sm:text-[2vw] lg:text-[16px]">
+            {heroContent.blueprint.sections[3].description}
+          </p>
         </div>
       </div>
 
-      {/* Sunset */}
+      {/* Sunset - Sección final sin avión */}
       <div className="sunset bg-cover bg-top bg-no-repeat"
            style={{ 
              backgroundImage: "url('https://assets.codepen.io/557388/sunset-reduced.jpg')",
              transformOrigin: 'top center'
            }}>
-        <div className="section relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2]"></div>
-        <div className="section end relative p-[10vmin] w-[calc(100vw-20vmin)] h-[calc(100vh-20vmin)] m-auto z-[2]">
-          <h2 className="text-[8vw] lg:text-[64px] font-bold m-0 mb-[50vh] inline leading-none">
+        <div className="section relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2]"></div>
+        <div className="section end relative p-[5vmin] sm:p-[8vmin] lg:p-[10vmin] w-[calc(100vw-10vmin)] sm:w-[calc(100vw-16vmin)] lg:w-[calc(100vw-20vmin)] h-[calc(100vh-10vmin)] sm:h-[calc(100vh-16vmin)] lg:h-[calc(100vh-20vmin)] m-auto z-[2]">
+          <h2 className="text-[7vw] sm:text-[6vw] lg:text-[48px] font-bold m-0 mb-[5vh] sm:mb-[10vh] lg:mb-[20vh] inline leading-tight">
             {heroContent.end.title}
           </h2>
-          <ul className="credits absolute bottom-[10vmin] m-0 p-0 list-none text-white">
-            {heroContent.end.credits.map((credit, index) => (
-              <li key={index} className="mt-[10px]" dangerouslySetInnerHTML={{ __html: credit }} />
-            ))}
-          </ul>
+          <h3 className="text-[#FFCC00] text-[5vw] sm:text-[4vw] lg:text-[32px] font-black mb-[10vh] sm:mb-[20vh] lg:mb-[30vh] block">
+            {heroContent.end.subtitle}
+          </h3>
         </div>
       </div>
     </div>
