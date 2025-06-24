@@ -445,87 +445,105 @@ export default function FingerprintRegistration({
   }, [selectedFinger, user, stopTimers]);
 
   // ✅ FUNCIÓN handleWebSocketMessage (misma, pero llama processFinalTemplate)
-  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
-    console.log('📨 Mensaje recibido:', message);
-    
-    switch (message.type) {
-      case 'welcome':
-        console.log('🎉 Conectado al ZK Access Agent:', message.serverInfo);
-        if (message.serverInfo?.deviceConnected) {
-          setDeviceConnected(true);
-          setWsError(null);
-        } else {
-          setDeviceConnected(false);
-          setWsError('Dispositivo ZKTeco no conectado al servidor');
-        }
-        break;
+ const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
+  console.log('📨 Mensaje recibido:', message);
+  
+  switch (message.type) {
+    case 'welcome':
+      console.log('🎉 Conectado al ZK Access Agent');
+      
+      // ✅ CORRECCIÓN PRINCIPAL: Verificar deviceConnected directamente
+      const isDeviceConnected = message.deviceConnected === true;
+      
+      console.log(`📱 Estado del dispositivo: ${isDeviceConnected ? '✅ CONECTADO' : '❌ DESCONECTADO'}`);
+      console.log(`👤 Usuario del servidor: ${message.user || 'N/A'}`);
+      console.log(`⏰ Timestamp: ${message.timestamp || 'N/A'}`);
+      
+      setDeviceConnected(isDeviceConnected);
+      
+      if (isDeviceConnected) {
+        setWsError(null);
+        console.log('🎯 Sistema listo para captura de huellas');
+      } else {
+        setWsError('Dispositivo ZKTeco no conectado al servidor');
+        console.log('⚠️ Dispositivo ZKTeco no disponible para captura');
+      }
+      break;
+      
+    case 'capture_status':
+      if (message.status && message.message) {
+        console.log(`📊 ${message.status}: ${message.message} (${message.progress}%)`);
+        setMessage(message.message);
+        setProgress(message.progress || 0);
+      }
+      break;
+      
+    case 'capture_result':
+      if (message.success && message.data) {
+        const qualityMap: { [key: string]: number } = {
+          'excellent': 98, 'good': 95, 'fair': 75, 'poor': 50
+        };
+        const qualityScore = qualityMap[message.data.quality] || 85;
         
-      case 'initial_status':
-        setDeviceConnected(message.data?.deviceConnected || false);
-        if (!message.data?.deviceConnected) {
-          setWsError('Dispositivo ZKTeco no está conectado');
-        }
-        break;
+        const captureResult: CaptureResult = {
+          success: true,
+          template: message.data.template,
+          templateSize: message.data.templateSize || 0,
+          quality: message.data.quality || 'good',
+          qualityScore: qualityScore,
+          captureTime: Date.now() - captureStartTime,
+          fingerprintId: message.data.fingerprintId || `fp_${Date.now()}`
+        };
         
-      case 'capture_status':
-        if (message.status && message.message) {
-          setMessage(message.message);
-          setProgress(message.progress || 0);
-        }
-        break;
+        console.log(`✅ Captura ${currentCapture + 1}/3 exitosa - Calidad: ${qualityScore}%`);
         
-      case 'capture_result':
-        if (message.success && message.data) {
-          const qualityMap: { [key: string]: number } = {
-            'good': 95, 'excellent': 98, 'fair': 75, 'poor': 50
-          };
-          const qualityScore = qualityMap[message.data.quality] || 85;
+        setCaptureResults(prev => {
+          const newResults = [...prev, captureResult];
+          const capturesCompleted = newResults.length;
           
-          const captureResult: CaptureResult = {
-            success: true,
-            template: message.data.template,
-            templateSize: message.data.templateSize,
-            quality: message.data.quality,
-            qualityScore: qualityScore,
-            captureTime: Date.now() - captureStartTime,
-            fingerprintId: message.data.fingerprintId
-          };
+          setTimeout(() => {
+            if (capturesCompleted < 3) {
+              startSingleCapture(capturesCompleted + 1);
+            } else {
+              console.log('🎊 Todas las capturas completadas');
+              processFinalTemplate();
+            }
+          }, capturesCompleted < 3 ? 1500 : 500);
           
-          setCaptureResults(prev => {
-            const newResults = [...prev, captureResult];
-            const capturesCompleted = newResults.length;
-            
-            console.log(`✅ Captura ${capturesCompleted}/3 completada:`, captureResult);
-            
-            setTimeout(() => {
-              if (capturesCompleted < 3) {
-                startSingleCapture(capturesCompleted + 1);
-              } else {
-                console.log('🎉 Todas las capturas completadas, procesando...');
-                processFinalTemplate();
-              }
-            }, capturesCompleted < 3 ? 1500 : 500);
-            
-            return newResults;
-          });
-          
-        } else {
-          setError(message.error || 'Error en captura de huella');
-          setIsProcessing(false);
-          setCurrentStep('selection');
-          stopTimers();
-        }
-        break;
+          return newResults;
+        });
         
-      case 'command_error':
-      case 'error':
+      } else {
+        console.error('❌ Error en captura:', message.error);
+        setError(message.error || 'Error en captura de huella');
         setIsProcessing(false);
-        setError(message.message || message.error || 'Error de comunicación');
         setCurrentStep('selection');
         stopTimers();
-        break;
-    }
-  }, [captureStartTime, stopTimers, startSingleCapture, processFinalTemplate]);
+      }
+      break;
+      
+    case 'ping':
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          action: 'pong',
+          timestamp: new Date().toISOString()
+        }));
+      }
+      break;
+      
+    case 'error':
+    case 'command_error':
+      console.error('❌ Error del servidor:', message.message || message.error);
+      setError(message.message || message.error || 'Error de comunicación');
+      setIsProcessing(false);
+      setCurrentStep('selection');
+      stopTimers();
+      break;
+      
+    default:
+      console.log('📝 Mensaje no manejado:', message.type);
+  }
+}, [captureStartTime, stopTimers, startSingleCapture, processFinalTemplate, currentCapture]);
 
   // ✅ Resto de funciones WebSocket (mismas)
   const attemptReconnect = useCallback(() => {
