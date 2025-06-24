@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+        "postinstall": "npm install react-pdf@7.7.3 --legacy-peer-deps"
+
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
