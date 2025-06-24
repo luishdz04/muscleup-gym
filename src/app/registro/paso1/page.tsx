@@ -1,6 +1,6 @@
 'use client';
 
-console.log("Iniciando componente de registro - Versión 1.4 - TypeScript Corregido");
+console.log("Iniciando componente de registro - Versión 2.0 - BLOB URLs CORREGIDO - 2025-06-24 by @luishdz044");
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { uploadUserFile } from '@/utils/uploadFile';
@@ -14,7 +14,6 @@ import styles from '@/styles/registro/RegistroWizard.module.css';
 import useWindowSize from '@/hooks/useWindowSize';
 import PhotoCapture from '@/components/registro/PhotoCapture';
 import SuccessModal from '@/components/registro/SuccessModal';
-
 
 // Importación dinámica de componentes pesados con manejo correcto de exportación
 const SignatureCanvas = dynamic(
@@ -69,10 +68,12 @@ type FormData = {
   tutorINE?: FileList;
 };
 
-// ✅ INTERFAZ EXTENDIDA PARA DATOS CON PREVISUALIZACIONES
+// ✅ INTERFAZ EXTENDIDA PARA DATOS CON PREVISUALIZACIONES (sin blob URLs)
 interface FormDataWithPreviews extends FormData {
   profilePhotoPreview?: string;
   tutorINEPreview?: string;
+  hasProfilePhotoFile?: boolean;
+  hasTutorINEFile?: boolean;
 }
 
 // ✅ CAMPOS POR PASO CORRECTAMENTE TIPADOS
@@ -110,6 +111,30 @@ const isValidFile = (file: unknown): file is File => {
          (file as File).type.startsWith('image/');
 };
 
+// ✅ FUNCIÓN PARA DETECTAR Y PREVENIR BLOB URLS
+const isBlobUrl = (url: string): boolean => {
+  return url.startsWith('blob:');
+};
+
+// ✅ FUNCIÓN PARA SANITIZAR URLs (prevenir blob URLs)
+const sanitizeUrl = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+  
+  // ❌ Si es blob URL, no la uses
+  if (isBlobUrl(url)) {
+    console.warn('🚫 [SANITIZE] Blob URL detectada y eliminada:', url.substring(0, 50) + '...');
+    return undefined;
+  }
+  
+  // ✅ Solo permitir data URLs (base64) válidas
+  if (url.startsWith('data:image/')) {
+    return url;
+  }
+  
+  // ✅ URLs normales
+  return url;
+};
+
 // Componente principal usando función nombrada
 const RegistroPage = () => {
   const [step, setStep] = useState(1);
@@ -121,8 +146,12 @@ const RegistroPage = () => {
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // ✅ NUEVOS ESTADOS PARA MANEJAR ARCHIVOS REALES
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [tutorINEFile, setTutorINEFile] = useState<File | null>(null);
+  
   const SignatureCanvasTyped = SignatureCanvas as any;
-
   
   // ✅ REF CORRECTAMENTE TIPADO
   const sigCanvas = useRef<SignatureCanvasRef | null>(null);
@@ -151,7 +180,7 @@ const RegistroPage = () => {
   // Observar cambios para persistencia y progreso
   const formValues = watch();
 
-  // ✅ FUNCIÓN PARA CONVERTIR A BASE64 MEMOIZADA
+  // ✅ FUNCIÓN PARA CONVERTIR A BASE64 MEMOIZADA Y MEJORADA
   const toBase64 = useCallback(async (file: File): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
       if (!isValidFile(file)) {
@@ -162,7 +191,14 @@ const RegistroPage = () => {
       const reader = new FileReader();
       reader.onload = () => {
         if (reader.result) {
-          resolve(reader.result.toString());
+          const result = reader.result.toString();
+          // ✅ VERIFICAR que no sea blob URL
+          if (isBlobUrl(result)) {
+            reject(new Error('Error: se generó una blob URL en lugar de base64'));
+            return;
+          }
+          console.log('✅ [BASE64] Archivo convertido correctamente a base64');
+          resolve(result);
         } else {
           reject(new Error('Error al leer el archivo'));
         }
@@ -178,6 +214,19 @@ const RegistroPage = () => {
     return safeData;
   }, []);
 
+  // ✅ FUNCIÓN PARA CREAR PREVIEW SEGURO (sin blob URLs)
+  const createSafePreview = useCallback(async (file: File): Promise<string> => {
+    try {
+      // Convertir directamente a base64 en lugar de usar blob URL
+      const base64 = await toBase64(file);
+      console.log('✅ [PREVIEW] Preview creado con base64 (sin blob)');
+      return base64;
+    } catch (error) {
+      console.error('❌ [PREVIEW] Error creando preview:', error);
+      throw error;
+    }
+  }, [toBase64]);
+
   // Cargar datos guardados al inicio
   useEffect(() => {
     // Solo ejecutar en el cliente
@@ -188,21 +237,37 @@ const RegistroPage = () => {
       try {
         const parsedData = JSON.parse(savedData) as FormDataWithPreviews;
         
-        // Restaurar foto de perfil si existe en localStorage
-        if (parsedData.profilePhotoPreview) {
-          setPreviewUrl(parsedData.profilePhotoPreview);
+        // ✅ SANITIZAR URLs cargadas del localStorage
+        const sanitizedProfilePreview = sanitizeUrl(parsedData.profilePhotoPreview);
+        const sanitizedTutorPreview = sanitizeUrl(parsedData.tutorINEPreview);
+        
+        // Restaurar foto de perfil si existe y es válida
+        if (sanitizedProfilePreview) {
+          setPreviewUrl(sanitizedProfilePreview);
+          console.log('✅ [LOAD] Profile preview cargado desde localStorage');
+        } else if (parsedData.profilePhotoPreview) {
+          console.warn('⚠️ [LOAD] Profile preview inválido eliminado del localStorage');
         }
         
-        // Restaurar foto de INE si existe
-        if (parsedData.tutorINEPreview) {
-          setTutorINEUrl(parsedData.tutorINEPreview);
+        // Restaurar foto de INE si existe y es válida
+        if (sanitizedTutorPreview) {
+          setTutorINEUrl(sanitizedTutorPreview);
+          console.log('✅ [LOAD] Tutor INE preview cargado desde localStorage');
+        } else if (parsedData.tutorINEPreview) {
+          console.warn('⚠️ [LOAD] Tutor INE preview inválido eliminado del localStorage');
         }
         
         // Mostrar notificación solo si hay datos importantes
         if (parsedData.firstName || parsedData.email) {
           if (confirm("Encontramos un registro previo. ¿Deseas continuar donde lo dejaste?")) {
             // Eliminar las propiedades de previsualización que no forman parte del formulario
-            const { profilePhotoPreview, tutorINEPreview, ...formData } = parsedData;
+            const { 
+              profilePhotoPreview, 
+              tutorINEPreview, 
+              hasProfilePhotoFile,
+              hasTutorINEFile,
+              ...formData 
+            } = parsedData;
             
             reset(formData);
             
@@ -226,7 +291,7 @@ const RegistroPage = () => {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-  }, [reset]);
+  }, [reset, sanitizeUrl]);
 
   // Calcular el progreso del formulario basado en campos completados
   useEffect(() => {
@@ -244,13 +309,18 @@ const RegistroPage = () => {
         }
       });
       
-      // Guardar referencias a las previsualizaciones
-      if (previewUrl) {
-        dataToSave.profilePhotoPreview = previewUrl;
+      // ✅ GUARDAR REFERENCIAS SEGURAS (solo si no son blob URLs)
+      const sanitizedProfileUrl = sanitizeUrl(previewUrl || undefined);
+      const sanitizedTutorUrl = sanitizeUrl(tutorINEUrl || undefined);
+      
+      if (sanitizedProfileUrl) {
+        dataToSave.profilePhotoPreview = sanitizedProfileUrl;
+        dataToSave.hasProfilePhotoFile = !!profilePhotoFile;
       }
       
-      if (tutorINEUrl) {
-        dataToSave.tutorINEPreview = tutorINEUrl;
+      if (sanitizedTutorUrl) {
+        dataToSave.tutorINEPreview = sanitizedTutorUrl;
+        dataToSave.hasTutorINEFile = !!tutorINEFile;
       }
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -291,7 +361,7 @@ const RegistroPage = () => {
     } catch (error) {
       console.error("Error al guardar o calcular progreso:", error);
     }
-  }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl, sanitizeForStorage]);
+  }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl, profilePhotoFile, tutorINEFile, sanitizeForStorage]);
 
   // Verificar si el usuario es menor de edad
   useEffect(() => {
@@ -401,68 +471,68 @@ const RegistroPage = () => {
     alert(`Error al procesar la imagen: ${message}`);
   }, []);
 
-  // ✅ FUNCIONES PARA MANEJO DE FOTOS CORREGIDAS
-  const handleProfilePhotoCapture = useCallback((file: File) => {
+  // ✅ FUNCIONES PARA MANEJO DE FOTOS COMPLETAMENTE CORREGIDAS
+  const handleProfilePhotoCapture = useCallback(async (file: File) => {
     try {
       if (!file || !isValidFile(file)) {
         throw new Error("No se ha proporcionado un archivo válido");
       }
       
-      // Crear un FileReader para generar la vista previa
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target && e.target.result) {
-          setPreviewUrl(e.target.result.toString());
-        }
-      };
-      reader.onerror = (e) => {
-        handleFileError(e, 'lectura de archivo de perfil');
-      };
-      reader.readAsDataURL(file);
+      console.log("📸 [PROFILE] Procesando foto de perfil...");
       
-      // Crear un FileList simulado para react-hook-form
+      // ✅ GUARDAR ARCHIVO REAL
+      setProfilePhotoFile(file);
+      
+      // ✅ CREAR PREVIEW SEGURO (base64, no blob)
+      const safePreview = await createSafePreview(file);
+      setPreviewUrl(safePreview);
+      
+      // ✅ CREAR FILELIST PARA REACT-HOOK-FORM
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
       const fileList = dataTransfer.files;
       
       setValue('profilePhoto', fileList, { shouldValidate: true });
+      
+      console.log("✅ [PROFILE] Foto de perfil procesada correctamente");
     } catch (error) {
       handleFileError(error, 'procesamiento de foto de perfil');
     }
-  }, [setValue, handleFileError]);
+  }, [setValue, handleFileError, createSafePreview]);
 
-  const handleTutorINECapture = useCallback((file: File) => {
+  const handleTutorINECapture = useCallback(async (file: File) => {
     try {
       if (!file || !isValidFile(file)) {
         throw new Error("No se ha proporcionado un archivo válido");
       }
       
-      // Crear un FileReader para generar la vista previa
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target && e.target.result) {
-          setTutorINEUrl(e.target.result.toString());
-        }
-      };
-      reader.onerror = (e) => {
-        handleFileError(e, 'lectura de archivo INE');
-      };
-      reader.readAsDataURL(file);
+      console.log("📄 [TUTOR-INE] Procesando INE del tutor...");
       
-      // Crear un FileList simulado para react-hook-form
+      // ✅ GUARDAR ARCHIVO REAL
+      setTutorINEFile(file);
+      
+      // ✅ CREAR PREVIEW SEGURO (base64, no blob)
+      const safePreview = await createSafePreview(file);
+      setTutorINEUrl(safePreview);
+      
+      // ✅ CREAR FILELIST PARA REACT-HOOK-FORM
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
       const fileList = dataTransfer.files;
       
       setValue('tutorINE', fileList, { shouldValidate: true });
+      
+      console.log("✅ [TUTOR-INE] INE del tutor procesado correctamente");
     } catch (error) {
       handleFileError(error, 'procesamiento de foto del INE');
     }
-  }, [setValue, handleFileError]);
+  }, [setValue, handleFileError, createSafePreview]);
 
   const clearPhoto = useCallback(() => {
-    setValue('profilePhoto', undefined as any, {shouldDirty: true, shouldValidate: true});
+    // ✅ LIMPIAR TODOS LOS ESTADOS RELACIONADOS
+    setProfilePhotoFile(null);
     setPreviewUrl(null);
+    setValue('profilePhoto', undefined as any, {shouldDirty: true, shouldValidate: true});
     
     // Actualizar localStorage
     try {
@@ -470,16 +540,21 @@ const RegistroPage = () => {
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         delete parsedData.profilePhotoPreview;
+        delete parsedData.hasProfilePhotoFile;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedData));
       }
     } catch (e) {
       console.error("Error al actualizar localStorage:", e);
     }
+    
+    console.log("🗑️ [PROFILE] Foto de perfil eliminada");
   }, [setValue]);
 
   const clearTutorINE = useCallback(() => {
-    setValue('tutorINE', undefined as any, {shouldDirty: true, shouldValidate: true});
+    // ✅ LIMPIAR TODOS LOS ESTADOS RELACIONADOS
+    setTutorINEFile(null);
     setTutorINEUrl(null);
+    setValue('tutorINE', undefined as any, {shouldDirty: true, shouldValidate: true});
     
     // Actualizar localStorage
     try {
@@ -487,29 +562,38 @@ const RegistroPage = () => {
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         delete parsedData.tutorINEPreview;
+        delete parsedData.hasTutorINEFile;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedData));
       }
     } catch (e) {
       console.error("Error al actualizar localStorage:", e);
     }
+    
+    console.log("🗑️ [TUTOR-INE] INE del tutor eliminado");
   }, [setValue]);
 
-  // ACTUALIZADO: Manejo de envío del formulario con integración Supabase Auth
+  // ✅ FUNCIÓN DE ENVÍO COMPLETAMENTE CORREGIDA
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
       setIsSubmitting(true);
       
-      console.log("Iniciando proceso de envío con integración Supabase Auth...");
+      console.log("🚀 [SUBMIT] Iniciando proceso de envío corregido - Sin blob URLs...");
       
       // ✅ VERIFICAR FIRMA DE MANERA SEGURA Y ROBUSTA
       let signatureDataUrl = '';
       if (sigCanvas.current) {
         try {
-          console.log("Obteniendo canvas de firma...");
+          console.log("✍️ [SUBMIT] Obteniendo canvas de firma...");
           const canvas = sigCanvas.current.getCanvas();
           if (canvas) {
             signatureDataUrl = canvas.toDataURL('image/png');
-            console.log("Firma obtenida correctamente");
+            
+            // ✅ VERIFICAR que no sea blob URL
+            if (isBlobUrl(signatureDataUrl)) {
+              throw new Error("Error: la firma generó una blob URL");
+            }
+            
+            console.log("✅ [SUBMIT] Firma obtenida correctamente");
           } else {
             throw new Error("No se pudo obtener el canvas de la firma");
           }
@@ -531,32 +615,68 @@ const RegistroPage = () => {
         return;
       }
 
-      console.log("Procesando fotos...");
+      console.log("📸 [SUBMIT] Procesando fotos...");
       
-      // ✅ MANEJAR FOTOS DE MANERA SEGURA
-      let profilePhotoBase64 = previewUrl;
-      let tutorINEBase64 = tutorINEUrl;
+      // ✅ PROCESAR IMÁGENES DE MANERA COMPLETAMENTE SEGURA
+      let profilePhotoBase64 = '';
+      let tutorINEBase64 = '';
       
       try {
-        // Solo convertir si hay un archivo válido
-        if (data.profilePhoto?.[0] && isValidFile(data.profilePhoto[0])) {
-          profilePhotoBase64 = await toBase64(data.profilePhoto[0]);
+        // ✅ USAR ARCHIVO REAL GUARDADO, NO EL DEL FORMULARIO
+        if (profilePhotoFile && isValidFile(profilePhotoFile)) {
+          console.log("📸 [SUBMIT] Convirtiendo foto de perfil real a base64...");
+          profilePhotoBase64 = await toBase64(profilePhotoFile);
+          
+          // ✅ DOBLE VERIFICACIÓN: No debe ser blob URL
+          if (isBlobUrl(profilePhotoBase64)) {
+            throw new Error("Error crítico: foto de perfil generó blob URL");
+          }
+          
+          console.log("✅ [SUBMIT] Foto de perfil convertida correctamente");
+        } else {
+          throw new Error("No hay foto de perfil válida");
         }
         
-        if (showTutorField && data.tutorINE?.[0] && isValidFile(data.tutorINE[0])) {
-          tutorINEBase64 = await toBase64(data.tutorINE[0]);
+        // ✅ PROCESAR INE DEL TUTOR SI ES NECESARIO
+        if (showTutorField) {
+          if (tutorINEFile && isValidFile(tutorINEFile)) {
+            console.log("📄 [SUBMIT] Convirtiendo INE del tutor real a base64...");
+            tutorINEBase64 = await toBase64(tutorINEFile);
+            
+            // ✅ DOBLE VERIFICACIÓN: No debe ser blob URL
+            if (isBlobUrl(tutorINEBase64)) {
+              throw new Error("Error crítico: INE del tutor generó blob URL");
+            }
+            
+            console.log("✅ [SUBMIT] INE del tutor convertido correctamente");
+          } else {
+            throw new Error("No hay foto de INE válida para menor de edad");
+          }
         }
+        
       } catch (error) {
-        console.error("Error al procesar imágenes:", error);
-        // Continuar con el envío si tenemos al menos las previsualizaciones
-        if (!profilePhotoBase64) {
-          alert("Error al procesar la foto de perfil. Por favor, intenta de nuevo.");
-          setIsSubmitting(false);
-          return;
-        }
+        console.error("❌ [SUBMIT] Error al procesar imágenes:", error);
+        alert(`Error al procesar las imágenes: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        setIsSubmitting(false);
+        return;
       }
 
-      // Construir payload completo para el API
+      // ✅ VALIDACIÓN FINAL: VERIFICAR QUE NO HAY BLOB URLs
+      const urlsToCheck = [profilePhotoBase64, tutorINEBase64, signatureDataUrl].filter(Boolean);
+      const hasBlobUrls = urlsToCheck.some(url => isBlobUrl(url));
+      
+      if (hasBlobUrls) {
+        console.error("❌ [SUBMIT] BLOB URLs detectadas, abortando envío:", {
+          profilePhotoIsBlob: isBlobUrl(profilePhotoBase64),
+          tutorINEIsBlob: isBlobUrl(tutorINEBase64),
+          signatureIsBlob: isBlobUrl(signatureDataUrl)
+        });
+        alert("❌ Error crítico: Se detectaron URLs temporales. Por favor, recarga la página e intenta de nuevo.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ✅ CONSTRUIR PAYLOAD LIMPIO
       const payload = {
         // Datos personales - estructura mejorada para Supabase Auth
         personalInfo: {
@@ -597,14 +717,30 @@ const RegistroPage = () => {
         signature: signatureDataUrl,
         registrationDate: new Date().toISOString(),
         
-        // Fotos procesadas
+        // ✅ FOTOS PROCESADAS CORRECTAMENTE (GARANTIZADO SIN BLOB URLs)
         profilePhoto: profilePhotoBase64,
         tutorINE: tutorINEBase64,
         isMinor: showTutorField,
+        
+        // ✅ METADATA PARA DEBUGGING
+        metadata: {
+          version: '2.0-no-blob',
+          processedAt: new Date().toISOString(),
+          processedBy: 'luishdz044'
+        }
       };
 
-      // Llamada al API con manejo de errores mejorado
-      console.log("Enviando datos al API con integración Supabase...");
+      // ✅ LOG FINAL PARA VERIFICACIÓN
+      console.log("✅ [SUBMIT] Payload preparado correctamente:", {
+        profilePhoto: profilePhotoBase64.substring(0, 50) + '...',
+        tutorINE: tutorINEBase64 ? tutorINEBase64.substring(0, 50) + '...' : 'N/A',
+        signature: signatureDataUrl.substring(0, 50) + '...',
+        noBlobUrls: !urlsToCheck.some(url => isBlobUrl(url)),
+        timestamp: new Date().toISOString()
+      });
+
+      // ✅ LLAMADA AL API CON MANEJO DE ERRORES MEJORADO
+      console.log("📡 [SUBMIT] Enviando datos al API...");
       
       try {
         const res = await fetch('/api/register', {
@@ -614,7 +750,7 @@ const RegistroPage = () => {
           cache: 'no-store' // Evitar caché
         });
 
-        console.log("Respuesta recibida, status:", res.status);
+        console.log("📡 [SUBMIT] Respuesta recibida, status:", res.status);
         
         // Intentar parsear la respuesta como JSON
         let responseData;
@@ -622,15 +758,15 @@ const RegistroPage = () => {
         
         if (contentType && contentType.includes("application/json")) {
           responseData = await res.json();
-          console.log("Respuesta JSON:", responseData);
+          console.log("📡 [SUBMIT] Respuesta JSON:", responseData);
         } else {
           const text = await res.text();
-          console.error("Respuesta no-JSON:", text);
+          console.error("📡 [SUBMIT] Respuesta no-JSON:", text);
           throw new Error(`Respuesta inesperada: ${text.substring(0, 100)}...`);
         }
 
         if (res.ok && responseData.success) {
-          console.log("Registro exitoso, ID:", responseData.userId);
+          console.log("🎉 [SUBMIT] Registro exitoso, ID:", responseData.userId);
           // Éxito: Guardamos el ID y mostramos modal
           setUserId(responseData.userId);
           setShowSuccessModal(true);
@@ -638,15 +774,15 @@ const RegistroPage = () => {
         } else {
           // Error desde el API con mensaje
           const errorMessage = responseData.message || `Error ${res.status}: ${res.statusText}`;
-          console.error("Error de API:", errorMessage);
+          console.error("❌ [SUBMIT] Error de API:", errorMessage);
           alert(`Error al registrar: ${errorMessage}`);
         }
       } catch (networkError) {
-        console.error('Error de red:', networkError);
+        console.error('❌ [SUBMIT] Error de red:', networkError);
         alert('Error de conexión. Verifica tu internet y vuelve a intentarlo.');
       }
     } catch (error) {
-      console.error('Error general en el proceso de registro:', error);
+      console.error('💥 [SUBMIT] Error general en el proceso de registro:', error);
       alert('Ocurrió un error al procesar tu registro. Por favor intenta nuevamente.');
     } finally {
       setIsSubmitting(false);
@@ -671,6 +807,7 @@ const RegistroPage = () => {
     if (sigCanvas.current) {
       try {
         sigCanvas.current.clear();
+        console.log("🗑️ [SIGNATURE] Firma eliminada");
       } catch (error) {
         console.error("Error al limpiar la firma:", error);
       }
@@ -681,18 +818,19 @@ const RegistroPage = () => {
     <div className="min-h-screen bg-black text-white px-4 py-8">
       {/* Logo y lema */}
       <div className="flex flex-col items-center mb-6">
-     <Image
-  src="/logo.png"
-  alt="Muscle Up Gym"
-  width={300}
-  height={300}
-  priority
-  className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 object-contain"
-/>
+        <Image
+          src="/logo.png"
+          alt="Muscle Up Gym"
+          width={300}
+          height={300}
+          priority
+          className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 object-contain"
+        />
         <p className="mt-4 text-xl text-white">
           Tu salud y bienestar es nuestra misión.
         </p>
       </div>
+      
       {/* Barra de progreso */}
       <div className="max-w-2xl mx-auto mb-6">
         <div className="flex justify-between mb-2 text-sm">
@@ -706,6 +844,7 @@ const RegistroPage = () => {
           ></div>
         </div>
       </div>
+      
       {/* Indicador de pasos (pestañas) */}
       <div className="max-w-2xl mx-auto mb-6">
         <div className="flex mb-1">
@@ -763,6 +902,7 @@ const RegistroPage = () => {
           </span>
         </div>
       </div>
+      
       {/* Formulario */}
       <form onSubmit={handleSubmit(onSubmit)} className={styles.formContainer}>
         {/* PASO 1: DATOS PERSONALES */}
@@ -1330,30 +1470,30 @@ const RegistroPage = () => {
             </div>
           )}
           
-         {/* ✅ FIRMA TOTALMENTE CORREGIDA */}
-         <div className="mb-6">
-  <label className="block mb-2">Firma <span className="text-yellow-400">*</span></label>
-  <div className="bg-white rounded-md overflow-hidden">
-    <SignatureCanvasTyped
-      ref={(ref: SignatureCanvasRef | null) => { sigCanvas.current = ref; }}
-      canvasProps={{
-        className: styles.signatureCanvas,
-        width: isMobile ? 300 : 500,
-        height: 150,
-      }}
-      backgroundColor="white"
-    />
-  </div>
-  <div className="flex justify-end mt-2">
-    <button
-      type="button"
-      onClick={clearSignature}
-      className="text-sm text-gray-400 hover:text-white"
-    >
-      Borrar firma
-    </button>
-  </div>
-</div>
+          {/* ✅ FIRMA TOTALMENTE CORREGIDA */}
+          <div className="mb-6">
+            <label className="block mb-2">Firma <span className="text-yellow-400">*</span></label>
+            <div className="bg-white rounded-md overflow-hidden">
+              <SignatureCanvasTyped
+                ref={(ref: SignatureCanvasRef | null) => { sigCanvas.current = ref; }}
+                canvasProps={{
+                  className: styles.signatureCanvas,
+                  width: isMobile ? 300 : 500,
+                  height: 150,
+                }}
+                backgroundColor="white"
+              />
+            </div>
+            <div className="flex justify-end mt-2">
+              <button
+                type="button"
+                onClick={clearSignature}
+                className="text-sm text-gray-400 hover:text-white"
+              >
+                Borrar firma
+              </button>
+            </div>
+          </div>
           
           <div className="flex justify-between mt-6">
             <button
@@ -1369,7 +1509,7 @@ const RegistroPage = () => {
               className={styles.buttonPrimary}
               disabled={isSubmitting}
             >
-                            {isSubmitting ? (
+              {isSubmitting ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1382,10 +1522,182 @@ const RegistroPage = () => {
           </div>
         </div>
       </form>
+      
       {/* Modal de éxito */}
       {showSuccessModal && (
         <SuccessModal onClose={handleCloseSuccessModal} />
       )}
+
+      {/* ✅ INDICADOR DE VERSIÓN CORREGIDA PARA DESARROLLO */}
+      {process.env.NODE_ENV === 'development' && (
+        <div 
+          style={{
+            position: 'fixed',
+            bottom: '10px',
+            right: '10px',
+            background: 'rgba(255, 204, 0, 0.2)',
+            color: '#FFCC00',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontSize: '0.7rem',
+            fontWeight: '600',
+            zIndex: 10000,
+            border: '1px solid rgba(255, 204, 0, 0.4)',
+            backdropFilter: 'blur(10px)',
+            opacity: 0.8
+          }}
+        >
+          🚀 Registro v2.0 - Sin blob URLs - {new Date().toISOString()} by @luishdz044
+        </div>
+      )}
+
+      {/* ✅ ESTILOS CSS PERSONALIZADOS PARA DEBUGGING */}
+      <style jsx>{`
+        /* Indicadores visuales para desarrollo */
+        .blob-url-warning {
+          position: relative;
+        }
+        
+        .blob-url-warning::after {
+          content: '⚠️ Blob URL detectada';
+          position: absolute;
+          top: -25px;
+          left: 0;
+          background: #FFB300;
+          color: #000;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.6rem;
+          font-weight: 600;
+          z-index: 1000;
+          display: ${process.env.NODE_ENV === 'development' ? 'block' : 'none'};
+        }
+
+        .safe-url-indicator {
+          position: relative;
+        }
+        
+        .safe-url-indicator::after {
+          content: '✅ URL segura';
+          position: absolute;
+          top: -25px;
+          right: 0;
+          background: #388E3C;
+          color: #fff;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.6rem;
+          font-weight: 600;
+          z-index: 1000;
+          display: ${process.env.NODE_ENV === 'development' ? 'block' : 'none'};
+        }
+
+        /* Animaciones mejoradas */
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Mejoras visuales para el progreso */
+        .progress-bar-enhanced {
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 204, 0, 0.3),
+            transparent
+          );
+          background-size: 200% 100%;
+          animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+
+        /* Estados de validación mejorados */
+        .field-success {
+          border-color: #388E3C !important;
+          box-shadow: 0 0 0 2px rgba(56, 142, 60, 0.2) !important;
+        }
+        
+        .field-error {
+          border-color: #D32F2F !important;
+          box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.2) !important;
+          animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+          20%, 40%, 60%, 80% { transform: translateX(3px); }
+        }
+
+        /* Mejoras de accesibilidad */
+        .focus-visible:focus-visible {
+          outline: 3px solid #FFCC00 !important;
+          outline-offset: 2px !important;
+        }
+        
+        /* Optimizaciones de rendimiento */
+        .gpu-accelerated {
+          will-change: transform, opacity;
+          backface-visibility: hidden;
+          perspective: 1000px;
+        }
+        
+        /* Indicadores de archivo procesado */
+        .file-processed::before {
+          content: '📁 Procesado';
+          position: absolute;
+          top: -20px;
+          left: 0;
+          background: #388E3C;
+          color: white;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.6rem;
+          font-weight: 600;
+          z-index: 100;
+        }
+        
+        .file-pending::before {
+          content: '⏳ Pendiente';
+          position: absolute;
+          top: -20px;
+          left: 0;
+          background: #FFB300;
+          color: black;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.6rem;
+          font-weight: 600;
+          z-index: 100;
+        }
+
+        /* Transiciones suaves */
+        * {
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .smooth-transition {
+          transition: all 0.3s ease;
+        }
+      `}</style>
     </div>
   );
 };
