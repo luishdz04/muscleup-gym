@@ -1,7 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Avatar,
+  Chip,
+  Grid,
+  CircularProgress,
+  Alert,
+  Stack,
+  Divider,
+  Paper
+} from '@mui/material';
 import { 
   FaUser, 
   FaEnvelope, 
@@ -9,44 +23,239 @@ import {
   FaCalendar, 
   FaIdCard,
   FaDumbbell,
-  FaEdit,
   FaCheckCircle,
-  FaClock
+  FaClock,
+  FaMapMarkerAlt,
+  FaHeartbeat,
+  FaAward
 } from 'react-icons/fa';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { formatMexicoDateTime, toMexicoDate } from '@/utils/dateHelpers';
+
+// 🎨 DARK PRO SYSTEM - TOKENS
+const darkProTokens = {
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  success: '#388E3C',
+  error: '#D32F2F',
+  warning: '#FFB300',
+  info: '#1976D2'
+};
 
 interface UserInfo {
-  nombre: string;
-  apellidos: string;
+  id: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  telefono: string;
-  fechaNacimiento: string;
-  numeroCliente: string;
-  fechaRegistro: string;
-  membresia: {
-    tipo: string;
-    estado: string;
-    vencimiento: string;
-  };
+  whatsapp: string;
+  birthDate: string;
+  gender: string;
+  maritalStatus: string;
+  isMinor: boolean;
+  created_at: string;
+  profilePictureUrl?: string;
+}
+
+interface UserAddress {
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+interface EmergencyContact {
+  name: string;
+  phone: string;
+  medicalCondition: string;
+  bloodType: string;
+}
+
+interface MembershipInfo {
+  referredBy: string;
+  mainMotivation: string;
+  receivePlans: boolean;
+  trainingLevel: string;
+}
+
+interface ActiveMembership {
+  id: string;
+  planName: string;
+  status: string;
+  startDate: string;
+  endDate: string | null;
+  daysRemaining: number;
+  isActive: boolean;
+  totalFrozenDays: number;
 }
 
 export default function ClienteDashboard() {
-  const [userInfo, setUserInfo] = useState<UserInfo>({
-    nombre: "Juan",
-    apellidos: "Pérez García",
-    email: "juan.perez@email.com",
-    telefono: "+52 123 456 7890",
-    fechaNacimiento: "1990-05-15",
-    numeroCliente: "MUP-2024-0001",
-    fechaRegistro: "2024-01-15",
-    membresia: {
-      tipo: "Mensualidad Regular",
-      estado: "Activa",
-      vencimiento: "2025-02-15"
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [address, setAddress] = useState<UserAddress | null>(null);
+  const [emergency, setEmergency] = useState<EmergencyContact | null>(null);
+  const [membershipInfo, setMembershipInfo] = useState<MembershipInfo | null>(null);
+  const [activeMembership, setActiveMembership] = useState<ActiveMembership | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const supabase = createBrowserSupabaseClient();
+
+  // ✅ FUNCIÓN PARA CALCULAR EDAD
+  const calculateAge = useCallback((birthDate: string): number => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
     }
-  });
+    
+    return age;
+  }, []);
 
-  const [editMode, setEditMode] = useState(false);
+  // ✅ FUNCIÓN PARA CALCULAR DÍAS COMO MIEMBRO
+  const calculateDaysAsMember = useCallback((registrationDate: string): number => {
+    const today = new Date();
+    const registration = new Date(registrationDate);
+    const diffTime = today.getTime() - registration.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  }, []);
 
+  // ✅ FUNCIÓN PARA CALCULAR DÍAS RESTANTES DE MEMBRESÍA
+  const calculateDaysRemaining = useCallback((endDate: string | null): number => {
+    if (!endDate) return 0;
+    
+    const today = new Date();
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  }, []);
+
+  // ✅ FUNCIÓN PARA FORMATEAR FECHAS
+  const formatDate = useCallback((dateString: string): string => {
+    try {
+      return formatMexicoDateTime(dateString, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'Fecha no disponible';
+    }
+  }, []);
+
+  // ✅ CARGAR DATOS DEL USUARIO AUTENTICADO
+  const loadUserData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Obtener usuario autenticado
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        throw new Error('No se pudo obtener el usuario autenticado');
+      }
+
+      // Cargar información básica del usuario
+      const { data: userData, error: userError } = await supabase
+        .from('Users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (userError) throw userError;
+      
+      if (userData) {
+        setUserInfo(userData);
+      }
+
+      // Solo cargar datos adicionales si es un cliente
+      if (userData?.rol === 'cliente') {
+        // Cargar dirección
+        const { data: addressData } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('userId', user.id)
+          .single();
+
+        if (addressData) setAddress(addressData);
+
+        // Cargar contacto de emergencia
+        const { data: emergencyData } = await supabase
+          .from('emergency_contacts')
+          .select('*')
+          .eq('userId', user.id)
+          .single();
+
+        if (emergencyData) setEmergency(emergencyData);
+
+        // Cargar información de membresía
+        const { data: membershipData } = await supabase
+          .from('membership_info')
+          .select('*')
+          .eq('userId', user.id)
+          .single();
+
+        if (membershipData) setMembershipInfo(membershipData);
+
+        // Cargar membresía activa
+        const { data: activeMembershipData } = await supabase
+          .from('user_memberships')
+          .select(`
+            *,
+            membership_plans!planid (name)
+          `)
+          .eq('userid', user.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (activeMembershipData && activeMembershipData.length > 0) {
+          const membership = activeMembershipData[0];
+          const daysRemaining = calculateDaysRemaining(membership.end_date);
+          
+          setActiveMembership({
+            id: membership.id,
+            planName: membership.membership_plans?.name || 'Plan No Disponible',
+            status: membership.status,
+            startDate: membership.start_date,
+            endDate: membership.end_date,
+            daysRemaining,
+            isActive: daysRemaining > 0,
+            totalFrozenDays: membership.total_frozen_days || 0
+          });
+        }
+      }
+
+    } catch (err: any) {
+      console.error('Error cargando datos del usuario:', err);
+      setError(`Error al cargar información: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, calculateDaysRemaining]);
+
+  // ✅ CARGAR DATOS AL MONTAR COMPONENTE
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  // ✅ ANIMACIONES
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -65,210 +274,504 @@ export default function ClienteDashboard() {
     }
   };
 
+  // ✅ ESTADO DE LOADING
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '60vh',
+        flexDirection: 'column',
+        gap: 2
+      }}>
+        <CircularProgress size={60} sx={{ color: darkProTokens.primary }} />
+        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+          Cargando tu información...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // ✅ ESTADO DE ERROR
+  if (error || !userInfo) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{
+          backgroundColor: `${darkProTokens.error}10`,
+          color: darkProTokens.textPrimary,
+          border: `1px solid ${darkProTokens.error}30`
+        }}>
+          {error || 'No se pudo cargar la información del usuario'}
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
-    <div className="max-w-7xl mx-auto">
+    <Box sx={{ 
+      maxWidth: '1400px', 
+      mx: 'auto',
+      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+      minHeight: '100vh',
+      p: 3
+    }}>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        style={{ marginBottom: '2rem' }}
       >
-        <h1 className="text-4xl font-bold text-white mb-2">
-          Mi <span className="text-[#FFCC00]">Información</span>
-        </h1>
-        <p className="text-gray-400">Gestiona tu perfil y configuración personal</p>
+        <Typography variant="h3" sx={{ 
+          fontWeight: 800, 
+          color: darkProTokens.textPrimary,
+          mb: 1
+        }}>
+          Mi <span style={{ color: darkProTokens.primary }}>Información</span>
+        </Typography>
+        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+          Vista general de tu perfil y membresía
+        </Typography>
       </motion.div>
 
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
       >
-        {/* Tarjeta de Perfil Principal */}
-        <motion.div
-          variants={itemVariants}
-          className="lg:col-span-2 bg-gray-900 rounded-2xl border border-gray-800 p-6"
-        >
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-[#FFCC00]">Datos Personales</h2>
-            <button
-              onClick={() => setEditMode(!editMode)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#FFCC00] text-black rounded-lg hover:bg-yellow-500 transition-colors"
-            >
-              <FaEdit />
-              {editMode ? 'Guardar' : 'Editar'}
-            </button>
-          </div>
+        <Grid container spacing={3}>
+          {/* Tarjeta de Perfil Principal */}
+          <Grid size={{ xs: 12, lg: 8 }}>
+            <motion.div variants={itemVariants}>
+              <Card sx={{
+                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                border: `1px solid ${darkProTokens.grayDark}`,
+                borderRadius: 4
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
+                    <Avatar
+                      src={userInfo.profilePictureUrl}
+                      sx={{
+                        width: 80,
+                        height: 80,
+                        border: `3px solid ${darkProTokens.primary}`,
+                        fontSize: '2rem',
+                        fontWeight: 800,
+                        background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                        color: darkProTokens.background
+                      }}
+                    >
+                      {`${userInfo.firstName[0]}${userInfo.lastName[0]}`}
+                    </Avatar>
+                    
+                    <Box>
+                      <Typography variant="h4" sx={{ 
+                        color: darkProTokens.primary, 
+                        fontWeight: 700,
+                        mb: 1
+                      }}>
+                        {userInfo.firstName} {userInfo.lastName}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Chip 
+                          label={`${calculateAge(userInfo.birthDate)} años`}
+                          sx={{
+                            backgroundColor: darkProTokens.info,
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600
+                          }}
+                          size="small"
+                        />
+                        
+                        <Chip 
+                          label={userInfo.gender}
+                          sx={{
+                            backgroundColor: darkProTokens.success,
+                            color: darkProTokens.textPrimary,
+                            fontWeight: 600
+                          }}
+                          size="small"
+                        />
+                        
+                        {userInfo.isMinor && (
+                          <Chip 
+                            label="MENOR DE EDAD"
+                            sx={{
+                              backgroundColor: darkProTokens.warning,
+                              color: darkProTokens.background,
+                              fontWeight: 700
+                            }}
+                            size="small"
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Nombre */}
-            <div className="space-y-2">
-              <label className="text-gray-400 text-sm flex items-center gap-2">
-                <FaUser className="text-[#FFCC00]" />
-                Nombre
-              </label>
-              {editMode ? (
-                <input
-                  type="text"
-                  value={userInfo.nombre}
-                  onChange={(e) => setUserInfo({...userInfo, nombre: e.target.value})}
-                  className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-[#FFCC00] focus:outline-none"
-                />
-              ) : (
-                <p className="text-white text-lg">{userInfo.nombre}</p>
-              )}
-            </div>
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.primary, 
+                    fontWeight: 700,
+                    mb: 3
+                  }}>
+                    Datos Personales
+                  </Typography>
 
-            {/* Apellidos */}
-            <div className="space-y-2">
-              <label className="text-gray-400 text-sm flex items-center gap-2">
-                <FaUser className="text-[#FFCC00]" />
-                Apellidos
-              </label>
-              {editMode ? (
-                <input
-                  type="text"
-                  value={userInfo.apellidos}
-                  onChange={(e) => setUserInfo({...userInfo, apellidos: e.target.value})}
-                  className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-[#FFCC00] focus:outline-none"
-                />
-              ) : (
-                <p className="text-white text-lg">{userInfo.apellidos}</p>
-              )}
-            </div>
+                  <Grid container spacing={3}>
+                    {/* Email */}
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                        <FaEnvelope style={{ color: darkProTokens.primary }} />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Email
+                        </Typography>
+                      </Box>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        {userInfo.email}
+                      </Typography>
+                    </Grid>
 
-            {/* Email */}
-            <div className="space-y-2">
-              <label className="text-gray-400 text-sm flex items-center gap-2">
-                <FaEnvelope className="text-[#FFCC00]" />
-                Email
-              </label>
-              {editMode ? (
-                <input
-                  type="email"
-                  value={userInfo.email}
-                  onChange={(e) => setUserInfo({...userInfo, email: e.target.value})}
-                  className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-[#FFCC00] focus:outline-none"
-                />
-              ) : (
-                <p className="text-white text-lg">{userInfo.email}</p>
-              )}
-            </div>
+                    {/* WhatsApp */}
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                        <FaPhone style={{ color: darkProTokens.primary }} />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          WhatsApp
+                        </Typography>
+                      </Box>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        {userInfo.whatsapp}
+                      </Typography>
+                    </Grid>
 
-            {/* Teléfono */}
-            <div className="space-y-2">
-              <label className="text-gray-400 text-sm flex items-center gap-2">
-                <FaPhone className="text-[#FFCC00]" />
-                Teléfono
-              </label>
-              {editMode ? (
-                <input
-                  type="tel"
-                  value={userInfo.telefono}
-                  onChange={(e) => setUserInfo({...userInfo, telefono: e.target.value})}
-                  className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-[#FFCC00] focus:outline-none"
-                />
-              ) : (
-                <p className="text-white text-lg">{userInfo.telefono}</p>
-              )}
-            </div>
+                    {/* Fecha de Nacimiento */}
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                        <FaCalendar style={{ color: darkProTokens.primary }} />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Fecha de Nacimiento
+                        </Typography>
+                      </Box>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        {formatDate(userInfo.birthDate)}
+                      </Typography>
+                    </Grid>
 
-            {/* Fecha de Nacimiento */}
-            <div className="space-y-2">
-              <label className="text-gray-400 text-sm flex items-center gap-2">
-                <FaCalendar className="text-[#FFCC00]" />
-                Fecha de Nacimiento
-              </label>
-              <p className="text-white text-lg">
-                {new Date(userInfo.fechaNacimiento).toLocaleDateString('es-MX', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
+                    {/* Estado Civil */}
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                        <FaUser style={{ color: darkProTokens.primary }} />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          Estado Civil
+                        </Typography>
+                      </Box>
+                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        {userInfo.maritalStatus}
+                      </Typography>
+                    </Grid>
 
-            {/* Número de Cliente */}
-            <div className="space-y-2">
-              <label className="text-gray-400 text-sm flex items-center gap-2">
-                <FaIdCard className="text-[#FFCC00]" />
-                Número de Cliente
-              </label>
-              <p className="text-white text-lg font-mono">{userInfo.numeroCliente}</p>
-            </div>
-          </div>
-        </motion.div>
+                    {/* ID de Usuario */}
+                    <Grid size={{ xs: 12 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                        <FaIdCard style={{ color: darkProTokens.primary }} />
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          ID de Cliente
+                        </Typography>
+                      </Box>
+                      <Typography variant="body1" sx={{ 
+                        color: darkProTokens.textPrimary, 
+                        fontWeight: 600,
+                        fontFamily: 'monospace'
+                      }}>
+                        {userInfo.id}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
 
-        {/* Tarjeta de Membresía */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-gradient-to-br from-[#FFCC00] to-yellow-600 rounded-2xl p-6 text-black"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-2xl font-bold">Mi Membresía</h3>
-            <FaDumbbell className="text-3xl" />
-          </div>
+          {/* Tarjeta de Membresía */}
+          <Grid size={{ xs: 12, lg: 4 }}>
+            <motion.div variants={itemVariants}>
+              <Card sx={{
+                background: activeMembership?.isActive ? 
+                  `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})` :
+                  `linear-gradient(135deg, ${darkProTokens.error}, #B71C1C)`,
+                color: darkProTokens.background,
+                borderRadius: 4
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                      Mi Membresía
+                    </Typography>
+                    <FaDumbbell style={{ fontSize: '2rem' }} />
+                  </Box>
 
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm opacity-80">Tipo de Plan</p>
-              <p className="text-xl font-bold">{userInfo.membresia.tipo}</p>
-            </div>
+                  {activeMembership ? (
+                    <Stack spacing={3}>
+                      <Box>
+                        <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
+                          Plan Actual
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {activeMembership.planName}
+                        </Typography>
+                      </Box>
 
-            <div className="flex items-center gap-2">
-              <FaCheckCircle className="text-green-800" />
-              <span className="font-semibold">{userInfo.membresia.estado}</span>
-            </div>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <FaCheckCircle />
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          {activeMembership.isActive ? 'ACTIVA' : 'VENCIDA'}
+                        </Typography>
+                      </Box>
 
-            <div className="pt-4 border-t border-black/20">
-              <p className="text-sm opacity-80">Vence el</p>
-              <p className="text-lg font-bold">
-                {new Date(userInfo.membresia.vencimiento).toLocaleDateString('es-MX', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
+                      {activeMembership.endDate && (
+                        <Box>
+                          <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
+                            {activeMembership.isActive ? 'Vence el' : 'Venció el'}
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                            {formatDate(activeMembership.endDate)}
+                          </Typography>
+                        </Box>
+                      )}
 
-            <button className="w-full mt-4 bg-black text-[#FFCC00] py-3 rounded-lg font-bold hover:bg-gray-900 transition-colors">
-              Renovar Membresía
-            </button>
-          </div>
-        </motion.div>
+                      {activeMembership.totalFrozenDays > 0 && (
+                        <Box>
+                          <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
+                            Días Congelados
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                            🧊 {activeMembership.totalFrozenDays} días
+                          </Typography>
+                        </Box>
+                      )}
+                    </Stack>
+                  ) : (
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                        Sin Membresía Activa
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                        Contacta al gimnasio para activar tu membresía
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
 
-        {/* Estadísticas Rápidas */}
-        <motion.div
-          variants={itemVariants}
-          className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6"
-        >
-          {/* Días como miembro */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-center">
-            <FaClock className="text-4xl text-[#FFCC00] mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">Miembro desde hace</p>
-            <p className="text-2xl font-bold text-white">
-              {Math.floor((new Date().getTime() - new Date(userInfo.fechaRegistro).getTime()) / (1000 * 60 * 60 * 24))} días
-            </p>
-          </div>
+          {/* Estadísticas Rápidas */}
+          <Grid size={{ xs: 12 }}>
+            <motion.div variants={itemVariants}>
+              <Grid container spacing={3}>
+                {/* Días como miembro */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Card sx={{
+                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                    border: `1px solid ${darkProTokens.grayDark}`,
+                    borderRadius: 3,
+                    textAlign: 'center'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <FaClock style={{ 
+                        fontSize: '3rem', 
+                        color: darkProTokens.primary, 
+                        marginBottom: '1rem' 
+                      }} />
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        Miembro desde hace
+                      </Typography>
+                      <Typography variant="h4" sx={{ 
+                        color: darkProTokens.textPrimary, 
+                        fontWeight: 800 
+                      }}>
+                        {calculateDaysAsMember(userInfo.created_at)} días
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
 
-          {/* Visitas este mes */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-center">
-            <FaDumbbell className="text-4xl text-[#FFCC00] mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">Visitas este mes</p>
-            <p className="text-2xl font-bold text-white">12</p>
-          </div>
+                {/* Días restantes */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Card sx={{
+                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                    border: `1px solid ${darkProTokens.grayDark}`,
+                    borderRadius: 3,
+                    textAlign: 'center'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <FaCalendar style={{ 
+                        fontSize: '3rem', 
+                        color: darkProTokens.primary, 
+                        marginBottom: '1rem' 
+                      }} />
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        {activeMembership?.isActive ? 'Días restantes' : 'Estado de membresía'}
+                      </Typography>
+                      <Typography variant="h4" sx={{ 
+                        color: activeMembership?.isActive ? darkProTokens.success : darkProTokens.error, 
+                        fontWeight: 800 
+                      }}>
+                        {activeMembership?.isActive ? 
+                          `${activeMembership.daysRemaining}` : 
+                          'Vencida'
+                        }
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
 
-          {/* Próximo pago */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-center">
-            <FaCalendar className="text-4xl text-[#FFCC00] mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">Días para renovar</p>
-            <p className="text-2xl font-bold text-white">
-              {Math.ceil((new Date(userInfo.membresia.vencimiento).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
-            </p>
-          </div>
-        </motion.div>
+                {/* Fecha de registro */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Card sx={{
+                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                    border: `1px solid ${darkProTokens.grayDark}`,
+                    borderRadius: 3,
+                    textAlign: 'center'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <FaAward style={{ 
+                        fontSize: '3rem', 
+                        color: darkProTokens.primary, 
+                        marginBottom: '1rem' 
+                      }} />
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        Miembro desde
+                      </Typography>
+                      <Typography variant="h6" sx={{ 
+                        color: darkProTokens.textPrimary, 
+                        fontWeight: 700 
+                      }}>
+                        {formatDate(userInfo.created_at)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </motion.div>
+          </Grid>
+
+          {/* Información Adicional (solo si es cliente) */}
+          {userInfo.rol === 'cliente' && (address || emergency || membershipInfo) && (
+            <Grid size={{ xs: 12 }}>
+              <motion.div variants={itemVariants}>
+                <Card sx={{
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                  border: `1px solid ${darkProTokens.grayDark}`,
+                  borderRadius: 4
+                }}>
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 700,
+                      mb: 3
+                    }}>
+                      Información Adicional
+                    </Typography>
+
+                    <Grid container spacing={4}>
+                      {/* Dirección */}
+                      {address && (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                              <FaMapMarkerAlt style={{ color: darkProTokens.primary }} />
+                              <Typography variant="subtitle1" sx={{ 
+                                color: darkProTokens.textPrimary, 
+                                fontWeight: 600 
+                              }}>
+                                Dirección
+                              </Typography>
+                            </Box>
+                            <Stack spacing={1}>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                📍 {address.street} #{address.number}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                🏘️ {address.neighborhood}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                🌆 {address.city}, {address.state}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                📮 CP: {address.postalCode}
+                              </Typography>
+                            </Stack>
+                          </Box>
+                        </Grid>
+                      )}
+
+                      {/* Contacto de Emergencia */}
+                      {emergency && (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                              <FaHeartbeat style={{ color: darkProTokens.error }} />
+                              <Typography variant="subtitle1" sx={{ 
+                                color: darkProTokens.textPrimary, 
+                                fontWeight: 600 
+                              }}>
+                                Contacto de Emergencia
+                              </Typography>
+                            </Box>
+                            <Stack spacing={1}>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                👤 {emergency.name}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                📞 {emergency.phone}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                🩸 Tipo: {emergency.bloodType}
+                              </Typography>
+                            </Stack>
+                          </Box>
+                        </Grid>
+                      )}
+
+                      {/* Info de Membresía */}
+                      {membershipInfo && (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                              <FaDumbbell style={{ color: darkProTokens.info }} />
+                              <Typography variant="subtitle1" sx={{ 
+                                color: darkProTokens.textPrimary, 
+                                fontWeight: 600 
+                              }}>
+                                Perfil de Entrenamiento
+                              </Typography>
+                            </Box>
+                            <Stack spacing={1}>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                🏋️‍♂️ Nivel: {membershipInfo.trainingLevel}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                🎯 Motivación: {membershipInfo.mainMotivation}
+                              </Typography>
+                              {membershipInfo.referredBy && (
+                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                  👥 Referido por: {membershipInfo.referredBy}
+                                </Typography>
+                              )}
+                            </Stack>
+                          </Box>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+          )}
+        </Grid>
       </motion.div>
-    </div>
+    </Box>
   );
 }
