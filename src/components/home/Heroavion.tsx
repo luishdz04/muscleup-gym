@@ -41,7 +41,7 @@ const heroContent = {
 };
 
 // ==========================================
-// 🎨 SCENE CLASS (CORREGIDA)
+// 🎨 SCENE CLASS
 // ==========================================
 
 class Scene {
@@ -51,8 +51,8 @@ class Scene {
   light: THREE.PointLight;
   softLight: THREE.AmbientLight;
   modelGroup: THREE.Group;
-  w: number = 0; // ✅ CORREGIDO: Inicializado
-  h: number = 0; // ✅ CORREGIDO: Inicializado
+  w: number = 0;
+  h: number = 0;
 
   constructor(model: THREE.Group, canvas: HTMLCanvasElement) {
     this.views = [
@@ -99,7 +99,6 @@ class Scene {
     this.onResize();
     window.addEventListener('resize', this.onResize, false);
 
-    // ✅ CORREGIDO: Check if model has geometry before accessing
     let edges: THREE.EdgesGeometry | undefined;
     if (model.children.length > 0) {
       const firstChild = model.children[0] as THREE.Mesh;
@@ -112,7 +111,6 @@ class Scene {
 
     model.layers.set(0);
     
-    // Only add wireframe if we have edges
     if (edges) {
       const line = new THREE.LineSegments(edges);
       const lineMaterial = line.material as THREE.LineBasicMaterial;
@@ -171,6 +169,7 @@ class Scene {
 
 export default function AnimatedHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null); // ✅ Nueva ref para el contenedor
   const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -190,7 +189,6 @@ export default function AnimatedHero() {
 
     gsap.registerPlugin(ScrollTrigger);
     
-    // ✅ CORREGIDO: Solo usar DrawSVG si está disponible
     try {
       const { DrawSVGPlugin } = await import('gsap/DrawSVGPlugin');
       gsap.registerPlugin(DrawSVGPlugin);
@@ -225,7 +223,6 @@ export default function AnimatedHero() {
 
     const loader = new OBJLoader(manager);
     
-    // Load the airplane model
     loader.load('https://assets.codepen.io/557388/1405+Plane_1.obj', (obj) => {
       object = obj;
     });
@@ -236,7 +233,7 @@ export default function AnimatedHero() {
   // ==========================================
 
   const setupAnimation = async (model: THREE.Group) => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !contentRef.current) return;
 
     const { gsap } = await import('gsap');
     const { ScrollTrigger } = await import('gsap/ScrollTrigger');
@@ -244,11 +241,8 @@ export default function AnimatedHero() {
     const scene = new Scene(model, canvasRef.current);
     const plane = scene.modelGroup;
 
-    // ✅ CORREGIDO: Canvas empieza invisible y aparece cuando debe
-    gsap.fromTo(canvasRef.current, 
-      { x: "50%", autoAlpha: 0 }, 
-      { duration: 1, x: "0%", autoAlpha: 1 }
-    );
+    // ✅ CAMBIO PRINCIPAL: El canvas aparece cuando su sección está visible
+    gsap.set(canvasRef.current, { autoAlpha: 0 });
     
     gsap.to('.loading', { autoAlpha: 0 });
     gsap.to('.scroll-cta', { opacity: 1 });
@@ -256,11 +250,23 @@ export default function AnimatedHero() {
 
     const tau = Math.PI * 2;
 
-    // ✅ CORREGIDO: Posición inicial MUY fuera de vista
+    // ✅ Posición inicial del avión
     gsap.set(plane.rotation, { y: tau * -0.25 });
     gsap.set(plane.position, { x: 80, y: -32, z: -60 });
 
     scene.render();
+
+    // ✅ NUEVO: Hacer aparecer el canvas cuando la sección esté visible
+    ScrollTrigger.create({
+      trigger: contentRef.current,
+      start: "top bottom",
+      onEnter: () => {
+        gsap.to(canvasRef.current, { duration: 1, autoAlpha: 1 });
+      },
+      onLeaveBack: () => {
+        gsap.to(canvasRef.current, { duration: 0.5, autoAlpha: 0 });
+      }
+    });
 
     // Views animation for blueprint section
     gsap.fromTo(scene.views[1], 
@@ -312,7 +318,7 @@ export default function AnimatedHero() {
       }
     });
 
-    // SVG drawing animations (solo si DrawSVG está disponible)
+    // SVG animations
     try {
       gsap.to('#line-length', {
         drawSVG: 100,
@@ -344,7 +350,6 @@ export default function AnimatedHero() {
         }
       });
 
-      // SVG fade out animations
       gsap.to('#line-length', {
         opacity: 0,
         drawSVG: 0,
@@ -381,21 +386,22 @@ export default function AnimatedHero() {
       console.log('DrawSVG animations skipped');
     }
 
-    // ✅ CORREGIDO: Main timeline con delay inicial para que aparezca en su sección
+    // ✅ CAMBIO PRINCIPAL: Timeline ajustado para empezar cuando la sección sea visible
     const tl = gsap.timeline({
       onUpdate: scene.render,
       scrollTrigger: {
-        trigger: ".content",
+        trigger: contentRef.current, // ✅ Cambio de trigger
         scrub: true,
-        start: "top top",
-        end: "bottom bottom"
+        start: "top bottom", // ✅ Empieza cuando la sección entra en vista
+        end: "bottom top",   // ✅ Termina cuando la sección sale de vista
+        pin: false           // ✅ No hacer pin para que fluya con el scroll
       },
       defaults: { duration: 1, ease: 'power2.inOut' }
     });
 
     let delay = 0;
 
-    // ✅ AQUÍ ES DONDE EMPIEZA A APARECER EL AVIÓN
+    // Animación del avión
     tl.to('.scroll-cta', { duration: 0.25, opacity: 0 }, delay);
     tl.to(plane.position, { x: -10, ease: 'power1.in' }, delay);
 
@@ -457,7 +463,7 @@ export default function AnimatedHero() {
   }
 
   return (
-    <div className="content relative font-serif bg-[#D0CBC7] text-black overflow-x-hidden min-h-[100vh]">
+    <div ref={contentRef} className="content relative font-serif bg-[#D0CBC7] text-black overflow-x-hidden min-h-[100vh]">
       {/* Loading */}
       {isLoading && (
         <div className="loading fixed w-full h-full top-0 left-0 flex items-center justify-center text-[4vw] lg:text-[32px] z-50 bg-[#D0CBC7]">
@@ -465,11 +471,10 @@ export default function AnimatedHero() {
         </div>
       )}
 
-      {/* ✅ CORREGIDO: Canvas invisible inicialmente */}
+      {/* ✅ Canvas con opacity inicial 0 */}
       <canvas 
         ref={canvasRef}
-        className="fixed top-0 left-0 z-[2] pointer-events-none"
-        style={{ visibility: 'hidden', opacity: 0 }}
+        className="fixed top-0 left-0 z-[2] pointer-events-none opacity-0"
       />
 
       {/* Trigger */}
