@@ -130,7 +130,7 @@ const { data: userData, error: userError } = await supabaseAdmin
         doc.setFontSize(8);
         doc.setTextColor(...COLORS.LIGHT_GRAY);
         doc.setFont('helvetica', 'normal');
-        doc.text('Email: administracion@muscleupgym.com.mx | Tel: 866-112-7905', LAYOUT.PAGE_WIDTH / 2, LAYOUT.FOOTER_Y + 11, {align: 'center'});
+        doc.text('Email: administracion@muscleupgym.fitness | Tel: 866-112-7905', LAYOUT.PAGE_WIDTH / 2, LAYOUT.FOOTER_Y + 11, {align: 'center'});
         doc.text('Tu salud y bienestar es nuestra misión', LAYOUT.PAGE_WIDTH / 2, LAYOUT.FOOTER_Y + 16, {align: 'center'});
         
         // 📄 NÚMERO DE PÁGINA - DERECHA
