@@ -1501,8 +1501,6 @@ export default function ClienteDashboard() {
                         </Grid>
                       )}
 
-                     // En la sección de documentos, reemplaza el botón del contrato:
-
 {userInfo.contractPdfUrl && (
   <Grid size={{ xs: 12, sm: 12, md: 4 }}>
     <motion.div
