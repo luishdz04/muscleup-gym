@@ -1501,76 +1501,93 @@ export default function ClienteDashboard() {
                         </Grid>
                       )}
 
-                      {userInfo.contractPdfUrl && (
-                        <Grid size={{ xs: 12, sm: 12, md: 4 }}>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ type: "spring", stiffness: 300 }}
-                          >
-                            <Box sx={{
-                              textAlign: 'center',
-                              p: isMobile ? 2 : 3,
-                              borderRadius: darkProTokens.borderRadiusSmall,
-                              background: darkProTokens.glass,
-                              border: `1px solid ${darkProTokens.error}40`
-                            }}>
-                              <Typography 
-                                variant="subtitle2" 
-                                sx={{ 
-                                  color: darkProTokens.error, 
-                                  mb: 2,
-                                  fontWeight: 700,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: 1
-                                }}
-                              >
-                                <FaFileContract /> Contrato
-                              </Typography>
-                              <Box sx={{ 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center', 
-                                gap: 2 
-                              }}>
-                                <motion.div
-                                  animate={{ scale: [1, 1.1, 1] }}
-                                  transition={{ duration: 2, repeat: Infinity }}
-                                  style={{ 
-                                    fontSize: isMobile ? '3rem' : '4rem', 
-                                    color: darkProTokens.error,
-                                    filter: `drop-shadow(0 0 20px ${darkProTokens.errorGlow})`
-                                  }}
-                                >
-                                  📄
-                                </motion.div>
-                                <Button
-                                  onClick={() => window.open(userInfo.contractPdfUrl, '_blank')}
-                                  variant="contained"
-                                  startIcon={<FaDownload />}
-                                  sx={{
-                                    background: `linear-gradient(135deg, ${darkProTokens.error}, #B71C1C)`,
-                                    color: 'white',
-                                    fontWeight: 700,
-                                    px: 3,
-                                    py: 1,
-                                    borderRadius: darkProTokens.borderRadiusSmall,
-                                    boxShadow: `0 8px 32px ${darkProTokens.errorGlow}`,
-                                    '&:hover': {
-                                      transform: 'scale(1.05)',
-                                      boxShadow: `0 12px 40px ${darkProTokens.errorGlow}`
-                                    },
-                                    transition: 'all 0.3s ease'
-                                  }}
-                                >
-                                  Ver Contrato
-                                </Button>
-                              </Box>
-                            </Box>
-                          </motion.div>
-                        </Grid>
-                      )}
+                     // En la sección de documentos, reemplaza el botón del contrato:
+
+{userInfo.contractPdfUrl && (
+  <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      transition={{ type: "spring", stiffness: 300 }}
+    >
+      <Box sx={{
+        textAlign: 'center',
+        p: isMobile ? 2 : 3,
+        borderRadius: darkProTokens.borderRadiusSmall,
+        background: darkProTokens.glass,
+        border: `1px solid ${darkProTokens.error}40`
+      }}>
+        <Typography 
+          variant="subtitle2" 
+          sx={{ 
+            color: darkProTokens.error, 
+            mb: 2,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1
+          }}
+        >
+          <FaFileContract /> Contrato
+        </Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          gap: 2 
+        }}>
+          <motion.div
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            style={{ 
+              fontSize: isMobile ? '3rem' : '4rem', 
+              color: darkProTokens.error,
+              filter: `drop-shadow(0 0 20px ${darkProTokens.errorGlow})`
+            }}
+          >
+            📄
+          </motion.div>
+          <Button
+            // ✅ CORREGIDO: Función que funciona en mobile
+            onClick={() => {
+              if (isMobile) {
+                // Para mobile: crear link temporal y hacer click
+                const link = document.createElement('a');
+                link.href = userInfo.contractPdfUrl!;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              } else {
+                // Para desktop: usar window.open normal
+                window.open(userInfo.contractPdfUrl, '_blank', 'noopener,noreferrer');
+              }
+            }}
+            variant="contained"
+            startIcon={<FaDownload />}
+            sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.error}, #B71C1C)`,
+              color: 'white',
+              fontWeight: 700,
+              px: 3,
+              py: 1,
+              borderRadius: darkProTokens.borderRadiusSmall,
+              boxShadow: `0 8px 32px ${darkProTokens.errorGlow}`,
+              '&:hover': {
+                transform: 'scale(1.05)',
+                boxShadow: `0 12px 40px ${darkProTokens.errorGlow}`
+              },
+              transition: 'all 0.3s ease'
+            }}
+          >
+            Ver Contrato
+          </Button>
+        </Box>
+      </Box>
+    </motion.div>
+  </Grid>
+)}
                     </Grid>
                   </CardContent>
                 </GlassCard>
