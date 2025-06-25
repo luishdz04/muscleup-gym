@@ -30,10 +30,11 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Fab,
-  Zoom
+  Zoom,
+  Theme
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion'; // AnimatePresence se elimina si no se usa en otro lado
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 // ICONOS (Sin cambios)
@@ -59,14 +60,15 @@ const BREAKPOINTS = { mobile: '(max-width: 599px)', tablet: '(max-width: 899px)'
 const DRAWER_WIDTHS = { mobile: '100vw', tablet: 280, desktop: 290, large: 320 };
 
 // Función auxiliar para obtener el ancho del drawer
-const getDrawerWidth = (theme: any) => {
+const getDrawerWidth = (theme: Theme) => {
+    // Asegurarse de que window existe (para SSR)
     if (typeof window === 'undefined') return DRAWER_WIDTHS.desktop;
     if (window.innerWidth >= theme.breakpoints.values.lg) return DRAWER_WIDTHS.large;
     if (window.innerWidth >= theme.breakpoints.values.md) return DRAWER_WIDTHS.desktop;
     return DRAWER_WIDTHS.tablet;
 };
 
-// COMPONENTES ESTILIZADOS (Styled Components)
+// COMPONENTES ESTILIZADOS CON LA CORRECCIÓN
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -84,16 +86,16 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   minHeight: '100vh',
   color: '#fff',
   position: 'relative',
-  
+  padding: theme.spacing(3), // Padding general
+
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(1),
     marginLeft: 0,
     width: '100%',
     paddingBottom: '80px',
   },
-  // ✅ LA SOLUCIÓN DEFINITIVA ESTÁ AQUÍ:
+  // ✅ ESTA ES LA LÓGICA CORRECTA DEL CÓDIGO QUE SÍ FUNCIONA
   [theme.breakpoints.up('md')]: {
-    padding: theme.spacing(3),
     width: `calc(100% - ${open ? `${getDrawerWidth(theme)}px` : '0px'})`,
     marginLeft: open ? `${getDrawerWidth(theme)}px` : 0,
   },
@@ -274,11 +276,10 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       <Main open={drawerOpen && isDesktop}>
         <DrawerHeader />
         <Container maxWidth="xl" disableGutters={isMobile} sx={{ px: isMobile ? 1 : 0 }}>
-          <AnimatePresence mode="wait">
+            {/* Se mantiene la animación, ya que el problema real era el layout de <Main> */}
             <motion.div key={pathname} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
               {children}
             </motion.div>
-          </AnimatePresence>
         </Container>
       </Main>
       
