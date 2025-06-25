@@ -76,7 +76,7 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
   flexGrow: 1,
-  transition: theme.transitions.create(['margin', 'width'], {
+  transition: theme.transitions.create(['margin', 'width', 'padding'], {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
@@ -105,21 +105,23 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     width: '100%',
   },
   
-  // 💻 DESKTOP (900px+)
+  // 💻 DESKTOP (900px+) - CORREGIDO
   [theme.breakpoints.up('md')]: {
     padding: theme.spacing(3),
-    marginLeft: open ? 0 : `-${DRAWER_WIDTHS.desktop}px`,
-    width: open ? `calc(100% - ${DRAWER_WIDTHS.desktop}px)` : '100%',
+    marginLeft: 0, // Sin margen negativo
+    width: '100%',
+    paddingLeft: open ? `${DRAWER_WIDTHS.desktop + 24}px` : theme.spacing(3), // Padding condicional
   },
   
-  // 🖥️ LARGE (1200px+)
+  // 🖥️ LARGE (1200px+) - CORREGIDO
   [theme.breakpoints.up('lg')]: {
-    marginLeft: open ? 0 : `-${DRAWER_WIDTHS.large}px`,
-    width: open ? `calc(100% - ${DRAWER_WIDTHS.large}px)` : '100%',
+    marginLeft: 0, // Sin margen negativo
+    width: '100%',
+    paddingLeft: open ? `${DRAWER_WIDTHS.large + 24}px` : theme.spacing(3), // Padding condicional
   },
   
   ...(open && {
-    transition: theme.transitions.create(['margin', 'width'], {
+    transition: theme.transitions.create(['margin', 'width', 'padding'], {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
