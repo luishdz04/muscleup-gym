@@ -400,12 +400,12 @@ export async function POST(req: NextRequest) {
       console.log("🚨 [EMERGENCY] Insertando contacto de emergencia...");
       
       const emergencyData = {
-        userId: userId,
-        name: data.emergencyContact?.name || data.emergencyName || '',
-        phone: data.emergencyContact?.phone || data.emergencyPhone || '',
-        medicalCondition: data.emergencyContact?.medicalCondition || data.medicalCondition || '',
-        bloodType: data.emergencyContact?.bloodType || data.bloodType || ''
-      };
+  userId: userId,
+  name: data.emergencyContact?.name || '',
+  phone: data.emergencyContact?.phone || '',
+  medicalCondition: data.emergencyContact?.medicalCondition || '',
+  bloodType: data.emergencyContact?.bloodType || ''
+};
     
       const { error: contactError } = await supabaseAdmin
         .from('emergency_contacts')
@@ -424,13 +424,13 @@ export async function POST(req: NextRequest) {
     try {
       console.log("🎯 [MEMBERSHIP] Insertando información de membresía...");
       
-      const membershipData = {
-        userId: userId,
-        referredBy: data.membershipData?.referredBy || data.referredBy || '',
-        mainMotivation: data.membershipData?.mainMotivation || data.mainMotivation || '',
-        receivePlans: data.membershipData?.receivePlans || data.receivePlans || false,
-        trainingLevel: data.membershipData?.trainingLevel || data.trainingLevel || ''
-      };
+   const membershipData = {
+  userId: userId,
+  referredBy: data.membershipData?.referredBy || '',
+  mainMotivation: data.membershipData?.mainMotivation || '',
+  receivePlans: data.membershipData?.receivePlans || false,
+  trainingLevel: data.membershipData?.trainingLevel || ''
+};
     
       const { error: membershipError } = await supabaseAdmin
         .from('membership_info')
