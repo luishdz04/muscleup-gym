@@ -54,11 +54,11 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LoginIcon from '@mui/icons-material/Login';
 
-// BREAKPOINTS Y ANCHOS
+// RESPONSIVE BREAKPOINTS Y ANCHOS
 const BREAKPOINTS = { mobile: '(max-width: 599px)', tablet: '(max-width: 899px)', desktop: '(min-width: 900px)', large: '(min-width: 1200px)' };
 const DRAWER_WIDTHS = { mobile: '100vw', tablet: 280, desktop: 290, large: 320 };
 
-// ESTILOS DE COMPONENTES
+// COMPONENTES ESTILIZADOS (Styled Components)
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -81,15 +81,26 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     padding: theme.spacing(1),
     marginLeft: 0,
     width: '100%',
-    paddingBottom: '80px', // Espacio para la barra de navegación inferior
+    paddingBottom: '80px',
+  },
+  [theme.breakpoints.between('sm', 'md')]: {
+    padding: theme.spacing(2),
+    marginLeft: 0,
+    width: '100%',
   },
   [theme.breakpoints.up('md')]: {
     padding: theme.spacing(3),
-    width: `calc(100% - ${open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : '0px'})`,
-    marginLeft: open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : 0,
+    marginLeft: 0,
+    width: '100%',
+    paddingLeft: open ? `${DRAWER_WIDTHS.desktop + 24}px` : theme.spacing(3),
+  },
+  [theme.breakpoints.up('lg')]: {
+    marginLeft: 0,
+    width: '100%',
+    paddingLeft: open ? `${DRAWER_WIDTHS.large + 24}px` : theme.spacing(3),
   },
   ...(open && {
-    transition: theme.transitions.create(['margin', 'width'], {
+    transition: theme.transitions.create(['margin', 'width', 'padding'], {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
@@ -99,7 +110,8 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
 const DrawerHeader = styled('div')(({ theme }) => ({
   display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...theme.mixins.toolbar,
   [theme.breakpoints.down('sm')]: { padding: theme.spacing(0, 2), minHeight: '72px !important' },
-  [theme.breakpoints.up('sm')]: { padding: theme.spacing(0, 3), minHeight: '88px !important' },
+  [theme.breakpoints.between('sm', 'md')]: { padding: theme.spacing(0, 2), minHeight: '80px !important' },
+  [theme.breakpoints.up('md')]: { padding: theme.spacing(0, 3), minHeight: '88px !important' },
 }));
 
 const ResponsiveAppBar = styled(AppBar)(({ theme }) => ({
@@ -107,26 +119,34 @@ const ResponsiveAppBar = styled(AppBar)(({ theme }) => ({
   boxShadow: '0 4px 30px rgba(0,0,0,0.8)', borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
   '& .MuiToolbar-root': {
     minHeight: '72px',
+    [theme.breakpoints.between('sm', 'md')]: { minHeight: '80px', padding: theme.spacing(0, 2) },
     [theme.breakpoints.up('md')]: { minHeight: '88px', padding: theme.spacing(0, 3) },
   },
 }));
 
+const Search = styled('div')(({ theme }) => ({
+  position: 'relative', borderRadius: '25px', backgroundColor: alpha(theme.palette.common.white, 0.12),
+  border: '1px solid rgba(255, 204, 0, 0.2)', transition: 'all 0.3s ease',
+  '&:hover': { backgroundColor: alpha(theme.palette.common.white, 0.18), borderColor: 'rgba(255, 204, 0, 0.4)', transform: 'scale(1.02)' },
+  '&:focus-within': { backgroundColor: alpha(theme.palette.common.white, 0.25), borderColor: '#ffcc00', boxShadow: '0 0 0 3px rgba(255, 204, 0, 0.2)', transform: 'scale(1.05)' },
+  [theme.breakpoints.down('md')]: { display: 'none' },
+  [theme.breakpoints.up('md')]: { marginRight: theme.spacing(2), marginLeft: theme.spacing(2), width: '100%', maxWidth: '400px' },
+  [theme.breakpoints.up('lg')]: { maxWidth: '500px' },
+}));
+
+const SearchIconWrapper = styled('div')(({ theme }) => ({ padding: theme.spacing(0, 2), height: '100%', position: 'absolute', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255, 204, 0, 0.7)' }));
+const StyledInputBase = styled('input')(({ theme }) => ({ color: 'inherit', border: 'none', background: 'transparent', width: '100%', fontFamily: 'inherit', fontSize: '0.875rem', padding: theme.spacing(1.2, 2, 1.2, 0), paddingLeft: `calc(1em + ${theme.spacing(4)})`, transition: theme.transitions.create('width'), '&:focus': { outline: 'none' }, '&::placeholder': { color: 'rgba(255, 255, 255, 0.5)' } }));
+
 const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
   position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1300, backgroundColor: 'rgba(0, 0, 0, 0.95)',
   backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255, 204, 0, 0.2)', height: '70px',
-  '& .MuiBottomNavigationAction-root': { color: 'rgba(255, 255, 255, 0.6)', minHeight: '70px', padding: '8px 0',
+  '& .MuiBottomNavigationAction-root': {
+    color: 'rgba(255, 255, 255, 0.6)', minHeight: '70px', padding: '8px 0',
     '&.Mui-selected': { color: '#ffcc00' },
     '& .MuiBottomNavigationAction-label': { fontSize: '0.7rem', fontWeight: 600 }
   },
   [theme.breakpoints.up('sm')]: { display: 'none' },
 }));
-
-// Función auxiliar para obtener el ancho del drawer
-const getDrawerWidth = (md: number, lg: number) => {
-  if (window.innerWidth >= lg) return DRAWER_WIDTHS.large;
-  if (window.innerWidth >= md) return DRAWER_WIDTHS.desktop;
-  return DRAWER_WIDTHS.tablet;
-};
 
 // INTERFACES Y TIPOS
 interface ClienteLayoutProps { children: ReactNode; }
@@ -137,20 +157,21 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const router = useRouter();
   const theme = useTheme();
   
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const isMobile = useMediaQuery(BREAKPOINTS.mobile);
+  const isDesktop = useMediaQuery(BREAKPOINTS.desktop);
+  const isLarge = useMediaQuery(BREAKPOINTS.large);
   
-  const [drawerOpen, setDrawerOpen] = useState(isDesktop);
+  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [searchValue, setSearchValue] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
 
-  // 🔴 ELIMINADO: El useEffect que inyectaba CSS global.
-  // Esta era la causa raíz del problema de interacción en móviles.
-  // Las librerías modernas manejan esto correctamente sin necesidad de overrides.
+  // 🔴 ¡SOLUCIÓN! El `useEffect` que inyectaba CSS global ha sido eliminado.
+  // Esta era la causa del bloqueo de interacciones en móviles.
 
   const menuItems: MenuItemDef[] = [
     { text: 'Mi Información', path: '/dashboard/cliente', icon: <AccountCircleIcon />, mobileIcon: <HomeIcon />, section: 'info', description: 'Gestiona tu perfil personal' },
@@ -160,7 +181,14 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     { text: 'Historial', path: '/dashboard/cliente/historial', icon: <HistoryIcon />, mobileIcon: <HistoryIcon />, section: 'historial', description: 'Próximamente', disabled: true }
   ];
 
-  useEffect(() => setDrawerOpen(isDesktop), [isDesktop]);
+  const getDrawerWidth = () => {
+    if (isMobile) return DRAWER_WIDTHS.mobile;
+    if (isLarge) return DRAWER_WIDTHS.large;
+    if (isDesktop) return DRAWER_WIDTHS.desktop;
+    return DRAWER_WIDTHS.tablet;
+  };
+
+  useEffect(() => { setDrawerOpen(isDesktop); }, [isDesktop]);
 
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 300);
@@ -187,8 +215,8 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   useEffect(() => {
     if (pathname) {
       const pathParts = pathname.split('/');
-      const currentSection = pathParts[pathParts.length - 1] || '';
-      const sectionId = currentSection === 'cliente' ? 'info' : currentSection;
+      const section = pathParts[pathParts.length - 1] || '';
+      const sectionId = section === 'cliente' ? 'info' : section;
       setActiveSection(sectionId);
       const activeIndex = menuItems.findIndex(item => item.section === sectionId);
       if (activeIndex !== -1) setMobileBottomValue(activeIndex);
@@ -210,14 +238,11 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => setUserMenuAnchor(event.currentTarget);
   const handleUserMenuClose = () => setUserMenuAnchor(null);
-
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
     const selectedItem = menuItems[newValue];
-    if (selectedItem && !selectedItem.disabled) {
-      navigateTo(selectedItem.path);
-    }
+    if (selectedItem && !selectedItem.disabled) navigateTo(selectedItem.path);
   };
 
   return (
@@ -230,26 +255,30 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               <MenuIcon />
             </IconButton>
           )}
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 2 } }}>
-            <Box component="img" sx={{ height: { xs: 40, sm: 50, md: 65 }, mr: { xs: 1, sm: 2 } }} src="/logo.png" alt="Muscle Up Gym Logo" />
-            <Typography variant="h6" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 700 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 2, md: 3 } }}>
+            <Box component="img" sx={{ height: { xs: 40, sm: 50, md: 65 }, mr: { xs: 1, sm: 2 } }} src="/logo.png" alt="Muscle Up Gym" />
+            <Typography variant="h6" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 700, letterSpacing: 1.5 }}>
               PANEL DE CLIENTE
             </Typography>
           </Box>
+          <Search>
+            <SearchIconWrapper><SearchIcon /></SearchIconWrapper>
+            <StyledInputBase placeholder="Buscar en mi cuenta..." value={searchValue} onChange={(e) => setSearchValue(e.target.value)} />
+          </Search>
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
             <Tooltip title="Notificaciones">
               <IconButton color="inherit">
-                <Badge badgeContent={3} color="error"><NotificationsIcon /></Badge>
+                <Badge badgeContent={3} color="error"><NotificationsIcon sx={{ fontSize: { xs: 20, sm: 24 } }} /></Badge>
               </IconButton>
             </Tooltip>
-            <Tooltip title="Mi Perfil">
+            <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
               <IconButton onClick={handleUserMenuOpen} size="small" sx={{ ml: { xs: 0.5, sm: 1 } }}>
-                <Avatar alt={user?.firstName} src={user?.profilePictureUrl} sx={{ width: 40, height: 40 }} />
+                <Avatar alt={user?.firstName} src={user?.profilePictureUrl} sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }} />
               </IconButton>
             </Tooltip>
           </Box>
-          <Menu anchorEl={userMenuAnchor} open={Boolean(userMenuAnchor)} onClose={handleUserMenuClose} PaperProps={{ sx: { mt: 1.5, minWidth: 260, bgcolor: 'rgba(18,18,18,0.95)', backdropFilter: 'blur(10px)', color: 'white', border: '1px solid rgba(255,204,0,0.2)' } }}>
+          <Menu anchorEl={userMenuAnchor} open={Boolean(userMenuAnchor)} onClose={handleUserMenuClose} PaperProps={{ sx: { mt: 1.5, minWidth: 280, bgcolor: 'rgba(18,18,18,0.95)', backdropFilter: 'blur(10px)', color: 'white', border: '1px solid rgba(255,204,0,0.2)', borderRadius: 2 } }}>
             <MenuItem onClick={() => navigateTo('/dashboard/cliente')}><ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} /></ListItemIcon>Mi Perfil</MenuItem>
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
             <MenuItem onClick={handleLogout} sx={{ color: '#ff6b6b' }}><ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#ff6b6b' }} /></ListItemIcon>Cerrar Sesión</MenuItem>
@@ -258,11 +287,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       </ResponsiveAppBar>
       
       <SwipeableDrawer
-        sx={{
-          width: isDesktop ? getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg) : DRAWER_WIDTHS.tablet,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': { width: 'inherit', boxSizing: 'border-box', background: 'rgb(12, 12, 12)', color: 'white', borderRight: '1px solid rgba(255, 204, 0, 0.1)' },
-        }}
+        sx={{ width: getDrawerWidth(), flexShrink: 0, '& .MuiDrawer-paper': { width: 'inherit', boxSizing: 'border-box', background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)', color: 'white', borderRight: '1px solid rgba(255, 204, 0, 0.1)' } }}
         variant={isDesktop ? "persistent" : "temporary"}
         anchor="left"
         open={drawerOpen}
@@ -271,9 +296,12 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         ModalProps={{ keepMounted: true }}
       >
         <DrawerHeader>
-          <Box component="img" sx={{ height: 50, mr: 2 }} src="/logo.png" alt="Logo"/>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box component="img" sx={{ height: 50, mr: 2 }} src="/logo.png" alt="Logo"/>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#ffcc00' }}>MUP</Typography>
+            </Box>
           <IconButton onClick={() => setDrawerOpen(false)}>
-            <ChevronLeftIcon sx={{ color: 'white' }} />
+            {isMobile ? <CloseIcon sx={{ color: 'white' }} /> : <ChevronLeftIcon sx={{ color: 'white' }} />}
           </IconButton>
         </DrawerHeader>
         <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.1)' }} />
@@ -282,7 +310,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton onClick={() => !item.disabled && navigateTo(item.path)} disabled={item.disabled} sx={{ borderRadius: '12px', bgcolor: activeSection === item.section ? 'rgba(255, 204, 0, 0.2)' : 'transparent', '&:hover': { bgcolor: 'rgba(255, 204, 0, 0.1)' } }}>
                 <ListItemIcon sx={{ color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)' }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: activeSection === item.section ? 700 : 500, color: activeSection === item.section ? '#ffcc00' : 'inherit' }} />
+                <ListItemText primary={item.text} secondary={!isMobile ? item.description : undefined} primaryTypographyProps={{ fontWeight: activeSection === item.section ? 700 : 500, color: activeSection === item.section ? '#ffcc00' : 'inherit' }} secondaryTypographyProps={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }} />
               </ListItemButton>
             </ListItem>
           ))}
@@ -307,7 +335,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       </Main>
       
       <Zoom in={showScrollTop}>
-        <Fab onClick={scrollToTop} color="primary" size="large" sx={{ position: 'fixed', bottom: isMobile ? 85 : 20, right: 20, background: '#ffcc00', '&:hover': { background: '#ffd700' } }}>
+        <Fab onClick={scrollToTop} color="primary" size="large" sx={{ position: 'fixed', bottom: isMobile ? 85 : 20, right: 20, background: 'linear-gradient(135deg, #ffcc00, #ffd700)', '&:hover': { background: '#ffdd44' } }}>
           <KeyboardArrowUpIcon />
         </Fab>
       </Zoom>
