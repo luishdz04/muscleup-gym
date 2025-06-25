@@ -51,6 +51,7 @@ const darkProTokens = {
   info: '#1976D2'
 };
 
+// ✅ INTERFACES CORREGIDAS CON ESTRUCTURA REAL DE BD
 interface UserInfo {
   id: string;
   firstName: string;
@@ -61,12 +62,18 @@ interface UserInfo {
   gender: string;
   maritalStatus: string;
   isMinor: boolean;
-  created_at: string;
+  createdAt: string;
   profilePictureUrl?: string;
-  rol?: string;
+  rol: string;
+  fingerprint?: boolean;
+  points_balance?: number;
+  total_purchases?: number;
+  membership_type?: string;
 }
 
 interface UserAddress {
+  id: string;
+  userId: string;
   street: string;
   number: string;
   neighborhood: string;
@@ -77,6 +84,8 @@ interface UserAddress {
 }
 
 interface EmergencyContact {
+  id: string;
+  userId: string;
   name: string;
   phone: string;
   medicalCondition: string;
@@ -84,6 +93,8 @@ interface EmergencyContact {
 }
 
 interface MembershipInfo {
+  id: string;
+  userId: string;
   referredBy: string;
   mainMotivation: string;
   receivePlans: boolean;
@@ -94,11 +105,15 @@ interface ActiveMembership {
   id: string;
   planName: string;
   status: string;
-  startDate: string;
-  endDate: string | null;
+  start_date: string;
+  end_date: string | null;
   daysRemaining: number;
   isActive: boolean;
-  totalFrozenDays: number;
+  total_frozen_days: number;
+  amount_paid: number;
+  payment_type: string;
+  remaining_visits?: number;
+  total_visits?: number;
 }
 
 export default function ClienteDashboard() {
@@ -130,7 +145,7 @@ export default function ClienteDashboard() {
         age--;
       }
       
-      return Math.max(0, age); // No devolver edades negativas
+      return Math.max(0, age);
     } catch (error) {
       console.error('Error calculando edad:', error);
       return 0;
@@ -145,13 +160,12 @@ export default function ClienteDashboard() {
       const today = new Date();
       const registration = new Date(registrationDate);
       
-      // Verificar que la fecha sea válida
       if (isNaN(registration.getTime())) return 0;
       
       const diffTime = today.getTime() - registration.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
-      return Math.max(0, diffDays); // No devolver días negativos
+      return Math.max(0, diffDays);
     } catch (error) {
       console.error('Error calculando días como miembro:', error);
       return 0;
@@ -166,7 +180,6 @@ export default function ClienteDashboard() {
       const today = new Date();
       const end = new Date(endDate);
       
-      // Verificar que la fecha sea válida
       if (isNaN(end.getTime())) return 0;
       
       const diffTime = end.getTime() - today.getTime();
@@ -187,7 +200,7 @@ export default function ClienteDashboard() {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return 'Fecha inválida';
       
-      return formatMexicoDateTime(dateString, {
+      return date.toLocaleDateString('es-MX', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -198,7 +211,7 @@ export default function ClienteDashboard() {
     }
   }, []);
 
-  // ✅ CARGAR DATOS CON MEJOR MANEJO DE ERRORES
+  // ✅ CARGAR DATOS CON NOMBRES CORRECTOS DE BD
   const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
@@ -215,17 +228,34 @@ export default function ClienteDashboard() {
         throw new Error('No hay usuario autenticado');
       }
 
-      console.log('Usuario autenticado:', user.id);
+      console.log('🔐 [AUTH] Usuario autenticado:', user.id);
 
-      // Cargar información básica del usuario
+      // ✅ CARGAR INFORMACIÓN DEL USUARIO CON NOMBRES CORRECTOS
       const { data: userData, error: userError } = await supabase
         .from('Users')
-        .select('*')
+        .select(`
+          id,
+          firstName,
+          lastName,
+          email,
+          whatsapp,
+          birthDate,
+          gender,
+          maritalStatus,
+          isMinor,
+          createdAt,
+          profilePictureUrl,
+          rol,
+          fingerprint,
+          points_balance,
+          total_purchases,
+          membership_type
+        `)
         .eq('id', user.id)
         .single();
 
       if (userError) {
-        console.error('Error cargando datos de usuario:', userError);
+        console.error('❌ [USER] Error cargando datos de usuario:', userError);
         throw new Error(`Error al cargar datos del usuario: ${userError.message}`);
       }
       
@@ -233,68 +263,74 @@ export default function ClienteDashboard() {
         throw new Error('No se encontraron datos del usuario');
       }
 
-      console.log('Datos del usuario cargados:', userData);
+      console.log('✅ [USER] Datos del usuario cargados:', userData);
       setUserInfo(userData);
 
-      // Solo cargar datos adicionales si es un cliente
+      // ✅ CARGAR DATOS ADICIONALES SOLO SI ES CLIENTE
       if (userData?.rol === 'cliente') {
-        console.log('Cargando datos adicionales para cliente...');
+        console.log('👤 [CLIENT] Cargando datos adicionales para cliente...');
         
-        // Cargar dirección (sin lanzar error si no existe)
+        // ✅ CARGAR DIRECCIÓN CON NOMBRES CORRECTOS
         try {
           const { data: addressData, error: addressError } = await supabase
             .from('addresses')
             .select('*')
-            .eq('userId', user.id)
-            .maybeSingle(); // maybeSingle permite que no exista
+            .eq('userId', user.id) // ✅ CORRECTO: userId (camelCase)
+            .maybeSingle();
 
           if (addressError && addressError.code !== 'PGRST116') {
-            console.error('Error cargando dirección:', addressError);
+            console.error('❌ [ADDRESS] Error:', addressError);
           } else if (addressData) {
-            console.log('Dirección cargada:', addressData);
+            console.log('✅ [ADDRESS] Dirección cargada:', addressData);
             setAddress(addressData);
+          } else {
+            console.log('ℹ️ [ADDRESS] No se encontró dirección para el usuario');
           }
         } catch (err) {
-          console.error('Error en carga de dirección:', err);
+          console.error('❌ [ADDRESS] Error en carga de dirección:', err);
         }
 
-        // Cargar contacto de emergencia
+        // ✅ CARGAR CONTACTO DE EMERGENCIA
         try {
           const { data: emergencyData, error: emergencyError } = await supabase
             .from('emergency_contacts')
             .select('*')
-            .eq('userId', user.id)
+            .eq('userId', user.id) // ✅ CORRECTO: userId (camelCase)
             .maybeSingle();
 
           if (emergencyError && emergencyError.code !== 'PGRST116') {
-            console.error('Error cargando contacto de emergencia:', emergencyError);
+            console.error('❌ [EMERGENCY] Error:', emergencyError);
           } else if (emergencyData) {
-            console.log('Contacto de emergencia cargado:', emergencyData);
+            console.log('✅ [EMERGENCY] Contacto de emergencia cargado:', emergencyData);
             setEmergency(emergencyData);
+          } else {
+            console.log('ℹ️ [EMERGENCY] No se encontró contacto de emergencia');
           }
         } catch (err) {
-          console.error('Error en carga de contacto de emergencia:', err);
+          console.error('❌ [EMERGENCY] Error en carga:', err);
         }
 
-        // Cargar información de membresía
+        // ✅ CARGAR INFORMACIÓN DE MEMBRESÍA
         try {
           const { data: membershipData, error: membershipError } = await supabase
             .from('membership_info')
             .select('*')
-            .eq('userId', user.id)
+            .eq('userId', user.id) // ✅ CORRECTO: userId (camelCase)
             .maybeSingle();
 
           if (membershipError && membershipError.code !== 'PGRST116') {
-            console.error('Error cargando info de membresía:', membershipError);
+            console.error('❌ [MEMBERSHIP-INFO] Error:', membershipError);
           } else if (membershipData) {
-            console.log('Info de membresía cargada:', membershipData);
+            console.log('✅ [MEMBERSHIP-INFO] Info de membresía cargada:', membershipData);
             setMembershipInfo(membershipData);
+          } else {
+            console.log('ℹ️ [MEMBERSHIP-INFO] No se encontró info de membresía');
           }
         } catch (err) {
-          console.error('Error en carga de info de membresía:', err);
+          console.error('❌ [MEMBERSHIP-INFO] Error en carga:', err);
         }
 
-        // Cargar membresía activa
+        // ✅ CARGAR MEMBRESÍA ACTIVA CON JOIN CORREGIDO
         try {
           const { data: activeMembershipData, error: activeMembershipError } = await supabase
             .from('user_memberships')
@@ -302,37 +338,43 @@ export default function ClienteDashboard() {
               *,
               membership_plans!planid (name)
             `)
-            .eq('userid', user.id)
+            .eq('userid', user.id) // ✅ CORRECTO: userid (minúscula en esta tabla)
             .eq('status', 'active')
             .order('created_at', { ascending: false })
             .limit(1);
 
           if (activeMembershipError) {
-            console.error('Error cargando membresía activa:', activeMembershipError);
+            console.error('❌ [ACTIVE-MEMBERSHIP] Error:', activeMembershipError);
           } else if (activeMembershipData && activeMembershipData.length > 0) {
             const membership = activeMembershipData[0];
             const daysRemaining = calculateDaysRemaining(membership.end_date);
             
-            console.log('Membresía activa cargada:', membership);
+            console.log('✅ [ACTIVE-MEMBERSHIP] Membresía activa cargada:', membership);
             
             setActiveMembership({
               id: membership.id,
               planName: membership.membership_plans?.name || 'Plan No Disponible',
               status: membership.status,
-              startDate: membership.start_date,
-              endDate: membership.end_date,
+              start_date: membership.start_date,
+              end_date: membership.end_date,
               daysRemaining,
               isActive: daysRemaining > 0,
-              totalFrozenDays: membership.total_frozen_days || 0
+              total_frozen_days: membership.total_frozen_days || 0,
+              amount_paid: membership.amount_paid || 0,
+              payment_type: membership.payment_type || '',
+              remaining_visits: membership.remaining_visits,
+              total_visits: membership.total_visits
             });
+          } else {
+            console.log('ℹ️ [ACTIVE-MEMBERSHIP] No se encontró membresía activa');
           }
         } catch (err) {
-          console.error('Error en carga de membresía activa:', err);
+          console.error('❌ [ACTIVE-MEMBERSHIP] Error en carga:', err);
         }
       }
 
     } catch (err: any) {
-      console.error('Error general cargando datos:', err);
+      console.error('💥 [GENERAL] Error general cargando datos:', err);
       setError(err.message || 'Error desconocido al cargar información');
     } finally {
       setLoading(false);
@@ -393,15 +435,33 @@ export default function ClienteDashboard() {
         }}>
           {error || 'No se pudo cargar la información del usuario'}
         </Alert>
+        
+        {/* ✅ BOTÓN PARA RECARGAR */}
+        <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <button 
+            onClick={loadUserData}
+            style={{
+              background: darkProTokens.primary,
+              color: darkProTokens.background,
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Reintentar
+          </button>
+        </Box>
       </Box>
     );
   }
 
   // Calcular valores con validación
   const userAge = calculateAge(userInfo.birthDate);
-  const daysAsMember = calculateDaysAsMember(userInfo.created_at);
+  const daysAsMember = calculateDaysAsMember(userInfo.createdAt);
   const formattedBirthDate = formatDate(userInfo.birthDate);
-  const formattedRegistrationDate = formatDate(userInfo.created_at);
+  const formattedRegistrationDate = formatDate(userInfo.createdAt);
 
   return (
     <Box sx={{ 
@@ -508,6 +568,18 @@ export default function ClienteDashboard() {
                             size="small"
                           />
                         )}
+                        
+                        {userInfo.fingerprint && (
+                          <Chip 
+                            label="👆 BIOMÉTRICO"
+                            sx={{
+                              backgroundColor: darkProTokens.info,
+                              color: darkProTokens.textPrimary,
+                              fontWeight: 600
+                            }}
+                            size="small"
+                          />
+                        )}
                       </Box>
                     </Box>
                   </Box>
@@ -573,6 +645,35 @@ export default function ClienteDashboard() {
                       </Typography>
                     </Grid>
 
+                    {/* Puntos y Compras */}
+                    {(userInfo.points_balance || userInfo.total_purchases) && (
+                      <>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                            <FaAward style={{ color: darkProTokens.warning }} />
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Puntos Acumulados
+                            </Typography>
+                          </Box>
+                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            {userInfo.points_balance || 0} puntos
+                          </Typography>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, md: 6 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                            <FaDumbbell style={{ color: darkProTokens.success }} />
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              Total en Compras
+                            </Typography>
+                          </Box>
+                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            ${userInfo.total_purchases || 0}
+                          </Typography>
+                        </Grid>
+                      </>
+                    )}
+
                     {/* ID de Usuario */}
                     <Grid size={{ xs: 12 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
@@ -631,24 +732,44 @@ export default function ClienteDashboard() {
                         </Typography>
                       </Box>
 
-                      {activeMembership.endDate && (
+                      {activeMembership.end_date && (
                         <Box>
                           <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
                             {activeMembership.isActive ? 'Vence el' : 'Venció el'}
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                            {formatDate(activeMembership.endDate)}
+                            {formatDate(activeMembership.end_date)}
                           </Typography>
                         </Box>
                       )}
 
-                      {activeMembership.totalFrozenDays > 0 && (
+                      <Box>
+                        <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
+                          Monto Pagado
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                          ${activeMembership.amount_paid}
+                        </Typography>
+                      </Box>
+
+                      {activeMembership.remaining_visits && activeMembership.total_visits && (
+                        <Box>
+                          <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
+                            Visitas Restantes
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                            {activeMembership.remaining_visits} / {activeMembership.total_visits}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {activeMembership.total_frozen_days > 0 && (
                         <Box>
                           <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
                             Días Congelados
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                            🧊 {activeMembership.totalFrozenDays} días
+                            🧊 {activeMembership.total_frozen_days} días
                           </Typography>
                         </Box>
                       )}
@@ -832,6 +953,11 @@ export default function ClienteDashboard() {
                               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                                 🩸 Tipo: {emergency.bloodType}
                               </Typography>
+                              {emergency.medicalCondition && (
+                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                  🏥 {emergency.medicalCondition}
+                                </Typography>
+                              )}
                             </Stack>
                           </Box>
                         </Grid>
@@ -862,6 +988,9 @@ export default function ClienteDashboard() {
                                   👥 Referido por: {membershipInfo.referredBy}
                                 </Typography>
                               )}
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                📧 Planes: {membershipInfo.receivePlans ? 'Sí' : 'No'}
+                              </Typography>
                             </Stack>
                           </Box>
                         </Grid>
