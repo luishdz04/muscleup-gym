@@ -88,14 +88,19 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   minHeight: '100vh',
   color: '#fff',
   position: 'relative',
+  // ✅ CRÍTICO: Asegurar eventos táctiles
+  pointerEvents: 'auto',
+  touchAction: 'auto',
   
   // 📱 MOBILE (< 600px) - CORREGIDO
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(1),
     marginLeft: 0,
     width: '100%',
-    paddingBottom: '80px', // Espacio para bottom navigation
-    zIndex: 1, // ✅ Asegurar que esté por debajo del bottom nav
+    paddingBottom: '80px',
+    zIndex: 1,
+    pointerEvents: 'auto',
+    touchAction: 'auto',
   },
   
   // 📟 TABLET (600px - 899px)
@@ -103,6 +108,8 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     padding: theme.spacing(2),
     marginLeft: 0,
     width: '100%',
+    pointerEvents: 'auto',
+    touchAction: 'auto',
   },
   
   // 💻 DESKTOP (900px+)
@@ -111,6 +118,8 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     marginLeft: 0,
     width: '100%',
     paddingLeft: open ? `${DRAWER_WIDTHS.desktop + 24}px` : theme.spacing(3),
+    pointerEvents: 'auto',
+    touchAction: 'auto',
   },
   
   // 🖥️ LARGE (1200px+)
@@ -118,6 +127,8 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     marginLeft: 0,
     width: '100%',
     paddingLeft: open ? `${DRAWER_WIDTHS.large + 24}px` : theme.spacing(3),
+    pointerEvents: 'auto',
+    touchAction: 'auto',
   },
   
   ...(open && {
@@ -268,16 +279,23 @@ const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
   bottom: 0,
   left: 0,
   right: 0,
-  zIndex: 1300, // ✅ Z-index alto para estar encima del drawer
+  zIndex: 1300,
   backgroundColor: 'rgba(0, 0, 0, 0.95)',
   backdropFilter: 'blur(20px)',
   borderTop: '1px solid rgba(255, 204, 0, 0.2)',
   height: '70px',
+  // ✅ Crítico para eventos táctiles
+  pointerEvents: 'auto',
+  touchAction: 'manipulation',
   
   '& .MuiBottomNavigationAction-root': {
     color: 'rgba(255, 255, 255, 0.6)',
-    minHeight: '70px', // ✅ MEJORAR área táctil
+    minHeight: '70px',
     padding: '8px 0',
+    // ✅ Área táctil mejorada
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'rgba(255, 204, 0, 0.2)',
     '&.Mui-selected': {
       color: '#ffcc00',
     },
@@ -324,6 +342,7 @@ const NavigationButton = React.forwardRef(({ href, label, ...props }: any, ref) 
             fontSize: '0.75rem',
             padding: '16px 8px',
             height: 'auto',
+            cursor: 'pointer',
             '&:hover': {
               backgroundColor: '#ffcc00',
               transform: 'scale(1.05)',
@@ -357,6 +376,93 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const [searchValue, setSearchValue] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
+
+  // ✅ CSS FIXES PARA MÓVILES - CRÍTICO
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      /* ✅ Fix para iOS Safari - botones requieren cursor pointer */
+      button, [role="button"], .MuiButton-root, .MuiFab-root, .MuiBottomNavigationAction-root, .MuiIconButton-root {
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: rgba(255, 204, 0, 0.2) !important;
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        -khtml-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+      }
+      
+      /* ✅ Asegurar que no hay overlays bloqueando */
+      * {
+        pointer-events: auto !important;
+      }
+      
+      /* ✅ Fix específico para Material-UI en móviles */
+      .MuiButton-root, .MuiFab-root, .MuiIconButton-root, .MuiBottomNavigationAction-root {
+        touch-action: manipulation !important;
+        -webkit-touch-callout: none !important;
+        min-height: 44px !important;
+        min-width: 44px !important;
+      }
+      
+      /* ✅ Fix para contenedores que puedan bloquear eventos */
+      .MuiContainer-root, .MuiBox-root, .MuiCard-root, main {
+        pointer-events: auto !important;
+        touch-action: auto !important;
+      }
+      
+      /* ✅ Fix específico para motion.div */
+      [data-framer-motion], div[style*="transform"] {
+        pointer-events: auto !important;
+        touch-action: auto !important;
+      }
+      
+      /* ✅ Bottom Navigation específico */
+      .MuiBottomNavigation-root {
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+      }
+      
+      .MuiBottomNavigationAction-root {
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+        cursor: pointer !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, []);
+
+  // ✅ DEBUG PARA MÓVILES (temporal)
+  useEffect(() => {
+    if (isMobile) {
+      const debugTouch = (e: TouchEvent) => {
+        console.log('📱 Touch event:', e.type, e.target);
+      };
+      
+      const debugClick = (e: MouseEvent) => {
+        console.log('🖱️ Click event:', e.target);
+      };
+      
+      document.addEventListener('touchstart', debugTouch, { passive: true });
+      document.addEventListener('touchend', debugTouch, { passive: true });
+      document.addEventListener('click', debugClick);
+      
+      return () => {
+        document.removeEventListener('touchstart', debugTouch);
+        document.removeEventListener('touchend', debugTouch);
+        document.removeEventListener('click', debugClick);
+      };
+    }
+  }, [isMobile]);
 
   // ✅ MENÚ CORREGIDO CON ACCESOS
   const menuItems: MenuItem[] = [
@@ -426,7 +532,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       setShowScrollTop(window.scrollY > 300);
     };
     
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -463,7 +569,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       const activeSection = section === 'cliente' ? 'info' : section;
       setActiveSection(activeSection);
       
-      // ✅ CORREGIDO: Actualizar bottom navigation correctamente
       const activeIndex = menuItems.findIndex(item => item.section === activeSection);
       if (activeIndex !== -1) {
         setMobileBottomValue(activeIndex);
@@ -502,8 +607,19 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     setUserMenuAnchor(null);
   };
 
+  // ✅ SCROLL TO TOP MEJORADO
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    console.log('📱 Scroll to top function called');
+    try {
+      window.scrollTo({ 
+        top: 0, 
+        behavior: 'smooth' 
+      });
+    } catch (error) {
+      // Fallback para navegadores antiguos
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
   };
 
   // ✅ MOBILE BOTTOM NAVIGATION HANDLER SIMPLIFICADO
@@ -549,6 +665,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               sx={{ 
                 mr: 2,
                 backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                cursor: 'pointer',
                 '&:hover': {
                   backgroundColor: 'rgba(255, 204, 0, 0.2)',
                   transform: 'scale(1.05)',
@@ -652,6 +769,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                 sx={{ 
                   mr: { xs: 0, sm: 1 },
                   position: 'relative',
+                  cursor: 'pointer',
                   '&:hover': {
                     backgroundColor: 'rgba(255, 204, 0, 0.1)',
                     transform: 'scale(1.1)',
@@ -676,6 +794,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                 fontWeight: 600,
                 display: { xs: 'none', md: 'flex' },
                 maxWidth: { md: 150, lg: 200 },
+                cursor: 'default',
                 '& .MuiChip-label': {
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
@@ -693,6 +812,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                   bgcolor: 'rgba(255, 204, 0, 0.2)',
                   ml: { xs: 0.5, sm: 1 },
                   border: '2px solid rgba(255, 204, 0, 0.3)',
+                  cursor: 'pointer',
                   '&:hover': {
                     bgcolor: 'rgba(255, 204, 0, 0.3)',
                     transform: 'scale(1.05)',
@@ -742,6 +862,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                   borderRadius: 1.5,
                   color: 'white',
                   fontSize: { xs: '0.875rem', sm: '1rem' },
+                  cursor: 'pointer',
                   '&:hover': {
                     bgcolor: 'rgba(255, 204, 0, 0.1)',
                   },
@@ -849,6 +970,9 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               radial-gradient(circle at 80% 20%, rgba(255,204,0,0.03) 0%, transparent 50%)
             `,
             boxShadow: 'inset -1px 0 0 rgba(255,204,0,0.1), 4px 0 20px rgba(0,0,0,0.3)',
+            // ✅ Asegurar eventos táctiles
+            pointerEvents: 'auto',
+            touchAction: 'auto',
             
             // 📱 MOBILE - Full screen
             [theme.breakpoints.down('sm')]: {
@@ -862,13 +986,11 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onOpen={() => setDrawerOpen(true)}
-        // ✅ CORREGIR configuraciones para móvil
         disableBackdropTransition={!isMobile}
         disableDiscovery={isMobile}
         swipeAreaWidth={isMobile ? 30 : 0}
         hysteresis={0.6}
         minFlingVelocity={400}
-        // ✅ Z-index menor que bottom navigation
         ModalProps={{
           keepMounted: false,
           disablePortal: false,
@@ -930,6 +1052,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           <IconButton 
             onClick={() => setDrawerOpen(false)}
             sx={{
+              cursor: 'pointer',
               '&:hover': {
                 backgroundColor: 'rgba(255, 204, 0, 0.1)',
                 transform: 'scale(1.1)',
@@ -1027,7 +1150,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                 }}
                 disabled={item.disabled}
                 sx={{ 
-                  minHeight: { xs: 56, sm: 52 }, // ✅ Aumentar altura mínima para móvil
+                  minHeight: { xs: 56, sm: 52 },
                   borderRadius: '12px',
                   px: { xs: 2, sm: 2.5 },
                   py: { xs: 1.5, sm: 1.5 },
@@ -1038,6 +1161,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                     ? '1px solid rgba(255, 204, 0, 0.3)' 
                     : '1px solid transparent',
                   opacity: item.disabled ? 0.5 : 1,
+                  cursor: item.disabled ? 'default' : 'pointer',
                   '&:hover': {
                     background: item.disabled 
                       ? 'transparent' 
@@ -1104,7 +1228,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             fontWeight: 500,
             fontSize: { xs: '0.7rem', sm: '0.75rem' }
           }}>
-            © {new Date().getFullYear()} Muscle Up Gym
+            © 2025 Muscle Up Gym
           </Typography>
           <Typography variant="caption" sx={{ 
             display: 'block', 
@@ -1118,7 +1242,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         </Box>
       </SwipeableDrawer>
       
-      {/* ✅ BOTTOM NAVIGATION PARA MOBILE SIMPLIFICADO */}
+      {/* ✅ BOTTOM NAVIGATION PARA MOBILE CORREGIDO */}
       <MobileBottomNav
         value={mobileBottomValue}
         onChange={handleMobileNavChange}
@@ -1130,6 +1254,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             label={item.text === 'Mi Información' ? 'Inicio' : item.text}
             icon={item.mobileIcon || item.icon}
             sx={{
+              cursor: 'pointer',
               '&.Mui-selected': {
                 '& .MuiBottomNavigationAction-label': {
                   fontSize: '0.7rem',
@@ -1174,10 +1299,23 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         </Container>
       </Main>
       
-      {/* 🎯 SCROLL TO TOP BUTTON */}
+      {/* ✅ SCROLL TO TOP BUTTON CORREGIDO */}
       <Zoom in={showScrollTop}>
         <Fab
-          onClick={scrollToTop}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('📱 Scroll to top clicked');
+            scrollToTop();
+          }}
+          onTouchStart={(e) => {
+            console.log('📱 Scroll button - Touch start');
+            e.currentTarget.style.transform = 'scale(0.95)';
+          }}
+          onTouchEnd={(e) => {
+            console.log('📱 Scroll button - Touch end');
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
           color="primary"
           size={isMobile ? "medium" : "large"}
           sx={{
@@ -1186,16 +1324,30 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             right: isMobile ? 15 : 20,
             background: 'linear-gradient(135deg, #ffcc00, #ffd700)',
             color: '#000',
-            zIndex: 1000,
+            zIndex: 1400,
+            // ✅ CSS crítico para móviles
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'rgba(255, 204, 0, 0.3)',
+            WebkitTouchCallout: 'none',
+            WebkitUserSelect: 'none',
+            userSelect: 'none',
+            minWidth: isMobile ? '56px' : '64px',
+            minHeight: isMobile ? '56px' : '64px',
             '&:hover': {
               background: 'linear-gradient(135deg, #ffd700, #ffcc00)',
               transform: 'scale(1.1)',
             },
+            '&:active': {
+              transform: 'scale(0.95)',
+              background: 'linear-gradient(135deg, #e6b800, #ffcc00)',
+            },
             boxShadow: '0 8px 32px rgba(255, 204, 0, 0.3)',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.2s ease',
+            pointerEvents: 'auto'
           }}
         >
-          <KeyboardArrowUpIcon />
+          <KeyboardArrowUpIcon sx={{ fontSize: isMobile ? '24px' : '32px' }} />
         </Fab>
       </Zoom>
     </Box>
