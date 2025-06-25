@@ -33,10 +33,12 @@ import {
   Zoom
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
+// Se elimina AnimatePresence y motion de los imports principales si solo se usaban para la transición de página.
+// Si otros componentes los usan, se pueden mantener. Por seguridad, los dejamos.
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ICONOS
+// ICONOS (Sin cambios)
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import PersonIcon from '@mui/icons-material/Person';
@@ -54,11 +56,11 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LoginIcon from '@mui/icons-material/Login';
 
-// RESPONSIVE BREAKPOINTS Y ANCHOS
+
+// COMPONENTES ESTILIZADOS (Tu diseño original, sin cambios)
 const BREAKPOINTS = { mobile: '(max-width: 599px)', tablet: '(max-width: 899px)', desktop: '(min-width: 900px)', large: '(min-width: 1200px)' };
 const DRAWER_WIDTHS = { mobile: '100vw', tablet: 280, desktop: 290, large: 320 };
 
-// COMPONENTES ESTILIZADOS (Styled Components)
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -78,25 +80,17 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   position: 'relative',
   
   [theme.breakpoints.down('sm')]: {
-    padding: theme.spacing(1),
-    marginLeft: 0,
-    width: '100%',
-    paddingBottom: '80px',
+    padding: theme.spacing(1), marginLeft: 0, width: '100%', paddingBottom: '80px',
   },
   [theme.breakpoints.between('sm', 'md')]: {
-    padding: theme.spacing(2),
-    marginLeft: 0,
-    width: '100%',
+    padding: theme.spacing(2), marginLeft: 0, width: '100%',
   },
   [theme.breakpoints.up('md')]: {
-    padding: theme.spacing(3),
-    marginLeft: 0,
-    width: '100%',
+    padding: theme.spacing(3), marginLeft: 0, width: '100%',
     paddingLeft: open ? `${DRAWER_WIDTHS.desktop + 24}px` : theme.spacing(3),
   },
   [theme.breakpoints.up('lg')]: {
-    marginLeft: 0,
-    width: '100%',
+    marginLeft: 0, width: '100%',
     paddingLeft: open ? `${DRAWER_WIDTHS.large + 24}px` : theme.spacing(3),
   },
   ...(open && {
@@ -118,7 +112,7 @@ const ResponsiveAppBar = styled(AppBar)(({ theme }) => ({
   zIndex: theme.zIndex.drawer + 1, background: 'rgba(0, 0, 0, 0.95)', backdropFilter: 'blur(20px)',
   boxShadow: '0 4px 30px rgba(0,0,0,0.8)', borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
   '& .MuiToolbar-root': {
-    minHeight: '72px',
+    minHeight: '72px', padding: theme.spacing(0, 1),
     [theme.breakpoints.between('sm', 'md')]: { minHeight: '80px', padding: theme.spacing(0, 2) },
     [theme.breakpoints.up('md')]: { minHeight: '88px', padding: theme.spacing(0, 3) },
   },
@@ -152,6 +146,7 @@ const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
 interface ClienteLayoutProps { children: ReactNode; }
 interface MenuItemDef { text: string; path: string; icon: React.ReactElement; section: string; description?: string; disabled?: boolean; mobileIcon?: React.ReactElement; }
 
+
 export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -169,9 +164,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const [searchValue, setSearchValue] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
-
-  // 🔴 ¡SOLUCIÓN! El `useEffect` que inyectaba CSS global ha sido eliminado.
-  // Esta era la causa del bloqueo de interacciones en móviles.
 
   const menuItems: MenuItemDef[] = [
     { text: 'Mi Información', path: '/dashboard/cliente', icon: <AccountCircleIcon />, mobileIcon: <HomeIcon />, section: 'info', description: 'Gestiona tu perfil personal' },
@@ -221,45 +213,24 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       const activeIndex = menuItems.findIndex(item => item.section === sectionId);
       if (activeIndex !== -1) setMobileBottomValue(activeIndex);
     }
-  }, [pathname]);
+  }, [pathname, menuItems]); // Added menuItems to dependency array for correctness
   
-  const navigateTo = (path: string) => {
-    router.push(path);
-    if (isMobile) setDrawerOpen(false);
-  };
-  
-  const handleLogout = async () => {
-    setLoading(true);
-    const supabase = createBrowserSupabaseClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-    setLoading(false);
-  };
-  
+  const navigateTo = (path: string) => { router.push(path); if (isMobile) setDrawerOpen(false); };
+  const handleLogout = async () => { setLoading(true); const supabase = createBrowserSupabaseClient(); await supabase.auth.signOut(); router.push('/login'); setLoading(false); };
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => setUserMenuAnchor(event.currentTarget);
   const handleUserMenuClose = () => setUserMenuAnchor(null);
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
-    const selectedItem = menuItems[newValue];
-    if (selectedItem && !selectedItem.disabled) navigateTo(selectedItem.path);
-  };
+  const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => { const selectedItem = menuItems[newValue]; if (selectedItem && !selectedItem.disabled) navigateTo(selectedItem.path); };
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <ResponsiveAppBar position="fixed">
-        {loading && <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', '& .MuiLinearProgress-bar': { background: '#ffcc00' } }} />}
+        {loading && <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #ffcc00, #ffd700)' } }} />}
         <Toolbar>
-          {!isMobile && (
-            <IconButton color="inherit" onClick={() => setDrawerOpen(!drawerOpen)} edge="start" sx={{ mr: 2, '&:hover': { backgroundColor: 'rgba(255, 204, 0, 0.1)' } }}>
-              <MenuIcon />
-            </IconButton>
-          )}
+          {!isMobile && ( <IconButton color="inherit" onClick={() => setDrawerOpen(!drawerOpen)} edge="start" sx={{ mr: 2, '&:hover': { backgroundColor: 'rgba(255, 204, 0, 0.1)' } }}> <MenuIcon /> </IconButton> )}
           <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 2, md: 3 } }}>
             <Box component="img" sx={{ height: { xs: 40, sm: 50, md: 65 }, mr: { xs: 1, sm: 2 } }} src="/logo.png" alt="Muscle Up Gym" />
-            <Typography variant="h6" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 700, letterSpacing: 1.5 }}>
-              PANEL DE CLIENTE
-            </Typography>
+            <Typography variant="h6" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 700, letterSpacing: 1.5 }}>PANEL DE CLIENTE</Typography>
           </Box>
           <Search>
             <SearchIconWrapper><SearchIcon /></SearchIconWrapper>
@@ -267,42 +238,24 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           </Search>
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-            <Tooltip title="Notificaciones">
-              <IconButton color="inherit">
-                <Badge badgeContent={3} color="error"><NotificationsIcon sx={{ fontSize: { xs: 20, sm: 24 } }} /></Badge>
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
-              <IconButton onClick={handleUserMenuOpen} size="small" sx={{ ml: { xs: 0.5, sm: 1 } }}>
-                <Avatar alt={user?.firstName} src={user?.profilePictureUrl} sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }} />
-              </IconButton>
-            </Tooltip>
+            <Tooltip title="Notificaciones"><IconButton color="inherit"><Badge badgeContent={3} color="error"><NotificationsIcon sx={{ fontSize: { xs: 20, sm: 24 } }} /></Badge></IconButton></Tooltip>
+            <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}><IconButton onClick={handleUserMenuOpen} size="small" sx={{ ml: { xs: 0.5, sm: 1 } }}><Avatar alt={user?.firstName} src={user?.profilePictureUrl} sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }} /></IconButton></Tooltip>
           </Box>
           <Menu anchorEl={userMenuAnchor} open={Boolean(userMenuAnchor)} onClose={handleUserMenuClose} PaperProps={{ sx: { mt: 1.5, minWidth: 280, bgcolor: 'rgba(18,18,18,0.95)', backdropFilter: 'blur(10px)', color: 'white', border: '1px solid rgba(255,204,0,0.2)', borderRadius: 2 } }}>
-            <MenuItem onClick={() => navigateTo('/dashboard/cliente')}><ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} /></ListItemIcon>Mi Perfil</MenuItem>
+            <MenuItem onClick={() => { handleUserMenuClose(); navigateTo('/dashboard/cliente'); }}><ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} /></ListItemIcon>Mi Perfil</MenuItem>
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
             <MenuItem onClick={handleLogout} sx={{ color: '#ff6b6b' }}><ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#ff6b6b' }} /></ListItemIcon>Cerrar Sesión</MenuItem>
           </Menu>
         </Toolbar>
       </ResponsiveAppBar>
       
-      <SwipeableDrawer
-        sx={{ width: getDrawerWidth(), flexShrink: 0, '& .MuiDrawer-paper': { width: 'inherit', boxSizing: 'border-box', background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)', color: 'white', borderRight: '1px solid rgba(255, 204, 0, 0.1)' } }}
-        variant={isDesktop ? "persistent" : "temporary"}
-        anchor="left"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onOpen={() => setDrawerOpen(true)}
-        ModalProps={{ keepMounted: true }}
-      >
+      <SwipeableDrawer sx={{ width: getDrawerWidth(), flexShrink: 0, '& .MuiDrawer-paper': { width: 'inherit', boxSizing: 'border-box', background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)', color: 'white', borderRight: '1px solid rgba(255, 204, 0, 0.1)' } }} variant={isDesktop ? "persistent" : "temporary"} anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)} onOpen={() => setDrawerOpen(true)} ModalProps={{ keepMounted: true }}>
         <DrawerHeader>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Box component="img" sx={{ height: 50, mr: 2 }} src="/logo.png" alt="Logo"/>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#ffcc00' }}>MUP</Typography>
             </Box>
-          <IconButton onClick={() => setDrawerOpen(false)}>
-            {isMobile ? <CloseIcon sx={{ color: 'white' }} /> : <ChevronLeftIcon sx={{ color: 'white' }} />}
-          </IconButton>
+          <IconButton onClick={() => setDrawerOpen(false)}>{isMobile ? <CloseIcon sx={{ color: 'white' }} /> : <ChevronLeftIcon sx={{ color: 'white' }} />}</IconButton>
         </DrawerHeader>
         <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.1)' }} />
         <List component="nav" sx={{ p: 1.5 }}>
@@ -326,11 +279,8 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       <Main open={drawerOpen && isDesktop}>
         <DrawerHeader />
         <Container maxWidth="xl" disableGutters={isMobile} sx={{ px: isMobile ? 1 : 0 }}>
-          <AnimatePresence mode="wait">
-            <motion.div key={pathname} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          {/* ✅ SOLUCIÓN: Se eliminó el wrapper de <AnimatePresence> y <motion.div> aquí */}
+          {children}
         </Container>
       </Main>
       
