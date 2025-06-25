@@ -2,6 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+// Importa dinámicamente el botón de instalación PWA
+const InstallPWA = dynamic(() => import('@/components/InstallPWA'), { ssr: false });
 
 const navItems = [
   { href: '/', label: 'Inicio' },
@@ -114,6 +118,10 @@ export default function Navbar() {
                     </Link>
                   </motion.div>
                 ))}
+                {/* Botón de instalar PWA */}
+                <div className="flex items-center">
+                  <InstallPWA />
+                </div>
               </div>
             </div>
 
@@ -211,6 +219,10 @@ export default function Navbar() {
                       </Link>
                     </motion.div>
                   ))}
+                  {/* Botón instalar PWA también en menú móvil */}
+                  <div className="flex justify-center pt-2">
+                    <InstallPWA />
+                  </div>
                 </div>
               </div>
               
