@@ -1501,6 +1501,7 @@ export default function ClienteDashboard() {
                         </Grid>
                       )}
 
+// ✅ BOTÓN CORREGIDO PARA MÓVILES
 {userInfo.contractPdfUrl && (
   <Grid size={{ xs: 12, sm: 12, md: 4 }}>
     <motion.div
@@ -1545,42 +1546,105 @@ export default function ClienteDashboard() {
           >
             📄
           </motion.div>
-          <Button
-            // ✅ CORREGIDO: Función que funciona en mobile
-            onClick={() => {
-              if (isMobile) {
-                // Para mobile: crear link temporal y hacer click
-                const link = document.createElement('a');
-                link.href = userInfo.contractPdfUrl!;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              } else {
-                // Para desktop: usar window.open normal
-                window.open(userInfo.contractPdfUrl, '_blank', 'noopener,noreferrer');
-              }
-            }}
-            variant="contained"
-            startIcon={<FaDownload />}
-            sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.error}, #B71C1C)`,
-              color: 'white',
-              fontWeight: 700,
-              px: 3,
-              py: 1,
-              borderRadius: darkProTokens.borderRadiusSmall,
-              boxShadow: `0 8px 32px ${darkProTokens.errorGlow}`,
-              '&:hover': {
-                transform: 'scale(1.05)',
-                boxShadow: `0 12px 40px ${darkProTokens.errorGlow}`
-              },
-              transition: 'all 0.3s ease'
-            }}
-          >
-            Ver Contrato
-          </Button>
+          
+          {/* ✅ BOTONES SEPARADOS PARA MEJOR FUNCIONAMIENTO EN MÓVIL */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: 1,
+            width: '100%'
+          }}>
+            {/* ✅ BOTÓN PARA VER (funciona mejor en móvil) */}
+            <Button
+              component="a"
+              href={userInfo.contractPdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="contained"
+              startIcon={<FaEye />}
+              sx={{
+                background: `linear-gradient(135deg, ${darkProTokens.error}, #B71C1C)`,
+                color: 'white',
+                fontWeight: 700,
+                px: isMobile ? 2 : 3,
+                py: 1,
+                borderRadius: darkProTokens.borderRadiusSmall,
+                boxShadow: `0 8px 32px ${darkProTokens.errorGlow}`,
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                  boxShadow: `0 12px 40px ${darkProTokens.errorGlow}`
+                },
+                transition: 'all 0.3s ease',
+                flex: 1,
+                fontSize: isMobile ? '0.8rem' : '0.875rem',
+                // ✅ Mejor área táctil para móvil
+                minHeight: isMobile ? '48px' : 'auto'
+              }}
+            >
+              Ver Contrato
+            </Button>
+
+            {/* ✅ BOTÓN PARA DESCARGAR */}
+            <Button
+              onClick={async () => {
+                try {
+                  // ✅ MÉTODO MEJORADO que funciona en móvil
+                  const response = await fetch(userInfo.contractPdfUrl!);
+                  const blob = await response.blob();
+                  
+                  // Crear URL temporal
+                  const url = window.URL.createObjectURL(blob);
+                  
+                  // Crear elemento de descarga
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `contrato-${userInfo.firstName}-${userInfo.lastName}.pdf`;
+                  a.style.display = 'none';
+                  
+                  // Agregar al DOM, hacer clic y remover
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  
+                  // Limpiar URL temporal
+                  window.URL.revokeObjectURL(url);
+                } catch (error) {
+                  console.error('Error descargando contrato:', error);
+                  // ✅ Fallback para móvil
+                  const link = document.createElement('a');
+                  link.href = userInfo.contractPdfUrl!;
+                  link.download = `contrato-${userInfo.firstName}-${userInfo.lastName}.pdf`;
+                  link.target = '_blank';
+                  link.rel = 'noopener noreferrer';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }
+              }}
+              variant="outlined"
+              startIcon={<FaDownload />}
+              sx={{
+                borderColor: darkProTokens.error,
+                color: darkProTokens.error,
+                fontWeight: 600,
+                px: isMobile ? 2 : 3,
+                py: 1,
+                borderRadius: darkProTokens.borderRadiusSmall,
+                '&:hover': {
+                  backgroundColor: `${darkProTokens.error}10`,
+                  borderColor: darkProTokens.error,
+                  transform: 'scale(1.05)'
+                },
+                transition: 'all 0.3s ease',
+                flex: isMobile ? 1 : 'auto',
+                fontSize: isMobile ? '0.8rem' : '0.875rem',
+                // ✅ Mejor área táctil para móvil
+                minHeight: isMobile ? '48px' : 'auto'
+              }}
+            >
+              {isMobile ? 'Descargar' : 'Descargar PDF'}
+            </Button>
+          </Box>
         </Box>
       </Box>
     </motion.div>
