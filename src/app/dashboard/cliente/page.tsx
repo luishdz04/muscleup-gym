@@ -13,8 +13,7 @@ import {
   CircularProgress,
   Alert,
   Stack,
-  Divider,
-  Paper
+  Button
 } from '@mui/material';
 import { 
   FaUser, 
@@ -185,7 +184,7 @@ export default function ClienteDashboard() {
       const diffTime = end.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
-      return diffDays; // Puede ser negativo si ya venció
+      return diffDays;
     } catch (error) {
       console.error('Error calculando días restantes:', error);
       return 0;
@@ -200,7 +199,6 @@ export default function ClienteDashboard() {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return 'Fecha inválida';
       
-      // ✅ USAR FORMATO CORRECTO PARA FECHAS
       return date.toLocaleDateString('es-MX', {
         year: 'numeric',
         month: 'long',
@@ -508,20 +506,20 @@ export default function ClienteDashboard() {
         </Alert>
         
         <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <button 
+          <Button 
             onClick={loadUserData}
-            style={{
+            variant="contained"
+            sx={{
               background: darkProTokens.primary,
               color: darkProTokens.background,
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '8px',
               fontWeight: 600,
-              cursor: 'pointer'
+              '&:hover': {
+                background: darkProTokens.primaryHover
+              }
             }}
           >
             🔄 Reintentar
-          </button>
+          </Button>
         </Box>
       </Box>
     );
@@ -715,35 +713,6 @@ export default function ClienteDashboard() {
                       </Typography>
                     </Box>
 
-                    {/* Puntos y Compras */}
-                    {(userInfo.points_balance || userInfo.total_purchases) && (
-                      <>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                            <FaAward style={{ color: darkProTokens.warning }} />
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Puntos Acumulados
-                            </Typography>
-                          </Box>
-                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            {userInfo.points_balance || 0} puntos
-                          </Typography>
-                        </Grid>
-
-                        <Grid size={{ xs: 12, md: 6 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                            <FaDumbbell style={{ color: darkProTokens.success }} />
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Total en Compras
-                            </Typography>
-                          </Box>
-                          <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            ${userInfo.total_purchases || 0}
-                          </Typography>
-                        </Grid>
-                      </>
-                    )}
-
                     {/* ID de Usuario */}
                     <Grid size={{ xs: 12 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
@@ -821,17 +790,6 @@ export default function ClienteDashboard() {
                           ${activeMembership.amount_paid}
                         </Typography>
                       </Box>
-
-                      {activeMembership.remaining_visits && activeMembership.total_visits && (
-                        <Box>
-                          <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
-                            Visitas Restantes
-                          </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                            {activeMembership.remaining_visits} / {activeMembership.total_visits}
-                          </Typography>
-                        </Box>
-                      )}
 
                       {activeMembership.total_frozen_days > 0 && (
                         <Box>
@@ -950,7 +908,7 @@ export default function ClienteDashboard() {
             </motion.div>
           </Grid>
 
-          {/* Información Adicional (solo si es cliente) */}
+          {/* Información Adicional */}
           {userInfo.rol === 'cliente' && (address || emergency || membershipInfo) && (
             <Grid size={{ xs: 12 }}>
               <motion.div variants={itemVariants}>
@@ -1023,11 +981,6 @@ export default function ClienteDashboard() {
                               <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
                                 🩸 Tipo: {emergency.bloodType}
                               </Typography>
-                              {emergency.medicalCondition && (
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                  🏥 {emergency.medicalCondition}
-                                </Typography>
-                              )}
                             </Stack>
                           </Box>
                         </Grid>
@@ -1058,9 +1011,6 @@ export default function ClienteDashboard() {
                                   👥 Referido por: {membershipInfo.referredBy}
                                 </Typography>
                               )}
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                📧 Planes: {membershipInfo.receivePlans ? 'Sí' : 'No'}
-                              </Typography>
                             </Stack>
                           </Box>
                         </Grid>
@@ -1152,20 +1102,20 @@ export default function ClienteDashboard() {
                               <Box sx={{ fontSize: '4rem', color: darkProTokens.error }}>
                                 📄
                               </Box>
-                              <button
+                              <Button
                                 onClick={() => window.open(userInfo.contractPdfUrl, '_blank')}
-                                style={{
+                                variant="contained"
+                                sx={{
                                   background: darkProTokens.error,
                                   color: 'white',
-                                  border: 'none',
-                                  padding: '8px 16px',
-                                  borderRadius: '8px',
-                                  cursor: 'pointer',
-                                  fontWeight: 600
+                                  fontWeight: 600,
+                                  '&:hover': {
+                                    background: '#B71C1C'
+                                  }
                                 }}
                               >
                                 Ver Contrato
-                              </button>
+                              </Button>
                             </Box>
                           </Box>
                         </Grid>
