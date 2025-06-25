@@ -192,12 +192,11 @@ export default function ClienteDashboard() {
       if (!dateString) return 'Fecha no disponible';
       
       // ✅ CREAR FECHA SIN CONVERSIÓN DE ZONA HORARIA
-      // Si viene como "1998-08-04", tratarla como fecha local, no UTC
-      const dateParts = dateString.split('T')[0]; // Tomar solo la parte de fecha
+      const dateParts = dateString.split('T')[0];
       const [year, month, day] = dateParts.split('-').map(Number);
       
       // ✅ CREAR FECHA LOCAL DIRECTAMENTE (SIN UTC)
-      const date = new Date(year, month - 1, day); // month - 1 porque Date usa índices 0-11
+      const date = new Date(year, month - 1, day);
       
       if (isNaN(date.getTime())) return 'Fecha inválida';
       
@@ -266,6 +265,7 @@ export default function ClienteDashboard() {
 
       console.log('🔐 [AUTH] Usuario autenticado:', user.id);
 
+      // ✅ USAR API DEL ADMIN QUE YA INCLUYE DATOS RELACIONADOS
       console.log('📊 Llamando a API del admin para obtener datos completos...');
       const response = await fetch(`/api/admin/users/${user.id}`);
       
@@ -277,8 +277,33 @@ export default function ClienteDashboard() {
       
       const completeUserData = await response.json();
       console.log('✅ Datos completos obtenidos de API admin:', completeUserData);
+      
+      // ✅ EXTRAER DATOS PRINCIPALES
       setUserInfo(completeUserData);
 
+      // ✅ EXTRAER DATOS RELACIONADOS QUE YA VIENEN DEL API
+      if (completeUserData.address) {
+        console.log('✅ [ADDRESS] Dirección extraída del API:', completeUserData.address);
+        setAddress(completeUserData.address);
+      } else {
+        console.log('ℹ️ [ADDRESS] No hay dirección en la respuesta del API');
+      }
+
+      if (completeUserData.emergency) {
+        console.log('✅ [EMERGENCY] Contacto de emergencia extraído del API:', completeUserData.emergency);
+        setEmergency(completeUserData.emergency);
+      } else {
+        console.log('ℹ️ [EMERGENCY] No hay contacto de emergencia en la respuesta del API');
+      }
+
+      if (completeUserData.membership) {
+        console.log('✅ [MEMBERSHIP-INFO] Info de membresía extraída del API:', completeUserData.membership);
+        setMembershipInfo(completeUserData.membership);
+      } else {
+        console.log('ℹ️ [MEMBERSHIP-INFO] No hay info de membresía en la respuesta del API');
+      }
+
+      // ✅ CARGAR ARCHIVOS DEL STORAGE
       console.log('📁 Obteniendo archivos del Storage...');
       try {
         const { data: files, error: filesError } = await supabase.storage
@@ -331,70 +356,7 @@ export default function ClienteDashboard() {
         console.error('❌ Error cargando archivos:', err);
       }
 
-      // ✅ REMOVIDA LA LÓGICA DE "SI ES CLIENTE" - SIEMPRE CARGAR DATOS ADICIONALES
-      console.log('👤 [CLIENT] Cargando datos adicionales (SIEMPRE)...');
-      
-      // ✅ CARGAR DIRECCIÓN SIEMPRE
-      try {
-        const { data: addressData, error: addressError } = await supabase
-          .from('addresses')
-          .select('*')
-          .eq('userId', user.id)
-          .maybeSingle();
-
-        if (addressError && addressError.code !== 'PGRST116') {
-          console.error('❌ [ADDRESS] Error:', addressError);
-        } else if (addressData) {
-          console.log('✅ [ADDRESS] Dirección cargada:', addressData);
-          setAddress(addressData);
-        } else {
-          console.log('ℹ️ [ADDRESS] No se encontró dirección para el usuario');
-        }
-      } catch (err) {
-        console.error('❌ [ADDRESS] Error en carga de dirección:', err);
-      }
-
-      // ✅ CARGAR CONTACTO DE EMERGENCIA SIEMPRE
-      try {
-        const { data: emergencyData, error: emergencyError } = await supabase
-          .from('emergency_contacts')
-          .select('*')
-          .eq('userId', user.id)
-          .maybeSingle();
-
-        if (emergencyError && emergencyError.code !== 'PGRST116') {
-          console.error('❌ [EMERGENCY] Error:', emergencyError);
-        } else if (emergencyData) {
-          console.log('✅ [EMERGENCY] Contacto de emergencia cargado:', emergencyData);
-          setEmergency(emergencyData);
-        } else {
-          console.log('ℹ️ [EMERGENCY] No se encontró contacto de emergencia');
-        }
-      } catch (err) {
-        console.error('❌ [EMERGENCY] Error en carga:', err);
-      }
-
-      // ✅ CARGAR INFORMACIÓN DE MEMBRESÍA SIEMPRE
-      try {
-        const { data: membershipData, error: membershipError } = await supabase
-          .from('membership_info')
-          .select('*')
-          .eq('userId', user.id)
-          .maybeSingle();
-
-        if (membershipError && membershipError.code !== 'PGRST116') {
-          console.error('❌ [MEMBERSHIP-INFO] Error:', membershipError);
-        } else if (membershipData) {
-          console.log('✅ [MEMBERSHIP-INFO] Info de membresía cargada:', membershipData);
-          setMembershipInfo(membershipData);
-        } else {
-          console.log('ℹ️ [MEMBERSHIP-INFO] No se encontró info de membresía');
-        }
-      } catch (err) {
-        console.error('❌ [MEMBERSHIP-INFO] Error en carga:', err);
-      }
-
-      // ✅ CARGAR MEMBRESÍA ACTIVA SIEMPRE
+      // ✅ CARGAR MEMBRESÍA ACTIVA (ESTO NO VIENE DEL API)
       try {
         const { data: activeMembershipData, error: activeMembershipError } = await supabase
           .from('user_memberships')
