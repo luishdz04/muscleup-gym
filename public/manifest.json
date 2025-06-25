@@ -1,9 +1,9 @@
 {
   "name": "Muscle Up GYM",
-  "short_name": "MUP",
+  "short_name": "MUP", 
   "description": "Plataforma integral de Muscle Up GYM para clientes y administración",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#000000",
   "theme_color": "#ffcc00",
   "orientation": "portrait",
@@ -12,6 +12,7 @@
   "lang": "es-MX",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
@@ -21,7 +22,7 @@
     },
     {
       "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
+      "sizes": "96x96", 
       "type": "image/png",
       "purpose": "maskable any"
     },
