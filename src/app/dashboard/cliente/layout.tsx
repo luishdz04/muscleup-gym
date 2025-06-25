@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';  // Importar Link de next/link
 import { 
   Box, 
   Drawer, 
@@ -306,6 +307,35 @@ interface MenuItem {
   mobileIcon?: React.ReactElement;
 }
 
+// ✅ COMPONENTE DE NAVEGACIÓN MEJORADO
+const NavigationButton = React.forwardRef(({ href, label, ...props }: any, ref) => {
+  return (
+    <Link href={href} passHref legacyBehavior>
+      <a ref={ref} style={{ textDecoration: 'none' }}>
+        <Chip
+          clickable
+          label={label}
+          {...props}
+          sx={{
+            backgroundColor: 'rgba(255, 204, 0, 0.9)',
+            color: '#000',
+            fontWeight: 700,
+            fontSize: '0.75rem',
+            padding: '16px 8px',
+            height: 'auto',
+            '&:hover': {
+              backgroundColor: '#ffcc00',
+              transform: 'scale(1.05)',
+            },
+            ...props.sx
+          }}
+        />
+      </a>
+    </Link>
+  );
+});
+NavigationButton.displayName = 'NavigationButton';
+
 export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -440,7 +470,20 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     }
   }, [pathname, menuItems]);
   
-  // 🎯 HANDLERS
+  // ✅ FUNCIÓN DE NAVEGACIÓN MEJORADA
+  const navigateTo = (path: string) => {
+    console.log(`🚀 Navegando a: ${path}`); // Debug
+    
+    // Pequeña pausa antes de navegar para evitar problemas de eventos
+    setTimeout(() => {
+      router.push(path);
+    }, 50);
+    
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
+  };
+  
   const handleLogout = async () => {
     try {
       setLoading(true);
@@ -451,15 +494,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       console.error("Error al cerrar sesión:", error);
     } finally {
       setLoading(false);
-    }
-  };
-  
-  // ✅ FUNCIÓN DE NAVEGACIÓN CORREGIDA
-  const navigateTo = (path: string) => {
-    console.log(`🚀 Navegando a: ${path}`); // Debug
-    router.push(path);
-    if (isMobile) {
-      setDrawerOpen(false);
     }
   };
   
@@ -477,12 +511,20 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
 
   // ✅ MOBILE BOTTOM NAVIGATION HANDLER CORREGIDO
   const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
+    // Evitar comportamiento por defecto
+    event.preventDefault();
+    event.stopPropagation();
+    
     console.log(`📱 Bottom nav clicked: ${newValue}`); // Debug
     setMobileBottomValue(newValue);
     const selectedItem = menuItems[newValue];
+    
     if (selectedItem && !selectedItem.disabled) {
       console.log(`📱 Navegando a: ${selectedItem.path}`); // Debug
-      navigateTo(selectedItem.path);
+      // Usar setTimeout para evitar conflictos de eventos
+      setTimeout(() => {
+        router.push(selectedItem.path);
+      }, 50);
     }
   };
 
@@ -771,7 +813,10 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
             
-            <MenuItem onClick={() => router.push('/dashboard/cliente')}>
+            <MenuItem onClick={() => {
+              handleUserMenuClose();
+              setTimeout(() => router.push('/dashboard/cliente'), 50);
+            }}>
               <ListItemIcon>
                 <PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} />
               </ListItemIcon>
@@ -827,8 +872,11 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onOpen={() => setDrawerOpen(true)}
-        disableBackdropTransition={!isMobile}
-        disableDiscovery={!isMobile}
+        disableBackdropTransition={false} // ✅ CAMBIAR a false
+        disableDiscovery={false} // ✅ CAMBIAR a false
+        swipeAreaWidth={isMobile ? 20 : 0} // ✅ AÑADIR para limitar el área de swipe
+        hysteresis={0.52} // ✅ AÑADIR para mejorar detección de gestos
+        minFlingVelocity={450} // ✅ AÑADIR para mejor respuesta
       >
         {/* 🎯 HEADER DEL DRAWER RESPONSIVO */}
         <DrawerHeader sx={{ 
@@ -974,18 +1022,28 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               sx={{ mb: 0.5 }}
             >
               <ListItemButton
-                onClick={() => {
+                onClick={(e) => {
+                  // ✅ Detener propagación y prevenir comportamiento por defecto
+                  e.stopPropagation();
+                  e.preventDefault();
+                  
                   console.log(`🖱️ Drawer item clicked: ${item.path}`); // Debug
                   if (!item.disabled) {
-                    navigateTo(item.path);
+                    // ✅ Pequeña pausa para asegurar que el evento se procese correctamente
+                    setTimeout(() => {
+                      navigateTo(item.path);
+                    }, 50);
                   }
                 }}
+                disableRipple={false} // ✅ Para mejor feedback táctil
+                disableTouchRipple={false} // ✅ Para mejor feedback táctil
                 disabled={item.disabled}
                 sx={{ 
                   minHeight: { xs: 48, sm: 52 },
                   borderRadius: '12px',
-                  px: { xs: 2, sm: 2.5 },
-                  py: 1.5,
+                  // ✅ Padding adicional para mejor área de toque en móviles
+                  px: { xs: 2.5, sm: 2.5 },
+                  py: { xs: 2, sm: 1.5 },
                   background: activeSection === item.section 
                     ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, rgba(255, 204, 0, 0.1) 100%)'
                     : 'transparent',
@@ -1002,7 +1060,9 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                       : '1px solid rgba(255, 204, 0, 0.2)',
                     transform: item.disabled ? 'none' : 'translateX(4px)',
                   },
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  // ✅ Mejorar área táctil
+                  touchAction: 'manipulation'
                 }}
               >
                 <ListItemIcon
@@ -1078,6 +1138,21 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         value={mobileBottomValue}
         onChange={handleMobileNavChange}
         showLabels
+        sx={{
+          // ✅ Mejoras táctiles para navegación inferior
+          '& .MuiBottomNavigationAction-root': {
+            touchAction: 'manipulation',
+            minWidth: 0,
+            padding: '6px 0',
+            // Incrementar área del touch target
+            '& .MuiTouchRipple-root': {
+              left: '-10px',
+              right: '-10px',
+              top: '-10px',
+              bottom: '-10px'
+            }
+          }
+        }}
       >
         {menuItems.filter(item => !item.disabled).map((item, index) => (
           <BottomNavigationAction
