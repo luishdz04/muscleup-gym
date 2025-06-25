@@ -52,6 +52,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LoginIcon from '@mui/icons-material/Login';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 
 // CONSTANTE DE ANCHO DEL DRAWER (como en admin)
 const drawerWidth = 260;
@@ -100,8 +101,13 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   padding: theme.spacing(0, 1),
   ...theme.mixins.toolbar,
   justifyContent: 'space-between',
+  minHeight: '100px !important', // Altura igual que el AppBar
+  [theme.breakpoints.down('sm')]: {
+    minHeight: '80px !important',
+  },
 }));
 
+// AppBar actualizado con altura de 100px como el admin
 const AppBarStyled = styled(AppBar, {
   shouldForwardProp: (prop) => prop !== 'open',
 })<{ open?: boolean }>(({ theme, open }) => ({
@@ -109,9 +115,10 @@ const AppBarStyled = styled(AppBar, {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  background: 'rgba(0, 0, 0, 0.95)',
-  backdropFilter: 'blur(20px)',
-  boxShadow: '0 4px 30px rgba(0,0,0,0.8)',
+  // Fondo completamente negro como el admin
+  background: '#000000',
+  backdropFilter: 'none',
+  boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
   borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
   ...(open && {
     width: `calc(100% - ${drawerWidth}px)`,
@@ -342,44 +349,86 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               left: 0,
               right: 0,
               height: '3px',
+              background: 'rgba(255,204,0,0.1)',
               '& .MuiLinearProgress-bar': {
                 background: 'linear-gradient(90deg, #ffcc00, #ffd700)'
               }
             }}
           />
         )}
-        <Toolbar>
+        
+        {/* Toolbar con altura aumentada como el admin */}
+        <Toolbar sx={{ minHeight: '100px !important', px: { xs: 2, sm: 3 } }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
             onClick={handleDrawerOpen}
             edge="start"
-            sx={{ mr: 2, ...(open && { display: 'none' }) }}
+            sx={{ 
+              mr: 2, 
+              backgroundColor: 'rgba(255, 204, 0, 0.1)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 204, 0, 0.2)',
+              },
+              ...(open && { display: 'none' }) 
+            }}
           >
             <MenuIcon />
           </IconButton>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 2, md: 3 } }}>
+          {/* Área del logo mejorada como el admin */}
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
             <Box
               component="img"
-              sx={{ height: { xs: 40, sm: 50, md: 55 }, mr: { xs: 1, sm: 2 } }}
-              src="/logo.png"
-              alt="Muscle Up Gym Logo"
-            />
-            <Typography
-              variant="h6"
-              noWrap
-              sx={{
-                display: { xs: 'none', sm: 'block' },
-                fontWeight: 700,
-                letterSpacing: 1.5
+              sx={{ 
+                height: 65, // Aumentado como el admin
+                width: 'auto',
+                mr: 2,
+                filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
               }}
-            >
-              PANEL DE CLIENTE
-            </Typography>
+              src="/logo.png"
+              alt="Muscle Up Gym"
+            />
+            
+            {/* Panel de cliente con MUP como el SGI del admin */}
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PersonOutlineIcon 
+                  sx={{ 
+                    color: '#ffcc00', 
+                    fontSize: 24,
+                    filter: 'drop-shadow(0 1px 2px rgba(255,204,0,0.3))'
+                  }} 
+                />
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    color: 'rgba(255,255,255,0.95)',
+                    fontWeight: 700,
+                    letterSpacing: 1.5,
+                    fontSize: '1.1rem'
+                  }}
+                >
+                  PANEL DE CLIENTE
+                </Typography>
+                <Chip
+                  size="small"
+                  label="MUP"
+                  sx={{
+                    backgroundColor: '#ffcc00',
+                    color: '#000',
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    height: '24px',
+                    minWidth: '45px',
+                    ml: 1
+                  }}
+                />
+              </Box>
+            </Box>
           </Box>
           
-          <Search>
+          <Search sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 0.4, maxWidth: '600px' }}>
             <SearchIconWrapper>
               <SearchIcon />
             </SearchIconWrapper>
@@ -392,25 +441,68 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           
           <Box sx={{ flexGrow: 1 }} />
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+          {/* Área de notificaciones y usuario */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Tooltip title="Notificaciones">
-              <IconButton color="inherit">
-                <Badge badgeContent={3} color="error">
-                  <NotificationsIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
+              <IconButton 
+                color="inherit"
+                sx={{ 
+                  mr: 1,
+                  position: 'relative',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                  }
+                }}
+              >
+                <Badge 
+                  badgeContent={3} 
+                  color="error"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      background: 'linear-gradient(45deg, #ff4444, #ff6666)',
+                      color: 'white',
+                      fontWeight: 'bold'
+                    }
+                  }}
+                >
+                  <NotificationsIcon />
                 </Badge>
               </IconButton>
             </Tooltip>
+            
+            <Chip
+              size="small"
+              label={`Bienvenido, ${user?.firstName || 'Cliente'}`}
+              sx={{
+                backgroundColor: 'rgba(255, 204, 0, 0.15)',
+                color: '#ffcc00',
+                border: '1px solid rgba(255, 204, 0, 0.3)',
+                fontWeight: 600,
+                display: { xs: 'none', md: 'flex' }
+              }}
+            />
+            
             <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
               <IconButton
                 onClick={handleUserMenuOpen}
                 size="small"
-                sx={{ ml: { xs: 0.5, sm: 1 } }}
+                edge="end"
+                sx={{ 
+                  bgcolor: 'rgba(255, 204, 0, 0.2)',
+                  ml: 1,
+                  border: '2px solid rgba(255, 204, 0, 0.3)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 204, 0, 0.3)',
+                  }
+                }}
               >
                 <Avatar
                   alt={user?.firstName}
                   src={user?.profilePictureUrl}
-                  sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }}
-                />
+                  sx={{ width: 40, height: 40 }}
+                >
+                  {user?.firstName?.charAt(0) || "U"}
+                </Avatar>
               </IconButton>
             </Tooltip>
           </Box>
@@ -420,25 +512,105 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             open={Boolean(userMenuAnchor)}
             onClose={handleUserMenuClose}
             PaperProps={{
+              elevation: 0,
               sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 4px 20px rgba(0,0,0,0.5))',
                 mt: 1.5,
                 minWidth: 280,
-                bgcolor: 'rgba(18,18,18,0.95)',
-                backdropFilter: 'blur(10px)',
+                background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.98) 0%, rgba(25, 25, 25, 0.95) 100%)',
+                backdropFilter: 'blur(20px)',
                 color: 'white',
-                border: '1px solid rgba(255,204,0,0.2)',
-                borderRadius: 2
+                border: '1px solid rgba(255, 204, 0, 0.2)',
+                borderRadius: 2,
+                '& .MuiMenuItem-root': {
+                  px: 3,
+                  py: 1.5,
+                  my: 0.5,
+                  mx: 1,
+                  borderRadius: 1.5,
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 204, 0, 0.1)',
+                  },
+                },
               }
             }}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
+            <Box 
+              sx={{ 
+                px: 3, 
+                py: 2, 
+                display: 'flex', 
+                alignItems: 'center',
+                background: 'rgba(255, 204, 0, 0.05)',
+                mx: 1,
+                borderRadius: 1.5,
+                mb: 1
+              }}
+            >
+              <Avatar 
+                sx={{ 
+                  width: 60, 
+                  height: 60, 
+                  mr: 2, 
+                  border: '3px solid #ffcc00' 
+                }}
+                src={user?.profilePictureUrl || ""}
+              >
+                {user?.firstName?.charAt(0) || "U"}
+              </Avatar>
+              <Box>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                  {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
+                </Typography>
+                <Chip
+                  size="small"
+                  label='Cliente'
+                  sx={{
+                    backgroundColor: '#ffcc00',
+                    color: '#000',
+                    fontWeight: 600,
+                    fontSize: '0.75rem'
+                  }}
+                />
+                <Typography variant="caption" sx={{ 
+                  display: 'block', 
+                  color: 'rgba(255,255,255,0.6)',
+                  mt: 0.5
+                }}>
+                  {new Date().toLocaleDateString('es-MX', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </Typography>
+              </Box>
+            </Box>
+            
+            <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
+            
             <MenuItem onClick={() => { handleUserMenuClose(); navigateTo('/dashboard/cliente'); }}>
               <ListItemIcon>
                 <PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} />
               </ListItemIcon>
               Mi Perfil
             </MenuItem>
+            
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
-            <MenuItem onClick={handleLogout} sx={{ color: '#ff6b6b' }}>
+            
+            <MenuItem 
+              onClick={handleLogout}
+              sx={{
+                color: '#ff6b6b !important',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 107, 107, 0.1) !important',
+                }
+              }}
+            >
               <ListItemIcon>
                 <LogoutIcon fontSize="small" sx={{ color: '#ff6b6b' }} />
               </ListItemIcon>
@@ -457,7 +629,12 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             boxSizing: 'border-box',
             background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)',
             color: 'white',
-            borderRight: '1px solid rgba(255, 204, 0, 0.1)'
+            borderRight: '1px solid rgba(255, 204, 0, 0.1)',
+            backgroundImage: `
+              radial-gradient(circle at 20% 50%, rgba(255,204,0,0.05) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255,204,0,0.03) 0%, transparent 50%)
+            `,
+            boxShadow: 'inset -1px 0 0 rgba(255,204,0,0.1), 4px 0 20px rgba(0,0,0,0.3)'
           },
         }}
         variant={isMobile ? 'temporary' : 'persistent'}
@@ -468,35 +645,154 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           keepMounted: true,
         }}
       >
-        <DrawerHeader>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box component="img" sx={{ height: 45, mr: 1.5 }} src="/logo.png" alt="Logo"/>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: '#ffcc00', fontSize: '1.1rem' }}>
-              MUP
-            </Typography>
+        <DrawerHeader sx={{ 
+          background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.9) 0%, rgba(25, 25, 25, 0.8) 100%)',
+          borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
+          px: 2
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', pl: 1 }}>
+            <Box 
+              component="img"
+              sx={{ 
+                height: 50, 
+                mr: 2,
+                filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
+              }}
+              src="/logo.png"
+              alt="Muscle Up Gym"
+            />
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <PersonOutlineIcon sx={{ color: '#ffcc00', fontSize: 18 }} />
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 700,
+                  lineHeight: 1.1,
+                  background: 'linear-gradient(45deg, #ffcc00, #ffd700)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  MUP
+                </Typography>
+              </Box>
+              <Typography variant="caption" sx={{ 
+                color: 'rgba(255,255,255,0.8)',
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                fontSize: '0.7rem'
+              }}>
+                Cliente Panel
+              </Typography>
+            </Box>
           </Box>
-          <IconButton onClick={handleDrawerClose}>
+          <IconButton 
+            onClick={handleDrawerClose}
+            sx={{
+              '&:hover': {
+                backgroundColor: 'rgba(255, 204, 0, 0.1)',
+              }
+            }}
+          >
             <ChevronLeftIcon sx={{ color: 'white' }} />
           </IconButton>
         </DrawerHeader>
+        
         <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.1)' }} />
-        <List component="nav" sx={{ p: 1.5 }}>
+        
+        {/* Información del usuario en el drawer */}
+        <Box sx={{ 
+          p: 2.5, 
+          display: 'flex', 
+          alignItems: 'center',
+          borderBottom: '1px solid rgba(255, 204, 0, 0.1)',
+          background: 'rgba(255, 204, 0, 0.03)'
+        }}>
+          <Avatar 
+            sx={{ 
+              width: 50, 
+              height: 50, 
+              mr: 2,
+              border: '3px solid #ffcc00',
+              background: 'linear-gradient(45deg, #ffcc00, #ffd700)'
+            }}
+            src={user?.profilePictureUrl || ""}
+          >
+            {user?.firstName?.charAt(0) || "U"}
+          </Avatar>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="body1" sx={{ 
+              fontWeight: 'bold', 
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+              <Chip
+                size="small"
+                label='Cliente'
+                sx={{
+                  backgroundColor: '#ffcc00',
+                  color: '#000',
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  height: '20px'
+                }}
+              />
+            </Box>
+          </Box>
+        </Box>
+        
+        <List 
+          component="nav" 
+          sx={{ 
+            px: 1.5, 
+            py: 2,
+            height: 'calc(100% - 340px)', // Ajustado por la nueva altura y footer
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            '&::-webkit-scrollbar': {
+              width: '6px',
+              backgroundColor: 'transparent'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(255, 204, 0, 0.3)',
+              borderRadius: '3px',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 204, 0, 0.5)'
+              }
+            }
+          }}
+        >
           {menuItems.map((item) => (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
                 onClick={() => !item.disabled && navigateTo(item.path)}
                 disabled={item.disabled}
                 sx={{
+                  minHeight: 52,
                   borderRadius: '12px',
-                  bgcolor: activeSection === item.section ? 'rgba(255, 204, 0, 0.2)' : 'transparent',
-                  '&:hover': { bgcolor: 'rgba(255, 204, 0, 0.1)' },
-                  py: 1.2,
-                  px: 2
+                  px: 2.5,
+                  py: 1.5,
+                  background: activeSection === item.section 
+                    ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, rgba(255, 204, 0, 0.1) 100%)'
+                    : 'transparent',
+                  border: activeSection === item.section 
+                    ? '1px solid rgba(255, 204, 0, 0.3)' 
+                    : '1px solid transparent',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.12) 0%, rgba(255, 204, 0, 0.06) 100%)',
+                    border: '1px solid rgba(255, 204, 0, 0.2)',
+                  }
                 }}
               >
                 <ListItemIcon sx={{
+                  minWidth: 0,
+                  mr: 2.5,
+                  justifyContent: 'center',
                   color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
-                  minWidth: 40
                 }}>
                   {item.icon}
                 </ListItemIcon>
@@ -517,6 +813,30 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             </ListItem>
           ))}
         </List>
+        
+        {/* Footer del drawer como el admin */}
+        <Box sx={{ 
+          p: 2.5, 
+          borderTop: '1px solid rgba(255, 204, 0, 0.1)',
+          textAlign: 'center',
+          background: 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(18,18,18,0.2) 100%)',
+          mt: 'auto'
+        }}>
+          <Typography variant="caption" sx={{ 
+            color: 'rgba(255,255,255,0.6)',
+            fontWeight: 500
+          }}>
+            © {new Date().getFullYear()} Muscle Up Gym
+          </Typography>
+          <Typography variant="caption" sx={{ 
+            display: 'block', 
+            color: '#ffcc00', 
+            mt: 0.5,
+            fontWeight: 600
+          }}>
+            Sistema de Gestión v2.0.0
+          </Typography>
+        </Box>
       </Drawer>
       
       <MobileBottomNav value={mobileBottomValue} onChange={handleMobileNavChange} showLabels>
@@ -538,7 +858,11 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
+              transition={{ 
+                duration: 0.4,
+                ease: [0.4, 0.0, 0.2, 1]
+              }}
+              style={{ height: '100%' }}
             >
               {children}
             </motion.div>
