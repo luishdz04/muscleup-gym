@@ -1,12 +1,14 @@
 'use client';
 
-console.log("Iniciando componente de registro - Versión 2.0 - BLOB URLs CORREGIDO - 2025-06-24 by @luishdz044");
+console.log("Iniciando componente de registro - Versión 2.1 - FECHAS CORREGIDAS - 2025-06-25 by @luishdz044");
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { uploadUserFile } from '@/utils/uploadFile';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
@@ -14,6 +16,11 @@ import styles from '@/styles/registro/RegistroWizard.module.css';
 import useWindowSize from '@/hooks/useWindowSize';
 import PhotoCapture from '@/components/registro/PhotoCapture';
 import SuccessModal from '@/components/registro/SuccessModal';
+import { toMexicoDate, toMexicoTimestamp } from '@/utils/dateHelpers';
+
+// ✅ CONFIGURAR DAYJS PARA ZONA HORARIA DE MÉXICO
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // Importación dinámica de componentes pesados con manejo correcto de exportación
 const SignatureCanvas = dynamic(
@@ -99,6 +106,7 @@ const TOTAL_REQUIRED_FIELDS =
 // ✅ CONSTANTES DE CONFIGURACIÓN
 const STORAGE_KEY = 'registration-form';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MEXICO_TZ = 'America/Mexico_City';
 
 // ✅ FUNCIÓN DE VALIDACIÓN DE ARCHIVOS MEJORADA
 const isValidFile = (file: unknown): file is File => {
@@ -133,6 +141,26 @@ const sanitizeUrl = (url: string | undefined): string | undefined => {
   
   // ✅ URLs normales
   return url;
+};
+
+// ✅ FUNCIONES DE FECHAS PARA MÉXICO
+const getCurrentMexicoDate = (): string => {
+  return dayjs().tz(MEXICO_TZ).format('YYYY-MM-DD');
+};
+
+const calculateAge = (birthDateString: string): number => {
+  const birthDate = dayjs.tz(birthDateString, MEXICO_TZ);
+  const now = dayjs().tz(MEXICO_TZ);
+  return now.diff(birthDate, 'year');
+};
+
+const validateAge = (birthDateString: string): boolean | string => {
+  try {
+    const age = calculateAge(birthDateString);
+    return (age >= 10 && age <= 100) || 'La edad debe estar entre 10 y 100 años';
+  } catch (error) {
+    return 'Fecha de nacimiento inválida';
+  }
 };
 
 // Componente principal usando función nombrada
@@ -291,7 +319,7 @@ const RegistroPage = () => {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-  }, [reset, sanitizeUrl]);
+  }, [reset]);
 
   // Calcular el progreso del formulario basado en campos completados
   useEffect(() => {
@@ -363,14 +391,13 @@ const RegistroPage = () => {
     }
   }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl, profilePhotoFile, tutorINEFile, sanitizeForStorage]);
 
-  // Verificar si el usuario es menor de edad
+  // ✅ VERIFICAR SI EL USUARIO ES MENOR DE EDAD CON ZONA HORARIA CORREGIDA
   useEffect(() => {
     const birthDate = formValues.birthDate;
     if (birthDate) {
       try {
-        const birthDateObj = dayjs(birthDate);
-        const now = dayjs();
-        const age = now.diff(birthDateObj, 'year');
+        // ✅ USAR ZONA HORARIA DE MÉXICO
+        const age = calculateAge(birthDate);
         
         setShowTutorField(age < 18);
         
@@ -572,12 +599,12 @@ const RegistroPage = () => {
     console.log("🗑️ [TUTOR-INE] INE del tutor eliminado");
   }, [setValue]);
 
-  // ✅ FUNCIÓN DE ENVÍO COMPLETAMENTE CORREGIDA
+  // ✅ FUNCIÓN DE ENVÍO COMPLETAMENTE CORREGIDA CON FECHAS
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
       setIsSubmitting(true);
       
-      console.log("🚀 [SUBMIT] Iniciando proceso de envío corregido - Sin blob URLs...");
+      console.log("🚀 [SUBMIT] Iniciando proceso de envío con fechas corregidas...");
       
       // ✅ VERIFICAR FIRMA DE MANERA SEGURA Y ROBUSTA
       let signatureDataUrl = '';
@@ -676,7 +703,10 @@ const RegistroPage = () => {
         return;
       }
 
-      // ✅ CONSTRUIR PAYLOAD LIMPIO
+      // ✅ CONSTRUIR PAYLOAD LIMPIO CON FECHAS CORREGIDAS
+      const currentMexicoTime = new Date();
+      const birthDateObj = new Date(data.birthDate);
+      
       const payload = {
         // Datos personales - estructura mejorada para Supabase Auth
         personalInfo: {
@@ -685,7 +715,7 @@ const RegistroPage = () => {
           email: data.email,
           password: data.password, // La contraseña se procesará en Supabase Auth
           whatsapp: data.whatsapp,
-          birthDate: data.birthDate,
+          birthDate: toMexicoDate(birthDateObj), // ✅ FECHA SIN HORA EN ZONA HORARIA MX
           address: {
             street: data.street,
             number: data.number,
@@ -715,28 +745,34 @@ const RegistroPage = () => {
         // Aceptación y firma
         acceptedRules: data.acceptedRules,
         signature: signatureDataUrl,
-        registrationDate: new Date().toISOString(),
+        registrationDate: toMexicoTimestamp(currentMexicoTime), // ✅ TIMESTAMP COMPLETO EN ZONA HORARIA MX
         
         // ✅ FOTOS PROCESADAS CORRECTAMENTE (GARANTIZADO SIN BLOB URLs)
         profilePhoto: profilePhotoBase64,
         tutorINE: tutorINEBase64,
         isMinor: showTutorField,
         
-        // ✅ METADATA PARA DEBUGGING
+        // ✅ METADATA PARA DEBUGGING CON FECHAS CORREGIDAS
         metadata: {
-          version: '2.0-no-blob',
-          processedAt: new Date().toISOString(),
-          processedBy: 'luishdz044'
+          version: '2.1-mx-timezone-corrected',
+          processedAt: toMexicoTimestamp(currentMexicoTime), // ✅ TIMESTAMP EN ZONA HORARIA MX
+          processedBy: 'luishdz044',
+          mexicoTimezone: MEXICO_TZ,
+          currentMexicoDate: getCurrentMexicoDate()
         }
       };
 
       // ✅ LOG FINAL PARA VERIFICACIÓN
-      console.log("✅ [SUBMIT] Payload preparado correctamente:", {
+      console.log("✅ [SUBMIT] Payload preparado correctamente con fechas MX:", {
+        birthDate: payload.personalInfo.birthDate,
+        registrationDate: payload.registrationDate,
+        processedAt: payload.metadata.processedAt,
+        currentMexicoDate: payload.metadata.currentMexicoDate,
         profilePhoto: profilePhotoBase64.substring(0, 50) + '...',
         tutorINE: tutorINEBase64 ? tutorINEBase64.substring(0, 50) + '...' : 'N/A',
         signature: signatureDataUrl.substring(0, 50) + '...',
         noBlobUrls: !urlsToCheck.some(url => isBlobUrl(url)),
-        timestamp: new Date().toISOString()
+        timestamp: toMexicoTimestamp(new Date())
       });
 
       // ✅ LLAMADA AL API CON MANEJO DE ERRORES MEJORADO
@@ -1032,21 +1068,16 @@ const RegistroPage = () => {
             {errors.whatsapp && <p className={styles.errorText}>{errors.whatsapp.message}</p>}
           </div>
           
-          {/* Fecha de nacimiento */}
+          {/* ✅ FECHA DE NACIMIENTO CON VALIDACIÓN CORREGIDA */}
           <div className="mb-4">
             <label className="block mb-1">Fecha de nacimiento <span className="text-yellow-400">*</span></label>
             <input
               type="date"
               className={styles.dateInput}
-              max={new Date().toISOString().split('T')[0]}
+              max={getCurrentMexicoDate()} // ✅ FECHA MÁXIMA EN ZONA HORARIA DE MÉXICO
               {...register('birthDate', {
                 required: 'Este campo es obligatorio',
-                validate: value => {
-                  const birthDate = new Date(value);
-                  const now = new Date();
-                  const age = now.getFullYear() - birthDate.getFullYear();
-                  return (age >= 10 && age <= 100) || 'La edad debe estar entre 10 y 100 años';
-                }
+                validate: validateAge // ✅ VALIDACIÓN CON ZONA HORARIA DE MÉXICO
               })}
             />
             {errors.birthDate && <p className={styles.errorText}>{errors.birthDate.message}</p>}
@@ -1369,7 +1400,7 @@ const RegistroPage = () => {
         <div className={step === 4 ? 'animate-fadeIn' : 'hidden'}>
           <h2 className="text-xl font-bold mb-4 text-yellow-400">Reglamento y firma</h2>
           
-          {/* ✅ NORMAS COMPLETAS ACTUALIZADAS */}
+                    {/* ✅ NORMAS COMPLETAS ACTUALIZADAS */}
           <div className="mb-6 bg-zinc-800 p-4 rounded-lg max-h-80 overflow-y-auto text-sm">
             <h3 className="font-bold mb-3 text-yellow-400 text-lg">NORMATIVAS PARA SER USUARIO DE MUSCLE UP GYM</h3>
             
@@ -1547,7 +1578,7 @@ const RegistroPage = () => {
             opacity: 0.8
           }}
         >
-          🚀 Registro v2.0 - Sin blob URLs - {new Date().toISOString()} by @luishdz044
+          🚀 Registro v2.1 - Fechas MX Corregidas - {getCurrentMexicoDate()} by @luishdz044
         </div>
       )}
 
@@ -1696,6 +1727,26 @@ const RegistroPage = () => {
         
         .smooth-transition {
           transition: all 0.3s ease;
+        }
+
+        /* ✅ INDICADORES ESPECÍFICOS PARA FECHAS MX */
+        .mx-timezone-indicator {
+          position: relative;
+        }
+        
+        .mx-timezone-indicator::after {
+          content: '🇲🇽 Zona Horaria MX';
+          position: absolute;
+          top: -25px;
+          right: 0;
+          background: #00B04F;
+          color: white;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.6rem;
+          font-weight: 600;
+          z-index: 1000;
+          display: ${process.env.NODE_ENV === 'development' ? 'block' : 'none'};
         }
       `}</style>
     </div>
