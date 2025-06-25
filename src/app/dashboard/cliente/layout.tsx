@@ -26,6 +26,7 @@ import {
   Container,
   Chip,
   Badge,
+  SwipeableDrawer,
   BottomNavigation,
   BottomNavigationAction,
   Fab,
@@ -46,7 +47,6 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import HistoryIcon from '@mui/icons-material/History';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import CloseIcon from '@mui/icons-material/Close';
 import HomeIcon from '@mui/icons-material/Home';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -54,20 +54,31 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LoginIcon from '@mui/icons-material/Login';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 
-// CONSTANTE DE ANCHO DEL DRAWER (como en admin)
-const drawerWidth = 260;
+// CONSTANTES DE ANCHOS DEL DRAWER
+const DRAWER_WIDTHS = { 
+  mobile: '100vw', 
+  tablet: 280,
+  desktop: 290,
+  large: 320
+};
 
-// ESTILOS DE COMPONENTES - MAIN CORREGIDO COMO EN ADMIN
+// Función auxiliar para obtener el ancho del drawer
+const getDrawerWidth = (md: number, lg: number) => {
+  if (typeof window === 'undefined') return DRAWER_WIDTHS.desktop;
+  if (window.innerWidth >= lg) return DRAWER_WIDTHS.large;
+  if (window.innerWidth >= md) return DRAWER_WIDTHS.desktop;
+  return DRAWER_WIDTHS.tablet;
+};
+
+// ESTILOS DE COMPONENTES
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
   flexGrow: 1,
-  padding: theme.spacing(3),
-  transition: theme.transitions.create('margin', {
+  transition: theme.transitions.create(['margin', 'width', 'padding'], {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  marginLeft: `-${drawerWidth}px`,
   backgroundColor: '#0a0a0a',
   backgroundImage: `
     radial-gradient(circle at 25px 25px, rgba(255,204,0,0.08) 2%, transparent 0%), 
@@ -78,51 +89,20 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   color: '#fff',
   position: 'relative',
   
-  // Mobile
   [theme.breakpoints.down('sm')]: {
-    marginLeft: 0,
     padding: theme.spacing(1),
-    paddingBottom: '80px', // Espacio para el bottom nav
-  },
-  
-  // Cuando está abierto
-  ...(open && {
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
     marginLeft: 0,
-  }),
-}));
-
-const DrawerHeader = styled('div')(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  padding: theme.spacing(0, 1),
-  ...theme.mixins.toolbar,
-  justifyContent: 'space-between',
-  minHeight: '100px !important', // Altura igual que el AppBar
-  [theme.breakpoints.down('sm')]: {
-    minHeight: '80px !important',
+    width: '100%',
+    paddingBottom: '80px',
+    paddingTop: '0px', // Sin espacio para AppBar en móvil
   },
-}));
-
-// AppBar actualizado con altura de 100px como el admin
-const AppBarStyled = styled(AppBar, {
-  shouldForwardProp: (prop) => prop !== 'open',
-})<{ open?: boolean }>(({ theme, open }) => ({
-  transition: theme.transitions.create(['margin', 'width'], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  // Fondo completamente negro como el admin
-  background: '#000000',
-  backdropFilter: 'none',
-  boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
-  borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
+  [theme.breakpoints.up('md')]: {
+    padding: theme.spacing(3),
+    paddingTop: theme.spacing(15), // Espacio para AppBar de 100px
+    width: `calc(100% - ${open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : '0px'})`,
+    marginLeft: open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : 0,
+  },
   ...(open && {
-    width: `calc(100% - ${drawerWidth}px)`,
-    marginLeft: `${drawerWidth}px`,
     transition: theme.transitions.create(['margin', 'width'], {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
@@ -130,70 +110,111 @@ const AppBarStyled = styled(AppBar, {
   }),
 }));
 
-// Componente de búsqueda simplificado
+const DrawerHeader = styled('div')(({ theme }) => ({
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'space-between', 
+  padding: theme.spacing(0, 1),
+  ...theme.mixins.toolbar,
+  // Altura estandarizada como admin
+  minHeight: '100px !important',
+  [theme.breakpoints.down('sm')]: {
+    minHeight: '80px !important',
+  },
+}));
+
+const ResponsiveAppBar = styled(AppBar)(({ theme }) => ({
+  zIndex: theme.zIndex.drawer + 1, 
+  // Fondo negro sólido como admin
+  background: '#000000',
+  backdropFilter: 'none',
+  boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
+  borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
+  // Ocultar en móvil
+  [theme.breakpoints.down('sm')]: {
+    display: 'none',
+  },
+  '& .MuiToolbar-root': {
+    minHeight: '100px !important',
+    px: { xs: 2, sm: 3 }
+  },
+}));
+
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
   borderRadius: '25px',
   backgroundColor: alpha(theme.palette.common.white, 0.12),
   border: '1px solid rgba(255, 204, 0, 0.2)',
-  transition: 'all 0.3s ease',
   '&:hover': {
     backgroundColor: alpha(theme.palette.common.white, 0.18),
-    borderColor: 'rgba(255, 204, 0, 0.4)'
+    borderColor: 'rgba(255, 204, 0, 0.4)',
   },
-  display: 'none',
-  [theme.breakpoints.up('md')]: {
-    display: 'block',
-    marginRight: theme.spacing(2),
-    marginLeft: theme.spacing(2),
-    width: '100%',
-    maxWidth: '350px'
+  '&:focus-within': {
+    backgroundColor: alpha(theme.palette.common.white, 0.25),
+    borderColor: '#ffcc00',
+    boxShadow: '0 0 0 2px rgba(255, 204, 0, 0.2)',
   },
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: '100%',
-  position: 'absolute',
-  pointerEvents: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: 'rgba(255, 204, 0, 0.7)'
-}));
-
-const StyledInputBase = styled('input')(({ theme }) => ({
-  color: 'inherit',
-  border: 'none',
-  background: 'transparent',
+  marginRight: theme.spacing(2),
+  marginLeft: 0,
   width: '100%',
-  fontFamily: 'inherit',
-  fontSize: '0.875rem',
-  padding: theme.spacing(1.2, 2, 1.2, 0),
+  [theme.breakpoints.up('sm')]: {
+    marginLeft: theme.spacing(3),
+    width: 'auto',
+  },
+}));
+
+const SearchIconWrapper = styled('div')(({ theme }) => ({ 
+  padding: theme.spacing(0, 2), 
+  height: '100%', 
+  position: 'absolute', 
+  pointerEvents: 'none', 
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'center', 
+  color: 'rgba(255, 204, 0, 0.7)' 
+}));
+
+const StyledInputBase = styled('input')(({ theme }) => ({ 
+  color: 'inherit', 
+  border: 'none', 
+  background: 'transparent', 
+  width: '100%', 
+  fontFamily: 'inherit', 
+  fontSize: '0.875rem', 
+  padding: theme.spacing(1, 1, 1, 0),
   paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+  paddingRight: theme.spacing(2),
   transition: theme.transitions.create('width'),
-  '&:focus': { outline: 'none' },
-  '&::placeholder': { color: 'rgba(255, 255, 255, 0.5)' }
+  [theme.breakpoints.up('md')]: {
+    width: '25ch',
+  },
+  '&:focus': {
+    outline: 'none',
+    width: '35ch',
+  },
+  '&::placeholder': {
+    color: 'rgba(255, 255, 255, 0.5)',
+  }
 }));
 
 const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
-  position: 'fixed',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  zIndex: 1300,
+  position: 'fixed', 
+  bottom: 0, 
+  left: 0, 
+  right: 0, 
+  zIndex: 1300, 
   backgroundColor: 'rgba(0, 0, 0, 0.95)',
-  backdropFilter: 'blur(20px)',
-  borderTop: '1px solid rgba(255, 204, 0, 0.2)',
+  backdropFilter: 'blur(20px)', 
+  borderTop: '1px solid rgba(255, 204, 0, 0.2)', 
   height: '70px',
-  '& .MuiBottomNavigationAction-root': {
-    color: 'rgba(255, 255, 255, 0.6)',
-    minHeight: '70px',
+  '& .MuiBottomNavigationAction-root': { 
+    color: 'rgba(255, 255, 255, 0.6)', 
+    minHeight: '70px', 
     padding: '8px 0',
     '&.Mui-selected': { color: '#ffcc00' },
-    '& .MuiBottomNavigationAction-label': {
-      fontSize: '0.7rem',
-      fontWeight: 600
+    '& .MuiBottomNavigationAction-label': { 
+      fontSize: '0.7rem', 
+      fontWeight: 600 
     }
   },
   [theme.breakpoints.up('sm')]: { display: 'none' },
@@ -201,14 +222,14 @@ const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
 
 // INTERFACES Y TIPOS
 interface ClienteLayoutProps { children: ReactNode; }
-interface MenuItemDef {
-  text: string;
-  path: string;
-  icon: React.ReactElement;
-  section: string;
-  description?: string;
-  disabled?: boolean;
-  mobileIcon?: React.ReactElement;
+interface MenuItemDef { 
+  text: string; 
+  path: string; 
+  icon: React.ReactElement; 
+  section: string; 
+  description?: string; 
+  disabled?: boolean; 
+  mobileIcon?: React.ReactElement; 
 }
 
 export default function ClienteLayout({ children }: ClienteLayoutProps) {
@@ -219,7 +240,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   
-  const [open, setOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(isDesktop);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>('');
@@ -229,53 +250,50 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
 
   const menuItems: MenuItemDef[] = [
-    {
-      text: 'Mi Información',
-      path: '/dashboard/cliente',
-      icon: <AccountCircleIcon />,
-      mobileIcon: <HomeIcon />,
-      section: 'info',
-      description: 'Gestiona tu perfil personal'
+    { 
+      text: 'Mi Información', 
+      path: '/dashboard/cliente', 
+      icon: <AccountCircleIcon />, 
+      mobileIcon: <HomeIcon />, 
+      section: 'info', 
+      description: 'Gestiona tu perfil personal' 
     },
-    {
-      text: 'Pagos',
-      path: '/dashboard/cliente/pagos',
-      icon: <PaymentIcon />,
-      mobileIcon: <PaymentIcon />,
-      section: 'pagos',
-      description: 'Historial de membresías'
+    { 
+      text: 'Pagos', 
+      path: '/dashboard/cliente/pagos', 
+      icon: <PaymentIcon />, 
+      mobileIcon: <PaymentIcon />, 
+      section: 'pagos', 
+      description: 'Historial de membresías' 
     },
-    {
-      text: 'Compras',
-      path: '/dashboard/cliente/compras',
-      icon: <ShoppingCartIcon />,
-      mobileIcon: <ShoppingCartIcon />,
-      section: 'compras',
-      description: 'Productos y servicios'
+    { 
+      text: 'Compras', 
+      path: '/dashboard/cliente/compras', 
+      icon: <ShoppingCartIcon />, 
+      mobileIcon: <ShoppingCartIcon />, 
+      section: 'compras', 
+      description: 'Productos y servicios' 
     },
-    {
-      text: 'Accesos',
-      path: '/dashboard/cliente/accesos',
-      icon: <LoginIcon />,
-      mobileIcon: <AccessTimeIcon />,
-      section: 'accesos',
-      description: 'Historial de entradas al gym'
+    { 
+      text: 'Accesos', 
+      path: '/dashboard/cliente/accesos', 
+      icon: <LoginIcon />, 
+      mobileIcon: <AccessTimeIcon />, 
+      section: 'accesos', 
+      description: 'Historial de entradas al gym' 
     },
-    {
-      text: 'Historial',
-      path: '/dashboard/cliente/historial',
-      icon: <HistoryIcon />,
-      mobileIcon: <HistoryIcon />,
-      section: 'historial',
-      description: 'Próximamente',
-      disabled: true
+    { 
+      text: 'Historial', 
+      path: '/dashboard/cliente/historial', 
+      icon: <HistoryIcon />, 
+      mobileIcon: <HistoryIcon />, 
+      section: 'historial', 
+      description: 'Próximamente', 
+      disabled: true 
     }
   ];
 
-  // Abrir drawer automáticamente en desktop
-  useEffect(() => {
-    setOpen(isDesktop);
-  }, [isDesktop]);
+  useEffect(() => setDrawerOpen(isDesktop), [isDesktop]);
 
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 300);
@@ -292,9 +310,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         try {
           const response = await fetch(`/api/user-profile?userId=${session.user.id}`);
           if (response.ok) setUser(await response.json());
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        }
+        } catch (error) { console.error("Error fetching user data:", error); }
       }
       setLoading(false);
     }
@@ -314,7 +330,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   
   const navigateTo = (path: string) => {
     router.push(path);
-    if (isMobile) setOpen(false);
+    if (isMobile) setDrawerOpen(false);
   };
   
   const handleLogout = async () => {
@@ -327,8 +343,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => setUserMenuAnchor(event.currentTarget);
   const handleUserMenuClose = () => setUserMenuAnchor(null);
-  const handleDrawerOpen = () => setOpen(true);
-  const handleDrawerClose = () => setOpen(false);
+
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -339,49 +354,48 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBarStyled position="fixed" open={open && !isMobile}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* AppBar solo visible en desktop */}
+      <ResponsiveAppBar position="fixed">
         {loading && (
-          <LinearProgress
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
+          <LinearProgress 
+            sx={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              right: 0, 
               height: '3px',
               background: 'rgba(255,204,0,0.1)',
               '& .MuiLinearProgress-bar': {
                 background: 'linear-gradient(90deg, #ffcc00, #ffd700)'
               }
-            }}
+            }} 
           />
         )}
-        
-        {/* Toolbar con altura aumentada como el admin */}
-        <Toolbar sx={{ minHeight: '100px !important', px: { xs: 2, sm: 3 } }}>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            onClick={handleDrawerOpen}
-            edge="start"
-            sx={{ 
-              mr: 2, 
-              backgroundColor: 'rgba(255, 204, 0, 0.1)',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 204, 0, 0.2)',
-              },
-              ...(open && { display: 'none' }) 
-            }}
-          >
-            <MenuIcon />
-          </IconButton>
+        <Toolbar>
+          {!isMobile && (
+            <IconButton 
+              color="inherit" 
+              onClick={() => setDrawerOpen(!drawerOpen)} 
+              edge="start" 
+              sx={{ 
+                mr: 2,
+                backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 204, 0, 0.2)',
+                }
+              }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           
-          {/* Área del logo mejorada como el admin */}
+          {/* Logo y título estandarizado */}
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
-            <Box
+            <Box 
               component="img"
               sx={{ 
-                height: 65, // Aumentado como el admin
+                height: 65,
                 width: 'auto',
                 mr: 2,
                 filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
@@ -390,7 +404,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               alt="Muscle Up Gym"
             />
             
-            {/* Panel de cliente con MUP como el SGI del admin */}
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <PersonOutlineIcon 
@@ -441,11 +454,10 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           
           <Box sx={{ flexGrow: 1 }} />
           
-          {/* Área de notificaciones y usuario */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Tooltip title="Notificaciones">
               <IconButton 
-                color="inherit"
+                color="inherit" 
                 sx={{ 
                   mr: 1,
                   position: 'relative',
@@ -483,7 +495,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             />
             
             <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
-              <IconButton
+              <IconButton 
                 onClick={handleUserMenuOpen}
                 size="small"
                 edge="end"
@@ -496,10 +508,13 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                   }
                 }}
               >
-                <Avatar
-                  alt={user?.firstName}
-                  src={user?.profilePictureUrl}
-                  sx={{ width: 40, height: 40 }}
+                <Avatar 
+                  alt={user?.firstName || "Usuario"} 
+                  src={user?.profilePictureUrl || ""}
+                  sx={{ 
+                    width: 40, 
+                    height: 40
+                  }}
                 >
                   {user?.firstName?.charAt(0) || "U"}
                 </Avatar>
@@ -507,10 +522,12 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             </Tooltip>
           </Box>
           
+          {/* Menú de usuario estandarizado */}
           <Menu
             anchorEl={userMenuAnchor}
             open={Boolean(userMenuAnchor)}
             onClose={handleUserMenuClose}
+            onClick={handleUserMenuClose}
             PaperProps={{
               elevation: 0,
               sx: {
@@ -534,7 +551,21 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                     bgcolor: 'rgba(255, 204, 0, 0.1)',
                   },
                 },
-              }
+                '&:before': {
+                  content: '""',
+                  display: 'block',
+                  position: 'absolute',
+                  top: 0,
+                  right: 20,
+                  width: 12,
+                  height: 12,
+                  bgcolor: 'rgba(18, 18, 18, 0.98)',
+                  transform: 'translateY(-50%) rotate(45deg)',
+                  zIndex: 0,
+                  borderTop: '1px solid rgba(255, 204, 0, 0.2)',
+                  borderLeft: '1px solid rgba(255, 204, 0, 0.2)',
+                },
+              },
             }}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
@@ -618,17 +649,17 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             </MenuItem>
           </Menu>
         </Toolbar>
-      </AppBarStyled>
+      </ResponsiveAppBar>
       
-      <Drawer
+      <SwipeableDrawer
         sx={{
-          width: drawerWidth,
+          width: isDesktop ? getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg) : DRAWER_WIDTHS.tablet,
           flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-            background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)',
-            color: 'white',
+          '& .MuiDrawer-paper': { 
+            width: 'inherit', 
+            boxSizing: 'border-box', 
+            background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)', 
+            color: 'white', 
             borderRight: '1px solid rgba(255, 204, 0, 0.1)',
             backgroundImage: `
               radial-gradient(circle at 20% 50%, rgba(255,204,0,0.05) 0%, transparent 50%),
@@ -637,13 +668,12 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             boxShadow: 'inset -1px 0 0 rgba(255,204,0,0.1), 4px 0 20px rgba(0,0,0,0.3)'
           },
         }}
-        variant={isMobile ? 'temporary' : 'persistent'}
+        variant={isDesktop ? "persistent" : "temporary"}
         anchor="left"
-        open={open}
-        onClose={handleDrawerClose}
-        ModalProps={{
-          keepMounted: true,
-        }}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onOpen={() => setDrawerOpen(true)}
+        ModalProps={{ keepMounted: true }}
       >
         <DrawerHeader sx={{ 
           background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.9) 0%, rgba(25, 25, 25, 0.8) 100%)',
@@ -686,14 +716,14 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             </Box>
           </Box>
           <IconButton 
-            onClick={handleDrawerClose}
+            onClick={() => setDrawerOpen(false)}
             sx={{
               '&:hover': {
                 backgroundColor: 'rgba(255, 204, 0, 0.1)',
               }
             }}
           >
-            <ChevronLeftIcon sx={{ color: 'white' }} />
+            {isMobile ? <CloseIcon sx={{ color: 'white' }} /> : <ChevronLeftIcon sx={{ color: 'white' }} />}
           </IconButton>
         </DrawerHeader>
         
@@ -750,7 +780,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           sx={{ 
             px: 1.5, 
             py: 2,
-            height: 'calc(100% - 340px)', // Ajustado por la nueva altura y footer
+            height: 'calc(100% - 340px)', // Ajustado por el footer
             overflowY: 'auto',
             overflowX: 'hidden',
             '&::-webkit-scrollbar': {
@@ -768,10 +798,10 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         >
           {menuItems.map((item) => (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                onClick={() => !item.disabled && navigateTo(item.path)}
-                disabled={item.disabled}
-                sx={{
+              <ListItemButton 
+                onClick={() => !item.disabled && navigateTo(item.path)} 
+                disabled={item.disabled} 
+                sx={{ 
                   minHeight: 52,
                   borderRadius: '12px',
                   px: 2.5,
@@ -788,18 +818,20 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                   }
                 }}
               >
-                <ListItemIcon sx={{
-                  minWidth: 0,
-                  mr: 2.5,
-                  justifyContent: 'center',
-                  color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
-                }}>
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: 2.5,
+                    justifyContent: 'center',
+                    color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
+                  }}
+                >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText
+                <ListItemText 
                   primary={item.text}
                   secondary={!isMobile ? item.description : undefined}
-                  primaryTypographyProps={{
+                  primaryTypographyProps={{ 
                     fontWeight: activeSection === item.section ? 700 : 500,
                     color: activeSection === item.section ? '#ffcc00' : 'inherit',
                     fontSize: '0.95rem'
@@ -837,27 +869,26 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             Sistema de Gestión v2.0.0
           </Typography>
         </Box>
-      </Drawer>
+      </SwipeableDrawer>
       
       <MobileBottomNav value={mobileBottomValue} onChange={handleMobileNavChange} showLabels>
         {menuItems.filter(item => !item.disabled).map((item) => (
-          <BottomNavigationAction
-            key={item.section}
-            label={item.text === 'Mi Información' ? 'Inicio' : item.text}
-            icon={item.mobileIcon || item.icon}
+          <BottomNavigationAction 
+            key={item.section} 
+            label={item.text === 'Mi Información' ? 'Inicio' : item.text} 
+            icon={item.mobileIcon || item.icon} 
           />
         ))}
       </MobileBottomNav>
       
-      <Main open={open && !isMobile}>
-        <DrawerHeader />
-        <Container maxWidth="lg" sx={{ mt: 2 }}>
+      <Main open={drawerOpen && isDesktop}>
+        <Container maxWidth="xl" disableGutters={isMobile} sx={{ px: isMobile ? 1 : 0 }}>
           <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+            <motion.div 
+              key={pathname} 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -20 }} 
               transition={{ 
                 duration: 0.4,
                 ease: [0.4, 0.0, 0.2, 1]
@@ -871,16 +902,16 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       </Main>
       
       <Zoom in={showScrollTop}>
-        <Fab
-          onClick={scrollToTop}
-          color="primary"
-          size="large"
-          sx={{
-            position: 'fixed',
-            bottom: isMobile ? 85 : 20,
-            right: 20,
-            background: 'linear-gradient(135deg, #ffcc00, #ffd700)',
-            '&:hover': { background: '#ffdd44' }
+        <Fab 
+          onClick={scrollToTop} 
+          color="primary" 
+          size="large" 
+          sx={{ 
+            position: 'fixed', 
+            bottom: isMobile ? 85 : 20, 
+            right: 20, 
+            background: 'linear-gradient(135deg, #ffcc00, #ffd700)', 
+            '&:hover': { background: '#ffdd44' } 
           }}
         >
           <KeyboardArrowUpIcon />
