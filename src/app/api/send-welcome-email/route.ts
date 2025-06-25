@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
           
           <ul style="color: #666; padding-left: 20px;">
             <li>Teléfono: 866-112-7905</li>
-            <li>Email: administracion@muscleupgym.com.mx</li>
+            <li>Email: administracion@muscleupgym.fitness</li>
           </ul>
           
           <p style="color: #666; line-height: 1.6; text-align: center; margin-top: 30px; font-style: italic;">
