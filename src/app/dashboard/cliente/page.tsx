@@ -186,12 +186,22 @@ export default function ClienteDashboard() {
     }
   }, []);
 
+  // ✅ FUNCIÓN CORREGIDA PARA FORMATEAR FECHAS (PROBLEMA DE ZONA HORARIA)
   const formatDate = useCallback((dateString: string): string => {
     try {
       if (!dateString) return 'Fecha no disponible';
       
-      const date = new Date(dateString);
+      // ✅ CREAR FECHA SIN CONVERSIÓN DE ZONA HORARIA
+      // Si viene como "1998-08-04", tratarla como fecha local, no UTC
+      const dateParts = dateString.split('T')[0]; // Tomar solo la parte de fecha
+      const [year, month, day] = dateParts.split('-').map(Number);
+      
+      // ✅ CREAR FECHA LOCAL DIRECTAMENTE (SIN UTC)
+      const date = new Date(year, month - 1, day); // month - 1 porque Date usa índices 0-11
+      
       if (isNaN(date.getTime())) return 'Fecha inválida';
+      
+      console.log(`🗓️ [FECHA] Original: ${dateString}, Procesada: ${date.toLocaleDateString('es-MX')}`);
       
       return date.toLocaleDateString('es-MX', {
         year: 'numeric',
@@ -321,106 +331,109 @@ export default function ClienteDashboard() {
         console.error('❌ Error cargando archivos:', err);
       }
 
-      if (completeUserData?.rol === 'cliente') {
-        console.log('👤 [CLIENT] Cargando datos adicionales para cliente...');
-        
-        try {
-          const { data: addressData, error: addressError } = await supabase
-            .from('addresses')
-            .select('*')
-            .eq('userId', user.id)
-            .maybeSingle();
+      // ✅ REMOVIDA LA LÓGICA DE "SI ES CLIENTE" - SIEMPRE CARGAR DATOS ADICIONALES
+      console.log('👤 [CLIENT] Cargando datos adicionales (SIEMPRE)...');
+      
+      // ✅ CARGAR DIRECCIÓN SIEMPRE
+      try {
+        const { data: addressData, error: addressError } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('userId', user.id)
+          .maybeSingle();
 
-          if (addressError && addressError.code !== 'PGRST116') {
-            console.error('❌ [ADDRESS] Error:', addressError);
-          } else if (addressData) {
-            console.log('✅ [ADDRESS] Dirección cargada:', addressData);
-            setAddress(addressData);
-          } else {
-            console.log('ℹ️ [ADDRESS] No se encontró dirección para el usuario');
-          }
-        } catch (err) {
-          console.error('❌ [ADDRESS] Error en carga de dirección:', err);
+        if (addressError && addressError.code !== 'PGRST116') {
+          console.error('❌ [ADDRESS] Error:', addressError);
+        } else if (addressData) {
+          console.log('✅ [ADDRESS] Dirección cargada:', addressData);
+          setAddress(addressData);
+        } else {
+          console.log('ℹ️ [ADDRESS] No se encontró dirección para el usuario');
         }
+      } catch (err) {
+        console.error('❌ [ADDRESS] Error en carga de dirección:', err);
+      }
 
-        try {
-          const { data: emergencyData, error: emergencyError } = await supabase
-            .from('emergency_contacts')
-            .select('*')
-            .eq('userId', user.id)
-            .maybeSingle();
+      // ✅ CARGAR CONTACTO DE EMERGENCIA SIEMPRE
+      try {
+        const { data: emergencyData, error: emergencyError } = await supabase
+          .from('emergency_contacts')
+          .select('*')
+          .eq('userId', user.id)
+          .maybeSingle();
 
-          if (emergencyError && emergencyError.code !== 'PGRST116') {
-            console.error('❌ [EMERGENCY] Error:', emergencyError);
-          } else if (emergencyData) {
-            console.log('✅ [EMERGENCY] Contacto de emergencia cargado:', emergencyData);
-            setEmergency(emergencyData);
-          } else {
-            console.log('ℹ️ [EMERGENCY] No se encontró contacto de emergencia');
-          }
-        } catch (err) {
-          console.error('❌ [EMERGENCY] Error en carga:', err);
+        if (emergencyError && emergencyError.code !== 'PGRST116') {
+          console.error('❌ [EMERGENCY] Error:', emergencyError);
+        } else if (emergencyData) {
+          console.log('✅ [EMERGENCY] Contacto de emergencia cargado:', emergencyData);
+          setEmergency(emergencyData);
+        } else {
+          console.log('ℹ️ [EMERGENCY] No se encontró contacto de emergencia');
         }
+      } catch (err) {
+        console.error('❌ [EMERGENCY] Error en carga:', err);
+      }
 
-        try {
-          const { data: membershipData, error: membershipError } = await supabase
-            .from('membership_info')
-            .select('*')
-            .eq('userId', user.id)
-            .maybeSingle();
+      // ✅ CARGAR INFORMACIÓN DE MEMBRESÍA SIEMPRE
+      try {
+        const { data: membershipData, error: membershipError } = await supabase
+          .from('membership_info')
+          .select('*')
+          .eq('userId', user.id)
+          .maybeSingle();
 
-          if (membershipError && membershipError.code !== 'PGRST116') {
-            console.error('❌ [MEMBERSHIP-INFO] Error:', membershipError);
-          } else if (membershipData) {
-            console.log('✅ [MEMBERSHIP-INFO] Info de membresía cargada:', membershipData);
-            setMembershipInfo(membershipData);
-          } else {
-            console.log('ℹ️ [MEMBERSHIP-INFO] No se encontró info de membresía');
-          }
-        } catch (err) {
-          console.error('❌ [MEMBERSHIP-INFO] Error en carga:', err);
+        if (membershipError && membershipError.code !== 'PGRST116') {
+          console.error('❌ [MEMBERSHIP-INFO] Error:', membershipError);
+        } else if (membershipData) {
+          console.log('✅ [MEMBERSHIP-INFO] Info de membresía cargada:', membershipData);
+          setMembershipInfo(membershipData);
+        } else {
+          console.log('ℹ️ [MEMBERSHIP-INFO] No se encontró info de membresía');
         }
+      } catch (err) {
+        console.error('❌ [MEMBERSHIP-INFO] Error en carga:', err);
+      }
 
-        try {
-          const { data: activeMembershipData, error: activeMembershipError } = await supabase
-            .from('user_memberships')
-            .select(`
-              *,
-              membership_plans!planid (name)
-            `)
-            .eq('userid', user.id)
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(1);
+      // ✅ CARGAR MEMBRESÍA ACTIVA SIEMPRE
+      try {
+        const { data: activeMembershipData, error: activeMembershipError } = await supabase
+          .from('user_memberships')
+          .select(`
+            *,
+            membership_plans!planid (name)
+          `)
+          .eq('userid', user.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-          if (activeMembershipError) {
-            console.error('❌ [ACTIVE-MEMBERSHIP] Error:', activeMembershipError);
-          } else if (activeMembershipData && activeMembershipData.length > 0) {
-            const membership = activeMembershipData[0];
-            const daysRemaining = calculateDaysRemaining(membership.end_date);
-            
-            console.log('✅ [ACTIVE-MEMBERSHIP] Membresía activa cargada:', membership);
-            
-            setActiveMembership({
-              id: membership.id,
-              planName: membership.membership_plans?.name || 'Plan No Disponible',
-              status: membership.status,
-              start_date: membership.start_date,
-              end_date: membership.end_date,
-              daysRemaining,
-              isActive: daysRemaining > 0,
-              total_frozen_days: membership.total_frozen_days || 0,
-              amount_paid: membership.amount_paid || 0,
-              payment_type: membership.payment_type || '',
-              remaining_visits: membership.remaining_visits,
-              total_visits: membership.total_visits
-            });
-          } else {
-            console.log('ℹ️ [ACTIVE-MEMBERSHIP] No se encontró membresía activa');
-          }
-        } catch (err) {
-          console.error('❌ [ACTIVE-MEMBERSHIP] Error en carga:', err);
+        if (activeMembershipError) {
+          console.error('❌ [ACTIVE-MEMBERSHIP] Error:', activeMembershipError);
+        } else if (activeMembershipData && activeMembershipData.length > 0) {
+          const membership = activeMembershipData[0];
+          const daysRemaining = calculateDaysRemaining(membership.end_date);
+          
+          console.log('✅ [ACTIVE-MEMBERSHIP] Membresía activa cargada:', membership);
+          
+          setActiveMembership({
+            id: membership.id,
+            planName: membership.membership_plans?.name || 'Plan No Disponible',
+            status: membership.status,
+            start_date: membership.start_date,
+            end_date: membership.end_date,
+            daysRemaining,
+            isActive: daysRemaining > 0,
+            total_frozen_days: membership.total_frozen_days || 0,
+            amount_paid: membership.amount_paid || 0,
+            payment_type: membership.payment_type || '',
+            remaining_visits: membership.remaining_visits,
+            total_visits: membership.total_visits
+          });
+        } else {
+          console.log('ℹ️ [ACTIVE-MEMBERSHIP] No se encontró membresía activa');
         }
+      } catch (err) {
+        console.error('❌ [ACTIVE-MEMBERSHIP] Error en carga:', err);
       }
 
     } catch (err: any) {
@@ -849,116 +862,131 @@ export default function ClienteDashboard() {
             </motion.div>
           </Grid>
 
-          {userInfo.rol === 'cliente' && (address || emergency || membershipInfo) && (
-            <Grid size={{ xs: 12 }}>
-              <motion.div variants={itemVariants}>
-                <Card sx={{
-                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                  border: `1px solid ${darkProTokens.grayDark}`,
-                  borderRadius: 4
-                }}>
-                  <CardContent sx={{ p: 4 }}>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.primary, 
-                      fontWeight: 700,
-                      mb: 3
-                    }}>
-                      Información Adicional
-                    </Typography>
+          {/* ✅ SECCIÓN DE INFORMACIÓN ADICIONAL - SIEMPRE MOSTRAR */}
+          <Grid size={{ xs: 12 }}>
+            <motion.div variants={itemVariants}>
+              <Card sx={{
+                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                border: `1px solid ${darkProTokens.grayDark}`,
+                borderRadius: 4
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.primary, 
+                    fontWeight: 700,
+                    mb: 3
+                  }}>
+                    Información Adicional
+                  </Typography>
 
-                    <Grid container spacing={4}>
-                      {address && (
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                              <FaMapMarkerAlt style={{ color: darkProTokens.primary }} />
-                              <Typography variant="subtitle1" sx={{ 
-                                color: darkProTokens.textPrimary, 
-                                fontWeight: 600 
-                              }}>
-                                Dirección
-                              </Typography>
-                            </Box>
-                            <Stack spacing={1}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                📍 {address.street} #{address.number}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                🏘️ {address.neighborhood}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                🌆 {address.city}, {address.state}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                📮 CP: {address.postalCode}
-                              </Typography>
-                            </Stack>
-                          </Box>
-                        </Grid>
-                      )}
-
-                      {emergency && (
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                              <FaHeartbeat style={{ color: darkProTokens.error }} />
-                              <Typography variant="subtitle1" sx={{ 
-                                color: darkProTokens.textPrimary, 
-                                fontWeight: 600 
-                              }}>
-                                Contacto de Emergencia
-                              </Typography>
-                            </Box>
-                            <Stack spacing={1}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                👤 {emergency.name}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                📞 {emergency.phone}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                🩸 Tipo: {emergency.bloodType}
-                              </Typography>
-                            </Stack>
-                          </Box>
-                        </Grid>
-                      )}
-
-                      {membershipInfo && (
-                        <Grid size={{ xs: 12, md: 4 }}>
-                          <Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                              <FaDumbbell style={{ color: darkProTokens.info }} />
-                              <Typography variant="subtitle1" sx={{ 
-                                color: darkProTokens.textPrimary, 
-                                fontWeight: 600 
-                              }}>
-                                Perfil de Entrenamiento
-                              </Typography>
-                            </Box>
-                            <Stack spacing={1}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                🏋️‍♂️ Nivel: {membershipInfo.trainingLevel}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                🎯 Motivación: {membershipInfo.mainMotivation}
-                              </Typography>
-                              {membershipInfo.referredBy && (
-                                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                  👥 Referido por: {membershipInfo.referredBy}
-                                </Typography>
-                              )}
-                            </Stack>
-                          </Box>
-                        </Grid>
-                      )}
+                  <Grid container spacing={4}>
+                    {/* Dirección */}
+                    <Grid size={{ xs: 12, md: 4 }}>
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <FaMapMarkerAlt style={{ color: darkProTokens.primary }} />
+                          <Typography variant="subtitle1" sx={{ 
+                            color: darkProTokens.textPrimary, 
+                            fontWeight: 600 
+                          }}>
+                            Dirección
+                          </Typography>
+                        </Box>
+                        {address ? (
+                          <Stack spacing={1}>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              📍 {address.street} #{address.number}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              🏘️ {address.neighborhood}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              🌆 {address.city}, {address.state}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              📮 CP: {address.postalCode}
+                            </Typography>
+                          </Stack>
+                        ) : (
+                          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, fontStyle: 'italic' }}>
+                            No hay dirección registrada
+                          </Typography>
+                        )}
+                      </Box>
                     </Grid>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-          )}
 
+                    {/* Contacto de Emergencia */}
+                    <Grid size={{ xs: 12, md: 4 }}>
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <FaHeartbeat style={{ color: darkProTokens.error }} />
+                          <Typography variant="subtitle1" sx={{ 
+                            color: darkProTokens.textPrimary, 
+                            fontWeight: 600 
+                          }}>
+                            Contacto de Emergencia
+                          </Typography>
+                        </Box>
+                        {emergency ? (
+                          <Stack spacing={1}>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              👤 {emergency.name}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              📞 {emergency.phone}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              🩸 Tipo: {emergency.bloodType}
+                            </Typography>
+                          </Stack>
+                        ) : (
+                          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, fontStyle: 'italic' }}>
+                            No hay contacto de emergencia registrado
+                          </Typography>
+                        )}
+                      </Box>
+                    </Grid>
+
+                    {/* Info de Membresía */}
+                    <Grid size={{ xs: 12, md: 4 }}>
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <FaDumbbell style={{ color: darkProTokens.info }} />
+                          <Typography variant="subtitle1" sx={{ 
+                            color: darkProTokens.textPrimary, 
+                            fontWeight: 600 
+                          }}>
+                            Perfil de Entrenamiento
+                          </Typography>
+                        </Box>
+                        {membershipInfo ? (
+                          <Stack spacing={1}>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              🏋️‍♂️ Nivel: {membershipInfo.trainingLevel}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                              🎯 Motivación: {membershipInfo.mainMotivation}
+                            </Typography>
+                            {membershipInfo.referredBy && (
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                👥 Referido por: {membershipInfo.referredBy}
+                              </Typography>
+                            )}
+                          </Stack>
+                        ) : (
+                          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, fontStyle: 'italic' }}>
+                            No hay información de membresía registrada
+                          </Typography>
+                        )}
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
+
+          {/* Sección de Documentos */}
           {(userInfo.profilePictureUrl || userInfo.signatureUrl || userInfo.contractPdfUrl) && (
             <Grid size={{ xs: 12 }}>
               <motion.div variants={itemVariants}>
