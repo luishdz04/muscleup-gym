@@ -71,16 +71,16 @@ export async function POST(req: NextRequest) {
     
     // 📡 OBTENER DATOS DEL USUARIO Y TABLAS RELACIONADAS (ORIGINAL)
     console.log("📡 Obteniendo datos del usuario...");
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('Users')
-      .select(`
-        *,
-        addresses!inner(*),
-        emergency_contacts!inner(*),
-        membership_info!inner(*)
-      `)
-      .eq('id', userId)
-      .single();
+const { data: userData, error: userError } = await supabaseAdmin
+  .from('Users')
+  .select(`
+    *,
+    addresses(*),
+    emergency_contacts(*),
+    membership_info(*)
+  `)
+  .eq('id', userId)
+  .single();
       
     if (userError) {
       console.error("❌ Error al obtener datos del usuario:", userError);
