@@ -30,7 +30,6 @@ import {
   FaAward
 } from 'react-icons/fa';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { formatMexicoDateTime, toMexicoDate } from '@/utils/dateHelpers';
 
 // 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
@@ -64,6 +63,8 @@ interface UserInfo {
   isMinor: boolean;
   createdAt: string;
   profilePictureUrl?: string;
+  signatureUrl?: string;
+  contractPdfUrl?: string;
   rol: string;
   fingerprint?: boolean;
   points_balance?: number;
@@ -135,7 +136,6 @@ export default function ClienteDashboard() {
       const today = new Date();
       const birth = new Date(birthDate);
       
-      // Verificar que la fecha sea válida
       if (isNaN(birth.getTime())) return 0;
       
       let age = today.getFullYear() - birth.getFullYear();
@@ -192,7 +192,7 @@ export default function ClienteDashboard() {
     }
   }, []);
 
-  // ✅ FUNCIÓN PARA FORMATEAR FECHAS CON FALLBACK
+  // ✅ FUNCIÓN PARA FORMATEAR FECHAS CORRECTAMENTE
   const formatDate = useCallback((dateString: string): string => {
     try {
       if (!dateString) return 'Fecha no disponible';
@@ -200,6 +200,7 @@ export default function ClienteDashboard() {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return 'Fecha inválida';
       
+      // ✅ USAR FORMATO CORRECTO PARA FECHAS
       return date.toLocaleDateString('es-MX', {
         year: 'numeric',
         month: 'long',
@@ -211,7 +212,43 @@ export default function ClienteDashboard() {
     }
   }, []);
 
-  // ✅ CARGAR DATOS CON NOMBRES CORRECTOS DE BD
+  // ✅ FUNCIÓN PARA DESCARGAR ARCHIVOS DEL STORAGE
+  const downloadFileFromStorage = async (fileName: string, userId: string): Promise<string | null> => {
+    if (!fileName || !userId) {
+      console.log('❌ downloadFileFromStorage: fileName o userId vacío');
+      return null;
+    }
+    
+    try {
+      console.log(`📥 Descargando archivo: ${fileName} para usuario: ${userId}`);
+      const filePath = `${userId}/${fileName}`;
+      
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('user-files')
+        .download(filePath);
+      
+      if (downloadError) {
+        console.error(`❌ Error descargando ${fileName}:`, downloadError);
+        return null;
+      }
+      
+      if (!fileData) {
+        console.error(`❌ No se obtuvo data para ${fileName}`);
+        return null;
+      }
+      
+      const objectUrl = URL.createObjectURL(fileData);
+      console.log(`✅ Archivo ${fileName} descargado exitosamente`);
+      
+      return objectUrl;
+      
+    } catch (error) {
+      console.error(`💥 Error en downloadFileFromStorage para ${fileName}:`, error);
+      return null;
+    }
+  };
+
+  // ✅ CARGAR DATOS USANDO LA MISMA LÓGICA DEL ADMIN
   const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
@@ -230,52 +267,86 @@ export default function ClienteDashboard() {
 
       console.log('🔐 [AUTH] Usuario autenticado:', user.id);
 
-      // ✅ CARGAR INFORMACIÓN DEL USUARIO CON NOMBRES CORRECTOS
-      const { data: userData, error: userError } = await supabase
-        .from('Users')
-        .select(`
-          id,
-          firstName,
-          lastName,
-          email,
-          whatsapp,
-          birthDate,
-          gender,
-          maritalStatus,
-          isMinor,
-          createdAt,
-          profilePictureUrl,
-          rol,
-          fingerprint,
-          points_balance,
-          total_purchases,
-          membership_type
-        `)
-        .eq('id', user.id)
-        .single();
-
-      if (userError) {
-        console.error('❌ [USER] Error cargando datos de usuario:', userError);
-        throw new Error(`Error al cargar datos del usuario: ${userError.message}`);
+      // ✅ USAR LA MISMA API QUE EL ADMIN
+      console.log('📊 Llamando a API del admin para obtener datos completos...');
+      const response = await fetch(`/api/admin/users/${user.id}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ Error en API:', errorData);
+        throw new Error('Error al obtener usuario: ' + (errorData.message || 'Usuario no encontrado'));
       }
       
-      if (!userData) {
-        throw new Error('No se encontraron datos del usuario');
+      const completeUserData = await response.json();
+      console.log('✅ Datos completos obtenidos de API admin:', completeUserData);
+      setUserInfo(completeUserData);
+
+      // ✅ CARGAR ARCHIVOS DEL STORAGE (IGUAL QUE EL ADMIN)
+      console.log('📁 Obteniendo archivos del Storage...');
+      try {
+        const { data: files, error: filesError } = await supabase.storage
+          .from('user-files')
+          .list(user.id, { 
+            limit: 100, 
+            offset: 0,
+            sortBy: { column: 'updated_at', order: 'desc' }
+          });
+        
+        if (filesError) {
+          console.error('❌ Error obteniendo archivos:', filesError);
+        } else if (files && files.length > 0) {
+          console.log('📁 Archivos encontrados:', files);
+          
+          const latestProfile = files.find(file => file.name.startsWith('profile-'));
+          const latestSignature = files.find(file => file.name.startsWith('signature-'));
+          const latestContract = files.find(file => file.name.startsWith('contrato-'));
+          
+          // Descargar foto de perfil
+          if (latestProfile) {
+            console.log('🖼️ Descargando foto de perfil:', latestProfile.name);
+            const profileImageUrl = await downloadFileFromStorage(latestProfile.name, user.id);
+            if (profileImageUrl) {
+              setUserInfo(prev => prev ? { ...prev, profilePictureUrl: profileImageUrl } : null);
+              console.log('✅ Foto de perfil cargada');
+            }
+          }
+          
+          // Descargar firma
+          if (latestSignature) {
+            console.log('🖊️ Descargando firma:', latestSignature.name);
+            const signatureUrl = await downloadFileFromStorage(latestSignature.name, user.id);
+            if (signatureUrl) {
+              setUserInfo(prev => prev ? { ...prev, signatureUrl } : null);
+              console.log('✅ Firma cargada');
+            }
+          }
+          
+          // Descargar contrato
+          if (latestContract) {
+            console.log('📄 Descargando contrato:', latestContract.name);
+            const contractPdfUrl = await downloadFileFromStorage(latestContract.name, user.id);
+            if (contractPdfUrl) {
+              setUserInfo(prev => prev ? { ...prev, contractPdfUrl } : null);
+              console.log('✅ Contrato cargado');
+            }
+          }
+        } else {
+          console.log('📁 No se encontraron archivos en el Storage');
+        }
+      } catch (err) {
+        console.error('❌ Error cargando archivos:', err);
       }
 
-      console.log('✅ [USER] Datos del usuario cargados:', userData);
-      setUserInfo(userData);
-
       // ✅ CARGAR DATOS ADICIONALES SOLO SI ES CLIENTE
-      if (userData?.rol === 'cliente') {
+      if (completeUserData?.rol === 'cliente') {
         console.log('👤 [CLIENT] Cargando datos adicionales para cliente...');
         
-        // ✅ CARGAR DIRECCIÓN CON NOMBRES CORRECTOS
+        // ✅ CARGAR DIRECCIÓN
         try {
           const { data: addressData, error: addressError } = await supabase
             .from('addresses')
             .select('*')
-            .eq('userId', user.id) // ✅ CORRECTO: userId (camelCase)
+            .eq('userId', user.id)
             .maybeSingle();
 
           if (addressError && addressError.code !== 'PGRST116') {
@@ -295,7 +366,7 @@ export default function ClienteDashboard() {
           const { data: emergencyData, error: emergencyError } = await supabase
             .from('emergency_contacts')
             .select('*')
-            .eq('userId', user.id) // ✅ CORRECTO: userId (camelCase)
+            .eq('userId', user.id)
             .maybeSingle();
 
           if (emergencyError && emergencyError.code !== 'PGRST116') {
@@ -315,7 +386,7 @@ export default function ClienteDashboard() {
           const { data: membershipData, error: membershipError } = await supabase
             .from('membership_info')
             .select('*')
-            .eq('userId', user.id) // ✅ CORRECTO: userId (camelCase)
+            .eq('userId', user.id)
             .maybeSingle();
 
           if (membershipError && membershipError.code !== 'PGRST116') {
@@ -330,7 +401,7 @@ export default function ClienteDashboard() {
           console.error('❌ [MEMBERSHIP-INFO] Error en carga:', err);
         }
 
-        // ✅ CARGAR MEMBRESÍA ACTIVA CON JOIN CORREGIDO
+        // ✅ CARGAR MEMBRESÍA ACTIVA
         try {
           const { data: activeMembershipData, error: activeMembershipError } = await supabase
             .from('user_memberships')
@@ -338,7 +409,7 @@ export default function ClienteDashboard() {
               *,
               membership_plans!planid (name)
             `)
-            .eq('userid', user.id) // ✅ CORRECTO: userid (minúscula en esta tabla)
+            .eq('userid', user.id)
             .eq('status', 'active')
             .order('created_at', { ascending: false })
             .limit(1);
@@ -436,7 +507,6 @@ export default function ClienteDashboard() {
           {error || 'No se pudo cargar la información del usuario'}
         </Alert>
         
-        {/* ✅ BOTÓN PARA RECARGAR */}
         <Box sx={{ mt: 2, textAlign: 'center' }}>
           <button 
             onClick={loadUserData}
@@ -643,7 +713,7 @@ export default function ClienteDashboard() {
                       <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                         {userInfo.maritalStatus || 'No especificado'}
                       </Typography>
-                    </Grid>
+                    </Box>
 
                     {/* Puntos y Compras */}
                     {(userInfo.points_balance || userInfo.total_purchases) && (
@@ -992,6 +1062,111 @@ export default function ClienteDashboard() {
                                 📧 Planes: {membershipInfo.receivePlans ? 'Sí' : 'No'}
                               </Typography>
                             </Stack>
+                          </Box>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+          )}
+
+          {/* Sección de Documentos */}
+          {(userInfo.profilePictureUrl || userInfo.signatureUrl || userInfo.contractPdfUrl) && (
+            <Grid size={{ xs: 12 }}>
+              <motion.div variants={itemVariants}>
+                <Card sx={{
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                  border: `1px solid ${darkProTokens.grayDark}`,
+                  borderRadius: 4
+                }}>
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 700,
+                      mb: 3
+                    }}>
+                      📄 Mis Documentos
+                    </Typography>
+
+                    <Grid container spacing={3}>
+                      {/* Foto de Perfil */}
+                      {userInfo.profilePictureUrl && (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="subtitle2" sx={{ color: darkProTokens.success, mb: 2 }}>
+                              📸 Foto de Perfil
+                            </Typography>
+                            <Box
+                              component="img"
+                              src={userInfo.profilePictureUrl}
+                              alt="Foto de perfil"
+                              sx={{
+                                width: '100%',
+                                maxWidth: 200,
+                                height: 'auto',
+                                borderRadius: 2,
+                                border: `2px solid ${darkProTokens.success}`,
+                                boxShadow: `0 4px 15px ${darkProTokens.success}40`
+                              }}
+                            />
+                          </Box>
+                        </Grid>
+                      )}
+
+                      {/* Firma */}
+                      {userInfo.signatureUrl && (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="subtitle2" sx={{ color: darkProTokens.info, mb: 2 }}>
+                              ✍️ Mi Firma
+                            </Typography>
+                            <Box
+                              component="img"
+                              src={userInfo.signatureUrl}
+                              alt="Firma"
+                              sx={{
+                                width: '100%',
+                                maxWidth: 200,
+                                height: 'auto',
+                                bgcolor: 'white',
+                                borderRadius: 2,
+                                border: `2px solid ${darkProTokens.info}`,
+                                boxShadow: `0 4px 15px ${darkProTokens.info}40`,
+                                p: 1
+                              }}
+                            />
+                          </Box>
+                        </Grid>
+                      )}
+
+                      {/* Contrato */}
+                      {userInfo.contractPdfUrl && (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="subtitle2" sx={{ color: darkProTokens.error, mb: 2 }}>
+                              📄 Contrato
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                              <Box sx={{ fontSize: '4rem', color: darkProTokens.error }}>
+                                📄
+                              </Box>
+                              <button
+                                onClick={() => window.open(userInfo.contractPdfUrl, '_blank')}
+                                style={{
+                                  background: darkProTokens.error,
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '8px 16px',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  fontWeight: 600
+                                }}
+                              >
+                                Ver Contrato
+                              </button>
+                            </Box>
                           </Box>
                         </Grid>
                       )}
