@@ -17,3 +17,6 @@ Sistema completo de gestión para gimnasio desarrollado con Next.js, incluyendo:
 ```bash
 npm install
 npm run dev
+
+# Muscle Up Gym
+// Template actualizado - 2025-01-25
