@@ -245,7 +245,8 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
   
-  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+  // CAMBIADO: Estado inicial basado solo en isDesktop, no en !isMobile
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>('');
@@ -297,6 +298,15 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       disabled: true 
     }
   ];
+
+  // CAMBIADO: Solo abrir drawer automáticamente en desktop
+  useEffect(() => {
+    if (isDesktop) {
+      setDrawerOpen(true);
+    } else {
+      setDrawerOpen(false);
+    }
+  }, [isDesktop]);
 
   useEffect(() => {
     async function getUserData() {
@@ -393,7 +403,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                 color: '#ffcc00'
               }}
             >
-              MUP
+              PANEL MUP
             </Typography>
           </Box>
           
