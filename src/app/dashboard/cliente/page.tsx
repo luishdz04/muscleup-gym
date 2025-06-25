@@ -177,52 +177,11 @@ export default function ClienteDashboard() {
   const headerY = useTransform(scrollY, [0, 300], [0, -100]);
   const headerOpacity = useTransform(scrollY, [0, 300], [1, 0.8]);
 
-  // ✅ CSS FIXES PARA MÓVILES - CRÍTICO
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      /* ✅ Fix específico para dashboard en móvil */
-      .MuiButton-root, .MuiFab-root, .MuiIconButton-root {
-        cursor: pointer !important;
-        -webkit-tap-highlight-color: rgba(255, 204, 0, 0.2) !important;
-        -webkit-touch-callout: none !important;
-        -webkit-user-select: none !important;
-        user-select: none !important;
-        pointer-events: auto !important;
-        touch-action: manipulation !important;
-        min-height: 44px !important;
-        min-width: 44px !important;
-      }
-      
-      /* ✅ Fix para contenedores motion */
-      [data-framer-motion], div[style*="transform"] {
-        pointer-events: auto !important;
-        touch-action: auto !important;
-      }
-      
-      /* ✅ Fix para modal overlay */
-      .modal-overlay {
-        pointer-events: auto !important;
-        touch-action: auto !important;
-      }
-      
-      /* ✅ Área táctil mejorada */
-      .touch-target {
-        min-height: 48px !important;
-        min-width: 48px !important;
-        cursor: pointer !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style);
-      }
-    };
-  }, []);
+  // 🔴 BLOQUE ELIMINADO: Se ha quitado el useEffect que inyectaba CSS global.
+  // Esta era la causa del problema de interacción en móviles, ya que una
+  // capa invisible de Framer Motion capturaba todos los eventos de clic/toque.
 
-  // ✅ DEBUG PARA MÓVILES (temporal)
+  // ✅ DEBUG PARA MÓVILES (puedes mantenerlo temporalmente si lo necesitas)
   useEffect(() => {
     if (isMobile) {
       const debugTouch = (e: TouchEvent) => {
@@ -531,7 +490,6 @@ export default function ClienteDashboard() {
           boxShadow: darkProTokens.shadowMedium,
           overflow: 'hidden',
           position: 'relative',
-          // ✅ Asegurar eventos táctiles
           pointerEvents: 'auto',
           touchAction: 'auto',
           '&::before': {
@@ -866,7 +824,7 @@ export default function ClienteDashboard() {
         >
           <Grid container spacing={isMobile ? 2 : 3}>
             {/* 🎯 PERFIL PRINCIPAL */}
-            <Grid size={{ xs: 12, lg: 8 }}>
+            <Grid item xs={12} lg={8}>
               <GlassCard gradient>
                 <CardContent sx={{ p: isMobile ? 2 : 4 }}>
                   {/* Avatar y Info Principal */}
@@ -990,7 +948,7 @@ export default function ClienteDashboard() {
                   </Typography>
 
                   <Grid container spacing={isMobile ? 2 : 3}>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                       <InfoItem 
                         icon={<FaEnvelope />}
                         label="Email"
@@ -999,7 +957,7 @@ export default function ClienteDashboard() {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                       <InfoItem 
                         icon={<FaPhone />}
                         label="WhatsApp"
@@ -1008,7 +966,7 @@ export default function ClienteDashboard() {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                       <InfoItem 
                         icon={<FaCalendar />}
                         label="Fecha de Nacimiento"
@@ -1017,7 +975,7 @@ export default function ClienteDashboard() {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                       <InfoItem 
                         icon={<FaUser />}
                         label="Estado Civil"
@@ -1026,7 +984,7 @@ export default function ClienteDashboard() {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12 }}>
+                    <Grid item xs={12}>
                       <InfoItem 
                         icon={<FaIdCard />}
                         label="ID de Cliente"
@@ -1040,7 +998,7 @@ export default function ClienteDashboard() {
             </Grid>
 
             {/* 🎯 MEMBRESÍA */}
-            <Grid size={{ xs: 12, lg: 4 }}>
+            <Grid item xs={12} lg={4}>
               <motion.div variants={cardVariants}>
                 <Card sx={{
                   background: activeMembership?.isActive ? 
@@ -1054,7 +1012,6 @@ export default function ClienteDashboard() {
                   border: `1px solid ${activeMembership?.isActive ? darkProTokens.success : darkProTokens.error}40`,
                   overflow: 'hidden',
                   position: 'relative',
-                  // ✅ Asegurar eventos táctiles
                   pointerEvents: 'auto',
                   touchAction: 'auto'
                 }}>
@@ -1153,7 +1110,6 @@ export default function ClienteDashboard() {
                             </Typography>
                           </Box>
                         )}
-
                         <Box>
                           <Typography 
                             variant="body2" 
@@ -1202,9 +1158,9 @@ export default function ClienteDashboard() {
             </Grid>
 
             {/* 🎯 ESTADÍSTICAS */}
-            <Grid size={{ xs: 12 }}>
+            <Grid item xs={12}>
               <Grid container spacing={isMobile ? 2 : 3}>
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <Grid item xs={12} sm={6} md={4}>
                   <StatCard
                     icon={<FaClock />}
                     label="Miembro desde hace"
@@ -1214,7 +1170,7 @@ export default function ClienteDashboard() {
                   />
                 </Grid>
 
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <Grid item xs={12} sm={6} md={4}>
                   <StatCard
                     icon={<FaCalendar />}
                     label={activeMembership?.isActive ? 'Días restantes' : 'Estado'}
@@ -1224,7 +1180,7 @@ export default function ClienteDashboard() {
                   />
                 </Grid>
 
-                <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+                <Grid item xs={12} sm={12} md={4}>
                   <StatCard
                     icon={<FaAward />}
                     label="Miembro desde"
@@ -1236,7 +1192,7 @@ export default function ClienteDashboard() {
             </Grid>
 
             {/* 🎯 INFORMACIÓN ADICIONAL */}
-            <Grid size={{ xs: 12 }}>
+            <Grid item xs={12}>
               <GlassCard gradient>
                 <CardContent sx={{ p: isMobile ? 2 : 4 }}>
                   <Typography 
@@ -1253,7 +1209,7 @@ export default function ClienteDashboard() {
 
                   <Grid container spacing={isMobile ? 3 : 4}>
                     {/* Dirección */}
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid item xs={12} md={4}>
                       <Box sx={{
                         p: isMobile ? 2 : 3,
                         borderRadius: darkProTokens.borderRadiusSmall,
@@ -1328,7 +1284,7 @@ export default function ClienteDashboard() {
                     </Grid>
 
                     {/* Contacto de Emergencia */}
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid item xs={12} md={4}>
                       <Box sx={{
                         p: isMobile ? 2 : 3,
                         borderRadius: darkProTokens.borderRadiusSmall,
@@ -1394,7 +1350,7 @@ export default function ClienteDashboard() {
                     </Grid>
 
                     {/* Info de Membresía */}
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid item xs={12} md={4}>
                       <Box sx={{
                         p: isMobile ? 2 : 3,
                         borderRadius: darkProTokens.borderRadiusSmall,
@@ -1465,9 +1421,9 @@ export default function ClienteDashboard() {
               </GlassCard>
             </Grid>
 
-            {/* 🎯 DOCUMENTOS - SECCIÓN CORREGIDA */}
+            {/* 🎯 DOCUMENTOS */}
             {(userInfo.profilePictureUrl || userInfo.signatureUrl || userInfo.contractPdfUrl) && (
-              <Grid size={{ xs: 12 }}>
+              <Grid item xs={12}>
                 <GlassCard gradient>
                   <CardContent sx={{ p: isMobile ? 2 : 4 }}>
                     <Typography 
@@ -1484,7 +1440,7 @@ export default function ClienteDashboard() {
 
                     <Grid container spacing={isMobile ? 2 : 3}>
                       {userInfo.profilePictureUrl && (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <Grid item xs={12} sm={6} md={4}>
                           <motion.div
                             whileHover={{ scale: 1.05 }}
                             transition={{ type: "spring", stiffness: 300 }}
@@ -1497,7 +1453,6 @@ export default function ClienteDashboard() {
                               background: darkProTokens.glass,
                               border: `1px solid ${darkProTokens.success}40`,
                               cursor: 'pointer',
-                              // ✅ Asegurar eventos táctiles
                               pointerEvents: 'auto',
                               touchAction: 'manipulation'
                             }}
@@ -1536,7 +1491,7 @@ export default function ClienteDashboard() {
                       )}
 
                       {userInfo.signatureUrl && (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <Grid item xs={12} sm={6} md={4}>
                           <motion.div
                             whileHover={{ scale: 1.05 }}
                             transition={{ type: "spring", stiffness: 300 }}
@@ -1549,7 +1504,6 @@ export default function ClienteDashboard() {
                               background: darkProTokens.glass,
                               border: `1px solid ${darkProTokens.info}40`,
                               cursor: 'pointer',
-                              // ✅ Asegurar eventos táctiles
                               pointerEvents: 'auto',
                               touchAction: 'manipulation'
                             }}
@@ -1589,9 +1543,8 @@ export default function ClienteDashboard() {
                         </Grid>
                       )}
 
-                      {/* ✅ SECCIÓN DE CONTRATO CORREGIDA */}
                       {userInfo.contractPdfUrl && (
-                        <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+                        <Grid item xs={12} sm={12} md={4}>
                           <motion.div
                             whileHover={{ scale: 1.05 }}
                             transition={{ type: "spring", stiffness: 300 }}
@@ -1603,7 +1556,6 @@ export default function ClienteDashboard() {
                               borderRadius: darkProTokens.borderRadiusSmall,
                               background: darkProTokens.glass,
                               border: `1px solid ${darkProTokens.error}40`,
-                              // ✅ Asegurar eventos táctiles
                               pointerEvents: 'auto',
                               touchAction: 'auto'
                             }}>
@@ -1639,43 +1591,26 @@ export default function ClienteDashboard() {
                                   📄
                                 </motion.div>
 
-                                {/* ✅ BOTONES CORREGIDOS PARA MÓVIL */}
                                 <Box sx={{ 
                                   display: 'flex', 
                                   flexDirection: isMobile ? 'column' : 'row',
                                   gap: 1,
                                   width: '100%'
                                 }}>
-                                  {/* ✅ BOTÓN VER CONTRATO */}
                                   <Button
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      
-                                      console.log('📱 Ver contrato clicked');
-                                      
-                                      // ✅ Método más simple y confiable para móvil
                                       const link = document.createElement('a');
                                       link.href = userInfo.contractPdfUrl!;
                                       link.target = '_blank';
                                       link.rel = 'noopener noreferrer';
                                       link.style.display = 'none';
                                       document.body.appendChild(link);
-                                      
-                                      // ✅ Usar setTimeout para asegurar compatibilidad móvil
                                       setTimeout(() => {
                                         link.click();
                                         document.body.removeChild(link);
                                       }, 100);
-                                    }}
-                                    // ✅ Eventos táctiles explícitos para debug
-                                    onTouchStart={(e) => {
-                                      console.log('📱 Ver contrato - Touch start');
-                                      e.currentTarget.style.transform = 'scale(0.98)';
-                                    }}
-                                    onTouchEnd={(e) => {
-                                      console.log('📱 Ver contrato - Touch end');
-                                      e.currentTarget.style.transform = 'scale(1)';
                                     }}
                                     variant="contained"
                                     startIcon={<FaEye />}
@@ -1685,17 +1620,11 @@ export default function ClienteDashboard() {
                                       color: 'white',
                                       fontWeight: 700,
                                       px: isMobile ? 2 : 3,
-                                      py: 1.5, // ✅ Aumentar padding vertical para mejor área táctil
+                                      py: 1.5,
                                       borderRadius: darkProTokens.borderRadiusSmall,
                                       boxShadow: `0 8px 32px ${darkProTokens.errorGlow}`,
-                                      // ✅ CSS crítico para móviles
                                       cursor: 'pointer',
                                       touchAction: 'manipulation',
-                                      WebkitTapHighlightColor: 'rgba(255, 23, 68, 0.3)',
-                                      WebkitTouchCallout: 'none',
-                                      WebkitUserSelect: 'none',
-                                      userSelect: 'none',
-                                      // ✅ Área táctil mínima
                                       minHeight: '48px',
                                       minWidth: isMobile ? '140px' : 'auto',
                                       '&:hover': {
@@ -1715,33 +1644,19 @@ export default function ClienteDashboard() {
                                     Ver Contrato
                                   </Button>
 
-                                  {/* ✅ BOTÓN DESCARGAR */}
                                   <Button
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      
-                                      console.log('📱 Descargar contrato clicked');
-                                      
-                                      // ✅ Método simplificado para descarga que funciona en móvil
                                       const link = document.createElement('a');
                                       link.href = userInfo.contractPdfUrl!;
                                       link.download = `contrato-${userInfo.firstName}-${userInfo.lastName}.pdf`;
                                       link.style.display = 'none';
                                       document.body.appendChild(link);
-                                      
                                       setTimeout(() => {
                                         link.click();
                                         document.body.removeChild(link);
                                       }, 100);
-                                    }}
-                                    onTouchStart={(e) => {
-                                      console.log('📱 Descargar contrato - Touch start');
-                                      e.currentTarget.style.transform = 'scale(0.98)';
-                                    }}
-                                    onTouchEnd={(e) => {
-                                      console.log('📱 Descargar contrato - Touch end');
-                                      e.currentTarget.style.transform = 'scale(1)';
                                     }}
                                     variant="outlined"
                                     startIcon={<FaDownload />}
@@ -1751,16 +1666,10 @@ export default function ClienteDashboard() {
                                       color: darkProTokens.error,
                                       fontWeight: 600,
                                       px: isMobile ? 2 : 3,
-                                      py: 1.5, // ✅ Aumentar padding vertical
+                                      py: 1.5,
                                       borderRadius: darkProTokens.borderRadiusSmall,
-                                      // ✅ CSS crítico para móviles
                                       cursor: 'pointer',
                                       touchAction: 'manipulation',
-                                      WebkitTapHighlightColor: 'rgba(255, 23, 68, 0.1)',
-                                      WebkitTouchCallout: 'none',
-                                      WebkitUserSelect: 'none',
-                                      userSelect: 'none',
-                                      // ✅ Área táctil mínima
                                       minHeight: '48px',
                                       minWidth: isMobile ? '140px' : 'auto',
                                       '&:hover': {
@@ -1795,14 +1704,13 @@ export default function ClienteDashboard() {
         </motion.div>
       </Container>
 
-      {/* 🎯 MODAL DE VISTA PREVIA DE IMÁGENES - CORREGIDO */}
+      {/* 🎯 MODAL DE VISTA PREVIA DE IMÁGENES */}
       {imagePreview && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => setImagePreview(null)}
-          className="modal-overlay"
           style={{
             position: 'fixed',
             top: 0,
@@ -1815,7 +1723,6 @@ export default function ClienteDashboard() {
             justifyContent: 'center',
             zIndex: 9999,
             padding: isMobile ? 16 : 32,
-            // ✅ Asegurar eventos táctiles en modal
             pointerEvents: 'auto',
             touchAction: 'auto'
           }}
@@ -1831,27 +1738,16 @@ export default function ClienteDashboard() {
               maxHeight: '90%',
               borderRadius: darkProTokens.borderRadiusSmall,
               boxShadow: darkProTokens.shadowHeavy,
-              // ✅ Asegurar que la imagen no bloquee el cierre del modal
               pointerEvents: 'none'
             }}
             onClick={(e) => e.stopPropagation()}
           />
           
-          {/* ✅ BOTÓN DE CERRAR MEJORADO PARA MÓVIL */}
           <IconButton
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('📱 Cerrar modal clicked');
               setImagePreview(null);
-            }}
-            onTouchStart={(e) => {
-              console.log('📱 Cerrar modal - Touch start');
-              e.currentTarget.style.transform = 'scale(0.95)';
-            }}
-            onTouchEnd={(e) => {
-              console.log('📱 Cerrar modal - Touch end');
-              e.currentTarget.style.transform = 'scale(1)';
             }}
             className="touch-target"
             sx={{
@@ -1860,10 +1756,8 @@ export default function ClienteDashboard() {
               right: isMobile ? 16 : 32,
               color: 'white',
               backgroundColor: 'rgba(0,0,0,0.7)',
-              // ✅ CSS crítico para móviles
               cursor: 'pointer',
               touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'rgba(255, 255, 255, 0.2)',
               minHeight: '48px',
               minWidth: '48px',
               '&:hover': {
@@ -1883,7 +1777,7 @@ export default function ClienteDashboard() {
         </motion.div>
       )}
 
-      {/* 🎨 ESTILOS CSS PERSONALIZADOS MEJORADOS */}
+      {/* 🎨 ESTILOS CSS PERSONALIZADOS */}
       <style jsx>{`
         @keyframes pulse {
           0%, 100% { 
@@ -1896,47 +1790,6 @@ export default function ClienteDashboard() {
           }
         }
         
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
-        }
-        
-        @keyframes glow {
-          0%, 100% {
-            box-shadow: 0 0 20px ${darkProTokens.primaryGlow};
-          }
-          50% {
-            box-shadow: 0 0 40px ${darkProTokens.primaryGlow}, 0 0 60px ${darkProTokens.primary}40;
-          }
-        }
-        
-        @keyframes slideInUp {
-          from {
-            transform: translateY(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes fadeInScale {
-          from {
-            transform: scale(0.8);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        /* ✅ Scrollbar personalizado mejorado */
         ::-webkit-scrollbar {
           width: 8px;
         }
@@ -1955,277 +1808,6 @@ export default function ClienteDashboard() {
         ::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primary});
           box-shadow: 0 0 10px ${darkProTokens.primaryGlow};
-        }
-        
-        /* ✅ Efectos de glassmorphism mejorados para móvil */
-        .glass-effect {
-          backdrop-filter: blur(20px) saturate(180%);
-          background-color: ${darkProTokens.glass};
-          border: 1px solid ${darkProTokens.glassBorder};
-        }
-        
-        /* ✅ Hover effects optimizados para móvil */
-        .hover-lift {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .hover-lift:hover {
-          transform: translateY(-8px) scale(1.02);
-          box-shadow: ${darkProTokens.shadowHeavy};
-        }
-        
-        /* ✅ Touch targets mejorados */
-        .touch-target {
-          min-height: 44px !important;
-          min-width: 44px !important;
-          cursor: pointer !important;
-          -webkit-tap-highlight-color: rgba(255, 204, 0, 0.2) !important;
-          -webkit-touch-callout: none !important;
-          -webkit-user-select: none !important;
-          user-select: none !important;
-          touch-action: manipulation !important;
-        }
-        
-        /* ✅ Modal overlay mejorado */
-        .modal-overlay {
-          pointer-events: auto !important;
-          touch-action: auto !important;
-          -webkit-tap-highlight-color: transparent !important;
-        }
-        
-        /* ✅ Responsive utilities mejoradas */
-        @media (max-width: 600px) {
-          .mobile-stack {
-            flex-direction: column !important;
-          }
-          
-          .mobile-center {
-            text-align: center !important;
-          }
-          
-          .mobile-full-width {
-            width: 100% !important;
-          }
-          
-          .mobile-padding {
-            padding: 1rem !important;
-          }
-          
-          .mobile-margin {
-            margin: 0.5rem 0 !important;
-          }
-          
-          /* ✅ Botones más grandes en móvil */
-          .MuiButton-root {
-            min-height: 48px !important;
-            font-size: 0.9rem !important;
-          }
-          
-          /* ✅ Mejor spacing en móvil */
-          .MuiGrid-item {
-            padding: 8px !important;
-          }
-        }
-        
-        @media (max-width: 900px) {
-          .tablet-stack {
-            flex-direction: column !important;
-          }
-          
-          .tablet-center {
-            text-align: center !important;
-          }
-        }
-        
-        /* ✅ Animaciones específicas para elementos */
-        .card-entrance {
-          animation: fadeInScale 0.6s ease-out forwards;
-        }
-        
-        .float-animation {
-          animation: float 6s ease-in-out infinite;
-        }
-        
-        .glow-animation {
-          animation: glow 3s ease-in-out infinite;
-        }
-        
-        /* ✅ Modo de alto contraste */
-        @media (prefers-contrast: high) {
-          .high-contrast {
-            border-width: 2px !important;
-            font-weight: 700 !important;
-          }
-        }
-        
-        /* ✅ Reducir movimiento */
-        @media (prefers-reduced-motion: reduce) {
-          * {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-            scroll-behavior: auto !important;
-          }
-        }
-        
-        /* ✅ Estilos para impresión */
-        @media print {
-          .no-print {
-            display: none !important;
-          }
-          
-          .print-friendly {
-            background: white !important;
-            color: black !important;
-            box-shadow: none !important;
-          }
-        }
-        
-        /* ✅ Efectos de partículas optimizados */
-        .particles-bg::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-image: 
-            radial-gradient(circle at 25% 25%, ${darkProTokens.primaryGlow} 1px, transparent 1px),
-            radial-gradient(circle at 75% 75%, ${darkProTokens.successGlow} 1px, transparent 1px),
-            radial-gradient(circle at 50% 50%, ${darkProTokens.infoGlow} 1px, transparent 1px);
-          background-size: 100px 100px, 150px 150px, 200px 200px;
-          opacity: 0.1;
-          pointer-events: none;
-          z-index: -1;
-          animation: float 20s linear infinite;
-        }
-        
-        /* ✅ Mejoras de accesibilidad */
-        .focus-visible:focus-visible {
-          outline: 3px solid ${darkProTokens.primary};
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
-        
-        .skip-link {
-          position: absolute;
-          top: -40px;
-          left: 6px;
-          background: ${darkProTokens.primary};
-          color: black;
-          padding: 8px;
-          text-decoration: none;
-          border-radius: 4px;
-          z-index: 10000;
-        }
-        
-        .skip-link:focus {
-          top: 6px;
-        }
-        
-        /* ✅ Indicadores de estado mejorados */
-        .status-indicator {
-          position: relative;
-        }
-        
-        .status-indicator::after {
-          content: '';
-          position: absolute;
-          top: -2px;
-          right: -2px;
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          border: 2px solid ${darkProTokens.background};
-        }
-        
-        .status-active::after {
-          background-color: ${darkProTokens.success};
-          animation: pulse 2s infinite;
-        }
-        
-        .status-inactive::after {
-          background-color: ${darkProTokens.error};
-        }
-        
-        .status-pending::after {
-          background-color: ${darkProTokens.warning};
-          animation: pulse 1.5s infinite;
-        }
-        
-        /* ✅ Efectos de carga mejorados */
-        .skeleton {
-          background: linear-gradient(
-            90deg,
-            ${darkProTokens.surfaceLevel2} 25%,
-            ${darkProTokens.surfaceLevel3} 50%,
-            ${darkProTokens.surfaceLevel2} 75%
-          );
-          background-size: 200% 100%;
-          animation: shimmer 2s infinite;
-        }
-        
-        @keyframes shimmer {
-          0% {
-            background-position: -200% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
-        }
-        
-        /* ✅ Transiciones suaves globales optimizadas */
-        * {
-          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* ✅ Optimizaciones de rendimiento */
-        .will-change-transform {
-          will-change: transform;
-        }
-        
-        .will-change-opacity {
-          will-change: opacity;
-        }
-        
-        .gpu-accelerated {
-          transform: translateZ(0);
-          backface-visibility: hidden;
-          perspective: 1000px;
-        }
-        
-        /* ✅ Fix específicos para iOS Safari */
-        @supports (-webkit-touch-callout: none) {
-          .ios-fix {
-            -webkit-tap-highlight-color: rgba(255, 204, 0, 0.2);
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-          }
-        }
-        
-        /* ✅ Fix específicos para Android */
-        @media screen and (-webkit-min-device-pixel-ratio: 0) and (min-resolution: .001dpcm) {
-          .android-fix {
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: rgba(255, 204, 0, 0.2);
-          }
-        }
-        
-        /* ✅ Mejoras para pantallas táctiles */
-        @media (pointer: coarse) {
-          .touch-optimized {
-            min-height: 44px !important;
-            min-width: 44px !important;
-            padding: 12px !important;
-          }
-        }
-        
-        /* ✅ Mejoras para pantallas de alta densidad */
-        @media (-webkit-min-device-pixel-ratio: 2) {
-          .retina-optimized {
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-          }
         }
       `}</style>
     </Box>
