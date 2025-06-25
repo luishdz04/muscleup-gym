@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import Link from 'next/link';  // Importar Link de next/link
+import Link from 'next/link';
 import { 
   Box, 
   Drawer, 
@@ -25,7 +25,6 @@ import {
   LinearProgress,
   Container,
   Chip,
-  Collapse,
   Badge,
   SwipeableDrawer,
   BottomNavigation,
@@ -41,7 +40,6 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import PersonIcon from '@mui/icons-material/Person';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import LogoutIcon from '@mui/icons-material/Logout';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SearchIcon from '@mui/icons-material/Search';
@@ -91,12 +89,13 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   color: '#fff',
   position: 'relative',
   
-  // 📱 MOBILE (< 600px)
+  // 📱 MOBILE (< 600px) - CORREGIDO
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(1),
     marginLeft: 0,
     width: '100%',
     paddingBottom: '80px', // Espacio para bottom navigation
+    zIndex: 1, // ✅ Asegurar que esté por debajo del bottom nav
   },
   
   // 📟 TABLET (600px - 899px)
@@ -106,19 +105,19 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     width: '100%',
   },
   
-  // 💻 DESKTOP (900px+) - CORREGIDO
+  // 💻 DESKTOP (900px+)
   [theme.breakpoints.up('md')]: {
     padding: theme.spacing(3),
-    marginLeft: 0, // Sin margen negativo
+    marginLeft: 0,
     width: '100%',
-    paddingLeft: open ? `${DRAWER_WIDTHS.desktop + 24}px` : theme.spacing(3), // Padding condicional
+    paddingLeft: open ? `${DRAWER_WIDTHS.desktop + 24}px` : theme.spacing(3),
   },
   
-  // 🖥️ LARGE (1200px+) - CORREGIDO
+  // 🖥️ LARGE (1200px+)
   [theme.breakpoints.up('lg')]: {
-    marginLeft: 0, // Sin margen negativo
+    marginLeft: 0,
     width: '100%',
-    paddingLeft: open ? `${DRAWER_WIDTHS.large + 24}px` : theme.spacing(3), // Padding condicional
+    paddingLeft: open ? `${DRAWER_WIDTHS.large + 24}px` : theme.spacing(3),
   },
   
   ...(open && {
@@ -263,13 +262,13 @@ const StyledInputBase = styled('input')(({ theme }) => ({
   },
 }));
 
-// 📱 BOTTOM NAVIGATION PARA MOBILE
+// 📱 BOTTOM NAVIGATION PARA MOBILE - CORREGIDO
 const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
   position: 'fixed',
   bottom: 0,
   left: 0,
   right: 0,
-  zIndex: theme.zIndex.appBar,
+  zIndex: 1300, // ✅ Z-index alto para estar encima del drawer
   backgroundColor: 'rgba(0, 0, 0, 0.95)',
   backdropFilter: 'blur(20px)',
   borderTop: '1px solid rgba(255, 204, 0, 0.2)',
@@ -277,6 +276,8 @@ const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
   
   '& .MuiBottomNavigationAction-root': {
     color: 'rgba(255, 255, 255, 0.6)',
+    minHeight: '70px', // ✅ MEJORAR área táctil
+    padding: '8px 0',
     '&.Mui-selected': {
       color: '#ffcc00',
     },
@@ -468,16 +469,12 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         setMobileBottomValue(activeIndex);
       }
     }
-  }, [pathname, menuItems]);
+  }, [pathname]);
   
-  // ✅ FUNCIÓN DE NAVEGACIÓN MEJORADA
+  // ✅ FUNCIÓN DE NAVEGACIÓN SIMPLIFICADA
   const navigateTo = (path: string) => {
-    console.log(`🚀 Navegando a: ${path}`); // Debug
-    
-    // Pequeña pausa antes de navegar para evitar problemas de eventos
-    setTimeout(() => {
-      router.push(path);
-    }, 50);
+    console.log(`🚀 Navegando a: ${path}`);
+    router.push(path);
     
     if (isMobile) {
       setDrawerOpen(false);
@@ -509,22 +506,15 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ✅ MOBILE BOTTOM NAVIGATION HANDLER CORREGIDO
+  // ✅ MOBILE BOTTOM NAVIGATION HANDLER SIMPLIFICADO
   const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
-    // Evitar comportamiento por defecto
-    event.preventDefault();
-    event.stopPropagation();
-    
-    console.log(`📱 Bottom nav clicked: ${newValue}`); // Debug
+    console.log(`📱 Bottom nav clicked: ${newValue}`);
     setMobileBottomValue(newValue);
-    const selectedItem = menuItems[newValue];
     
+    const selectedItem = menuItems[newValue];
     if (selectedItem && !selectedItem.disabled) {
-      console.log(`📱 Navegando a: ${selectedItem.path}`); // Debug
-      // Usar setTimeout para evitar conflictos de eventos
-      setTimeout(() => {
-        router.push(selectedItem.path);
-      }, 50);
+      console.log(`📱 Navegando a: ${selectedItem.path}`);
+      router.push(selectedItem.path);
     }
   };
 
@@ -815,7 +805,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             
             <MenuItem onClick={() => {
               handleUserMenuClose();
-              setTimeout(() => router.push('/dashboard/cliente'), 50);
+              router.push('/dashboard/cliente');
             }}>
               <ListItemIcon>
                 <PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} />
@@ -843,7 +833,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         </Toolbar>
       </ResponsiveAppBar>
       
-      {/* 🎯 DRAWER LATERAL RESPONSIVO */}
+      {/* 🎯 DRAWER LATERAL RESPONSIVO - CORREGIDO */}
       <SwipeableDrawer
         sx={{
           width: getDrawerWidth(),
@@ -872,11 +862,18 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onOpen={() => setDrawerOpen(true)}
-        disableBackdropTransition={false} // ✅ CAMBIAR a false
-        disableDiscovery={false} // ✅ CAMBIAR a false
-        swipeAreaWidth={isMobile ? 20 : 0} // ✅ AÑADIR para limitar el área de swipe
-        hysteresis={0.52} // ✅ AÑADIR para mejorar detección de gestos
-        minFlingVelocity={450} // ✅ AÑADIR para mejor respuesta
+        // ✅ CORREGIR configuraciones para móvil
+        disableBackdropTransition={!isMobile}
+        disableDiscovery={isMobile}
+        swipeAreaWidth={isMobile ? 30 : 0}
+        hysteresis={0.6}
+        minFlingVelocity={400}
+        // ✅ Z-index menor que bottom navigation
+        ModalProps={{
+          keepMounted: false,
+          disablePortal: false,
+          style: { zIndex: 1200 }
+        }}
       >
         {/* 🎯 HEADER DEL DRAWER RESPONSIVO */}
         <DrawerHeader sx={{ 
@@ -993,7 +990,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           </Box>
         </Box>
         
-        {/* 🎯 LISTA DE MENÚ RESPONSIVA */}
+        {/* 🎯 LISTA DE MENÚ RESPONSIVA - CORREGIDA */}
         <List 
           component="nav" 
           sx={{ 
@@ -1022,28 +1019,18 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               sx={{ mb: 0.5 }}
             >
               <ListItemButton
-                onClick={(e) => {
-                  // ✅ Detener propagación y prevenir comportamiento por defecto
-                  e.stopPropagation();
-                  e.preventDefault();
-                  
-                  console.log(`🖱️ Drawer item clicked: ${item.path}`); // Debug
+                onClick={() => {
+                  console.log(`🖱️ Drawer item clicked: ${item.path}`);
                   if (!item.disabled) {
-                    // ✅ Pequeña pausa para asegurar que el evento se procese correctamente
-                    setTimeout(() => {
-                      navigateTo(item.path);
-                    }, 50);
+                    navigateTo(item.path);
                   }
                 }}
-                disableRipple={false} // ✅ Para mejor feedback táctil
-                disableTouchRipple={false} // ✅ Para mejor feedback táctil
                 disabled={item.disabled}
                 sx={{ 
-                  minHeight: { xs: 48, sm: 52 },
+                  minHeight: { xs: 56, sm: 52 }, // ✅ Aumentar altura mínima para móvil
                   borderRadius: '12px',
-                  // ✅ Padding adicional para mejor área de toque en móviles
-                  px: { xs: 2.5, sm: 2.5 },
-                  py: { xs: 2, sm: 1.5 },
+                  px: { xs: 2, sm: 2.5 },
+                  py: { xs: 1.5, sm: 1.5 },
                   background: activeSection === item.section 
                     ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, rgba(255, 204, 0, 0.1) 100%)'
                     : 'transparent',
@@ -1061,8 +1048,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                     transform: item.disabled ? 'none' : 'translateX(4px)',
                   },
                   transition: 'all 0.3s ease',
-                  // ✅ Mejorar área táctil
-                  touchAction: 'manipulation'
                 }}
               >
                 <ListItemIcon
@@ -1133,30 +1118,15 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         </Box>
       </SwipeableDrawer>
       
-      {/* ✅ BOTTOM NAVIGATION PARA MOBILE CORREGIDO */}
+      {/* ✅ BOTTOM NAVIGATION PARA MOBILE SIMPLIFICADO */}
       <MobileBottomNav
         value={mobileBottomValue}
         onChange={handleMobileNavChange}
         showLabels
-        sx={{
-          // ✅ Mejoras táctiles para navegación inferior
-          '& .MuiBottomNavigationAction-root': {
-            touchAction: 'manipulation',
-            minWidth: 0,
-            padding: '6px 0',
-            // Incrementar área del touch target
-            '& .MuiTouchRipple-root': {
-              left: '-10px',
-              right: '-10px',
-              top: '-10px',
-              bottom: '-10px'
-            }
-          }
-        }}
       >
         {menuItems.filter(item => !item.disabled).map((item, index) => (
           <BottomNavigationAction
-            key={`${item.section}-${index}`}
+            key={item.section}
             label={item.text === 'Mi Información' ? 'Inicio' : item.text}
             icon={item.mobileIcon || item.icon}
             sx={{
