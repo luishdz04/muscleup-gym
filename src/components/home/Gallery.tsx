@@ -14,27 +14,33 @@ interface GalleryImage {
 const images: GalleryImage[] = [
   {
     id: 1,
-    src: '/gym1.jpg',
+    src: '/FB_IMG_1750821806558.jpg',
     alt: 'Área de entrenamiento principal',
     title: 'Zona de Pesas'
   },
   {
     id: 2,
-    src: '/gym2.jpg',
+    src: '/FB_IMG_1750821832296.jpg',
     alt: 'Área cardiovascular moderna',
     title: 'Cardio Zone'
   },
   {
     id: 3,
-    src: '/gym3.jpg',
+    src: '/FB_IMG_1750821840846.jpg',
     alt: 'Espacio de entrenamiento funcional',
     title: 'Área Funcional'
   },
   {
     id: 4,
-    src: '/gym4.jpg',
+    src: '/FB_IMG_1750821855976.jpg',
     alt: 'Recepción y área de descanso',
     title: 'Recepción'
+  },
+    {
+    id: 5,
+    src: '/FB_IMG_1750821858095.jpg',
+    alt: 'Recepción y área de descanso',
+    title: 'Recepción y mas'
   },
 ];
 
