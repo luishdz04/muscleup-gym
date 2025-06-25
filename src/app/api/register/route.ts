@@ -399,7 +399,7 @@ export async function POST(req: NextRequest) {
     try {
       console.log("🚨 [EMERGENCY] Insertando contacto de emergencia...");
       
-      const emergencyData = {
+const emergencyData = {
   userId: userId,
   name: data.emergencyContact?.name || '',
   phone: data.emergencyContact?.phone || '',
@@ -424,7 +424,7 @@ export async function POST(req: NextRequest) {
     try {
       console.log("🎯 [MEMBERSHIP] Insertando información de membresía...");
       
-   const membershipData = {
+const membershipData = {
   userId: userId,
   referredBy: data.membershipData?.referredBy || '',
   mainMotivation: data.membershipData?.mainMotivation || '',
