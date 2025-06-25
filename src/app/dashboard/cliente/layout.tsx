@@ -52,6 +52,8 @@ import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import CloseIcon from '@mui/icons-material/Close';
 import HomeIcon from '@mui/icons-material/Home';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import LoginIcon from '@mui/icons-material/Login';
 
 // 🎨 RESPONSIVE BREAKPOINTS
 const BREAKPOINTS = {
@@ -323,7 +325,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
 
-  // 📱 MENÚ RESPONSIVE
+  // ✅ MENÚ CORREGIDO CON ACCESOS
   const menuItems: MenuItem[] = [
     { 
       text: 'Mi Información', 
@@ -348,6 +350,14 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       mobileIcon: <ShoppingCartIcon />,
       section: 'compras',
       description: 'Productos y servicios'
+    },
+    { 
+      text: 'Accesos', 
+      path: '/dashboard/cliente/accesos', 
+      icon: <LoginIcon />,
+      mobileIcon: <AccessTimeIcon />,
+      section: 'accesos',
+      description: 'Historial de entradas al gym'
     },
     { 
       text: 'Historial', 
@@ -412,7 +422,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     getUserData();
   }, []);
   
-  // 🎯 ACTUALIZAR SECCIÓN ACTIVA
+  // ✅ ACTUALIZAR SECCIÓN ACTIVA - CORREGIDO
   useEffect(() => {
     if (pathname) {
       const pathParts = pathname.split('/');
@@ -420,11 +430,13 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       const activeSection = section === 'cliente' ? 'info' : section;
       setActiveSection(activeSection);
       
-      // Actualizar bottom navigation
+      // ✅ CORREGIDO: Actualizar bottom navigation correctamente
       const activeIndex = menuItems.findIndex(item => item.section === activeSection);
-      setMobileBottomValue(activeIndex !== -1 ? activeIndex : 0);
+      if (activeIndex !== -1) {
+        setMobileBottomValue(activeIndex);
+      }
     }
-  }, [pathname]);
+  }, [pathname, menuItems]);
   
   // 🎯 HANDLERS
   const handleLogout = async () => {
@@ -440,7 +452,9 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     }
   };
   
+  // ✅ FUNCIÓN DE NAVEGACIÓN CORREGIDA
   const navigateTo = (path: string) => {
+    console.log(`🚀 Navegando a: ${path}`); // Debug
     router.push(path);
     if (isMobile) {
       setDrawerOpen(false);
@@ -459,11 +473,13 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 📱 MOBILE BOTTOM NAVIGATION HANDLER
+  // ✅ MOBILE BOTTOM NAVIGATION HANDLER CORREGIDO
   const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
+    console.log(`📱 Bottom nav clicked: ${newValue}`); // Debug
     setMobileBottomValue(newValue);
     const selectedItem = menuItems[newValue];
     if (selectedItem && !selectedItem.disabled) {
+      console.log(`📱 Navegando a: ${selectedItem.path}`); // Debug
       navigateTo(selectedItem.path);
     }
   };
@@ -956,7 +972,12 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               sx={{ mb: 0.5 }}
             >
               <ListItemButton
-                onClick={() => !item.disabled && navigateTo(item.path)}
+                onClick={() => {
+                  console.log(`🖱️ Drawer item clicked: ${item.path}`); // Debug
+                  if (!item.disabled) {
+                    navigateTo(item.path);
+                  }
+                }}
                 disabled={item.disabled}
                 sx={{ 
                   minHeight: { xs: 48, sm: 52 },
@@ -1050,7 +1071,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         </Box>
       </SwipeableDrawer>
       
-      {/* 📱 BOTTOM NAVIGATION PARA MOBILE */}
+      {/* ✅ BOTTOM NAVIGATION PARA MOBILE CORREGIDO */}
       <MobileBottomNav
         value={mobileBottomValue}
         onChange={handleMobileNavChange}
@@ -1058,8 +1079,8 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       >
         {menuItems.filter(item => !item.disabled).map((item, index) => (
           <BottomNavigationAction
-            key={item.section}
-            label={item.text}
+            key={`${item.section}-${index}`}
+            label={item.text === 'Mi Información' ? 'Inicio' : item.text}
             icon={item.mobileIcon || item.icon}
             sx={{
               '&.Mui-selected': {
