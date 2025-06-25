@@ -54,23 +54,11 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LoginIcon from '@mui/icons-material/Login';
 
-// 🎨 RESPONSIVE BREAKPOINTS
-const BREAKPOINTS = {
-  mobile: '(max-width: 599px)',
-  tablet: '(max-width: 899px)',
-  desktop: '(min-width: 900px)',
-  large: '(min-width: 1200px)'
-};
+// BREAKPOINTS Y ANCHOS
+const BREAKPOINTS = { mobile: '(max-width: 599px)', tablet: '(max-width: 899px)', desktop: '(min-width: 900px)', large: '(min-width: 1200px)' };
+const DRAWER_WIDTHS = { mobile: '100vw', tablet: 280, desktop: 290, large: 320 };
 
-// 📱 DRAWER WIDTHS RESPONSIVOS
-const DRAWER_WIDTHS = {
-  mobile: '100vw',
-  tablet: 280,
-  desktop: 290,
-  large: 320
-};
-
-// 🎨 ESTILOS RESPONSIVOS MEJORADOS
+// ESTILOS DE COMPONENTES
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -88,51 +76,20 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   minHeight: '100vh',
   color: '#fff',
   position: 'relative',
-  // ✅ CRÍTICO: Asegurar eventos táctiles
-  pointerEvents: 'auto',
-  touchAction: 'auto',
   
-  // 📱 MOBILE (< 600px) - CORREGIDO
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(1),
     marginLeft: 0,
     width: '100%',
-    paddingBottom: '80px',
-    zIndex: 1,
-    pointerEvents: 'auto',
-    touchAction: 'auto',
+    paddingBottom: '80px', // Espacio para la barra de navegación inferior
   },
-  
-  // 📟 TABLET (600px - 899px)
-  [theme.breakpoints.between('sm', 'md')]: {
-    padding: theme.spacing(2),
-    marginLeft: 0,
-    width: '100%',
-    pointerEvents: 'auto',
-    touchAction: 'auto',
-  },
-  
-  // 💻 DESKTOP (900px+)
   [theme.breakpoints.up('md')]: {
     padding: theme.spacing(3),
-    marginLeft: 0,
-    width: '100%',
-    paddingLeft: open ? `${DRAWER_WIDTHS.desktop + 24}px` : theme.spacing(3),
-    pointerEvents: 'auto',
-    touchAction: 'auto',
+    width: `calc(100% - ${open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : '0px'})`,
+    marginLeft: open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : 0,
   },
-  
-  // 🖥️ LARGE (1200px+)
-  [theme.breakpoints.up('lg')]: {
-    marginLeft: 0,
-    width: '100%',
-    paddingLeft: open ? `${DRAWER_WIDTHS.large + 24}px` : theme.spacing(3),
-    pointerEvents: 'auto',
-    touchAction: 'auto',
-  },
-  
   ...(open && {
-    transition: theme.transitions.create(['margin', 'width', 'padding'], {
+    transition: theme.transitions.create(['margin', 'width'], {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
@@ -140,1214 +97,218 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
 }));
 
 const DrawerHeader = styled('div')(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  ...theme.mixins.toolbar,
-  
-  // 📱 MOBILE
-  [theme.breakpoints.down('sm')]: {
-    padding: theme.spacing(0, 2),
-    minHeight: '72px !important',
-  },
-  
-  // 📟 TABLET
-  [theme.breakpoints.between('sm', 'md')]: {
-    padding: theme.spacing(0, 2),
-    minHeight: '80px !important',
-  },
-  
-  // 💻 DESKTOP+
-  [theme.breakpoints.up('md')]: {
-    padding: theme.spacing(0, 3),
-    minHeight: '88px !important',
-  },
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...theme.mixins.toolbar,
+  [theme.breakpoints.down('sm')]: { padding: theme.spacing(0, 2), minHeight: '72px !important' },
+  [theme.breakpoints.up('sm')]: { padding: theme.spacing(0, 3), minHeight: '88px !important' },
 }));
 
 const ResponsiveAppBar = styled(AppBar)(({ theme }) => ({
-  zIndex: theme.zIndex.drawer + 1,
-  background: 'rgba(0, 0, 0, 0.95)',
-  backdropFilter: 'blur(20px)',
-  boxShadow: '0 4px 30px rgba(0,0,0,0.8)',
-  borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
-  
-  // 📱 MOBILE
-  [theme.breakpoints.down('sm')]: {
-    '& .MuiToolbar-root': {
-      minHeight: '72px',
-      padding: theme.spacing(0, 1),
-    }
-  },
-  
-  // 📟 TABLET
-  [theme.breakpoints.between('sm', 'md')]: {
-    '& .MuiToolbar-root': {
-      minHeight: '80px',
-      padding: theme.spacing(0, 2),
-    }
-  },
-  
-  // 💻 DESKTOP+
-  [theme.breakpoints.up('md')]: {
-    '& .MuiToolbar-root': {
-      minHeight: '88px',
-      padding: theme.spacing(0, 3),
-    }
+  zIndex: theme.zIndex.drawer + 1, background: 'rgba(0, 0, 0, 0.95)', backdropFilter: 'blur(20px)',
+  boxShadow: '0 4px 30px rgba(0,0,0,0.8)', borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
+  '& .MuiToolbar-root': {
+    minHeight: '72px',
+    [theme.breakpoints.up('md')]: { minHeight: '88px', padding: theme.spacing(0, 3) },
   },
 }));
 
-const Search = styled('div')(({ theme }) => ({
-  position: 'relative',
-  borderRadius: '25px',
-  backgroundColor: alpha(theme.palette.common.white, 0.12),
-  border: '1px solid rgba(255, 204, 0, 0.2)',
-  transition: 'all 0.3s ease',
-  
-  '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.18),
-    borderColor: 'rgba(255, 204, 0, 0.4)',
-    transform: 'scale(1.02)',
-  },
-  
-  '&:focus-within': {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
-    borderColor: '#ffcc00',
-    boxShadow: '0 0 0 3px rgba(255, 204, 0, 0.2)',
-    transform: 'scale(1.05)',
-  },
-  
-  // 📱 MOBILE - Oculto
-  [theme.breakpoints.down('md')]: {
-    display: 'none',
-  },
-  
-  // 💻 DESKTOP
-  [theme.breakpoints.up('md')]: {
-    marginRight: theme.spacing(2),
-    marginLeft: theme.spacing(2),
-    width: '100%',
-    maxWidth: '400px',
-  },
-  
-  // 🖥️ LARGE
-  [theme.breakpoints.up('lg')]: {
-    maxWidth: '500px',
-  },
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: '100%',
-  position: 'absolute',
-  pointerEvents: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: 'rgba(255, 204, 0, 0.7)',
-}));
-
-const StyledInputBase = styled('input')(({ theme }) => ({
-  color: 'inherit',
-  border: 'none',
-  background: 'transparent',
-  width: '100%',
-  fontFamily: 'inherit',
-  fontSize: '0.875rem',
-  
-  padding: theme.spacing(1.2, 2, 1.2, 0),
-  paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-  
-  transition: theme.transitions.create('width'),
-  
-  '&:focus': {
-    outline: 'none',
-  },
-  
-  '&::placeholder': {
-    color: 'rgba(255, 255, 255, 0.5)',
-  },
-  
-  // 💻 DESKTOP
-  [theme.breakpoints.up('md')]: {
-    width: '100%',
-  },
-}));
-
-// 📱 BOTTOM NAVIGATION PARA MOBILE - CORREGIDO
 const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
-  position: 'fixed',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  zIndex: 1300,
-  backgroundColor: 'rgba(0, 0, 0, 0.95)',
-  backdropFilter: 'blur(20px)',
-  borderTop: '1px solid rgba(255, 204, 0, 0.2)',
-  height: '70px',
-  // ✅ Crítico para eventos táctiles
-  pointerEvents: 'auto',
-  touchAction: 'manipulation',
-  
-  '& .MuiBottomNavigationAction-root': {
-    color: 'rgba(255, 255, 255, 0.6)',
-    minHeight: '70px',
-    padding: '8px 0',
-    // ✅ Área táctil mejorada
-    cursor: 'pointer',
-    touchAction: 'manipulation',
-    WebkitTapHighlightColor: 'rgba(255, 204, 0, 0.2)',
-    '&.Mui-selected': {
-      color: '#ffcc00',
-    },
-    '& .MuiBottomNavigationAction-label': {
-      fontSize: '0.7rem',
-      fontWeight: 600,
-    }
+  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1300, backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255, 204, 0, 0.2)', height: '70px',
+  '& .MuiBottomNavigationAction-root': { color: 'rgba(255, 255, 255, 0.6)', minHeight: '70px', padding: '8px 0',
+    '&.Mui-selected': { color: '#ffcc00' },
+    '& .MuiBottomNavigationAction-label': { fontSize: '0.7rem', fontWeight: 600 }
   },
-  
-  // Solo visible en mobile
-  [theme.breakpoints.up('sm')]: {
-    display: 'none',
-  },
+  [theme.breakpoints.up('sm')]: { display: 'none' },
 }));
 
-// 🎯 INTERFACES
-interface ClienteLayoutProps {
-  children: ReactNode;
-}
+// Función auxiliar para obtener el ancho del drawer
+const getDrawerWidth = (md: number, lg: number) => {
+  if (window.innerWidth >= lg) return DRAWER_WIDTHS.large;
+  if (window.innerWidth >= md) return DRAWER_WIDTHS.desktop;
+  return DRAWER_WIDTHS.tablet;
+};
 
-interface MenuItem {
-  text: string;
-  path: string;
-  icon: React.ReactElement;
-  section: string;
-  description?: string;
-  disabled?: boolean;
-  mobileIcon?: React.ReactElement;
-}
-
-// ✅ COMPONENTE DE NAVEGACIÓN MEJORADO
-const NavigationButton = React.forwardRef(({ href, label, ...props }: any, ref) => {
-  return (
-    <Link href={href} passHref legacyBehavior>
-      <a ref={ref} style={{ textDecoration: 'none' }}>
-        <Chip
-          clickable
-          label={label}
-          {...props}
-          sx={{
-            backgroundColor: 'rgba(255, 204, 0, 0.9)',
-            color: '#000',
-            fontWeight: 700,
-            fontSize: '0.75rem',
-            padding: '16px 8px',
-            height: 'auto',
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: '#ffcc00',
-              transform: 'scale(1.05)',
-            },
-            ...props.sx
-          }}
-        />
-      </a>
-    </Link>
-  );
-});
-NavigationButton.displayName = 'NavigationButton';
+// INTERFACES Y TIPOS
+interface ClienteLayoutProps { children: ReactNode; }
+interface MenuItemDef { text: string; path: string; icon: React.ReactElement; section: string; description?: string; disabled?: boolean; mobileIcon?: React.ReactElement; }
 
 export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const theme = useTheme();
   
-  // 📱 RESPONSIVE HOOKS
-  const isMobile = useMediaQuery(BREAKPOINTS.mobile);
-  const isTablet = useMediaQuery(BREAKPOINTS.tablet);
-  const isDesktop = useMediaQuery(BREAKPOINTS.desktop);
-  const isLarge = useMediaQuery(BREAKPOINTS.large);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   
-  // 🎯 ESTADOS
-  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+  const [drawerOpen, setDrawerOpen] = useState(isDesktop);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
 
-  // ✅ CSS FIXES PARA MÓVILES - CRÍTICO
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      /* ✅ Fix para iOS Safari - botones requieren cursor pointer */
-      button, [role="button"], .MuiButton-root, .MuiFab-root, .MuiBottomNavigationAction-root, .MuiIconButton-root {
-        cursor: pointer !important;
-        -webkit-tap-highlight-color: rgba(255, 204, 0, 0.2) !important;
-        -webkit-touch-callout: none !important;
-        -webkit-user-select: none !important;
-        -khtml-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
-        pointer-events: auto !important;
-        touch-action: manipulation !important;
-      }
-      
-      /* ✅ Asegurar que no hay overlays bloqueando */
-      * {
-        pointer-events: auto !important;
-      }
-      
-      /* ✅ Fix específico para Material-UI en móviles */
-      .MuiButton-root, .MuiFab-root, .MuiIconButton-root, .MuiBottomNavigationAction-root {
-        touch-action: manipulation !important;
-        -webkit-touch-callout: none !important;
-        min-height: 44px !important;
-        min-width: 44px !important;
-      }
-      
-      /* ✅ Fix para contenedores que puedan bloquear eventos */
-      .MuiContainer-root, .MuiBox-root, .MuiCard-root, main {
-        pointer-events: auto !important;
-        touch-action: auto !important;
-      }
-      
-      /* ✅ Fix específico para motion.div */
-      [data-framer-motion], div[style*="transform"] {
-        pointer-events: auto !important;
-        touch-action: auto !important;
-      }
-      
-      /* ✅ Bottom Navigation específico */
-      .MuiBottomNavigation-root {
-        pointer-events: auto !important;
-        touch-action: manipulation !important;
-      }
-      
-      .MuiBottomNavigationAction-root {
-        pointer-events: auto !important;
-        touch-action: manipulation !important;
-        cursor: pointer !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style);
-      }
-    };
-  }, []);
+  // 🔴 ELIMINADO: El useEffect que inyectaba CSS global.
+  // Esta era la causa raíz del problema de interacción en móviles.
+  // Las librerías modernas manejan esto correctamente sin necesidad de overrides.
 
-  // ✅ DEBUG PARA MÓVILES (temporal)
-  useEffect(() => {
-    if (isMobile) {
-      const debugTouch = (e: TouchEvent) => {
-        console.log('📱 Touch event:', e.type, e.target);
-      };
-      
-      const debugClick = (e: MouseEvent) => {
-        console.log('🖱️ Click event:', e.target);
-      };
-      
-      document.addEventListener('touchstart', debugTouch, { passive: true });
-      document.addEventListener('touchend', debugTouch, { passive: true });
-      document.addEventListener('click', debugClick);
-      
-      return () => {
-        document.removeEventListener('touchstart', debugTouch);
-        document.removeEventListener('touchend', debugTouch);
-        document.removeEventListener('click', debugClick);
-      };
-    }
-  }, [isMobile]);
-
-  // ✅ MENÚ CORREGIDO CON ACCESOS
-  const menuItems: MenuItem[] = [
-    { 
-      text: 'Mi Información', 
-      path: '/dashboard/cliente', 
-      icon: <AccountCircleIcon />,
-      mobileIcon: <HomeIcon />,
-      section: 'info',
-      description: 'Gestiona tu perfil personal'
-    },
-    { 
-      text: 'Pagos', 
-      path: '/dashboard/cliente/pagos', 
-      icon: <PaymentIcon />,
-      mobileIcon: <PaymentIcon />,
-      section: 'pagos',
-      description: 'Historial de membresías'
-    },
-    { 
-      text: 'Compras', 
-      path: '/dashboard/cliente/compras', 
-      icon: <ShoppingCartIcon />,
-      mobileIcon: <ShoppingCartIcon />,
-      section: 'compras',
-      description: 'Productos y servicios'
-    },
-    { 
-      text: 'Accesos', 
-      path: '/dashboard/cliente/accesos', 
-      icon: <LoginIcon />,
-      mobileIcon: <AccessTimeIcon />,
-      section: 'accesos',
-      description: 'Historial de entradas al gym'
-    },
-    { 
-      text: 'Historial', 
-      path: '/dashboard/cliente/historial', 
-      icon: <HistoryIcon />,
-      mobileIcon: <HistoryIcon />,
-      section: 'historial',
-      description: 'Próximamente',
-      disabled: true
-    }
+  const menuItems: MenuItemDef[] = [
+    { text: 'Mi Información', path: '/dashboard/cliente', icon: <AccountCircleIcon />, mobileIcon: <HomeIcon />, section: 'info', description: 'Gestiona tu perfil personal' },
+    { text: 'Pagos', path: '/dashboard/cliente/pagos', icon: <PaymentIcon />, mobileIcon: <PaymentIcon />, section: 'pagos', description: 'Historial de membresías' },
+    { text: 'Compras', path: '/dashboard/cliente/compras', icon: <ShoppingCartIcon />, mobileIcon: <ShoppingCartIcon />, section: 'compras', description: 'Productos y servicios' },
+    { text: 'Accesos', path: '/dashboard/cliente/accesos', icon: <LoginIcon />, mobileIcon: <AccessTimeIcon />, section: 'accesos', description: 'Historial de entradas al gym' },
+    { text: 'Historial', path: '/dashboard/cliente/historial', icon: <HistoryIcon />, mobileIcon: <HistoryIcon />, section: 'historial', description: 'Próximamente', disabled: true }
   ];
 
-  // 🎯 RESPONSIVE DRAWER WIDTH
-  const getDrawerWidth = () => {
-    if (isMobile) return DRAWER_WIDTHS.mobile;
-    if (isTablet) return DRAWER_WIDTHS.tablet;
-    if (isLarge) return DRAWER_WIDTHS.large;
-    return DRAWER_WIDTHS.desktop;
-  };
+  useEffect(() => setDrawerOpen(isDesktop), [isDesktop]);
 
-  // 📱 EFECTO PARA MANEJAR RESPONSIVE
   useEffect(() => {
-    if (isMobile) {
-      setDrawerOpen(false);
-    } else if (isDesktop) {
-      setDrawerOpen(true);
-    }
-  }, [isMobile, isDesktop]);
-
-  // 📜 SCROLL TO TOP
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-    
+    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // 🎯 OBTENER DATOS DEL USUARIO
   useEffect(() => {
     async function getUserData() {
-      try {
-        setLoading(true);
-        const supabase = createBrowserSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
+      setLoading(true);
+      const supabase = createBrowserSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
           const response = await fetch(`/api/user-profile?userId=${session.user.id}`);
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-          }
-        }
-      } catch (error) {
-        console.error("Error al obtener datos del usuario:", error);
-      } finally {
-        setLoading(false);
+          if (response.ok) setUser(await response.json());
+        } catch (error) { console.error("Error fetching user data:", error); }
       }
+      setLoading(false);
     }
-    
     getUserData();
   }, []);
   
-  // ✅ ACTUALIZAR SECCIÓN ACTIVA - CORREGIDO
   useEffect(() => {
     if (pathname) {
       const pathParts = pathname.split('/');
-      const section = pathParts[pathParts.length - 1] || '';
-      const activeSection = section === 'cliente' ? 'info' : section;
-      setActiveSection(activeSection);
-      
-      const activeIndex = menuItems.findIndex(item => item.section === activeSection);
-      if (activeIndex !== -1) {
-        setMobileBottomValue(activeIndex);
-      }
+      const currentSection = pathParts[pathParts.length - 1] || '';
+      const sectionId = currentSection === 'cliente' ? 'info' : currentSection;
+      setActiveSection(sectionId);
+      const activeIndex = menuItems.findIndex(item => item.section === sectionId);
+      if (activeIndex !== -1) setMobileBottomValue(activeIndex);
     }
   }, [pathname]);
   
-  // ✅ FUNCIÓN DE NAVEGACIÓN SIMPLIFICADA
   const navigateTo = (path: string) => {
-    console.log(`🚀 Navegando a: ${path}`);
     router.push(path);
-    
-    if (isMobile) {
-      setDrawerOpen(false);
-    }
+    if (isMobile) setDrawerOpen(false);
   };
   
   const handleLogout = async () => {
-    try {
-      setLoading(true);
-      const supabase = createBrowserSupabaseClient();
-      await supabase.auth.signOut();
-      router.push('/login');
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const supabase = createBrowserSupabaseClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    setLoading(false);
   };
   
-  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setUserMenuAnchor(event.currentTarget);
-  };
-  
-  const handleUserMenuClose = () => {
-    setUserMenuAnchor(null);
-  };
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => setUserMenuAnchor(event.currentTarget);
+  const handleUserMenuClose = () => setUserMenuAnchor(null);
 
-  // ✅ SCROLL TO TOP MEJORADO
-  const scrollToTop = () => {
-    console.log('📱 Scroll to top function called');
-    try {
-      window.scrollTo({ 
-        top: 0, 
-        behavior: 'smooth' 
-      });
-    } catch (error) {
-      // Fallback para navegadores antiguos
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }
-  };
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // ✅ MOBILE BOTTOM NAVIGATION HANDLER SIMPLIFICADO
   const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
-    console.log(`📱 Bottom nav clicked: ${newValue}`);
-    setMobileBottomValue(newValue);
-    
     const selectedItem = menuItems[newValue];
     if (selectedItem && !selectedItem.disabled) {
-      console.log(`📱 Navegando a: ${selectedItem.path}`);
-      router.push(selectedItem.path);
+      navigateTo(selectedItem.path);
     }
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {/* 🎯 BARRA SUPERIOR RESPONSIVA */}
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <ResponsiveAppBar position="fixed">
-        {loading && (
-          <LinearProgress 
-            sx={{ 
-              position: 'absolute', 
-              top: 0, 
-              left: 0, 
-              right: 0, 
-              height: '3px',
-              background: 'rgba(255,204,0,0.1)',
-              '& .MuiLinearProgress-bar': {
-                background: 'linear-gradient(90deg, #ffcc00, #ffd700)'
-              }
-            }} 
-          />
-        )}
-        
+        {loading && <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', '& .MuiLinearProgress-bar': { background: '#ffcc00' } }} />}
         <Toolbar>
-          {/* 🎯 MENU BUTTON - Solo desktop/tablet */}
           {!isMobile && (
-            <IconButton
-              color="inherit"
-              aria-label={drawerOpen ? "cerrar menú" : "abrir menú"}
-              onClick={() => setDrawerOpen(!drawerOpen)}
-              edge="start"
-              sx={{ 
-                mr: 2,
-                backgroundColor: 'rgba(255, 204, 0, 0.1)',
-                cursor: 'pointer',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 204, 0, 0.2)',
-                  transform: 'scale(1.05)',
-                },
-                transition: 'all 0.3s ease'
-              }}
-            >
+            <IconButton color="inherit" onClick={() => setDrawerOpen(!drawerOpen)} edge="start" sx={{ mr: 2, '&:hover': { backgroundColor: 'rgba(255, 204, 0, 0.1)' } }}>
               <MenuIcon />
             </IconButton>
           )}
-          
-          {/* 🎯 LOGO ÁREA RESPONSIVA */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            mr: { xs: 1, sm: 2, md: 3 },
-            minWidth: 0
-          }}>
-            <Box 
-              component="img"
-              sx={{ 
-                height: { xs: 40, sm: 50, md: 65 },
-                width: 'auto',
-                mr: { xs: 1, sm: 1.5, md: 2 },
-                filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
-              }}
-              src="/logo.png"
-              alt="Muscle Up Gym"
-            />
-            
-            {/* 🎯 TÍTULO RESPONSIVO */}
-            <Box sx={{ 
-              display: { xs: 'none', sm: 'block' },
-              minWidth: 0,
-              overflow: 'hidden'
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <FitnessCenterIcon 
-                  sx={{ 
-                    color: '#ffcc00', 
-                    fontSize: { sm: 20, md: 24 },
-                    filter: 'drop-shadow(0 1px 2px rgba(255,204,0,0.3))'
-                  }} 
-                />
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    color: 'rgba(255,255,255,0.95)',
-                    fontWeight: 700,
-                    letterSpacing: { sm: 1, md: 1.5 },
-                    fontSize: { sm: '0.9rem', md: '1.1rem' },
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}
-                >
-                  {isTablet && !isDesktop ? 'CLIENTE' : 'PANEL DE CLIENTE'}
-                </Typography>
-                <Chip
-                  size="small"
-                  label="MUP"
-                  sx={{
-                    backgroundColor: '#ffcc00',
-                    color: '#000',
-                    fontWeight: 800,
-                    fontSize: { sm: '0.7rem', md: '0.75rem' },
-                    height: { sm: '20px', md: '24px' },
-                    minWidth: { sm: '35px', md: '45px' },
-                    ml: 1,
-                    display: { xs: 'none', md: 'flex' }
-                  }}
-                />
-              </Box>
-            </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 2 } }}>
+            <Box component="img" sx={{ height: { xs: 40, sm: 50, md: 65 }, mr: { xs: 1, sm: 2 } }} src="/logo.png" alt="Muscle Up Gym Logo" />
+            <Typography variant="h6" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 700 }}>
+              PANEL DE CLIENTE
+            </Typography>
           </Box>
-          
-          {/* 🎯 BÚSQUEDA - Solo desktop */}
-          <Search>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Buscar en mi cuenta..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-            />
-          </Search>
-          
           <Box sx={{ flexGrow: 1 }} />
-          
-          {/* 🎯 ÁREA DE USUARIO RESPONSIVA */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: { xs: 0.5, sm: 1 }
-          }}>
-            {/* 🔔 NOTIFICACIONES */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
             <Tooltip title="Notificaciones">
-              <IconButton 
-                color="inherit" 
-                sx={{ 
-                  mr: { xs: 0, sm: 1 },
-                  position: 'relative',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 204, 0, 0.1)',
-                    transform: 'scale(1.1)',
-                  },
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                <Badge badgeContent={3} color="error">
-                  <NotificationsIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
-                </Badge>
+              <IconButton color="inherit">
+                <Badge badgeContent={3} color="error"><NotificationsIcon /></Badge>
               </IconButton>
             </Tooltip>
-            
-            {/* 👋 SALUDO - Solo tablet+ */}
-            <Chip
-              size="small"
-              label={`Hola, ${user?.firstName || 'Cliente'}`}
-              sx={{
-                backgroundColor: 'rgba(255, 204, 0, 0.15)',
-                color: '#ffcc00',
-                border: '1px solid rgba(255, 204, 0, 0.3)',
-                fontWeight: 600,
-                display: { xs: 'none', md: 'flex' },
-                maxWidth: { md: 150, lg: 200 },
-                cursor: 'default',
-                '& .MuiChip-label': {
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }
-              }}
-            />
-            
-            {/* 👤 AVATAR USUARIO */}
-            <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
-              <IconButton 
-                onClick={handleUserMenuOpen}
-                size="small"
-                edge="end"
-                sx={{ 
-                  bgcolor: 'rgba(255, 204, 0, 0.2)',
-                  ml: { xs: 0.5, sm: 1 },
-                  border: '2px solid rgba(255, 204, 0, 0.3)',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 204, 0, 0.3)',
-                    transform: 'scale(1.05)',
-                  },
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                <Avatar 
-                  alt={user?.firstName || "Usuario"} 
-                  src={user?.profilePictureUrl || ""}
-                  sx={{ 
-                    width: { xs: 32, sm: 36, md: 40 }, 
-                    height: { xs: 32, sm: 36, md: 40 }
-                  }}
-                >
-                  {user?.firstName?.charAt(0) || "C"}
-                </Avatar>
+            <Tooltip title="Mi Perfil">
+              <IconButton onClick={handleUserMenuOpen} size="small" sx={{ ml: { xs: 0.5, sm: 1 } }}>
+                <Avatar alt={user?.firstName} src={user?.profilePictureUrl} sx={{ width: 40, height: 40 }} />
               </IconButton>
             </Tooltip>
           </Box>
-          
-          {/* 🎯 MENÚ DE USUARIO RESPONSIVO */}
-          <Menu
-            anchorEl={userMenuAnchor}
-            id="user-menu"
-            open={Boolean(userMenuAnchor)}
-            onClose={handleUserMenuClose}
-            onClick={handleUserMenuClose}
-            PaperProps={{
-              elevation: 0,
-              sx: {
-                overflow: 'visible',
-                filter: 'drop-shadow(0px 4px 20px rgba(0,0,0,0.5))',
-                mt: 1.5,
-                minWidth: { xs: 260, sm: 280 },
-                maxWidth: { xs: '90vw', sm: 320 },
-                background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.98) 0%, rgba(25, 25, 25, 0.95) 100%)',
-                backdropFilter: 'blur(20px)',
-                color: 'white',
-                border: '1px solid rgba(255, 204, 0, 0.2)',
-                borderRadius: 2,
-                '& .MuiMenuItem-root': {
-                  px: { xs: 2, sm: 3 },
-                  py: 1.5,
-                  my: 0.5,
-                  mx: 1,
-                  borderRadius: 1.5,
-                  color: 'white',
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                  cursor: 'pointer',
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 204, 0, 0.1)',
-                  },
-                },
-              },
-            }}
-          >
-            {/* 👤 HEADER DEL MENÚ */}
-            <Box 
-              sx={{ 
-                px: { xs: 2, sm: 3 }, 
-                py: 2, 
-                display: 'flex', 
-                alignItems: 'center',
-                background: 'rgba(255, 204, 0, 0.05)',
-                mx: 1,
-                borderRadius: 1.5,
-                mb: 1
-              }}
-            >
-              <Avatar 
-                sx={{ 
-                  width: { xs: 50, sm: 60 }, 
-                  height: { xs: 50, sm: 60 }, 
-                  mr: 2, 
-                  border: '3px solid #ffcc00' 
-                }}
-                src={user?.profilePictureUrl || ""}
-              >
-                {user?.firstName?.charAt(0) || "C"}
-              </Avatar>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography 
-                  variant="body1" 
-                  sx={{ 
-                    fontWeight: 'bold', 
-                    mb: 0.5,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {user ? `${user.firstName} ${user.lastName}` : "Cliente"}
-                </Typography>
-                <Chip
-                  size="small"
-                  label="Miembro Activo"
-                  sx={{
-                    backgroundColor: '#ffcc00',
-                    color: '#000',
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                    height: { xs: '18px', sm: '20px' }
-                  }}
-                />
-              </Box>
-            </Box>
-            
+          <Menu anchorEl={userMenuAnchor} open={Boolean(userMenuAnchor)} onClose={handleUserMenuClose} PaperProps={{ sx: { mt: 1.5, minWidth: 260, bgcolor: 'rgba(18,18,18,0.95)', backdropFilter: 'blur(10px)', color: 'white', border: '1px solid rgba(255,204,0,0.2)' } }}>
+            <MenuItem onClick={() => navigateTo('/dashboard/cliente')}><ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} /></ListItemIcon>Mi Perfil</MenuItem>
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
-            
-            <MenuItem onClick={() => {
-              handleUserMenuClose();
-              router.push('/dashboard/cliente');
-            }}>
-              <ListItemIcon>
-                <PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} />
-              </ListItemIcon>
-              Mi Perfil
-            </MenuItem>
-            
-            <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
-            
-            <MenuItem 
-              onClick={handleLogout}
-              sx={{
-                color: '#ff6b6b !important',
-                '&:hover': {
-                  bgcolor: 'rgba(255, 107, 107, 0.1) !important',
-                }
-              }}
-            >
-              <ListItemIcon>
-                <LogoutIcon fontSize="small" sx={{ color: '#ff6b6b' }} />
-              </ListItemIcon>
-              Cerrar Sesión
-            </MenuItem>
+            <MenuItem onClick={handleLogout} sx={{ color: '#ff6b6b' }}><ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#ff6b6b' }} /></ListItemIcon>Cerrar Sesión</MenuItem>
           </Menu>
         </Toolbar>
       </ResponsiveAppBar>
       
-      {/* 🎯 DRAWER LATERAL RESPONSIVO - CORREGIDO */}
       <SwipeableDrawer
         sx={{
-          width: getDrawerWidth(),
+          width: isDesktop ? getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg) : DRAWER_WIDTHS.tablet,
           flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: getDrawerWidth(),
-            boxSizing: 'border-box',
-            background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)',
-            color: 'white',
-            borderRight: '1px solid rgba(255, 204, 0, 0.1)',
-            backgroundImage: `
-              radial-gradient(circle at 20% 50%, rgba(255,204,0,0.05) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(255,204,0,0.03) 0%, transparent 50%)
-            `,
-            boxShadow: 'inset -1px 0 0 rgba(255,204,0,0.1), 4px 0 20px rgba(0,0,0,0.3)',
-            // ✅ Asegurar eventos táctiles
-            pointerEvents: 'auto',
-            touchAction: 'auto',
-            
-            // 📱 MOBILE - Full screen
-            [theme.breakpoints.down('sm')]: {
-              width: '100vw',
-              maxWidth: '100vw',
-            }
-          },
+          '& .MuiDrawer-paper': { width: 'inherit', boxSizing: 'border-box', background: 'rgb(12, 12, 12)', color: 'white', borderRight: '1px solid rgba(255, 204, 0, 0.1)' },
         }}
-        variant={isMobile ? "temporary" : "persistent"}
+        variant={isDesktop ? "persistent" : "temporary"}
         anchor="left"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onOpen={() => setDrawerOpen(true)}
-        disableBackdropTransition={!isMobile}
-        disableDiscovery={isMobile}
-        swipeAreaWidth={isMobile ? 30 : 0}
-        hysteresis={0.6}
-        minFlingVelocity={400}
-        ModalProps={{
-          keepMounted: false,
-          disablePortal: false,
-          style: { zIndex: 1200 }
-        }}
+        ModalProps={{ keepMounted: true }}
       >
-        {/* 🎯 HEADER DEL DRAWER RESPONSIVO */}
-        <DrawerHeader sx={{ 
-          background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.9) 0%, rgba(25, 25, 25, 0.8) 100%)',
-          borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
-          px: { xs: 1.5, sm: 2, md: 3 }
-        }}>
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            pl: { xs: 0.5, sm: 1 },
-            minWidth: 0,
-            flex: 1
-          }}>
-            <Box 
-              component="img"
-              sx={{ 
-                height: { xs: 40, sm: 45, md: 50 }, 
-                mr: { xs: 1.5, sm: 2 },
-                filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
-              }}
-              src="/logo.png"
-              alt="Muscle Up Gym"
-            />
-            <Box sx={{ minWidth: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <FitnessCenterIcon sx={{ 
-                  color: '#ffcc00', 
-                  fontSize: { xs: 16, sm: 18 }
-                }} />
-                <Typography variant="h6" sx={{ 
-                  fontWeight: 700,
-                  lineHeight: 1.1,
-                  background: 'linear-gradient(45deg, #ffcc00, #ffd700)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' }
-                }}>
-                  MUP
-                </Typography>
-              </Box>
-              <Typography variant="caption" sx={{ 
-                color: 'rgba(255,255,255,0.8)',
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                fontSize: { xs: '0.65rem', sm: '0.7rem' }
-              }}>
-                Cliente Panel
-              </Typography>
-            </Box>
-          </Box>
-          
-          <IconButton 
-            onClick={() => setDrawerOpen(false)}
-            sx={{
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 204, 0, 0.1)',
-                transform: 'scale(1.1)',
-              },
-              transition: 'all 0.3s ease'
-            }}
-          >
-            {isMobile ? <CloseIcon sx={{ color: 'white' }} /> : <ChevronLeftIcon sx={{ color: 'white' }} />}
+        <DrawerHeader>
+          <Box component="img" sx={{ height: 50, mr: 2 }} src="/logo.png" alt="Logo"/>
+          <IconButton onClick={() => setDrawerOpen(false)}>
+            <ChevronLeftIcon sx={{ color: 'white' }} />
           </IconButton>
         </DrawerHeader>
-        
         <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.1)' }} />
-        
-        {/* 🎯 INFO DEL USUARIO EN DRAWER RESPONSIVO */}
-        <Box sx={{ 
-          p: { xs: 2, sm: 2.5 }, 
-          display: 'flex', 
-          alignItems: 'center',
-          borderBottom: '1px solid rgba(255, 204, 0, 0.1)',
-          background: 'rgba(255, 204, 0, 0.03)'
-        }}>
-          <Avatar 
-            sx={{ 
-              width: { xs: 45, sm: 50 }, 
-              height: { xs: 45, sm: 50 }, 
-              mr: 2,
-              border: '3px solid #ffcc00',
-              background: 'linear-gradient(45deg, #ffcc00, #ffd700)'
-            }}
-            src={user?.profilePictureUrl || ""}
-          >
-            {user?.firstName?.charAt(0) || "C"}
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body1" sx={{ 
-              fontWeight: 'bold', 
-              lineHeight: 1.2,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              fontSize: { xs: '0.875rem', sm: '1rem' }
-            }}>
-              {user ? `${user.firstName} ${user.lastName}` : "Cliente"}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-              <Chip
-                size="small"
-                label="Miembro"
-                sx={{
-                  backgroundColor: '#ffcc00',
-                  color: '#000',
-                  fontWeight: 600,
-                  fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                  height: { xs: '18px', sm: '20px' }
-                }}
-              />
-            </Box>
-          </Box>
-        </Box>
-        
-        {/* 🎯 LISTA DE MENÚ RESPONSIVA - CORREGIDA */}
-        <List 
-          component="nav" 
-          sx={{ 
-            px: { xs: 1, sm: 1.5 }, 
-            py: 2,
-            height: 'calc(100% - 240px)',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            '&::-webkit-scrollbar': {
-              width: '6px',
-              backgroundColor: 'transparent'
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(255, 204, 0, 0.3)',
-              borderRadius: '3px',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 204, 0, 0.5)'
-              }
-            }
-          }}
-        >
+        <List component="nav" sx={{ p: 1.5 }}>
           {menuItems.map((item) => (
-            <ListItem 
-              key={item.text} 
-              disablePadding
-              sx={{ mb: 0.5 }}
-            >
-              <ListItemButton
-                onClick={() => {
-                  console.log(`🖱️ Drawer item clicked: ${item.path}`);
-                  if (!item.disabled) {
-                    navigateTo(item.path);
-                  }
-                }}
-                disabled={item.disabled}
-                sx={{ 
-                  minHeight: { xs: 56, sm: 52 },
-                  borderRadius: '12px',
-                  px: { xs: 2, sm: 2.5 },
-                  py: { xs: 1.5, sm: 1.5 },
-                  background: activeSection === item.section 
-                    ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, rgba(255, 204, 0, 0.1) 100%)'
-                    : 'transparent',
-                  border: activeSection === item.section 
-                    ? '1px solid rgba(255, 204, 0, 0.3)' 
-                    : '1px solid transparent',
-                  opacity: item.disabled ? 0.5 : 1,
-                  cursor: item.disabled ? 'default' : 'pointer',
-                  '&:hover': {
-                    background: item.disabled 
-                      ? 'transparent' 
-                      : 'linear-gradient(135deg, rgba(255, 204, 0, 0.12) 0%, rgba(255, 204, 0, 0.06) 100%)',
-                    border: item.disabled 
-                      ? '1px solid transparent' 
-                      : '1px solid rgba(255, 204, 0, 0.2)',
-                    transform: item.disabled ? 'none' : 'translateX(4px)',
-                  },
-                  transition: 'all 0.3s ease',
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    minWidth: 0,
-                    mr: { xs: 2, sm: 2.5 },
-                    justifyContent: 'center',
-                    color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text}
-                  secondary={!isMobile ? item.description : undefined}
-                  primaryTypographyProps={{ 
-                    fontWeight: activeSection === item.section ? 700 : 500,
-                    color: activeSection === item.section ? '#ffcc00' : 'inherit',
-                    fontSize: { xs: '0.875rem', sm: '0.95rem' }
-                  }}
-                  secondaryTypographyProps={{
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                    color: 'rgba(255,255,255,0.5)',
-                    display: isMobile ? 'none' : 'block'
-                  }}
-                />
-                {item.disabled && (
-                  <Chip
-                    size="small"
-                    label="Pronto"
-                    sx={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                      height: { xs: '18px', sm: '20px' }
-                    }}
-                  />
-                )}
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+              <ListItemButton onClick={() => !item.disabled && navigateTo(item.path)} disabled={item.disabled} sx={{ borderRadius: '12px', bgcolor: activeSection === item.section ? 'rgba(255, 204, 0, 0.2)' : 'transparent', '&:hover': { bgcolor: 'rgba(255, 204, 0, 0.1)' } }}>
+                <ListItemIcon sx={{ color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)' }}>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: activeSection === item.section ? 700 : 500, color: activeSection === item.section ? '#ffcc00' : 'inherit' }} />
               </ListItemButton>
             </ListItem>
           ))}
         </List>
-        
-        {/* 🎯 FOOTER DEL DRAWER RESPONSIVO */}
-        <Box sx={{ 
-          p: { xs: 2, sm: 2.5 }, 
-          borderTop: '1px solid rgba(255, 204, 0, 0.1)',
-          textAlign: 'center',
-          background: 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(18,18,18,0.2) 100%)',
-          mt: 'auto'
-        }}>
-          <Typography variant="caption" sx={{ 
-            color: 'rgba(255,255,255,0.6)',
-            fontWeight: 500,
-            fontSize: { xs: '0.7rem', sm: '0.75rem' }
-          }}>
-            © 2025 Muscle Up Gym
-          </Typography>
-          <Typography variant="caption" sx={{ 
-            display: 'block', 
-            color: '#ffcc00', 
-            mt: 0.5,
-            fontWeight: 600,
-            fontSize: { xs: '0.65rem', sm: '0.7rem' }
-          }}>
-            Panel de Cliente v1.0.0
-          </Typography>
-        </Box>
       </SwipeableDrawer>
       
-      {/* ✅ BOTTOM NAVIGATION PARA MOBILE CORREGIDO */}
-      <MobileBottomNav
-        value={mobileBottomValue}
-        onChange={handleMobileNavChange}
-        showLabels
-      >
-        {menuItems.filter(item => !item.disabled).map((item, index) => (
-          <BottomNavigationAction
-            key={item.section}
-            label={item.text === 'Mi Información' ? 'Inicio' : item.text}
-            icon={item.mobileIcon || item.icon}
-            sx={{
-              cursor: 'pointer',
-              '&.Mui-selected': {
-                '& .MuiBottomNavigationAction-label': {
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
-                  color: '#ffcc00'
-                }
-              }
-            }}
-          />
+      <MobileBottomNav value={mobileBottomValue} onChange={handleMobileNavChange} showLabels>
+        {menuItems.filter(item => !item.disabled).map((item) => (
+          <BottomNavigationAction key={item.section} label={item.text === 'Mi Información' ? 'Inicio' : item.text} icon={item.mobileIcon || item.icon} />
         ))}
       </MobileBottomNav>
       
-      {/* 🎯 CONTENIDO PRINCIPAL RESPONSIVO */}
-      <Main open={drawerOpen && !isMobile}>
+      <Main open={drawerOpen && isDesktop}>
         <DrawerHeader />
-        <Container 
-          maxWidth="xl" 
-          disableGutters={isMobile}
-          sx={{
-            px: isMobile ? 1 : 0,
-            minHeight: 'calc(100vh - 100px)',
-          }}
-        >
+        <Container maxWidth="xl" disableGutters={isMobile} sx={{ px: isMobile ? 1 : 0 }}>
           <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ 
-                duration: 0.4,
-                ease: [0.4, 0.0, 0.2, 1]
-              }}
-              style={{ 
-                height: '100%',
-                paddingBottom: isMobile ? '20px' : '0px'
-              }}
-            >
+            <motion.div key={pathname} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
               {children}
             </motion.div>
           </AnimatePresence>
         </Container>
       </Main>
       
-      {/* ✅ SCROLL TO TOP BUTTON CORREGIDO */}
       <Zoom in={showScrollTop}>
-        <Fab
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('📱 Scroll to top clicked');
-            scrollToTop();
-          }}
-          onTouchStart={(e) => {
-            console.log('📱 Scroll button - Touch start');
-            e.currentTarget.style.transform = 'scale(0.95)';
-          }}
-          onTouchEnd={(e) => {
-            console.log('📱 Scroll button - Touch end');
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          color="primary"
-          size={isMobile ? "medium" : "large"}
-          sx={{
-            position: 'fixed',
-            bottom: isMobile ? 85 : 20,
-            right: isMobile ? 15 : 20,
-            background: 'linear-gradient(135deg, #ffcc00, #ffd700)',
-            color: '#000',
-            zIndex: 1400,
-            // ✅ CSS crítico para móviles
-            cursor: 'pointer',
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'rgba(255, 204, 0, 0.3)',
-            WebkitTouchCallout: 'none',
-            WebkitUserSelect: 'none',
-            userSelect: 'none',
-            minWidth: isMobile ? '56px' : '64px',
-            minHeight: isMobile ? '56px' : '64px',
-            '&:hover': {
-              background: 'linear-gradient(135deg, #ffd700, #ffcc00)',
-              transform: 'scale(1.1)',
-            },
-            '&:active': {
-              transform: 'scale(0.95)',
-              background: 'linear-gradient(135deg, #e6b800, #ffcc00)',
-            },
-            boxShadow: '0 8px 32px rgba(255, 204, 0, 0.3)',
-            transition: 'all 0.2s ease',
-            pointerEvents: 'auto'
-          }}
-        >
-          <KeyboardArrowUpIcon sx={{ fontSize: isMobile ? '24px' : '32px' }} />
+        <Fab onClick={scrollToTop} color="primary" size="large" sx={{ position: 'fixed', bottom: isMobile ? 85 : 20, right: 20, background: '#ffcc00', '&:hover': { background: '#ffd700' } }}>
+          <KeyboardArrowUpIcon />
         </Fab>
       </Zoom>
     </Box>
