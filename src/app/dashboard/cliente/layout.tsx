@@ -54,31 +54,20 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LoginIcon from '@mui/icons-material/Login';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 
-// CONSTANTES DE ANCHOS DEL DRAWER
-const DRAWER_WIDTHS = { 
-  mobile: '100vw', 
-  tablet: 280,
-  desktop: 290,
-  large: 320
-};
+// CONSTANTE DE ANCHO DEL DRAWER (como admin)
+const drawerWidth = 290;
 
-// Función auxiliar para obtener el ancho del drawer
-const getDrawerWidth = (md: number, lg: number) => {
-  if (typeof window === 'undefined') return DRAWER_WIDTHS.desktop;
-  if (window.innerWidth >= lg) return DRAWER_WIDTHS.large;
-  if (window.innerWidth >= md) return DRAWER_WIDTHS.desktop;
-  return DRAWER_WIDTHS.tablet;
-};
-
-// ESTILOS DE COMPONENTES
+// ESTILOS DE COMPONENTES - MAIN CORREGIDO COMO ADMIN
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
   flexGrow: 1,
-  transition: theme.transitions.create(['margin', 'width', 'padding'], {
+  padding: theme.spacing(3),
+  transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
+  marginLeft: `-${drawerWidth}px`,
   backgroundColor: '#0a0a0a',
   backgroundImage: `
     radial-gradient(circle at 25px 25px, rgba(255,204,0,0.08) 2%, transparent 0%), 
@@ -87,52 +76,68 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   backgroundSize: '100px 100px',
   minHeight: '100vh',
   color: '#fff',
-  position: 'relative',
   
+  // Mobile - con espacio para AppBar simple
   [theme.breakpoints.down('sm')]: {
-    padding: theme.spacing(1),
     marginLeft: 0,
-    width: '100%',
-    paddingBottom: '80px',
-    paddingTop: '0px', // Sin espacio para AppBar en móvil
+    padding: theme.spacing(1),
+    paddingBottom: '80px', // Espacio para bottom nav
+    paddingTop: '70px', // Espacio para AppBar móvil
   },
+  
+  // Desktop
   [theme.breakpoints.up('md')]: {
-    padding: theme.spacing(3),
-    paddingTop: theme.spacing(15), // Espacio para AppBar de 100px
-    width: `calc(100% - ${open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : '0px'})`,
-    marginLeft: open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : 0,
+    paddingTop: '120px', // Espacio para AppBar de 100px
   },
+  
+  // Cuando está abierto
   ...(open && {
-    transition: theme.transitions.create(['margin', 'width'], {
+    transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
+    marginLeft: 0,
   }),
 }));
 
 const DrawerHeader = styled('div')(({ theme }) => ({
-  display: 'flex', 
-  alignItems: 'center', 
-  justifyContent: 'space-between', 
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
   padding: theme.spacing(0, 1),
   ...theme.mixins.toolbar,
-  // Altura estandarizada como admin
   minHeight: '100px !important',
   [theme.breakpoints.down('sm')]: {
     minHeight: '80px !important',
   },
 }));
 
-const ResponsiveAppBar = styled(AppBar)(({ theme }) => ({
-  zIndex: theme.zIndex.drawer + 1, 
-  // Fondo negro sólido como admin
+// AppBar móvil simplificado
+const MobileAppBar = styled(AppBar)(({ theme }) => ({
   background: '#000000',
   backdropFilter: 'none',
   boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
   borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
-  // Ocultar en móvil
+  display: 'none',
   [theme.breakpoints.down('sm')]: {
-    display: 'none',
+    display: 'block',
+  },
+  '& .MuiToolbar-root': {
+    minHeight: '60px !important',
+    px: 2,
+  },
+}));
+
+// AppBar desktop estandarizado
+const DesktopAppBar = styled(AppBar)(({ theme }) => ({
+  zIndex: theme.zIndex.drawer + 1,
+  background: '#000000',
+  backdropFilter: 'none',
+  boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
+  borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
+  display: 'none',
+  [theme.breakpoints.up('md')]: {
+    display: 'block',
   },
   '& .MuiToolbar-root': {
     minHeight: '100px !important',
@@ -238,9 +243,9 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const theme = useTheme();
   
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
   
-  const [drawerOpen, setDrawerOpen] = useState(isDesktop);
+  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>('');
@@ -293,28 +298,34 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     }
   ];
 
-  useEffect(() => setDrawerOpen(isDesktop), [isDesktop]);
+  useEffect(() => {
+    async function getUserData() {
+      try {
+        setLoading(true);
+        const supabase = createBrowserSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          const response = await fetch(`/api/user-profile?userId=${session.user.id}`);
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+          }
+        }
+      } catch (error) {
+        console.error("Error al obtener datos del usuario:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    getUserData();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 300);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    async function getUserData() {
-      setLoading(true);
-      const supabase = createBrowserSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        try {
-          const response = await fetch(`/api/user-profile?userId=${session.user.id}`);
-          if (response.ok) setUser(await response.json());
-        } catch (error) { console.error("Error fetching user data:", error); }
-      }
-      setLoading(false);
-    }
-    getUserData();
   }, []);
   
   useEffect(() => {
@@ -334,11 +345,16 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   };
   
   const handleLogout = async () => {
-    setLoading(true);
-    const supabase = createBrowserSupabaseClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-    setLoading(false);
+    try {
+      setLoading(true);
+      const supabase = createBrowserSupabaseClient();
+      await supabase.auth.signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    } finally {
+      setLoading(false);
+    }
   };
   
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => setUserMenuAnchor(event.currentTarget);
@@ -355,8 +371,50 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* AppBar solo visible en desktop */}
-      <ResponsiveAppBar position="fixed">
+      {/* AppBar móvil simplificado */}
+      <MobileAppBar position="fixed">
+        <Toolbar>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <Box 
+              component="img"
+              sx={{ 
+                height: 40,
+                width: 'auto',
+                mr: 1.5,
+              }}
+              src="/logo.png"
+              alt="Muscle Up Gym"
+            />
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                color: '#ffcc00'
+              }}
+            >
+              MUP
+            </Typography>
+          </Box>
+          
+          <Tooltip title="Cerrar sesión">
+            <IconButton 
+              onClick={handleLogout}
+              sx={{ 
+                color: '#ff6b6b',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                }
+              }}
+            >
+              <LogoutIcon />
+            </IconButton>
+          </Tooltip>
+        </Toolbar>
+      </MobileAppBar>
+
+      {/* AppBar desktop */}
+      <DesktopAppBar position="fixed">
         {loading && (
           <LinearProgress 
             sx={{ 
@@ -373,24 +431,21 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           />
         )}
         <Toolbar>
-          {!isMobile && (
-            <IconButton 
-              color="inherit" 
-              onClick={() => setDrawerOpen(!drawerOpen)} 
-              edge="start" 
-              sx={{ 
-                mr: 2,
-                backgroundColor: 'rgba(255, 204, 0, 0.1)',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 204, 0, 0.2)',
-                }
-              }}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
+          <IconButton 
+            color="inherit" 
+            onClick={() => setDrawerOpen(!drawerOpen)} 
+            edge="start" 
+            sx={{ 
+              mr: 2,
+              backgroundColor: 'rgba(255, 204, 0, 0.1)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 204, 0, 0.2)',
+              }
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
           
-          {/* Logo y título estandarizado */}
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
             <Box 
               component="img"
@@ -522,7 +577,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             </Tooltip>
           </Box>
           
-          {/* Menú de usuario estandarizado */}
           <Menu
             anchorEl={userMenuAnchor}
             open={Boolean(userMenuAnchor)}
@@ -649,17 +703,17 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             </MenuItem>
           </Menu>
         </Toolbar>
-      </ResponsiveAppBar>
+      </DesktopAppBar>
       
-      <SwipeableDrawer
+      <Drawer
         sx={{
-          width: isDesktop ? getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg) : DRAWER_WIDTHS.tablet,
+          width: drawerWidth,
           flexShrink: 0,
-          '& .MuiDrawer-paper': { 
-            width: 'inherit', 
-            boxSizing: 'border-box', 
-            background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)', 
-            color: 'white', 
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)',
+            color: 'white',
             borderRight: '1px solid rgba(255, 204, 0, 0.1)',
             backgroundImage: `
               radial-gradient(circle at 20% 50%, rgba(255,204,0,0.05) 0%, transparent 50%),
@@ -668,12 +722,10 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             boxShadow: 'inset -1px 0 0 rgba(255,204,0,0.1), 4px 0 20px rgba(0,0,0,0.3)'
           },
         }}
-        variant={isDesktop ? "persistent" : "temporary"}
+        variant={isMobile ? "temporary" : "persistent"}
         anchor="left"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onOpen={() => setDrawerOpen(true)}
-        ModalProps={{ keepMounted: true }}
       >
         <DrawerHeader sx={{ 
           background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.9) 0%, rgba(25, 25, 25, 0.8) 100%)',
@@ -723,13 +775,12 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               }
             }}
           >
-            {isMobile ? <CloseIcon sx={{ color: 'white' }} /> : <ChevronLeftIcon sx={{ color: 'white' }} />}
+            <ChevronLeftIcon sx={{ color: 'white' }} />
           </IconButton>
         </DrawerHeader>
         
         <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.1)' }} />
         
-        {/* Información del usuario en el drawer */}
         <Box sx={{ 
           p: 2.5, 
           display: 'flex', 
@@ -780,7 +831,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           sx={{ 
             px: 1.5, 
             py: 2,
-            height: 'calc(100% - 340px)', // Ajustado por el footer
+            height: 'calc(100% - 340px)',
             overflowY: 'auto',
             overflowX: 'hidden',
             '&::-webkit-scrollbar': {
@@ -846,7 +897,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
           ))}
         </List>
         
-        {/* Footer del drawer como el admin */}
         <Box sx={{ 
           p: 2.5, 
           borderTop: '1px solid rgba(255, 204, 0, 0.1)',
@@ -869,7 +919,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
             Sistema de Gestión v2.0.0
           </Typography>
         </Box>
-      </SwipeableDrawer>
+      </Drawer>
       
       <MobileBottomNav value={mobileBottomValue} onChange={handleMobileNavChange} showLabels>
         {menuItems.filter(item => !item.disabled).map((item) => (
@@ -881,8 +931,9 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         ))}
       </MobileBottomNav>
       
-      <Main open={drawerOpen && isDesktop}>
-        <Container maxWidth="xl" disableGutters={isMobile} sx={{ px: isMobile ? 1 : 0 }}>
+      <Main open={drawerOpen && !isMobile}>
+        <DrawerHeader />
+        <Container maxWidth="xl" disableGutters>
           <AnimatePresence mode="wait">
             <motion.div 
               key={pathname} 
