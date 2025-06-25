@@ -55,7 +55,12 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LoginIcon from '@mui/icons-material/Login';
 
 // CONSTANTES DE ANCHOS DEL DRAWER
-const DRAWER_WIDTHS = { mobile: '100vw', tablet: 280, desktop: 290, large: 320 };
+const DRAWER_WIDTHS = { 
+  mobile: '100vw', 
+  tablet: 260,     // Reducido de 280
+  desktop: 260,    // Reducido de 290
+  large: 280       // Reducido de 320
+};
 
 // Función auxiliar para obtener el ancho del drawer
 const getDrawerWidth = (md: number, lg: number) => {
@@ -65,7 +70,7 @@ const getDrawerWidth = (md: number, lg: number) => {
   return DRAWER_WIDTHS.tablet;
 };
 
-// ESTILOS DE COMPONENTES
+// ESTILOS DE COMPONENTES - MAIN CORREGIDO
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -84,17 +89,35 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   color: '#fff',
   position: 'relative',
   
+  // Móvil
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(1),
     marginLeft: 0,
     width: '100%',
-    paddingBottom: '80px', // Espacio para la barra de navegación inferior
+    paddingBottom: '80px',
   },
+  
+  // Tablet
+  [theme.breakpoints.between('sm', 'md')]: {
+    padding: theme.spacing(2),
+    marginLeft: 0,
+    width: '100%',
+  },
+  
+  // Desktop - CORREGIDO
   [theme.breakpoints.up('md')]: {
     padding: theme.spacing(3),
+    paddingTop: theme.spacing(2), // Reducir padding superior
     width: `calc(100% - ${open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : '0px'})`,
     marginLeft: open ? `${getDrawerWidth(theme.breakpoints.values.md, theme.breakpoints.values.lg)}px` : 0,
   },
+  
+  // Large screens
+  [theme.breakpoints.up('lg')]: {
+    padding: theme.spacing(4),
+    paddingTop: theme.spacing(2),
+  },
+  
   ...(open && {
     transition: theme.transitions.create(['margin', 'width'], {
       easing: theme.transitions.easing.easeOut,
@@ -153,17 +176,17 @@ const Search = styled('div')(({ theme }) => ({
     backgroundColor: alpha(theme.palette.common.white, 0.18), 
     borderColor: 'rgba(255, 204, 0, 0.4)'
   },
-  // Solo mostrar en desktop para evitar problemas en móviles
+  // Solo mostrar en desktop
   display: 'none',
   [theme.breakpoints.up('md')]: { 
     display: 'block',
     marginRight: theme.spacing(2), 
     marginLeft: theme.spacing(2), 
     width: '100%', 
-    maxWidth: '400px' 
+    maxWidth: '350px' // Reducido de 400px
   },
   [theme.breakpoints.up('lg')]: { 
-    maxWidth: '500px' 
+    maxWidth: '450px' // Reducido de 500px
   },
 }));
 
@@ -234,6 +257,7 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
   
   // Usar los breakpoints del tema correctamente
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   
   // Estado inicial basado en isDesktop
@@ -492,16 +516,16 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       >
         <DrawerHeader>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box component="img" sx={{ height: 50, mr: 2 }} src="/logo.png" alt="Logo"/>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: '#ffcc00' }}>
+            <Box component="img" sx={{ height: 45, mr: 1.5 }} src="/logo.png" alt="Logo"/>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#ffcc00', fontSize: '1.1rem' }}>
               MUP
             </Typography>
           </Box>
-          <IconButton onClick={() => setDrawerOpen(false)}>
+          <IconButton onClick={() => setDrawerOpen(false)} size="small">
             {isMobile ? (
-              <CloseIcon sx={{ color: 'white' }} />
+              <CloseIcon sx={{ color: 'white', fontSize: 20 }} />
             ) : (
-              <ChevronLeftIcon sx={{ color: 'white' }} />
+              <ChevronLeftIcon sx={{ color: 'white', fontSize: 20 }} />
             )}
           </IconButton>
         </DrawerHeader>
@@ -515,18 +539,24 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                 sx={{ 
                   borderRadius: '12px', 
                   bgcolor: activeSection === item.section ? 'rgba(255, 204, 0, 0.2)' : 'transparent', 
-                  '&:hover': { bgcolor: 'rgba(255, 204, 0, 0.1)' } 
+                  '&:hover': { bgcolor: 'rgba(255, 204, 0, 0.1)' },
+                  py: 1.2,
+                  px: 2
                 }}
               >
-                <ListItemIcon sx={{ color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)' }}>
+                <ListItemIcon sx={{ 
+                  color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
+                  minWidth: 40
+                }}>
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText 
                   primary={item.text} 
-                  secondary={!isMobile ? item.description : undefined}
+                  secondary={!isMobile && !isTablet ? item.description : undefined}
                   primaryTypographyProps={{ 
                     fontWeight: activeSection === item.section ? 700 : 500, 
-                    color: activeSection === item.section ? '#ffcc00' : 'inherit' 
+                    color: activeSection === item.section ? '#ffcc00' : 'inherit',
+                    fontSize: '0.95rem'
                   }}
                   secondaryTypographyProps={{ 
                     fontSize: '0.75rem', 
@@ -551,7 +581,23 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
       
       <Main open={drawerOpen && isDesktop}>
         <DrawerHeader />
-        <Container maxWidth="xl" disableGutters={isMobile} sx={{ px: isMobile ? 1 : 0 }}>
+        <Container 
+          maxWidth="xl" 
+          disableGutters={isMobile} 
+          sx={{ 
+            px: isMobile ? 1 : 2,
+            // Mejor centrado del contenido
+            [theme.breakpoints.up('md')]: {
+              px: 3,
+              maxWidth: '1400px', // Limitar el ancho máximo
+              mx: 'auto' // Centrar horizontalmente
+            },
+            [theme.breakpoints.up('lg')]: {
+              px: 4,
+              maxWidth: '1600px'
+            }
+          }}
+        >
           <AnimatePresence mode="wait">
             <motion.div 
               key={pathname} 
