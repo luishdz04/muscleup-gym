@@ -30,7 +30,6 @@ import {
 } from 'react-icons/fa';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// 🎨 DARK PRO SYSTEM - TOKENS
 const darkProTokens = {
   background: '#000000',
   surfaceLevel1: '#121212',
@@ -49,7 +48,6 @@ const darkProTokens = {
   info: '#1976D2'
 };
 
-// ✅ INTERFACES CORREGIDAS CON ESTRUCTURA REAL DE BD
 interface UserInfo {
   id: string;
   firstName: string;
@@ -127,7 +125,6 @@ export default function ClienteDashboard() {
 
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIÓN PARA CALCULAR EDAD CON VALIDACIÓN
   const calculateAge = useCallback((birthDate: string): number => {
     try {
       if (!birthDate) return 0;
@@ -151,7 +148,6 @@ export default function ClienteDashboard() {
     }
   }, []);
 
-  // ✅ FUNCIÓN PARA CALCULAR DÍAS COMO MIEMBRO CON VALIDACIÓN
   const calculateDaysAsMember = useCallback((registrationDate: string): number => {
     try {
       if (!registrationDate) return 0;
@@ -171,7 +167,6 @@ export default function ClienteDashboard() {
     }
   }, []);
 
-  // ✅ FUNCIÓN PARA CALCULAR DÍAS RESTANTES CON VALIDACIÓN
   const calculateDaysRemaining = useCallback((endDate: string | null): number => {
     try {
       if (!endDate) return 0;
@@ -191,7 +186,6 @@ export default function ClienteDashboard() {
     }
   }, []);
 
-  // ✅ FUNCIÓN PARA FORMATEAR FECHAS CORRECTAMENTE
   const formatDate = useCallback((dateString: string): string => {
     try {
       if (!dateString) return 'Fecha no disponible';
@@ -210,7 +204,6 @@ export default function ClienteDashboard() {
     }
   }, []);
 
-  // ✅ FUNCIÓN PARA DESCARGAR ARCHIVOS DEL STORAGE
   const downloadFileFromStorage = async (fileName: string, userId: string): Promise<string | null> => {
     if (!fileName || !userId) {
       console.log('❌ downloadFileFromStorage: fileName o userId vacío');
@@ -246,13 +239,11 @@ export default function ClienteDashboard() {
     }
   };
 
-  // ✅ CARGAR DATOS USANDO LA MISMA LÓGICA DEL ADMIN
   const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Obtener usuario autenticado
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) {
@@ -265,7 +256,6 @@ export default function ClienteDashboard() {
 
       console.log('🔐 [AUTH] Usuario autenticado:', user.id);
 
-      // ✅ USAR LA MISMA API QUE EL ADMIN
       console.log('📊 Llamando a API del admin para obtener datos completos...');
       const response = await fetch(`/api/admin/users/${user.id}`);
       
@@ -279,7 +269,6 @@ export default function ClienteDashboard() {
       console.log('✅ Datos completos obtenidos de API admin:', completeUserData);
       setUserInfo(completeUserData);
 
-      // ✅ CARGAR ARCHIVOS DEL STORAGE (IGUAL QUE EL ADMIN)
       console.log('📁 Obteniendo archivos del Storage...');
       try {
         const { data: files, error: filesError } = await supabase.storage
@@ -299,7 +288,6 @@ export default function ClienteDashboard() {
           const latestSignature = files.find(file => file.name.startsWith('signature-'));
           const latestContract = files.find(file => file.name.startsWith('contrato-'));
           
-          // Descargar foto de perfil
           if (latestProfile) {
             console.log('🖼️ Descargando foto de perfil:', latestProfile.name);
             const profileImageUrl = await downloadFileFromStorage(latestProfile.name, user.id);
@@ -309,7 +297,6 @@ export default function ClienteDashboard() {
             }
           }
           
-          // Descargar firma
           if (latestSignature) {
             console.log('🖊️ Descargando firma:', latestSignature.name);
             const signatureUrl = await downloadFileFromStorage(latestSignature.name, user.id);
@@ -319,7 +306,6 @@ export default function ClienteDashboard() {
             }
           }
           
-          // Descargar contrato
           if (latestContract) {
             console.log('📄 Descargando contrato:', latestContract.name);
             const contractPdfUrl = await downloadFileFromStorage(latestContract.name, user.id);
@@ -335,11 +321,9 @@ export default function ClienteDashboard() {
         console.error('❌ Error cargando archivos:', err);
       }
 
-      // ✅ CARGAR DATOS ADICIONALES SOLO SI ES CLIENTE
       if (completeUserData?.rol === 'cliente') {
         console.log('👤 [CLIENT] Cargando datos adicionales para cliente...');
         
-        // ✅ CARGAR DIRECCIÓN
         try {
           const { data: addressData, error: addressError } = await supabase
             .from('addresses')
@@ -359,7 +343,6 @@ export default function ClienteDashboard() {
           console.error('❌ [ADDRESS] Error en carga de dirección:', err);
         }
 
-        // ✅ CARGAR CONTACTO DE EMERGENCIA
         try {
           const { data: emergencyData, error: emergencyError } = await supabase
             .from('emergency_contacts')
@@ -379,7 +362,6 @@ export default function ClienteDashboard() {
           console.error('❌ [EMERGENCY] Error en carga:', err);
         }
 
-        // ✅ CARGAR INFORMACIÓN DE MEMBRESÍA
         try {
           const { data: membershipData, error: membershipError } = await supabase
             .from('membership_info')
@@ -399,7 +381,6 @@ export default function ClienteDashboard() {
           console.error('❌ [MEMBERSHIP-INFO] Error en carga:', err);
         }
 
-        // ✅ CARGAR MEMBRESÍA ACTIVA
         try {
           const { data: activeMembershipData, error: activeMembershipError } = await supabase
             .from('user_memberships')
@@ -450,12 +431,10 @@ export default function ClienteDashboard() {
     }
   }, [supabase, calculateDaysRemaining]);
 
-  // ✅ CARGAR DATOS AL MONTAR COMPONENTE
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
 
-  // ✅ ANIMACIONES
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -474,7 +453,6 @@ export default function ClienteDashboard() {
     }
   };
 
-  // ✅ ESTADO DE LOADING
   if (loading) {
     return (
       <Box sx={{ 
@@ -493,7 +471,6 @@ export default function ClienteDashboard() {
     );
   }
 
-  // ✅ ESTADO DE ERROR
   if (error || !userInfo) {
     return (
       <Box sx={{ p: 3 }}>
@@ -525,7 +502,6 @@ export default function ClienteDashboard() {
     );
   }
 
-  // Calcular valores con validación
   const userAge = calculateAge(userInfo.birthDate);
   const daysAsMember = calculateDaysAsMember(userInfo.createdAt);
   const formattedBirthDate = formatDate(userInfo.birthDate);
@@ -539,7 +515,6 @@ export default function ClienteDashboard() {
       minHeight: '100vh',
       p: 3
     }}>
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -563,7 +538,6 @@ export default function ClienteDashboard() {
         animate="visible"
       >
         <Grid container spacing={3}>
-          {/* Tarjeta de Perfil Principal */}
           <Grid size={{ xs: 12, lg: 8 }}>
             <motion.div variants={itemVariants}>
               <Card sx={{
@@ -636,18 +610,6 @@ export default function ClienteDashboard() {
                             size="small"
                           />
                         )}
-                        
-                        {userInfo.fingerprint && (
-                          <Chip 
-                            label="👆 BIOMÉTRICO"
-                            sx={{
-                              backgroundColor: darkProTokens.info,
-                              color: darkProTokens.textPrimary,
-                              fontWeight: 600
-                            }}
-                            size="small"
-                          />
-                        )}
                       </Box>
                     </Box>
                   </Box>
@@ -661,7 +623,6 @@ export default function ClienteDashboard() {
                   </Typography>
 
                   <Grid container spacing={3}>
-                    {/* Email */}
                     <Grid size={{ xs: 12, md: 6 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                         <FaEnvelope style={{ color: darkProTokens.primary }} />
@@ -674,7 +635,6 @@ export default function ClienteDashboard() {
                       </Typography>
                     </Grid>
 
-                    {/* WhatsApp */}
                     <Grid size={{ xs: 12, md: 6 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                         <FaPhone style={{ color: darkProTokens.primary }} />
@@ -687,7 +647,6 @@ export default function ClienteDashboard() {
                       </Typography>
                     </Grid>
 
-                    {/* Fecha de Nacimiento */}
                     <Grid size={{ xs: 12, md: 6 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                         <FaCalendar style={{ color: darkProTokens.primary }} />
@@ -700,7 +659,6 @@ export default function ClienteDashboard() {
                       </Typography>
                     </Grid>
 
-                    {/* Estado Civil */}
                     <Grid size={{ xs: 12, md: 6 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                         <FaUser style={{ color: darkProTokens.primary }} />
@@ -711,9 +669,8 @@ export default function ClienteDashboard() {
                       <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
                         {userInfo.maritalStatus || 'No especificado'}
                       </Typography>
-                    </Box>
+                    </Grid>
 
-                    {/* ID de Usuario */}
                     <Grid size={{ xs: 12 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                         <FaIdCard style={{ color: darkProTokens.primary }} />
@@ -735,7 +692,6 @@ export default function ClienteDashboard() {
             </motion.div>
           </Grid>
 
-          {/* Tarjeta de Membresía */}
           <Grid size={{ xs: 12, lg: 4 }}>
             <motion.div variants={itemVariants}>
               <Card sx={{
@@ -790,17 +746,6 @@ export default function ClienteDashboard() {
                           ${activeMembership.amount_paid}
                         </Typography>
                       </Box>
-
-                      {activeMembership.total_frozen_days > 0 && (
-                        <Box>
-                          <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
-                            Días Congelados
-                          </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                            🧊 {activeMembership.total_frozen_days} días
-                          </Typography>
-                        </Box>
-                      )}
                     </Stack>
                   ) : (
                     <Box sx={{ textAlign: 'center', py: 2 }}>
@@ -817,11 +762,9 @@ export default function ClienteDashboard() {
             </motion.div>
           </Grid>
 
-          {/* Estadísticas Rápidas */}
           <Grid size={{ xs: 12 }}>
             <motion.div variants={itemVariants}>
               <Grid container spacing={3}>
-                {/* Días como miembro */}
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -848,7 +791,6 @@ export default function ClienteDashboard() {
                   </Card>
                 </Grid>
 
-                {/* Días restantes */}
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -878,7 +820,6 @@ export default function ClienteDashboard() {
                   </Card>
                 </Grid>
 
-                {/* Fecha de registro */}
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -908,7 +849,6 @@ export default function ClienteDashboard() {
             </motion.div>
           </Grid>
 
-          {/* Información Adicional */}
           {userInfo.rol === 'cliente' && (address || emergency || membershipInfo) && (
             <Grid size={{ xs: 12 }}>
               <motion.div variants={itemVariants}>
@@ -927,7 +867,6 @@ export default function ClienteDashboard() {
                     </Typography>
 
                     <Grid container spacing={4}>
-                      {/* Dirección */}
                       {address && (
                         <Grid size={{ xs: 12, md: 4 }}>
                           <Box>
@@ -958,7 +897,6 @@ export default function ClienteDashboard() {
                         </Grid>
                       )}
 
-                      {/* Contacto de Emergencia */}
                       {emergency && (
                         <Grid size={{ xs: 12, md: 4 }}>
                           <Box>
@@ -986,7 +924,6 @@ export default function ClienteDashboard() {
                         </Grid>
                       )}
 
-                      {/* Info de Membresía */}
                       {membershipInfo && (
                         <Grid size={{ xs: 12, md: 4 }}>
                           <Box>
@@ -1022,7 +959,6 @@ export default function ClienteDashboard() {
             </Grid>
           )}
 
-          {/* Sección de Documentos */}
           {(userInfo.profilePictureUrl || userInfo.signatureUrl || userInfo.contractPdfUrl) && (
             <Grid size={{ xs: 12 }}>
               <motion.div variants={itemVariants}>
@@ -1041,7 +977,6 @@ export default function ClienteDashboard() {
                     </Typography>
 
                     <Grid container spacing={3}>
-                      {/* Foto de Perfil */}
                       {userInfo.profilePictureUrl && (
                         <Grid size={{ xs: 12, md: 4 }}>
                           <Box sx={{ textAlign: 'center' }}>
@@ -1065,7 +1000,6 @@ export default function ClienteDashboard() {
                         </Grid>
                       )}
 
-                      {/* Firma */}
                       {userInfo.signatureUrl && (
                         <Grid size={{ xs: 12, md: 4 }}>
                           <Box sx={{ textAlign: 'center' }}>
@@ -1091,7 +1025,6 @@ export default function ClienteDashboard() {
                         </Grid>
                       )}
 
-                      {/* Contrato */}
                       {userInfo.contractPdfUrl && (
                         <Grid size={{ xs: 12, md: 4 }}>
                           <Box sx={{ textAlign: 'center' }}>
