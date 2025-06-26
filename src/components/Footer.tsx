@@ -1,6 +1,6 @@
 'use client';
 import { motion, useInView } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
+import { useRef } from 'react';
 import { 
   MapPinIcon,
   ShieldCheckIcon 
@@ -9,42 +9,16 @@ import {
 export default function Footer() {
   const footerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(footerRef, { once: true, margin: "-20%" });
-  
-  // Estado para controlar la hidratación
-  const [isClient, setIsClient] = useState(false);
-  
-  // Effect para marcar cuando estamos en el cliente
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   // Handler para abrir Facebook
   const handleFacebookClick = () => {
-    if (typeof window !== 'undefined') {
-      window.open('https://www.facebook.com/Lindavistagym', '_blank', 'noopener,noreferrer');
-    }
+    window.open('https://www.facebook.com/Lindavistagym', '_blank', 'noopener,noreferrer');
   };
 
   // Handler para abrir Maps
   const handleMapsClick = () => {
-    if (typeof window !== 'undefined') {
-      window.open('https://maps.app.goo.gl/preWqm3w7S2JZLg17', '_blank', 'noopener,noreferrer');
-    }
+    window.open('https://maps.app.goo.gl/preWqm3w7S2JZLg17', '_blank', 'noopener,noreferrer');
   };
-
-  // Si no estamos en el cliente, renderizar versión simple
-  if (!isClient) {
-    return (
-      <footer className="relative bg-gradient-to-br from-black to-zinc-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <h3 className="text-2xl font-bold text-yellow-400 mb-4">Muscle Up GYM</h3>
-            <p className="text-white/80">Tu salud y bienestar es nuestra misión.</p>
-          </div>
-        </div>
-      </footer>
-    );
-  }
 
   return (
     <footer 
@@ -121,24 +95,21 @@ export default function Footer() {
                 animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
               >
-                <motion.button
+                <button
                   onClick={handleFacebookClick}
                   className="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-700 
                            px-6 py-3 rounded-xl transition-all duration-300 shadow-lg
-                           group cursor-pointer"
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
+                           group cursor-pointer hover:scale-105 hover:-translate-y-0.5"
                 >
-                  <motion.svg 
+                  <svg 
                     className="w-5 h-5 text-white group-hover:scale-110 transition-transform"
                     fill="currentColor" 
                     viewBox="0 0 24 24"
-                    whileHover={{ rotate: 5 }}
                   >
                     <path d="M22 12a10 10 0 1 0-11.6 9.9v-7h-2v-3h2v-2c0-2 1-3 3-3h2v3h-2c-.3 0-1 0-1 1v2h3l-.5 3h-2.5v7A10 10 0 0 0 22 12z" />
-                  </motion.svg>
+                  </svg>
                   <span className="font-medium text-white">Síguenos en Facebook</span>
-                </motion.button>
+                </button>
               </motion.div>
             </motion.div>
 

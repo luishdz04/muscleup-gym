@@ -19,6 +19,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: '#ffcc00',
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -27,8 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Muscle Up GYM" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className="flex flex-col min-h-screen bg-black text-white">
