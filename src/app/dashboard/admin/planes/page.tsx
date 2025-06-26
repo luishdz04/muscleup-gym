@@ -29,14 +29,16 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  FormControlLabel,
-  Snackbar,
-  Alert
+  FormControlLabel
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+
+// 🚀 IMPORTACIONES PARA NOTIFICACIONES PRO
+import Swal from 'sweetalert2';
+import { toast } from 'react-toastify';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
 const darkProTokens = {
@@ -114,6 +116,20 @@ const darkProTokens = {
   borderHover: '#FFCC00',
   borderActive: '#E6B800'
 };
+
+// 🚀 CONFIGURACIÓN PERSONALIZADA DE SWEETALERT2
+const getSwalConfig = () => ({
+  background: darkProTokens.surfaceLevel2,
+  color: darkProTokens.textPrimary,
+  confirmButtonColor: darkProTokens.primary,
+  cancelButtonColor: darkProTokens.grayDark,
+  customClass: {
+    popup: 'dark-pro-popup',
+    title: 'dark-pro-title',
+    htmlContainer: 'dark-pro-content'
+  },
+  buttonsStyling: true
+});
 
 // Iconos con Dark Pro System
 import EditIcon from '@mui/icons-material/Edit';
@@ -196,12 +212,6 @@ export default function PlanesPage() {
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // ✅ ESTADOS PARA NOTIFICACIONES DARK PRO
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [warningMessage, setWarningMessage] = useState<string | null>(null);
-  const [infoMessage, setInfoMessage] = useState<string | null>(null);
-  
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   
@@ -209,6 +219,72 @@ export default function PlanesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<MembershipPlan | null>(null);
   const [deletingPlan, setDeletingPlan] = useState(false);
+
+  // 🚀 FUNCIONES DE NOTIFICACIÓN MEJORADAS CON TOAST
+
+  // Toast personalizado para éxito
+  const showSuccessToast = (message: string) => {
+    toast.success(message, {
+      icon: '🎉',
+      style: {
+        background: `linear-gradient(135deg, ${darkProTokens.success}20, ${darkProTokens.success}10)`,
+        color: darkProTokens.textPrimary,
+        border: `1px solid ${darkProTokens.success}40`,
+        borderRadius: '12px',
+      },
+      progressStyle: {
+        background: `linear-gradient(90deg, ${darkProTokens.success}, ${darkProTokens.successHover})`
+      }
+    });
+  };
+
+  // Toast personalizado para errores
+  const showErrorToast = (message: string) => {
+    toast.error(message, {
+      icon: '❌',
+      style: {
+        background: `linear-gradient(135deg, ${darkProTokens.error}20, ${darkProTokens.error}10)`,
+        color: darkProTokens.textPrimary,
+        border: `1px solid ${darkProTokens.error}40`,
+        borderRadius: '12px',
+      },
+      progressStyle: {
+        background: `linear-gradient(90deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`
+      }
+    });
+  };
+
+  // Toast personalizado para advertencias
+  const showWarningToast = (message: string) => {
+    toast.warning(message, {
+      icon: '⚠️',
+      style: {
+        background: `linear-gradient(135deg, ${darkProTokens.warning}20, ${darkProTokens.warning}10)`,
+        color: darkProTokens.textPrimary,
+        border: `1px solid ${darkProTokens.warning}40`,
+        borderRadius: '12px',
+      },
+      progressStyle: {
+        background: `linear-gradient(90deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`
+      }
+    });
+  };
+
+  // Toast personalizado para información
+  const showInfoToast = (message: string) => {
+    toast.info(message, {
+      icon: '💡',
+      style: {
+        background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
+        color: darkProTokens.textPrimary,
+        border: `1px solid ${darkProTokens.info}40`,
+        borderRadius: '12px',
+      },
+      progressStyle: {
+        background: `linear-gradient(90deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`
+      }
+    });
+  };
 
   // Cargar planes
   useEffect(() => {
@@ -236,15 +312,15 @@ export default function PlanesPage() {
       
       // ✅ NOTIFICACIÓN: Mostrar éxito al cargar planes
       if (data && data.length > 0) {
-        setInfoMessage(`📊 ${data.length} planes cargados correctamente`);
+        showInfoToast(`📊 ${data.length} planes cargados correctamente`);
       } else {
-        setWarningMessage('📋 No hay planes configurados aún');
+        showWarningToast('📋 No hay planes configurados aún');
       }
       
     } catch (err: any) {
       console.error('💥 Error en loadPlans:', err);
       // ✅ NOTIFICACIÓN: Mostrar error
-      setError(`❌ Error cargando planes: ${err.message}`);
+      showErrorToast(`Error cargando planes: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -272,42 +348,91 @@ export default function PlanesPage() {
       const planName = plans.find(p => p.id === planId)?.name || 'Plan';
       
       // ✅ NOTIFICACIÓN: Mostrar éxito
-      setSuccessMessage(
-        `${!currentStatus ? '✅' : '⏸️'} Plan "${planName}" ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`
+      showSuccessToast(
+        `Plan "${planName}" ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`
       );
       
     } catch (err: any) {
       // ✅ NOTIFICACIÓN: Mostrar error
-      setError(`❌ Error actualizando estado del plan: ${err.message}`);
+      showErrorToast(`Error actualizando estado del plan: ${err.message}`);
     }
   };
 
-  // ✅ FUNCIÓN PARA ABRIR DIÁLOGO DE ELIMINACIÓN
-  const handleDeleteClick = (plan: MembershipPlan) => {
-    setPlanToDelete(plan);
-    setDeleteDialogOpen(true);
-    
-    // ✅ NOTIFICACIÓN: Advertencia
-    setWarningMessage(`⚠️ Vas a eliminar el plan "${plan.name}". Confirma en el diálogo.`);
-  };
+  // ✅ FUNCIÓN PARA ABRIR DIÁLOGO DE ELIMINACIÓN CON SWEETALERT2
+  const handleDeleteClick = async (plan: MembershipPlan) => {
+    const result = await Swal.fire({
+      ...getSwalConfig(),
+      title: '🗑️ Eliminar Plan',
+      html: `
+        <div style="text-align: center; color: ${darkProTokens.textSecondary};">
+          <p>¿Estás seguro de que deseas eliminar este plan?</p>
+          <div style="background: ${darkProTokens.error}15; padding: 20px; border-radius: 12px; margin: 20px 0; border: 2px solid ${darkProTokens.error}40;">
+            <h3 style="color: ${darkProTokens.primary}; margin: 0 0 10px 0;">📋 ${plan.name}</h3>
+            <p style="margin: 0; color: ${darkProTokens.textSecondary};">${plan.description}</p>
+            <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+              <span style="background: ${plan.is_active ? darkProTokens.success : darkProTokens.error}20; 
+                           color: ${plan.is_active ? darkProTokens.success : darkProTokens.error}; 
+                           padding: 5px 12px; 
+                           border-radius: 20px; 
+                           font-size: 14px;
+                           border: 1px solid ${plan.is_active ? darkProTokens.success : darkProTokens.error}40;">
+                ${plan.is_active ? '✅ ACTIVO' : '❌ INACTIVO'}
+              </span>
+              ${getBestPrice(plan) > 0 ? `
+                <span style="background: ${darkProTokens.primary}20; 
+                             color: ${darkProTokens.primary}; 
+                             padding: 5px 12px; 
+                             border-radius: 20px; 
+                             font-size: 14px;
+                             border: 1px solid ${darkProTokens.primary}40;">
+                  💰 ${formatPrice(getBestPrice(plan))} ${getBestPriceLabel(plan)}
+                </span>
+              ` : ''}
+            </div>
+          </div>
+          <div style="background: ${darkProTokens.error}20; 
+                      padding: 15px; 
+                      border-radius: 8px; 
+                      margin-top: 15px; 
+                      border: 1px solid ${darkProTokens.error}40;">
+            <p style="margin: 0; color: ${darkProTokens.error}; font-weight: 600;">
+              ⚠️ Esta acción no se puede deshacer
+            </p>
+            <p style="margin: 5px 0 0 0; font-size: 14px; color: ${darkProTokens.textSecondary};">
+              El plan será eliminado permanentemente de la base de datos
+            </p>
+          </div>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '🗑️ Sí, eliminar',
+      cancelButtonText: '❌ Cancelar',
+      reverseButtons: true,
+      focusCancel: true
+    });
 
-  // ✅ FUNCIÓN PARA CERRAR DIÁLOGO DE ELIMINACIÓN
-  const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false);
-    const planName = planToDelete?.name || 'Plan';
-    setPlanToDelete(null);
-    
-    // ✅ NOTIFICACIÓN: Información de cancelación
-    setInfoMessage(`🔄 Eliminación de "${planName}" cancelada`);
+    if (result.isConfirmed) {
+      await handleDeleteConfirm(plan);
+    } else if (result.dismiss === Swal.DismissReason.cancel) {
+      showInfoToast(`Eliminación de "${plan.name}" cancelada`);
+    }
   };
 
   // ✅ FUNCIÓN PRINCIPAL DE ELIMINACIÓN
-  const handleDeleteConfirm = async () => {
-    if (!planToDelete) return;
-
+  const handleDeleteConfirm = async (plan: MembershipPlan) => {
     try {
-      console.log('🗑️ [DELETE] Iniciando eliminación de plan:', planToDelete.name);
-      setDeletingPlan(true);
+      console.log('🗑️ [DELETE] Iniciando eliminación de plan:', plan.name);
+      
+      // Toast de loading
+      const loadingToastId = toast.loading('🗑️ Eliminando plan...', {
+        style: {
+          background: `linear-gradient(135deg, ${darkProTokens.error}20, ${darkProTokens.error}10)`,
+          color: darkProTokens.textPrimary,
+          border: `1px solid ${darkProTokens.error}40`,
+          borderRadius: '12px',
+        }
+      });
 
       const supabase = createBrowserSupabaseClient();
       
@@ -315,7 +440,7 @@ export default function PlanesPage() {
       const { error: deleteError } = await supabase
         .from('membership_plans')
         .delete()
-        .eq('id', planToDelete.id);
+        .eq('id', plan.id);
 
       if (deleteError) {
         console.error('❌ Error eliminando plan:', deleteError);
@@ -325,25 +450,51 @@ export default function PlanesPage() {
       console.log('✅ Plan eliminado exitosamente de la base de datos');
 
       // ✅ ACTUALIZAR ESTADO LOCAL
-      setPlans(prevPlans => prevPlans.filter(plan => plan.id !== planToDelete.id));
+      setPlans(prevPlans => prevPlans.filter(p => p.id !== plan.id));
       
-      // ✅ CERRAR DIÁLOGO
-      setDeleteDialogOpen(false);
-      const deletedPlanName = planToDelete.name;
-      setPlanToDelete(null);
+      // Quitar toast de loading
+      toast.dismiss(loadingToastId);
 
-      // ✅ NOTIFICACIÓN: Mostrar éxito
-      setSuccessMessage(`🗑️ Plan "${deletedPlanName}" eliminado exitosamente`);
+      // ✅ NOTIFICACIÓN: Mostrar éxito con SweetAlert2
+      await Swal.fire({
+        ...getSwalConfig(),
+        title: '✅ Plan Eliminado',
+        html: `
+          <div style="text-align: center; color: ${darkProTokens.textSecondary};">
+            <div style="background: ${darkProTokens.success}15; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid ${darkProTokens.success}40;">
+              <p style="margin: 0; color: ${darkProTokens.success}; font-size: 18px; font-weight: 600;">
+                🗑️ "${plan.name}" ha sido eliminado exitosamente
+              </p>
+            </div>
+            <p style="margin-top: 15px;">El plan ha sido removido permanentemente del sistema.</p>
+          </div>
+        `,
+        icon: 'success',
+        confirmButtonText: '✅ Entendido',
+        timer: 3000,
+        timerProgressBar: true
+      });
 
       console.log('✅ Eliminación completada correctamente');
 
     } catch (err: any) {
       console.error('💥 Error durante eliminación:', err);
       
-      // ✅ NOTIFICACIÓN: Mostrar error
-      setError(`💥 Error eliminando plan: ${err.message}`);
-    } finally {
-      setDeletingPlan(false);
+      // ✅ NOTIFICACIÓN: Mostrar error con SweetAlert2
+      await Swal.fire({
+        ...getSwalConfig(),
+        title: '❌ Error al Eliminar',
+        html: `
+          <div style="text-align: center; color: ${darkProTokens.textSecondary};">
+            <div style="background: ${darkProTokens.error}15; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid ${darkProTokens.error}40;">
+              <p style="margin: 0; color: ${darkProTokens.error};">${err.message}</p>
+            </div>
+            <p>Por favor, intenta nuevamente o contacta al soporte técnico.</p>
+          </div>
+        `,
+        icon: 'error',
+        confirmButtonText: '🔄 Intentar de nuevo'
+      });
     }
   };
 
@@ -388,13 +539,117 @@ export default function PlanesPage() {
     return days.map(day => dayNames[day]).join(', ');
   };
 
-  // Ver detalles del plan
-  const viewPlanDetails = (plan: MembershipPlan) => {
-    setSelectedPlan(plan);
-    setViewDialogOpen(true);
-    
-    // ✅ NOTIFICACIÓN: Información
-    setInfoMessage(`👁️ Visualizando detalles de "${plan.name}"`);
+  // Ver detalles del plan con SweetAlert2
+  const viewPlanDetails = async (plan: MembershipPlan) => {
+    await Swal.fire({
+      ...getSwalConfig(),
+      title: `🏋️ ${plan.name}`,
+      html: `
+        <div style="text-align: left; color: ${darkProTokens.textSecondary}; max-height: 500px; overflow-y: auto;">
+          <p style="margin-bottom: 20px; font-size: 16px; line-height: 1.6;">
+            ${plan.description}
+          </p>
+          
+          <!-- Estructura de Precios -->
+          <div style="background: ${darkProTokens.success}15; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid ${darkProTokens.success}40;">
+            <h4 style="color: ${darkProTokens.success}; margin: 0 0 15px 0;">💰 Estructura de Precios</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+              ${[
+                { key: 'inscription_price', label: 'Inscripción', value: plan.inscription_price },
+                { key: 'visit_price', label: 'Por Visita', value: plan.visit_price },
+                { key: 'weekly_price', label: 'Semanal', value: plan.weekly_price },
+                { key: 'biweekly_price', label: 'Quincenal', value: plan.biweekly_price },
+                { key: 'monthly_price', label: 'Mensual', value: plan.monthly_price },
+                { key: 'bimonthly_price', label: 'Bimestral', value: plan.bimonthly_price },
+                { key: 'quarterly_price', label: 'Trimestral', value: plan.quarterly_price },
+                { key: 'semester_price', label: 'Semestral', value: plan.semester_price },
+                { key: 'annual_price', label: 'Anual', value: plan.annual_price }
+              ].filter(price => price.value > 0).map(price => `
+                <div style="background: ${darkProTokens.surfaceLevel3}; padding: 10px; border-radius: 6px; text-align: center;">
+                  <strong style="color: ${darkProTokens.primary};">${formatPrice(price.value)}</strong>
+                  <br>
+                  <small style="color: ${darkProTokens.textSecondary};">${price.label}</small>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          
+          <!-- Características -->
+          ${plan.features && plan.features.length > 0 ? `
+            <div style="background: ${darkProTokens.info}15; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid ${darkProTokens.info}40;">
+              <h4 style="color: ${darkProTokens.info}; margin: 0 0 15px 0;">✨ Características Incluidas</h4>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                ${plan.features.map(feature => `
+                  <span style="background: ${darkProTokens.info}20; 
+                               color: ${darkProTokens.info}; 
+                               padding: 5px 12px; 
+                               border-radius: 20px; 
+                               font-size: 14px;
+                               border: 1px solid ${darkProTokens.info}40;">
+                    ✓ ${feature}
+                  </span>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          <!-- Beneficios principales -->
+          <div style="background: ${darkProTokens.primary}15; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid ${darkProTokens.primary}40;">
+            <h4 style="color: ${darkProTokens.primary}; margin: 0 0 15px 0;">🎯 Beneficios Principales</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+              ${plan.gym_access ? `
+                <div style="text-align: center;">
+                  <span style="font-size: 24px;">🏋️</span>
+                  <br>
+                  <small style="color: ${darkProTokens.textSecondary};">Acceso al Gimnasio</small>
+                </div>
+              ` : ''}
+              ${plan.classes_included ? `
+                <div style="text-align: center;">
+                  <span style="font-size: 24px;">🧘</span>
+                  <br>
+                  <small style="color: ${darkProTokens.textSecondary};">Clases Incluidas</small>
+                </div>
+              ` : ''}
+              ${plan.guest_passes > 0 ? `
+                <div style="text-align: center;">
+                  <span style="font-size: 24px;">👥</span>
+                  <br>
+                  <small style="color: ${darkProTokens.textSecondary};">${plan.guest_passes} Pases de Invitado</small>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+          
+          <!-- Restricciones -->
+          ${plan.has_time_restrictions ? `
+            <div style="background: ${darkProTokens.warning}15; padding: 15px; border-radius: 8px; border: 1px solid ${darkProTokens.warning}40;">
+              <h4 style="color: ${darkProTokens.warning}; margin: 0 0 15px 0;">⏰ Restricciones de Horario</h4>
+              <p style="margin: 5px 0;"><strong>Días permitidos:</strong> ${formatDays(plan.allowed_days)}</p>
+              ${plan.time_slots.map((slot, index) => `
+                <p style="margin: 5px 0;"><strong>Horario ${index + 1}:</strong> ${slot.start} - ${slot.end}</p>
+              `).join('')}
+            </div>
+          ` : `
+            <div style="background: ${darkProTokens.success}15; padding: 15px; border-radius: 8px; border: 1px solid ${darkProTokens.success}40;">
+              <h4 style="color: ${darkProTokens.success}; margin: 0;">🔓 Acceso 24/7</h4>
+              <p style="margin: 5px 0 0 0;">Sin restricciones de horario</p>
+            </div>
+          `}
+        </div>
+      `,
+      icon: 'info',
+      width: 700,
+      showCancelButton: true,
+      confirmButtonText: '✏️ Editar Plan',
+      cancelButtonText: '❌ Cerrar',
+      reverseButtons: true
+    }).then((result) => {
+      if (result.isConfirmed) {
+        showInfoToast(`Redirigiendo a editar "${plan.name}"...`);
+        router.push(`/dashboard/admin/planes/${plan.id}/editar`);
+      }
+    });
   };
 
   // ✅ FUNCIÓN MEJORADA PARA COLOR DE PLAN
@@ -416,12 +671,6 @@ export default function PlanesPage() {
     if (plan.features && plan.features.length > 3) score += 10;
     return Math.min(score, 100);
   };
-
-  // ✅ FUNCIONES PARA CERRAR NOTIFICACIONES
-  const handleCloseError = () => setError(null);
-  const handleCloseSuccess = () => setSuccessMessage(null);
-  const handleCloseWarning = () => setWarningMessage(null);
-  const handleCloseInfo = () => setInfoMessage(null);
 
   if (loading) {
     return (
@@ -460,127 +709,6 @@ export default function PlanesPage() {
       color: darkProTokens.textPrimary
     }}>
       
-      {/* ✅ SNACKBARS CON DARK PRO SYSTEM */}
-      <Snackbar 
-        open={!!error} 
-        autoHideDuration={8000} 
-        onClose={handleCloseError}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseError} 
-          severity="error" 
-          variant="filled"
-          sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.error}60`,
-            borderRadius: 3,
-            boxShadow: `0 8px 32px ${darkProTokens.error}40`,
-            backdropFilter: 'blur(20px)',
-            fontWeight: 600,
-            '& .MuiAlert-icon': {
-              color: darkProTokens.textPrimary
-            },
-            '& .MuiAlert-action': {
-              color: darkProTokens.textPrimary
-            }
-          }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar 
-        open={!!successMessage} 
-        autoHideDuration={5000} 
-        onClose={handleCloseSuccess}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseSuccess} 
-          severity="success" 
-          variant="filled"
-          sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.success}60`,
-            borderRadius: 3,
-            boxShadow: `0 8px 32px ${darkProTokens.success}40`,
-            backdropFilter: 'blur(20px)',
-            fontWeight: 600,
-            '& .MuiAlert-icon': {
-              color: darkProTokens.textPrimary
-            },
-            '& .MuiAlert-action': {
-              color: darkProTokens.textPrimary
-            }
-          }}
-        >
-          {successMessage}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar 
-        open={!!warningMessage} 
-        autoHideDuration={6000} 
-        onClose={handleCloseWarning}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseWarning} 
-          severity="warning" 
-          variant="filled"
-          sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
-            color: darkProTokens.background,
-            border: `1px solid ${darkProTokens.warning}60`,
-            borderRadius: 3,
-            boxShadow: `0 8px 32px ${darkProTokens.warning}40`,
-            backdropFilter: 'blur(20px)',
-            fontWeight: 600,
-            '& .MuiAlert-icon': {
-              color: darkProTokens.background
-            },
-            '& .MuiAlert-action': {
-              color: darkProTokens.background
-            }
-          }}
-        >
-          {warningMessage}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar 
-        open={!!infoMessage} 
-        autoHideDuration={4000} 
-        onClose={handleCloseInfo}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseInfo} 
-          severity="info" 
-          variant="filled"
-          sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.info}60`,
-            borderRadius: 3,
-            boxShadow: `0 8px 32px ${darkProTokens.info}40`,
-            backdropFilter: 'blur(20px)',
-            fontWeight: 600,
-            '& .MuiAlert-icon': {
-              color: darkProTokens.textPrimary
-            },
-            '& .MuiAlert-action': {
-              color: darkProTokens.textPrimary
-            }
-          }}
-        >
-          {infoMessage}
-        </Alert>
-      </Snackbar>
-
       {/* 🎯 HEADER PRINCIPAL CON DARK PRO SYSTEM */}
       <Paper sx={{
         p: 3,
@@ -633,7 +761,7 @@ export default function PlanesPage() {
               size="small"
               startIcon={<RefreshIcon />}
               onClick={() => {
-                setInfoMessage('🔄 Actualizando lista de planes...');
+                showInfoToast('🔄 Actualizando lista de planes...');
                 loadPlans();
               }}
               variant="outlined"
@@ -658,7 +786,7 @@ export default function PlanesPage() {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => {
-                setInfoMessage('➕ Redirigiendo a crear nuevo plan...');
+                showInfoToast('➕ Redirigiendo a crear nuevo plan...');
                 router.push('/dashboard/admin/planes/crear');
               }}
               sx={{
@@ -1186,7 +1314,7 @@ export default function PlanesPage() {
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setInfoMessage(`✏️ Redirigiendo a editar "${plan.name}"...`);
+                            showInfoToast(`Redirigiendo a editar "${plan.name}"...`);
                             router.push(`/dashboard/admin/planes/${plan.id}/editar`);
                           }}
                           sx={{ 
@@ -1231,364 +1359,6 @@ export default function PlanesPage() {
         </Table>
       </TableContainer>
 
-      {/* 👁️ MODAL DE DETALLES CON DARK PRO SYSTEM */}
-      <Dialog 
-        open={viewDialogOpen} 
-        onClose={() => setViewDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `1px solid ${darkProTokens.grayDark}`,
-            borderRadius: 3,
-            color: darkProTokens.textPrimary,
-            backdropFilter: 'blur(20px)'
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          borderBottom: `1px solid ${darkProTokens.grayDark}`,
-          bgcolor: `${darkProTokens.primary}15`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <FitnessCenterIcon sx={{ color: darkProTokens.primary }} />
-            <Typography variant="h5" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-              {selectedPlan?.name}
-            </Typography>
-          </Box>
-          
-          <IconButton 
-            onClick={() => setViewDialogOpen(false)}
-            sx={{ color: darkProTokens.textSecondary }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent sx={{ p: 3 }}>
-          {selectedPlan && (
-            <Box>
-              <Typography variant="body1" sx={{ 
-                mb: 3, 
-                color: darkProTokens.textSecondary,
-                fontSize: '1.1rem',
-                lineHeight: 1.6
-              }}>
-                {selectedPlan.description}
-              </Typography>
-              
-              <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
-              
-              {/* 💰 SECCIÓN DE PRECIOS COMPLETA */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.success, 
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}>
-                  <MonetizationOnIcon />
-                  Estructura de Precios Completa
-                </Typography>
-                
-                <Grid container spacing={2}>
-                  {/* ✅ MOSTRAR TODOS LOS PRECIOS DISPONIBLES */}
-                  {[
-                    { key: 'inscription_price', label: 'Inscripción', color: darkProTokens.warning },
-                    { key: 'visit_price', label: 'Por Visita', color: darkProTokens.info },
-                    { key: 'weekly_price', label: 'Semanal', color: darkProTokens.success },
-                    { key: 'biweekly_price', label: 'Quincenal', color: darkProTokens.info },
-                    { key: 'monthly_price', label: 'Mensual', color: darkProTokens.primary },
-                    { key: 'bimonthly_price', label: 'Bimestral', color: darkProTokens.warning },
-                    { key: 'quarterly_price', label: 'Trimestral', color: darkProTokens.roleModerator },
-                    { key: 'semester_price', label: 'Semestral', color: '#9C27B0' },
-                    { key: 'annual_price', label: 'Anual', color: darkProTokens.error }
-                  ].filter(priceType => selectedPlan[priceType.key as keyof MembershipPlan] as number > 0).map((priceType) => (
-                    <Grid key={priceType.key} size={{ xs: 6, sm: 4 }}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: `${priceType.color}10`,
-                        border: `1px solid ${priceType.color}30`,
-                        borderRadius: 2
-                      }}>
-                        <Typography variant="h6" sx={{ color: priceType.color, fontWeight: 700 }}>
-                          {formatPrice(selectedPlan[priceType.key as keyof MembershipPlan] as number)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          {priceType.label}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-              
-              {/* ⭐ CARACTERÍSTICAS */}
-              {selectedPlan.features && selectedPlan.features.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="h6" sx={{ 
-                    color: darkProTokens.info, 
-                    mb: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <StarIcon />
-                    Características Incluidas
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {selectedPlan.features.map((feature, index) => (
-                      <Chip 
-                        key={index}
-                        label={feature}
-                        size="small"
-                        sx={{ 
-                          bgcolor: `${darkProTokens.info}20`,
-                          color: darkProTokens.info,
-                          border: `1px solid ${darkProTokens.info}40`,
-                          fontWeight: 500
-                        }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              )}
-              
-              {/* ⏰ RESTRICCIONES DE HORARIO */}
-              {selectedPlan.has_time_restrictions && (
-                <Accordion sx={{ 
-                  bgcolor: `${darkProTokens.warning}10`,
-                  border: `1px solid ${darkProTokens.warning}30`,
-                  borderRadius: 2,
-                  '&:before': { display: 'none' }
-                }}>
-                  <AccordionSummary 
-                    expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.warning }} />}
-                    sx={{ bgcolor: `${darkProTokens.warning}15` }}
-                  >
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.warning,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1
-                    }}>
-                      <ScheduleIcon />
-                      Restricciones de Horario
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Box>
-                      <Typography variant="body2" sx={{ mb: 2, color: darkProTokens.textPrimary }}>
-                        <CalendarTodayIcon sx={{ fontSize: 16, mr: 1 }} />
-                        <strong>Días permitidos:</strong> {formatDays(selectedPlan.allowed_days)}
-                      </Typography>
-                      {selectedPlan.time_slots.map((slot, index) => (
-                        <Typography key={index} variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                          <AccessTimeIcon sx={{ fontSize: 16, mr: 1 }} />
-                          <strong>Horario {index + 1}:</strong> {slot.start} - {slot.end}
-                        </Typography>
-                      ))}
-                    </Box>
-                  </AccordionDetails>
-                </Accordion>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-        
-        <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayDark}` }}>
-          <Button 
-            onClick={() => setViewDialogOpen(false)}
-            variant="outlined"
-            sx={{ 
-              color: darkProTokens.textSecondary,
-              borderColor: darkProTokens.grayDark,
-              '&:hover': {
-                borderColor: darkProTokens.textSecondary,
-                bgcolor: darkProTokens.hoverOverlay
-              }
-            }}
-          >
-            Cerrar
-          </Button>
-          
-          <Button
-            variant="contained"
-            onClick={() => {
-              if (selectedPlan) {
-                setInfoMessage(`✏️ Redirigiendo a editar "${selectedPlan.name}"...`);
-                router.push(`/dashboard/admin/planes/${selectedPlan.id}/editar`);
-              }
-            }}
-            sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-              color: darkProTokens.background,
-              fontWeight: 600,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-                transform: 'translateY(-1px)'
-              }
-            }}
-          >
-            Editar Plan
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ✅ MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleDeleteCancel}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.error}40`,
-            borderRadius: 4,
-            color: darkProTokens.textPrimary,
-            backdropFilter: 'blur(20px)',
-                        boxShadow: `0 25px 80px rgba(0, 0, 0, 0.4), 0 0 0 1px ${darkProTokens.error}20`
-          }
-        }}
-      >
-        <DialogTitle sx={{
-          bgcolor: `${darkProTokens.error}15`,
-          borderBottom: `1px solid ${darkProTokens.error}30`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2
-        }}>
-          <WarningIcon sx={{ color: darkProTokens.error, fontSize: 32 }} />
-          <Typography variant="h5" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
-            ⚠️ Confirmar Eliminación
-          </Typography>
-        </DialogTitle>
-        
-        <DialogContent sx={{ p: 4 }}>
-          {planToDelete && (
-            <Box>
-              <Typography variant="h6" sx={{ 
-                color: darkProTokens.textPrimary, 
-                mb: 2, 
-                fontWeight: 600
-              }}>
-                ¿Estás seguro de que deseas eliminar el plan?
-              </Typography>
-              
-              <Box sx={{
-                p: 3,
-                bgcolor: `${darkProTokens.error}10`,
-                border: `2px solid ${darkProTokens.error}30`,
-                borderRadius: 3,
-                mb: 3
-              }}>
-                <Typography variant="h5" sx={{ 
-                  color: darkProTokens.primary, 
-                  fontWeight: 700,
-                  mb: 1
-                }}>
-                  📋 {planToDelete.name}
-                </Typography>
-                <Typography variant="body2" sx={{ 
-                  color: darkProTokens.textSecondary,
-                  mb: 2
-                }}>
-                  {planToDelete.description}
-                </Typography>
-                
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Chip 
-                    label={planToDelete.is_active ? 'ACTIVO' : 'INACTIVO'}
-                    size="small"
-                    sx={{
-                      bgcolor: planToDelete.is_active ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
-                      color: planToDelete.is_active ? darkProTokens.success : darkProTokens.error,
-                      border: `1px solid ${planToDelete.is_active ? darkProTokens.success : darkProTokens.error}40`
-                    }}
-                  />
-                  {getBestPrice(planToDelete) > 0 && (
-                    <Chip 
-                      label={`${formatPrice(getBestPrice(planToDelete))} ${getBestPriceLabel(planToDelete)}`}
-                      size="small"
-                      sx={{
-                        bgcolor: `${darkProTokens.primary}20`,
-                        color: darkProTokens.primary,
-                        border: `1px solid ${darkProTokens.primary}40`
-                      }}
-                    />
-                  )}
-                </Box>
-              </Box>
-              
-              <Paper sx={{ 
-                p: 2,
-                bgcolor: `${darkProTokens.error}20`,
-                color: darkProTokens.textPrimary,
-                border: `1px solid ${darkProTokens.error}40`
-              }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <WarningIcon sx={{ color: darkProTokens.error }} />
-                  ⚠️ Esta acción no se puede deshacer
-                </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  El plan será eliminado permanentemente de la base de datos
-                </Typography>
-              </Paper>
-            </Box>
-          )}
-        </DialogContent>
-        
-        <DialogActions sx={{ 
-          p: 3, 
-          borderTop: `1px solid ${darkProTokens.grayDark}`,
-          gap: 2
-        }}>
-          <Button
-            onClick={handleDeleteCancel}
-            variant="outlined"
-            disabled={deletingPlan}
-            sx={{
-              borderColor: darkProTokens.grayDark,
-              color: darkProTokens.textSecondary,
-              '&:hover': {
-                borderColor: darkProTokens.textSecondary,
-                bgcolor: darkProTokens.hoverOverlay
-              }
-            }}
-          >
-            Cancelar
-          </Button>
-          
-          <Button
-            onClick={handleDeleteConfirm}
-            variant="contained"
-            disabled={deletingPlan}
-            startIcon={deletingPlan ? <CircularProgress size={20} /> : <DeleteIcon />}
-            sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-              color: darkProTokens.textPrimary,
-              fontWeight: 700,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${darkProTokens.errorHover}, ${darkProTokens.error})`,
-                transform: 'translateY(-1px)'
-              },
-              '&:disabled': {
-                bgcolor: darkProTokens.grayMedium,
-                color: darkProTokens.textDisabled
-              }
-            }}
-          >
-            {deletingPlan ? 'Eliminando...' : '🗑️ Eliminar Plan'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
       <style jsx>{`
         @keyframes pulse {
@@ -1599,8 +1369,7 @@ export default function PlanesPage() {
           50% { 
             opacity: 0.8; 
             transform: scale(1.02);
-          }
-        }
+                  }
         
         @keyframes glow {
           0%, 100% {
@@ -1647,6 +1416,120 @@ export default function PlanesPage() {
         
         .glow-error {
           box-shadow: 0 0 20px ${darkProTokens.error}30 !important;
+        }
+      `}</style>
+
+      {/* 🚀 ESTILOS CSS PERSONALIZADOS PARA SWEETALERT2 */}
+      <style jsx global>{`
+        .dark-pro-popup {
+          background: ${darkProTokens.surfaceLevel2} !important;
+          border: 2px solid ${darkProTokens.grayDark} !important;
+          border-radius: 16px !important;
+          box-shadow: 0 25px 50px rgba(0,0,0,0.5) !important;
+        }
+        
+        .dark-pro-title {
+          color: ${darkProTokens.textPrimary} !important;
+          font-weight: 700 !important;
+          font-size: 1.5rem !important;
+        }
+        
+        .dark-pro-content {
+          color: ${darkProTokens.textSecondary} !important;
+          font-size: 1rem !important;
+        }
+        
+        .swal2-confirm {
+          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover}) !important;
+          color: ${darkProTokens.background} !important;
+          font-weight: 700 !important;
+          border: none !important;
+          border-radius: 8px !important;
+          padding: 12px 24px !important;
+          font-size: 1rem !important;
+          transition: all 0.3s ease !important;
+        }
+        
+        .swal2-confirm:hover {
+          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive}) !important;
+          transform: translateY(-2px) !important;
+          box-shadow: 0 8px 25px ${darkProTokens.primary}40 !important;
+        }
+        
+        .swal2-cancel {
+          background: ${darkProTokens.grayDark} !important;
+          color: ${darkProTokens.textPrimary} !important;
+          font-weight: 600 !important;
+          border: 1px solid ${darkProTokens.grayMedium} !important;
+          border-radius: 8px !important;
+          padding: 12px 24px !important;
+          font-size: 1rem !important;
+          transition: all 0.3s ease !important;
+        }
+        
+        .swal2-cancel:hover {
+          background: ${darkProTokens.grayMedium} !important;
+          border-color: ${darkProTokens.textSecondary} !important;
+          transform: translateY(-1px) !important;
+        }
+        
+        .swal2-icon.swal2-warning {
+          border-color: ${darkProTokens.warning} !important;
+          color: ${darkProTokens.warning} !important;
+        }
+        
+        .swal2-icon.swal2-success {
+          border-color: ${darkProTokens.success} !important;
+          color: ${darkProTokens.success} !important;
+        }
+        
+        .swal2-icon.swal2-error {
+          border-color: ${darkProTokens.error} !important;
+          color: ${darkProTokens.error} !important;
+        }
+        
+        .swal2-icon.swal2-info {
+          border-color: ${darkProTokens.info} !important;
+          color: ${darkProTokens.info} !important;
+        }
+
+        /* Estilos para el toast container */
+        .Toastify__toast-container {
+          z-index: 9999;
+        }
+
+        /* Personalización adicional de toasts */
+        .Toastify__toast {
+          font-family: inherit;
+          border-radius: 12px !important;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+          backdrop-filter: blur(10px);
+        }
+
+        .Toastify__progress-bar {
+          height: 3px;
+        }
+
+        /* Animaciones mejoradas para SweetAlert2 */
+        .swal2-show {
+          animation: swal2-show 0.3s !important;
+        }
+
+        @keyframes swal2-show {
+          0% {
+            transform: scale(0.7);
+            opacity: 0;
+          }
+          45% {
+            transform: scale(1.05);
+          }
+          80% {
+            transform: scale(0.95);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
         }
       `}</style>
     </Box>
