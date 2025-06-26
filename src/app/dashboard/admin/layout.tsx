@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, ReactNode } from 'react';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Box, 
@@ -224,6 +226,43 @@ interface MenuItem {
   items?: MenuItem[];
   color?: string;
   description?: string;
+}
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="es">
+      <body>
+        {children}
+        
+        {/* 🚀 TOAST CONTAINER CON TEMA DARK PRO */}
+        <ToastContainer
+          position="top-right"
+          autoClose={4000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+          toastStyle={{
+            backgroundColor: '#1E1E1E',
+            color: '#FFFFFF',
+            border: '1px solid #333333',
+            borderRadius: '12px',
+            boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
+          }}
+          progressStyle={{
+            background: 'linear-gradient(90deg, #FFCC00, #E6B800)'
+          }}
+        />
+      </body>
+    </html>
+  );
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
