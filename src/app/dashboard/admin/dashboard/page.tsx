@@ -2207,11 +2207,14 @@ export default function AdminDashboardPage() {
                         borderRadius: '8px',
                         color: darkProTokens.textPrimary
                       }}
-                      formatter={(value: any, name: string) => [
-                        formatPrice(value), 
-                        name === 'sales' ? 'Ventas POS' : 
-                        name === 'memberships' ? 'Membresías' : 'Apartados'
-                      ]}
+                   formatter={(value: any, name: string) => {
+  const labels: { [key: string]: string } = {
+    'sales': 'Ventas POS',
+    'memberships': 'Membresías',
+    'layaways': 'Apartados'
+  };
+  return [formatPrice(value), labels[name] || name];
+}}
                     />
                     <Legend />
                     
@@ -2271,6 +2274,510 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
+{/* MÉTODOS DE PAGO DEL DÍA */}
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6, delay: 1 }}
+>
+  <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
+    <Grid size={{ xs: 12, md: 6 }}>
+      <Card sx={{
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 4
+      }}>
+        <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <PaymentIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
+            <Typography variant="h6" sx={{ 
+              color: currentColors.primary, 
+              fontWeight: 700,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
+            }}>
+              💳 Métodos de Pago del Día
+            </Typography>
+          </Box>
+
+          <Stack spacing={2}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar sx={{ bgcolor: `${currentColors.primary}20`, width: 40, height: 40 }}>
+                  <MoneyIcon sx={{ color: currentColors.primary, fontSize: 20 }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    Efectivo
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    {((stats.cashFlow.efectivo / stats.todayBalance) * 100).toFixed(1)}% del total
+                  </Typography>
+                </Box>
+              </Box>
+              <Typography variant="h6" sx={{ color: currentColors.primary, fontWeight: 700 }}>
+                {formatPrice(stats.cashFlow.efectivo)}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar sx={{ bgcolor: `${currentColors.secondary}20`, width: 40, height: 40 }}>
+                  <AccountBalanceIcon sx={{ color: currentColors.secondary, fontSize: 20 }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    Transferencia
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    {((stats.cashFlow.transferencia / stats.todayBalance) * 100).toFixed(1)}% del total
+                  </Typography>
+                </Box>
+              </Box>
+              <Typography variant="h6" sx={{ color: currentColors.secondary, fontWeight: 700 }}>
+                {formatPrice(stats.cashFlow.transferencia)}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar sx={{ bgcolor: `${currentColors.tertiary}20`, width: 40, height: 40 }}>
+                  <PaymentIcon sx={{ color: currentColors.tertiary, fontSize: 20 }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    Tarjeta Débito
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    {((stats.cashFlow.debito / stats.todayBalance) * 100).toFixed(1)}% del total
+                  </Typography>
+                </Box>
+              </Box>
+              <Typography variant="h6" sx={{ color: currentColors.tertiary, fontWeight: 700 }}>
+                {formatPrice(stats.cashFlow.debito)}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar sx={{ bgcolor: `${currentColors.quaternary}20`, width: 40, height: 40 }}>
+                  <PaymentIcon sx={{ color: currentColors.quaternary, fontSize: 20 }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    Tarjeta Crédito
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    {((stats.cashFlow.credito / stats.todayBalance) * 100).toFixed(1)}% del total
+                  </Typography>
+                </Box>
+              </Box>
+              <Typography variant="h6" sx={{ color: currentColors.quaternary, fontWeight: 700 }}>
+                {formatPrice(stats.cashFlow.credito)}
+              </Typography>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
+    </Grid>
+
+    {/* DESGLOSE DE INGRESOS */}
+    <Grid size={{ xs: 12, md: 6 }}>
+      <Card sx={{
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 4
+      }}>
+        <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <ReceiptIcon sx={{ color: currentColors.secondary, fontSize: 28 }} />
+            <Typography variant="h6" sx={{ 
+              color: currentColors.secondary, 
+              fontWeight: 700,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
+            }}>
+              📊 Desglose de Ingresos del Día
+            </Typography>
+          </Box>
+
+          <Stack spacing={2}>
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                  Ventas POS
+                </Typography>
+                <Typography variant="body1" sx={{ color: currentColors.primary, fontWeight: 700 }}>
+                  {formatPrice(stats.todaySales)}
+                </Typography>
+              </Box>
+              <LinearProgress 
+                variant="determinate" 
+                value={(stats.todaySales / stats.todayBalance) * 100}
+                sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  bgcolor: darkProTokens.grayDark,
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: currentColors.primary,
+                    borderRadius: 4
+                  }
+                }}
+              />
+            </Box>
+
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                  Membresías
+                </Typography>
+                <Typography variant="body1" sx={{ color: currentColors.secondary, fontWeight: 700 }}>
+                  {formatPrice(stats.todayMembershipRevenue)}
+                </Typography>
+              </Box>
+              <LinearProgress 
+                variant="determinate" 
+                value={(stats.todayMembershipRevenue / stats.todayBalance) * 100}
+                sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  bgcolor: darkProTokens.grayDark,
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: currentColors.secondary,
+                    borderRadius: 4
+                  }
+                }}
+              />
+            </Box>
+
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                  Pagos de Apartados
+                </Typography>
+                <Typography variant="body1" sx={{ color: currentColors.tertiary, fontWeight: 700 }}>
+                  {formatPrice(stats.todayLayawayPayments)}
+                </Typography>
+              </Box>
+              <LinearProgress 
+                variant="determinate" 
+                value={(stats.todayLayawayPayments / stats.todayBalance) * 100}
+                sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  bgcolor: darkProTokens.grayDark,
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: currentColors.tertiary,
+                    borderRadius: 4
+                  }
+                }}
+              />
+            </Box>
+
+            <Divider sx={{ borderColor: darkProTokens.grayMedium, my: 2 }} />
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                Total del Día
+              </Typography>
+              <Typography variant="h5" sx={{ 
+                color: currentColors.primary, 
+                fontWeight: 800,
+                textShadow: `0 0 10px ${currentColors.primary}40`
+              }}>
+                {formatPrice(stats.todayBalance)}
+              </Typography>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
+    </Grid>
+  </Grid>
+</motion.div>
+
+{/* ESTADÍSTICAS DE USUARIOS */}
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6, delay: 1.2 }}
+>
+  <Card sx={{
+    mb: 4,
+    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+    border: `1px solid ${darkProTokens.grayDark}`,
+    borderRadius: 4
+  }}>
+    <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        <PeopleIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
+        <Typography variant="h6" sx={{ 
+          color: currentColors.primary, 
+          fontWeight: 700,
+          fontSize: { xs: '1rem', sm: '1.25rem' }
+        }}>
+          👥 Estadísticas de Usuarios
+        </Typography>
+      </Box>
+
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Avatar sx={{ 
+              bgcolor: `${darkProTokens.info}20`, 
+              width: 80, 
+              height: 80,
+              mx: 'auto',
+              mb: 2,
+              border: `3px solid ${darkProTokens.info}40`
+            }}>
+              <PeopleIcon sx={{ fontSize: 40, color: darkProTokens.info }} />
+            </Avatar>
+            <Typography variant="h4" sx={{ color: darkProTokens.info, fontWeight: 800, mb: 1 }}>
+              {stats.totalUsers}
+            </Typography>
+            <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+              Total Usuarios
+            </Typography>
+            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+              +{stats.newUsersMonth} este mes
+            </Typography>
+          </Box>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Avatar sx={{ 
+              bgcolor: `${darkProTokens.roleStaff}20`, 
+              width: 80, 
+              height: 80,
+              mx: 'auto',
+              mb: 2,
+              border: `3px solid ${darkProTokens.roleStaff}40`
+            }}>
+              <MaleIcon sx={{ fontSize: 40, color: darkProTokens.roleStaff }} />
+            </Avatar>
+            <Typography variant="h4" sx={{ color: darkProTokens.roleStaff, fontWeight: 800, mb: 1 }}>
+              {stats.usersByGender.male}
+            </Typography>
+            <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+              Hombres
+            </Typography>
+            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+              {((stats.usersByGender.male / stats.totalUsers) * 100).toFixed(1)}% del total
+            </Typography>
+          </Box>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Avatar sx={{ 
+              bgcolor: `${darkProTokens.roleAdmin}20`, 
+              width: 80, 
+              height: 80,
+              mx: 'auto',
+              mb: 2,
+              border: `3px solid ${darkProTokens.roleAdmin}40`
+            }}>
+              <FemaleIcon sx={{ fontSize: 40, color: darkProTokens.roleAdmin }} />
+            </Avatar>
+            <Typography variant="h4" sx={{ color: darkProTokens.roleAdmin, fontWeight: 800, mb: 1 }}>
+              {stats.usersByGender.female}
+            </Typography>
+            <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+              Mujeres
+            </Typography>
+            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+              {((stats.usersByGender.female / stats.totalUsers) * 100).toFixed(1)}% del total
+            </Typography>
+          </Box>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Avatar sx={{ 
+              bgcolor: `${darkProTokens.warning}20`, 
+              width: 80, 
+              height: 80,
+              mx: 'auto',
+              mb: 2,
+              border: `3px solid ${darkProTokens.warning}40`
+            }}>
+              <PersonAddIcon sx={{ fontSize: 40, color: darkProTokens.warning }} />
+            </Avatar>
+            <Typography variant="h4" sx={{ color: darkProTokens.warning, fontWeight: 800, mb: 1 }}>
+              {stats.newUsersToday}
+            </Typography>
+            <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+              Nuevos Hoy
+            </Typography>
+            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+              Registros del día
+            </Typography>
+          </Box>
+        </Grid>
+      </Grid>
+    </CardContent>
+  </Card>
+</motion.div>
+
+{/* ACCESOS RÁPIDOS */}
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6, delay: 1.4 }}
+>
+  <Card sx={{
+    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+    border: `1px solid ${darkProTokens.grayDark}`,
+    borderRadius: 4
+  }}>
+    <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        <SpeedIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
+        <Typography variant="h6" sx={{ 
+          color: currentColors.primary, 
+          fontWeight: 700,
+          fontSize: { xs: '1rem', sm: '1.25rem' }
+        }}>
+          ⚡ Accesos Rápidos
+        </Typography>
+      </Box>
+
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => router.push('/dashboard/admin/pos')}
+            sx={{
+              py: 2,
+              borderColor: currentColors.primary,
+              color: currentColors.primary,
+              '&:hover': {
+                borderColor: currentColors.primary,
+                bgcolor: `${currentColors.primary}10`
+              }
+            }}
+          >
+            <Stack alignItems="center" spacing={1}>
+              <SalesIcon />
+              <Typography variant="caption">POS</Typography>
+            </Stack>
+          </Button>
+        </Grid>
+
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => router.push('/dashboard/admin/membresias/nueva')}
+            sx={{
+              py: 2,
+              borderColor: currentColors.secondary,
+              color: currentColors.secondary,
+              '&:hover': {
+                borderColor: currentColors.secondary,
+                bgcolor: `${currentColors.secondary}10`
+              }
+            }}
+          >
+            <Stack alignItems="center" spacing={1}>
+              <FitnessCenterIcon />
+              <Typography variant="caption">Nueva Membresía</Typography>
+            </Stack>
+          </Button>
+        </Grid>
+
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => router.push('/dashboard/admin/usuarios/nuevo')}
+            sx={{
+              py: 2,
+              borderColor: currentColors.tertiary,
+              color: currentColors.tertiary,
+              '&:hover': {
+                borderColor: currentColors.tertiary,
+                bgcolor: `${currentColors.tertiary}10`
+              }
+            }}
+          >
+            <Stack alignItems="center" spacing={1}>
+              <PersonAddIcon />
+              <Typography variant="caption">Nuevo Usuario</Typography>
+            </Stack>
+          </Button>
+        </Grid>
+
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => router.push('/dashboard/admin/cortes')}
+            sx={{
+              py: 2,
+              borderColor: currentColors.quaternary,
+              color: currentColors.quaternary,
+              '&:hover': {
+                borderColor: currentColors.quaternary,
+                bgcolor: `${currentColors.quaternary}10`
+              }
+            }}
+          >
+            <Stack alignItems="center" spacing={1}>
+              <ReceiptIcon />
+              <Typography variant="caption">Cortes</Typography>
+            </Stack>
+          </Button>
+        </Grid>
+
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => router.push('/dashboard/admin/reportes')}
+            sx={{
+              py: 2,
+              borderColor: darkProTokens.info,
+              color: darkProTokens.info,
+              '&:hover': {
+                borderColor: darkProTokens.info,
+                bgcolor: `${darkProTokens.info}10`
+              }
+            }}
+          >
+            <Stack alignItems="center" spacing={1}>
+              <AssessmentIcon />
+              <Typography variant="caption">Reportes</Typography>
+            </Stack>
+          </Button>
+        </Grid>
+
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => router.push('/dashboard/admin/configuracion')}
+            sx={{
+              py: 2,
+              borderColor: darkProTokens.warning,
+              color: darkProTokens.warning,
+              '&:hover': {
+                borderColor: darkProTokens.warning,
+                bgcolor: `${darkProTokens.warning}10`
+              }
+            }}
+          >
+            <Stack alignItems="center" spacing={1}>
+              <SettingsIcon />
+              <Typography variant="caption">Configuración</Typography>
+            </Stack>
+          </Button>
+        </Grid>
+      </Grid>
+    </CardContent>
+  </Card>
+</motion.div>
+      
       {/* 🎛️ DIALOG DE CONFIGURACIÓN SIMPLIFICADO */}
       <Dialog 
         open={configDialogOpen} 
@@ -2515,11 +3022,14 @@ export default function AdminDashboardPage() {
                       color: darkProTokens.textPrimary,
                       fontSize: '14px'
                     }}
-                    formatter={(value: any, name: string) => [
-                      formatPrice(value), 
-                      name === 'sales' ? 'Ventas POS' : 
-                      name === 'memberships' ? 'Membresías' : 'Apartados'
-                    ]}
+                     formatter={(value: any, name: string) => {
+    const labels: { [key: string]: string } = {
+      'sales': 'Ventas POS',
+      'memberships': 'Membresías',
+      'layaways': 'Apartados'
+    };
+    return [formatPrice(value), labels[name] || name];
+  }}
                   />
                   <Legend />
                   <Area type="monotone" dataKey="sales" fill={`${currentColors.primary}30`} stroke={currentColors.primary} strokeWidth={3} name="Ventas POS" />
