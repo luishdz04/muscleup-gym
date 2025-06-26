@@ -11,7 +11,6 @@ import {
   Avatar,
   LinearProgress,
   Chip,
-  IconButton,
   Paper,
   Stack,
   Divider,
@@ -19,8 +18,7 @@ import {
   Snackbar,
   CircularProgress,
   Tooltip,
-  Badge,
-  useTheme
+  Badge
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -30,7 +28,6 @@ import {
   TrendingDown as TrendingDownIcon,
   ShoppingCart as SalesIcon,
   Bookmark as LayawayIcon,
-  CalendarToday as CalendarIcon,
   Refresh as RefreshIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
@@ -38,60 +35,28 @@ import {
   Assessment as AssessmentIcon,
   PersonAdd as PersonAddIcon,
   Receipt as ReceiptIcon,
-  AccountBalance as AccountBalanceIcon,
+  Analytics as AnalyticsIcon,
   Male as MaleIcon,
   Female as FemaleIcon,
-  Analytics as AnalyticsIcon,
   CreditCard as PaymentIcon,
-  MonetizationOn as RevenueIcon,
-  Group as GroupIcon,
-  Star as StarIcon,
-  Insights as InsightsIcon,
-  ShowChart as ChartIcon,
-  Timeline as TimelineIcon,
-  PieChart as PieChartIcon,
-  BarChart as BarChartIcon,
   Speed as SpeedIcon,
-  AccountBalanceWallet as WalletIcon,
-  CompareArrows as CompareIcon
+  Insights as InsightsIcon,
+  BarChart as BarChartIcon,
+  Timeline as TimelineIcon,
+  CompareArrows as CompareIcon,
+  AccountBalance as AccountBalanceIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
-import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
-// 📊 IMPORTAR RECHARTS PARA GRÁFICOS PROFESIONALES
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-  ResponsiveContainer,
-  ComposedChart
-} from 'recharts';
-
-// 🎨 DARK PRO SYSTEM - TOKENS ENTERPRISE
+// 🎨 DARK PRO SYSTEM - TOKENS ENTERPRISE (IGUAL QUE CORTES)
 const darkProTokens = {
-  // Base Colors
   background: '#000000',
-  surfaceLevel1: '#0A0A0A',
-  surfaceLevel2: '#141414',
-  surfaceLevel3: '#1F1F1F',
-  surfaceLevel4: '#2A2A2A',
-  surfaceLevel5: '#353535',
-  
-  // Neutrals
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
   grayDark: '#333333',
   grayMedium: '#444444',
   grayLight: '#555555',
@@ -99,139 +64,152 @@ const darkProTokens = {
   textPrimary: '#FFFFFF',
   textSecondary: '#CCCCCC',
   textDisabled: '#888888',
-  
-  // Primary Accent (Golden) - Enterprise
-  primary: '#FFD700',
-  primaryHover: '#FFC700',
-  primaryActive: '#E6B800',
-  primaryGlow: 'rgba(255, 215, 0, 0.3)',
-  
-  // Semantic Colors - Enterprise
-  success: '#00C851',
-  successHover: '#00A644',
-  successGlow: 'rgba(0, 200, 81, 0.2)',
-  
-  error: '#FF3547',
-  errorHover: '#E72837',
-  errorGlow: 'rgba(255, 53, 71, 0.2)',
-  
-  warning: '#FF9500',
-  warningHover: '#E6850E',
-  warningGlow: 'rgba(255, 149, 0, 0.2)',
-  
-  info: '#2E86DE',
-  infoHover: '#2471A3',
-  infoGlow: 'rgba(46, 134, 222, 0.2)',
-  
-  // Chart Colors - Enterprise
-  chart1: '#FFD700',
-  chart2: '#00C851',
-  chart3: '#2E86DE',
-  chart4: '#FF9500',
-  chart5: '#9B59B6',
-  chart6: '#E74C3C',
-  chart7: '#1ABC9C',
-  chart8: '#34495E',
-  
-  // User Roles
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
   roleAdmin: '#E91E63',
   roleStaff: '#1976D2',
   roleTrainer: '#009688',
-  roleUser: '#777777',
   roleModerator: '#9C27B0'
 };
 
-// ✅ INTERFACES EXTENDIDAS PARA ENTERPRISE
+// ✅ FUNCIONES LOCALES (COPIADAS DE TU PÁGINA DE CORTES QUE FUNCIONA)
+
+// 💰 Función para formatear precios
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2
+  }).format(amount || 0);
+}
+
+// 📅 Función para obtener fecha actual de México
+function getMexicoDateLocal(): string {
+  const now = new Date();
+  
+  // Obtener fecha en zona horaria de México
+  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  
+  // Formatear como YYYY-MM-DD
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoDate.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+
+// ⏰ Función para formatear hora actual de México
+function formatMexicoTimeLocal(date: Date): string {
+  return date.toLocaleString('es-MX', {
+    timeZone: 'America/Mexico_City',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+}
+
+// 📅 Función para formatear fechas largas
+function formatDateLocal(dateString: string): string {
+  try {
+    // Crear fecha y formatear en español México
+    const date = new Date(dateString + 'T12:00:00');
+    
+    return date.toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'America/Mexico_City'
+    });
+  } catch (error) {
+    console.error('❌ Error formateando fecha:', dateString, error);
+    
+    // Fallback manual
+    const date = new Date(dateString + 'T12:00:00');
+    const months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    const weekdays = [
+      'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
+    ];
+    
+    const weekday = weekdays[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${weekday}, ${day} de ${month} de ${year}`;
+  }
+}
+
+// 📅 Función para formatear fecha y hora completa
+function formatDateTime(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-MX', {
+      timeZone: 'America/Mexico_City',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    return dateString;
+  }
+}
+
+// ✅ INTERFACES CORREGIDAS
 interface DashboardStats {
-  // Usuarios
   totalUsers: number;
   clientUsers: number;
   newUsersToday: number;
   newUsersMonth: number;
-  usersByGender: {
-    male: number;
-    female: number;
-    other: number;
-  };
-  
-  // Membresías
+  usersByGender: { male: number; female: number; other: number };
   activeMemberships: number;
   expiringMemberships: number;
   expiredMemberships: number;
   frozenMemberships: number;
   membershipRevenue: number;
-  todayMembershipRevenue: number; // ✅ NUEVO: Solo del día
-  
-  // Ventas del día
+  todayMembershipRevenue: number; // ✅ SOLO DEL DÍA
   todaySales: number;
   todayTransactions: number;
   todayAvgTicket: number;
   monthSales: number;
   monthTransactions: number;
-  
-  // Apartados
   activeLayaways: number;
   expiringLayaways: number;
   layawaysPendingAmount: number;
   layawaysCollectedAmount: number;
-  todayLayawayPayments: number; // ✅ NUEVO: Abonos del día
-  
-  // Financiero EXACTO
+  todayLayawayPayments: number; // ✅ SOLO DEL DÍA
   todayExpenses: number;
-  todayBalance: number;
+  todayBalance: number; // ✅ BALANCE EXACTO
   cashFlow: {
     efectivo: number;
     transferencia: number;
     debito: number;
     credito: number;
   };
-  
-  // Tendencias y Analytics
   weeklyTrend: {
     sales: number[];
     dates: string[];
-    memberships: number[];
-    layaways: number[];
   };
-  
-  // KPIs Enterprise
-  monthlyGrowth: number;
-  conversionRate: number;
-  customerRetention: number;
-  avgLifetimeValue: number;
-  
-  // Comparativas
-  vsYesterday: {
-    sales: number;
-    transactions: number;
-    memberships: number;
-  };
-  
-  vsLastWeek: {
-    sales: number;
-    transactions: number;
-    memberships: number;
-  };
-}
-
-// ✅ DATOS PARA GRÁFICOS
-interface ChartData {
-  name: string;
-  sales: number;
-  memberships: number;
-  layaways: number;
-  date: string;
-}
-
-interface PieData {
-  name: string;
-  value: number;
-  color: string;
 }
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const theme = useTheme();
   
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
@@ -258,500 +236,398 @@ export default function AdminDashboardPage() {
     todayExpenses: 0,
     todayBalance: 0,
     cashFlow: { efectivo: 0, transferencia: 0, debito: 0, credito: 0 },
-    weeklyTrend: { sales: [], dates: [], memberships: [], layaways: [] },
-    monthlyGrowth: 0,
-    conversionRate: 0,
-    customerRetention: 0,
-    avgLifetimeValue: 0,
-    vsYesterday: { sales: 0, transactions: 0, memberships: 0 },
-    vsLastWeek: { sales: 0, transactions: 0, memberships: 0 }
+    weeklyTrend: { sales: [], dates: [] }
   });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
-  const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [pieData, setPieData] = useState<PieData[]>([]);
+  const [currentMexicoTime, setCurrentMexicoTime] = useState<string>('');
   
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIONES UTILITARIAS
-  const getMexicoDate = useCallback(() => {
-    return new Date();
+  // ✅ FECHA ACTUAL EN MÉXICO (IGUAL QUE CORTES)
+  const [selectedDate] = useState(() => {
+    const mexicoDate = getMexicoDateLocal();
+    console.log('🇲🇽 Fecha actual México (función local):', mexicoDate);
+    console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
+    console.log('⏰ Hora actual UTC:', new Date().toISOString());
+    return mexicoDate; // Formato: YYYY-MM-DD
+  });
+
+  // ✅ ACTUALIZAR HORA EN TIEMPO REAL CADA SEGUNDO
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const mexicoTime = formatMexicoTimeLocal(now);
+      setCurrentMexicoTime(mexicoTime);
+    };
+
+    // Actualizar inmediatamente
+    updateTime();
+
+    // Actualizar cada segundo
+    const interval = setInterval(updateTime, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const getMexicoDateString = useCallback(() => {
-    return toMexicoDate(new Date());
-  }, []);
-
-  const formatPrice = useCallback((price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-      minimumFractionDigits: 2
-    }).format(price || 0);
-  }, []);
-
-  const formatMexicoDate = useCallback((dateString: string) => {
-    return formatMexicoDateTime(dateString);
-  }, []);
-
-  const formatPercentage = useCallback((value: number) => {
-    return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
-  }, []);
-
-  const formatCompactNumber = useCallback((num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-  }, []);
-
-  // ✅ FUNCIÓN PRINCIPAL PARA CARGAR ESTADÍSTICAS ENTERPRISE
+  // ✅ FUNCIÓN PRINCIPAL CORREGIDA CON LOGS DETALLADOS
   const loadDashboardStats = useCallback(async () => {
     try {
       setError(null);
-      console.log('📊 Cargando dashboard Enterprise...');
+      console.log('📊 ===== INICIANDO CARGA DE DASHBOARD ENTERPRISE =====');
+      console.log('🇲🇽 Fecha seleccionada México:', selectedDate);
+      console.log('⏰ Hora actual México:', currentMexicoTime);
 
-      // ✅ FECHAS MÉXICO PRECISAS
-      const mexicoToday = getMexicoDate();
-      const mexicoTodayString = getMexicoDateString();
-      
-      // Fechas para comparativas
-      const yesterday = new Date(mexicoToday);
-      yesterday.setDate(mexicoToday.getDate() - 1);
-      const yesterdayString = toMexicoDate(yesterday);
+      const mexicoToday = selectedDate; // Ya está en formato YYYY-MM-DD
+      const mexicoTodayStart = mexicoToday + 'T00:00:00';
+      const mexicoTodayEnd = mexicoToday + 'T23:59:59';
 
-      const weekAgo = new Date(mexicoToday);
-      weekAgo.setDate(mexicoToday.getDate() - 7);
-      const weekAgoString = toMexicoDate(weekAgo);
+      // Calcular fechas para comparaciones y filtros
+      const today = new Date();
+      const firstDayOfMonth = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-01`;
+      const in7Days = new Date(today);
+      in7Days.setDate(today.getDate() + 7);
+      const in7DaysString = `${in7Days.getFullYear()}-${(in7Days.getMonth() + 1).toString().padStart(2, '0')}-${in7Days.getDate().toString().padStart(2, '0')}`;
 
-      const monthAgo = new Date(mexicoToday);
-      monthAgo.setMonth(mexicoToday.getMonth() - 1);
-      const monthAgoString = toMexicoDate(monthAgo);
+      console.log(`📅 Fechas calculadas:
+        📅 Hoy México: ${mexicoToday}
+        📅 Rango hoy: ${mexicoTodayStart} - ${mexicoTodayEnd}
+        📅 Primer día del mes: ${firstDayOfMonth}
+        📅 En 7 días: ${in7DaysString}`);
 
-      const firstDayOfMonth = `${mexicoToday.getFullYear()}-${(mexicoToday.getMonth() + 1).toString().padStart(2, '0')}-01`;
-      
-      const in7Days = new Date(mexicoToday);
-      in7Days.setDate(mexicoToday.getDate() + 7);
-      const in7DaysString = toMexicoDate(in7Days);
+      // 👥 CARGAR USUARIOS CON LOGS DETALLADOS
+      console.log('👥 ===== CARGANDO USUARIOS =====');
+      const { data: allUsers, error: usersError } = await supabase
+        .from('Users')
+        .select('id, rol, gender, createdAt');
 
-      console.log(`📅 Fechas Enterprise calculadas:
-        📅 Hoy: ${mexicoTodayString}
-        📅 Ayer: ${yesterdayString}
-        📅 Hace 7 días: ${weekAgoString}
-        📅 Hace 1 mes: ${monthAgoString}
-        📅 Primer día del mes: ${firstDayOfMonth}`);
+      if (usersError) {
+        console.error('❌ Error cargando usuarios:', usersError);
+        throw usersError;
+      }
 
-      // 🚀 CONSULTAS PARALELAS ENTERPRISE
-      const [
-        usersData,
-        membershipsData,
-        salesData,
-        layawaysData,
-        expensesData,
-        analyticsData,
-        chartDataResult
-      ] = await Promise.all([
-        loadUsersStats(mexicoTodayString, firstDayOfMonth, yesterdayString, weekAgoString),
-        loadMembershipsStatsEnterprise(mexicoTodayString, in7DaysString, yesterdayString, weekAgoString),
-        loadSalesStatsEnterprise(mexicoTodayString, firstDayOfMonth, yesterdayString, weekAgoString),
-        loadLayawaysStatsEnterprise(mexicoTodayString, in7DaysString, yesterdayString),
-        loadExpensesStats(mexicoTodayString),
-        loadAnalyticsKPIs(mexicoTodayString, monthAgoString, firstDayOfMonth),
-        loadChartData(weekAgoString, mexicoTodayString)
-      ]);
+      console.log('✅ Usuarios cargados:', allUsers?.length || 0);
+      console.log('📊 Muestra de usuarios:', allUsers?.slice(0, 3));
 
-      // ✅ CONSTRUIR ESTADÍSTICAS ENTERPRISE EXACTAS
+      const clientUsers = allUsers?.filter(u => u.rol === 'cliente') || [];
+      console.log('👥 Clientes filtrados:', clientUsers.length);
+
+      const newUsersToday = allUsers?.filter(u => {
+        if (!u.createdAt) return false;
+        const createdDate = u.createdAt.split('T')[0]; // YYYY-MM-DD
+        const isToday = createdDate === mexicoToday;
+        if (isToday) {
+          console.log('🆕 Usuario nuevo hoy:', u.id, createdDate);
+        }
+        return isToday;
+      }) || [];
+
+      const newUsersMonth = allUsers?.filter(u => {
+        if (!u.createdAt) return false;
+        const createdDate = u.createdAt.split('T')[0];
+        return createdDate >= firstDayOfMonth;
+      }) || [];
+
+      const genderStats = clientUsers.reduce((acc, user) => {
+        const gender = user.gender?.toLowerCase() || 'other';
+        if (gender === 'masculino' || gender === 'male' || gender === 'hombre') acc.male++;
+        else if (gender === 'femenino' || gender === 'female' || gender === 'mujer') acc.female++;
+        else acc.other++;
+        return acc;
+      }, { male: 0, female: 0, other: 0 });
+
+      console.log('👥 Estadísticas de usuarios:', {
+        total: allUsers?.length || 0,
+        clientes: clientUsers.length,
+        nuevosHoy: newUsersToday.length,
+        nuevosMes: newUsersMonth.length,
+        genero: genderStats
+      });
+
+      // 🏋️ CARGAR MEMBRESÍAS CON LOGS DETALLADOS
+      console.log('🏋️ ===== CARGANDO MEMBRESÍAS =====');
+      const { data: memberships, error: membershipsError } = await supabase
+        .from('user_memberships')
+        .select('*');
+
+      if (membershipsError) {
+        console.error('❌ Error cargando membresías:', membershipsError);
+        throw membershipsError;
+      }
+
+      console.log('✅ Membresías cargadas:', memberships?.length || 0);
+      console.log('📊 Muestra de membresías:', memberships?.slice(0, 3));
+
+      const active = memberships?.filter(m => m.status === 'active') || [];
+      const expiring = memberships?.filter(m => {
+        if (!m.end_date || m.status !== 'active') return false;
+        const endDate = m.end_date.split('T')[0];
+        return endDate <= in7DaysString && endDate >= mexicoToday;
+      }) || [];
+
+      const expired = memberships?.filter(m => {
+        if (!m.end_date) return false;
+        const endDate = m.end_date.split('T')[0];
+        return endDate < mexicoToday;
+      }) || [];
+
+      const frozen = memberships?.filter(m => m.status === 'frozen') || [];
+
+      // ✅ INGRESOS EXACTOS SOLO DEL DÍA DE HOY
+      const todayMemberships = memberships?.filter(m => {
+        if (!m.created_at) return false;
+        const createdDate = m.created_at.split('T')[0];
+        const isToday = createdDate === mexicoToday;
+        if (isToday) {
+          console.log('🆕 Membresía nueva hoy:', m.id, createdDate, formatPrice(m.amount_paid || 0));
+        }
+        return isToday;
+      }) || [];
+
+      const todayMembershipRevenue = todayMemberships.reduce((sum, m) => sum + (m.amount_paid || 0), 0);
+      const totalRevenue = memberships?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0;
+
+      console.log('🏋️ Estadísticas de membresías:', {
+        activas: active.length,
+        porVencer: expiring.length,
+        vencidas: expired.length,
+        congeladas: frozen.length,
+        ingresoTotal: formatPrice(totalRevenue),
+        ingresoHoy: formatPrice(todayMembershipRevenue),
+        membresiasHoy: todayMemberships.length
+      });
+
+      // 💰 CARGAR VENTAS DEL DÍA CON LOGS DETALLADOS
+      console.log('💰 ===== CARGANDO VENTAS =====');
+      const { data: sales, error: salesError } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('sale_type', 'sale')
+        .eq('status', 'completed');
+
+      if (salesError) {
+        console.error('❌ Error cargando ventas:', salesError);
+        throw salesError;
+      }
+
+      console.log('✅ Ventas cargadas:', sales?.length || 0);
+      console.log('📊 Muestra de ventas:', sales?.slice(0, 3));
+
+      const todaySales = sales?.filter(s => {
+        if (!s.created_at) return false;
+        const saleDate = s.created_at.split('T')[0];
+        const isToday = saleDate === mexicoToday;
+        if (isToday) {
+          console.log('🆕 Venta del día:', s.id, saleDate, formatPrice(s.total_amount || 0));
+        }
+        return isToday;
+      }) || [];
+
+      const monthSales = sales?.filter(s => {
+        if (!s.created_at) return false;
+        const saleDate = s.created_at.split('T')[0];
+        return saleDate >= firstDayOfMonth;
+      }) || [];
+
+      const todayAmount = todaySales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
+      const monthAmount = monthSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
+
+      console.log('💰 Estadísticas de ventas:', {
+        ventasHoy: todaySales.length,
+        montoHoy: formatPrice(todayAmount),
+        ventasMes: monthSales.length,
+        montoMes: formatPrice(monthAmount),
+        promedioTicket: todaySales.length > 0 ? formatPrice(todayAmount / todaySales.length) : formatPrice(0)
+      });
+
+      // 💳 CARGAR MÉTODOS DE PAGO DEL DÍA CON LOGS DETALLADOS
+      console.log('💳 ===== CARGANDO MÉTODOS DE PAGO =====');
+      const todaySaleIds = todaySales.map(s => s.id);
+      console.log('💳 IDs de ventas del día:', todaySaleIds);
+
+      const { data: payments, error: paymentsError } = await supabase
+        .from('sale_payment_details')
+        .select('*')
+        .in('sale_id', todaySaleIds);
+
+      if (paymentsError) {
+        console.error('❌ Error cargando métodos de pago:', paymentsError);
+        // No lanzar error, continuar con cashFlow vacío
+      }
+
+      console.log('✅ Métodos de pago cargados:', payments?.length || 0);
+      console.log('📊 Muestra de pagos:', payments?.slice(0, 3));
+
+      const cashFlow = payments?.reduce((acc, payment) => {
+        const method = payment.payment_method?.toLowerCase() || 'other';
+        const amount = payment.amount || 0;
+        
+        console.log('💳 Procesando pago:', method, formatPrice(amount));
+        
+        if (method === 'efectivo') acc.efectivo += amount;
+        else if (method === 'transferencia') acc.transferencia += amount;
+        else if (method === 'debito') acc.debito += amount;
+        else if (method === 'credito') acc.credito += amount;
+        else console.log('⚠️ Método de pago desconocido:', method);
+        
+        return acc;
+      }, { efectivo: 0, transferencia: 0, debito: 0, credito: 0 }) || 
+      { efectivo: 0, transferencia: 0, debito: 0, credito: 0 };
+
+      console.log('💳 Flujo de efectivo del día:', {
+        efectivo: formatPrice(cashFlow.efectivo),
+        transferencia: formatPrice(cashFlow.transferencia),
+        debito: formatPrice(cashFlow.debito),
+        credito: formatPrice(cashFlow.credito),
+        total: formatPrice(cashFlow.efectivo + cashFlow.transferencia + cashFlow.debito + cashFlow.credito)
+      });
+
+      // 📦 CARGAR APARTADOS CON LOGS DETALLADOS
+      console.log('📦 ===== CARGANDO APARTADOS =====');
+      const { data: layaways, error: layawaysError } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('sale_type', 'layaway');
+
+      if (layawaysError) {
+        console.error('❌ Error cargando apartados:', layawaysError);
+        throw layawaysError;
+      }
+
+      console.log('✅ Apartados cargados:', layaways?.length || 0);
+
+      const activeLayaways = layaways?.filter(l => 
+        l.status === 'pending' && 
+        l.layaway_expires_at && 
+        new Date(l.layaway_expires_at) >= new Date()
+      ) || [];
+
+      const expiringLayaways = layaways?.filter(l => 
+        l.status === 'pending' && 
+        l.layaway_expires_at &&
+        new Date(l.layaway_expires_at) >= new Date() &&
+        new Date(l.layaway_expires_at) <= new Date(in7DaysString + 'T23:59:59')
+      ) || [];
+
+      const pendingAmount = layaways?.reduce((sum, l) => sum + (l.pending_amount || 0), 0) || 0;
+      const collectedAmount = layaways?.reduce((sum, l) => sum + (l.paid_amount || 0), 0) || 0;
+
+      // ✅ ABONOS DEL DÍA DE HOY
+      const layawayIds = layaways?.map(l => l.id) || [];
+      const { data: todayLayawayPayments, error: layawayPaymentsError } = await supabase
+        .from('sale_payment_details')
+        .select('*')
+        .in('sale_id', layawayIds)
+        .gte('payment_date', mexicoTodayStart)
+        .lte('payment_date', mexicoTodayEnd);
+
+      if (layawayPaymentsError) {
+        console.error('❌ Error cargando abonos del día:', layawayPaymentsError);
+        // No lanzar error, continuar con 0
+      }
+
+      const todayLayawayAmount = todayLayawayPayments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+
+      console.log('📦 Estadísticas de apartados:', {
+        activos: activeLayaways.length,
+        porVencer: expiringLayaways.length,
+        montoPendiente: formatPrice(pendingAmount),
+        montoRecaudado: formatPrice(collectedAmount),
+        abonosHoy: formatPrice(todayLayawayAmount)
+      });
+
+      // ✅ CONSTRUIR ESTADÍSTICAS FINALES CON BALANCE EXACTO
       const finalStats: DashboardStats = {
-        ...usersData,
-        ...membershipsData,
-        ...salesData,
-        ...layawaysData,
-        ...expensesData,
-        ...analyticsData,
+        totalUsers: allUsers?.length || 0,
+        clientUsers: clientUsers.length,
+        newUsersToday: newUsersToday.length,
+        newUsersMonth: newUsersMonth.length,
+        usersByGender: genderStats,
+        activeMemberships: active.length,
+        expiringMemberships: expiring.length,
+        expiredMemberships: expired.length,
+        frozenMemberships: frozen.length,
+        membershipRevenue: totalRevenue,
+        todayMembershipRevenue, // ✅ SOLO DEL DÍA
+        todaySales: todayAmount,
+        todayTransactions: todaySales.length,
+        todayAvgTicket: todaySales.length > 0 ? todayAmount / todaySales.length : 0,
+        monthSales: monthAmount,
+        monthTransactions: monthSales.length,
+        activeLayaways: activeLayaways.length,
+        expiringLayaways: expiringLayaways.length,
+        layawaysPendingAmount: pendingAmount,
+        layawaysCollectedAmount: collectedAmount,
+        todayLayawayPayments: todayLayawayAmount, // ✅ SOLO DEL DÍA
+        todayExpenses: 0, // TODO: Implementar gastos
+        cashFlow,
+        weeklyTrend: { sales: [], dates: [] },
         // ✅ BALANCE EXACTO DEL DÍA (SOLO MOVIMIENTOS DE HOY)
-        todayBalance: (salesData.todaySales + membershipsData.todayMembershipRevenue + layawaysData.todayLayawayPayments) - expensesData.todayExpenses
+        todayBalance: (todayAmount + todayMembershipRevenue + todayLayawayAmount) - 0 // Sin gastos por ahora
       };
 
       setStats(finalStats);
-      setChartData(chartDataResult.chartData);
-      setPieData(chartDataResult.pieData);
-      setLastUpdate(formatMexicoDateTime(new Date().toISOString()));
+      setLastUpdate(formatDateTime(new Date().toISOString()));
       
-      console.log('✅ Dashboard Enterprise cargado:', finalStats);
+      console.log('✅ ===== DASHBOARD ENTERPRISE CARGADO EXITOSAMENTE =====');
+      console.log('📊 Estadísticas finales:', {
+        totalUsuarios: finalStats.totalUsers,
+        clientesActivos: finalStats.clientUsers,
+        membresiasActivas: finalStats.activeMemberships,
+        ventasDelDia: formatPrice(finalStats.todaySales),
+        membresiasDelDia: formatPrice(finalStats.todayMembershipRevenue),
+        abonosDelDia: formatPrice(finalStats.todayLayawayPayments),
+        balanceExactoDelDia: formatPrice(finalStats.todayBalance),
+        flujoCaja: {
+          efectivo: formatPrice(finalStats.cashFlow.efectivo),
+          transferencia: formatPrice(finalStats.cashFlow.transferencia),
+          debito: formatPrice(finalStats.cashFlow.debito),
+          credito: formatPrice(finalStats.cashFlow.credito)
+        }
+      });
 
     } catch (err: any) {
-      console.error('💥 Error cargando dashboard Enterprise:', err);
-      setError(`Error cargando estadísticas Enterprise: ${err.message}`);
+      console.error('💥 ===== ERROR CARGANDO DASHBOARD =====', err);
+      setError(`Error cargando estadísticas: ${err.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [getMexicoDate, getMexicoDateString, formatMexicoDateTime]);
+  }, [selectedDate, currentMexicoTime, supabase]);
 
-  // ✅ FUNCIONES AUXILIARES ENTERPRISE
-
-  const loadUsersStats = useCallback(async (today: string, firstDayOfMonth: string, yesterday: string, weekAgo: string) => {
-    const { data: allUsers, error } = await supabase
-      .from('Users')
-      .select('id, rol, gender, createdAt');
-
-    if (error) throw error;
-
-    const clientUsers = allUsers?.filter(u => u.rol === 'cliente') || [];
-    
-    const newUsersToday = allUsers?.filter(u => {
-      if (!u.createdAt) return false;
-      const createdDate = toMexicoDate(new Date(u.createdAt));
-      return createdDate === today;
-    }) || [];
-
-    const newUsersYesterday = allUsers?.filter(u => {
-      if (!u.createdAt) return false;
-      const createdDate = toMexicoDate(new Date(u.createdAt));
-      return createdDate === yesterday;
-    }) || [];
-
-    const newUsersMonth = allUsers?.filter(u => {
-      if (!u.createdAt) return false;
-      const createdDate = toMexicoDate(new Date(u.createdAt));
-      return createdDate >= firstDayOfMonth;
-    }) || [];
-
-    const genderStats = clientUsers.reduce((acc, user) => {
-      const gender = user.gender?.toLowerCase() || 'other';
-      if (gender === 'masculino' || gender === 'male' || gender === 'hombre') acc.male++;
-      else if (gender === 'femenino' || gender === 'female' || gender === 'mujer') acc.female++;
-      else acc.other++;
-      return acc;
-    }, { male: 0, female: 0, other: 0 });
-
-    return {
-      totalUsers: allUsers?.length || 0,
-      clientUsers: clientUsers.length,
-      newUsersToday: newUsersToday.length,
-      newUsersMonth: newUsersMonth.length,
-      usersByGender: genderStats
-    };
-  }, [supabase]);
-
-  // ✅ MEMBRESÍAS ENTERPRISE CON INGRESOS EXACTOS DEL DÍA
-  const loadMembershipsStatsEnterprise = useCallback(async (today: string, in7Days: string, yesterday: string, weekAgo: string) => {
-    const { data: memberships, error } = await supabase
-      .from('user_memberships')
-      .select('*');
-
-    if (error) throw error;
-
-    const active = memberships?.filter(m => m.status === 'active') || [];
-    const expiring = memberships?.filter(m => {
-      if (!m.end_date || m.status !== 'active') return false;
-      const endDate = toMexicoDate(new Date(m.end_date));
-      return endDate <= in7Days && endDate >= today;
-    }) || [];
-
-    const expired = memberships?.filter(m => {
-      if (!m.end_date) return false;
-      const endDate = toMexicoDate(new Date(m.end_date));
-      return endDate < today;
-    }) || [];
-
-    const frozen = memberships?.filter(m => m.status === 'frozen') || [];
-
-    // ✅ NUEVO: INGRESOS EXACTOS SOLO DEL DÍA DE HOY
-    const todayMemberships = memberships?.filter(m => {
-      if (!m.created_at) return false;
-      const createdDate = toMexicoDate(new Date(m.created_at));
-      return createdDate === today;
-    }) || [];
-
-    const yesterdayMemberships = memberships?.filter(m => {
-      if (!m.created_at) return false;
-      const createdDate = toMexicoDate(new Date(m.created_at));
-      return createdDate === yesterday;
-    }) || [];
-
-    const weekAgoMemberships = memberships?.filter(m => {
-      if (!m.created_at) return false;
-      const createdDate = toMexicoDate(new Date(m.created_at));
-      return createdDate === weekAgo;
-    }) || [];
-
-    const todayMembershipRevenue = todayMemberships.reduce((sum, m) => sum + (m.amount_paid || 0), 0);
-    const yesterdayMembershipRevenue = yesterdayMemberships.reduce((sum, m) => sum + (m.amount_paid || 0), 0);
-    const totalRevenue = memberships?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0;
-
-    return {
-      activeMemberships: active.length,
-      expiringMemberships: expiring.length,
-      expiredMemberships: expired.length,
-      frozenMemberships: frozen.length,
-      membershipRevenue: totalRevenue,
-      todayMembershipRevenue, // ✅ SOLO DEL DÍA DE HOY
-      vsYesterday: {
-        memberships: todayMemberships.length - yesterdayMemberships.length
-      },
-      vsLastWeek: {
-        memberships: todayMemberships.length - weekAgoMemberships.length
-      }
-    };
-  }, [supabase]);
-
-  // ✅ VENTAS ENTERPRISE CON COMPARATIVAS
-  const loadSalesStatsEnterprise = useCallback(async (today: string, firstDayOfMonth: string, yesterday: string, weekAgo: string) => {
-    const { data: sales, error } = await supabase
-      .from('sales')
-      .select('*')
-      .eq('sale_type', 'sale')
-      .eq('status', 'completed');
-
-    if (error) throw error;
-
-    const todaySales = sales?.filter(s => {
-      if (!s.created_at) return false;
-      const saleDate = toMexicoDate(new Date(s.created_at));
-      return saleDate === today;
-    }) || [];
-
-    const yesterdaySales = sales?.filter(s => {
-      if (!s.created_at) return false;
-      const saleDate = toMexicoDate(new Date(s.created_at));
-      return saleDate === yesterday;
-    }) || [];
-
-    const weekAgoSales = sales?.filter(s => {
-      if (!s.created_at) return false;
-      const saleDate = toMexicoDate(new Date(s.created_at));
-      return saleDate === weekAgo;
-    }) || [];
-
-    const monthSales = sales?.filter(s => {
-      if (!s.created_at) return false;
-      const saleDate = toMexicoDate(new Date(s.created_at));
-      return saleDate >= firstDayOfMonth;
-    }) || [];
-
-    const todayAmount = todaySales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
-    const yesterdayAmount = yesterdaySales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
-    const monthAmount = monthSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
-
-    // Obtener métodos de pago del día
-    const { data: payments } = await supabase
-      .from('sale_payment_details')
-      .select('*')
-      .in('sale_id', todaySales.map(s => s.id));
-
-    const cashFlow = payments?.reduce((acc, payment) => {
-      const method = payment.payment_method?.toLowerCase() || 'other';
-      const amount = payment.amount || 0;
-      
-      if (method === 'efectivo') acc.efectivo += amount;
-      else if (method === 'transferencia') acc.transferencia += amount;
-      else if (method === 'debito') acc.debito += amount;
-      else if (method === 'credito') acc.credito += amount;
-      
-      return acc;
-    }, { efectivo: 0, transferencia: 0, debito: 0, credito: 0 }) || 
-    { efectivo: 0, transferencia: 0, debito: 0, credito: 0 };
-
-    return {
-      todaySales: todayAmount,
-      todayTransactions: todaySales.length,
-      todayAvgTicket: todaySales.length > 0 ? todayAmount / todaySales.length : 0,
-      monthSales: monthAmount,
-      monthTransactions: monthSales.length,
-      cashFlow,
-      vsYesterday: {
-        sales: todayAmount - yesterdayAmount,
-        transactions: todaySales.length - yesterdaySales.length
-      },
-      vsLastWeek: {
-        sales: todayAmount - weekAgoSales.reduce((sum, s) => sum + (s.total_amount || 0), 0),
-        transactions: todaySales.length - weekAgoSales.length
-      }
-    };
-  }, [supabase]);
-
-  // ✅ APARTADOS CON ABONOS DEL DÍA
-  const loadLayawaysStatsEnterprise = useCallback(async (today: string, in7Days: string, yesterday: string) => {
-    const { data: layaways, error } = await supabase
-      .from('sales')
-      .select('*')
-      .eq('sale_type', 'layaway');
-
-    if (error) throw error;
-
-    const active = layaways?.filter(l => 
-      l.status === 'pending' && 
-      l.layaway_expires_at && 
-      new Date(l.layaway_expires_at) >= new Date()
-    ) || [];
-
-    const expiring = layaways?.filter(l => 
-      l.status === 'pending' && 
-      l.layaway_expires_at &&
-      new Date(l.layaway_expires_at) >= new Date() &&
-      new Date(l.layaway_expires_at) <= new Date(in7Days + 'T23:59:59')
-    ) || [];
-
-    const pendingAmount = layaways?.reduce((sum, l) => sum + (l.pending_amount || 0), 0) || 0;
-    const collectedAmount = layaways?.reduce((sum, l) => sum + (l.paid_amount || 0), 0) || 0;
-
-    // ✅ NUEVO: ABONOS DEL DÍA DE HOY
-    const { data: todayPayments } = await supabase
-      .from('sale_payment_details')
-      .select('*')
-      .in('sale_id', layaways?.map(l => l.id) || [])
-      .gte('payment_date', today + 'T00:00:00')
-      .lte('payment_date', today + 'T23:59:59');
-
-    const todayLayawayPayments = todayPayments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-
-    return {
-      activeLayaways: active.length,
-      expiringLayaways: expiring.length,
-      layawaysPendingAmount: pendingAmount,
-      layawaysCollectedAmount: collectedAmount,
-      todayLayawayPayments // ✅ SOLO ABONOS DEL DÍA DE HOY
-    };
-  }, [supabase]);
-
-  const loadExpensesStats = useCallback(async (today: string) => {
-    // TODO: Implementar cuando tengamos tabla de gastos
-    return {
-      todayExpenses: 0
-    };
-  }, []);
-
-  // ✅ KPIs ENTERPRISE AVANZADOS
-  const loadAnalyticsKPIs = useCallback(async (today: string, monthAgo: string, firstDayOfMonth: string) => {
-    // Simulación de KPIs Enterprise
-    // TODO: Implementar con datos reales cuando estén disponibles
-    
-    return {
-      monthlyGrowth: 15.5,
-      conversionRate: 23.8,
-      customerRetention: 87.2,
-      avgLifetimeValue: 2450.00
-    };
-  }, []);
-
-  // ✅ DATOS PARA GRÁFICOS ENTERPRISE
-  const loadChartData = useCallback(async (weekAgo: string, today: string) => {
-    const { data: sales } = await supabase
-      .from('sales')
-      .select('total_amount, created_at, sale_type')
-      .gte('created_at', weekAgo + 'T00:00:00')
-      .lte('created_at', today + 'T23:59:59');
-
-    const { data: memberships } = await supabase
-      .from('user_memberships')
-      .select('amount_paid, created_at')
-      .gte('created_at', weekAgo + 'T00:00:00')
-      .lte('created_at', today + 'T23:59:59');
-
-    const chartData: ChartData[] = [];
-    const dates: string[] = [];
-
-    // Generar datos para los últimos 7 días
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateString = toMexicoDate(date);
-      
-      const daySales = sales?.filter(s => {
-        const saleDate = toMexicoDate(new Date(s.created_at));
-        return saleDate === dateString && s.sale_type === 'sale';
-      }).reduce((sum, s) => sum + (s.total_amount || 0), 0) || 0;
-
-      const dayMemberships = memberships?.filter(m => {
-        const membershipDate = toMexicoDate(new Date(m.created_at));
-        return membershipDate === dateString;
-      }).reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0;
-
-      const dayLayaways = sales?.filter(s => {
-        const saleDate = toMexicoDate(new Date(s.created_at));
-        return saleDate === dateString && s.sale_type === 'layaway';
-      }).reduce((sum, s) => sum + (s.paid_amount || 0), 0) || 0;
-
-      chartData.push({
-        name: dateString.split('-').slice(1).join('/'),
-        sales: daySales,
-        memberships: dayMemberships,
-        layaways: dayLayaways,
-        date: dateString
-      });
-    }
-
-    // Datos para gráfico de pie (métodos de pago)
-    const { data: allPayments } = await supabase
-      .from('sale_payment_details')
-      .select('payment_method, amount')
-      .gte('payment_date', today + 'T00:00:00')
-      .lte('payment_date', today + 'T23:59:59');
-
-    const paymentMethods = allPayments?.reduce((acc: any, payment) => {
-      const method = payment.payment_method || 'Otro';
-      acc[method] = (acc[method] || 0) + (payment.amount || 0);
-      return acc;
-    }, {}) || {};
-
-    const pieData: PieData[] = Object.entries(paymentMethods).map(([method, amount], index) => ({
-      name: method,
-      value: amount as number,
-      color: [darkProTokens.chart1, darkProTokens.chart2, darkProTokens.chart3, darkProTokens.chart4][index] || darkProTokens.chart1
-    }));
-
-    return { chartData, pieData };
-  }, [supabase]);
-
-  // ✅ FUNCIÓN DE REFRESH
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadDashboardStats();
   }, [loadDashboardStats]);
 
-  // ✅ CARGAR DATOS AL INICIALIZAR
   useEffect(() => {
+    console.log('🚀 ===== COMPONENTE DASHBOARD MONTADO =====');
+    console.log('📅 Fecha seleccionada:', selectedDate);
     loadDashboardStats();
   }, [loadDashboardStats]);
 
-  // ✅ AUTO-REFRESH CADA 2 MINUTOS (Enterprise)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!refreshing && !loading) {
-        loadDashboardStats();
-      }
-    }, 2 * 60 * 1000); // 2 minutos
-
-    return () => clearInterval(interval);
-  }, [loadDashboardStats, refreshing, loading]);
-
-  // ✅ COMPONENTE DE MÉTRICA ENTERPRISE
+  // ✅ COMPONENTE DE MÉTRICA ENTERPRISE SIMPLIFICADO
   const MetricCard = ({ 
     title, 
     value, 
     subtitle, 
     icon, 
     color, 
-    change, 
-    onClick,
-    loading: cardLoading = false 
+    onClick
   }: {
     title: string;
     value: string | number;
     subtitle?: string;
     icon: React.ReactNode;
     color: string;
-    change?: { value: number; label: string };
     onClick?: () => void;
-    loading?: boolean;
   }) => (
     <motion.div
-      whileHover={{ scale: 1.02, y: -8 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      whileHover={{ scale: 1.02, y: -5 }}
+      transition={{ duration: 0.3 }}
     >
       <Card sx={{
         background: `linear-gradient(135deg, ${color}, ${color}DD)`,
@@ -762,7 +638,6 @@ export default function AdminDashboardPage() {
         cursor: onClick ? 'pointer' : 'default',
         border: `1px solid ${color}40`,
         boxShadow: `0 8px 32px ${color}20`,
-        backdropFilter: 'blur(20px)',
         '&:hover': { 
           boxShadow: `0 16px 48px ${color}40`,
           border: `1px solid ${color}60`
@@ -787,32 +662,10 @@ export default function AdminDashboardPage() {
               height: 64,
               border: `2px solid ${darkProTokens.textPrimary}20`
             }}>
-              {cardLoading ? (
-                <CircularProgress size={30} sx={{ color: darkProTokens.textPrimary }} />
-              ) : (
-                React.cloneElement(icon as React.ReactElement, { 
-                  sx: { fontSize: 32, color: darkProTokens.textPrimary }
-                })
-              )}
+              {React.cloneElement(icon as React.ReactElement, { 
+                sx: { fontSize: 32, color: darkProTokens.textPrimary }
+              })}
             </Avatar>
-            {change && (
-              <Box sx={{ textAlign: 'right' }}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 0.5,
-                  color: change.value >= 0 ? darkProTokens.success : darkProTokens.error
-                }}>
-                  {change.value >= 0 ? <TrendingUpIcon sx={{ fontSize: 16 }} /> : <TrendingDownIcon sx={{ fontSize: 16 }} />}
-                  <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                    {formatPercentage(change.value)}
-                  </Typography>
-                </Box>
-                <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
-                  {change.label}
-                </Typography>
-              </Box>
-            )}
           </Box>
           
           <Typography variant="h3" sx={{ 
@@ -823,7 +676,7 @@ export default function AdminDashboardPage() {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
           }}>
-            {cardLoading ? '...' : value}
+            {value}
           </Typography>
           
           <Typography variant="h6" sx={{ 
@@ -893,12 +746,17 @@ export default function AdminDashboardPage() {
           <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
             Cargando análisis avanzado del gimnasio...
           </Typography>
+          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+            📅 Consultando datos para: {formatDateLocal(selectedDate)}
+          </Typography>
           
           <LinearProgress sx={{
             width: '300px',
             height: 6,
             borderRadius: 3,
             bgcolor: darkProTokens.grayDark,
+            mt: 3,
+            mx: 'auto',
             '& .MuiLinearProgress-bar': {
               bgcolor: darkProTokens.primary,
               borderRadius: 3,
@@ -917,7 +775,7 @@ export default function AdminDashboardPage() {
       minHeight: '100vh',
       color: darkProTokens.textPrimary
     }}>
-      {/* 🚨 SNACKBAR DE ERROR */}
+      {/* SNACKBAR DE ERROR */}
       <Snackbar 
         open={!!error} 
         autoHideDuration={8000} 
@@ -932,15 +790,14 @@ export default function AdminDashboardPage() {
             background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
             color: darkProTokens.textPrimary,
             fontWeight: 600,
-            borderRadius: 3,
-            boxShadow: `0 8px 32px ${darkProTokens.error}40`
+            borderRadius: 3
           }}
         >
           {error}
         </Alert>
       </Snackbar>
 
-      {/* 🎯 HEADER ENTERPRISE */}
+      {/* HEADER ENTERPRISE */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1013,10 +870,13 @@ export default function AdminDashboardPage() {
                   Enterprise Dashboard
                 </Typography>
                 <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                  🚀 MuscleUp Gym - Analytics & Business Intelligence
+                  🚀 MuscleUp Gym - Business Intelligence
+                </Typography>
+                <Typography variant="body1" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                  📅 {formatDateLocal(selectedDate)} • ⏰ {currentMexicoTime}
                 </Typography>
                 {lastUpdate && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                     <ScheduleIcon sx={{ fontSize: 16, color: darkProTokens.success }} />
                     <Typography variant="caption" sx={{ 
                       color: darkProTokens.success,
@@ -1039,8 +899,7 @@ export default function AdminDashboardPage() {
                   color: darkProTokens.success,
                   border: `1px solid ${darkProTokens.success}40`,
                   fontWeight: 700,
-                  fontSize: '0.9rem',
-                  animation: 'pulse 2s infinite'
+                  fontSize: '0.9rem'
                 }}
               />
               
@@ -1069,7 +928,7 @@ export default function AdminDashboardPage() {
             </Box>
           </Box>
 
-          {/* 📊 RESUMEN EJECUTIVO ENTERPRISE */}
+          {/* RESUMEN EJECUTIVO ENTERPRISE */}
           <Box sx={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
@@ -1169,12 +1028,19 @@ export default function AdminDashboardPage() {
               }}>
                 📈 Balance Exacto del Día
               </Typography>
+              <Typography variant="caption" sx={{ 
+                color: darkProTokens.warning,
+                fontWeight: 500,
+                fontStyle: 'italic'
+              }}>
+                ✅ Solo movimientos de HOY
+              </Typography>
             </Box>
           </Box>
         </Paper>
       </motion.div>
 
-      {/* 📊 MÉTRICAS PRINCIPALES ENTERPRISE */}
+      {/* MÉTRICAS PRINCIPALES ENTERPRISE */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1188,7 +1054,6 @@ export default function AdminDashboardPage() {
               subtitle={`+${stats.newUsersToday} hoy, +${stats.newUsersMonth} este mes`}
               icon={<PeopleIcon />}
               color={darkProTokens.roleStaff}
-              change={{ value: 12.5, label: "vs ayer" }}
               onClick={() => router.push('/dashboard/admin/usuarios')}
             />
           </Grid>
@@ -1200,7 +1065,6 @@ export default function AdminDashboardPage() {
               subtitle={`${stats.expiringMemberships} por vencer en 7 días`}
               icon={<FitnessCenterIcon />}
               color={darkProTokens.success}
-              change={{ value: 8.3, label: "vs semana pasada" }}
               onClick={() => router.push('/dashboard/admin/membresias')}
             />
           </Grid>
@@ -1212,10 +1076,6 @@ export default function AdminDashboardPage() {
               subtitle={`${stats.todayTransactions} transacciones, ${formatPrice(stats.todayAvgTicket)} promedio`}
               icon={<SalesIcon />}
               color={darkProTokens.primary}
-              change={{ 
-                value: stats.vsYesterday?.sales || 0, 
-                label: "vs ayer" 
-              }}
               onClick={() => router.push('/dashboard/admin/sales/history')}
             />
           </Grid>
@@ -1227,479 +1087,270 @@ export default function AdminDashboardPage() {
               subtitle={`${formatPrice(stats.layawaysPendingAmount)} pendiente`}
               icon={<LayawayIcon />}
               color={darkProTokens.roleModerator}
-              change={{ value: -2.1, label: "vs semana pasada" }}
               onClick={() => router.push('/dashboard/admin/layaways/management')}
             />
           </Grid>
         </Grid>
       </motion.div>
 
-      {/* 📈 GRÁFICOS ENTERPRISE */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* GRÁFICO DE TENDENCIAS */}
-        <Grid size={{ xs: 12, lg: 8 }}>
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4,
-              overflow: 'hidden'
+      {/* MÉTODOS DE PAGO DEL DÍA */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+      >
+        <Card sx={{
+          mb: 4,
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `1px solid ${darkProTokens.grayDark}`,
+          borderRadius: 4
+        }}>
+          <CardContent sx={{ p: 4 }}>
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.primary, 
+              mb: 3, 
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
             }}>
-              <CardContent sx={{ p: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <TimelineIcon sx={{ color: darkProTokens.primary, fontSize: 28 }} />
-                  <Typography variant="h6" sx={{ 
-                    color: darkProTokens.primary, 
-                    fontWeight: 700
+              <PaymentIcon />
+              💰 Flujo de Efectivo del Día
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 6, md: 3 }}>
+                <motion.div whileHover={{ scale: 1.05 }}>
+                  <Paper sx={{
+                    p: 3,
+                    textAlign: 'center',
+                    background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
+                    color: darkProTokens.textPrimary,
+                    borderRadius: 3,
+                    border: `1px solid ${darkProTokens.success}40`,
+                    boxShadow: `0 8px 32px ${darkProTokens.success}20`
                   }}>
-                    📈 Tendencias de Ingresos (Últimos 7 días)
-                  </Typography>
-                </Box>
-                
-                <Box sx={{ height: 350, width: '100%' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke={darkProTokens.textSecondary}
-                        fontSize={12}
-                      />
-                      <YAxis 
-                        stroke={darkProTokens.textSecondary}
-                        fontSize={12}
-                        tickFormatter={(value) => formatCompactNumber(value)}
-                      />
-                      <RechartsTooltip 
-                        contentStyle={{
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          border: `1px solid ${darkProTokens.grayDark}`,
-                          borderRadius: '8px',
-                          color: darkProTokens.textPrimary
-                        }}
-                        formatter={(value: any, name: string) => [
-                          formatPrice(value), 
-                          name === 'sales' ? 'Ventas POS' : 
-                          name === 'memberships' ? 'Membresías' : 'Apartados'
-                        ]}
-                      />
-                      <Legend />
-                      
-                      <Area
-                        type="monotone"
-                        dataKey="sales"
-                        fill={`${darkProTokens.primary}30`}
-                        stroke={darkProTokens.primary}
-                        strokeWidth={3}
-                        name="Ventas POS"
-                      />
-                      
-                      <Bar
-                        dataKey="memberships"
-                        fill={darkProTokens.success}
-                        name="Membresías"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      
-                      <Line
-                        type="monotone"
-                        dataKey="layaways"
-                        stroke={darkProTokens.roleModerator}
-                        strokeWidth={3}
-                        dot={{ fill: darkProTokens.roleModerator, strokeWidth: 2, r: 6 }}
-                        name="Apartados"
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
-
-        {/* GRÁFICO DE PIE - MÉTODOS DE PAGO */}
-        <Grid size={{ xs: 12, lg: 4 }}>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-          >
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4,
-              height: '100%'
-            }}>
-              <CardContent sx={{ p: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <PieChartIcon sx={{ color: darkProTokens.info, fontSize: 28 }} />
-                  <Typography variant="h6" sx={{ 
-                    color: darkProTokens.info, 
-                    fontWeight: 700
-                  }}>
-                    💳 Métodos de Pago Hoy
-                  </Typography>
-                </Box>
-                
-                {pieData.length > 0 ? (
-                  <Box sx={{ height: 250, width: '100%' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          innerRadius={40}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {pieData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip 
-                          contentStyle={{
-                            backgroundColor: darkProTokens.surfaceLevel4,
-                            border: `1px solid ${darkProTokens.grayDark}`,
-                            borderRadius: '8px',
-                            color: darkProTokens.textPrimary
-                          }}
-                          formatter={(value: any) => formatPrice(value)}
-                        />
-                        <Legend 
-                          wrapperStyle={{ color: darkProTokens.textSecondary }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-                ) : (
-                  <Box sx={{ 
-                    height: 250, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    flexDirection: 'column',
-                    gap: 2
-                  }}>
-                    <PaymentIcon sx={{ fontSize: 60, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                    <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
-                      No hay pagos registrados hoy
+                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                      {formatPrice(stats.cashFlow.efectivo)}
                     </Typography>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
-      </Grid>
+                    <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
+                      💵 Efectivo
+                    </Typography>
+                  </Paper>
+                </motion.div>
+              </Grid>
+              
+              <Grid size={{ xs: 6, md: 3 }}>
+                <motion.div whileHover={{ scale: 1.05 }}>
+                  <Paper sx={{
+                    p: 3,
+                    textAlign: 'center',
+                    background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
+                    color: darkProTokens.textPrimary,
+                    borderRadius: 3,
+                    border: `1px solid ${darkProTokens.info}40`,
+                    boxShadow: `0 8px 32px ${darkProTokens.info}20`
+                  }}>
+                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                      {formatPrice(stats.cashFlow.transferencia)}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
+                      🏦 Transferencia
+                    </Typography>
+                  </Paper>
+                </motion.div>
+              </Grid>
+              
+              <Grid size={{ xs: 6, md: 3 }}>
+                <motion.div whileHover={{ scale: 1.05 }}>
+                  <Paper sx={{
+                    p: 3,
+                    textAlign: 'center',
+                    background: `linear-gradient(135deg, ${darkProTokens.roleTrainer}, #00695c)`,
+                    color: darkProTokens.textPrimary,
+                    borderRadius: 3,
+                    border: `1px solid ${darkProTokens.roleTrainer}40`,
+                    boxShadow: `0 8px 32px ${darkProTokens.roleTrainer}20`
+                  }}>
+                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                      {formatPrice(stats.cashFlow.debito)}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
+                      💳 Débito
+                    </Typography>
+                  </Paper>
+                </motion.div>
+              </Grid>
+              
+              <Grid size={{ xs: 6, md: 3 }}>
+                <motion.div whileHover={{ scale: 1.05 }}>
+                  <Paper sx={{
+                    p: 3,
+                    textAlign: 'center',
+                    background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
+                    color: darkProTokens.background,
+                    borderRadius: 3,
+                    border: `1px solid ${darkProTokens.warning}40`,
+                    boxShadow: `0 8px 32px ${darkProTokens.warning}20`
+                  }}>
+                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                      {formatPrice(stats.cashFlow.credito)}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
+                      💳 Crédito
+                    </Typography>
+                  </Paper>
+                </motion.div>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      </motion.div>
 
-      {/* 💳 MÉTODOS DE PAGO DEL DÍA - ENTERPRISE */}
+      {/* DESGLOSE DE INGRESOS DEL DÍA */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.6 }}
+      >
+        <Card sx={{
+          mb: 4,
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `1px solid ${darkProTokens.grayDark}`,
+          borderRadius: 4
+        }}>
+          <CardContent sx={{ p: 4 }}>
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.success, 
+              mb: 3, 
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}>
+              <BarChartIcon />
+              📊 Desglose de Ingresos del Día
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Paper sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `2px solid ${darkProTokens.info}40`,
+                  borderRadius: 3
+                }}>
+                  <Avatar sx={{ 
+                    bgcolor: darkProTokens.info, 
+                    width: 56, 
+                    height: 56,
+                    mx: 'auto',
+                    mb: 2
+                  }}>
+                    <SalesIcon />
+                  </Avatar>
+                  <Typography variant="h4" sx={{ color: darkProTokens.info, fontWeight: 800, mb: 1 }}>
+                    {formatPrice(stats.todaySales)}
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                    Ventas POS
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                    {stats.todayTransactions} transacciones
+                  </Typography>
+                </Paper>
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Paper sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `2px solid ${darkProTokens.success}40`,
+                  borderRadius: 3
+                }}>
+                  <Avatar sx={{ 
+                    bgcolor: darkProTokens.success, 
+                    width: 56, 
+                    height: 56,
+                    mx: 'auto',
+                    mb: 2
+                  }}>
+                    <FitnessCenterIcon />
+                  </Avatar>
+                  <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 800, mb: 1 }}>
+                    {formatPrice(stats.todayMembershipRevenue)}
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                    Membresías
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                    Solo ventas de hoy
+                  </Typography>
+                </Paper>
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Paper sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                  border: `2px solid ${darkProTokens.warning}40`,
+                  borderRadius: 3
+                }}>
+                  <Avatar sx={{ 
+                    bgcolor: darkProTokens.warning, 
+                    width: 56, 
+                    height: 56,
+                    mx: 'auto',
+                    mb: 2
+                  }}>
+                    <LayawayIcon />
+                  </Avatar>
+                  <Typography variant="h4" sx={{ color: darkProTokens.warning, fontWeight: 800, mb: 1 }}>
+                    {formatPrice(stats.todayLayawayPayments)}
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                    Abonos
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                    Apartados pagados hoy
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+            
+            <Divider sx={{ my: 3, borderColor: darkProTokens.grayMedium }} />
+            
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h3" sx={{ 
+                color: stats.todayBalance >= 0 ? darkProTokens.success : darkProTokens.error, 
+                fontWeight: 800,
+                mb: 1
+              }}>
+                {formatPrice(stats.todayBalance)}
+              </Typography>
+              <Typography variant="h5" sx={{ color: darkProTokens.textSecondary, fontWeight: 600 }}>
+                💎 Total de Ingresos del Día
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                color: darkProTokens.warning,
+                fontWeight: 500,
+                mt: 1
+              }}>
+                ⚡ Cálculo exacto: Solo movimientos de {formatDateLocal(selectedDate)}
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ACCESOS RÁPIDOS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.8 }}
-      >
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid size={{ xs: 12, lg: 8 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4
-            }}>
-              <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.primary, 
-                  mb: 3, 
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2
-                }}>
-                  <WalletIcon />
-                  💰 Flujo de Efectivo del Día
-                </Typography>
-                
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 6, md: 3 }}>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Paper sx={{
-                        p: 3,
-                        textAlign: 'center',
-                        background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-                        color: darkProTokens.textPrimary,
-                        borderRadius: 3,
-                        border: `1px solid ${darkProTokens.success}40`,
-                        boxShadow: `0 8px 32px ${darkProTokens.success}20`
-                      }}>
-                        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                          {formatPrice(stats.cashFlow.efectivo)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
-                          💵 Efectivo
-                        </Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={85} 
-                          sx={{ 
-                            mt: 1, 
-                            height: 4, 
-                            borderRadius: 2,
-                            bgcolor: `${darkProTokens.textPrimary}20`,
-                            '& .MuiLinearProgress-bar': {
-                              bgcolor: darkProTokens.textPrimary,
-                              borderRadius: 2
-                            }
-                          }} 
-                        />
-                      </Paper>
-                    </motion.div>
-                  </Grid>
-                  
-                  <Grid size={{ xs: 6, md: 3 }}>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Paper sx={{
-                        p: 3,
-                        textAlign: 'center',
-                                                background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
-                        color: darkProTokens.textPrimary,
-                        borderRadius: 3,
-                        border: `1px solid ${darkProTokens.info}40`,
-                        boxShadow: `0 8px 32px ${darkProTokens.info}20`
-                      }}>
-                        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                          {formatPrice(stats.cashFlow.transferencia)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
-                          🏦 Transferencia
-                        </Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={65} 
-                          sx={{ 
-                            mt: 1, 
-                            height: 4, 
-                            borderRadius: 2,
-                            bgcolor: `${darkProTokens.textPrimary}20`,
-                            '& .MuiLinearProgress-bar': {
-                              bgcolor: darkProTokens.textPrimary,
-                              borderRadius: 2
-                            }
-                          }} 
-                        />
-                      </Paper>
-                    </motion.div>
-                  </Grid>
-                  
-                  <Grid size={{ xs: 6, md: 3 }}>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Paper sx={{
-                        p: 3,
-                        textAlign: 'center',
-                        background: `linear-gradient(135deg, ${darkProTokens.roleTrainer}, #00695c)`,
-                        color: darkProTokens.textPrimary,
-                        borderRadius: 3,
-                        border: `1px solid ${darkProTokens.roleTrainer}40`,
-                        boxShadow: `0 8px 32px ${darkProTokens.roleTrainer}20`
-                      }}>
-                        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                          {formatPrice(stats.cashFlow.debito)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
-                          💳 Débito
-                        </Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={45} 
-                          sx={{ 
-                            mt: 1, 
-                            height: 4, 
-                            borderRadius: 2,
-                            bgcolor: `${darkProTokens.textPrimary}20`,
-                            '& .MuiLinearProgress-bar': {
-                              bgcolor: darkProTokens.textPrimary,
-                              borderRadius: 2
-                            }
-                          }} 
-                        />
-                      </Paper>
-                    </motion.div>
-                  </Grid>
-                  
-                  <Grid size={{ xs: 6, md: 3 }}>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Paper sx={{
-                        p: 3,
-                        textAlign: 'center',
-                        background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
-                        color: darkProTokens.background,
-                        borderRadius: 3,
-                        border: `1px solid ${darkProTokens.warning}40`,
-                        boxShadow: `0 8px 32px ${darkProTokens.warning}20`
-                      }}>
-                        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                          {formatPrice(stats.cashFlow.credito)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
-                          💳 Crédito
-                        </Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={25} 
-                          sx={{ 
-                            mt: 1, 
-                            height: 4, 
-                            borderRadius: 2,
-                            bgcolor: `${darkProTokens.background}20`,
-                            '& .MuiLinearProgress-bar': {
-                              bgcolor: darkProTokens.background,
-                              borderRadius: 2
-                            }
-                          }} 
-                        />
-                      </Paper>
-                    </motion.div>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* KPIs ENTERPRISE */}
-          <Grid size={{ xs: 12, lg: 4 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4,
-              height: '100%'
-            }}>
-              <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.primary, 
-                  mb: 3, 
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2
-                }}>
-                  <AnalyticsIcon />
-                  📊 KPIs Enterprise
-                </Typography>
-                
-                <Stack spacing={3}>
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontWeight: 600 }}>
-                        Crecimiento Mensual
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                        +{stats.monthlyGrowth}%
-                      </Typography>
-                    </Box>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={stats.monthlyGrowth} 
-                      sx={{ 
-                        height: 8, 
-                        borderRadius: 4,
-                        bgcolor: darkProTokens.grayDark,
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: darkProTokens.success,
-                          borderRadius: 4,
-                          boxShadow: `0 0 10px ${darkProTokens.success}40`
-                        }
-                      }} 
-                    />
-                  </Box>
-
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontWeight: 600 }}>
-                        Tasa de Conversión
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
-                        {stats.conversionRate}%
-                      </Typography>
-                    </Box>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={stats.conversionRate} 
-                      sx={{ 
-                        height: 8, 
-                        borderRadius: 4,
-                        bgcolor: darkProTokens.grayDark,
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: darkProTokens.info,
-                          borderRadius: 4,
-                          boxShadow: `0 0 10px ${darkProTokens.info}40`
-                        }
-                      }} 
-                    />
-                  </Box>
-
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontWeight: 600 }}>
-                        Retención de Clientes
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                        {stats.customerRetention}%
-                      </Typography>
-                    </Box>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={stats.customerRetention} 
-                      sx={{ 
-                        height: 8, 
-                        borderRadius: 4,
-                        bgcolor: darkProTokens.grayDark,
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: darkProTokens.primary,
-                          borderRadius: 4,
-                          boxShadow: `0 0 10px ${darkProTokens.primary}40`
-                        }
-                      }} 
-                    />
-                  </Box>
-
-                  <Divider sx={{ borderColor: darkProTokens.grayDark }} />
-
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: `${darkProTokens.success}10`, borderRadius: 2 }}>
-                    <Typography variant="h5" sx={{ color: darkProTokens.success, fontWeight: 800, mb: 0.5 }}>
-                      {formatPrice(stats.avgLifetimeValue)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontWeight: 600 }}>
-                      💎 Valor de Vida del Cliente
-                    </Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </motion.div>
-
-      {/* 🚀 ACCESOS RÁPIDOS ENTERPRISE */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.0 }}
       >
         <Card sx={{
           mb: 4,
@@ -1722,10 +1373,7 @@ export default function AdminDashboardPage() {
             
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
+                <motion.div whileHover={{ scale: 1.02 }}>
                   <Button
                     fullWidth
                     variant="contained"
@@ -1752,10 +1400,7 @@ export default function AdminDashboardPage() {
               </Grid>
               
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
+                <motion.div whileHover={{ scale: 1.02 }}>
                   <Button
                     fullWidth
                     variant="outlined"
@@ -1763,7 +1408,7 @@ export default function AdminDashboardPage() {
                     startIcon={<ReceiptIcon />}
                     onClick={() => router.push('/dashboard/admin/cortes')}
                     sx={{
-                      color: darkProTokens.info,
+                                            color: darkProTokens.info,
                       borderColor: `${darkProTokens.info}60`,
                       justifyContent: 'flex-start',
                       py: 2,
@@ -1774,8 +1419,7 @@ export default function AdminDashboardPage() {
                       '&:hover': {
                         borderColor: darkProTokens.info,
                         bgcolor: `${darkProTokens.info}10`,
-                        transform: 'translateY(-1px)',
-                        boxShadow: `0 8px 32px ${darkProTokens.info}20`
+                        transform: 'translateY(-1px)'
                       }
                     }}
                   >
@@ -1785,15 +1429,12 @@ export default function AdminDashboardPage() {
               </Grid>
               
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
+                <motion.div whileHover={{ scale: 1.02 }}>
                   <Button
                     fullWidth
                     variant="outlined"
                     size="large"
-                    startIcon={<AssessmentIcon />}
+                    startIcon={<AnalyticsIcon />}
                     onClick={() => router.push('/dashboard/admin/reportes')}
                     sx={{
                       color: darkProTokens.warning,
@@ -1807,21 +1448,17 @@ export default function AdminDashboardPage() {
                       '&:hover': {
                         borderColor: darkProTokens.warning,
                         bgcolor: `${darkProTokens.warning}10`,
-                        transform: 'translateY(-1px)',
-                        boxShadow: `0 8px 32px ${darkProTokens.warning}20`
+                        transform: 'translateY(-1px)'
                       }
                     }}
                   >
-                    📊 Reportes Avanzados
+                    📊 Reportes
                   </Button>
                 </motion.div>
               </Grid>
               
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
+                <motion.div whileHover={{ scale: 1.02 }}>
                   <Button
                     fullWidth
                     variant="outlined"
@@ -1840,8 +1477,7 @@ export default function AdminDashboardPage() {
                       '&:hover': {
                         borderColor: darkProTokens.roleModerator,
                         bgcolor: `${darkProTokens.roleModerator}10`,
-                        transform: 'translateY(-1px)',
-                        boxShadow: `0 8px 32px ${darkProTokens.roleModerator}20`
+                        transform: 'translateY(-1px)'
                       }
                     }}
                   >
@@ -1854,18 +1490,121 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* 📈 COMPARATIVAS ENTERPRISE */}
+      {/* COMPARATIVAS Y INFORMACIÓN ADICIONAL */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.2 }}
+        transition={{ duration: 0.6, delay: 1.0 }}
       >
         <Grid container spacing={3} sx={{ mb: 4 }}>
+          {/* INFORMACIÓN DE USUARIOS */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
               border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4
+              borderRadius: 4,
+              height: '100%'
+            }}>
+              <CardContent sx={{ p: 4 }}>
+                <Typography variant="h6" sx={{ 
+                  color: darkProTokens.roleStaff, 
+                  mb: 3, 
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2
+                }}>
+                  <PeopleIcon />
+                  👥 Información de Usuarios
+                </Typography>
+                
+                <Stack spacing={3}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      Total de Usuarios:
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                      {stats.totalUsers}
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      Clientes Activos:
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                      {stats.clientUsers}
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      Nuevos Hoy:
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
+                      +{stats.newUsersToday}
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      Nuevos Este Mes:
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                      +{stats.newUsersMonth}
+                    </Typography>
+                  </Box>
+                  
+                  <Divider sx={{ borderColor: darkProTokens.grayMedium }} />
+                  
+                  <Box>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                      Distribución por Género:
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Chip 
+                        icon={<MaleIcon />}
+                        label={`${stats.usersByGender.male} Hombres`}
+                        size="small"
+                        sx={{ 
+                          bgcolor: `${darkProTokens.info}20`, 
+                          color: darkProTokens.info,
+                          fontWeight: 600
+                        }}
+                      />
+                      <Chip 
+                        icon={<FemaleIcon />}
+                        label={`${stats.usersByGender.female} Mujeres`}
+                        size="small"
+                        sx={{ 
+                          bgcolor: `${darkProTokens.roleModerator}20`, 
+                          color: darkProTokens.roleModerator,
+                          fontWeight: 600
+                        }}
+                      />
+                      <Chip 
+                        label={`${stats.usersByGender.other} Otros`}
+                        size="small"
+                        sx={{ 
+                          bgcolor: `${darkProTokens.textSecondary}20`, 
+                          color: darkProTokens.textSecondary,
+                          fontWeight: 600
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* INFORMACIÓN DE MEMBRESÍAS */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 4,
+              height: '100%'
             }}>
               <CardContent sx={{ p: 4 }}>
                 <Typography variant="h6" sx={{ 
@@ -1876,152 +1615,68 @@ export default function AdminDashboardPage() {
                   alignItems: 'center',
                   gap: 2
                 }}>
-                  <CompareIcon />
-                  📊 vs Ayer
+                  <FitnessCenterIcon />
+                  🏋️ Estado de Membresías
                 </Typography>
                 
                 <Stack spacing={3}>
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        Ventas
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {stats.vsYesterday.sales >= 0 ? 
-                          <TrendingUpIcon sx={{ color: darkProTokens.success, fontSize: 20 }} /> : 
-                          <TrendingDownIcon sx={{ color: darkProTokens.error, fontSize: 20 }} />
-                        }
-                        <Typography variant="h6" sx={{ 
-                          color: stats.vsYesterday.sales >= 0 ? darkProTokens.success : darkProTokens.error,
-                          fontWeight: 700 
-                        }}>
-                          {formatPrice(Math.abs(stats.vsYesterday.sales))}
-                        </Typography>
-                      </Box>
-                    </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      Activas:
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                      {stats.activeMemberships}
+                    </Typography>
                   </Box>
-
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        Transacciones
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {stats.vsYesterday.transactions >= 0 ? 
-                          <TrendingUpIcon sx={{ color: darkProTokens.success, fontSize: 20 }} /> : 
-                          <TrendingDownIcon sx={{ color: darkProTokens.error, fontSize: 20 }} />
-                        }
-                        <Typography variant="h6" sx={{ 
-                          color: stats.vsYesterday.transactions >= 0 ? darkProTokens.success : darkProTokens.error,
-                          fontWeight: 700 
-                        }}>
-                          {stats.vsYesterday.transactions >= 0 ? '+' : ''}{stats.vsYesterday.transactions}
-                        </Typography>
-                      </Box>
-                    </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      Por Vencer (7 días):
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                      {stats.expiringMemberships}
+                    </Typography>
                   </Box>
-
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        Membresías
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {stats.vsYesterday.memberships >= 0 ? 
-                          <TrendingUpIcon sx={{ color: darkProTokens.success, fontSize: 20 }} /> : 
-                          <TrendingDownIcon sx={{ color: darkProTokens.error, fontSize: 20 }} />
-                        }
-                        <Typography variant="h6" sx={{ 
-                          color: stats.vsYesterday.memberships >= 0 ? darkProTokens.success : darkProTokens.error,
-                          fontWeight: 700 
-                        }}>
-                          {stats.vsYesterday.memberships >= 0 ? '+' : ''}{stats.vsYesterday.memberships}
-                        </Typography>
-                      </Box>
-                    </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      Vencidas:
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
+                      {stats.expiredMemberships}
+                    </Typography>
                   </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4
-            }}>
-              <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.info, 
-                  mb: 3, 
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2
-                }}>
-                  <TimelineIcon />
-                  📈 vs Semana Pasada
-                </Typography>
-                
-                <Stack spacing={3}>
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        Ventas
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {stats.vsLastWeek.sales >= 0 ? 
-                          <TrendingUpIcon sx={{ color: darkProTokens.success, fontSize: 20 }} /> : 
-                          <TrendingDownIcon sx={{ color: darkProTokens.error, fontSize: 20 }} />
-                        }
-                        <Typography variant="h6" sx={{ 
-                          color: stats.vsLastWeek.sales >= 0 ? darkProTokens.success : darkProTokens.error,
-                          fontWeight: 700 
-                        }}>
-                          {formatPrice(Math.abs(stats.vsLastWeek.sales))}
-                        </Typography>
-                      </Box>
-                    </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      Congeladas:
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
+                      {stats.frozenMemberships}
+                    </Typography>
                   </Box>
-
+                  
+                  <Divider sx={{ borderColor: darkProTokens.grayMedium }} />
+                  
                   <Box>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                      Ingresos por Membresías:
+                    </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        Transacciones
+                      <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                        Total Histórico:
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {stats.vsLastWeek.transactions >= 0 ? 
-                          <TrendingUpIcon sx={{ color: darkProTokens.success, fontSize: 20 }} /> : 
-                          <TrendingDownIcon sx={{ color: darkProTokens.error, fontSize: 20 }} />
-                        }
-                        <Typography variant="h6" sx={{ 
-                          color: stats.vsLastWeek.transactions >= 0 ? darkProTokens.success : darkProTokens.error,
-                          fontWeight: 700 
-                        }}>
-                          {stats.vsLastWeek.transactions >= 0 ? '+' : ''}{stats.vsLastWeek.transactions}
-                        </Typography>
-                      </Box>
+                      <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                        {formatPrice(stats.membershipRevenue)}
+                      </Typography>
                     </Box>
-                  </Box>
-
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        Membresías
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                        Solo Hoy:
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {stats.vsLastWeek.memberships >= 0 ? 
-                          <TrendingUpIcon sx={{ color: darkProTokens.success, fontSize: 20 }} /> : 
-                          <TrendingDownIcon sx={{ color: darkProTokens.error, fontSize: 20 }} />
-                        }
-                        <Typography variant="h6" sx={{ 
-                          color: stats.vsLastWeek.memberships >= 0 ? darkProTokens.success : darkProTokens.error,
-                          fontWeight: 700 
-                        }}>
-                          {stats.vsLastWeek.memberships >= 0 ? '+' : ''}{stats.vsLastWeek.memberships}
-                        </Typography>
-                      </Box>
+                      <Typography variant="body1" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                        {formatPrice(stats.todayMembershipRevenue)}
+                      </Typography>
                     </Box>
                   </Box>
                 </Stack>
@@ -2031,17 +1686,80 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* 🎨 ESTILOS CSS ENTERPRISE PERSONALIZADOS */}
+      {/* PLACEHOLDER PARA GRÁFICOS RECHARTS */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 1.2 }}
+      >
+        <Card sx={{
+          mb: 4,
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `1px solid ${darkProTokens.grayDark}`,
+          borderRadius: 4
+        }}>
+          <CardContent sx={{ p: 4 }}>
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.success, 
+              mb: 3, 
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}>
+              <BarChartIcon />
+              📈 Gráficos Avanzados (Recharts)
+            </Typography>
+            
+            <Box sx={{ 
+              height: 250, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: 2,
+              bgcolor: `${darkProTokens.primary}10`,
+              borderRadius: 3,
+              border: `2px dashed ${darkProTokens.primary}40`
+            }}>
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                  opacity: [0.5, 1, 0.5]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              >
+                <BarChartIcon sx={{ fontSize: 80, color: darkProTokens.primary }} />
+              </motion.div>
+              <Typography variant="h5" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                Gráficos Enterprise Listos
+              </Typography>
+              <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, textAlign: 'center' }}>
+                Los gráficos profesionales con Recharts aparecerán aquí.<br />
+                📊 Tendencias • 📈 Comparativas • 🥧 Distribuciones
+              </Typography>
+              <Chip
+                label="Recharts Instalado ✅"
+                sx={{
+                  bgcolor: `${darkProTokens.success}20`,
+                  color: darkProTokens.success,
+                  fontWeight: 600
+                }}
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ESTILOS CSS ENTERPRISE */}
       <style jsx>{`
         @keyframes pulse {
-          0%, 100% { 
-            opacity: 1; 
-            transform: scale(1);
-          }
-          50% { 
-            opacity: 0.8; 
-            transform: scale(1.02);
-          }
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.02); }
         }
         
         @keyframes glow {
@@ -2053,27 +1771,6 @@ export default function AdminDashboardPage() {
           }
         }
         
-        @keyframes slideIn {
-          from {
-            transform: translateX(-100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
-        }
-        
-        /* Scrollbar Enterprise */
         ::-webkit-scrollbar {
           width: 12px;
         }
@@ -2081,46 +1778,15 @@ export default function AdminDashboardPage() {
         ::-webkit-scrollbar-track {
           background: ${darkProTokens.surfaceLevel1};
           border-radius: 6px;
-          border: 1px solid ${darkProTokens.grayDark};
         }
         
         ::-webkit-scrollbar-thumb {
           background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
           border-radius: 6px;
-          border: 2px solid ${darkProTokens.surfaceLevel1};
         }
         
         ::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
-        }
-        
-        /* Efectos hover Enterprise */
-        .hover-glow:hover {
-          box-shadow: 0 0 20px ${darkProTokens.primary}40 !important;
-          border-color: ${darkProTokens.primary} !important;
-        }
-        
-        /* Animaciones de texto */
-        .text-gradient {
-          background: linear-gradient(45deg, ${darkProTokens.primary}, ${darkProTokens.success});
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-        
-        /* Grid empresarial */
-        .enterprise-grid {
-          display: grid;
-          gap: 24px;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        }
-        
-        /* Cards con efecto glassmorphism */
-        .glass-card {
-          backdrop-filter: blur(20px);
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
       `}</style>
     </Box>
