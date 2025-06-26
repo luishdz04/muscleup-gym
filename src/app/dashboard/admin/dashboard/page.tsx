@@ -18,7 +18,11 @@ import {
   Snackbar,
   CircularProgress,
   Tooltip,
-  Badge
+  Badge,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -45,7 +49,10 @@ import {
   Timeline as TimelineIcon,
   CompareArrows as CompareIcon,
   AccountBalance as AccountBalanceIcon,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Cake as CakeIcon,
+  Percent as PercentIcon,
+  Group as GroupIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
@@ -68,7 +75,9 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
-  ComposedChart
+  ComposedChart,
+  RadialBarChart,
+  RadialBar
 } from 'recharts';
 
 // 🎨 DARK PRO SYSTEM - TOKENS ENTERPRISE
@@ -193,6 +202,31 @@ function getDateDaysAgo(daysAgo: number): string {
   return `${year}-${month}-${day}`;
 }
 
+// ✅ FUNCIÓN PARA VERIFICAR CUMPLEAÑOS HOY
+function isBirthdayToday(birthDate: string): boolean {
+  if (!birthDate) return false;
+  
+  try {
+    const today = new Date();
+    const mexicoToday = new Date(today.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+    
+    // Manejar diferentes formatos de fecha
+    let birth: Date;
+    if (birthDate.includes('-')) {
+      birth = new Date(birthDate);
+    } else if (birthDate.includes('/')) {
+      birth = new Date(birthDate);
+    } else {
+      return false;
+    }
+    
+    return birth.getDate() === mexicoToday.getDate() && 
+           birth.getMonth() === mexicoToday.getMonth();
+  } catch (error) {
+    return false;
+  }
+}
+
 // ✅ INTERFACES CORREGIDAS CON DATOS COMPLETOS
 interface DailyData {
   date: string;
@@ -248,8 +282,28 @@ interface DailyData {
   };
 }
 
+// ✅ NUEVAS INTERFACES PARA CUMPLEAÑOS Y RETENCIÓN
+interface BirthdayUser {
+  id: string;
+  firstName: string;
+  lastName?: string;
+  birthDate: string;
+  profilePictureUrl?: string;
+}
+
+interface RetentionData {
+  totalClients: number;
+  clientsWithMembership: number;
+  retentionPercentage: number;
+  chartData: {
+    name: string;
+    value: number;
+    fill: string;
+  }[];
+}
+
 interface DashboardStats {
-  totalUsers: number;
+  totalUsers: number; // ✅ AHORA SOLO CLIENTES
   clientUsers: number;
   newUsersToday: number;
   newUsersMonth: number;
@@ -286,6 +340,9 @@ interface DashboardStats {
   };
   chartData: ChartData[];
   pieData: PieData[];
+  // ✅ NUEVOS DATOS
+  birthdayUsers: BirthdayUser[];
+  retentionData: RetentionData;
 }
 
 interface ChartData {
@@ -332,7 +389,14 @@ export default function AdminDashboardPage() {
     cashFlow: { efectivo: 0, transferencia: 0, debito: 0, credito: 0 },
     weeklyTrend: { sales: [], dates: [], memberships: [], layaways: [] },
     chartData: [],
-    pieData: []
+    pieData: [],
+    birthdayUsers: [],
+    retentionData: {
+      totalClients: 0,
+      clientsWithMembership: 0,
+      retentionPercentage: 0,
+      chartData: []
+    }
   });
 
   const [loading, setLoading] = useState(true);
@@ -440,7 +504,7 @@ export default function AdminDashboardPage() {
     }
   }, [selectedDate]);
 
-  // ✅ FUNCIÓN PRINCIPAL CORREGIDA - LIMPIA SIN DEBUG
+  // ✅ FUNCIÓN PRINCIPAL CORREGIDA - CON NUEVAS MEJORAS
   const loadDashboardStats = useCallback(async () => {
     try {
       setError(null);
@@ -456,27 +520,28 @@ export default function AdminDashboardPage() {
       in7Days.setDate(today.getDate() + 7);
       const in7DaysString = `${in7Days.getFullYear()}-${(in7Days.getMonth() + 1).toString().padStart(2, '0')}-${in7Days.getDate().toString().padStart(2, '0')}`;
 
-      // 👥 CARGAR USUARIOS
+      // 👥 CARGAR USUARIOS - ✅ SOLO CLIENTES SEGÚN ESQUEMA REAL
       const { data: allUsers, error: usersError } = await supabase
         .from('Users')
-        .select('id, rol, gender, createdAt');
+        .select('id, firstName, lastName, gender, createdAt, birthDate, profilePictureUrl, rol')
+        .eq('rol', 'cliente'); // ✅ SOLO CLIENTES
 
       if (usersError) {
         throw usersError;
       }
 
-      const clientUsers = allUsers?.filter(u => u.rol === 'cliente') || [];
-      const newUsersToday = allUsers?.filter(u => {
+      const clientUsers = allUsers || []; // ✅ YA SON SOLO CLIENTES
+      const newUsersToday = clientUsers.filter(u => {
         if (!u.createdAt) return false;
         const createdDate = u.createdAt.split('T')[0];
         return createdDate === mexicoToday;
-      }) || [];
+      });
 
-      const newUsersMonth = allUsers?.filter(u => {
+      const newUsersMonth = clientUsers.filter(u => {
         if (!u.createdAt) return false;
         const createdDate = u.createdAt.split('T')[0];
         return createdDate >= firstDayOfMonth;
-      }) || [];
+      });
 
       const genderStats = clientUsers.reduce((acc, user) => {
         const gender = user.gender?.toLowerCase() || 'other';
@@ -486,10 +551,21 @@ export default function AdminDashboardPage() {
         return acc;
       }, { male: 0, female: 0, other: 0 });
 
+      // 🎂 CUMPLEAÑEROS DEL DÍA
+      const birthdayUsers: BirthdayUser[] = clientUsers.filter(user => 
+        user.birthDate && isBirthdayToday(user.birthDate)
+      ).map(user => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        birthDate: user.birthDate,
+        profilePictureUrl: user.profilePictureUrl
+      }));
+
       // 🏋️ CARGAR MEMBRESÍAS
       const { data: memberships, error: membershipsError } = await supabase
         .from('user_memberships')
-        .select('*');
+        .select('*, user_id');
 
       if (membershipsError) {
         throw membershipsError;
@@ -518,6 +594,29 @@ export default function AdminDashboardPage() {
 
       const todayMembershipRevenue = todayMemberships.reduce((sum, m) => sum + (m.amount_paid || 0), 0);
       const totalRevenue = memberships?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0;
+
+      // 📊 CALCULAR RETENCIÓN (CLIENTES CON MEMBRESÍA ACTIVA)
+      const uniqueUsersWithMembership = new Set(active.map(m => m.user_id)).size;
+      const retentionPercentage = clientUsers.length > 0 ? 
+        Math.round((uniqueUsersWithMembership / clientUsers.length) * 100) : 0;
+
+      const retentionData: RetentionData = {
+        totalClients: clientUsers.length,
+        clientsWithMembership: uniqueUsersWithMembership,
+        retentionPercentage,
+        chartData: [
+          {
+            name: 'Con Membresía',
+            value: retentionPercentage,
+            fill: darkProTokens.success
+          },
+          {
+            name: 'Sin Membresía',
+            value: 100 - retentionPercentage,
+            fill: darkProTokens.grayMuted
+          }
+        ]
+      };
 
       // 📦 CARGAR APARTADOS
       const { data: layaways, error: layawaysError } = await supabase
@@ -578,10 +677,10 @@ export default function AdminDashboardPage() {
         }
       }
 
-      // ✅ CONSTRUIR ESTADÍSTICAS FINALES
+      // ✅ CONSTRUIR ESTADÍSTICAS FINALES CON NUEVAS MEJORAS
       const finalStats: DashboardStats = {
-        totalUsers: allUsers?.length || 0,
-        clientUsers: clientUsers.length,
+        totalUsers: clientUsers.length, // ✅ SOLO CLIENTES
+        clientUsers: clientUsers.length, // ✅ MISMO VALOR
         newUsersToday: newUsersToday.length,
         newUsersMonth: newUsersMonth.length,
         usersByGender: genderStats,
@@ -611,7 +710,10 @@ export default function AdminDashboardPage() {
         todayBalance: dailyDataResult?.totals?.total || 0,
         weeklyTrend: { sales: [], dates: [], memberships: [], layaways: [] },
         chartData: realChartData,
-        pieData
+        pieData,
+        // ✅ NUEVOS DATOS
+        birthdayUsers,
+        retentionData
       };
 
       setStats(finalStats);
@@ -1004,7 +1106,7 @@ export default function AdminDashboardPage() {
                 fontWeight: 600,
                 fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
               }}>
-                👥 Clientes Activos
+                👥 Total Clientes
               </Typography>
             </Box>
             
@@ -1045,14 +1147,14 @@ export default function AdminDashboardPage() {
                 fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' },
                 textShadow: `0 0 10px ${darkProTokens.info}40`
               }}>
-                {formatPrice(stats.todayBalance)}
+                {stats.retentionData.retentionPercentage}%
               </Typography>
               <Typography variant="body1" sx={{ 
                 color: darkProTokens.textSecondary,
                 fontWeight: 600,
                 fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
               }}>
-                💰 Ingresos del Día
+                📊 Retención
               </Typography>
             </Box>
             
@@ -1078,14 +1180,14 @@ export default function AdminDashboardPage() {
                 fontWeight: 600,
                 fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
               }}>
-                📈 Balance Neto
+                💰 Ingresos Hoy
               </Typography>
             </Box>
           </Box>
         </Paper>
       </motion.div>
 
-      {/* MÉTRICAS PRINCIPALES ENTERPRISE RESPONSIVAS */}
+      {/* MÉTRICAS PRINCIPALES + CUMPLEAÑOS RESPONSIVOS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1094,7 +1196,7 @@ export default function AdminDashboardPage() {
         <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
           <Grid xs={12} sm={6} lg={3}>
             <MetricCard
-              title="Usuarios Totales"
+              title="Total Clientes"
               value={stats.totalUsers}
               subtitle={`+${stats.newUsersToday} hoy, +${stats.newUsersMonth} este mes`}
               icon={<PeopleIcon />}
@@ -1138,6 +1240,252 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
+      {/* 🎂 CUMPLEAÑEROS + 📊 RETENCIÓN */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+      >
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
+          {/* 🎂 CUMPLEAÑEROS DEL DÍA */}
+          <Grid xs={12} md={6}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 4,
+              height: '100%',
+              minHeight: '400px'
+            }}>
+              <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <motion.div
+                    animate={{ 
+                      rotate: [0, 10, -10, 0],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{ 
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <CakeIcon sx={{ color: darkProTokens.warning, fontSize: 28 }} />
+                  </motion.div>
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.warning, 
+                    fontWeight: 700,
+                    fontSize: { xs: '1rem', sm: '1.25rem' }
+                  }}>
+                    🎂 Cumpleañeros de Hoy
+                  </Typography>
+                  <Badge 
+                    badgeContent={stats.birthdayUsers.length} 
+                    color="warning"
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        bgcolor: darkProTokens.primary,
+                        color: darkProTokens.background,
+                        fontWeight: 700
+                      }
+                    }}
+                  >
+                    <GroupIcon sx={{ color: darkProTokens.textSecondary }} />
+                  </Badge>
+                </Box>
+                
+                {stats.birthdayUsers.length > 0 ? (
+                  <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+                    <AnimatePresence>
+                      {stats.birthdayUsers.map((user, index) => (
+                        <motion.div
+                          key={user.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <ListItem sx={{
+                            mb: 1,
+                            background: `linear-gradient(135deg, ${darkProTokens.warning}10, ${darkProTokens.primary}05)`,
+                            borderRadius: 3,
+                            border: `1px solid ${darkProTokens.warning}20`
+                          }}>
+                            <ListItemAvatar>
+                              <Avatar 
+                                src={user.profilePictureUrl} 
+                                sx={{ 
+                                  bgcolor: darkProTokens.warning,
+                                  border: `2px solid ${darkProTokens.warning}40`
+                                }}
+                              >
+                                🎉
+                              </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText
+                              primary={
+                                <Typography variant="body1" sx={{ 
+                                  color: darkProTokens.textPrimary,
+                                  fontWeight: 600
+                                }}>
+                                  {user.firstName} {user.lastName || ''}
+                                </Typography>
+                              }
+                              secondary={
+                                <Typography variant="body2" sx={{ 
+                                  color: darkProTokens.textSecondary,
+                                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                                }}>
+                                  🎂 ¡Feliz cumpleaños!
+                                </Typography>
+                              }
+                            />
+                            <motion.div
+                              animate={{ 
+                                scale: [1, 1.2, 1]
+                              }}
+                              transition={{ 
+                                duration: 1,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                              }}
+                            >
+                              <CakeIcon sx={{ color: darkProTokens.warning }} />
+                            </motion.div>
+                          </ListItem>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </List>
+                ) : (
+                  <Box sx={{ 
+                    height: 300, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    gap: 2
+                  }}>
+                    <CakeIcon sx={{ fontSize: { xs: 60, sm: 80 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+                    <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                      No hay cumpleañeros hoy
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, textAlign: 'center', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                      ¡Los cumpleañeros aparecerán aquí cuando sea su día especial!
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* 📊 GRÁFICO DE RETENCIÓN */}
+          <Grid xs={12} md={6}>
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 4,
+              height: '100%',
+              minHeight: '400px'
+            }}>
+              <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <PercentIcon sx={{ color: darkProTokens.info, fontSize: 28 }} />
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.info, 
+                    fontWeight: 700,
+                    fontSize: { xs: '1rem', sm: '1.25rem' }
+                  }}>
+                    📊 Retención de Clientes
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ textAlign: 'center', mb: 3 }}>
+                  <Typography variant="h2" sx={{ 
+                    color: darkProTokens.success, 
+                    fontWeight: 800,
+                    fontSize: { xs: '2.5rem', sm: '3rem', md: '4rem' },
+                    textShadow: `0 0 20px ${darkProTokens.success}40`
+                  }}>
+                    {stats.retentionData.retentionPercentage}%
+                  </Typography>
+                  <Typography variant="body1" sx={{ 
+                    color: darkProTokens.textSecondary,
+                    fontWeight: 600,
+                    fontSize: { xs: '0.9rem', sm: '1rem' }
+                  }}>
+                    de clientes con membresía activa
+                  </Typography>
+                </Box>
+
+                <Box sx={{ height: { xs: 180, sm: 200 }, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stats.retentionData.chartData}
+                        cx="50%"
+                        cy="50%"
+                        startAngle={90}
+                        endAngle={-270}
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {stats.retentionData.chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        contentStyle={{
+                          backgroundColor: darkProTokens.surfaceLevel4,
+                          border: `1px solid ${darkProTokens.grayDark}`,
+                          borderRadius: '8px',
+                          color: darkProTokens.textPrimary,
+                          fontSize: '12px'
+                        }}
+                        formatter={(value: any) => [`${value}%`, '']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.success, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
+                      {stats.retentionData.clientsWithMembership}
+                    </Typography>
+                    <Typography variant="caption" sx={{ 
+                      color: darkProTokens.textSecondary,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                    }}>
+                      Con Membresía
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.grayMuted, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
+                      {stats.retentionData.totalClients - stats.retentionData.clientsWithMembership}
+                    </Typography>
+                    <Typography variant="caption" sx={{ 
+                      color: darkProTokens.textSecondary,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                    }}>
+                      Sin Membresía
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </motion.div>
+
       {/* GRÁFICOS ENTERPRISE CON RECHARTS RESPONSIVOS */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
         {/* GRÁFICO DE TENDENCIAS RESPONSIVO */}
@@ -1148,7 +1496,7 @@ export default function AdminDashboardPage() {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+                         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
               border: `1px solid ${darkProTokens.grayDark}`,
               borderRadius: 4,
               overflow: 'hidden'
@@ -1460,7 +1808,8 @@ export default function AdminDashboardPage() {
                     }}>
                       {formatPrice(stats.cashFlow.debito)}
                     </Typography>
-                    <Typography variant="body2" sx={{                       opacity: 0.9, 
+                    <Typography variant="body2" sx={{ 
+                      opacity: 0.9, 
                       fontWeight: 600,
                       fontSize: { xs: '0.75rem', sm: '0.875rem' }
                     }}>
@@ -1588,55 +1937,6 @@ export default function AdminDashboardPage() {
                   }}>
                     {stats.todayTransactions} transacciones
                   </Typography>
-                  {dailyData && (
-                    <Stack spacing={1} sx={{ mt: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Efectivo:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.primary, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.pos.efectivo)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Transferencia:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.info, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.pos.transferencia)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Tarjetas:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.warning, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.pos.debito + dailyData.pos.credito)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  )}
                 </Paper>
               </Grid>
               
@@ -1678,55 +1978,6 @@ export default function AdminDashboardPage() {
                   }}>
                     Solo ventas de hoy
                   </Typography>
-                  {dailyData && (
-                    <Stack spacing={1} sx={{ mt: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Efectivo:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.primary, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.memberships.efectivo)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Transferencia:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.info, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.memberships.transferencia)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Tarjetas:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.warning, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.memberships.debito + dailyData.memberships.credito)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  )}
                 </Paper>
               </Grid>
               
@@ -1768,55 +2019,6 @@ export default function AdminDashboardPage() {
                   }}>
                     Apartados pagados hoy
                   </Typography>
-                  {dailyData && (
-                    <Stack spacing={1} sx={{ mt: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Efectivo:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.primary, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.abonos.efectivo)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Transferencia:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.info, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.abonos.transferencia)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          Tarjetas:
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: darkProTokens.warning, 
-                          fontWeight: 600,
-                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                        }}>
-                          {formatPrice(dailyData.abonos.debito + dailyData.abonos.credito)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  )}
                 </Paper>
               </Grid>
             </Grid>
@@ -2064,7 +2266,7 @@ export default function AdminDashboardPage() {
                   fontSize: { xs: '1rem', sm: '1.25rem' }
                 }}>
                   <PeopleIcon />
-                  👥 Información de Usuarios
+                  👥 Información de Clientes
                 </Typography>
                 
                 <Stack spacing={3}>
@@ -2074,7 +2276,7 @@ export default function AdminDashboardPage() {
                       fontWeight: 600,
                       fontSize: { xs: '0.9rem', sm: '1rem' }
                     }}>
-                      Total de Usuarios:
+                      Total de Clientes:
                     </Typography>
                     <Typography variant="h6" sx={{ 
                       color: darkProTokens.primary, 
@@ -2091,14 +2293,14 @@ export default function AdminDashboardPage() {
                       fontWeight: 600,
                       fontSize: { xs: '0.9rem', sm: '1rem' }
                     }}>
-                      Clientes Activos:
+                      Con Membresía Activa:
                     </Typography>
                     <Typography variant="h6" sx={{ 
                       color: darkProTokens.success, 
                       fontWeight: 700,
                       fontSize: { xs: '1rem', sm: '1.25rem' }
                     }}>
-                      {stats.clientUsers}
+                      {stats.retentionData.clientsWithMembership}
                     </Typography>
                   </Box>
                   
@@ -2361,4 +2563,4 @@ export default function AdminDashboardPage() {
       `}</style>
     </Box>
   );
-}
+}   
