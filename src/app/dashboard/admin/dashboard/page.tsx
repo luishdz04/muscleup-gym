@@ -202,27 +202,83 @@ function getDateDaysAgo(daysAgo: number): string {
   return `${year}-${month}-${day}`;
 }
 
-// ✅ FUNCIÓN PARA VERIFICAR CUMPLEAÑOS HOY
+// ✅ FUNCIÓN CORREGIDA PARA DETECTAR CUMPLEAÑOS HOY
 function isBirthdayToday(birthDate: string): boolean {
   if (!birthDate) return false;
   
   try {
+    // Fecha de hoy en México
     const today = new Date();
     const mexicoToday = new Date(today.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+    const todayDay = mexicoToday.getDate();
+    const todayMonth = mexicoToday.getMonth() + 1; // getMonth() devuelve 0-11
     
-    // Manejar diferentes formatos de fecha
-    let birth: Date;
-    if (birthDate.includes('-')) {
-      birth = new Date(birthDate);
-    } else if (birthDate.includes('/')) {
-      birth = new Date(birthDate);
+    let birthDay: number;
+    let birthMonth: number;
+    
+    // 🎯 DETECTAR DIFERENTES FORMATOS DE FECHA
+    if (birthDate.includes('/')) {
+      // Formato: "26/06/1998" o "06/26/1998"
+      const parts = birthDate.split('/');
+      
+      if (parts.length === 3) {
+        // Asumir formato DD/MM/YYYY (más común en México)
+        birthDay = parseInt(parts[0]);
+        birthMonth = parseInt(parts[1]);
+        
+        // Validar que el día y mes sean válidos
+        if (birthDay > 31 || birthMonth > 12) {
+          // Tal vez sea MM/DD/YYYY
+          birthDay = parseInt(parts[1]);
+          birthMonth = parseInt(parts[0]);
+        }
+      } else {
+        return false;
+      }
+    } else if (birthDate.includes('-')) {
+      // Formato: "1998-06-26" o "26-06-1998"
+      const parts = birthDate.split('-');
+      
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          // Formato YYYY-MM-DD
+          birthDay = parseInt(parts[2]);
+          birthMonth = parseInt(parts[1]);
+        } else {
+          // Formato DD-MM-YYYY
+          birthDay = parseInt(parts[0]);
+          birthMonth = parseInt(parts[1]);
+        }
+      } else {
+        return false;
+      }
     } else {
       return false;
     }
     
-    return birth.getDate() === mexicoToday.getDate() && 
-           birth.getMonth() === mexicoToday.getMonth();
+    // Validar que los valores sean números válidos
+    if (isNaN(birthDay) || isNaN(birthMonth)) {
+      return false;
+    }
+    
+    // ✅ COMPARAR DÍA Y MES
+    const isBirthday = birthDay === todayDay && birthMonth === todayMonth;
+    
+    // 🔍 DEBUG TEMPORAL - REMOVER DESPUÉS
+    console.log('🎂 DEBUG CUMPLEAÑOS:', {
+      birthDate,
+      birthDay,
+      birthMonth,
+      todayDay,
+      todayMonth,
+      isBirthday,
+      mexicoDate: mexicoToday.toLocaleDateString('es-MX')
+    });
+    
+    return isBirthday;
+    
   } catch (error) {
+    console.error('❌ Error verificando cumpleaños:', error, 'birthDate:', birthDate);
     return false;
   }
 }
