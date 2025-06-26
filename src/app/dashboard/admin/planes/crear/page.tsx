@@ -44,7 +44,7 @@ import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 
-// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES (mismo que antes...)
+// 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
 const darkProTokens = {
   background: '#000000',
   surfaceLevel1: '#121212',
@@ -94,7 +94,7 @@ const getSwalConfig = () => ({
   buttonsStyling: true
 });
 
-// Iconos (mismos que antes...)
+// Iconos
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -123,9 +123,8 @@ import LockIcon from '@mui/icons-material/Lock';
 import TimerIcon from '@mui/icons-material/Timer';
 import LimitIcon from '@mui/icons-material/Speed';
 
-// Interfaces y constantes (mismas que antes...)
+// Interfaces y constantes
 interface PlanFormData {
-  // ... (misma interface que antes)
   name: string;
   description: string;
   is_active: boolean;
@@ -170,7 +169,7 @@ interface PlanFormData {
   special_schedule_override: boolean;
 }
 
-// Datos iniciales (mismos que antes...)
+// Datos iniciales
 const INITIAL_FORM_DATA: PlanFormData = {
   name: '',
   description: '',
@@ -259,7 +258,7 @@ export default function CrearPlanPage() {
   const router = useRouter();
   const mountedRef = useRef(true);
   
-  // Estados principales (mismos que antes...)
+  // Estados principales
   const [formData, setFormData] = useState<PlanFormData>(INITIAL_FORM_DATA);
   const [originalFormData, setOriginalFormData] = useState<PlanFormData>(INITIAL_FORM_DATA);
   const [loading, setLoading] = useState(false);
@@ -482,7 +481,7 @@ export default function CrearPlanPage() {
     }
   };
 
-  // Obtener usuario actual (mismo que antes...)
+  // Obtener usuario actual
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
@@ -499,13 +498,13 @@ export default function CrearPlanPage() {
     getCurrentUser();
   }, []);
 
-  // Detectar cambios en el formulario (mismo que antes...)
+  // Detectar cambios en el formulario
   useEffect(() => {
     const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData);
     setHasFormChanges(hasChanges);
   }, [formData, originalFormData]);
 
-  // Calcular progreso (mismo que antes...)
+  // Calcular progreso
   useEffect(() => {
     let progress = 0;
     const totalFields = 12;
@@ -528,7 +527,7 @@ export default function CrearPlanPage() {
     setFormProgress(progress);
   }, [formData]);
 
-  // Cleanup (mismo que antes...)
+  // Cleanup
   useEffect(() => {
     return () => {
       mountedRef.current = false;
@@ -904,7 +903,7 @@ export default function CrearPlanPage() {
     }
   };
 
-  // Estilos Dark Pro (mismos que antes...)
+  // Estilos Dark Pro
   const darkProFieldStyle = {
     '& .MuiOutlinedInput-root': {
       backgroundColor: darkProTokens.surfaceLevel1,
@@ -954,7 +953,7 @@ export default function CrearPlanPage() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <Tooltip title="Volver a Planes">
                   <IconButton
-                    onClick={confirmExit} // 🚀 Usar confirmación mejorada
+                    onClick={confirmExit}
                     sx={{ 
                       background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
                       color: darkProTokens.background,
@@ -1014,10 +1013,7 @@ export default function CrearPlanPage() {
           </Paper>
         </motion.div>
 
-        {/* FORMULARIO CON COMPONENTES EXISTENTES */}
-        {/* Aquí van todos los Accordions exactamente como estaban antes... */}
-        {/* Solo cambio los manejadores de eventos por los nuevos */}
-        
+        {/* FORMULARIO CON COMPONENTES */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1191,159 +1187,7 @@ export default function CrearPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* AQUÍ CONTINÚAN TODOS LOS DEMÁS ACCORDIONS... */}
-            {/* Por brevedad, no los incluyo todos, pero mantienen la misma estructura */}
-            {/* Solo cambio donde corresponda:
-                - removeFeature por confirmRemoveFeature
-                - Otros manejadores mantienen los nombres pero usan las versiones mejoradas
-            */}
-
-            {/* VISTA PREVIA Y GUARDADO */}
-            <Accordion 
-              expanded={expandedAccordion === 'preview'} 
-              onChange={() => setExpandedAccordion(expandedAccordion === 'preview' ? false : 'preview')}
-              sx={{
-                backgroundColor: 'transparent',
-                '&:before': { display: 'none' },
-                '& .MuiAccordionSummary-root': {
-                  background: expandedAccordion === 'preview' 
-                    ? `${darkProTokens.primary}15`
-                    : 'transparent',
-                  minHeight: 80
-                }
-              }}
-            >
-              <AccordionSummary 
-                expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.primary }} />}
-                sx={{ px: 4 }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-                  <Avatar sx={{ 
-                    background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-                    color: darkProTokens.background
-                  }}>
-                    <PreviewIcon />
-                  </Avatar>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h5" sx={{ 
-                      color: darkProTokens.primary, 
-                      fontWeight: 700
-                    }}>
-                      🚀 Vista Previa y Guardado Pro
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Revise la configuración completa con control de acceso integrado
-                    </Typography>
-                  </Box>
-                  <Chip 
-                    icon={<SecurityIcon />} 
-                    label="Sistema Integrado"
-                    sx={{ 
-                      bgcolor: `${darkProTokens.primary}20`,
-                      color: darkProTokens.primary,
-                      border: `1px solid ${darkProTokens.primary}40`
-                    }}
-                  />
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 4 }}>
-                <Grid container spacing={4}>
-                  <Grid size={{ xs: 12, lg: 8 }}>
-                    {/* Vista previa del plan (mismo contenido que antes) */}
-                    <Card sx={{
-                      background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}08)`,
-                      border: `2px solid ${darkProTokens.primary}40`,
-                      borderRadius: 3,
-                      overflow: 'hidden'
-                    }}>
-                      {/* Contenido de vista previa... */}
-                    </Card>
-                  </Grid>
-                  
-                  <Grid size={{ xs: 12, lg: 4 }}>
-                    {/* Panel de control con botones mejorados */}
-                    <Card sx={{
-                      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                      border: `1px solid ${darkProTokens.grayDark}`,
-                      borderRadius: 3,
-                      p: 3,
-                      position: 'sticky',
-                      top: 20
-                    }}>
-                      <Typography variant="h5" sx={{ 
-                        color: darkProTokens.primary, 
-                        mb: 3, 
-                        fontWeight: 700,
-                        textAlign: 'center'
-                      }}>
-                        🚀 Centro de Control Pro
-                      </Typography>
-                      
-                      {/* ... resto del contenido del panel ... */}
-                      
-                      {/* BOTONES DE ACCIÓN MEJORADOS */}
-                      <Stack spacing={2}>
-                        <Button
-                          variant="contained"
-                          size="large"
-                          fullWidth
-                          onClick={() => handleSave(false)} // 🚀 Usar manejador mejorado
-                          disabled={loading || !formData.name.trim() || !formData.description.trim()}
-                          startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
-                          sx={{
-                            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-                            color: darkProTokens.background,
-                            fontWeight: 700,
-                            py: 1.5,
-                            borderRadius: 2,
-                            '&:hover': { 
-                              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-                              transform: 'translateY(-2px)',
-                              boxShadow: `0 6px 20px ${darkProTokens.primary}40`
-                            },
-                            '&:disabled': {
-                              bgcolor: darkProTokens.grayMedium,
-                              color: darkProTokens.textDisabled
-                            },
-                            transition: 'all 0.3s ease'
-                          }}
-                        >
-                          {loading ? 'Creando Plan...' : '🚀 Crear Plan MUP Pro'}
-                        </Button>
-                        
-                        <Button
-                          variant="outlined"
-                          size="large"
-                          fullWidth
-                          onClick={confirmExit} // 🚀 Usar confirmación de salida
-                          disabled={loading}
-                          startIcon={<ArrowBackIcon />}
-                          sx={{
-                            borderColor: darkProTokens.grayDark,
-                            color: darkProTokens.textSecondary,
-                            '&:hover': {
-                              borderColor: darkProTokens.textSecondary,
-                              bgcolor: darkProTokens.hoverOverlay,
-                              color: darkProTokens.textPrimary
-                            },
-                            '&:disabled': {
-                              borderColor: darkProTokens.grayDark,
-                              color: darkProTokens.textDisabled
-                            }
-                          }}
-                        >
-                          ← Volver a Planes
-                        </Button>
-                      </Stack>
-                      
-                      {/* ... resto del panel ... */}
-                    </Card>
-                  </Grid>
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          </Paper>
-                    {/* 2. ESTRUCTURA DE PRECIOS */}
+            {/* 2. ESTRUCTURA DE PRECIOS */}
             <Accordion 
               expanded={expandedAccordion === 'pricing'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'pricing' ? false : 'pricing')}
@@ -1498,7 +1342,7 @@ export default function CrearPlanPage() {
                           icon: '👑'
                         }
                       ].map((period) => (
-                        <Grid key={period.key} size={{ xs: 12, sm: 6, md: 4 }}>
+                        <Grid key={period.key} item xs={12} sm={6} md={4}>
                           <motion.div whileHover={{ scale: 1.02, y: -4 }}>
                             <Card sx={{
                               background: `linear-gradient(135deg, ${period.color}15, ${period.color}08)`,
@@ -1561,7 +1405,7 @@ export default function CrearPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 3. CARACTERÍSTICAS */}
+                        {/* 3. CARACTERÍSTICAS */}
             <Accordion 
               expanded={expandedAccordion === 'features'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'features' ? false : 'features')}
@@ -1719,7 +1563,7 @@ export default function CrearPlanPage() {
                         onChange={(e) => {
                           const value = parseInt(e.target.value) || 0;
                           handleInputChange('guest_passes', value);
-                                                    if (value > 0) {
+                          if (value > 0) {
                             showInfoToast(`Configurados ${value} pases de invitado`);
                           }
                         }}
@@ -1832,7 +1676,7 @@ export default function CrearPlanPage() {
                             <Chip
                               key={index}
                               label={feature}
-                              onDelete={() => confirmRemoveFeature(feature)} // 🚀 Usar confirmación
+                              onDelete={() => confirmRemoveFeature(feature)}
                               deleteIcon={<DeleteIcon />}
                               sx={{
                                 bgcolor: `${darkProTokens.success}20`,
@@ -2181,7 +2025,7 @@ export default function CrearPlanPage() {
                                   whileTap={{ scale: 0.95 }}
                                 >
                                   <Card
-                                    onClick={() => handleWeekdayToggle(day.value)} // 🚀 Ya tiene toast integrado
+                                    onClick={() => handleWeekdayToggle(day.value)}
                                     sx={{
                                       p: 2,
                                       minWidth: 80,
@@ -2615,7 +2459,7 @@ export default function CrearPlanPage() {
                                 Múltiples Franjas Horarias
                               </Typography>
                               <Button
-                                onClick={addTimeSlot} // 🚀 Ya tiene toast integrado
+                                onClick={addTimeSlot}
                                 variant="outlined"
                                 startIcon={<AddIcon />}
                                 sx={{
@@ -2664,7 +2508,7 @@ export default function CrearPlanPage() {
                                     />
                                     {formData.time_slots.length > 1 && (
                                       <IconButton
-                                        onClick={() => removeTimeSlot(index)} // 🚀 Ya tiene toast integrado
+                                        onClick={() => removeTimeSlot(index)}
                                         sx={{ 
                                           color: darkProTokens.error,
                                           '&:hover': {
@@ -2740,7 +2584,7 @@ export default function CrearPlanPage() {
               <AccordionDetails sx={{ p: 4 }}>
                 <Grid container spacing={4}>
                   <Grid size={{ xs: 12, lg: 8 }}>
-                    {/* Vista previa del plan (incluir toda la sección anterior) */}
+                    {/* Vista previa del plan */}
                     <Card sx={{
                       background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}08)`,
                       border: `2px solid ${darkProTokens.primary}40`,
@@ -2792,8 +2636,137 @@ export default function CrearPlanPage() {
                         
                         <Divider sx={{ borderColor: `${darkProTokens.primary}40`, my: 3 }} />
                         
-                        {/* RESTO DE LA VISTA PREVIA - MANTENEMOS EL CONTENIDO ORIGINAL */}
-                        {/* Por brevedad no lo repito aquí */}
+                        {/* PRECIOS */}
+                        <Typography variant="h5" sx={{ 
+                          color: darkProTokens.textPrimary, 
+                          mb: 2, 
+                          fontWeight: 700
+                        }}>
+                          💰 Estructura de Precios
+                        </Typography>
+                        <Grid container spacing={2} sx={{ mb: 4 }}>
+                          {formData.inscription_price > 0 && (
+                            <Grid size={{ xs: 6, md: 3 }}>
+                              <Card sx={{
+                                bgcolor: darkProTokens.surfaceLevel3,
+                                p: 2,
+                                textAlign: 'center',
+                                border: `1px solid ${darkProTokens.primary}40`
+                              }}>
+                                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                  Inscripción
+                                </Typography>
+                                <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                                  ${formData.inscription_price.toLocaleString('es-MX')}
+                                </Typography>
+                              </Card>
+                            </Grid>
+                          )}
+                          {formData.monthly_price > 0 && (
+                            <Grid size={{ xs: 6, md: 3 }}>
+                              <Card sx={{
+                                bgcolor: darkProTokens.surfaceLevel3,
+                                p: 2,
+                                textAlign: 'center',
+                                border: `1px solid ${darkProTokens.primary}40`
+                              }}>
+                                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                  Mensual
+                                </Typography>
+                                <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                                  ${formData.monthly_price.toLocaleString('es-MX')}
+                                </Typography>
+                              </Card>
+                            </Grid>
+                          )}
+                        </Grid>
+
+                        {/* CARACTERÍSTICAS */}
+                        {formData.features.length > 0 && (
+                          <>
+                            <Typography variant="h5" sx={{ 
+                              color: darkProTokens.textPrimary, 
+                              mb: 2, 
+                              fontWeight: 700
+                            }}>
+                              ✨ Características Incluidas
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 4 }}>
+                              {formData.features.map((feature, index) => (
+                                <Chip
+                                  key={index}
+                                  label={feature}
+                                  icon={<CheckCircleIcon />}
+                                  sx={{
+                                    bgcolor: `${darkProTokens.success}20`,
+                                    color: darkProTokens.success,
+                                    border: `1px solid ${darkProTokens.success}40`
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          </>
+                        )}
+
+                        {/* CONTROL DE ACCESO */}
+                        {formData.access_control_enabled && (
+                          <>
+                            <Typography variant="h5" sx={{ 
+                              color: darkProTokens.textPrimary, 
+                              mb: 2, 
+                              fontWeight: 700
+                            }}>
+                              🔒 Control de Acceso Inteligente
+                            </Typography>
+                            <Grid container spacing={2}>
+                              <Grid size={{ xs: 12, md: 4 }}>
+                                <Card sx={{
+                                  bgcolor: darkProTokens.surfaceLevel3,
+                                  p: 2,
+                                  textAlign: 'center',
+                                  border: `1px solid ${darkProTokens.error}40`
+                                }}>
+                                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                    Límite Diario
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
+                                    {formData.max_daily_entries} entradas
+                                  </Typography>
+                                </Card>
+                              </Grid>
+                              <Grid size={{ xs: 12, md: 4 }}>
+                                <Card sx={{
+                                  bgcolor: darkProTokens.surfaceLevel3,
+                                  p: 2,
+                                  textAlign: 'center',
+                                  border: `1px solid ${darkProTokens.warning}40`
+                                }}>
+                                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                    Horario
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                                    {formData.access_start_time} - {formData.access_end_time}
+                                  </Typography>
+                                </Card>
+                              </Grid>
+                              <Grid size={{ xs: 12, md: 4 }}>
+                                <Card sx={{
+                                  bgcolor: darkProTokens.surfaceLevel3,
+                                  p: 2,
+                                  textAlign: 'center',
+                                  border: `1px solid ${darkProTokens.info}40`
+                                }}>
+                                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                    Días Activos
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
+                                    {formData.allowed_weekdays.length} días
+                                  </Typography>
+                                </Card>
+                              </Grid>
+                            </Grid>
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   </Grid>
@@ -2844,7 +2817,7 @@ export default function CrearPlanPage() {
                               ? `${darkProTokens.success}10`
                               : `${darkProTokens.warning}10`,
                             border: validation.check 
-                              ? `1px solid ${darkProTokens.success}30`
+                                                            ? `1px solid ${darkProTokens.success}30`
                               : `1px solid ${darkProTokens.warning}30`,
                             borderRadius: 1
                           }}>
@@ -2902,7 +2875,7 @@ export default function CrearPlanPage() {
                             <Typography variant="caption" sx={{ 
                               color: darkProTokens.textSecondary
                             }}>
-                              26 de junio de 2025 • 06:36 UTC
+                              26 de junio de 2025 • 06:55 UTC
                             </Typography>
                           </Box>
                         </Box>
@@ -2915,7 +2888,7 @@ export default function CrearPlanPage() {
                             variant="contained"
                             size="large"
                             fullWidth
-                            onClick={() => handleSave(false)} // 🚀 Usar manejador mejorado con SweetAlert2
+                            onClick={() => handleSave(false)}
                             disabled={loading || !formData.name.trim() || !formData.description.trim()}
                             startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
                             sx={{
@@ -2945,7 +2918,7 @@ export default function CrearPlanPage() {
                             variant="outlined"
                             size="large"
                             fullWidth
-                            onClick={confirmExit} // 🚀 Usar confirmación de salida con SweetAlert2
+                            onClick={confirmExit}
                             disabled={loading}
                             startIcon={<ArrowBackIcon />}
                             sx={{
@@ -3111,7 +3084,7 @@ export default function CrearPlanPage() {
                               fontSize: '0.8rem'
                             }}
                           >
-                                                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600 }}>
                               ⚠️ Tienes cambios sin guardar
                             </Typography>
                           </Alert>
