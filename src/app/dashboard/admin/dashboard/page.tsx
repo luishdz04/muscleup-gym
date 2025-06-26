@@ -1736,16 +1736,22 @@ export default function AdminDashboardPage() {
                           <Cell key={`cell-${index}`} fill={entry.fill} />
                         ))}
                       </Pie>
-                      <RechartsTooltip 
-                        contentStyle={{
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          border: `1px solid ${darkProTokens.grayDark}`,
-                          borderRadius: '8px',
-                          color: darkProTokens.textPrimary,
-                          fontSize: '12px'
-                        }}
-                        formatter={(value: any) => [`${value}%`, '']}
-                      />
+                   <RechartsTooltip 
+  contentStyle={{
+    backgroundColor: darkProTokens.surfaceLevel4,
+    border: `1px solid ${darkProTokens.grayDark}`,
+    borderRadius: '8px',
+    color: darkProTokens.textPrimary
+  }}
+  formatter={(value: any, name: string) => {
+    const labels: { [key: string]: string } = {
+      'sales': 'Ventas POS',
+      'memberships': 'Membresías',
+      'layaways': 'Apartados'
+    };
+    return [formatPrice(value), labels[name] || name];
+  }}
+/>
                     </PieChart>
                   </ResponsiveContainer>
                 </Box>
