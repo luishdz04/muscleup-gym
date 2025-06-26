@@ -283,19 +283,24 @@ function getDateDaysAgo(daysAgo: number): string {
   return `${year}-${month}-${day}`;
 }
 
-// ✅ CORRECCIÓN CRÍTICA: Función de meses atrás completamente corregida
+// ✅ FUNCIÓN DE FECHAS CORREGIDA
 function getDateMonthsAgo(monthsAgo: number): string {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
   
-  // ✅ CORRECTO: Calcular mes y año correctamente
+  console.log('🔍 DEBUG FECHA ACTUAL:', {
+    fechaCompleta: mexicoDate,
+    año: mexicoDate.getFullYear(),
+    mes: mexicoDate.getMonth() + 1, // +1 para formato humano
+    día: mexicoDate.getDate()
+  });
+  
   const currentYear = mexicoDate.getFullYear();
-  const currentMonth = mexicoDate.getMonth(); // 0-11
+  const currentMonth = mexicoDate.getMonth(); // 0-11 (junio = 5)
   
   let targetYear = currentYear;
   let targetMonth = currentMonth - monthsAgo;
   
-  // ✅ CORRECTO: Manejar cambio de año
   while (targetMonth < 0) {
     targetMonth += 12;
     targetYear -= 1;
@@ -303,19 +308,23 @@ function getDateMonthsAgo(monthsAgo: number): string {
   
   const result = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}`;
   
-  // ✅ DEBUG TEMPORAL
   console.log('🔍 DEBUG getDateMonthsAgo:', {
     monthsAgo,
-    currentYear,
-    currentMonth: currentMonth + 1, // +1 para mostrar mes humano
-    targetYear,
-    targetMonth: targetMonth + 1, // +1 para mostrar mes humano
-    result,
-    fechaActual: getMexicoDateLocal()
+    fechaActual: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`,
+    fechaCalculada: result,
+    deberíaSer: monthsAgo === 0 ? 'JUNIO (2025-06)' : `${monthsAgo} meses atrás`
   });
   
   return result;
 }
+
+// ✅ VERIFICACIÓN INMEDIATA
+console.log('🔍 VERIFICACIÓN FECHAS:', {
+  hoy: getMexicoDateLocal(),
+  mes0: getDateMonthsAgo(0), // DEBE SER 2025-06
+  mes1: getDateMonthsAgo(1), // DEBE SER 2025-05  
+  mes2: getDateMonthsAgo(2)  // DEBE SER 2025-04
+});
 
 // ✅ FUNCIÓN PARA OBTENER PRIMER DÍA DEL MES
 function getFirstDayOfMonth(monthString: string): string {
