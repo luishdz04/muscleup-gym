@@ -99,7 +99,7 @@ const darkProTokens = {
   roleAdmin: '#E91E63',
   roleStaff: '#1976D2',
   roleTrainer: '#009688',
-  roleModerator: '#9C27B6',
+  roleModerator: '#9C27B0',
   // Colores para gráficos
   chart1: '#FFCC00',
   chart2: '#388E3C',
@@ -184,6 +184,17 @@ function formatDateTime(dateString: string): string {
   }
 }
 
+// ✅ FUNCIÓN PARA GENERAR FECHAS ANTERIORES
+function getDateDaysAgo(daysAgo: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  const mexicoDate = new Date(date.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // ✅ INTERFACES CORREGIDAS CON DATOS COMPLETOS
 interface DailyData {
   date: string;
@@ -263,7 +274,6 @@ interface DashboardStats {
   todayLayawayPayments: number;
   todayExpenses: number;
   todayBalance: number;
-  // ✅ USAR DATOS DE LA API DE CORTES PARA FLUJO CORRECTO
   cashFlow: {
     efectivo: number;
     transferencia: number;
@@ -276,7 +286,6 @@ interface DashboardStats {
     memberships: number[];
     layaways: number[];
   };
-  // ✅ DATOS PARA GRÁFICOS
   chartData: ChartData[];
   pieData: PieData[];
 }
@@ -356,6 +365,87 @@ export default function AdminDashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS REALES (NO FICTICIOS)
+  const loadRealDailyData = useCallback(async (targetDate: string): Promise<DailyData | null> => {
+    try {
+      console.log(`📊 Cargando datos REALES para fecha: ${targetDate}`);
+      
+      const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.totals && data.totals.total > 0) {
+          console.log(`✅ Datos REALES encontrados para ${targetDate}:`, {
+            total: formatPrice(data.totals.total),
+            pos: formatPrice(data.pos.total),
+            memberships: formatPrice(data.memberships.total),
+            abonos: formatPrice(data.abonos.total)
+          });
+          return data;
+        } else {
+          console.log(`⚪ Sin datos para ${targetDate}`);
+          return null;
+        }
+      } else {
+        console.log(`❌ Error API para ${targetDate}:`, response.status);
+        return null;
+      }
+    } catch (error) {
+      console.error(`💥 Error cargando datos para ${targetDate}:`, error);
+      return null;
+    }
+  }, []);
+
+  // ✅ FUNCIÓN PARA CARGAR DATOS HISTÓRICOS REALES (7 DÍAS)
+  const loadWeeklyRealData = useCallback(async (): Promise<ChartData[]> => {
+    console.log('📈 ===== CARGANDO DATOS HISTÓRICOS REALES =====');
+    const chartData: ChartData[] = [];
+    
+    // Cargar datos reales para los últimos 7 días
+    for (let i = 6; i >= 0; i--) {
+      const dateString = getDateDaysAgo(i);
+      const dayName = dateString.split('-').slice(1).join('/'); // MM/DD
+      
+      console.log(`🔍 Consultando datos reales para: ${dateString} (${dayName})`);
+      
+      const dayData = await loadRealDailyData(dateString);
+      
+      if (dayData) {
+        // Datos reales encontrados
+        chartData.push({
+          name: dayName,
+          sales: dayData.pos.total,
+          memberships: dayData.memberships.total,
+          layaways: dayData.abonos.total,
+          date: dateString
+        });
+        console.log(`✅ Datos agregados para ${dateString}:`, {
+          ventas: formatPrice(dayData.pos.total),
+          membresias: formatPrice(dayData.memberships.total),
+          abonos: formatPrice(dayData.abonos.total)
+        });
+      } else {
+        // Sin datos para este día, agregar ceros
+        chartData.push({
+          name: dayName,
+          sales: 0,
+          memberships: 0,
+          layaways: 0,
+          date: dateString
+        });
+        console.log(`⚪ Sin datos para ${dateString}, agregando ceros`);
+      }
+    }
+    
+    console.log('📊 Datos históricos completos:', chartData);
+    return chartData;
+  }, [loadRealDailyData]);
+
   // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS (IGUAL QUE CORTES)
   const loadDailyData = useCallback(async () => {
     try {
@@ -400,14 +490,17 @@ export default function AdminDashboardPage() {
     }
   }, [selectedDate]);
 
-  // ✅ FUNCIÓN PRINCIPAL CORREGIDA USANDO DATOS DE CORTES
+  // ✅ FUNCIÓN PRINCIPAL CORREGIDA - SOLO DATOS REALES
   const loadDashboardStats = useCallback(async () => {
     try {
       setError(null);
-      console.log('📊 ===== INICIANDO CARGA DE DASHBOARD ENTERPRISE CORREGIDO =====');
+      console.log('📊 ===== INICIANDO CARGA DE DASHBOARD ENTERPRISE (SOLO DATOS REALES) =====');
 
-      // ✅ PRIMERO CARGAR DATOS DIARIOS (COMO CORTES)
+      // ✅ CARGAR DATOS DIARIOS (COMO CORTES)
       const dailyDataResult = await loadDailyData();
+
+      // ✅ CARGAR DATOS HISTÓRICOS REALES (NO FICTICIOS)
+      const realChartData = await loadWeeklyRealData();
 
       const mexicoToday = selectedDate;
       const today = new Date();
@@ -516,31 +609,7 @@ export default function AdminDashboardPage() {
       const pendingAmount = layaways?.reduce((sum, l) => sum + (l.pending_amount || 0), 0) || 0;
       const collectedAmount = layaways?.reduce((sum, l) => sum + (l.paid_amount || 0), 0) || 0;
 
-      // ✅ GENERAR DATOS PARA GRÁFICOS
-      const chartData: ChartData[] = [];
-      const dates: string[] = [];
-
-      // Generar datos para los últimos 7 días
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateString = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-        
-        // Simular datos (en producción esto vendría de queries reales)
-        const daySales = dateString === mexicoToday ? (dailyDataResult?.pos?.total || 0) : Math.random() * 1000;
-        const dayMemberships = dateString === mexicoToday ? (dailyDataResult?.memberships?.total || 0) : Math.random() * 500;
-        const dayLayaways = dateString === mexicoToday ? (dailyDataResult?.abonos?.total || 0) : Math.random() * 200;
-
-        chartData.push({
-          name: dateString.split('-').slice(1).join('/'),
-          sales: daySales,
-          memberships: dayMemberships,
-          layaways: dayLayaways,
-          date: dateString
-        });
-      }
-
-      // ✅ DATOS PARA GRÁFICO DE PIE (MÉTODOS DE PAGO)
+      // ✅ DATOS PARA GRÁFICO DE PIE (MÉTODOS DE PAGO) - SOLO SI HAY DATOS
       const pieData: PieData[] = [];
       if (dailyDataResult && dailyDataResult.totals.total > 0) {
         if (dailyDataResult.totals.efectivo > 0) {
@@ -573,7 +642,7 @@ export default function AdminDashboardPage() {
         }
       }
 
-      // ✅ CONSTRUIR ESTADÍSTICAS FINALES
+      // ✅ CONSTRUIR ESTADÍSTICAS FINALES CON DATOS REALES
       const finalStats: DashboardStats = {
         totalUsers: allUsers?.length || 0,
         clientUsers: clientUsers.length,
@@ -589,8 +658,8 @@ export default function AdminDashboardPage() {
         todaySales: dailyDataResult?.pos?.total || 0,
         todayTransactions: dailyDataResult?.pos?.transactions || 0,
         todayAvgTicket: dailyDataResult?.pos?.transactions > 0 ? (dailyDataResult.pos.total / dailyDataResult.pos.transactions) : 0,
-        monthSales: 0, // TODO: Implementar
-        monthTransactions: 0, // TODO: Implementar
+        monthSales: 0, // TODO: Implementar con datos reales del mes
+        monthTransactions: 0, // TODO: Implementar con datos reales del mes
         activeLayaways: activeLayaways.length,
         expiringLayaways: expiringLayaways.length,
         layawaysPendingAmount: pendingAmount,
@@ -606,15 +675,20 @@ export default function AdminDashboardPage() {
         },
         todayBalance: dailyDataResult?.totals?.total || 0,
         weeklyTrend: { sales: [], dates: [], memberships: [], layaways: [] },
-        chartData,
+        chartData: realChartData, // ✅ SOLO DATOS REALES, NO FICTICIOS
         pieData
       };
 
       setStats(finalStats);
       setLastUpdate(formatDateTime(new Date().toISOString()));
       
-      console.log('✅ ===== DASHBOARD ENTERPRISE CORREGIDO CARGADO =====');
-      console.log('💰 Flujo de efectivo CORRECTO:', {
+      console.log('✅ ===== DASHBOARD ENTERPRISE CON DATOS REALES CARGADO =====');
+      console.log('📊 Resumen de datos históricos:', {
+        dias_con_datos: realChartData.filter(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0).length,
+        dias_sin_datos: realChartData.filter(d => d.sales === 0 && d.memberships === 0 && d.layaways === 0).length,
+        total_dias: realChartData.length
+      });
+      console.log('💰 Flujo de efectivo:', {
         efectivo: formatPrice(finalStats.cashFlow.efectivo),
         transferencia: formatPrice(finalStats.cashFlow.transferencia),
         debito: formatPrice(finalStats.cashFlow.debito),
@@ -629,7 +703,7 @@ export default function AdminDashboardPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedDate, loadDailyData, supabase]);
+  }, [selectedDate, loadDailyData, loadWeeklyRealData, supabase]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -776,10 +850,10 @@ export default function AdminDashboardPage() {
             Enterprise Dashboard
           </Typography>
           <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
-            Cargando análisis avanzado del gimnasio...
+            Cargando análisis con datos reales del gimnasio...
           </Typography>
           <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
-            📅 Consultando datos para: {formatDateLocal(selectedDate)}
+            📅 Solo datos reales para: {formatDateLocal(selectedDate)}
           </Typography>
           
           <LinearProgress sx={{
@@ -902,7 +976,7 @@ export default function AdminDashboardPage() {
                   Enterprise Dashboard
                 </Typography>
                 <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                  🚀 MuscleUp Gym - Business Intelligence
+                  🚀 MuscleUp Gym - Solo Datos Reales
                 </Typography>
                 <Typography variant="body1" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
                   📅 {formatDateLocal(selectedDate)} • ⏰ {currentMexicoTime}
@@ -923,8 +997,8 @@ export default function AdminDashboardPage() {
             
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
               <Chip
-                icon={<SpeedIcon />}
-                label="Real Time"
+                icon={<CheckCircleIcon />}
+                label="Solo Datos Reales"
                 size="medium"
                 sx={{
                   bgcolor: `${darkProTokens.success}20`,
@@ -1065,7 +1139,7 @@ export default function AdminDashboardPage() {
                 fontWeight: 500,
                 fontStyle: 'italic'
               }}>
-                ✅ Datos de API Cortes
+                ✅ API Cortes Real
               </Typography>
             </Box>
           </Box>
@@ -1125,9 +1199,9 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* GRÁFICOS ENTERPRISE CON RECHARTS */}
+      {/* GRÁFICOS ENTERPRISE CON RECHARTS - SOLO DATOS REALES */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* GRÁFICO DE TENDENCIAS */}
+        {/* GRÁFICO DE TENDENCIAS - SOLO DATOS REALES */}
         <Grid size={{ xs: 12, lg: 8 }}>
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -1147,65 +1221,94 @@ export default function AdminDashboardPage() {
                     color: darkProTokens.primary, 
                     fontWeight: 700
                   }}>
-                    📈 Tendencias de Ingresos (Últimos 7 días)
+                    📈 Tendencias Reales (Últimos 7 días)
                   </Typography>
+                  <Chip
+                    label={`${stats.chartData.filter(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0).length} días con datos`}
+                    size="small"
+                    sx={{
+                      bgcolor: `${darkProTokens.success}20`,
+                      color: darkProTokens.success,
+                      fontWeight: 600
+                    }}
+                  />
                 </Box>
                 
                 <Box sx={{ height: 350, width: '100%' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={stats.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke={darkProTokens.textSecondary}
-                        fontSize={12}
-                      />
-                      <YAxis 
-                        stroke={darkProTokens.textSecondary}
-                        fontSize={12}
-                        tickFormatter={(value) => formatPrice(value)}
-                      />
-                      <RechartsTooltip 
-                        contentStyle={{
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          border: `1px solid ${darkProTokens.grayDark}`,
-                          borderRadius: '8px',
-                          color: darkProTokens.textPrimary
-                        }}
-                        formatter={(value: any, name: string) => [
-                          formatPrice(value), 
-                          name === 'sales' ? 'Ventas POS' : 
-                          name === 'memberships' ? 'Membresías' : 'Apartados'
-                        ]}
-                      />
-                      <Legend />
-                      
-                      <Area
-                        type="monotone"
-                        dataKey="sales"
-                        fill={`${darkProTokens.primary}30`}
-                        stroke={darkProTokens.primary}
-                        strokeWidth={3}
-                        name="Ventas POS"
-                      />
-                      
-                      <Bar
-                        dataKey="memberships"
-                        fill={darkProTokens.success}
-                        name="Membresías"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      
-                      <Line
-                        type="monotone"
-                        dataKey="layaways"
-                        stroke={darkProTokens.roleModerator}
-                        strokeWidth={3}
-                        dot={{ fill: darkProTokens.roleModerator, strokeWidth: 2, r: 6 }}
-                        name="Apartados"
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                  {stats.chartData.some(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={stats.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke={darkProTokens.textSecondary}
+                          fontSize={12}
+                        />
+                        <YAxis 
+                          stroke={darkProTokens.textSecondary}
+                          fontSize={12}
+                          tickFormatter={(value) => formatPrice(value)}
+                        />
+                        <RechartsTooltip 
+                          contentStyle={{
+                            backgroundColor: darkProTokens.surfaceLevel4,
+                            border: `1px solid ${darkProTokens.grayDark}`,
+                            borderRadius: '8px',
+                            color: darkProTokens.textPrimary
+                          }}
+                          formatter={(value: any, name: string) => [
+                            formatPrice(value), 
+                            name === 'sales' ? 'Ventas POS' : 
+                            name === 'memberships' ? 'Membresías' : 'Apartados'
+                          ]}
+                        />
+                        <Legend />
+                        
+                        <Area
+                          type="monotone"
+                          dataKey="sales"
+                          fill={`${darkProTokens.primary}30`}
+                          stroke={darkProTokens.primary}
+                          strokeWidth={3}
+                          name="Ventas POS"
+                        />
+                        
+                        <Bar
+                          dataKey="memberships"
+                          fill={darkProTokens.success}
+                          name="Membresías"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        
+                        <Line
+                          type="monotone"
+                          dataKey="layaways"
+                          stroke={darkProTokens.roleModerator}
+                          strokeWidth={3}
+                          dot={{ fill: darkProTokens.roleModerator, strokeWidth: 2, r: 6 }}
+                          name="Apartados"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <Box sx={{ 
+                      height: '100%', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexDirection: 'column',
+                      gap: 2
+                    }}>
+                      <TimelineIcon sx={{ fontSize: 80, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                        Sin datos históricos disponibles
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, textAlign: 'center' }}>
+                        Los gráficos aparecerán cuando haya datos reales<br />
+                        de días anteriores en la base de datos
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               </CardContent>
             </Card>
@@ -1281,6 +1384,9 @@ export default function AdminDashboardPage() {
                     <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
                       No hay pagos registrados hoy
                     </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                      El gráfico aparecerá cuando se registren ventas
+                    </Typography>
                   </Box>
                 )}
               </CardContent>
@@ -1311,7 +1417,7 @@ export default function AdminDashboardPage() {
               gap: 2
             }}>
               <PaymentIcon />
-              💰 Flujo de Efectivo del Día (Datos API Cortes)
+              💰 Flujo de Efectivo del Día (Solo Datos Reales)
             </Typography>
             
             <Grid container spacing={3}>
@@ -1362,7 +1468,7 @@ export default function AdminDashboardPage() {
                       <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
                         POS: {formatPrice(dailyData.pos.transferencia)} | Membresías: {formatPrice(dailyData.memberships.transferencia)}
                       </Typography>
-                    )}
+                                        )}
                   </Paper>
                 </motion.div>
               </Grid>
@@ -1427,7 +1533,7 @@ export default function AdminDashboardPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.6 }}
+        transition={{ duration: 0.6, delay: 1.0 }}
       >
         <Card sx={{
           mb: 4,
@@ -1445,7 +1551,7 @@ export default function AdminDashboardPage() {
               gap: 2
             }}>
               <BarChartIcon />
-              📊 Desglose de Ingresos del Día
+              📊 Desglose de Ingresos del Día (API Cortes)
             </Typography>
             
             <Grid container spacing={3}>
@@ -1475,6 +1581,34 @@ export default function AdminDashboardPage() {
                   <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                     {stats.todayTransactions} transacciones
                   </Typography>
+                  {dailyData && (
+                    <Stack spacing={1} sx={{ mt: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Efectivo:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.pos.efectivo)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Transferencia:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                          {formatPrice(dailyData.pos.transferencia)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Tarjetas:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                          {formatPrice(dailyData.pos.debito + dailyData.pos.credito)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  )}
                 </Paper>
               </Grid>
               
@@ -1504,6 +1638,34 @@ export default function AdminDashboardPage() {
                   <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                     Solo ventas de hoy
                   </Typography>
+                  {dailyData && (
+                    <Stack spacing={1} sx={{ mt: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Efectivo:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.memberships.efectivo)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Transferencia:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                          {formatPrice(dailyData.memberships.transferencia)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Tarjetas:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                          {formatPrice(dailyData.memberships.debito + dailyData.memberships.credito)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  )}
                 </Paper>
               </Grid>
               
@@ -1533,6 +1695,34 @@ export default function AdminDashboardPage() {
                   <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
                     Apartados pagados hoy
                   </Typography>
+                  {dailyData && (
+                    <Stack spacing={1} sx={{ mt: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Efectivo:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                          {formatPrice(dailyData.abonos.efectivo)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Transferencia:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                          {formatPrice(dailyData.abonos.transferencia)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          Tarjetas:
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                          {formatPrice(dailyData.abonos.debito + dailyData.abonos.credito)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  )}
                 </Paper>
               </Grid>
             </Grid>
@@ -1555,18 +1745,40 @@ export default function AdminDashboardPage() {
                 fontWeight: 500,
                 mt: 1
               }}>
-                ⚡ Cálculo exacto: Solo movimientos de {formatDateLocal(selectedDate)}
+                ⚡ Datos reales: {formatDateLocal(selectedDate)}
               </Typography>
+              {dailyData && (
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+                  <Chip
+                    icon={<CheckCircleIcon />}
+                    label={`${dailyData.totals.transactions} transacciones`}
+                    size="small"
+                    sx={{ bgcolor: `${darkProTokens.success}20`, color: darkProTokens.success, fontWeight: 600 }}
+                  />
+                  <Chip
+                    icon={<WarningIcon />}
+                    label={`${formatPrice(dailyData.totals.commissions)} comisiones`}
+                    size="small"
+                    sx={{ bgcolor: `${darkProTokens.warning}20`, color: darkProTokens.warning, fontWeight: 600 }}
+                  />
+                  <Chip
+                    icon={<MoneyIcon />}
+                    label={`${formatPrice(dailyData.totals.net_amount)} neto`}
+                    size="small"
+                    sx={{ bgcolor: `${darkProTokens.info}20`, color: darkProTokens.info, fontWeight: 600 }}
+                  />
+                </Box>
+              )}
             </Box>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* ACCESOS RÁPIDOS */}
+      {/* ACCESOS RÁPIDOS ENTERPRISE */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.8 }}
+        transition={{ duration: 0.6, delay: 1.2 }}
       >
         <Card sx={{
           mb: 4,
@@ -1624,7 +1836,7 @@ export default function AdminDashboardPage() {
                     startIcon={<ReceiptIcon />}
                     onClick={() => router.push('/dashboard/admin/cortes')}
                     sx={{
-                                            color: darkProTokens.info,
+                      color: darkProTokens.info,
                       borderColor: `${darkProTokens.info}60`,
                       justifyContent: 'flex-start',
                       py: 2,
@@ -1706,13 +1918,13 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* COMPARATIVAS Y INFORMACIÓN ADICIONAL */}
+      {/* INFORMACIÓN ADICIONAL */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.0 }}
+        transition={{ duration: 0.6, delay: 1.4 }}
       >
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={3}>
           {/* INFORMACIÓN DE USUARIOS */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{
@@ -1902,73 +2114,32 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* PLACEHOLDER PARA GRÁFICOS RECHARTS */}
+      {/* FOOTER INFORMATIVO */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.2 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 1.6 }}
       >
-        <Card sx={{
-          mb: 4,
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.grayDark}`,
-          borderRadius: 4
+        <Box sx={{ 
+          mt: 4, 
+          p: 3, 
+          textAlign: 'center',
+          background: `linear-gradient(135deg, ${darkProTokens.grayDark}20, ${darkProTokens.grayMedium}10)`,
+          borderRadius: 3,
+          border: `1px solid ${darkProTokens.grayDark}40`
         }}>
-          <CardContent sx={{ p: 4 }}>
-            <Typography variant="h6" sx={{ 
-              color: darkProTokens.success, 
-              mb: 3, 
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2
-            }}>
-              <BarChartIcon />
-              📈 Gráficos Avanzados (Recharts)
+          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+            🚀 Dashboard Enterprise MuscleUp Gym • Solo Datos Reales
+          </Typography>
+          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+            📊 Gráficos Recharts • 💰 API Cortes • ⏰ Tiempo Real México • 🔄 Auto-Refresh
+          </Typography>
+          {dailyData && (
+            <Typography variant="caption" sx={{ color: darkProTokens.success, display: 'block', mt: 1 }}>
+              ✅ Conectado a API de cortes • Datos sincronizados • {dailyData.timezone_info?.note}
             </Typography>
-            
-            <Box sx={{ 
-              height: 250, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              flexDirection: 'column',
-              gap: 2,
-              bgcolor: `${darkProTokens.primary}10`,
-              borderRadius: 3,
-              border: `2px dashed ${darkProTokens.primary}40`
-            }}>
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  opacity: [0.5, 1, 0.5]
-                }}
-                transition={{ 
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              >
-                <BarChartIcon sx={{ fontSize: 80, color: darkProTokens.primary }} />
-              </motion.div>
-              <Typography variant="h5" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                Gráficos Enterprise Listos
-              </Typography>
-              <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, textAlign: 'center' }}>
-                Los gráficos profesionales con Recharts aparecerán aquí.<br />
-                📊 Tendencias • 📈 Comparativas • 🥧 Distribuciones
-              </Typography>
-              <Chip
-                label="Recharts Instalado ✅"
-                sx={{
-                  bgcolor: `${darkProTokens.success}20`,
-                  color: darkProTokens.success,
-                  fontWeight: 600
-                }}
-              />
-            </Box>
-          </CardContent>
-        </Card>
+          )}
+        </Box>
       </motion.div>
 
       {/* ESTILOS CSS ENTERPRISE */}
