@@ -188,15 +188,6 @@ const colorSchemes = {
   }
 };
 
-// 📈 TIPOS DE GRÁFICOS DISPONIBLES
-const chartTypes = {
-  line: 'Líneas',
-  area: 'Área',
-  bar: 'Barras',
-  composed: 'Combinado',
-  radialBar: 'Radial'
-};
-
 // ✅ FUNCIONES LOCALES CORREGIDAS - JUNIO 2025
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
@@ -208,14 +199,11 @@ function formatPrice(amount: number): string {
 
 // ✅ FUNCIÓN CRÍTICA - FECHA ACTUAL EN MÉXICO (JUNIO 2025)
 function getMexicoDateLocal(): string {
-  // Estamos en: 2025-06-26 11:47:27 UTC
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
   const year = mexicoDate.getFullYear();
   const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
   const day = String(mexicoDate.getDate()).padStart(2, '0');
-  
-  console.log('📅 Fecha México actual:', `${year}-${month}-${day}`);
   return `${year}-${month}-${day}`;
 }
 
@@ -291,37 +279,7 @@ function getDateMonthsAgo(monthsAgo: number): string {
   const year = targetYear;
   const month = String(targetMonth + 1).padStart(2, '0');
   
-  console.log('📅 getDateMonthsAgo:', {
-    monthsAgo,
-    fechaActual: `${mexicoDate.getFullYear()}-${String(mexicoDate.getMonth() + 1).padStart(2, '0')}`,
-    fechaCalculada: `${year}-${month}`,
-    mesActual: mexicoDate.getMonth() + 1, // 6 = Junio
-    añoActual: mexicoDate.getFullYear() // 2025
-  });
-  
   return `${year}-${month}`;
-}
-
-// ✅ FUNCIÓN HELPER: Obtener rango de fechas del mes
-function getMonthDateRange(monthString: string): { start: string; end: string } {
-  const [year, month] = monthString.split('-').map(Number);
-  const firstDay = new Date(year, month - 1, 1);
-  const lastDay = new Date(year, month, 0);
-  
-  return {
-    start: `${year}-${String(month).padStart(2, '0')}-01`,
-    end: `${year}-${String(month).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
-  };
-}
-
-function getFirstDayOfMonth(monthString: string): string {
-  return `${monthString}-01`;
-}
-
-function getLastDayOfMonth(monthString: string): string {
-  const [year, month] = monthString.split('-').map(Number);
-  const lastDay = new Date(year, month, 0).getDate();
-  return `${monthString}-${String(lastDay).padStart(2, '0')}`;
 }
 
 // ✅ FUNCIÓN CORREGIDA: formatMonthName
@@ -484,7 +442,6 @@ interface RetentionData {
 interface DashboardConfig {
   monthsToShow: number;
   colorScheme: keyof typeof colorSchemes;
-  chartType: keyof typeof chartTypes;
   showAnimations: boolean;
   compactMode: boolean;
 }
@@ -557,7 +514,6 @@ export default function AdminDashboardPage() {
   const [config, setConfig] = useState<DashboardConfig>({
     monthsToShow: 6,
     colorScheme: 'default',
-    chartType: 'composed',
     showAnimations: true,
     compactMode: false
   });
@@ -638,8 +594,6 @@ export default function AdminDashboardPage() {
   // ✅ FUNCIÓN CORREGIDA - loadRealDailyData
   const loadRealDailyData = useCallback(async (targetDate: string): Promise<DailyData | null> => {
     try {
-      console.log('🔍 Cargando datos para fecha:', targetDate);
-      
       const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
         method: 'GET',
         headers: {
@@ -649,28 +603,23 @@ export default function AdminDashboardPage() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Datos recibidos para', targetDate, ':', data);
         
         // ✅ USAR LA VALIDACIÓN DEL CÓDIGO ANTERIOR QUE FUNCIONABA
         if (data.success && data.totals && data.totals.total > 0) {
           return data;
         } else {
-          console.log('⚠️ Sin datos válidos para', targetDate);
           return null;
         }
       } else {
-        console.log('❌ Error HTTP para', targetDate, ':', response.status);
         return null;
       }
     } catch (error) {
-      console.error('💥 Error cargando datos para', targetDate, ':', error);
       return null;
     }
   }, []);
 
   // ✅ FUNCIÓN CRÍTICA CORREGIDA - loadWeeklyRealData
   const loadWeeklyRealData = useCallback(async (): Promise<ChartData[]> => {
-    console.log('📈 Cargando datos semanales...');
     const chartData: ChartData[] = [];
     
     for (let i = 6; i >= 0; i--) {
@@ -691,21 +640,12 @@ export default function AdminDashboardPage() {
       });
     }
     
-    console.log('📊 Datos semanales cargados:', chartData);
     return chartData;
   }, [loadRealDailyData]);
 
   // ✅ FUNCIÓN NUEVA CORREGIDA - loadMonthlyRealData para JUNIO 2025
   const loadMonthlyRealData = useCallback(async (): Promise<MonthlyData[]> => {
-    console.log('📅 Cargando datos mensuales para', config.monthsToShow, 'meses...');
     const monthlyData: MonthlyData[] = [];
-    
-    // ✅ DEBUG - Verificar qué meses estamos calculando
-    console.log('🔍 VERIFICACIÓN DE MESES - JUNIO 2025:');
-    for (let i = 0; i < config.monthsToShow; i++) {
-      const monthString = getDateMonthsAgo(i);
-      console.log(`Mes ${i}: ${monthString} (${formatMonthName(monthString)})`);
-    }
     
     for (let i = config.monthsToShow - 1; i >= 0; i--) {
       const monthString = getDateMonthsAgo(i);
@@ -732,7 +672,7 @@ export default function AdminDashboardPage() {
           }
         }
       } catch (error) {
-        console.log(`⚠️ No hay endpoint mensual para ${monthString}, usando datos diarios...`);
+        // Continuar con fallback
       }
       
       // FALLBACK: Datos diarios
@@ -778,7 +718,6 @@ export default function AdminDashboardPage() {
       }
     }
     
-    console.log('📊 Datos mensuales finales:', monthlyData);
     return monthlyData;
   }, [config.monthsToShow, loadRealDailyData, selectedDate]);
 
@@ -809,20 +748,6 @@ export default function AdminDashboardPage() {
   const loadDashboardStats = useCallback(async () => {
     try {
       setError(null);
-      console.log('🚀 Iniciando carga de estadísticas del dashboard...');
-      console.log('📅 Fecha actual México:', getMexicoDateLocal());
-
-      // ✅ DEBUG - Verificar fechas calculadas
-      console.log('🔍 VERIFICACIÓN DE FECHAS - JUNIO 2025:', {
-        fechaActual: getMexicoDateLocal(),
-        mesActual: getDateMonthsAgo(0),
-        mesAnterior: getDateMonthsAgo(1),
-        hace2Meses: getDateMonthsAgo(2),
-        hace3Meses: getDateMonthsAgo(3),
-        hace4Meses: getDateMonthsAgo(4),
-        hace5Meses: getDateMonthsAgo(5),
-        hace6Meses: getDateMonthsAgo(6)
-      });
 
       // Cargar datos
       const dailyDataResult = await loadDailyData();
@@ -837,7 +762,6 @@ export default function AdminDashboardPage() {
       const in7DaysString = `${in7Days.getFullYear()}-${(in7Days.getMonth() + 1).toString().padStart(2, '0')}-${in7Days.getDate().toString().padStart(2, '0')}`;
 
       // 👥 CARGAR USUARIOS
-      console.log('👥 Cargando usuarios...');
       const { data: allUsers, error: usersError } = await supabase
         .from('Users')
         .select('id, firstName, lastName, gender, createdAt, birthDate, profilePictureUrl, rol')
@@ -848,7 +772,6 @@ export default function AdminDashboardPage() {
       }
 
       const clientUsers = allUsers || [];
-      console.log('✅ Usuarios cargados:', clientUsers.length);
 
       const newUsersToday = clientUsers.filter(u => {
         if (!u.createdAt) return false;
@@ -882,7 +805,6 @@ export default function AdminDashboardPage() {
       }));
 
       // 🏋️ CARGAR MEMBRESÍAS
-      console.log('🏋️ Cargando membresías...');
       const { data: memberships, error: membershipsError } = await supabase
         .from('user_memberships')
         .select('*, userid');
@@ -939,7 +861,6 @@ export default function AdminDashboardPage() {
       };
 
       // 📦 CARGAR APARTADOS
-      console.log('📦 Cargando apartados...');
       const { data: layaways, error: layawaysError } = await supabase
         .from('sales')
         .select('*')
@@ -1031,20 +952,6 @@ export default function AdminDashboardPage() {
         ? ((currentMonth.total - previousMonth.total) / previousMonth.total) * 100 
         : (currentMonth.total > 0 ? 100 : 0);
 
-      console.log('📊 COMPARATIVA MENSUAL:', {
-        mesActual: currentMonth.monthName,
-        mesAnterior: previousMonth.monthName,
-        crecimiento: monthlyGrowth.toFixed(2) + '%'
-      });
-
-      // ✅ DEBUG - Verificar datos antes de guardar
-      console.log('🔍 DEBUG - Datos finales:', {
-        chartDataLength: realChartData.length,
-        monthlyDataLength: monthlyDataResult.length,
-        hayDatosSemanales: realChartData.some(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0),
-        hayDatosMensuales: monthlyDataResult.some(m => m.total > 0)
-      });
-
       // ✅ CONSTRUIR ESTADÍSTICAS FINALES
       const finalStats: DashboardStats = {
         totalUsers: clientUsers.length,
@@ -1089,18 +996,16 @@ export default function AdminDashboardPage() {
         }
       };
 
-      console.log('✅ Estadísticas finales:', finalStats);
       setStats(finalStats);
       setLastUpdate(formatDateTime(new Date().toISOString()));
 
     } catch (err: any) {
-      console.error('💥 Error cargando estadísticas:', err);
       setError(`Error cargando estadísticas: ${err.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedDate, loadDailyData, loadWeeklyRealData, loadMonthlyRealData, supabase, config.monthsToShow, config.colorScheme, currentColors]);
+  }, [selectedDate, loadDailyData, loadWeeklyRealData, loadMonthlyRealData, supabase, config.monthsToShow, currentColors]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -1108,7 +1013,6 @@ export default function AdminDashboardPage() {
   }, [loadDashboardStats]);
 
   useEffect(() => {
-    console.log('🔄 useEffect disparado');
     loadDashboardStats();
   }, [loadDashboardStats]);
 
@@ -1206,169 +1110,6 @@ export default function AdminDashboardPage() {
       </Card>
     </motion.div>
   );
-
-  // ✅ COMPONENTE DE GRÁFICO CONFIGURABLE
-  const ConfigurableChart = ({ 
-    data, 
-    type, 
-    title, 
-    height = 300,
-    onFullscreen
-  }: {
-    data: any[];
-    type: keyof typeof chartTypes;
-    title: string;
-    height?: number;
-    onFullscreen?: () => void;
-  }) => {
-    const ChartComponent = () => {
-      const commonProps = {
-        data,
-        margin: { top: 20, right: 30, left: 20, bottom: 5 }
-      };
-
-      switch (type) {
-        case 'line':
-          return (
-            <LineChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-              <XAxis dataKey="name" stroke={darkProTokens.textSecondary} fontSize={12} />
-              <YAxis stroke={darkProTokens.textSecondary} fontSize={12} tickFormatter={(value) => formatPrice(value)} />
-              <RechartsTooltip 
-                contentStyle={{
-                  backgroundColor: darkProTokens.surfaceLevel4,
-                  border: `1px solid ${darkProTokens.grayDark}`,
-                  borderRadius: '8px',
-                  color: darkProTokens.textPrimary
-                }}
-                formatter={(value: any, name: string) => {
-                  const labels: { [key: string]: string } = {
-                    'sales': 'Ventas POS',
-                    'memberships': 'Membresías', 
-                    'layaways': 'Apartados'
-                  };
-                  return [formatPrice(value), labels[name] || name];
-                }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="sales" stroke={currentColors.primary} strokeWidth={3} name="Ventas POS" />
-              <Line type="monotone" dataKey="memberships" stroke={currentColors.secondary} strokeWidth={3} name="Membresías" />
-              <Line type="monotone" dataKey="layaways" stroke={currentColors.tertiary} strokeWidth={3} name="Apartados" />
-            </LineChart>
-          );
-
-        case 'area':
-          return (
-            <AreaChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-              <XAxis dataKey="name" stroke={darkProTokens.textSecondary} fontSize={12} />
-              <YAxis stroke={darkProTokens.textSecondary} fontSize={12} tickFormatter={(value) => formatPrice(value)} />
-              <RechartsTooltip 
-                contentStyle={{
-                  backgroundColor: darkProTokens.surfaceLevel4,
-                  border: `1px solid ${darkProTokens.grayDark}`,
-                  borderRadius: '8px',
-                  color: darkProTokens.textPrimary
-                }}
-                formatter={(value: any, name: string) => {
-                  const labels: { [key: string]: string } = {
-                    'sales': 'Ventas POS',
-                    'memberships': 'Membresías', 
-                    'layaways': 'Apartados'
-                  };
-                  return [formatPrice(value), labels[name] || name];
-                }}
-              />
-              <Legend />
-              <Area type="monotone" dataKey="sales" stackId="1" stroke={currentColors.primary} fill={`${currentColors.primary}60`} name="Ventas POS" />
-              <Area type="monotone" dataKey="memberships" stackId="1" stroke={currentColors.secondary} fill={`${currentColors.secondary}60`} name="Membresías" />
-              <Area type="monotone" dataKey="layaways" stackId="1" stroke={currentColors.tertiary} fill={`${currentColors.tertiary}60`} name="Apartados" />
-            </AreaChart>
-          );
-
-        case 'bar':
-          return (
-            <BarChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-              <XAxis dataKey="name" stroke={darkProTokens.textSecondary} fontSize={12} />
-              <YAxis stroke={darkProTokens.textSecondary} fontSize={12} tickFormatter={(value) => formatPrice(value)} />
-              <RechartsTooltip 
-                contentStyle={{
-                  backgroundColor: darkProTokens.surfaceLevel4,
-                  border: `1px solid ${darkProTokens.grayDark}`,
-                  borderRadius: '8px',
-                  color: darkProTokens.textPrimary
-                }}
-                formatter={(value: any, name: string) => {
-                  const labels: { [key: string]: string } = {
-                    'sales': 'Ventas POS',
-                    'memberships': 'Membresías', 
-                    'layaways': 'Apartados'
-                  };
-                  return [formatPrice(value), labels[name] || name];
-                }}
-              />
-              <Legend />
-              <Bar dataKey="sales" fill={currentColors.primary} name="Ventas POS" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="memberships" fill={currentColors.secondary} name="Membresías" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="layaways" fill={currentColors.tertiary} name="Apartados" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          );
-
-        case 'composed':
-        default:
-          return (
-            <ComposedChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-              <XAxis dataKey="name" stroke={darkProTokens.textSecondary} fontSize={12} />
-              <YAxis stroke={darkProTokens.textSecondary} fontSize={12} tickFormatter={(value) => formatPrice(value)} />
-              <RechartsTooltip 
-                contentStyle={{
-                  backgroundColor: darkProTokens.surfaceLevel4,
-                  border: `1px solid ${darkProTokens.grayDark}`,
-                  borderRadius: '8px',
-                  color: darkProTokens.textPrimary
-                }}
-                formatter={(value: any, name: string) => {
-                  const labels: { [key: string]: string } = {
-                    'sales': 'Ventas POS',
-                    'memberships': 'Membresías', 
-                    'layaways': 'Apartados'
-                  };
-                  return [formatPrice(value), labels[name] || name];
-                }}
-              />
-              <Legend />
-              <Area type="monotone" dataKey="sales" fill={`${currentColors.primary}30`} stroke={currentColors.primary} strokeWidth={3} name="Ventas POS" />
-              <Bar dataKey="memberships" fill={currentColors.secondary} name="Membresías" radius={[4, 4, 0, 0]} />
-              <Line type="monotone" dataKey="layaways" stroke={currentColors.tertiary} strokeWidth={3} dot={{ fill: currentColors.tertiary, strokeWidth: 2, r: 6 }} name="Apartados" />
-            </ComposedChart>
-          );
-      }
-    };
-
-    return (
-      <Box sx={{ position: 'relative' }}>
-        {title && (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-              {title}
-            </Typography>
-            {onFullscreen && (
-              <IconButton onClick={onFullscreen} sx={{ color: darkProTokens.textSecondary }}>
-                <FullscreenIcon />
-              </IconButton>
-            )}
-          </Box>
-        )}
-        <Box sx={{ height, width: '100%' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <ChartComponent />
-          </ResponsiveContainer>
-        </Box>
-      </Box>
-    );
-  };
 
   if (loading) {
     return (
@@ -1509,7 +1250,7 @@ export default function AdminDashboardPage() {
                     `0 0 20px ${currentColors.primary}40`
                   ]
                 } : {}}
-                                transition={{ 
+                transition={{ 
                   duration: 3,
                   repeat: Infinity,
                   ease: "easeInOut"
@@ -1783,7 +1524,7 @@ export default function AdminDashboardPage() {
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
             <MetricCard
               title="Apartados Activos"
-              value={stats.activeLayaways}
+                            value={stats.activeLayaways}
               subtitle={`${formatPrice(stats.layawaysPendingAmount)} pendiente`}
               icon={<LayawayIcon />}
               color={currentColors.quaternary}
@@ -2186,78 +1927,132 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* GRÁFICOS PRINCIPALES - ✅ CORREGIDOS */}
+      {/* 🎯 GRÁFICOS PRINCIPALES - RENDERIZADO DIRECTO */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-        {/* GRÁFICO SEMANAL - ✅ USANDO VALIDACIÓN SIMPLE */}
+        {/* GRÁFICO SEMANAL - ✅ RENDERIZADO DIRECTO */}
         <Grid size={{ xs: 12, lg: 8 }}>
-  <motion.div
-    initial={{ opacity: 0, x: -20 }}
-    animate={{ opacity: 1, x: 0 }}
-    transition={{ duration: 0.6, delay: 0.4 }}
-  >
-    <Card sx={{
-      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-      border: `1px solid ${darkProTokens.grayDark}`,
-      borderRadius: 4,
-      overflow: 'hidden'
-    }}>
-      <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 2, sm: 4 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <TimelineIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
-            <Typography variant="h6" sx={{ 
-              color: currentColors.primary, 
-              fontWeight: 700,
-              fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-            }}>
-              📈 Tendencias (Últimos 7 días)
-            </Typography>
-          </Box>
-          <IconButton 
-            onClick={() => setFullscreenChart('weekly')}
-            sx={{ color: darkProTokens.textSecondary }}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <FullscreenIcon />
-          </IconButton>
-        </Box>
-                
-                {/* ✅ VALIDACIÓN SIMPLE - Solo verificar que hay datos */}
-              {stats.chartData.length > 0 ? (
-          <ConfigurableChart
-            data={stats.chartData}
-            type={config.chartType}
-            title=""
-            height={config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 } as any}
-          />
-        ) : (
-          <Box sx={{ 
-            height: config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 }, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            flexDirection: 'column',
-            gap: 2
-          }}>
-            <TimelineIcon sx={{ fontSize: config.compactMode ? { xs: 50, sm: 60 } : { xs: 60, sm: 80 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-            <Typography variant="h6" sx={{ 
-              color: darkProTokens.textSecondary, 
-              fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
+            <Card sx={{
+              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 4,
+              overflow: 'hidden'
             }}>
-              Cargando datos...
-            </Typography>
-            <Button 
-              onClick={handleRefresh} 
-              variant="outlined"
-              sx={{ mt: 2, color: currentColors.primary, borderColor: currentColors.primary }}
-            >
-              Intentar de nuevo
-            </Button>
-          </Box>
-        )}
-      </CardContent>
-    </Card>
-  </motion.div>
-</Grid>
+              <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 2, sm: 4 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <TimelineIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
+                    <Typography variant="h6" sx={{ 
+                      color: currentColors.primary, 
+                      fontWeight: 700,
+                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
+                    }}>
+                      📈 Tendencias (Últimos 7 días)
+                    </Typography>
+                    <Chip
+                      label={`${stats.chartData.filter(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0).length} días con datos`}
+                      size="small"
+                      sx={{
+                        bgcolor: `${currentColors.secondary}20`,
+                        color: currentColors.secondary,
+                        fontWeight: 600,
+                        fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                      }}
+                    />
+                  </Box>
+                  <IconButton 
+                    onClick={() => setFullscreenChart('weekly')}
+                    sx={{ color: darkProTokens.textSecondary }}
+                  >
+                    <FullscreenIcon />
+                  </IconButton>
+                </Box>
+                
+                {/* ✅ GRÁFICO DIRECTO SIN WRAPPER */}
+                <Box sx={{ height: config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 }, width: '100%' }}>
+                  {stats.chartData.some(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={stats.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke={darkProTokens.textSecondary}
+                          fontSize={12}
+                        />
+                        <YAxis 
+                          stroke={darkProTokens.textSecondary}
+                          fontSize={12}
+                          tickFormatter={(value) => formatPrice(value)}
+                        />
+                        <RechartsTooltip 
+                          contentStyle={{
+                            backgroundColor: darkProTokens.surfaceLevel4,
+                            border: `1px solid ${darkProTokens.grayDark}`,
+                            borderRadius: '8px',
+                            color: darkProTokens.textPrimary
+                          }}
+                          formatter={(value: any, name: string) => [
+                            formatPrice(value), 
+                            name === 'sales' ? 'Ventas POS' : 
+                            name === 'memberships' ? 'Membresías' : 'Apartados'
+                          ]}
+                        />
+                        <Legend />
+                        
+                        <Area
+                          type="monotone"
+                          dataKey="sales"
+                          fill={`${currentColors.primary}30`}
+                          stroke={currentColors.primary}
+                          strokeWidth={3}
+                          name="Ventas POS"
+                        />
+                        
+                        <Bar
+                          dataKey="memberships"
+                          fill={currentColors.secondary}
+                          name="Membresías"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        
+                        <Line
+                          type="monotone"
+                          dataKey="layaways"
+                          stroke={currentColors.tertiary}
+                          strokeWidth={3}
+                          dot={{ fill: currentColors.tertiary, strokeWidth: 2, r: 6 }}
+                          name="Apartados"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <Box sx={{ 
+                      height: '100%', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexDirection: 'column',
+                      gap: 2
+                    }}>
+                      <TimelineIcon sx={{ fontSize: { xs: 60, sm: 80 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                        Sin datos históricos disponibles
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, textAlign: 'center', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                        Los gráficos aparecerán cuando haya datos reales<br />
+                        de días anteriores en la base de datos
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </Grid>
 
         {/* GRÁFICO DE PIE - MÉTODOS DE PAGO */}
         <Grid size={{ xs: 12, lg: 4 }}>
@@ -2348,85 +2143,11 @@ export default function AdminDashboardPage() {
         </Grid>
       </Grid>
 
-      {/* ANÁLISIS MENSUALES - ✅ CORREGIDO PARA JUNIO 2025 */}
-    <motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.6, delay: 0.8 }}
->
-  <Card sx={{
-    mb: 4,
-    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-    border: `1px solid ${darkProTokens.grayDark}`,
-    borderRadius: 4
-  }}>
-    <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <DateRangeIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
-          <Typography variant="h6" sx={{ 
-            color: currentColors.primary, 
-            fontWeight: 700,
-            fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-          }}>
-            📊 Análisis Mensuales (Últimos {config.monthsToShow} meses)
-          </Typography>
-        </Box>
-        <IconButton 
-          onClick={() => setFullscreenChart('monthly')}
-          sx={{ color: darkProTokens.textSecondary }}
-        >
-          <FullscreenIcon />
-        </IconButton>
-      </Box>
-
-      {/* ✅ SIN CONSOLE.LOG AQUÍ */}
-      {stats.monthlyData.length > 0 ? (
-        <ConfigurableChart
-          data={stats.monthlyData.map(m => ({
-            name: m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(-2),
-            sales: m.sales,
-            memberships: m.memberships,
-            layaways: m.layaways,
-            date: m.month
-          }))}
-          type={config.chartType}
-          title=""
-          height={config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 } as any}
-        />
-      ) : (
-        <Box sx={{ 
-          height: config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 }, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: 2
-        }}>
-          <CalendarIcon sx={{ fontSize: config.compactMode ? { xs: 60, sm: 70 } : { xs: 70, sm: 90 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-          <Typography variant="h6" sx={{ 
-            color: darkProTokens.textSecondary, 
-            fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-          }}>
-            Cargando datos mensuales...
-          </Typography>
-          <Typography variant="body2" sx={{ 
-            color: darkProTokens.textDisabled, 
-            textAlign: 'center', 
-            fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-          }}>
-            Los datos del mes actual aparecerán aquí
-          </Typography>
-        </Box>
-      )}
-    </CardContent>
-  </Card>
-</motion.div>
-      {/* MÉTODOS DE PAGO DEL DÍA RESPONSIVOS */}
+      {/* ANÁLISIS MENSUALES - ✅ RENDERIZADO DIRECTO */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.0 }}
+        transition={{ duration: 0.6, delay: 0.8 }}
       >
         <Card sx={{
           mb: 4,
@@ -2435,392 +2156,114 @@ export default function AdminDashboardPage() {
           borderRadius: 4
         }}>
           <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
-            <Typography variant="h6" sx={{ 
-              color: currentColors.primary, 
-              mb: 3, 
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-            }}>
-              <PaymentIcon />
-              💰 Flujo de Efectivo del Día
-            </Typography>
-            
-            <Grid container spacing={{ xs: 2, sm: 3 }}>
-              <Grid size={{ xs: 6, md: 3 }}>
-                <motion.div whileHover={config.showAnimations ? { scale: 1.05 } : {}}>
-                  <Paper sx={{
-                    p: config.compactMode ? { xs: 1.5, sm: 2 } : { xs: 2, sm: 3 },
-                    textAlign: 'center',
-                    background: `linear-gradient(135deg, ${currentColors.secondary}, ${currentColors.secondary}DD)`,
-                    color: darkProTokens.textPrimary,
-                    borderRadius: 3,
-                    border: `1px solid ${currentColors.secondary}40`,
-                    boxShadow: `0 8px 32px ${currentColors.secondary}20`
-                  }}>
-                    <Typography variant="h4" sx={{ 
-                      fontWeight: 800, 
-                      mb: 1,
-                      fontSize: config.compactMode ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-                    }}>
-                      {formatPrice(stats.cashFlow.efectivo)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ 
-                      opacity: 0.9, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
-                    }}>
-                      💵 Efectivo
-                    </Typography>
-                    {dailyData && (
-                      <Typography variant="caption" sx={{ 
-                        opacity: 0.7, 
-                        display: 'block', 
-                        mt: 1,
-                        fontSize: config.compactMode ? { xs: '0.6rem', sm: '0.65rem' } : { xs: '0.6rem', sm: '0.7rem' }
-                      }}>
-                        POS: {formatPrice(dailyData.pos.efectivo)} | Membresías: {formatPrice(dailyData.memberships.efectivo)}
-                      </Typography>
-                    )}
-                  </Paper>
-                </motion.div>
-              </Grid>
-              
-              <Grid size={{ xs: 6, md: 3 }}>
-                <motion.div whileHover={config.showAnimations ? { scale: 1.05 } : {}}>
-                  <Paper sx={{
-                    p: config.compactMode ? { xs: 1.5, sm: 2 } : { xs: 2, sm: 3 },
-                    textAlign: 'center',
-                    background: `linear-gradient(135deg, ${currentColors.tertiary}, ${currentColors.tertiary}DD)`,
-                    color: darkProTokens.textPrimary,
-                    borderRadius: 3,
-                    border: `1px solid ${currentColors.tertiary}40`,
-                    boxShadow: `0 8px 32px ${currentColors.tertiary}20`
-                  }}>
-                    <Typography variant="h4" sx={{ 
-                      fontWeight: 800, 
-                      mb: 1,
-                      fontSize: config.compactMode ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-                    }}>
-                      {formatPrice(stats.cashFlow.transferencia)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ 
-                      opacity: 0.9, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
-                    }}>
-                      🏦 Transferencia
-                    </Typography>
-                    {dailyData && (
-                      <Typography variant="caption" sx={{ 
-                        opacity: 0.7, 
-                        display: 'block', 
-                        mt: 1,
-                        fontSize: config.compactMode ? { xs: '0.6rem', sm: '0.65rem' } : { xs: '0.6rem', sm: '0.7rem' }
-                      }}>
-                        POS: {formatPrice(dailyData.pos.transferencia)} | Membresías: {formatPrice(dailyData.memberships.transferencia)}
-                      </Typography>
-                    )}
-                  </Paper>
-                </motion.div>
-              </Grid>
-              
-              <Grid size={{ xs: 6, md: 3 }}>
-                <motion.div whileHover={config.showAnimations ? { scale: 1.05 } : {}}>
-                  <Paper sx={{
-                    p: config.compactMode ? { xs: 1.5, sm: 2 } : { xs: 2, sm: 3 },
-                    textAlign: 'center',
-                    background: `linear-gradient(135deg, ${darkProTokens.roleTrainer}, #00695c)`,
-                    color: darkProTokens.textPrimary,
-                    borderRadius: 3,
-                    border: `1px solid ${darkProTokens.roleTrainer}40`,
-                    boxShadow: `0 8px 32px ${darkProTokens.roleTrainer}20`
-                  }}>
-                    <Typography variant="h4" sx={{ 
-                      fontWeight: 800, 
-                      mb: 1,
-                      fontSize: config.compactMode ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-                    }}>
-                      {formatPrice(stats.cashFlow.debito)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ 
-                      opacity: 0.9, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
-                    }}>
-                      💳 Débito
-                    </Typography>
-                    {dailyData && (
-                      <Typography variant="caption" sx={{ 
-                        opacity: 0.7, 
-                        display: 'block', 
-                        mt: 1,
-                        fontSize: config.compactMode ? { xs: '0.6rem', sm: '0.65rem' } : { xs: '0.6rem', sm: '0.7rem' }
-                      }}>
-                        POS: {formatPrice(dailyData.pos.debito)} | Membresías: {formatPrice(dailyData.memberships.debito)}
-                      </Typography>
-                    )}
-                  </Paper>
-                </motion.div>
-              </Grid>
-              
-              <Grid size={{ xs: 6, md: 3 }}>
-                <motion.div whileHover={config.showAnimations ? { scale: 1.05 } : {}}>
-                  <Paper sx={{
-                    p: config.compactMode ? { xs: 1.5, sm: 2 } : { xs: 2, sm: 3 },
-                    textAlign: 'center',
-                    background: `linear-gradient(135deg, ${currentColors.quaternary}, ${currentColors.quaternary}DD)`,
-                    color: darkProTokens.background,
-                    borderRadius: 3,
-                                        border: `1px solid ${currentColors.quaternary}40`,
-                    boxShadow: `0 8px 32px ${currentColors.quaternary}20`
-                  }}>
-                    <Typography variant="h4" sx={{ 
-                      fontWeight: 800, 
-                      mb: 1,
-                      fontSize: config.compactMode ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-                    }}>
-                      {formatPrice(stats.cashFlow.credito)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ 
-                      opacity: 0.9, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
-                    }}>
-                      💳 Crédito
-                    </Typography>
-                    {dailyData && (
-                      <Typography variant="caption" sx={{ 
-                        opacity: 0.7, 
-                        display: 'block', 
-                        mt: 1,
-                        fontSize: config.compactMode ? { xs: '0.6rem', sm: '0.65rem' } : { xs: '0.6rem', sm: '0.7rem' }
-                      }}>
-                        POS: {formatPrice(dailyData.pos.credito)} | Membresías: {formatPrice(dailyData.memberships.credito)}
-                      </Typography>
-                    )}
-                  </Paper>
-                </motion.div>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      </motion.div>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <DateRangeIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
+                <Typography variant="h6" sx={{ 
+                  color: currentColors.primary, 
+                  fontWeight: 700,
+                  fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
+                }}>
+                  📊 Análisis Mensuales (Últimos {config.monthsToShow} meses)
+                </Typography>
+              </Box>
+              <IconButton 
+                onClick={() => setFullscreenChart('monthly')}
+                sx={{ color: darkProTokens.textSecondary }}
+              >
+                <FullscreenIcon />
+              </IconButton>
+            </Box>
 
-      {/* DESGLOSE DE INGRESOS DEL DÍA RESPONSIVO */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.2 }}
-      >
-        <Card sx={{
-          mb: 4,
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.grayDark}`,
-          borderRadius: 4
-        }}>
-          <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
-            <Typography variant="h6" sx={{ 
-              color: currentColors.secondary, 
-              mb: 3, 
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-            }}>
-              <BarChartIcon />
-              📊 Desglose de Ingresos del Día
-            </Typography>
-            
-            <Grid container spacing={{ xs: 2, sm: 3 }}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Paper sx={{
-                  p: config.compactMode ? { xs: 2, sm: 2.5 } : { xs: 2, sm: 3 },
-                  textAlign: 'center',
-                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                  border: `2px solid ${currentColors.tertiary}40`,
-                  borderRadius: 3
+            {/* ✅ GRÁFICO MENSUAL DIRECTO */}
+            <Box sx={{ height: config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 }, width: '100%' }}>
+              {stats.monthlyData.some(m => m.total > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart 
+                    data={stats.monthlyData.map(m => ({
+                      name: m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(-2),
+                      sales: m.sales,
+                      memberships: m.memberships,
+                      layaways: m.layaways,
+                      date: m.month
+                    }))} 
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke={darkProTokens.textSecondary}
+                      fontSize={12}
+                    />
+                    <YAxis 
+                      stroke={darkProTokens.textSecondary}
+                      fontSize={12}
+                      tickFormatter={(value) => formatPrice(value)}
+                    />
+                    <RechartsTooltip 
+                      contentStyle={{
+                        backgroundColor: darkProTokens.surfaceLevel4,
+                        border: `1px solid ${darkProTokens.grayDark}`,
+                        borderRadius: '8px',
+                        color: darkProTokens.textPrimary
+                      }}
+                      formatter={(value: any, name: string) => [
+                        formatPrice(value), 
+                        name === 'sales' ? 'Ventas POS' : 
+                        name === 'memberships' ? 'Membresías' : 'Apartados'
+                      ]}
+                    />
+                    <Legend />
+                    
+                    <Area
+                      type="monotone"
+                      dataKey="sales"
+                      fill={`${currentColors.primary}30`}
+                      stroke={currentColors.primary}
+                      strokeWidth={3}
+                      name="Ventas POS"
+                    />
+                    
+                    <Bar
+                      dataKey="memberships"
+                      fill={currentColors.secondary}
+                      name="Membresías"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    
+                    <Line
+                      type="monotone"
+                      dataKey="layaways"
+                      stroke={currentColors.tertiary}
+                      strokeWidth={3}
+                      dot={{ fill: currentColors.tertiary, strokeWidth: 2, r: 6 }}
+                      name="Apartados"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: 2
                 }}>
-                  <Avatar sx={{ 
-                    bgcolor: currentColors.tertiary, 
-                    width: config.compactMode ? { xs: 40, sm: 48 } : { xs: 48, sm: 56 }, 
-                    height: config.compactMode ? { xs: 40, sm: 48 } : { xs: 48, sm: 56 },
-                    mx: 'auto',
-                    mb: 2
-                  }}>
-                    <SalesIcon />
-                  </Avatar>
-                  <Typography variant="h4" sx={{ 
-                    color: currentColors.tertiary, 
-                    fontWeight: 800, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-                  }}>
-                    {formatPrice(stats.todaySales)}
-                  </Typography>
+                  <CalendarIcon sx={{ fontSize: config.compactMode ? { xs: 60, sm: 70 } : { xs: 70, sm: 90 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
                   <Typography variant="h6" sx={{ 
                     color: darkProTokens.textSecondary, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
+                    fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
                   }}>
-                    Ventas POS
+                    Sin datos mensuales disponibles
                   </Typography>
                   <Typography variant="body2" sx={{ 
-                    color: darkProTokens.textDisabled,
-                    fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
+                    color: darkProTokens.textDisabled, 
+                    textAlign: 'center', 
+                    fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
                   }}>
-                    {stats.todayTransactions} transacciones
+                    Los datos del mes actual aparecerán aquí
                   </Typography>
-                </Paper>
-              </Grid>
-              
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Paper sx={{
-                  p: config.compactMode ? { xs: 2, sm: 2.5 } : { xs: 2, sm: 3 },
-                  textAlign: 'center',
-                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                  border: `2px solid ${currentColors.secondary}40`,
-                  borderRadius: 3
-                }}>
-                  <Avatar sx={{ 
-                    bgcolor: currentColors.secondary, 
-                    width: config.compactMode ? { xs: 40, sm: 48 } : { xs: 48, sm: 56 }, 
-                    height: config.compactMode ? { xs: 40, sm: 48 } : { xs: 48, sm: 56 },
-                    mx: 'auto',
-                    mb: 2
-                  }}>
-                    <FitnessCenterIcon />
-                  </Avatar>
-                  <Typography variant="h4" sx={{ 
-                    color: currentColors.secondary, 
-                    fontWeight: 800, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-                  }}>
-                    {formatPrice(stats.todayMembershipRevenue)}
-                  </Typography>
-                  <Typography variant="h6" sx={{ 
-                    color: darkProTokens.textSecondary, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
-                  }}>
-                    Membresías
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: darkProTokens.textDisabled,
-                    fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
-                  }}>
-                    Solo ventas de hoy
-                  </Typography>
-                </Paper>
-              </Grid>
-              
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Paper sx={{
-                  p: config.compactMode ? { xs: 2, sm: 2.5 } : { xs: 2, sm: 3 },
-                  textAlign: 'center',
-                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                  border: `2px solid ${currentColors.quaternary}40`,
-                  borderRadius: 3
-                }}>
-                  <Avatar sx={{ 
-                    bgcolor: currentColors.quaternary, 
-                    width: config.compactMode ? { xs: 40, sm: 48 } : { xs: 48, sm: 56 }, 
-                    height: config.compactMode ? { xs: 40, sm: 48 } : { xs: 48, sm: 56 },
-                    mx: 'auto',
-                    mb: 2
-                  }}>
-                    <LayawayIcon />
-                  </Avatar>
-                  <Typography variant="h4" sx={{ 
-                    color: currentColors.quaternary, 
-                    fontWeight: 800, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-                  }}>
-                    {formatPrice(stats.todayLayawayPayments)}
-                  </Typography>
-                  <Typography variant="h6" sx={{ 
-                    color: darkProTokens.textSecondary, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
-                  }}>
-                    Abonos
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: darkProTokens.textDisabled,
-                    fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
-                  }}>
-                    Apartados pagados hoy
-                  </Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-            
-            <Divider sx={{ my: 3, borderColor: darkProTokens.grayMedium }} />
-            
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" sx={{ 
-                color: stats.todayBalance >= 0 ? currentColors.secondary : darkProTokens.error, 
-                fontWeight: 800,
-                mb: 1,
-                fontSize: config.compactMode ? { xs: '1.8rem', sm: '2rem' } : { xs: '2rem', sm: '2.5rem', md: '3rem' }
-              }}>
-                {formatPrice(stats.todayBalance)}
-              </Typography>
-              <Typography variant="h5" sx={{ 
-                color: darkProTokens.textSecondary, 
-                fontWeight: 600,
-                fontSize: config.compactMode ? { xs: '1rem', sm: '1.2rem' } : { xs: '1.2rem', sm: '1.5rem' }
-              }}>
-                💎 Total de Ingresos del Día
-              </Typography>
-              <Typography variant="body2" sx={{ 
-                color: currentColors.quaternary,
-                fontWeight: 500,
-                mt: 1,
-                fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-              }}>
-                ⚡ Datos en tiempo real para {formatDateLocal(selectedDate)}
-              </Typography>
-              {dailyData && (
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap' }}>
-                  <Chip
-                    icon={<CheckCircleIcon />}
-                    label={`${dailyData.totals.transactions} transacciones`}
-                    size="small"
-                    sx={{ 
-                      bgcolor: `${currentColors.secondary}20`, 
-                      color: currentColors.secondary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.65rem', sm: '0.7rem' } : { xs: '0.7rem', sm: '0.75rem' }
-                    }}
-                  />
-                  <Chip
-                    icon={<WarningIcon />}
-                    label={`${formatPrice(dailyData.totals.commissions)} comisiones`}
-                    size="small"
-                    sx={{ 
-                      bgcolor: `${currentColors.quaternary}20`, 
-                      color: currentColors.quaternary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.65rem', sm: '0.7rem' } : { xs: '0.7rem', sm: '0.75rem' }
-                    }}
-                  />
-                  <Chip
-                    icon={<MoneyIcon />}
-                    label={`${formatPrice(dailyData.totals.net_amount)} neto`}
-                    size="small"
-                    sx={{ 
-                      bgcolor: `${currentColors.tertiary}20`, 
-                      color: currentColors.tertiary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.65rem', sm: '0.7rem' } : { xs: '0.7rem', sm: '0.75rem' }
-                    }}
-                  />
                 </Box>
               )}
             </Box>
@@ -2828,444 +2271,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* ACCESOS RÁPIDOS ENTERPRISE RESPONSIVOS */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.4 }}
-      >
-        <Card sx={{
-          mb: 4,
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.grayDark}`,
-          borderRadius: 4
-        }}>
-          <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
-            <Typography variant="h6" sx={{ 
-              color: currentColors.primary, 
-              mb: 3, 
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-            }}>
-              <InsightsIcon />
-              ⚡ Centro de Comando
-            </Typography>
-            
-            <Grid container spacing={{ xs: 2, sm: 3 }}>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <motion.div whileHover={config.showAnimations ? { scale: 1.02 } : {}}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    startIcon={<PersonAddIcon />}
-                    onClick={() => router.push('/dashboard/admin/membresias/registrar')}
-                    sx={{
-                      background: `linear-gradient(135deg, ${currentColors.secondary}, ${currentColors.secondary}DD)`,
-                      justifyContent: 'flex-start',
-                      py: config.compactMode ? { xs: 1, sm: 1.5 } : { xs: 1.5, sm: 2 },
-                      px: 3,
-                      borderRadius: 3,
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                      boxShadow: `0 8px 32px ${currentColors.secondary}30`,
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: `0 12px 48px ${currentColors.secondary}40`
-                      },
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
-                    💰 Nueva Venta
-                  </Button>
-                </motion.div>
-              </Grid>
-              
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <motion.div whileHover={config.showAnimations ? { scale: 1.02 } : {}}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    size="large"
-                    startIcon={<ReceiptIcon />}
-                    onClick={() => router.push('/dashboard/admin/cortes')}
-                    sx={{
-                      color: currentColors.tertiary,
-                      borderColor: `${currentColors.tertiary}60`,
-                      justifyContent: 'flex-start',
-                      py: config.compactMode ? { xs: 1, sm: 1.5 } : { xs: 1.5, sm: 2 },
-                      px: 3,
-                      borderRadius: 3,
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                      borderWidth: '2px',
-                      '&:hover': {
-                        borderColor: currentColors.tertiary,
-                        bgcolor: `${currentColors.tertiary}10`,
-                        transform: 'translateY(-1px)'
-                      }
-                    }}
-                  >
-                    💼 Corte de Caja
-                  </Button>
-                </motion.div>
-              </Grid>
-              
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <motion.div whileHover={config.showAnimations ? { scale: 1.02 } : {}}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    size="large"
-                    startIcon={<AnalyticsIcon />}
-                    onClick={() => router.push('/dashboard/admin/reportes')}
-                    sx={{
-                      color: currentColors.quaternary,
-                      borderColor: `${currentColors.quaternary}60`,
-                      justifyContent: 'flex-start',
-                      py: config.compactMode ? { xs: 1, sm: 1.5 } : { xs: 1.5, sm: 2 },
-                      px: 3,
-                      borderRadius: 3,
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                      borderWidth: '2px',
-                      '&:hover': {
-                        borderColor: currentColors.quaternary,
-                        bgcolor: `${currentColors.quaternary}10`,
-                        transform: 'translateY(-1px)'
-                      }
-                    }}
-                  >
-                    📊 Reportes
-                  </Button>
-                </motion.div>
-              </Grid>
-              
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <motion.div whileHover={config.showAnimations ? { scale: 1.02 } : {}}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    size="large"
-                    startIcon={<FitnessCenterIcon />}
-                    onClick={() => router.push('/dashboard/admin/planes')}
-                    sx={{
-                      color: darkProTokens.roleModerator,
-                      borderColor: `${darkProTokens.roleModerator}60`,
-                      justifyContent: 'flex-start',
-                      py: config.compactMode ? { xs: 1, sm: 1.5 } : { xs: 1.5, sm: 2 },
-                      px: 3,
-                      borderRadius: 3,
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                      borderWidth: '2px',
-                      '&:hover': {
-                        borderColor: darkProTokens.roleModerator,
-                        bgcolor: `${darkProTokens.roleModerator}10`,
-                        transform: 'translateY(-1px)'
-                      }
-                    }}
-                  >
-                    🏋️ Gestionar Planes
-                  </Button>
-                </motion.div>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* INFORMACIÓN ADICIONAL RESPONSIVA */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.6 }}
-      >
-        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-          {/* INFORMACIÓN DE USUARIOS RESPONSIVA */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4,
-              height: '100%'
-            }}>
-              <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.roleStaff, 
-                  mb: 3, 
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2,
-                  fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                }}>
-                  <PeopleIcon />
-                  👥 Información de Clientes
-                </Typography>
-                
-                <Stack spacing={3}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Total de Clientes:
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.primary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      {stats.totalUsers}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Con Membresía Activa:
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.secondary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      {stats.retentionData.clientsWithMembership}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Nuevos Hoy:
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.tertiary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      +{stats.newUsersToday}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Nuevos Este Mes:
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.quaternary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      +{stats.newUsersMonth}
-                    </Typography>
-                  </Box>
-                  
-                  <Divider sx={{ borderColor: darkProTokens.grayMedium }} />
-                  
-                  <Box>
-                    <Typography variant="body2" sx={{ 
-                      color: darkProTokens.textSecondary, 
-                      mb: 2,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-                    }}>
-                      Distribución por Género:
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      <Chip 
-                        icon={<MaleIcon />}
-                        label={`${stats.usersByGender.male} Hombres`}
-                        size="small"
-                        sx={{ 
-                          bgcolor: `${currentColors.tertiary}20`, 
-                          color: currentColors.tertiary,
-                          fontWeight: 600,
-                          fontSize: config.compactMode ? { xs: '0.65rem', sm: '0.7rem' } : { xs: '0.7rem', sm: '0.75rem' }
-                        }}
-                      />
-                      <Chip 
-                        icon={<FemaleIcon />}
-                        label={`${stats.usersByGender.female} Mujeres`}
-                        size="small"
-                        sx={{ 
-                          bgcolor: `${darkProTokens.roleModerator}20`, 
-                          color: darkProTokens.roleModerator,
-                          fontWeight: 600,
-                          fontSize: config.compactMode ? { xs: '0.65rem', sm: '0.7rem' } : { xs: '0.7rem', sm: '0.75rem' }
-                        }}
-                      />
-                      <Chip 
-                        label={`${stats.usersByGender.other} Otros`}
-                        size="small"
-                        sx={{ 
-                          bgcolor: `${darkProTokens.textSecondary}20`, 
-                          color: darkProTokens.textSecondary,
-                          fontWeight: 600,
-                          fontSize: config.compactMode ? { xs: '0.65rem', sm: '0.7rem' } : { xs: '0.7rem', sm: '0.75rem' }
-                        }}
-                      />
-                    </Box>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* INFORMACIÓN DE MEMBRESÍAS RESPONSIVA */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4,
-              height: '100%'
-            }}>
-              <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
-                <Typography variant="h6" sx={{ 
-                  color: currentColors.secondary, 
-                  mb: 3, 
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2,
-                  fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                }}>
-                  <FitnessCenterIcon />
-                  🏋️ Estado de Membresías
-                </Typography>
-                
-                <Stack spacing={3}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Activas:
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.secondary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      {stats.activeMemberships}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Por Vencer (7 días):
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.quaternary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      {stats.expiringMemberships}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Vencidas:
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.error, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      {stats.expiredMemberships}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary, 
-                      fontWeight: 600,
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Congeladas:
-                    </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.tertiary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      {stats.frozenMemberships}
-                    </Typography>
-                  </Box>
-                  
-                  <Divider sx={{ borderColor: darkProTokens.grayMedium }} />
-                  
-                  <Box>
-                    <Typography variant="body2" sx={{ 
-                      color: darkProTokens.textSecondary, 
-                      mb: 1,
-                      fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-                    }}>
-                      Ingresos por Membresías:
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ 
-                        color: darkProTokens.textPrimary,
-                        fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-                      }}>
-                        Total Histórico:
-                      </Typography>
-                      <Typography variant="body1" sx={{ 
-                        color: currentColors.primary, 
-                        fontWeight: 700,
-                        fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                      }}>
-                        {formatPrice(stats.membershipRevenue)}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body2" sx={{ 
-                        color: darkProTokens.textPrimary,
-                        fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-                      }}>
-                        Solo Hoy:
-                      </Typography>
-                      <Typography variant="body1" sx={{ 
-                        color: currentColors.secondary, 
-                        fontWeight: 700,
-                        fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                      }}>
-                        {formatPrice(stats.todayMembershipRevenue)}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </motion.div>
-
-      {/* 🎛️ DIALOG DE CONFIGURACIÓN AVANZADA */}
+      {/* 🎛️ DIALOG DE CONFIGURACIÓN SIMPLIFICADO */}
       <Dialog 
         open={configDialogOpen} 
         onClose={() => setConfigDialogOpen(false)}
@@ -3294,211 +2300,140 @@ export default function AdminDashboardPage() {
         <DialogContent sx={{ p: 3 }}>
           <Stack spacing={4}>
             {/* CONFIGURACIÓN DE MESES */}
-            <Accordion sx={{ bgcolor: darkProTokens.surfaceLevel4, border: `1px solid ${darkProTokens.grayDark}` }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textSecondary }} />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <CalendarIcon sx={{ color: currentColors.primary }} />
-                  <Typography variant="h6" sx={{ color: currentColors.primary, fontWeight: 600 }}>
-                    📅 Análisis Temporal
-                  </Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
-                    Meses a mostrar en comparativas: {config.monthsToShow}
-                  </Typography>
-                  <Slider
-                    value={config.monthsToShow}
-                    onChange={(_, value) => setConfig(prev => ({ ...prev, monthsToShow: value as number }))}
-                    min={3}
-                    max={12}
-                    step={1}
-                    marks={[
-                      { value: 3, label: '3m' },
-                      { value: 6, label: '6m' },
-                      { value: 9, label: '9m' },
-                      { value: 12, label: '12m' }
-                    ]}
-                    sx={{
-                      color: currentColors.primary,
-                      '& .MuiSlider-thumb': {
-                        bgcolor: currentColors.primary,
-                        border: `2px solid ${currentColors.primary}40`,
-                        '&:hover': {
-                          boxShadow: `0 0 0 8px ${currentColors.primary}20`
-                        }
-                      },
-                      '& .MuiSlider-track': {
-                        bgcolor: currentColors.primary
-                      },
-                      '& .MuiSlider-rail': {
-                        bgcolor: darkProTokens.grayMedium
-                      },
-                      '& .MuiSlider-mark': {
-                        bgcolor: darkProTokens.textSecondary
-                      },
-                      '& .MuiSlider-markLabel': {
-                        color: darkProTokens.textSecondary
-                      }
-                    }}
-                  />
-                </Box>
-              </AccordionDetails>
-            </Accordion>
+            <Box>
+              <Typography variant="h6" sx={{ color: currentColors.primary, mb: 2, fontWeight: 600 }}>
+                📅 Análisis Temporal
+              </Typography>
+              <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
+                Meses a mostrar en comparativas: {config.monthsToShow}
+              </Typography>
+              <Slider
+                value={config.monthsToShow}
+                onChange={(_, value) => setConfig(prev => ({ ...prev, monthsToShow: value as number }))}
+                min={3}
+                max={12}
+                step={1}
+                marks={[
+                  { value: 3, label: '3m' },
+                  { value: 6, label: '6m' },
+                  { value: 9, label: '9m' },
+                  { value: 12, label: '12m' }
+                ]}
+                sx={{
+                  color: currentColors.primary,
+                  '& .MuiSlider-thumb': {
+                    bgcolor: currentColors.primary,
+                    border: `2px solid ${currentColors.primary}40`,
+                    '&:hover': {
+                      boxShadow: `0 0 0 8px ${currentColors.primary}20`
+                    }
+                  },
+                  '& .MuiSlider-track': {
+                    bgcolor: currentColors.primary
+                  },
+                  '& .MuiSlider-rail': {
+                    bgcolor: darkProTokens.grayMedium
+                  }
+                }}
+              />
+            </Box>
 
             {/* ESQUEMAS DE COLORES */}
-            <Accordion sx={{ bgcolor: darkProTokens.surfaceLevel4, border: `1px solid ${darkProTokens.grayDark}` }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textSecondary }} />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <PaletteIcon sx={{ color: currentColors.secondary }} />
-                  <Typography variant="h6" sx={{ color: currentColors.secondary, fontWeight: 600 }}>
-                    🎨 Esquemas de Colores
-                  </Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
-                  Selecciona un esquema de colores:
-                </Typography>
-                <Grid container spacing={2}>
-                  {Object.entries(colorSchemes).map(([key, scheme]) => (
-                    <Grid size={{ xs: 6, sm: 4 }} key={key}>
-                      <Paper 
-                        sx={{
-                          p: 2,
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          border: config.colorScheme === key ? 
-                            `3px solid ${scheme.primary}` : 
-                            `1px solid ${darkProTokens.grayDark}`,
-                          background: config.colorScheme === key ? 
-                            `${scheme.primary}10` : 
-                            darkProTokens.surfaceLevel3,
-                          '&:hover': {
-                            border: `2px solid ${scheme.primary}60`
-                          },
-                          transition: 'all 0.3s ease'
-                        }}
-                        onClick={() => setConfig(prev => ({ ...prev, colorScheme: key as keyof typeof colorSchemes }))}
-                      >
-                        <Typography variant="body2" sx={{ 
-                          color: darkProTokens.textPrimary, 
-                          mb: 1, 
-                          fontWeight: 600,
-                          textTransform: 'capitalize'
-                        }}>
-                          {key}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                          <Box sx={{ width: 16, height: 16, bgcolor: scheme.primary, borderRadius: '50%' }} />
-                          <Box sx={{ width: 16, height: 16, bgcolor: scheme.secondary, borderRadius: '50%' }} />
-                          <Box sx={{ width: 16, height: 16, bgcolor: scheme.tertiary, borderRadius: '50%' }} />
-                          <Box sx={{ width: 16, height: 16, bgcolor: scheme.quaternary, borderRadius: '50%' }} />
-                        </Box>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* TIPOS DE GRÁFICOS */}
-            <Accordion sx={{ bgcolor: darkProTokens.surfaceLevel4, border: `1px solid ${darkProTokens.grayDark}` }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textSecondary }} />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <ShowChartIcon sx={{ color: currentColors.tertiary }} />
-                  <Typography variant="h6" sx={{ color: currentColors.tertiary, fontWeight: 600 }}>
-                    📊 Tipos de Gráficos
-                  </Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
-                  Tipo de gráfico por defecto:
-                </Typography>
-                <ToggleButtonGroup
-                  value={config.chartType}
-                  exclusive
-                  onChange={(_, newType) => newType && setConfig(prev => ({ ...prev, chartType: newType }))}
-                  sx={{
-                    '& .MuiToggleButton-root': {
-                      color: darkProTokens.textSecondary,
-                      border: `1px solid ${darkProTokens.grayDark}`,
-                      '&.Mui-selected': {
-                        bgcolor: `${currentColors.tertiary}20`,
-                        color: currentColors.tertiary,
-                        border: `1px solid ${currentColors.tertiary}`
-                      }
-                    }
-                  }}
-                >
-                  {Object.entries(chartTypes).map(([key, label]) => (
-                    <ToggleButton key={key} value={key} sx={{ px: 2, py: 1 }}>
-                      {label}
-                    </ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
-              </AccordionDetails>
-            </Accordion>
+            <Box>
+              <Typography variant="h6" sx={{ color: currentColors.secondary, mb: 2, fontWeight: 600 }}>
+                🎨 Esquemas de Colores
+              </Typography>
+              <Grid container spacing={2}>
+                {Object.entries(colorSchemes).map(([key, scheme]) => (
+                  <Grid item xs={6} sm={4} key={key}>
+                    <Paper 
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        border: config.colorScheme === key ? 
+                          `3px solid ${scheme.primary}` : 
+                          `1px solid ${darkProTokens.grayDark}`,
+                        background: config.colorScheme === key ? 
+                          `${scheme.primary}10` : 
+                          darkProTokens.surfaceLevel3,
+                        '&:hover': {
+                          border: `2px solid ${scheme.primary}60`
+                        },
+                        transition: 'all 0.3s ease'
+                      }}
+                      onClick={() => setConfig(prev => ({ ...prev, colorScheme: key as keyof typeof colorSchemes }))}
+                    >
+                      <Typography variant="body2" sx={{ 
+                        color: darkProTokens.textPrimary, 
+                        mb: 1, 
+                        fontWeight: 600,
+                        textTransform: 'capitalize'
+                      }}>
+                        {key}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                        <Box sx={{ width: 16, height: 16, bgcolor: scheme.primary, borderRadius: '50%' }} />
+                        <Box sx={{ width: 16, height: 16, bgcolor: scheme.secondary, borderRadius: '50%' }} />
+                        <Box sx={{ width: 16, height: 16, bgcolor: scheme.tertiary, borderRadius: '50%' }} />
+                        <Box sx={{ width: 16, height: 16, bgcolor: scheme.quaternary, borderRadius: '50%' }} />
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
 
             {/* CONFIGURACIONES ADICIONALES */}
-            <Accordion sx={{ bgcolor: darkProTokens.surfaceLevel4, border: `1px solid ${darkProTokens.grayDark}` }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.textSecondary }} />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <ViewModuleIcon sx={{ color: currentColors.quaternary }} />
-                  <Typography variant="h6" sx={{ color: currentColors.quaternary, fontWeight: 600 }}>
-                    ⚡ Configuraciones Adicionales
-                  </Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Stack spacing={2}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={config.showAnimations}
-                        onChange={(e) => setConfig(prev => ({ ...prev, showAnimations: e.target.checked }))}
-                        sx={{
-                          '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: currentColors.primary,
-                            '& + .MuiSwitch-track': {
-                              bgcolor: currentColors.primary
-                            }
+            <Box>
+              <Typography variant="h6" sx={{ color: currentColors.tertiary, mb: 2, fontWeight: 600 }}>
+                ⚡ Configuraciones Adicionales
+              </Typography>
+              <Stack spacing={2}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={config.showAnimations}
+                      onChange={(e) => setConfig(prev => ({ ...prev, showAnimations: e.target.checked }))}
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': {
+                          color: currentColors.primary,
+                          '& + .MuiSwitch-track': {
+                            bgcolor: currentColors.primary
                           }
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        🎭 Animaciones
-                      </Typography>
-                    }
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={config.compactMode}
-                        onChange={(e) => setConfig(prev => ({ ...prev, compactMode: e.target.checked }))}
-                        sx={{
-                          '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: currentColors.secondary,
-                            '& + .MuiSwitch-track': {
-                              bgcolor: currentColors.secondary
-                            }
+                        }
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      🎭 Animaciones
+                    </Typography>
+                  }
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={config.compactMode}
+                      onChange={(e) => setConfig(prev => ({ ...prev, compactMode: e.target.checked }))}
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': {
+                          color: currentColors.secondary,
+                          '& + .MuiSwitch-track': {
+                            bgcolor: currentColors.secondary
                           }
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        📱 Modo Compacto
-                      </Typography>
-                    }
-                  />
-                </Stack>
-              </AccordionDetails>
-            </Accordion>
+                        }
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                      📱 Modo Compacto
+                    </Typography>
+                  }
+                />
+              </Stack>
+            </Box>
           </Stack>
         </DialogContent>
         
@@ -3564,28 +2499,74 @@ export default function AdminDashboardPage() {
         </DialogTitle>
         
         <DialogContent sx={{ p: 4 }}>
+          {/* ✅ GRÁFICOS EN FULLSCREEN - RENDERIZADO DIRECTO */}
           {fullscreenChart === 'weekly' && stats.chartData.length > 0 && (
-            <ConfigurableChart
-              data={stats.chartData}
-              type={config.chartType}
-              title="Tendencias de los Últimos 7 Días"
-              height={500}
-            />
+            <Box sx={{ height: 500, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={stats.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
+                  <XAxis dataKey="name" stroke={darkProTokens.textSecondary} fontSize={14} />
+                  <YAxis stroke={darkProTokens.textSecondary} fontSize={14} tickFormatter={(value) => formatPrice(value)} />
+                  <RechartsTooltip 
+                    contentStyle={{
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      border: `1px solid ${darkProTokens.grayDark}`,
+                      borderRadius: '8px',
+                      color: darkProTokens.textPrimary,
+                      fontSize: '14px'
+                    }}
+                    formatter={(value: any, name: string) => [
+                      formatPrice(value), 
+                      name === 'sales' ? 'Ventas POS' : 
+                      name === 'memberships' ? 'Membresías' : 'Apartados'
+                    ]}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="sales" fill={`${currentColors.primary}30`} stroke={currentColors.primary} strokeWidth={3} name="Ventas POS" />
+                  <Bar dataKey="memberships" fill={currentColors.secondary} name="Membresías" radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="layaways" stroke={currentColors.tertiary} strokeWidth={3} dot={{ fill: currentColors.tertiary, strokeWidth: 2, r: 6 }} name="Apartados" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </Box>
           )}
           
           {fullscreenChart === 'monthly' && stats.monthlyData.length > 0 && (
-            <ConfigurableChart
-              data={stats.monthlyData.map(m => ({
-                name: m.monthName,
-                sales: m.sales,
-                memberships: m.memberships,
-                layaways: m.layaways,
-                date: m.month
-              }))}
-              type={config.chartType}
-              title={`Análisis de los Últimos ${config.monthsToShow} Meses`}
-              height={500}
-            />
+            <Box sx={{ height: 500, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart 
+                  data={stats.monthlyData.map(m => ({
+                    name: m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(-2),
+                    sales: m.sales,
+                    memberships: m.memberships,
+                    layaways: m.layaways,
+                    date: m.month
+                  }))} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
+                  <XAxis dataKey="name" stroke={darkProTokens.textSecondary} fontSize={14} />
+                  <YAxis stroke={darkProTokens.textSecondary} fontSize={14} tickFormatter={(value) => formatPrice(value)} />
+                  <RechartsTooltip 
+                    contentStyle={{
+                      backgroundColor: darkProTokens.surfaceLevel4,
+                      border: `1px solid ${darkProTokens.grayDark}`,
+                      borderRadius: '8px',
+                      color: darkProTokens.textPrimary,
+                      fontSize: '14px'
+                    }}
+                    formatter={(value: any, name: string) => [
+                      formatPrice(value), 
+                      name === 'sales' ? 'Ventas POS' : 
+                      name === 'memberships' ? 'Membresías' : 'Apartados'
+                    ]}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="sales" fill={`${currentColors.primary}30`} stroke={currentColors.primary} strokeWidth={3} name="Ventas POS" />
+                  <Bar dataKey="memberships" fill={currentColors.secondary} name="Membresías" radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="layaways" stroke={currentColors.tertiary} strokeWidth={3} dot={{ fill: currentColors.tertiary, strokeWidth: 2, r: 6 }} name="Apartados" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </Box>
           )}
           
           {fullscreenChart === 'payments' && stats.pieData.length > 0 && (
@@ -3632,41 +2613,7 @@ export default function AdminDashboardPage() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* ESTILOS CSS ENTERPRISE */}
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.02); }
-        }
-        
-        @keyframes glow {
-          0%, 100% {
-            box-shadow: 0 0 10px ${currentColors.primary}40;
-          }
-          50% {
-            box-shadow: 0 0 30px ${currentColors.primary}60, 0 0 40px ${currentColors.primary}40;
-          }
-        }
-        
-        ::-webkit-scrollbar {
-          width: 12px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: ${darkProTokens.surfaceLevel1};
-          border-radius: 6px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, ${currentColors.primary}, ${currentColors.primary}DD);
-          border-radius: 6px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, ${currentColors.primary}DD, ${currentColors.primary}BB);
-        }
-      `}</style>
     </Box>
   );
 }
+              
