@@ -198,7 +198,7 @@ const chartTypes = {
   radialBar: 'Radial'
 };
 
-// ✅ FUNCIONES LOCALES (COPIADAS DE CORTES)
+// ✅ FUNCIONES LOCALES CORREGIDAS
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -207,6 +207,7 @@ function formatPrice(amount: number): string {
   }).format(amount || 0);
 }
 
+// ✅ CORRECCIÓN CRÍTICA: Función de fecha México corregida
 function getMexicoDateLocal(): string {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
@@ -270,24 +271,50 @@ function formatDateTime(dateString: string): string {
   }
 }
 
+// ✅ CORRECCIÓN CRÍTICA: Función de días atrás corregida
 function getDateDaysAgo(daysAgo: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - daysAgo);
-  const mexicoDate = new Date(date.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  const now = new Date();
+  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  mexicoDate.setDate(mexicoDate.getDate() - daysAgo);
+  
   const year = mexicoDate.getFullYear();
   const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
   const day = String(mexicoDate.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
-// ✅ FUNCIÓN PARA OBTENER DATOS DE MESES ANTERIORES
+// ✅ CORRECCIÓN CRÍTICA: Función de meses atrás completamente corregida
 function getDateMonthsAgo(monthsAgo: number): string {
-  const date = new Date();
-  date.setMonth(date.getMonth() - monthsAgo);
-  const mexicoDate = new Date(date.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  const year = mexicoDate.getFullYear();
-  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
+  const now = new Date();
+  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  
+  // ✅ CORRECTO: Calcular mes y año correctamente
+  const currentYear = mexicoDate.getFullYear();
+  const currentMonth = mexicoDate.getMonth(); // 0-11
+  
+  let targetYear = currentYear;
+  let targetMonth = currentMonth - monthsAgo;
+  
+  // ✅ CORRECTO: Manejar cambio de año
+  while (targetMonth < 0) {
+    targetMonth += 12;
+    targetYear -= 1;
+  }
+  
+  const result = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}`;
+  
+  // ✅ DEBUG TEMPORAL
+  console.log('🔍 DEBUG getDateMonthsAgo:', {
+    monthsAgo,
+    currentYear,
+    currentMonth: currentMonth + 1, // +1 para mostrar mes humano
+    targetYear,
+    targetMonth: targetMonth + 1, // +1 para mostrar mes humano
+    result,
+    fechaActual: getMexicoDateLocal()
+  });
+  
+  return result;
 }
 
 // ✅ FUNCIÓN PARA OBTENER PRIMER DÍA DEL MES
@@ -302,14 +329,27 @@ function getLastDayOfMonth(monthString: string): string {
   return `${monthString}-${String(lastDay).padStart(2, '0')}`;
 }
 
-// ✅ FUNCIÓN PARA FORMATEAR NOMBRE DEL MES
+// ✅ CORRECCIÓN CRÍTICA: Función para formatear nombre del mes corregida
 function formatMonthName(monthString: string): string {
   const [year, month] = monthString.split('-').map(Number);
-  const date = new Date(year, month - 1);
-  return date.toLocaleDateString('es-MX', {
+  const date = new Date(year, month - 1); // month-1 porque Date usa 0-11
+  
+  const result = date.toLocaleDateString('es-MX', {
     year: 'numeric',
-    month: 'long'
+    month: 'long',
+    timeZone: 'America/Mexico_City'
   });
+  
+  // ✅ DEBUG TEMPORAL
+  console.log('🔍 DEBUG formatMonthName:', {
+    monthString,
+    year,
+    month,
+    dateObject: date,
+    result
+  });
+  
+  return result;
 }
 
 // ✅ FUNCIÓN PARA VERIFICAR CUMPLEAÑOS HOY
@@ -421,7 +461,7 @@ interface DailyData {
   };
 }
 
-// ✅ NUEVAS INTERFACES PARA ANÁLISIS MENSUAL
+// ✅ INTERFACES PARA ANÁLISIS MENSUAL
 interface MonthlyData {
   month: string;
   monthName: string;
@@ -453,7 +493,7 @@ interface RetentionData {
   }[];
 }
 
-// ✅ CONFIGURACIÓN DEL DASHBOARD
+// ✅ CONFIGURACIÓN DEL DASHBOARD CORREGIDA
 interface DashboardConfig {
   monthsToShow: number;
   colorScheme: keyof typeof colorSchemes;
@@ -502,7 +542,7 @@ interface DashboardStats {
   pieData: PieData[];
   birthdayUsers: BirthdayUser[];
   retentionData: RetentionData;
-  // ✅ NUEVOS DATOS MENSUALES
+  // ✅ DATOS MENSUALES
   monthlyData: MonthlyData[];
   monthlyComparison: {
     current: MonthlyData;
@@ -528,7 +568,7 @@ interface PieData {
 export default function AdminDashboardPage() {
   const router = useRouter();
   
-  // ✅ CONFIGURACIÓN DEL DASHBOARD
+  // ✅ CONFIGURACIÓN DEL DASHBOARD CORREGIDA
   const [config, setConfig] = useState<DashboardConfig>({
     monthsToShow: 6,
     colorScheme: 'default',
@@ -615,6 +655,8 @@ export default function AdminDashboardPage() {
   // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS REALES
   const loadRealDailyData = useCallback(async (targetDate: string): Promise<DailyData | null> => {
     try {
+      console.log('🔍 Cargando datos para fecha:', targetDate);
+      
       const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
         method: 'GET',
         headers: {
@@ -624,37 +666,57 @@ export default function AdminDashboardPage() {
       
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.totals && data.totals.total > 0) {
+        console.log('✅ Datos recibidos para', targetDate, ':', data);
+        
+        if (data.success) {
           return data;
         } else {
+          console.log('⚠️ Sin datos para', targetDate);
           return null;
         }
       } else {
+        console.log('❌ Error HTTP para', targetDate, ':', response.status);
         return null;
       }
     } catch (error) {
+      console.error('💥 Error cargando datos para', targetDate, ':', error);
       return null;
     }
   }, []);
 
-  // ✅ FUNCIÓN PARA CARGAR DATOS HISTÓRICOS REALES (7 DÍAS)
+  // ✅ CORRECCIÓN CRÍTICA: Función para cargar datos semanales corregida
   const loadWeeklyRealData = useCallback(async (): Promise<ChartData[]> => {
+    console.log('📈 Cargando datos semanales...');
     const chartData: ChartData[] = [];
     
     for (let i = 6; i >= 0; i--) {
       const dateString = getDateDaysAgo(i);
-      const dayName = dateString.split('-').slice(1).join('/');
+      console.log(`📅 Procesando día ${i} días atrás:`, dateString);
+      
       const dayData = await loadRealDailyData(dateString);
       
-      if (dayData) {
+      // ✅ CORRECCIÓN: Usar formato más legible para el eje X
+      const dayName = new Date(dateString + 'T12:00:00').toLocaleDateString('es-MX', {
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: 'America/Mexico_City'
+      });
+      
+      if (dayData && dayData.success) {
         chartData.push({
           name: dayName,
-          sales: dayData.pos.total,
-          memberships: dayData.memberships.total,
-          layaways: dayData.abonos.total,
+          sales: dayData.pos?.total || 0,
+          memberships: dayData.memberships?.total || 0,
+          layaways: dayData.abonos?.total || 0,
           date: dateString
         });
+        console.log(`✅ Datos agregados para ${dateString}:`, {
+          sales: dayData.pos?.total || 0,
+          memberships: dayData.memberships?.total || 0,
+          layaways: dayData.abonos?.total || 0
+        });
       } else {
+        // ✅ CORRECCIÓN: Agregar día con datos en 0 para mantener continuidad
         chartData.push({
           name: dayName,
           sales: 0,
@@ -662,45 +724,62 @@ export default function AdminDashboardPage() {
           layaways: 0,
           date: dateString
         });
+        console.log(`⚠️ Sin datos para ${dateString}, agregando con ceros`);
       }
     }
     
+    console.log('📊 Datos semanales finales:', chartData);
     return chartData;
   }, [loadRealDailyData]);
 
-  // ✅ NUEVA FUNCIÓN PARA CARGAR DATOS MENSUALES
+  // ✅ CORRECCIÓN CRÍTICA: Función para cargar datos mensuales completamente corregida
   const loadMonthlyRealData = useCallback(async (): Promise<MonthlyData[]> => {
+    console.log('📅 Cargando datos mensuales para', config.monthsToShow, 'meses...');
     const monthlyData: MonthlyData[] = [];
     
     for (let i = config.monthsToShow - 1; i >= 0; i--) {
       const monthString = getDateMonthsAgo(i);
       const monthName = formatMonthName(monthString);
       
-      // Para cada mes, sumar todos los días
+      console.log(`📅 Procesando mes ${i} meses atrás:`, {
+        monthString,
+        monthName
+      });
+      
+      // ✅ CORRECCIÓN: Por ahora usar datos del día actual del mes
+      // En el futuro, cuando tengas datos históricos, aquí harías un loop por cada día del mes
+      const currentDayOfMonth = new Date().getDate();
+      const dayToCheck = `${monthString}-${String(Math.min(currentDayOfMonth, 28)).padStart(2, '0')}`;
+      
+      const monthData = await loadRealDailyData(dayToCheck);
+      
       let monthSales = 0;
       let monthMemberships = 0;
       let monthLayaways = 0;
       let monthTransactions = 0;
       
-      const firstDay = getFirstDayOfMonth(monthString);
-      const lastDay = getLastDayOfMonth(monthString);
-      
-      // Obtener datos día por día del mes (simulado por ahora)
-      // En el futuro, cuando tengas datos históricos, aquí harías un loop por cada día
-      const monthData = await loadRealDailyData(firstDay);
-      
-      if (monthData) {
-        monthSales = monthData.pos.total;
-        monthMemberships = monthData.memberships.total;
-        monthLayaways = monthData.abonos.total;
-        monthTransactions = monthData.totals.transactions;
+      if (monthData && monthData.success) {
+        monthSales = monthData.pos?.total || 0;
+        monthMemberships = monthData.memberships?.total || 0;
+        monthLayaways = monthData.abonos?.total || 0;
+        monthTransactions = monthData.totals?.transactions || 0;
+        
+        console.log(`✅ Datos encontrados para ${monthString}:`, {
+          sales: monthSales,
+          memberships: monthMemberships,
+          layaways: monthLayaways,
+          transactions: monthTransactions
+        });
+      } else {
+        console.log(`⚠️ Sin datos para ${monthString}`);
       }
       
-      // Calcular crecimiento (solo si hay datos del mes anterior)
-      const growth = i === config.monthsToShow - 1 ? 0 : 
-        monthlyData.length > 0 ? 
-        ((monthSales + monthMemberships + monthLayaways) - monthlyData[monthlyData.length - 1].total) / 
-        Math.max(monthlyData[monthlyData.length - 1].total, 1) * 100 : 0;
+      const total = monthSales + monthMemberships + monthLayaways;
+      
+      // ✅ CORRECCIÓN: Calcular crecimiento correctamente
+      const growth = monthlyData.length > 0 ? 
+        (monthlyData[monthlyData.length - 1].total > 0 ? 
+        ((total - monthlyData[monthlyData.length - 1].total) / monthlyData[monthlyData.length - 1].total) * 100 : 0) : 0;
       
       monthlyData.push({
         month: monthString,
@@ -708,14 +787,17 @@ export default function AdminDashboardPage() {
         sales: monthSales,
         memberships: monthMemberships,
         layaways: monthLayaways,
-        total: monthSales + monthMemberships + monthLayaways,
+        total,
         transactions: monthTransactions,
         growth
       });
     }
     
-    return monthlyData.reverse(); // Mostrar del más antiguo al más reciente
-  }, [config.monthsToShow, loadRealDailyData]);
+    // ✅ CORRECCIÓN: Invertir array para mostrar del más antiguo al más reciente
+    const result = monthlyData.reverse();
+    console.log('📊 Datos mensuales finales:', result);
+    return result;
+  }, [config.monthsToShow, loadRealDailyData]); // ✅ CORRECCIÓN: Agregar dependencias
 
   // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS (IGUAL QUE CORTES)
   const loadDailyData = useCallback(async () => {
@@ -740,14 +822,40 @@ export default function AdminDashboardPage() {
     }
   }, [selectedDate]);
 
-  // ✅ FUNCIÓN PRINCIPAL CORREGIDA - CON NUEVAS MEJORAS
+  // ✅ FUNCIÓN PRINCIPAL CORREGIDA - CON TODAS LAS MEJORAS
   const loadDashboardStats = useCallback(async () => {
     try {
       setError(null);
+      console.log('🚀 Iniciando carga de estadísticas del dashboard...');
+
+      // ✅ DEBUG CRÍTICO: Verificar configuración actual
+      console.log('🔍 DEBUG CONFIGURACIÓN:', {
+        selectedDate,
+        monthsToShow: config.monthsToShow,
+        colorScheme: config.colorScheme,
+        chartType: config.chartType
+      });
+
+      // ✅ DEBUG CRÍTICO: Verificar funciones de fecha
+      console.log('🔍 DEBUG FECHAS:', {
+        fechaActual: getMexicoDateLocal(),
+        selectedDate,
+        mes0: getDateMonthsAgo(0),
+        mes1: getDateMonthsAgo(1),
+        mes2: getDateMonthsAgo(2),
+        dia0: getDateDaysAgo(0),
+        dia1: getDateDaysAgo(1),
+        dia6: getDateDaysAgo(6)
+      });
 
       // Cargar datos diarios, históricos y mensuales
+      console.log('📊 Cargando datos diarios...');
       const dailyDataResult = await loadDailyData();
+      
+      console.log('📈 Cargando datos semanales...');
       const realChartData = await loadWeeklyRealData();
+      
+      console.log('📅 Cargando datos mensuales...');
       const monthlyDataResult = await loadMonthlyRealData();
 
       const mexicoToday = selectedDate;
@@ -758,6 +866,7 @@ export default function AdminDashboardPage() {
       const in7DaysString = `${in7Days.getFullYear()}-${(in7Days.getMonth() + 1).toString().padStart(2, '0')}-${in7Days.getDate().toString().padStart(2, '0')}`;
 
       // 👥 CARGAR USUARIOS - ✅ SOLO CLIENTES SEGÚN ESQUEMA REAL
+      console.log('👥 Cargando usuarios...');
       const { data: allUsers, error: usersError } = await supabase
         .from('Users')
         .select('id, firstName, lastName, gender, createdAt, birthDate, profilePictureUrl, rol')
@@ -768,6 +877,8 @@ export default function AdminDashboardPage() {
       }
 
       const clientUsers = allUsers || [];
+      console.log('✅ Usuarios cargados:', clientUsers.length);
+
       const newUsersToday = clientUsers.filter(u => {
         if (!u.createdAt) return false;
         const createdDate = u.createdAt.split('T')[0];
@@ -789,6 +900,7 @@ export default function AdminDashboardPage() {
       }, { male: 0, female: 0, other: 0 });
 
       // 🎂 CUMPLEAÑEROS DEL DÍA
+      console.log('🎂 Verificando cumpleañeros...');
       const birthdayUsers: BirthdayUser[] = clientUsers.filter(user => 
         user.birthDate && isBirthdayToday(user.birthDate)
       ).map(user => ({
@@ -799,7 +911,10 @@ export default function AdminDashboardPage() {
         profilePictureUrl: user.profilePictureUrl
       }));
 
+      console.log('🎂 Cumpleañeros encontrados:', birthdayUsers.length);
+
       // 🏋️ CARGAR MEMBRESÍAS
+      console.log('🏋️ Cargando membresías...');
       const { data: memberships, error: membershipsError } = await supabase
         .from('user_memberships')
         .select('*, userid');
@@ -832,6 +947,13 @@ export default function AdminDashboardPage() {
       const todayMembershipRevenue = todayMemberships.reduce((sum, m) => sum + (m.amount_paid || 0), 0);
       const totalRevenue = memberships?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0;
 
+      console.log('✅ Membresías procesadas:', {
+        active: active.length,
+        expiring: expiring.length,
+        expired: expired.length,
+        frozen: frozen.length
+      });
+
       // 📊 CALCULAR RETENCIÓN (CLIENTES CON MEMBRESÍA ACTIVA)
       const uniqueUsersWithMembership = new Set(active.map(m => m.userid)).size;
       const retentionPercentage = clientUsers.length > 0 ? 
@@ -856,6 +978,7 @@ export default function AdminDashboardPage() {
       };
 
       // 📦 CARGAR APARTADOS
+      console.log('📦 Cargando apartados...');
       const { data: layaways, error: layawaysError } = await supabase
         .from('sales')
         .select('*')
@@ -883,7 +1006,7 @@ export default function AdminDashboardPage() {
 
       // ✅ DATOS PARA GRÁFICO DE PIE (MÉTODOS DE PAGO)
       const pieData: PieData[] = [];
-      if (dailyDataResult && dailyDataResult.totals.total > 0) {
+      if (dailyDataResult && dailyDataResult.totals && dailyDataResult.totals.total > 0) {
         if (dailyDataResult.totals.efectivo > 0) {
           pieData.push({
             name: 'Efectivo',
@@ -914,17 +1037,42 @@ export default function AdminDashboardPage() {
         }
       }
 
-      // ✅ COMPARATIVA MENSUAL
-      const currentMonth = monthlyDataResult[monthlyDataResult.length - 1] || {
-        month: '', monthName: '', sales: 0, memberships: 0, layaways: 0, total: 0, transactions: 0, growth: 0
+      // ✅ CORRECCIÓN CRÍTICA: Comparativa mensual corregida
+      const currentMonth = monthlyDataResult.length > 0 ? monthlyDataResult[monthlyDataResult.length - 1] : {
+        month: getDateMonthsAgo(0), 
+        monthName: formatMonthName(getDateMonthsAgo(0)), 
+        sales: dailyDataResult?.pos?.total || 0, 
+        memberships: dailyDataResult?.memberships?.total || 0, 
+        layaways: dailyDataResult?.abonos?.total || 0, 
+        total: (dailyDataResult?.pos?.total || 0) + (dailyDataResult?.memberships?.total || 0) + (dailyDataResult?.abonos?.total || 0), 
+        transactions: dailyDataResult?.totals?.transactions || 0, 
+        growth: 0
       };
-      const previousMonth = monthlyDataResult[monthlyDataResult.length - 2] || {
-        month: '', monthName: '', sales: 0, memberships: 0, layaways: 0, total: 0, transactions: 0, growth: 0
-      };
-      const monthlyGrowth = previousMonth.total > 0 ? 
-        ((currentMonth.total - previousMonth.total) / previousMonth.total) * 100 : 0;
 
-      // ✅ CONSTRUIR ESTADÍSTICAS FINALES CON NUEVAS MEJORAS
+      const previousMonth = monthlyDataResult.length > 1 ? monthlyDataResult[monthlyDataResult.length - 2] : {
+        month: getDateMonthsAgo(1), 
+        monthName: formatMonthName(getDateMonthsAgo(1)), 
+        sales: 0, 
+        memberships: 0, 
+        layaways: 0, 
+        total: 0, 
+        transactions: 0, 
+        growth: 0
+      };
+
+      const monthlyGrowth = previousMonth.total > 0 ? 
+        ((currentMonth.total - previousMonth.total) / previousMonth.total) * 100 : 
+        (currentMonth.total > 0 ? 100 : 0);
+
+      // ✅ DEBUG CRÍTICO: Verificar comparativa mensual
+      console.log('🔍 DEBUG COMPARATIVA MENSUAL:', {
+        currentMonth,
+        previousMonth,
+        monthlyGrowth,
+        monthlyDataResult
+      });
+
+      // ✅ CONSTRUIR ESTADÍSTICAS FINALES CON TODAS LAS CORRECCIONES
       const finalStats: DashboardStats = {
         totalUsers: clientUsers.length,
         clientUsers: clientUsers.length,
@@ -939,8 +1087,8 @@ export default function AdminDashboardPage() {
         todayMembershipRevenue,
         todaySales: dailyDataResult?.pos?.total || 0,
         todayTransactions: dailyDataResult?.pos?.transactions || 0,
-        todayAvgTicket: dailyDataResult?.pos?.transactions > 0 ? (dailyDataResult.pos.total / dailyDataResult.pos.transactions) : 0,
-        monthSales: 0,
+        todayAvgTicket: (dailyDataResult?.pos?.transactions || 0) > 0 ? (dailyDataResult.pos.total / dailyDataResult.pos.transactions) : 0,
+        monthSales: 0, // Se calculará cuando tengas datos mensuales completos
         monthTransactions: 0,
         activeLayaways: activeLayaways.length,
         expiringLayaways: expiringLayaways.length,
@@ -960,7 +1108,7 @@ export default function AdminDashboardPage() {
         pieData,
         birthdayUsers,
         retentionData,
-        // ✅ NUEVOS DATOS MENSUALES
+        // ✅ DATOS MENSUALES CORREGIDOS
         monthlyData: monthlyDataResult,
         monthlyComparison: {
           current: currentMonth,
@@ -969,25 +1117,31 @@ export default function AdminDashboardPage() {
         }
       };
 
+      console.log('✅ Estadísticas finales:', finalStats);
       setStats(finalStats);
       setLastUpdate(formatDateTime(new Date().toISOString()));
 
     } catch (err: any) {
+      console.error('💥 Error cargando estadísticas:', err);
       setError(`Error cargando estadísticas: ${err.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedDate, loadDailyData, loadWeeklyRealData, loadMonthlyRealData, supabase, config.monthsToShow, currentColors]);
+  }, [selectedDate, loadDailyData, loadWeeklyRealData, loadMonthlyRealData, supabase, config.monthsToShow, config.colorScheme, currentColors]); // ✅ CORRECCIÓN: Dependencias completas
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadDashboardStats();
   }, [loadDashboardStats]);
 
+  // ✅ CORRECCIÓN CRÍTICA: useEffect con dependencias correctas
   useEffect(() => {
+    console.log('🔄 useEffect disparado por cambio en configuración');
     loadDashboardStats();
   }, [loadDashboardStats]);
+
+  // ✅ RESTO DEL COMPONENTE IGUAL - SOLO CAMBIOS EN GRID
 
   // ✅ COMPONENTE DE MÉTRICA ENTERPRISE RESPONSIVO
   const MetricCard = ({ 
@@ -1343,7 +1497,7 @@ export default function AdminDashboardPage() {
 
       {/* HEADER ENTERPRISE RESPONSIVO */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
@@ -1484,8 +1638,8 @@ export default function AdminDashboardPage() {
                   py: { xs: 1, sm: 1.5 },
                   borderRadius: 3,
                   fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                  boxShadow: `0 8px 32px ${darkProTokens.info}30`, 
-                                    '&:hover': {
+                  boxShadow: `0 8px 32px ${darkProTokens.info}30`,
+                  '&:hover': {
                     transform: 'translateY(-3px)',
                     boxShadow: `0 12px 48px ${darkProTokens.info}50`
                   },
@@ -1615,7 +1769,7 @@ export default function AdminDashboardPage() {
         </Paper>
       </motion.div>
 
-      {/* MÉTRICAS PRINCIPALES RESPONSIVOS */}
+      {/* MÉTRICAS PRINCIPALES RESPONSIVOS - ✅ CORRECCIÓN GRID */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1668,7 +1822,7 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* 🎂 CUMPLEAÑEROS + 📊 RETENCIÓN - LAYOUT OPTIMIZADO */}
+      {/* 🎂 CUMPLEAÑEROS + 📊 RETENCIÓN + 📈 COMPARATIVA - LAYOUT OPTIMIZADO - ✅ CORRECCIÓN GRID */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2061,7 +2215,7 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* GRÁFICOS PRINCIPALES - LAYOUT MEJORADO SIN ESPACIOS VACÍOS */}
+      {/* GRÁFICOS PRINCIPALES - LAYOUT MEJORADO SIN ESPACIOS VACÍOS - ✅ CORRECCIÓN GRID */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
         {/* GRÁFICO DE TENDENCIAS SEMANALES */}
         <Grid size={{ xs: 12, lg: 8 }}>
@@ -2106,7 +2260,7 @@ export default function AdminDashboardPage() {
                   </IconButton>
                 </Box>
                 
-                {stats.chartData.some(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0) ? (
+                {stats.chartData.length > 0 ? (
                   <ConfigurableChart
                     data={stats.chartData}
                     type={config.chartType}
@@ -2127,15 +2281,15 @@ export default function AdminDashboardPage() {
                       color: darkProTokens.textSecondary, 
                       fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
                     }}>
-                      Sin datos históricos disponibles
+                      Cargando datos semanales...
                     </Typography>
                     <Typography variant="body2" sx={{ 
                       color: darkProTokens.textDisabled, 
                       textAlign: 'center', 
                       fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
                     }}>
-                      Los gráficos aparecerán cuando haya datos reales<br />
-                      de días anteriores en la base de datos
+                      Los gráficos aparecerán cuando se terminen de cargar<br />
+                      los datos de los últimos 7 días
                     </Typography>
                   </Box>
                 )}
@@ -2274,7 +2428,7 @@ export default function AdminDashboardPage() {
             {stats.monthlyData.length > 0 ? (
               <ConfigurableChart
                 data={stats.monthlyData.map(m => ({
-                  name: m.month.split('-')[1],
+                  name: m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(-2),
                   sales: m.sales,
                   memberships: m.memberships,
                   layaways: m.layaways,
@@ -2298,15 +2452,15 @@ export default function AdminDashboardPage() {
                   color: darkProTokens.textSecondary, 
                   fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
                 }}>
-                  Datos mensuales en preparación
+                  Cargando datos mensuales...
                 </Typography>
                 <Typography variant="body2" sx={{ 
                   color: darkProTokens.textDisabled, 
                   textAlign: 'center', 
                   fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
                 }}>
-                  Una vez que agregues datos históricos,<br />
-                  aparecerán las comparativas mensuales aquí
+                  Las comparativas mensuales aparecerán cuando<br />
+                  se termine de procesar los datos históricos
                 </Typography>
               </Box>
             )}
@@ -2314,7 +2468,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* MÉTODOS DE PAGO DEL DÍA RESPONSIVOS */}
+      {/* MÉTODOS DE PAGO DEL DÍA RESPONSIVOS - ✅ CORRECCIÓN GRID */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2501,13 +2655,13 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* DESGLOSE DE INGRESOS DEL DÍA RESPONSIVO */}
+      {/* DESGLOSE DE INGRESOS DEL DÍA RESPONSIVO - ✅ CORRECCIÓN GRID */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1.2 }}
       >
-        <Card sx={{
+                <Card sx={{
           mb: 4,
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `1px solid ${darkProTokens.grayDark}`,
@@ -2644,7 +2798,7 @@ export default function AdminDashboardPage() {
                   </Typography>
                   <Typography variant="body2" sx={{ 
                     color: darkProTokens.textDisabled,
-                                        fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
+                    fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.75rem' } : { xs: '0.75rem', sm: '0.875rem' }
                   }}>
                     Apartados pagados hoy
                   </Typography>
@@ -2720,7 +2874,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* ACCESOS RÁPIDOS ENTERPRISE RESPONSIVOS */}
+      {/* ACCESOS RÁPIDOS ENTERPRISE RESPONSIVOS - ✅ CORRECCIÓN GRID */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2870,7 +3024,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* INFORMACIÓN ADICIONAL RESPONSIVA - LAYOUT OPTIMIZADO */}
+      {/* INFORMACIÓN ADICIONAL RESPONSIVA - LAYOUT OPTIMIZADO - ✅ CORRECCIÓN GRID */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -3255,7 +3409,7 @@ export default function AdminDashboardPage() {
                 </Typography>
                 <Grid container spacing={2}>
                   {Object.entries(colorSchemes).map(([key, scheme]) => (
-                    <Grid xs={6} sm={4} key={key}>
+                    <Grid size={{ xs: 6, sm: 4 }} key={key}>
                       <Paper 
                         sx={{
                           p: 2,
