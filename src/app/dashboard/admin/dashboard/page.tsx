@@ -264,17 +264,6 @@ function isBirthdayToday(birthDate: string): boolean {
     // ✅ COMPARAR DÍA Y MES
     const isBirthday = birthDay === todayDay && birthMonth === todayMonth;
     
-    // 🔍 DEBUG TEMPORAL - REMOVER DESPUÉS
-    console.log('🎂 DEBUG CUMPLEAÑOS:', {
-      birthDate,
-      birthDay,
-      birthMonth,
-      todayDay,
-      todayMonth,
-      isBirthday,
-      mexicoDate: mexicoToday.toLocaleDateString('es-MX')
-    });
-    
     return isBirthday;
     
   } catch (error) {
@@ -1601,11 +1590,14 @@ export default function AdminDashboardPage() {
                             borderRadius: '8px',
                             color: darkProTokens.textPrimary
                           }}
-                          formatter={(value: any, name: string) => [
-                            formatPrice(value), 
-                            name === 'sales' ? 'Ventas POS' : 
-                            name === 'memberships' ? 'Membresías' : 'Apartados'
-                          ]}
+                        formatter={(value: any, name: string) => {
+  const labels: { [key: string]: string } = {
+    'sales': 'Ventas POS',
+    'memberships': 'Membresías', 
+    'layaways': 'Apartados'
+  };
+  return [formatPrice(value), labels[name] || name];
+}}
                         />
                         <Legend />
                         
