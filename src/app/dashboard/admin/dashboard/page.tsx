@@ -2190,77 +2190,74 @@ export default function AdminDashboardPage() {
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
         {/* GRÁFICO SEMANAL - ✅ USANDO VALIDACIÓN SIMPLE */}
         <Grid size={{ xs: 12, lg: 8 }}>
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4,
-              overflow: 'hidden'
+  <motion.div
+    initial={{ opacity: 0, x: -20 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.6, delay: 0.4 }}
+  >
+    <Card sx={{
+      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+      border: `1px solid ${darkProTokens.grayDark}`,
+      borderRadius: 4,
+      overflow: 'hidden'
+    }}>
+      <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 2, sm: 4 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <TimelineIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
+            <Typography variant="h6" sx={{ 
+              color: currentColors.primary, 
+              fontWeight: 700,
+              fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
             }}>
-              <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 2, sm: 4 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <TimelineIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.primary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      📈 Tendencias (Últimos 7 días)
-                    </Typography>
-                  </Box>
-                  <IconButton 
-                    onClick={() => setFullscreenChart('weekly')}
-                    sx={{ color: darkProTokens.textSecondary }}
-                  >
-                    <FullscreenIcon />
-                  </IconButton>
-                </Box>
+              📈 Tendencias (Últimos 7 días)
+            </Typography>
+          </Box>
+          <IconButton 
+            onClick={() => setFullscreenChart('weekly')}
+            sx={{ color: darkProTokens.textSecondary }}
+          >
+            <FullscreenIcon />
+          </IconButton>
+        </Box>
                 
                 {/* ✅ VALIDACIÓN SIMPLE - Solo verificar que hay datos */}
-                {stats.chartData.length > 0 ? (
-                  <>
-                    {console.log('📊 Renderizando gráfico semanal con datos:', stats.chartData)}
-                    <ConfigurableChart
-                      data={stats.chartData}
-                      type={config.chartType}
-                      title=""
-                      height={config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 } as any}
-                    />
-                  </>
-                ) : (
-                  <Box sx={{ 
-                    height: config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 }, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    flexDirection: 'column',
-                    gap: 2
-                  }}>
-                    <TimelineIcon sx={{ fontSize: config.compactMode ? { xs: 50, sm: 60 } : { xs: 60, sm: 80 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                    <Typography variant="h6" sx={{ 
-                      color: darkProTokens.textSecondary, 
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      Cargando datos...
-                    </Typography>
-                    <Button 
-                      onClick={handleRefresh} 
-                      variant="outlined"
-                      sx={{ mt: 2, color: currentColors.primary, borderColor: currentColors.primary }}
-                    >
-                      Intentar de nuevo
-                    </Button>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
+              {stats.chartData.length > 0 ? (
+          <ConfigurableChart
+            data={stats.chartData}
+            type={config.chartType}
+            title=""
+            height={config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 } as any}
+          />
+        ) : (
+          <Box sx={{ 
+            height: config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 }, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: 2
+          }}>
+            <TimelineIcon sx={{ fontSize: config.compactMode ? { xs: 50, sm: 60 } : { xs: 60, sm: 80 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+            <Typography variant="h6" sx={{ 
+              color: darkProTokens.textSecondary, 
+              fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
+            }}>
+              Cargando datos...
+            </Typography>
+            <Button 
+              onClick={handleRefresh} 
+              variant="outlined"
+              sx={{ mt: 2, color: currentColors.primary, borderColor: currentColors.primary }}
+            >
+              Intentar de nuevo
+            </Button>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  </motion.div>
+</Grid>
 
         {/* GRÁFICO DE PIE - MÉTODOS DE PAGO */}
         <Grid size={{ xs: 12, lg: 4 }}>
@@ -2352,83 +2349,79 @@ export default function AdminDashboardPage() {
       </Grid>
 
       {/* ANÁLISIS MENSUALES - ✅ CORREGIDO PARA JUNIO 2025 */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.8 }}
-      >
-        <Card sx={{
-          mb: 4,
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.grayDark}`,
-          borderRadius: 4
+    <motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6, delay: 0.8 }}
+>
+  <Card sx={{
+    mb: 4,
+    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+    border: `1px solid ${darkProTokens.grayDark}`,
+    borderRadius: 4
+  }}>
+    <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <DateRangeIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
+          <Typography variant="h6" sx={{ 
+            color: currentColors.primary, 
+            fontWeight: 700,
+            fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
+          }}>
+            📊 Análisis Mensuales (Últimos {config.monthsToShow} meses)
+          </Typography>
+        </Box>
+        <IconButton 
+          onClick={() => setFullscreenChart('monthly')}
+          sx={{ color: darkProTokens.textSecondary }}
+        >
+          <FullscreenIcon />
+        </IconButton>
+      </Box>
+
+      {/* ✅ SIN CONSOLE.LOG AQUÍ */}
+      {stats.monthlyData.length > 0 ? (
+        <ConfigurableChart
+          data={stats.monthlyData.map(m => ({
+            name: m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(-2),
+            sales: m.sales,
+            memberships: m.memberships,
+            layaways: m.layaways,
+            date: m.month
+          }))}
+          type={config.chartType}
+          title=""
+          height={config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 } as any}
+        />
+      ) : (
+        <Box sx={{ 
+          height: config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 }, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: 2
         }}>
-          <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <DateRangeIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
-                <Typography variant="h6" sx={{ 
-                  color: currentColors.primary, 
-                  fontWeight: 700,
-                  fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                }}>
-                  📊 Análisis Mensuales (Últimos {config.monthsToShow} meses)
-                </Typography>
-              </Box>
-              <IconButton 
-                onClick={() => setFullscreenChart('monthly')}
-                sx={{ color: darkProTokens.textSecondary }}
-              >
-                <FullscreenIcon />
-              </IconButton>
-            </Box>
-
-            {/* ✅ VALIDACIÓN SIMPLE - Solo verificar que hay datos */}
-            {stats.monthlyData.length > 0 ? (
-              <>
-                {console.log('📊 Renderizando gráfico mensual con datos:', stats.monthlyData)}
-                <ConfigurableChart
-                  data={stats.monthlyData.map(m => ({
-                    name: m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(-2),
-                    sales: m.sales,
-                    memberships: m.memberships,
-                    layaways: m.layaways,
-                    date: m.month
-                  }))}
-                  type={config.chartType}
-                  title=""
-                  height={config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 } as any}
-                />
-              </>
-            ) : (
-              <Box sx={{ 
-                height: config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 }, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                flexDirection: 'column',
-                gap: 2
-              }}>
-                <CalendarIcon sx={{ fontSize: config.compactMode ? { xs: 60, sm: 70 } : { xs: 70, sm: 90 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.textSecondary, 
-                  fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                }}>
-                  Cargando datos mensuales...
-                </Typography>
-                <Typography variant="body2" sx={{ 
-                  color: darkProTokens.textDisabled, 
-                  textAlign: 'center', 
-                  fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-                }}>
-                  Los datos del mes actual aparecerán aquí
-                </Typography>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-
+          <CalendarIcon sx={{ fontSize: config.compactMode ? { xs: 60, sm: 70 } : { xs: 70, sm: 90 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+          <Typography variant="h6" sx={{ 
+            color: darkProTokens.textSecondary, 
+            fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
+          }}>
+            Cargando datos mensuales...
+          </Typography>
+          <Typography variant="body2" sx={{ 
+            color: darkProTokens.textDisabled, 
+            textAlign: 'center', 
+            fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
+          }}>
+            Los datos del mes actual aparecerán aquí
+          </Typography>
+        </Box>
+      )}
+    </CardContent>
+  </Card>
+</motion.div>
       {/* MÉTODOS DE PAGO DEL DÍA RESPONSIVOS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
