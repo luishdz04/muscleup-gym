@@ -198,7 +198,7 @@ const chartTypes = {
   radialBar: 'Radial'
 };
 
-// ✅ FUNCIONES LOCALES CORREGIDAS
+// ✅ FUNCIONES LOCALES CORREGIDAS Y VERIFICADAS
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -207,7 +207,7 @@ function formatPrice(amount: number): string {
   }).format(amount || 0);
 }
 
-// ✅ CORRECCIÓN CRÍTICA: Función de fecha México corregida
+// ✅ FUNCIÓN DE FECHA MÉXICO CORREGIDA - ENERO 2025
 function getMexicoDateLocal(): string {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
@@ -271,7 +271,7 @@ function formatDateTime(dateString: string): string {
   }
 }
 
-// ✅ CORRECCIÓN CRÍTICA: Función de días atrás corregida
+// ✅ FUNCIÓN CORREGIDA: getDateDaysAgo
 function getDateDaysAgo(daysAgo: number): string {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
@@ -283,48 +283,39 @@ function getDateDaysAgo(daysAgo: number): string {
   return `${year}-${month}-${day}`;
 }
 
-// ✅ FUNCIÓN DE FECHAS CORREGIDA
+// ✅ FUNCIÓN CRÍTICA CORREGIDA: getDateMonthsAgo - ENERO 2025
 function getDateMonthsAgo(monthsAgo: number): string {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
   
-  console.log('🔍 DEBUG FECHA ACTUAL:', {
-    fechaCompleta: mexicoDate,
-    año: mexicoDate.getFullYear(),
-    mes: mexicoDate.getMonth() + 1, // +1 para formato humano
-    día: mexicoDate.getDate()
-  });
+  // Crear nueva fecha para no modificar la original
+  const targetDate = new Date(mexicoDate.getFullYear(), mexicoDate.getMonth() - monthsAgo, 1);
   
-  const currentYear = mexicoDate.getFullYear();
-  const currentMonth = mexicoDate.getMonth(); // 0-11 (junio = 5)
+  const year = targetDate.getFullYear();
+  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
   
-  let targetYear = currentYear;
-  let targetMonth = currentMonth - monthsAgo;
-  
-  while (targetMonth < 0) {
-    targetMonth += 12;
-    targetYear -= 1;
-  }
-  
-  const result = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}`;
-  
-  console.log('🔍 DEBUG getDateMonthsAgo:', {
+  console.log('📅 getDateMonthsAgo:', {
     monthsAgo,
-    fechaActual: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`,
-    fechaCalculada: result,
-    deberíaSer: monthsAgo === 0 ? 'JUNIO (2025-06)' : `${monthsAgo} meses atrás`
+    fechaActual: `${mexicoDate.getFullYear()}-${String(mexicoDate.getMonth() + 1).padStart(2, '0')}`,
+    fechaCalculada: `${year}-${month}`,
+    mesActual: mexicoDate.getMonth() + 1, // Enero = 1
+    añoActual: mexicoDate.getFullYear()
   });
   
-  return result;
+  return `${year}-${month}`;
 }
 
-// ✅ VERIFICACIÓN INMEDIATA
-console.log('🔍 VERIFICACIÓN FECHAS:', {
-  hoy: getMexicoDateLocal(),
-  mes0: getDateMonthsAgo(0), // DEBE SER 2025-06
-  mes1: getDateMonthsAgo(1), // DEBE SER 2025-05  
-  mes2: getDateMonthsAgo(2)  // DEBE SER 2025-04
-});
+// ✅ FUNCIÓN HELPER: Obtener rango de fechas del mes
+function getMonthDateRange(monthString: string): { start: string; end: string } {
+  const [year, month] = monthString.split('-').map(Number);
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0); // Día 0 del siguiente mes = último día del mes actual
+  
+  return {
+    start: `${year}-${String(month).padStart(2, '0')}-01`,
+    end: `${year}-${String(month).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
+  };
+}
 
 // ✅ FUNCIÓN PARA OBTENER PRIMER DÍA DEL MES
 function getFirstDayOfMonth(monthString: string): string {
@@ -338,27 +329,23 @@ function getLastDayOfMonth(monthString: string): string {
   return `${monthString}-${String(lastDay).padStart(2, '0')}`;
 }
 
-// ✅ CORRECCIÓN CRÍTICA: Función para formatear nombre del mes corregida
+// ✅ FUNCIÓN CORREGIDA: formatMonthName
 function formatMonthName(monthString: string): string {
-  const [year, month] = monthString.split('-').map(Number);
-  const date = new Date(year, month - 1); // month-1 porque Date usa 0-11
-  
-  const result = date.toLocaleDateString('es-MX', {
-    year: 'numeric',
-    month: 'long',
-    timeZone: 'America/Mexico_City'
-  });
-  
-  // ✅ DEBUG TEMPORAL
-  console.log('🔍 DEBUG formatMonthName:', {
-    monthString,
-    year,
-    month,
-    dateObject: date,
-    result
-  });
-  
-  return result;
+  try {
+    const [year, month] = monthString.split('-').map(Number);
+    const date = new Date(year, month - 1, 1);
+    
+    const monthName = date.toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'long'
+    });
+    
+    // Capitalizar primera letra
+    return monthName.charAt(0).toUpperCase() + monthName.slice(1);
+  } catch (error) {
+    console.error('Error formateando mes:', error);
+    return monthString;
+  }
 }
 
 // ✅ FUNCIÓN PARA VERIFICAR CUMPLEAÑOS HOY
@@ -468,6 +455,7 @@ interface DailyData {
     commissions: number;
     net_amount: number;
   };
+  success?: boolean;
 }
 
 // ✅ INTERFACES PARA ANÁLISIS MENSUAL
@@ -693,120 +681,142 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
-  // ✅ CORRECCIÓN CRÍTICA: Función para cargar datos semanales corregida
+  // ✅ FUNCIÓN CRÍTICA CORREGIDA: loadWeeklyRealData
   const loadWeeklyRealData = useCallback(async (): Promise<ChartData[]> => {
     console.log('📈 Cargando datos semanales...');
     const chartData: ChartData[] = [];
+    const promises: Promise<void>[] = [];
     
+    // Cargar datos en paralelo para mejor rendimiento
     for (let i = 6; i >= 0; i--) {
       const dateString = getDateDaysAgo(i);
-      console.log(`📅 Procesando día ${i} días atrás:`, dateString);
       
-      const dayData = await loadRealDailyData(dateString);
-      
-      // ✅ CORRECCIÓN: Usar formato más legible para el eje X
-      const dayName = new Date(dateString + 'T12:00:00').toLocaleDateString('es-MX', {
-        month: '2-digit',
-        day: '2-digit',
-        timeZone: 'America/Mexico_City'
-      });
-      
-      if (dayData && dayData.success) {
-        chartData.push({
-          name: dayName,
-          sales: dayData.pos?.total || 0,
-          memberships: dayData.memberships?.total || 0,
-          layaways: dayData.abonos?.total || 0,
-          date: dateString
-        });
-        console.log(`✅ Datos agregados para ${dateString}:`, {
-          sales: dayData.pos?.total || 0,
-          memberships: dayData.memberships?.total || 0,
-          layaways: dayData.abonos?.total || 0
-        });
-      } else {
-        // ✅ CORRECCIÓN: Agregar día con datos en 0 para mantener continuidad
-        chartData.push({
-          name: dayName,
-          sales: 0,
-          memberships: 0,
-          layaways: 0,
-          date: dateString
-        });
-        console.log(`⚠️ Sin datos para ${dateString}, agregando con ceros`);
-      }
+      promises.push(
+        loadRealDailyData(dateString).then(dayData => {
+          const dayDate = new Date(dateString + 'T12:00:00');
+          const dayName = dayDate.toLocaleDateString('es-MX', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            timeZone: 'America/Mexico_City'
+          });
+          
+          chartData[6 - i] = {
+            name: dayName,
+            sales: dayData?.pos?.total || 0,
+            memberships: dayData?.memberships?.total || 0,
+            layaways: dayData?.abonos?.total || 0,
+            date: dateString
+          };
+        }).catch(error => {
+          console.error(`Error cargando día ${dateString}:`, error);
+          const dayDate = new Date(dateString + 'T12:00:00');
+          const dayName = dayDate.toLocaleDateString('es-MX', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            timeZone: 'America/Mexico_City'
+          });
+          
+          chartData[6 - i] = {
+            name: dayName,
+            sales: 0,
+            memberships: 0,
+            layaways: 0,
+            date: dateString
+          };
+        })
+      );
     }
     
-    console.log('📊 Datos semanales finales:', chartData);
+    await Promise.all(promises);
+    
+    // Ordenar por fecha para asegurar orden correcto
+    chartData.sort((a, b) => a.date.localeCompare(b.date));
+    
+    console.log('📊 Datos semanales cargados:', chartData);
     return chartData;
   }, [loadRealDailyData]);
 
-  // ✅ CORRECCIÓN CRÍTICA: Función para cargar datos mensuales completamente corregida
+  // ✅ FUNCIÓN NUEVA CORREGIDA: loadMonthlyRealData
   const loadMonthlyRealData = useCallback(async (): Promise<MonthlyData[]> => {
     console.log('📅 Cargando datos mensuales para', config.monthsToShow, 'meses...');
     const monthlyData: MonthlyData[] = [];
+    const promises: Promise<void>[] = [];
     
     for (let i = config.monthsToShow - 1; i >= 0; i--) {
       const monthString = getDateMonthsAgo(i);
-      const monthName = formatMonthName(monthString);
       
-      console.log(`📅 Procesando mes ${i} meses atrás:`, {
-        monthString,
-        monthName
-      });
-      
-      // ✅ CORRECCIÓN: Por ahora usar datos del día actual del mes
-      // En el futuro, cuando tengas datos históricos, aquí harías un loop por cada día del mes
-      const currentDayOfMonth = new Date().getDate();
-      const dayToCheck = `${monthString}-${String(Math.min(currentDayOfMonth, 28)).padStart(2, '0')}`;
-      
-      const monthData = await loadRealDailyData(dayToCheck);
-      
-      let monthSales = 0;
-      let monthMemberships = 0;
-      let monthLayaways = 0;
-      let monthTransactions = 0;
-      
-      if (monthData && monthData.success) {
-        monthSales = monthData.pos?.total || 0;
-        monthMemberships = monthData.memberships?.total || 0;
-        monthLayaways = monthData.abonos?.total || 0;
-        monthTransactions = monthData.totals?.transactions || 0;
-        
-        console.log(`✅ Datos encontrados para ${monthString}:`, {
-          sales: monthSales,
-          memberships: monthMemberships,
-          layaways: monthLayaways,
-          transactions: monthTransactions
-        });
-      } else {
-        console.log(`⚠️ Sin datos para ${monthString}`);
-      }
-      
-      const total = monthSales + monthMemberships + monthLayaways;
-      
-      // ✅ CORRECCIÓN: Calcular crecimiento correctamente
-      const growth = monthlyData.length > 0 ? 
-        (monthlyData[monthlyData.length - 1].total > 0 ? 
-        ((total - monthlyData[monthlyData.length - 1].total) / monthlyData[monthlyData.length - 1].total) * 100 : 0) : 0;
-      
-      monthlyData.push({
-        month: monthString,
-        monthName,
-        sales: monthSales,
-        memberships: monthMemberships,
-        layaways: monthLayaways,
-        total,
-        transactions: monthTransactions,
-        growth
-      });
+      promises.push(
+        fetch(`/api/cuts/monthly-data?month=${monthString}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.data) {
+              const monthName = formatMonthName(monthString);
+              
+              monthlyData.push({
+                month: monthString,
+                monthName,
+                sales: data.data.sales || 0,
+                memberships: data.data.memberships || 0,
+                layaways: data.data.layaways || 0,
+                total: data.data.total || 0,
+                transactions: data.data.transactions || 0,
+                growth: 0 // Se calculará después
+              });
+            } else {
+              // Si no hay datos, agregar mes con valores en 0
+              monthlyData.push({
+                month: monthString,
+                monthName: formatMonthName(monthString),
+                sales: 0,
+                memberships: 0,
+                layaways: 0,
+                total: 0,
+                transactions: 0,
+                growth: 0
+              });
+            }
+          })
+          .catch(error => {
+            console.error(`Error cargando mes ${monthString}:`, error);
+            // Si el endpoint no existe, usar datos del día actual del mes como fallback
+            const currentDay = new Date().getDate();
+            const dayToCheck = `${monthString}-${String(Math.min(currentDay, 28)).padStart(2, '0')}`;
+            
+            return loadRealDailyData(dayToCheck).then(dayData => {
+              monthlyData.push({
+                month: monthString,
+                monthName: formatMonthName(monthString),
+                sales: dayData?.pos?.total || 0,
+                memberships: dayData?.memberships?.total || 0,
+                layaways: dayData?.abonos?.total || 0,
+                total: (dayData?.pos?.total || 0) + (dayData?.memberships?.total || 0) + (dayData?.abonos?.total || 0),
+                transactions: dayData?.totals?.transactions || 0,
+                growth: 0
+              });
+            });
+          })
+      );
     }
     
-    // ✅ CORRECCIÓN: Invertir array para mostrar del más antiguo al más reciente
-    const result = monthlyData.reverse();
-    console.log('📊 Datos mensuales finales:', result);
-    return result;
-  }, [config.monthsToShow, loadRealDailyData]); // ✅ CORRECCIÓN: Agregar dependencias
+    await Promise.all(promises);
+    
+    // Ordenar por fecha (más antiguo primero)
+    monthlyData.sort((a, b) => a.month.localeCompare(b.month));
+    
+    // Recalcular crecimiento después de ordenar
+    for (let i = 1; i < monthlyData.length; i++) {
+      if (monthlyData[i - 1].total > 0) {
+        monthlyData[i].growth = ((monthlyData[i].total - monthlyData[i - 1].total) / monthlyData[i - 1].total) * 100;
+      } else if (monthlyData[i].total > 0) {
+        monthlyData[i].growth = 100; // Si el mes anterior era 0 y este mes hay ventas
+      }
+    }
+    
+    console.log('📊 Datos mensuales finales:', monthlyData);
+    return monthlyData;
+  }, [config.monthsToShow, loadRealDailyData]);
 
   // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS (IGUAL QUE CORTES)
   const loadDailyData = useCallback(async () => {
@@ -837,24 +847,24 @@ export default function AdminDashboardPage() {
       setError(null);
       console.log('🚀 Iniciando carga de estadísticas del dashboard...');
 
-      // ✅ DEBUG CRÍTICO: Verificar configuración actual
+      // ✅ DEBUG: Verificar configuración actual
       console.log('🔍 DEBUG CONFIGURACIÓN:', {
         selectedDate,
         monthsToShow: config.monthsToShow,
         colorScheme: config.colorScheme,
-        chartType: config.chartType
+        chartType: config.chartType,
+        fechaActualMexico: getMexicoDateLocal()
       });
 
-      // ✅ DEBUG CRÍTICO: Verificar funciones de fecha
-      console.log('🔍 DEBUG FECHAS:', {
-        fechaActual: getMexicoDateLocal(),
-        selectedDate,
-        mes0: getDateMonthsAgo(0),
-        mes1: getDateMonthsAgo(1),
-        mes2: getDateMonthsAgo(2),
-        dia0: getDateDaysAgo(0),
-        dia1: getDateDaysAgo(1),
-        dia6: getDateDaysAgo(6)
+      // ✅ DEBUG: Verificar funciones de fecha
+      console.log('🔍 VERIFICACIÓN DE FECHAS:', {
+        fechaHoy: getMexicoDateLocal(),
+        mesActual: getDateMonthsAgo(0), // Debe ser 2025-01
+        mesAnterior: getDateMonthsAgo(1), // Debe ser 2024-12
+        hace2Meses: getDateMonthsAgo(2), // Debe ser 2024-11
+        hace7Dias: getDateDaysAgo(7),
+        ayer: getDateDaysAgo(1),
+        hoy: getDateDaysAgo(0)
       });
 
       // Cargar datos diarios, históricos y mensuales
@@ -1046,39 +1056,54 @@ export default function AdminDashboardPage() {
         }
       }
 
-      // ✅ CORRECCIÓN CRÍTICA: Comparativa mensual corregida
-      const currentMonth = monthlyDataResult.length > 0 ? monthlyDataResult[monthlyDataResult.length - 1] : {
-        month: getDateMonthsAgo(0), 
-        monthName: formatMonthName(getDateMonthsAgo(0)), 
-        sales: dailyDataResult?.pos?.total || 0, 
-        memberships: dailyDataResult?.memberships?.total || 0, 
-        layaways: dailyDataResult?.abonos?.total || 0, 
-        total: (dailyDataResult?.pos?.total || 0) + (dailyDataResult?.memberships?.total || 0) + (dailyDataResult?.abonos?.total || 0), 
-        transactions: dailyDataResult?.totals?.transactions || 0, 
+      // ✅ COMPARATIVA MENSUAL CORREGIDA
+      const currentMonthString = getDateMonthsAgo(0);
+      const previousMonthString = getDateMonthsAgo(1);
+
+      // Buscar datos reales del mes actual y anterior
+      const currentMonthData = monthlyDataResult.find(m => m.month === currentMonthString);
+      const previousMonthData = monthlyDataResult.find(m => m.month === previousMonthString);
+
+      const currentMonth = currentMonthData || {
+        month: currentMonthString,
+        monthName: formatMonthName(currentMonthString),
+        sales: dailyDataResult?.pos?.total || 0,
+        memberships: dailyDataResult?.memberships?.total || 0,
+        layaways: dailyDataResult?.abonos?.total || 0,
+        total: (dailyDataResult?.totals?.total || 0),
+        transactions: dailyDataResult?.totals?.transactions || 0,
         growth: 0
       };
 
-      const previousMonth = monthlyDataResult.length > 1 ? monthlyDataResult[monthlyDataResult.length - 2] : {
-        month: getDateMonthsAgo(1), 
-        monthName: formatMonthName(getDateMonthsAgo(1)), 
-        sales: 0, 
-        memberships: 0, 
-        layaways: 0, 
-        total: 0, 
-        transactions: 0, 
+      const previousMonth = previousMonthData || {
+        month: previousMonthString,
+        monthName: formatMonthName(previousMonthString),
+        sales: 0,
+        memberships: 0,
+        layaways: 0,
+        total: 0,
+        transactions: 0,
         growth: 0
       };
 
-      const monthlyGrowth = previousMonth.total > 0 ? 
-        ((currentMonth.total - previousMonth.total) / previousMonth.total) * 100 : 
-        (currentMonth.total > 0 ? 100 : 0);
+      const monthlyGrowth = previousMonth.total > 0 
+        ? ((currentMonth.total - previousMonth.total) / previousMonth.total) * 100 
+        : (currentMonth.total > 0 ? 100 : 0);
 
-      // ✅ DEBUG CRÍTICO: Verificar comparativa mensual
-      console.log('🔍 DEBUG COMPARATIVA MENSUAL:', {
-        currentMonth,
-        previousMonth,
-        monthlyGrowth,
-        monthlyDataResult
+      console.log('📊 COMPARATIVA MENSUAL:', {
+        mesActual: currentMonth.monthName,
+        mesAnterior: previousMonth.monthName,
+        crecimiento: monthlyGrowth.toFixed(2) + '%',
+        datosActual: currentMonth,
+        datosAnterior: previousMonth
+      });
+
+      // ✅ VERIFICACIÓN DE DATOS
+      console.log('🔍 VERIFICACIÓN DE DATOS:', {
+        datosSemanales: realChartData,
+        datosMensuales: monthlyDataResult,
+        hayDatosSemanales: realChartData.some(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0),
+        hayDatosMensuales: monthlyDataResult.some(m => m.total > 0)
       });
 
       // ✅ CONSTRUIR ESTADÍSTICAS FINALES CON TODAS LAS CORRECCIONES
@@ -1137,20 +1162,18 @@ export default function AdminDashboardPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedDate, loadDailyData, loadWeeklyRealData, loadMonthlyRealData, supabase, config.monthsToShow, config.colorScheme, currentColors]); // ✅ CORRECCIÓN: Dependencias completas
+  }, [selectedDate, loadDailyData, loadWeeklyRealData, loadMonthlyRealData, supabase, config.monthsToShow, config.colorScheme, currentColors]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadDashboardStats();
   }, [loadDashboardStats]);
 
-  // ✅ CORRECCIÓN CRÍTICA: useEffect con dependencias correctas
+  // ✅ EFECTO PRINCIPAL CORREGIDO
   useEffect(() => {
     console.log('🔄 useEffect disparado por cambio en configuración');
     loadDashboardStats();
   }, [loadDashboardStats]);
-
-  // ✅ RESTO DEL COMPONENTE IGUAL - SOLO CAMBIOS EN GRID
 
   // ✅ COMPONENTE DE MÉTRICA ENTERPRISE RESPONSIVO
   const MetricCard = ({ 
@@ -1389,16 +1412,18 @@ export default function AdminDashboardPage() {
 
     return (
       <Box sx={{ position: 'relative' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-            {title}
-          </Typography>
-          {onFullscreen && (
-            <IconButton onClick={onFullscreen} sx={{ color: darkProTokens.textSecondary }}>
-              <FullscreenIcon />
-            </IconButton>
-          )}
-        </Box>
+        {title && (
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+              {title}
+            </Typography>
+            {onFullscreen && (
+              <IconButton onClick={onFullscreen} sx={{ color: darkProTokens.textSecondary }}>
+                <FullscreenIcon />
+              </IconButton>
+            )}
+          </Box>
+        )}
         <Box sx={{ height, width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
             <ChartComponent />
@@ -1464,7 +1489,7 @@ export default function AdminDashboardPage() {
             bgcolor: darkProTokens.grayDark,
             mt: 3,
             mx: 'auto',
-            '& .MuiLinearProgress-bar': {
+                        '& .MuiLinearProgress-bar': {
               bgcolor: currentColors.primary,
               borderRadius: 3,
               boxShadow: `0 0 10px ${currentColors.primary}40`
@@ -1506,7 +1531,7 @@ export default function AdminDashboardPage() {
 
       {/* HEADER ENTERPRISE RESPONSIVO */}
       <motion.div
-                initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
@@ -1778,7 +1803,7 @@ export default function AdminDashboardPage() {
         </Paper>
       </motion.div>
 
-      {/* MÉTRICAS PRINCIPALES RESPONSIVOS - ✅ CORRECCIÓN GRID */}
+      {/* MÉTRICAS PRINCIPALES RESPONSIVOS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1831,7 +1856,7 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* 🎂 CUMPLEAÑEROS + 📊 RETENCIÓN + 📈 COMPARATIVA - LAYOUT OPTIMIZADO - ✅ CORRECCIÓN GRID */}
+      {/* 🎂 CUMPLEAÑEROS + 📊 RETENCIÓN + 📈 COMPARATIVA */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2083,7 +2108,7 @@ export default function AdminDashboardPage() {
             </Card>
           </Grid>
 
-          {/* 📈 COMPARATIVA MENSUAL MINI */}
+          {/* 📈 COMPARATIVA MENSUAL MINI - ✅ ACTUALIZADA PARA JUNIO 2025 */}
           <Grid size={{ xs: 12, lg: 4 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -2224,7 +2249,7 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* GRÁFICOS PRINCIPALES - LAYOUT MEJORADO SIN ESPACIOS VACÍOS - ✅ CORRECCIÓN GRID */}
+      {/* GRÁFICOS PRINCIPALES - ✅ CORREGIDOS PARA MOSTRAR DATOS */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
         {/* GRÁFICO DE TENDENCIAS SEMANALES */}
         <Grid size={{ xs: 12, lg: 8 }}>
@@ -2269,13 +2294,16 @@ export default function AdminDashboardPage() {
                   </IconButton>
                 </Box>
                 
-                {stats.chartData.length > 0 ? (
-                  <ConfigurableChart
-                    data={stats.chartData}
-                    type={config.chartType}
-                    title=""
-                    height={config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 } as any}
-                  />
+                {stats.chartData.length > 0 && stats.chartData.some(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0) ? (
+                  <>
+                    {console.log('📊 Renderizando gráfico semanal con datos:', stats.chartData)}
+                    <ConfigurableChart
+                      data={stats.chartData}
+                      type={config.chartType}
+                      title=""
+                      height={config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 } as any}
+                    />
+                  </>
                 ) : (
                   <Box sx={{ 
                     height: config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 }, 
@@ -2285,21 +2313,28 @@ export default function AdminDashboardPage() {
                     flexDirection: 'column',
                     gap: 2
                   }}>
+                    {console.log('⚠️ No hay datos para mostrar en el gráfico semanal')}
                     <TimelineIcon sx={{ fontSize: config.compactMode ? { xs: 50, sm: 60 } : { xs: 60, sm: 80 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
                     <Typography variant="h6" sx={{ 
                       color: darkProTokens.textSecondary, 
                       fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
                     }}>
-                      Cargando datos semanales...
+                      Sin datos disponibles
                     </Typography>
                     <Typography variant="body2" sx={{ 
                       color: darkProTokens.textDisabled, 
                       textAlign: 'center', 
                       fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
                     }}>
-                      Los gráficos aparecerán cuando se terminen de cargar<br />
-                      los datos de los últimos 7 días
+                      No hay datos registrados para los últimos 7 días
                     </Typography>
+                    <Button 
+                      onClick={handleRefresh} 
+                      variant="outlined"
+                      sx={{ mt: 2, color: currentColors.primary, borderColor: currentColors.primary }}
+                    >
+                      Intentar de nuevo
+                    </Button>
                   </Box>
                 )}
               </CardContent>
@@ -2402,7 +2437,7 @@ export default function AdminDashboardPage() {
         </Grid>
       </Grid>
 
-      {/* 📊 NUEVA SECCIÓN: ANÁLISIS MENSUALES COMPLETOS */}
+      {/* 📊 ANÁLISIS MENSUALES COMPLETOS - ✅ ACTUALIZADO */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2434,19 +2469,22 @@ export default function AdminDashboardPage() {
               </IconButton>
             </Box>
 
-            {stats.monthlyData.length > 0 ? (
-              <ConfigurableChart
-                data={stats.monthlyData.map(m => ({
-                  name: m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(-2),
-                  sales: m.sales,
-                  memberships: m.memberships,
-                  layaways: m.layaways,
-                  date: m.month
-                }))}
-                type={config.chartType}
-                title=""
-                height={config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 } as any}
-              />
+            {stats.monthlyData.length > 0 && stats.monthlyData.some(m => m.total > 0) ? (
+              <>
+                {console.log('📊 Renderizando gráfico mensual con datos:', stats.monthlyData)}
+                <ConfigurableChart
+                  data={stats.monthlyData.map(m => ({
+                    name: m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(-2),
+                    sales: m.sales,
+                    memberships: m.memberships,
+                    layaways: m.layaways,
+                    date: m.month
+                  }))}
+                  type={config.chartType}
+                  title=""
+                  height={config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 } as any}
+                />
+              </>
             ) : (
               <Box sx={{ 
                 height: config.compactMode ? 300 : { xs: 300, sm: 350, md: 400 }, 
@@ -2456,20 +2494,21 @@ export default function AdminDashboardPage() {
                 flexDirection: 'column',
                 gap: 2
               }}>
+                {console.log('⚠️ No hay datos para mostrar en el gráfico mensual')}
                 <CalendarIcon sx={{ fontSize: config.compactMode ? { xs: 60, sm: 70 } : { xs: 70, sm: 90 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
                 <Typography variant="h6" sx={{ 
                   color: darkProTokens.textSecondary, 
                   fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
                 }}>
-                  Cargando datos mensuales...
+                  Sin datos mensuales disponibles
                 </Typography>
                 <Typography variant="body2" sx={{ 
                   color: darkProTokens.textDisabled, 
                   textAlign: 'center', 
                   fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
                 }}>
-                  Las comparativas mensuales aparecerán cuando<br />
-                  se termine de procesar los datos históricos
+                  Los datos históricos aparecerán cuando<br />
+                  se registren ventas en múltiples meses
                 </Typography>
               </Box>
             )}
@@ -2477,7 +2516,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* MÉTODOS DE PAGO DEL DÍA RESPONSIVOS - ✅ CORRECCIÓN GRID */}
+      {/* MÉTODOS DE PAGO DEL DÍA RESPONSIVOS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2629,7 +2668,7 @@ export default function AdminDashboardPage() {
                     background: `linear-gradient(135deg, ${currentColors.quaternary}, ${currentColors.quaternary}DD)`,
                     color: darkProTokens.background,
                     borderRadius: 3,
-                    border: `1px solid ${currentColors.quaternary}40`,
+                                        border: `1px solid ${currentColors.quaternary}40`,
                     boxShadow: `0 8px 32px ${currentColors.quaternary}20`
                   }}>
                     <Typography variant="h4" sx={{ 
@@ -2664,13 +2703,13 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* DESGLOSE DE INGRESOS DEL DÍA RESPONSIVO - ✅ CORRECCIÓN GRID */}
+      {/* DESGLOSE DE INGRESOS DEL DÍA RESPONSIVO */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1.2 }}
       >
-                <Card sx={{
+        <Card sx={{
           mb: 4,
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `1px solid ${darkProTokens.grayDark}`,
@@ -2883,7 +2922,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* ACCESOS RÁPIDOS ENTERPRISE RESPONSIVOS - ✅ CORRECCIÓN GRID */}
+      {/* ACCESOS RÁPIDOS ENTERPRISE RESPONSIVOS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -3033,7 +3072,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* INFORMACIÓN ADICIONAL RESPONSIVA - LAYOUT OPTIMIZADO - ✅ CORRECCIÓN GRID */}
+      {/* INFORMACIÓN ADICIONAL RESPONSIVA */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
