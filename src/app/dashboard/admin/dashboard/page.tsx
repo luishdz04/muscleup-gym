@@ -276,31 +276,32 @@ export default function AdminDashboardPage() {
     }
   }, [getMexicoDate, getMexicoDateString, formatMexicoDateTime]);
 
-  // ✅ FUNCIONES AUXILIARES PARA CARGAR DATOS ESPECÍFICOS
+  // ✅ FUNCIONES AUXILIARES PARA CARGAR DATOS ESPECÍFICOS - CORREGIDAS
   const loadUsersStats = useCallback(async (today: string, firstDayOfMonth: string) => {
+    // ✅ CORREGIDO: Usar 'rol' en lugar de 'role' y 'createdAt' en lugar de 'created_at'
     const { data: allUsers, error } = await supabase
       .from('Users')
-      .select('id, role, gender, created_at');
+      .select('id, rol, gender, createdAt');
 
     if (error) throw error;
 
-    const clientUsers = allUsers?.filter(u => u.role === 'cliente') || [];
+    const clientUsers = allUsers?.filter(u => u.rol === 'cliente') || [];
     const newUsersToday = allUsers?.filter(u => {
-      if (!u.created_at) return false;
-      const createdDate = toMexicoDate(new Date(u.created_at));
+      if (!u.createdAt) return false;
+      const createdDate = toMexicoDate(new Date(u.createdAt));
       return createdDate === today;
     }) || [];
 
     const newUsersMonth = allUsers?.filter(u => {
-      if (!u.created_at) return false;
-      const createdDate = toMexicoDate(new Date(u.created_at));
+      if (!u.createdAt) return false;
+      const createdDate = toMexicoDate(new Date(u.createdAt));
       return createdDate >= firstDayOfMonth;
     }) || [];
 
     const genderStats = clientUsers.reduce((acc, user) => {
       const gender = user.gender?.toLowerCase() || 'other';
-      if (gender === 'masculino' || gender === 'male') acc.male++;
-      else if (gender === 'femenino' || gender === 'female') acc.female++;
+      if (gender === 'masculino' || gender === 'male' || gender === 'hombre') acc.male++;
+      else if (gender === 'femenino' || gender === 'female' || gender === 'mujer') acc.female++;
       else acc.other++;
       return acc;
     }, { male: 0, female: 0, other: 0 });
