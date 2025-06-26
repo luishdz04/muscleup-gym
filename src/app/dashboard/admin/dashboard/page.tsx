@@ -565,7 +565,7 @@ export default function AdminDashboardPage() {
       // 🏋️ CARGAR MEMBRESÍAS
       const { data: memberships, error: membershipsError } = await supabase
         .from('user_memberships')
-        .select('*, user_id');
+        .select('*, userid');
 
       if (membershipsError) {
         throw membershipsError;
@@ -596,7 +596,7 @@ export default function AdminDashboardPage() {
       const totalRevenue = memberships?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0;
 
       // 📊 CALCULAR RETENCIÓN (CLIENTES CON MEMBRESÍA ACTIVA)
-      const uniqueUsersWithMembership = new Set(active.map(m => m.user_id)).size;
+      const uniqueUsersWithMembership = new Set(active.map(m => m.userid)).size;
       const retentionPercentage = clientUsers.length > 0 ? 
         Math.round((uniqueUsersWithMembership / clientUsers.length) * 100) : 0;
 
