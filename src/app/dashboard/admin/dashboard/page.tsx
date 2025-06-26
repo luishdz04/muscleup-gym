@@ -150,7 +150,6 @@ function formatDateLocal(dateString: string): string {
       timeZone: 'America/Mexico_City'
     });
   } catch (error) {
-    console.error('❌ Error formateando fecha:', dateString, error);
     const date = new Date(dateString + 'T12:00:00');
     const months = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -184,7 +183,6 @@ function formatDateTime(dateString: string): string {
   }
 }
 
-// ✅ FUNCIÓN PARA GENERAR FECHAS ANTERIORES
 function getDateDaysAgo(daysAgo: number): string {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
@@ -346,10 +344,8 @@ export default function AdminDashboardPage() {
   
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ FECHA ACTUAL EN MÉXICO
   const [selectedDate] = useState(() => {
     const mexicoDate = getMexicoDateLocal();
-    console.log('🇲🇽 Fecha actual México (función local):', mexicoDate);
     return mexicoDate;
   });
 
@@ -365,11 +361,9 @@ export default function AdminDashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS REALES (NO FICTICIOS)
+  // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS REALES
   const loadRealDailyData = useCallback(async (targetDate: string): Promise<DailyData | null> => {
     try {
-      console.log(`📊 Cargando datos REALES para fecha: ${targetDate}`);
-      
       const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
         method: 'GET',
         headers: {
@@ -380,43 +374,28 @@ export default function AdminDashboardPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.totals && data.totals.total > 0) {
-          console.log(`✅ Datos REALES encontrados para ${targetDate}:`, {
-            total: formatPrice(data.totals.total),
-            pos: formatPrice(data.pos.total),
-            memberships: formatPrice(data.memberships.total),
-            abonos: formatPrice(data.abonos.total)
-          });
           return data;
         } else {
-          console.log(`⚪ Sin datos para ${targetDate}`);
           return null;
         }
       } else {
-        console.log(`❌ Error API para ${targetDate}:`, response.status);
         return null;
       }
     } catch (error) {
-      console.error(`💥 Error cargando datos para ${targetDate}:`, error);
       return null;
     }
   }, []);
 
   // ✅ FUNCIÓN PARA CARGAR DATOS HISTÓRICOS REALES (7 DÍAS)
   const loadWeeklyRealData = useCallback(async (): Promise<ChartData[]> => {
-    console.log('📈 ===== CARGANDO DATOS HISTÓRICOS REALES =====');
     const chartData: ChartData[] = [];
     
-    // Cargar datos reales para los últimos 7 días
     for (let i = 6; i >= 0; i--) {
       const dateString = getDateDaysAgo(i);
-      const dayName = dateString.split('-').slice(1).join('/'); // MM/DD
-      
-      console.log(`🔍 Consultando datos reales para: ${dateString} (${dayName})`);
-      
+      const dayName = dateString.split('-').slice(1).join('/');
       const dayData = await loadRealDailyData(dateString);
       
       if (dayData) {
-        // Datos reales encontrados
         chartData.push({
           name: dayName,
           sales: dayData.pos.total,
@@ -424,13 +403,7 @@ export default function AdminDashboardPage() {
           layaways: dayData.abonos.total,
           date: dateString
         });
-        console.log(`✅ Datos agregados para ${dateString}:`, {
-          ventas: formatPrice(dayData.pos.total),
-          membresias: formatPrice(dayData.memberships.total),
-          abonos: formatPrice(dayData.abonos.total)
-        });
       } else {
-        // Sin datos para este día, agregar ceros
         chartData.push({
           name: dayName,
           sales: 0,
@@ -438,20 +411,15 @@ export default function AdminDashboardPage() {
           layaways: 0,
           date: dateString
         });
-        console.log(`⚪ Sin datos para ${dateString}, agregando ceros`);
       }
     }
     
-    console.log('📊 Datos históricos completos:', chartData);
     return chartData;
   }, [loadRealDailyData]);
 
   // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS (IGUAL QUE CORTES)
   const loadDailyData = useCallback(async () => {
     try {
-      console.log('💰 ===== CARGANDO DATOS DIARIOS USANDO API DE CORTES =====');
-      console.log('🔍 Solicitando datos para fecha México:', selectedDate);
-      
       const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`, {
         method: 'GET',
         headers: {
@@ -459,47 +427,26 @@ export default function AdminDashboardPage() {
         }
       });
       
-      console.log('📡 Respuesta de la API:', response.status, response.statusText);
-      
       const data = await response.json();
-      console.log('📊 Datos recibidos de la API:', data);
       
       if (response.ok && data.success) {
-        console.log('✅ Datos válidos recibidos:', {
-          fecha: data.date,
-          timezone_info: data.timezone_info,
-          total_ingresos: data.totals?.total || 0,
-          transacciones: data.totals?.transactions || 0,
-          efectivo: data.totals?.efectivo || 0,
-          transferencia: data.totals?.transferencia || 0,
-          debito: data.totals?.debito || 0,
-          credito: data.totals?.credito || 0
-        });
         setDailyData(data);
         return data;
       } else {
-        const errorMsg = data.error || `Error HTTP ${response.status}: ${response.statusText}`;
-        console.error('❌ Error en respuesta de API:', errorMsg);
-        // No lanzar error, usar datos vacíos
         return null;
       }
     } catch (error: any) {
-      console.error('💥 Error crítico en loadDailyData:', error);
-      // No lanzar error, usar datos vacíos
       return null;
     }
   }, [selectedDate]);
 
-  // ✅ FUNCIÓN PRINCIPAL CORREGIDA - SOLO DATOS REALES
+  // ✅ FUNCIÓN PRINCIPAL CORREGIDA - LIMPIA SIN DEBUG
   const loadDashboardStats = useCallback(async () => {
     try {
       setError(null);
-      console.log('📊 ===== INICIANDO CARGA DE DASHBOARD ENTERPRISE (SOLO DATOS REALES) =====');
 
-      // ✅ CARGAR DATOS DIARIOS (COMO CORTES)
+      // Cargar datos diarios y históricos
       const dailyDataResult = await loadDailyData();
-
-      // ✅ CARGAR DATOS HISTÓRICOS REALES (NO FICTICIOS)
       const realChartData = await loadWeeklyRealData();
 
       const mexicoToday = selectedDate;
@@ -509,19 +456,12 @@ export default function AdminDashboardPage() {
       in7Days.setDate(today.getDate() + 7);
       const in7DaysString = `${in7Days.getFullYear()}-${(in7Days.getMonth() + 1).toString().padStart(2, '0')}-${in7Days.getDate().toString().padStart(2, '0')}`;
 
-      console.log(`📅 Fechas calculadas:
-        📅 Hoy México: ${mexicoToday}
-        📅 Primer día del mes: ${firstDayOfMonth}
-        📅 En 7 días: ${in7DaysString}`);
-
       // 👥 CARGAR USUARIOS
-      console.log('👥 ===== CARGANDO USUARIOS =====');
       const { data: allUsers, error: usersError } = await supabase
         .from('Users')
         .select('id, rol, gender, createdAt');
 
       if (usersError) {
-        console.error('❌ Error cargando usuarios:', usersError);
         throw usersError;
       }
 
@@ -547,13 +487,11 @@ export default function AdminDashboardPage() {
       }, { male: 0, female: 0, other: 0 });
 
       // 🏋️ CARGAR MEMBRESÍAS
-      console.log('🏋️ ===== CARGANDO MEMBRESÍAS =====');
       const { data: memberships, error: membershipsError } = await supabase
         .from('user_memberships')
         .select('*');
 
       if (membershipsError) {
-        console.error('❌ Error cargando membresías:', membershipsError);
         throw membershipsError;
       }
 
@@ -582,14 +520,12 @@ export default function AdminDashboardPage() {
       const totalRevenue = memberships?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0;
 
       // 📦 CARGAR APARTADOS
-      console.log('📦 ===== CARGANDO APARTADOS =====');
       const { data: layaways, error: layawaysError } = await supabase
         .from('sales')
         .select('*')
         .eq('sale_type', 'layaway');
 
       if (layawaysError) {
-        console.error('❌ Error cargando apartados:', layawaysError);
         throw layawaysError;
       }
 
@@ -609,7 +545,7 @@ export default function AdminDashboardPage() {
       const pendingAmount = layaways?.reduce((sum, l) => sum + (l.pending_amount || 0), 0) || 0;
       const collectedAmount = layaways?.reduce((sum, l) => sum + (l.paid_amount || 0), 0) || 0;
 
-      // ✅ DATOS PARA GRÁFICO DE PIE (MÉTODOS DE PAGO) - SOLO SI HAY DATOS
+      // ✅ DATOS PARA GRÁFICO DE PIE (MÉTODOS DE PAGO)
       const pieData: PieData[] = [];
       if (dailyDataResult && dailyDataResult.totals.total > 0) {
         if (dailyDataResult.totals.efectivo > 0) {
@@ -642,7 +578,7 @@ export default function AdminDashboardPage() {
         }
       }
 
-      // ✅ CONSTRUIR ESTADÍSTICAS FINALES CON DATOS REALES
+      // ✅ CONSTRUIR ESTADÍSTICAS FINALES
       const finalStats: DashboardStats = {
         totalUsers: allUsers?.length || 0,
         clientUsers: clientUsers.length,
@@ -658,15 +594,14 @@ export default function AdminDashboardPage() {
         todaySales: dailyDataResult?.pos?.total || 0,
         todayTransactions: dailyDataResult?.pos?.transactions || 0,
         todayAvgTicket: dailyDataResult?.pos?.transactions > 0 ? (dailyDataResult.pos.total / dailyDataResult.pos.transactions) : 0,
-        monthSales: 0, // TODO: Implementar con datos reales del mes
-        monthTransactions: 0, // TODO: Implementar con datos reales del mes
+        monthSales: 0,
+        monthTransactions: 0,
         activeLayaways: activeLayaways.length,
         expiringLayaways: expiringLayaways.length,
         layawaysPendingAmount: pendingAmount,
         layawaysCollectedAmount: collectedAmount,
         todayLayawayPayments: dailyDataResult?.abonos?.total || 0,
-        todayExpenses: 0, // TODO: Implementar
-        // ✅ USAR DATOS CORRECTOS DE LA API DE CORTES
+        todayExpenses: 0,
         cashFlow: {
           efectivo: dailyDataResult?.totals?.efectivo || 0,
           transferencia: dailyDataResult?.totals?.transferencia || 0,
@@ -675,29 +610,14 @@ export default function AdminDashboardPage() {
         },
         todayBalance: dailyDataResult?.totals?.total || 0,
         weeklyTrend: { sales: [], dates: [], memberships: [], layaways: [] },
-        chartData: realChartData, // ✅ SOLO DATOS REALES, NO FICTICIOS
+        chartData: realChartData,
         pieData
       };
 
       setStats(finalStats);
       setLastUpdate(formatDateTime(new Date().toISOString()));
-      
-      console.log('✅ ===== DASHBOARD ENTERPRISE CON DATOS REALES CARGADO =====');
-      console.log('📊 Resumen de datos históricos:', {
-        dias_con_datos: realChartData.filter(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0).length,
-        dias_sin_datos: realChartData.filter(d => d.sales === 0 && d.memberships === 0 && d.layaways === 0).length,
-        total_dias: realChartData.length
-      });
-      console.log('💰 Flujo de efectivo:', {
-        efectivo: formatPrice(finalStats.cashFlow.efectivo),
-        transferencia: formatPrice(finalStats.cashFlow.transferencia),
-        debito: formatPrice(finalStats.cashFlow.debito),
-        credito: formatPrice(finalStats.cashFlow.credito),
-        total: formatPrice(finalStats.todayBalance)
-      });
 
     } catch (err: any) {
-      console.error('💥 ===== ERROR CARGANDO DASHBOARD =====', err);
       setError(`Error cargando estadísticas: ${err.message}`);
     } finally {
       setLoading(false);
@@ -711,11 +631,10 @@ export default function AdminDashboardPage() {
   }, [loadDashboardStats]);
 
   useEffect(() => {
-    console.log('🚀 ===== COMPONENTE DASHBOARD MONTADO =====');
     loadDashboardStats();
   }, [loadDashboardStats]);
 
-  // ✅ COMPONENTE DE MÉTRICA ENTERPRISE
+  // ✅ COMPONENTE DE MÉTRICA ENTERPRISE RESPONSIVO
   const MetricCard = ({ 
     title, 
     value, 
@@ -744,6 +663,7 @@ export default function AdminDashboardPage() {
         cursor: onClick ? 'pointer' : 'default',
         border: `1px solid ${color}40`,
         boxShadow: `0 8px 32px ${color}20`,
+        minHeight: { xs: '180px', sm: '200px', md: '220px' },
         '&:hover': { 
           boxShadow: `0 16px 48px ${color}40`,
           border: `1px solid ${color}60`
@@ -760,16 +680,16 @@ export default function AdminDashboardPage() {
       }}
       onClick={onClick}
       >
-        <CardContent sx={{ p: 3 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Avatar sx={{ 
               bgcolor: `${darkProTokens.textPrimary}15`, 
-              width: 64, 
-              height: 64,
+              width: { xs: 48, sm: 56, md: 64 }, 
+              height: { xs: 48, sm: 56, md: 64 },
               border: `2px solid ${darkProTokens.textPrimary}20`
             }}>
               {React.cloneElement(icon as React.ReactElement, { 
-                sx: { fontSize: 32, color: darkProTokens.textPrimary }
+                sx: { fontSize: { xs: 24, sm: 28, md: 32 }, color: darkProTokens.textPrimary }
               })}
             </Avatar>
           </Box>
@@ -777,6 +697,7 @@ export default function AdminDashboardPage() {
           <Typography variant="h3" sx={{ 
             fontWeight: 800, 
             mb: 1,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
             background: `linear-gradient(45deg, ${darkProTokens.textPrimary}, ${darkProTokens.primary})`,
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
@@ -788,6 +709,7 @@ export default function AdminDashboardPage() {
           <Typography variant="h6" sx={{ 
             opacity: 0.9, 
             fontWeight: 600,
+            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' },
             textShadow: `0 2px 4px ${color}40`
           }}>
             {title}
@@ -797,7 +719,7 @@ export default function AdminDashboardPage() {
             <Typography variant="body2" sx={{ 
               opacity: 0.7, 
               mt: 1,
-              fontSize: '0.85rem'
+              fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }
             }}>
               {subtitle}
             </Typography>
@@ -847,13 +769,13 @@ export default function AdminDashboardPage() {
             mb: 2,
             textShadow: `0 0 20px ${darkProTokens.primary}40`
           }}>
-            Enterprise Dashboard
+            Dashboard MUP
           </Typography>
           <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
-            Cargando análisis con datos reales del gimnasio...
+            Cargando análisis avanzado del gimnasio...
           </Typography>
           <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
-            📅 Solo datos reales para: {formatDateLocal(selectedDate)}
+            📅 Consultando datos para: {formatDateLocal(selectedDate)}
           </Typography>
           
           <LinearProgress sx={{
@@ -876,7 +798,7 @@ export default function AdminDashboardPage() {
 
   return (
     <Box sx={{ 
-      p: 3,
+      p: { xs: 2, sm: 3 },
       background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
       minHeight: '100vh',
       color: darkProTokens.textPrimary
@@ -903,14 +825,14 @@ export default function AdminDashboardPage() {
         </Alert>
       </Snackbar>
 
-      {/* HEADER ENTERPRISE */}
+      {/* HEADER ENTERPRISE RESPONSIVO */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
         <Paper sx={{
-          p: 4,
+          p: { xs: 3, sm: 4 },
           mb: 4,
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `1px solid ${darkProTokens.grayDark}`,
@@ -936,7 +858,7 @@ export default function AdminDashboardPage() {
             flexWrap: 'wrap',
             gap: 2
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, sm: 3 } }}>
               <motion.div
                 animate={{ 
                   scale: [1, 1.05, 1],
@@ -954,11 +876,11 @@ export default function AdminDashboardPage() {
               >
                 <Avatar sx={{ 
                   bgcolor: darkProTokens.primary, 
-                  width: 90, 
-                  height: 90,
+                  width: { xs: 60, sm: 80, md: 90 }, 
+                  height: { xs: 60, sm: 80, md: 90 },
                   border: `3px solid ${darkProTokens.primary}40`
                 }}>
-                  <AssessmentIcon sx={{ fontSize: 45 }} />
+                  <AssessmentIcon sx={{ fontSize: { xs: 30, sm: 40, md: 45 } }} />
                 </Avatar>
               </motion.div>
               
@@ -968,17 +890,26 @@ export default function AdminDashboardPage() {
                   fontWeight: 800,
                   textShadow: `0 0 20px ${darkProTokens.primary}40`,
                   mb: 1,
+                  fontSize: { xs: '1.8rem', sm: '2.5rem', md: '3rem' },
                   background: `linear-gradient(45deg, ${darkProTokens.primary}, ${darkProTokens.success})`,
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
-                  Enterprise Dashboard
+                  Dashboard MUP
                 </Typography>
-                <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-                  🚀 MuscleUp Gym - Solo Datos Reales
+                <Typography variant="h6" sx={{ 
+                  color: darkProTokens.textSecondary, 
+                  mb: 1,
+                  fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
+                }}>
+                  🚀 MuscleUp Gym - Business Intelligence
                 </Typography>
-                <Typography variant="body1" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                <Typography variant="body1" sx={{ 
+                  color: darkProTokens.info, 
+                  fontWeight: 600,
+                  fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
+                }}>
                   📅 {formatDateLocal(selectedDate)} • ⏰ {currentMexicoTime}
                 </Typography>
                 {lastUpdate && (
@@ -986,7 +917,8 @@ export default function AdminDashboardPage() {
                     <ScheduleIcon sx={{ fontSize: 16, color: darkProTokens.success }} />
                     <Typography variant="caption" sx={{ 
                       color: darkProTokens.success,
-                      fontWeight: 600
+                      fontWeight: 600,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
                     }}>
                       Actualizado: {lastUpdate}
                     </Typography>
@@ -995,17 +927,17 @@ export default function AdminDashboardPage() {
               </Box>
             </Box>
             
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
               <Chip
-                icon={<CheckCircleIcon />}
-                label="Solo Datos Reales"
+                icon={<SpeedIcon />}
+                label="Real Time"
                 size="medium"
                 sx={{
                   bgcolor: `${darkProTokens.success}20`,
                   color: darkProTokens.success,
                   border: `1px solid ${darkProTokens.success}40`,
                   fontWeight: 700,
-                  fontSize: '0.9rem'
+                  fontSize: { xs: '0.7rem', sm: '0.9rem' }
                 }}
               />
               
@@ -1018,9 +950,10 @@ export default function AdminDashboardPage() {
                 sx={{ 
                   background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
                   fontWeight: 700,
-                  px: 4,
-                  py: 1.5,
+                  px: { xs: 3, sm: 4 },
+                  py: { xs: 1, sm: 1.5 },
                   borderRadius: 3,
+                  fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
                   boxShadow: `0 8px 32px ${darkProTokens.info}30`,
                   '&:hover': {
                     transform: 'translateY(-3px)',
@@ -1034,17 +967,19 @@ export default function AdminDashboardPage() {
             </Box>
           </Box>
 
-          {/* RESUMEN EJECUTIVO ENTERPRISE */}
+          {/* RESUMEN EJECUTIVO ENTERPRISE RESPONSIVO */}
           <Box sx={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            p: 4,
+            p: { xs: 3, sm: 4 },
             background: `linear-gradient(135deg, ${darkProTokens.success}15, ${darkProTokens.primary}10)`,
             borderRadius: 3,
             border: `1px solid ${darkProTokens.success}30`,
             backdropFilter: 'blur(10px)',
             position: 'relative',
+            flexWrap: 'wrap',
+            gap: { xs: 3, sm: 2 },
             '&::before': {
               content: '""',
               position: 'absolute',
@@ -1055,17 +990,19 @@ export default function AdminDashboardPage() {
               background: `linear-gradient(90deg, ${darkProTokens.success}, ${darkProTokens.primary})`
             }
           }}>
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', minWidth: { xs: '45%', sm: 'auto' } }}>
               <Typography variant="h3" sx={{ 
                 color: darkProTokens.success, 
                 fontWeight: 800,
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' },
                 textShadow: `0 0 10px ${darkProTokens.success}40`
               }}>
                 {stats.clientUsers}
               </Typography>
               <Typography variant="body1" sx={{ 
                 color: darkProTokens.textSecondary,
-                fontWeight: 600
+                fontWeight: 600,
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
               }}>
                 👥 Clientes Activos
               </Typography>
@@ -1073,20 +1010,23 @@ export default function AdminDashboardPage() {
             
             <Divider orientation="vertical" flexItem sx={{ 
               borderColor: `${darkProTokens.primary}40`,
-              borderWidth: '1px'
+              borderWidth: '1px',
+              display: { xs: 'none', sm: 'block' }
             }} />
             
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', minWidth: { xs: '45%', sm: 'auto' } }}>
               <Typography variant="h3" sx={{ 
                 color: darkProTokens.primary, 
                 fontWeight: 800,
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' },
                 textShadow: `0 0 10px ${darkProTokens.primary}40`
               }}>
                 {stats.activeMemberships}
               </Typography>
               <Typography variant="body1" sx={{ 
                 color: darkProTokens.textSecondary,
-                fontWeight: 600
+                fontWeight: 600,
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
               }}>
                 🏋️ Membresías Activas
               </Typography>
@@ -1094,20 +1034,23 @@ export default function AdminDashboardPage() {
             
             <Divider orientation="vertical" flexItem sx={{ 
               borderColor: `${darkProTokens.primary}40`,
-              borderWidth: '1px'
+              borderWidth: '1px',
+              display: { xs: 'none', sm: 'block' }
             }} />
             
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', minWidth: { xs: '45%', sm: 'auto' } }}>
               <Typography variant="h3" sx={{ 
                 color: darkProTokens.info, 
                 fontWeight: 800,
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' },
                 textShadow: `0 0 10px ${darkProTokens.info}40`
               }}>
                 {formatPrice(stats.todayBalance)}
               </Typography>
               <Typography variant="body1" sx={{ 
                 color: darkProTokens.textSecondary,
-                fontWeight: 600
+                fontWeight: 600,
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
               }}>
                 💰 Ingresos del Día
               </Typography>
@@ -1115,13 +1058,15 @@ export default function AdminDashboardPage() {
             
             <Divider orientation="vertical" flexItem sx={{ 
               borderColor: `${darkProTokens.primary}40`,
-              borderWidth: '1px'
+              borderWidth: '1px',
+              display: { xs: 'none', sm: 'block' }
             }} />
             
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', minWidth: { xs: '45%', sm: 'auto' } }}>
               <Typography variant="h3" sx={{ 
                 color: stats.todayBalance >= 0 ? darkProTokens.success : darkProTokens.error, 
                 fontWeight: 800,
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' },
                 textShadow: stats.todayBalance >= 0 ? 
                   `0 0 10px ${darkProTokens.success}40` : 
                   `0 0 10px ${darkProTokens.error}40`
@@ -1130,30 +1075,24 @@ export default function AdminDashboardPage() {
               </Typography>
               <Typography variant="body1" sx={{ 
                 color: darkProTokens.textSecondary,
-                fontWeight: 600
+                fontWeight: 600,
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
               }}>
                 📈 Balance Neto
-              </Typography>
-              <Typography variant="caption" sx={{ 
-                color: darkProTokens.warning,
-                fontWeight: 500,
-                fontStyle: 'italic'
-              }}>
-                ✅ API Cortes Real
               </Typography>
             </Box>
           </Box>
         </Paper>
       </motion.div>
 
-      {/* MÉTRICAS PRINCIPALES ENTERPRISE */}
+      {/* MÉTRICAS PRINCIPALES ENTERPRISE RESPONSIVAS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
       >
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
+          <Grid xs={12} sm={6} lg={3}>
             <MetricCard
               title="Usuarios Totales"
               value={stats.totalUsers}
@@ -1164,7 +1103,7 @@ export default function AdminDashboardPage() {
             />
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <Grid xs={12} sm={6} lg={3}>
             <MetricCard
               title="Membresías Activas"
               value={stats.activeMemberships}
@@ -1175,7 +1114,7 @@ export default function AdminDashboardPage() {
             />
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <Grid xs={12} sm={6} lg={3}>
             <MetricCard
               title="Ventas del Día"
               value={formatPrice(stats.todaySales)}
@@ -1186,7 +1125,7 @@ export default function AdminDashboardPage() {
             />
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <Grid xs={12} sm={6} lg={3}>
             <MetricCard
               title="Apartados Activos"
               value={stats.activeLayaways}
@@ -1199,10 +1138,10 @@ export default function AdminDashboardPage() {
         </Grid>
       </motion.div>
 
-      {/* GRÁFICOS ENTERPRISE CON RECHARTS - SOLO DATOS REALES */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* GRÁFICO DE TENDENCIAS - SOLO DATOS REALES */}
-        <Grid size={{ xs: 12, lg: 8 }}>
+      {/* GRÁFICOS ENTERPRISE CON RECHARTS RESPONSIVOS */}
+      <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
+        {/* GRÁFICO DE TENDENCIAS RESPONSIVO */}
+        <Grid xs={12} lg={8}>
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1214,14 +1153,15 @@ export default function AdminDashboardPage() {
               borderRadius: 4,
               overflow: 'hidden'
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
                   <TimelineIcon sx={{ color: darkProTokens.primary, fontSize: 28 }} />
                   <Typography variant="h6" sx={{ 
                     color: darkProTokens.primary, 
-                    fontWeight: 700
+                    fontWeight: 700,
+                    fontSize: { xs: '1rem', sm: '1.25rem' }
                   }}>
-                    📈 Tendencias Reales (Últimos 7 días)
+                    📈 Tendencias (Últimos 7 días)
                   </Typography>
                   <Chip
                     label={`${stats.chartData.filter(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0).length} días con datos`}
@@ -1229,12 +1169,13 @@ export default function AdminDashboardPage() {
                     sx={{
                       bgcolor: `${darkProTokens.success}20`,
                       color: darkProTokens.success,
-                      fontWeight: 600
+                      fontWeight: 600,
+                      fontSize: { xs: '0.6rem', sm: '0.75rem' }
                     }}
                   />
                 </Box>
                 
-                <Box sx={{ height: 350, width: '100%' }}>
+                <Box sx={{ height: { xs: 250, sm: 300, md: 350 }, width: '100%' }}>
                   {stats.chartData.some(d => d.sales > 0 || d.memberships > 0 || d.layaways > 0) ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={stats.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -1299,11 +1240,11 @@ export default function AdminDashboardPage() {
                       flexDirection: 'column',
                       gap: 2
                     }}>
-                      <TimelineIcon sx={{ fontSize: 80, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                      <TimelineIcon sx={{ fontSize: { xs: 60, sm: 80 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                         Sin datos históricos disponibles
                       </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, textAlign: 'center' }}>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, textAlign: 'center', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                         Los gráficos aparecerán cuando haya datos reales<br />
                         de días anteriores en la base de datos
                       </Typography>
@@ -1315,8 +1256,8 @@ export default function AdminDashboardPage() {
           </motion.div>
         </Grid>
 
-        {/* GRÁFICO DE PIE - MÉTODOS DE PAGO */}
-        <Grid size={{ xs: 12, lg: 4 }}>
+        {/* GRÁFICO DE PIE - MÉTODOS DE PAGO RESPONSIVO */}
+        <Grid xs={12} lg={4}>
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1328,19 +1269,20 @@ export default function AdminDashboardPage() {
               borderRadius: 4,
               height: '100%'
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
                   <PieChartIcon sx={{ color: darkProTokens.info, fontSize: 28 }} />
                   <Typography variant="h6" sx={{ 
                     color: darkProTokens.info, 
-                    fontWeight: 700
+                    fontWeight: 700,
+                    fontSize: { xs: '1rem', sm: '1.25rem' }
                   }}>
                     💳 Métodos de Pago Hoy
                   </Typography>
                 </Box>
                 
                 {stats.pieData.length > 0 ? (
-                  <Box sx={{ height: 280, width: '100%' }}>
+                  <Box sx={{ height: { xs: 220, sm: 250, md: 280 }, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -1373,18 +1315,18 @@ export default function AdminDashboardPage() {
                   </Box>
                 ) : (
                   <Box sx={{ 
-                    height: 280, 
+                    height: { xs: 220, sm: 250, md: 280 }, 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
                     flexDirection: 'column',
                     gap: 2
                   }}>
-                    <PaymentIcon sx={{ fontSize: 60, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                    <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
+                    <PaymentIcon sx={{ fontSize: { xs: 40, sm: 60 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+                    <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
                       No hay pagos registrados hoy
                     </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                       El gráfico aparecerá cuando se registren ventas
                     </Typography>
                   </Box>
@@ -1395,7 +1337,7 @@ export default function AdminDashboardPage() {
         </Grid>
       </Grid>
 
-      {/* MÉTODOS DE PAGO DEL DÍA - CORREGIDO */}
+      {/* MÉTODOS DE PAGO DEL DÍA RESPONSIVOS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1407,24 +1349,25 @@ export default function AdminDashboardPage() {
           border: `1px solid ${darkProTokens.grayDark}`,
           borderRadius: 4
         }}>
-          <CardContent sx={{ p: 4 }}>
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Typography variant="h6" sx={{ 
               color: darkProTokens.primary, 
               mb: 3, 
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2
+              gap: 2,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
             }}>
               <PaymentIcon />
-              💰 Flujo de Efectivo del Día (Solo Datos Reales)
+              💰 Flujo de Efectivo del Día
             </Typography>
             
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 6, md: 3 }}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
+              <Grid xs={6} md={3}>
                 <motion.div whileHover={{ scale: 1.05 }}>
                   <Paper sx={{
-                    p: 3,
+                    p: { xs: 2, sm: 3 },
                     textAlign: 'center',
                     background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
                     color: darkProTokens.textPrimary,
@@ -1432,14 +1375,27 @@ export default function AdminDashboardPage() {
                     border: `1px solid ${darkProTokens.success}40`,
                     boxShadow: `0 8px 32px ${darkProTokens.success}20`
                   }}>
-                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                    <Typography variant="h4" sx={{ 
+                      fontWeight: 800, 
+                      mb: 1,
+                      fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                    }}>
                       {formatPrice(stats.cashFlow.efectivo)}
                     </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ 
+                      opacity: 0.9, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
                       💵 Efectivo
                     </Typography>
                     {dailyData && (
-                      <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
+                      <Typography variant="caption" sx={{ 
+                        opacity: 0.7, 
+                        display: 'block', 
+                        mt: 1,
+                        fontSize: { xs: '0.6rem', sm: '0.7rem' }
+                      }}>
                         POS: {formatPrice(dailyData.pos.efectivo)} | Membresías: {formatPrice(dailyData.memberships.efectivo)}
                       </Typography>
                     )}
@@ -1447,10 +1403,10 @@ export default function AdminDashboardPage() {
                 </motion.div>
               </Grid>
               
-              <Grid size={{ xs: 6, md: 3 }}>
+              <Grid xs={6} md={3}>
                 <motion.div whileHover={{ scale: 1.05 }}>
                   <Paper sx={{
-                    p: 3,
+                    p: { xs: 2, sm: 3 },
                     textAlign: 'center',
                     background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
                     color: darkProTokens.textPrimary,
@@ -1458,25 +1414,38 @@ export default function AdminDashboardPage() {
                     border: `1px solid ${darkProTokens.info}40`,
                     boxShadow: `0 8px 32px ${darkProTokens.info}20`
                   }}>
-                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                    <Typography variant="h4" sx={{ 
+                      fontWeight: 800, 
+                      mb: 1,
+                      fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                    }}>
                       {formatPrice(stats.cashFlow.transferencia)}
                     </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ 
+                      opacity: 0.9, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
                       🏦 Transferencia
                     </Typography>
                     {dailyData && (
-                      <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
+                      <Typography variant="caption" sx={{ 
+                        opacity: 0.7, 
+                        display: 'block', 
+                        mt: 1,
+                        fontSize: { xs: '0.6rem', sm: '0.7rem' }
+                      }}>
                         POS: {formatPrice(dailyData.pos.transferencia)} | Membresías: {formatPrice(dailyData.memberships.transferencia)}
                       </Typography>
-                                        )}
+                    )}
                   </Paper>
                 </motion.div>
               </Grid>
               
-              <Grid size={{ xs: 6, md: 3 }}>
+              <Grid xs={6} md={3}>
                 <motion.div whileHover={{ scale: 1.05 }}>
                   <Paper sx={{
-                    p: 3,
+                    p: { xs: 2, sm: 3 },
                     textAlign: 'center',
                     background: `linear-gradient(135deg, ${darkProTokens.roleTrainer}, #00695c)`,
                     color: darkProTokens.textPrimary,
@@ -1484,14 +1453,26 @@ export default function AdminDashboardPage() {
                     border: `1px solid ${darkProTokens.roleTrainer}40`,
                     boxShadow: `0 8px 32px ${darkProTokens.roleTrainer}20`
                   }}>
-                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                    <Typography variant="h4" sx={{ 
+                      fontWeight: 800, 
+                      mb: 1,
+                      fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                    }}>
                       {formatPrice(stats.cashFlow.debito)}
                     </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{                       opacity: 0.9, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
                       💳 Débito
                     </Typography>
                     {dailyData && (
-                      <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
+                      <Typography variant="caption" sx={{ 
+                        opacity: 0.7, 
+                        display: 'block', 
+                        mt: 1,
+                        fontSize: { xs: '0.6rem', sm: '0.7rem' }
+                      }}>
                         POS: {formatPrice(dailyData.pos.debito)} | Membresías: {formatPrice(dailyData.memberships.debito)}
                       </Typography>
                     )}
@@ -1499,10 +1480,10 @@ export default function AdminDashboardPage() {
                 </motion.div>
               </Grid>
               
-              <Grid size={{ xs: 6, md: 3 }}>
+              <Grid xs={6} md={3}>
                 <motion.div whileHover={{ scale: 1.05 }}>
                   <Paper sx={{
-                    p: 3,
+                    p: { xs: 2, sm: 3 },
                     textAlign: 'center',
                     background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
                     color: darkProTokens.background,
@@ -1510,14 +1491,27 @@ export default function AdminDashboardPage() {
                     border: `1px solid ${darkProTokens.warning}40`,
                     boxShadow: `0 8px 32px ${darkProTokens.warning}20`
                   }}>
-                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                    <Typography variant="h4" sx={{ 
+                      fontWeight: 800, 
+                      mb: 1,
+                      fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                    }}>
                       {formatPrice(stats.cashFlow.credito)}
                     </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ 
+                      opacity: 0.9, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
                       💳 Crédito
                     </Typography>
                     {dailyData && (
-                      <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
+                      <Typography variant="caption" sx={{ 
+                        opacity: 0.7, 
+                        display: 'block', 
+                        mt: 1,
+                        fontSize: { xs: '0.6rem', sm: '0.7rem' }
+                      }}>
                         POS: {formatPrice(dailyData.pos.credito)} | Membresías: {formatPrice(dailyData.memberships.credito)}
                       </Typography>
                     )}
@@ -1529,7 +1523,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* DESGLOSE DE INGRESOS DEL DÍA */}
+      {/* DESGLOSE DE INGRESOS DEL DÍA RESPONSIVO */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1541,23 +1535,24 @@ export default function AdminDashboardPage() {
           border: `1px solid ${darkProTokens.grayDark}`,
           borderRadius: 4
         }}>
-          <CardContent sx={{ p: 4 }}>
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Typography variant="h6" sx={{ 
               color: darkProTokens.success, 
               mb: 3, 
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2
+              gap: 2,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
             }}>
               <BarChartIcon />
-              📊 Desglose de Ingresos del Día (API Cortes)
+              📊 Desglose de Ingresos del Día
             </Typography>
             
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 4 }}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
+              <Grid xs={12} md={4}>
                 <Paper sx={{
-                  p: 3,
+                  p: { xs: 2, sm: 3 },
                   textAlign: 'center',
                   background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
                   border: `2px solid ${darkProTokens.info}40`,
@@ -1565,45 +1560,78 @@ export default function AdminDashboardPage() {
                 }}>
                   <Avatar sx={{ 
                     bgcolor: darkProTokens.info, 
-                    width: 56, 
-                    height: 56,
+                    width: { xs: 48, sm: 56 }, 
+                    height: { xs: 48, sm: 56 },
                     mx: 'auto',
                     mb: 2
                   }}>
                     <SalesIcon />
                   </Avatar>
-                  <Typography variant="h4" sx={{ color: darkProTokens.info, fontWeight: 800, mb: 1 }}>
+                  <Typography variant="h4" sx={{ 
+                    color: darkProTokens.info, 
+                    fontWeight: 800, 
+                    mb: 1,
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                  }}>
                     {formatPrice(stats.todaySales)}
                   </Typography>
-                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.textSecondary, 
+                    mb: 1,
+                    fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
+                  }}>
                     Ventas POS
                   </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                  <Typography variant="body2" sx={{ 
+                    color: darkProTokens.textDisabled,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }}>
                     {stats.todayTransactions} transacciones
                   </Typography>
                   {dailyData && (
                     <Stack spacing={1} sx={{ mt: 2 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Efectivo:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.primary, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.pos.efectivo)}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Transferencia:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.info, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.pos.transferencia)}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Tarjetas:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.warning, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.pos.debito + dailyData.pos.credito)}
                         </Typography>
                       </Box>
@@ -1612,9 +1640,9 @@ export default function AdminDashboardPage() {
                 </Paper>
               </Grid>
               
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid xs={12} md={4}>
                 <Paper sx={{
-                  p: 3,
+                  p: { xs: 2, sm: 3 },
                   textAlign: 'center',
                   background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
                   border: `2px solid ${darkProTokens.success}40`,
@@ -1622,45 +1650,78 @@ export default function AdminDashboardPage() {
                 }}>
                   <Avatar sx={{ 
                     bgcolor: darkProTokens.success, 
-                    width: 56, 
-                    height: 56,
+                    width: { xs: 48, sm: 56 }, 
+                    height: { xs: 48, sm: 56 },
                     mx: 'auto',
                     mb: 2
                   }}>
                     <FitnessCenterIcon />
                   </Avatar>
-                  <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 800, mb: 1 }}>
+                  <Typography variant="h4" sx={{ 
+                    color: darkProTokens.success, 
+                    fontWeight: 800, 
+                    mb: 1,
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                  }}>
                     {formatPrice(stats.todayMembershipRevenue)}
                   </Typography>
-                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.textSecondary, 
+                    mb: 1,
+                    fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
+                  }}>
                     Membresías
                   </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                  <Typography variant="body2" sx={{ 
+                    color: darkProTokens.textDisabled,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }}>
                     Solo ventas de hoy
                   </Typography>
                   {dailyData && (
                     <Stack spacing={1} sx={{ mt: 2 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Efectivo:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.primary, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.memberships.efectivo)}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Transferencia:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.info, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.memberships.transferencia)}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Tarjetas:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.warning, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.memberships.debito + dailyData.memberships.credito)}
                         </Typography>
                       </Box>
@@ -1669,9 +1730,9 @@ export default function AdminDashboardPage() {
                 </Paper>
               </Grid>
               
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid xs={12} md={4}>
                 <Paper sx={{
-                  p: 3,
+                  p: { xs: 2, sm: 3 },
                   textAlign: 'center',
                   background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
                   border: `2px solid ${darkProTokens.warning}40`,
@@ -1679,45 +1740,78 @@ export default function AdminDashboardPage() {
                 }}>
                   <Avatar sx={{ 
                     bgcolor: darkProTokens.warning, 
-                    width: 56, 
-                    height: 56,
+                    width: { xs: 48, sm: 56 }, 
+                    height: { xs: 48, sm: 56 },
                     mx: 'auto',
                     mb: 2
                   }}>
                     <LayawayIcon />
                   </Avatar>
-                  <Typography variant="h4" sx={{ color: darkProTokens.warning, fontWeight: 800, mb: 1 }}>
+                  <Typography variant="h4" sx={{ 
+                    color: darkProTokens.warning, 
+                    fontWeight: 800, 
+                    mb: 1,
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                  }}>
                     {formatPrice(stats.todayLayawayPayments)}
                   </Typography>
-                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                  <Typography variant="h6" sx={{ 
+                    color: darkProTokens.textSecondary, 
+                    mb: 1,
+                    fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
+                  }}>
                     Abonos
                   </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                  <Typography variant="body2" sx={{ 
+                    color: darkProTokens.textDisabled,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }}>
                     Apartados pagados hoy
                   </Typography>
                   {dailyData && (
                     <Stack spacing={1} sx={{ mt: 2 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Efectivo:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.primary, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.abonos.efectivo)}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Transferencia:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.info, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.abonos.transferencia)}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.textSecondary,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           Tarjetas:
                         </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ 
+                          color: darkProTokens.warning, 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.6rem', sm: '0.75rem' }
+                        }}>
                           {formatPrice(dailyData.abonos.debito + dailyData.abonos.credito)}
                         </Typography>
                       </Box>
@@ -1733,39 +1827,60 @@ export default function AdminDashboardPage() {
               <Typography variant="h3" sx={{ 
                 color: stats.todayBalance >= 0 ? darkProTokens.success : darkProTokens.error, 
                 fontWeight: 800,
-                mb: 1
+                mb: 1,
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
               }}>
                 {formatPrice(stats.todayBalance)}
               </Typography>
-              <Typography variant="h5" sx={{ color: darkProTokens.textSecondary, fontWeight: 600 }}>
+              <Typography variant="h5" sx={{ 
+                color: darkProTokens.textSecondary, 
+                fontWeight: 600,
+                fontSize: { xs: '1.2rem', sm: '1.5rem' }
+              }}>
                 💎 Total de Ingresos del Día
               </Typography>
               <Typography variant="body2" sx={{ 
                 color: darkProTokens.warning,
                 fontWeight: 500,
-                mt: 1
+                mt: 1,
+                fontSize: { xs: '0.8rem', sm: '0.875rem' }
               }}>
-                ⚡ Datos reales: {formatDateLocal(selectedDate)}
+                ⚡ Datos en tiempo real para {formatDateLocal(selectedDate)}
               </Typography>
               {dailyData && (
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap' }}>
                   <Chip
                     icon={<CheckCircleIcon />}
                     label={`${dailyData.totals.transactions} transacciones`}
                     size="small"
-                    sx={{ bgcolor: `${darkProTokens.success}20`, color: darkProTokens.success, fontWeight: 600 }}
+                    sx={{ 
+                      bgcolor: `${darkProTokens.success}20`, 
+                      color: darkProTokens.success, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                    }}
                   />
                   <Chip
                     icon={<WarningIcon />}
                     label={`${formatPrice(dailyData.totals.commissions)} comisiones`}
                     size="small"
-                    sx={{ bgcolor: `${darkProTokens.warning}20`, color: darkProTokens.warning, fontWeight: 600 }}
+                    sx={{ 
+                      bgcolor: `${darkProTokens.warning}20`, 
+                      color: darkProTokens.warning, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                    }}
                   />
                   <Chip
                     icon={<MoneyIcon />}
                     label={`${formatPrice(dailyData.totals.net_amount)} neto`}
                     size="small"
-                    sx={{ bgcolor: `${darkProTokens.info}20`, color: darkProTokens.info, fontWeight: 600 }}
+                    sx={{ 
+                      bgcolor: `${darkProTokens.info}20`, 
+                      color: darkProTokens.info, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                    }}
                   />
                 </Box>
               )}
@@ -1774,7 +1889,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* ACCESOS RÁPIDOS ENTERPRISE */}
+      {/* ACCESOS RÁPIDOS ENTERPRISE RESPONSIVOS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1786,21 +1901,22 @@ export default function AdminDashboardPage() {
           border: `1px solid ${darkProTokens.grayDark}`,
           borderRadius: 4
         }}>
-          <CardContent sx={{ p: 4 }}>
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Typography variant="h6" sx={{ 
               color: darkProTokens.primary, 
               mb: 3, 
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2
+              gap: 2,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
             }}>
               <InsightsIcon />
-              ⚡ Centro de Comando Enterprise
+              ⚡ Centro de Comando
             </Typography>
             
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
+              <Grid xs={12} sm={6} md={3}>
                 <motion.div whileHover={{ scale: 1.02 }}>
                   <Button
                     fullWidth
@@ -1811,10 +1927,11 @@ export default function AdminDashboardPage() {
                     sx={{
                       background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
                       justifyContent: 'flex-start',
-                      py: 2,
+                      py: { xs: 1.5, sm: 2 },
                       px: 3,
                       borderRadius: 3,
                       fontWeight: 700,
+                      fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
                       boxShadow: `0 8px 32px ${darkProTokens.success}30`,
                       '&:hover': {
                         transform: 'translateY(-2px)',
@@ -1827,7 +1944,7 @@ export default function AdminDashboardPage() {
                 </motion.div>
               </Grid>
               
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Grid xs={12} sm={6} md={3}>
                 <motion.div whileHover={{ scale: 1.02 }}>
                   <Button
                     fullWidth
@@ -1839,10 +1956,11 @@ export default function AdminDashboardPage() {
                       color: darkProTokens.info,
                       borderColor: `${darkProTokens.info}60`,
                       justifyContent: 'flex-start',
-                      py: 2,
+                      py: { xs: 1.5, sm: 2 },
                       px: 3,
                       borderRadius: 3,
                       fontWeight: 600,
+                      fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
                       borderWidth: '2px',
                       '&:hover': {
                         borderColor: darkProTokens.info,
@@ -1856,7 +1974,7 @@ export default function AdminDashboardPage() {
                 </motion.div>
               </Grid>
               
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Grid xs={12} sm={6} md={3}>
                 <motion.div whileHover={{ scale: 1.02 }}>
                   <Button
                     fullWidth
@@ -1868,10 +1986,11 @@ export default function AdminDashboardPage() {
                       color: darkProTokens.warning,
                       borderColor: `${darkProTokens.warning}60`,
                       justifyContent: 'flex-start',
-                      py: 2,
+                      py: { xs: 1.5, sm: 2 },
                       px: 3,
                       borderRadius: 3,
                       fontWeight: 600,
+                      fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
                       borderWidth: '2px',
                       '&:hover': {
                         borderColor: darkProTokens.warning,
@@ -1885,7 +2004,7 @@ export default function AdminDashboardPage() {
                 </motion.div>
               </Grid>
               
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Grid xs={12} sm={6} md={3}>
                 <motion.div whileHover={{ scale: 1.02 }}>
                   <Button
                     fullWidth
@@ -1897,10 +2016,11 @@ export default function AdminDashboardPage() {
                       color: darkProTokens.roleModerator,
                       borderColor: `${darkProTokens.roleModerator}60`,
                       justifyContent: 'flex-start',
-                      py: 2,
+                      py: { xs: 1.5, sm: 2 },
                       px: 3,
                       borderRadius: 3,
                       fontWeight: 600,
+                      fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
                       borderWidth: '2px',
                       '&:hover': {
                         borderColor: darkProTokens.roleModerator,
@@ -1918,29 +2038,30 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-      {/* INFORMACIÓN ADICIONAL */}
+      {/* INFORMACIÓN ADICIONAL RESPONSIVA */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1.4 }}
       >
-        <Grid container spacing={3}>
-          {/* INFORMACIÓN DE USUARIOS */}
-          <Grid size={{ xs: 12, md: 6 }}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
+          {/* INFORMACIÓN DE USUARIOS RESPONSIVA */}
+          <Grid xs={12} md={6}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
               border: `1px solid ${darkProTokens.grayDark}`,
               borderRadius: 4,
               height: '100%'
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
                 <Typography variant="h6" sx={{ 
                   color: darkProTokens.roleStaff, 
                   mb: 3, 
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 2
+                  gap: 2,
+                  fontSize: { xs: '1rem', sm: '1.25rem' }
                 }}>
                   <PeopleIcon />
                   👥 Información de Usuarios
@@ -1948,37 +2069,69 @@ export default function AdminDashboardPage() {
                 
                 <Stack spacing={3}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }}>
                       Total de Usuarios:
                     </Typography>
-                    <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.primary, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       {stats.totalUsers}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }}>
                       Clientes Activos:
                     </Typography>
-                    <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.success, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       {stats.clientUsers}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }}>
                       Nuevos Hoy:
                     </Typography>
-                    <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       +{stats.newUsersToday}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }}>
                       Nuevos Este Mes:
                     </Typography>
-                    <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.warning, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       +{stats.newUsersMonth}
                     </Typography>
                   </Box>
@@ -1986,7 +2139,11 @@ export default function AdminDashboardPage() {
                   <Divider sx={{ borderColor: darkProTokens.grayMedium }} />
                   
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="body2" sx={{ 
+                      color: darkProTokens.textSecondary, 
+                      mb: 2,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                    }}>
                       Distribución por Género:
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -1997,7 +2154,8 @@ export default function AdminDashboardPage() {
                         sx={{ 
                           bgcolor: `${darkProTokens.info}20`, 
                           color: darkProTokens.info,
-                          fontWeight: 600
+                          fontWeight: 600,
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
                         }}
                       />
                       <Chip 
@@ -2007,7 +2165,8 @@ export default function AdminDashboardPage() {
                         sx={{ 
                           bgcolor: `${darkProTokens.roleModerator}20`, 
                           color: darkProTokens.roleModerator,
-                          fontWeight: 600
+                          fontWeight: 600,
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
                         }}
                       />
                       <Chip 
@@ -2016,7 +2175,8 @@ export default function AdminDashboardPage() {
                         sx={{ 
                           bgcolor: `${darkProTokens.textSecondary}20`, 
                           color: darkProTokens.textSecondary,
-                          fontWeight: 600
+                          fontWeight: 600,
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
                         }}
                       />
                     </Box>
@@ -2026,22 +2186,23 @@ export default function AdminDashboardPage() {
             </Card>
           </Grid>
 
-          {/* INFORMACIÓN DE MEMBRESÍAS */}
-          <Grid size={{ xs: 12, md: 6 }}>
+          {/* INFORMACIÓN DE MEMBRESÍAS RESPONSIVA */}
+          <Grid xs={12} md={6}>
             <Card sx={{
               background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
               border: `1px solid ${darkProTokens.grayDark}`,
               borderRadius: 4,
               height: '100%'
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
                 <Typography variant="h6" sx={{ 
                   color: darkProTokens.success, 
                   mb: 3, 
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 2
+                  gap: 2,
+                  fontSize: { xs: '1rem', sm: '1.25rem' }
                 }}>
                   <FitnessCenterIcon />
                   🏋️ Estado de Membresías
@@ -2049,37 +2210,69 @@ export default function AdminDashboardPage() {
                 
                 <Stack spacing={3}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }}>
                       Activas:
                     </Typography>
-                    <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.success, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       {stats.activeMemberships}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }}>
                       Por Vencer (7 días):
                     </Typography>
-                    <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.warning, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       {stats.expiringMemberships}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }}>
                       Vencidas:
                     </Typography>
-                    <Typography variant="h6" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.error, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       {stats.expiredMemberships}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ 
+                      color: darkProTokens.textPrimary, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }}>
                       Congeladas:
                     </Typography>
-                    <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ 
+                      color: darkProTokens.info, 
+                      fontWeight: 700,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       {stats.frozenMemberships}
                     </Typography>
                   </Box>
@@ -2087,22 +2280,40 @@ export default function AdminDashboardPage() {
                   <Divider sx={{ borderColor: darkProTokens.grayMedium }} />
                   
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                    <Typography variant="body2" sx={{ 
+                      color: darkProTokens.textSecondary, 
+                      mb: 1,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                    }}>
                       Ingresos por Membresías:
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                      <Typography variant="body2" sx={{ 
+                        color: darkProTokens.textPrimary,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                      }}>
                         Total Histórico:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                      <Typography variant="body1" sx={{ 
+                        color: darkProTokens.primary, 
+                        fontWeight: 700,
+                        fontSize: { xs: '0.9rem', sm: '1rem' }
+                      }}>
                         {formatPrice(stats.membershipRevenue)}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                      <Typography variant="body2" sx={{ 
+                        color: darkProTokens.textPrimary,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                      }}>
                         Solo Hoy:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
+                      <Typography variant="body1" sx={{ 
+                        color: darkProTokens.success, 
+                        fontWeight: 700,
+                        fontSize: { xs: '0.9rem', sm: '1rem' }
+                      }}>
                         {formatPrice(stats.todayMembershipRevenue)}
                       </Typography>
                     </Box>
@@ -2112,34 +2323,6 @@ export default function AdminDashboardPage() {
             </Card>
           </Grid>
         </Grid>
-      </motion.div>
-
-      {/* FOOTER INFORMATIVO */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 1.6 }}
-      >
-        <Box sx={{ 
-          mt: 4, 
-          p: 3, 
-          textAlign: 'center',
-          background: `linear-gradient(135deg, ${darkProTokens.grayDark}20, ${darkProTokens.grayMedium}10)`,
-          borderRadius: 3,
-          border: `1px solid ${darkProTokens.grayDark}40`
-        }}>
-          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
-            🚀 Dashboard Enterprise MuscleUp Gym • Solo Datos Reales
-          </Typography>
-          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-            📊 Gráficos Recharts • 💰 API Cortes • ⏰ Tiempo Real México • 🔄 Auto-Refresh
-          </Typography>
-          {dailyData && (
-            <Typography variant="caption" sx={{ color: darkProTokens.success, display: 'block', mt: 1 }}>
-              ✅ Conectado a API de cortes • Datos sincronizados • {dailyData.timezone_info?.note}
-            </Typography>
-          )}
-        </Box>
       </motion.div>
 
       {/* ESTILOS CSS ENTERPRISE */}
