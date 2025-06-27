@@ -112,12 +112,12 @@ export async function GET(request: NextRequest) {
     };
 
     try {
-      const { data: statsData, error: statsError } = await supabase
-        .from('cash_cuts')
-        .select('grand_total, is_manual');
+    const { data: statsData, error: statsError } = await supabase
+  .from('cash_cuts')
+  .select('final_balance, is_manual'); // Cambiado aquí
 
-      if (!statsError && statsData) {
-        const totalAmount = statsData.reduce((sum, cut) => sum + parseFloat(cut.grand_total || '0'), 0);
+if (!statsError && statsData) {
+  const totalAmount = statsData.reduce((sum, cut) => sum + parseFloat(cut.final_balance || '0'), 0); /
         stats = {
           totalCuts: statsData.length,
           totalAmount: totalAmount,
