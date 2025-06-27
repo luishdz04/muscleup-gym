@@ -1,31 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-// ✅ LÓGICA DE dateHelpers APLICADA DIRECTAMENTE (IGUAL QUE DAILY-DATA)
-function getMexicoMonthRangeLocal(monthString: string) {
-  console.log('📅 Calculando rango mensual para México:', monthString);
+// ✅ FUNCIÓN PARA TIMESTAMP MÉXICO
+function toMexicoTimestamp(date: Date): string {
+  const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+  const year = mexicoTime.getFullYear();
+  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoTime.getDate()).padStart(2, '0');
+  const hours = String(mexicoTime.getHours()).padStart(2, '0');
+  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
+  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
   
-  const [year, monthNum] = monthString.split('-').map(Number);
-  
-  // Primer día del mes en México (00:00:00)
-  const startOfMonthMexico = new Date(year, monthNum - 1, 1, 0, 0, 0, 0);
-  
-  // Último día del mes en México (23:59:59.999)
-  const endOfMonthMexico = new Date(year, monthNum, 0, 23, 59, 59, 999);
-  
-  // Ajustar para zona horaria México (UTC-6)
-  const startISO = new Date(startOfMonthMexico.getTime() + (6 * 60 * 60 * 1000)).toISOString();
-  const endISO = new Date(endOfMonthMexico.getTime() + (6 * 60 * 60 * 1000)).toISOString();
-  
-  console.log('⏰ Rango mensual calculado directamente:', {
-    mes_input: monthString,
-    inicio_mexico: startOfMonthMexico.toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
-    fin_mexico: endOfMonthMexico.toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
-    inicio_utc: startISO,
-    fin_utc: endISO
-  });
-  
-  return { startISO, endISO };
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
 }
 
 export async function GET(request: NextRequest) {
@@ -33,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month'); // formato: YYYY-MM
 
-    console.log('🚀 API monthly-data iniciada (FORMATO CONSISTENTE)');
+    console.log('🚀 API monthly-data iniciada (LEYENDO DE CASH_CUTS)');
     console.log('📅 Mes recibido:', month);
 
     if (!month) {
@@ -53,307 +39,235 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Consultando datos mensuales para México:', month);
-
     const supabase = createServerSupabaseClient();
 
-    // ✅ USAR FUNCIÓN LOCAL PARA RANGO MENSUAL (IGUAL QUE DAILY-DATA)
-    const { startISO, endISO } = getMexicoMonthRangeLocal(month);
+    // ✅ ESTRATEGIA CORREGIDA: LEER DIRECTAMENTE DE CASH_CUTS
+    console.log('🔍 Buscando cortes existentes en cash_cuts para el mes:', month);
 
-    console.log('⏰ Rango mensual México calculado (función local):', {
-      mes_mexico: month,
-      inicio_utc: startISO,
-      fin_utc: endISO,
-      note: 'Calculado directamente sin importaciones - CONSISTENTE con daily-data'
+    // Calcular primer y último día del mes para el filtro
+    const [year, monthNum] = month.split('-').map(Number);
+    const firstDay = `${year}-${monthNum.toString().padStart(2, '0')}-01`;
+    const lastDay = new Date(year, monthNum, 0).getDate();
+    const lastDayString = `${year}-${monthNum.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+
+    console.log('📅 Rango de fechas para el mes:', {
+      mes: month,
+      primer_dia: firstDay,
+      ultimo_dia: lastDayString
     });
 
-    // 🏪 1. VENTAS POS DEL MES (IGUAL ESTRUCTURA QUE DAILY-DATA)
-    console.log('🛒 Consultando ventas POS del mes...');
-    const { data: salesData, error: salesError } = await supabase
-      .from('sales')
+    // 🏆 CONSULTAR CORTES EXISTENTES DEL MES
+    const { data: monthCuts, error: cutsError } = await supabase
+      .from('cash_cuts')
       .select(`
         id,
-        total_amount,
-        sale_payment_details (
-          payment_method,
-          amount,
-          commission_amount,
-          is_partial_payment
-        )
+        cut_number,
+        cut_date,
+        is_manual,
+        pos_total,
+        membership_total,
+        abonos_total,
+        pos_efectivo,
+        pos_transferencia,
+        pos_debito,
+        pos_credito,
+        membership_efectivo,
+        membership_transferencia,
+        membership_debito,
+        membership_credito,
+        abonos_efectivo,
+        abonos_transferencia,
+        abonos_debito,
+        abonos_credito,
+        total_efectivo,
+        total_transferencia,
+        total_debito,
+        total_credito,
+        grand_total,
+        total_transactions,
+        total_commissions
       `)
-      .eq('sale_type', 'sale')
-      .eq('status', 'completed')
-      .gte('created_at', startISO)
-      .lte('created_at', endISO);
+      .gte('cut_date', firstDay)
+      .lte('cut_date', lastDayString)
+      .order('cut_date', { ascending: true });
 
-    if (salesError) {
-      console.error('❌ Error consultando ventas mensuales:', salesError);
-      throw new Error(`Error consultando ventas: ${salesError.message}`);
+    if (cutsError) {
+      console.error('❌ Error consultando cortes del mes:', cutsError);
+      throw cutsError;
     }
 
-    console.log('✅ Ventas mensuales consultadas:', salesData?.length || 0);
+    console.log('📊 Cortes encontrados para el mes:', monthCuts?.length || 0);
 
-    // 💰 2. ABONOS DEL MES (IGUAL ESTRUCTURA QUE DAILY-DATA)
-    console.log('💰 Consultando abonos del mes...');
-    const { data: abonosData, error: abonosError } = await supabase
-      .from('sale_payment_details')
-      .select(`
-        payment_method,
-        amount,
-        commission_amount,
-        sale_id,
-        sales!inner (
-          sale_type,
-          status
-        )
-      `)
-      .eq('is_partial_payment', true)
-      .gte('payment_date', startISO)
-      .lte('payment_date', endISO);
+    if (monthCuts && monthCuts.length > 0) {
+      // ✅ HAY CORTES - CONSOLIDAR DATOS DIRECTAMENTE DE CASH_CUTS
+      console.log('✅ Consolidando datos de', monthCuts.length, 'cortes existentes');
 
-    if (abonosError) {
-      console.error('❌ Error consultando abonos mensuales:', abonosError);
-      throw new Error(`Error consultando abonos: ${abonosError.message}`);
-    }
+      const consolidatedData = monthCuts.reduce((acc, cut) => {
+        // Sumar totales por categoría
+        acc.pos_total += parseFloat(cut.pos_total || '0');
+        acc.membership_total += parseFloat(cut.membership_total || '0');
+        acc.abonos_total += parseFloat(cut.abonos_total || '0');
+        acc.grand_total += parseFloat(cut.grand_total || '0');
+        acc.total_transactions += parseInt(cut.total_transactions || '0');
+        acc.total_commissions += parseFloat(cut.total_commissions || '0');
 
-    console.log('✅ Abonos mensuales consultados:', abonosData?.length || 0);
+        // Sumar por método de pago
+        acc.total_efectivo += parseFloat(cut.total_efectivo || '0');
+        acc.total_transferencia += parseFloat(cut.total_transferencia || '0');
+        acc.total_debito += parseFloat(cut.total_debito || '0');
+        acc.total_credito += parseFloat(cut.total_credito || '0');
 
-    // 🎫 3. MEMBRESÍAS DEL MES (IGUAL ESTRUCTURA QUE DAILY-DATA)
-    console.log('🎫 Consultando membresías del mes...');
-    const { data: membershipsData, error: membershipsError } = await supabase
-      .from('user_memberships')
-      .select(`
-        amount_paid,
-        inscription_amount,
-        payment_method,
-        commission_amount,
-        membership_payment_details (
-          payment_method,
-          amount,
-          commission_amount
-        )
-      `)
-      .gte('created_at', startISO)
-      .lte('created_at', endISO);
-
-    if (membershipsError) {
-      console.error('❌ Error consultando membresías mensuales:', membershipsError);
-      throw new Error(`Error consultando membresías: ${membershipsError.message}`);
-    }
-
-    console.log('✅ Membresías mensuales consultadas:', membershipsData?.length || 0);
-
-    console.log('📊 Datos mensuales obtenidos:', {
-      ventas: salesData?.length || 0,
-      abonos: abonosData?.length || 0,
-      membresias: membershipsData?.length || 0
-    });
-
-    // 🧮 PROCESAR VENTAS POS (EXACTAMENTE IGUAL QUE DAILY-DATA)
-    console.log('🧮 Procesando ventas POS mensuales...');
-    const pos = {
-      efectivo: 0,
-      transferencia: 0,
-      debito: 0,
-      credito: 0,
-      total: 0,
-      transactions: 0,
-      commissions: 0
-    };
-
-    salesData?.forEach(sale => {
-      pos.transactions++;
-      
-      sale.sale_payment_details?.forEach(payment => {
-        if (!payment.is_partial_payment) {
-          const amount = parseFloat(payment.amount || '0');
-          const commission = parseFloat(payment.commission_amount || '0');
-          
-          const totalWithCommission = amount + commission;
-          
-          pos.total += totalWithCommission;
-          pos.commissions += commission;
-          
-          switch (payment.payment_method?.toLowerCase()) {
-            case 'efectivo':
-              pos.efectivo += totalWithCommission;
-              break;
-            case 'transferencia':
-              pos.transferencia += totalWithCommission;
-              break;
-            case 'debito':
-              pos.debito += totalWithCommission;
-              break;
-            case 'credito':
-              pos.credito += totalWithCommission;
-              break;
-            default:
-              console.warn(`🔴 Método de pago desconocido en POS mensual: ${payment.payment_method}`);
-              pos.efectivo += totalWithCommission;
-              break;
-          }
-        }
+        return acc;
+      }, {
+        pos_total: 0,
+        membership_total: 0,
+        abonos_total: 0,
+        grand_total: 0,
+        total_transactions: 0,
+        total_commissions: 0,
+        total_efectivo: 0,
+        total_transferencia: 0,
+        total_debito: 0,
+        total_credito: 0
       });
-    });
 
-    console.log('✅ Ventas POS mensuales procesadas:', pos);
-
-    // 🧮 PROCESAR ABONOS (EXACTAMENTE IGUAL QUE DAILY-DATA)
-    console.log('🧮 Procesando abonos mensuales...');
-    const abonos = {
-      efectivo: 0,
-      transferencia: 0,
-      debito: 0,
-      credito: 0,
-      total: 0,
-      transactions: 0,
-      commissions: 0
-    };
-
-    const uniqueSaleIds = new Set();
-    abonosData?.forEach(abono => {
-      const amount = parseFloat(abono.amount || '0');
-      const commission = parseFloat(abono.commission_amount || '0');
-      
-      const totalWithCommission = amount + commission;
-      
-      abonos.total += totalWithCommission;
-      abonos.commissions += commission;
-      uniqueSaleIds.add(abono.sale_id);
-      
-      switch (abono.payment_method?.toLowerCase()) {
-        case 'efectivo':
-          abonos.efectivo += totalWithCommission;
-          break;
-        case 'transferencia':
-          abonos.transferencia += totalWithCommission;
-          break;
-        case 'debito':
-          abonos.debito += totalWithCommission;
-          break;
-        case 'credito':
-          abonos.credito += totalWithCommission;
-          break;
-        default:
-          console.warn(`🔴 Método de pago desconocido en abonos mensuales: ${abono.payment_method}`);
-          abonos.efectivo += totalWithCommission;
-          break;
-      }
-    });
-    abonos.transactions = uniqueSaleIds.size;
-
-    console.log('✅ Abonos mensuales procesados:', abonos);
-
-    // 🧮 PROCESAR MEMBRESÍAS (EXACTAMENTE IGUAL QUE DAILY-DATA)
-    console.log('🧮 Procesando membresías mensuales...');
-    const memberships = {
-      efectivo: 0,
-      transferencia: 0,
-      debito: 0,
-      credito: 0,
-      total: 0,
-      transactions: 0,
-      commissions: 0
-    };
-
-    membershipsData?.forEach(membership => {
-      memberships.transactions++;
-      
-      const totalMembership = parseFloat(membership.amount_paid || '0');
-      const membershipCommission = parseFloat(membership.commission_amount || '0');
-      
-      memberships.total += totalMembership;
-      memberships.commissions += membershipCommission;
-      
-      if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
-        console.log('✅ Usando detalles de pago para membresía mensual');
-        
-        membership.membership_payment_details.forEach(payment => {
-          const amount = parseFloat(payment.amount || '0');
-          const commission = parseFloat(payment.commission_amount || '0');
-          
-          const totalWithCommission = amount + commission;
-          
-          switch (payment.payment_method?.toLowerCase()) {
-            case 'efectivo':
-              memberships.efectivo += totalWithCommission;
-              break;
-            case 'transferencia':
-              memberships.transferencia += totalWithCommission;
-              break;
-            case 'debito':
-              memberships.debito += totalWithCommission;
-              break;
-            case 'credito':
-              memberships.credito += totalWithCommission;
-              break;
-            default:
-              console.warn(`🔴 Método de pago desconocido en detalles membresía mensual: ${payment.payment_method}`);
-              memberships.efectivo += totalWithCommission;
-              break;
-          }
-        });
-      } else {
-        console.log('⚠️ Usando payment_method directo para membresía mensual');
-        
-        switch (membership.payment_method?.toLowerCase()) {
-          case 'efectivo':
-            memberships.efectivo += totalMembership;
-            break;
-          case 'transferencia':
-            memberships.transferencia += totalMembership;
-            break;
-          case 'debito':
-            memberships.debito += totalMembership;
-            break;
-          case 'credito':
-            memberships.credito += totalMembership;
-            break;
-          default:
-            console.warn(`🔴 Método de pago no especificado en membresía mensual, asumiendo efectivo: ${membership.payment_method}`);
-            memberships.efectivo += totalMembership;
-            break;
-        }
-      }
-    });
-
-    console.log('✅ Membresías mensuales procesadas:', memberships);
-
-    // 🧮 CALCULAR TOTALES (EXACTAMENTE IGUAL QUE DAILY-DATA)
-    const totals = {
-      efectivo: pos.efectivo + abonos.efectivo + memberships.efectivo,
-      transferencia: pos.transferencia + abonos.transferencia + memberships.transferencia,
-      debito: pos.debito + abonos.debito + memberships.debito,
-      credito: pos.credito + abonos.credito + memberships.credito,
-      total: pos.total + abonos.total + memberships.total,
-      transactions: pos.transactions + abonos.transactions + memberships.transactions,
-      commissions: pos.commissions + abonos.commissions + memberships.commissions,
-      net_amount: pos.total + abonos.total + memberships.total - (pos.commissions + abonos.commissions + memberships.commissions)
-    };
-
-    console.log('✅ Totales mensuales calculados:', totals);
-
-    // ✅ RESPUESTA FINAL (EXACTAMENTE IGUAL QUE DAILY-DATA)
-    const response = {
-      success: true,
-      month, // ✅ CAMBIADO: month en lugar de date
-      timezone_info: {
-        mexico_month: month,
-        mexico_range: {
-          start: startISO,
-          end: endISO
+      // ✅ CONSTRUIR RESPUESTA EN FORMATO CONSISTENTE CON DAILY-DATA
+      const response = {
+        success: true,
+        month,
+        timezone_info: {
+          mexico_month: month,
+          mexico_range: {
+            start: `${firstDay}T00:00:00-06:00`,
+            end: `${lastDayString}T23:59:59-06:00`
+          },
+          timezone: 'America/Mexico_City (UTC-6)',
+          note: `✅ Datos consolidados de ${monthCuts.length} cortes existentes en cash_cuts`
         },
-        timezone: 'America/Mexico_City (UTC-6)',
-        note: "✅ Datos mensuales filtrados directamente para México (CONSISTENTE con daily-data)"
-      },
-      pos,
-      abonos,
-      memberships,
-      totals
-    };
+        pos: {
+          efectivo: parseFloat((consolidatedData.total_efectivo * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          transferencia: parseFloat((consolidatedData.total_transferencia * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          debito: parseFloat((consolidatedData.total_debito * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          credito: parseFloat((consolidatedData.total_credito * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          total: consolidatedData.pos_total,
+          transactions: Math.round(consolidatedData.total_transactions * (consolidatedData.pos_total / consolidatedData.grand_total || 0)),
+          commissions: parseFloat((consolidatedData.total_commissions * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2))
+        },
+        abonos: {
+          efectivo: parseFloat((consolidatedData.total_efectivo * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          transferencia: parseFloat((consolidatedData.total_transferencia * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          debito: parseFloat((consolidatedData.total_debito * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          credito: parseFloat((consolidatedData.total_credito * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          total: consolidatedData.abonos_total,
+          transactions: Math.round(consolidatedData.total_transactions * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)),
+          commissions: parseFloat((consolidatedData.total_commissions * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2))
+        },
+        memberships: {
+          efectivo: parseFloat((consolidatedData.total_efectivo * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          transferencia: parseFloat((consolidatedData.total_transferencia * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          debito: parseFloat((consolidatedData.total_debito * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          credito: parseFloat((consolidatedData.total_credito * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          total: consolidatedData.membership_total,
+          transactions: Math.round(consolidatedData.total_transactions * (consolidatedData.membership_total / consolidatedData.grand_total || 0)),
+          commissions: parseFloat((consolidatedData.total_commissions * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2))
+        },
+        totals: {
+          efectivo: consolidatedData.total_efectivo,
+          transferencia: consolidatedData.total_transferencia,
+          debito: consolidatedData.total_debito,
+          credito: consolidatedData.total_credito,
+          total: consolidatedData.grand_total,
+          transactions: consolidatedData.total_transactions,
+          commissions: consolidatedData.total_commissions,
+          net_amount: consolidatedData.grand_total - consolidatedData.total_commissions
+        },
+        cuts_info: {
+          total_cuts: monthCuts.length,
+          manual_cuts: monthCuts.filter(c => c.is_manual).length,
+          automatic_cuts: monthCuts.filter(c => !c.is_manual).length,
+          date_range: {
+            first_cut: monthCuts[0]?.cut_date,
+            last_cut: monthCuts[monthCuts.length - 1]?.cut_date
+          }
+        }
+      };
 
-    console.log('🎉 API monthly-data completada exitosamente - FORMATO CONSISTENTE');
-    return NextResponse.json(response);
+      console.log('✅ Datos mensuales consolidados exitosamente:', {
+        total_cuts: monthCuts.length,
+        grand_total: consolidatedData.grand_total,
+        pos_total: consolidatedData.pos_total,
+        membership_total: consolidatedData.membership_total,
+        abonos_total: consolidatedData.abonos_total
+      });
+
+      return NextResponse.json(response);
+
+    } else {
+      // ❌ NO HAY CORTES - DEVOLVER DATOS VACÍOS
+      console.log('ℹ️ No se encontraron cortes para el mes:', month);
+
+      const emptyResponse = {
+        success: true,
+        month,
+        timezone_info: {
+          mexico_month: month,
+          mexico_range: {
+            start: `${firstDay}T00:00:00-06:00`,
+            end: `${lastDayString}T23:59:59-06:00`
+          },
+          timezone: 'America/Mexico_City (UTC-6)',
+          note: `ℹ️ No hay cortes registrados para este mes`
+        },
+        pos: {
+          efectivo: 0,
+          transferencia: 0,
+          debito: 0,
+          credito: 0,
+          total: 0,
+          transactions: 0,
+          commissions: 0
+        },
+        abonos: {
+          efectivo: 0,
+          transferencia: 0,
+          debito: 0,
+          credito: 0,
+          total: 0,
+          transactions: 0,
+          commissions: 0
+        },
+        memberships: {
+          efectivo: 0,
+          transferencia: 0,
+          debito: 0,
+          credito: 0,
+          total: 0,
+          transactions: 0,
+          commissions: 0
+        },
+        totals: {
+          efectivo: 0,
+          transferencia: 0,
+          debito: 0,
+          credito: 0,
+          total: 0,
+          transactions: 0,
+          commissions: 0,
+          net_amount: 0
+        },
+        cuts_info: {
+          total_cuts: 0,
+          manual_cuts: 0,
+          automatic_cuts: 0,
+          date_range: {
+            first_cut: null,
+            last_cut: null
+          }
+        }
+      };
+
+      return NextResponse.json(emptyResponse);
+    }
 
   } catch (error: any) {
     console.error('💥 Error crítico en monthly-data API:', {
