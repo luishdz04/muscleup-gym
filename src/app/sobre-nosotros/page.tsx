@@ -59,7 +59,7 @@ export default function SobreNosotrosPage() {
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">
-      {/* Hero Section Mejorado */}
+      {/* Hero Section con Logo MÁS GRANDE */}
       <motion.section 
         ref={heroRef}
         className="relative min-h-screen bg-gradient-to-br from-zinc-900 to-black flex items-center justify-center overflow-hidden"
@@ -109,14 +109,14 @@ export default function SobreNosotrosPage() {
         </motion.div>
         
         <motion.div
-          className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto"
+          className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
           initial={{ opacity: 0, y: 50 }}
           animate={heroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
           transition={{ duration: 1 }}
         >
-          {/* Logo con tamaño responsivo mejorado */}
+          {/* Logo MUCHO MÁS GRANDE */}
           <motion.div
-            className="relative w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-[28rem] xl:h-[28rem] mx-auto mb-8"
+            className="relative w-72 h-72 sm:w-96 sm:h-96 md:w-[32rem] md:h-[32rem] lg:w-[40rem] lg:h-[40rem] xl:w-[48rem] xl:h-[48rem] mx-auto mb-12"
             initial={{ scale: 0, opacity: 0 }}
             animate={heroInView ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
             transition={{ 
@@ -159,11 +159,11 @@ export default function SobreNosotrosPage() {
                 fill
                 className="object-contain drop-shadow-2xl"
                 priority
-                sizes="(max-width: 640px) 192px, (max-width: 768px) 256px, (max-width: 1024px) 320px, (max-width: 1280px) 384px, 448px"
+                sizes="(max-width: 640px) 288px, (max-width: 768px) 384px, (max-width: 1024px) 512px, (max-width: 1280px) 640px, 768px"
               />
             </motion.div>
 
-            {/* Partículas orbitales mejoradas */}
+            {/* Partículas orbitales mejoradas y más grandes */}
             <motion.div
               className="absolute inset-0"
               animate={{ rotate: 360 }}
@@ -176,13 +176,13 @@ export default function SobreNosotrosPage() {
               {[...Array(4)].map((_, i) => (
                 <motion.div 
                   key={i}
-                  className="absolute w-2 h-2 sm:w-3 sm:h-3 bg-brand rounded-full"
+                  className="absolute w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-brand rounded-full"
                   style={{
                     top: i === 0 ? '0%' : i === 1 ? '100%' : '50%',
                     left: i === 2 ? '0%' : i === 3 ? '100%' : '50%',
                     transform: i === 0 || i === 1 ? 'translateX(-50%)' : 'translateY(-50%)',
-                    marginTop: i === 0 ? '-2rem' : i === 1 ? '2rem' : '0',
-                    marginLeft: i === 2 ? '-2rem' : i === 3 ? '2rem' : '0',
+                    marginTop: i === 0 ? '-3rem' : i === 1 ? '3rem' : '0',
+                    marginLeft: i === 2 ? '-3rem' : i === 3 ? '3rem' : '0',
                   }}
                   animate={{
                     scale: [1, 1.8, 1],
@@ -198,7 +198,7 @@ export default function SobreNosotrosPage() {
               ))}
             </motion.div>
 
-            {/* Partículas adicionales */}
+            {/* Partículas adicionales más distribuidas */}
             <motion.div
               className="absolute inset-0"
               animate={{ rotate: -360 }}
@@ -208,34 +208,27 @@ export default function SobreNosotrosPage() {
                 ease: "linear"
               }}
             >
-              {[...Array(6)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <div 
                   key={i}
-                  className="absolute w-1 h-1 sm:w-2 sm:h-2 bg-brand/60 rounded-full"
+                  className="absolute w-2 h-2 sm:w-3 sm:h-3 bg-brand/60 rounded-full"
                   style={{
-                    top: `${20 + i * 10}%`,
-                    left: `${15 + (i % 2) * 70}%`,
+                    top: `${15 + i * 10}%`,
+                    left: `${10 + (i % 3) * 40}%`,
                   }}
                 />
               ))}
             </motion.div>
           </motion.div>
 
-          {/* Título y subtítulo */}
+          {/* Solo el subtítulo */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={heroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
             transition={{ delay: 0.8, duration: 0.8 }}
             className="space-y-4"
           >
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold
-                         bg-gradient-to-r from-white via-white to-brand bg-clip-text text-transparent">
-              Sobre Nosotros
-            </h1>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-brand">
-              Muscle Up GYM
-            </h2>
-            <p className="text-lg sm:text-xl md:text-2xl text-white/80 max-w-2xl mx-auto">
+            <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-white/80 max-w-3xl mx-auto font-light">
               Más que un gimnasio, una familia
             </p>
           </motion.div>
@@ -438,7 +431,7 @@ export default function SobreNosotrosPage() {
         </div>
       </motion.section>
 
-      {/* CTA Final Mejorado */}
+      {/* CTA Final con texto actualizado */}
       <motion.section 
         className="py-16 sm:py-20 text-center bg-gradient-to-br from-black to-zinc-900"
         initial={{ opacity: 0 }}
@@ -453,7 +446,7 @@ export default function SobreNosotrosPage() {
           >
             <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4">
               ¿Listo para ser parte de la familia{' '}
-              <span className="text-brand">Muscle Up</span>?
+              <span className="text-brand">Muscle Up GYM</span>?
             </h3>
             <p className="text-white/80 text-lg sm:text-xl mb-8 max-w-2xl mx-auto">
               Únete a nuestra comunidad y comienza tu transformación hoy mismo
