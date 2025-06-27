@@ -197,6 +197,22 @@ function formatPrice(amount: number): string {
   }).format(amount || 0);
 }
 
+// 🔧 FUNCIÓN HELPER SEGURA PARA PORCENTAJES - NUEVA
+function safePercentage(value: number, total: number): string {
+  if (total === 0 || isNaN(total) || isNaN(value)) return '0.0';
+  const percentage = (value / total) * 100;
+  if (!isFinite(percentage)) return '0.0';
+  return percentage.toFixed(1);
+}
+
+// 🔧 FUNCIÓN HELPER PARA CRECIMIENTO LIMITADO - NUEVA
+function safeMathGrowth(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  const growth = ((current - previous) / previous) * 100;
+  // Limitar a +/-1000% para evitar números irreales
+  return Math.min(Math.max(growth, -1000), 1000);
+}
+
 // ✅ FUNCIÓN CRÍTICA - FECHA ACTUAL EN MÉXICO (JUNIO 2025)
 function getMexicoDateLocal(): string {
   const now = new Date();
@@ -712,13 +728,9 @@ export default function AdminDashboardPage() {
   // Ordenar por fecha
   monthlyData.sort((a, b) => a.month.localeCompare(b.month));
   
-  // Calcular crecimiento
+  // 🔧 CALCULAR CRECIMIENTO CON FUNCIÓN SEGURA
   for (let i = 1; i < monthlyData.length; i++) {
-    if (monthlyData[i - 1].total > 0) {
-      monthlyData[i].growth = ((monthlyData[i].total - monthlyData[i - 1].total) / monthlyData[i - 1].total) * 100;
-    } else if (monthlyData[i].total > 0) {
-      monthlyData[i].growth = 100;
-    }
+    monthlyData[i].growth = safeMathGrowth(monthlyData[i].total, monthlyData[i - 1].total);
   }
   
   return monthlyData;
@@ -951,9 +963,8 @@ export default function AdminDashboardPage() {
         growth: 0
       };
 
-      const monthlyGrowth = previousMonth.total > 0 
-        ? ((currentMonth.total - previousMonth.total) / previousMonth.total) * 100 
-        : (currentMonth.total > 0 ? 100 : 0);
+      // 🔧 USAR FUNCIÓN SEGURA PARA CRECIMIENTO
+      const monthlyGrowth = safeMathGrowth(currentMonth.total, previousMonth.total);
 
       // ✅ CONSTRUIR ESTADÍSTICAS FINALES
       const finalStats: DashboardStats = {
@@ -1739,18 +1750,19 @@ export default function AdminDashboardPage() {
                           <Cell key={`cell-${index}`} fill={entry.fill} />
                         ))}
                       </Pie>
-     <RechartsTooltip 
-  contentStyle={{
-    backgroundColor: darkProTokens.surfaceLevel4,
-    border: `1px solid ${darkProTokens.grayDark}`,
-    borderRadius: '8px',
-    color: darkProTokens.textPrimary
-  }}
-  formatter={(value: any, name: string) => [
-    `${value}%`, // ✅ MOSTRAR COMO PORCENTAJE
-    name
-  ]}
-/>
+                      {/* 🔧 TOOLTIP CORREGIDO PARA RETENCIÓN */}
+                      <RechartsTooltip 
+                        contentStyle={{
+                          backgroundColor: darkProTokens.surfaceLevel4,
+                          border: `1px solid ${darkProTokens.grayDark}`,
+                          borderRadius: '8px',
+                          color: darkProTokens.textPrimary
+                        }}
+                        formatter={(value: any, name: string) => [
+                          `${value}%`, // ✅ MOSTRAR COMO PORCENTAJE
+                          name
+                        ]}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </Box>
@@ -2000,14 +2012,14 @@ export default function AdminDashboardPage() {
                             borderRadius: '8px',
                             color: darkProTokens.textPrimary
                           }}
-                            formatter={(value: any, name: string) => {
-    const labels: { [key: string]: string } = {
-      'sales': 'Ventas POS',
-      'memberships': 'Membresías',
-      'layaways': 'Apartados'
-    };
-    return [formatPrice(value), labels[name] || name];
-  }}
+                          formatter={(value: any, name: string) => {
+                            const labels: { [key: string]: string } = {
+                              'sales': 'Ventas POS',
+                              'memberships': 'Membresías',
+                              'layaways': 'Apartados'
+                            };
+                            return [formatPrice(value), labels[name] || name];
+                          }}
                         />
                         <Legend />
                         
@@ -2119,14 +2131,8 @@ export default function AdminDashboardPage() {
                             borderRadius: '8px',
                             color: darkProTokens.textPrimary
                           }}
-  formatter={(value: any, name: string) => {
-    const labels: { [key: string]: string } = {
-      'sales': 'Ventas POS',
-      'memberships': 'Membresías',
-      'layaways': 'Apartados'
-    };
-    return [formatPrice(value), labels[name] || name];
-  }}                        />
+                          formatter={(value: any) => formatPrice(value)}
+                        />
                         <Legend 
                           wrapperStyle={{ color: darkProTokens.textSecondary }}
                         />
@@ -2221,14 +2227,14 @@ export default function AdminDashboardPage() {
                         borderRadius: '8px',
                         color: darkProTokens.textPrimary
                       }}
-                   formatter={(value: any, name: string) => {
-  const labels: { [key: string]: string } = {
-    'sales': 'Ventas POS',
-    'memberships': 'Membresías',
-    'layaways': 'Apartados'
-  };
-  return [formatPrice(value), labels[name] || name];
-}}
+                      formatter={(value: any, name: string) => {
+                        const labels: { [key: string]: string } = {
+                          'sales': 'Ventas POS',
+                          'memberships': 'Membresías',
+                          'layaways': 'Apartados'
+                        };
+                        return [formatPrice(value), labels[name] || name];
+                      }}
                     />
                     <Legend />
                     
@@ -2288,7 +2294,7 @@ export default function AdminDashboardPage() {
         </Card>
       </motion.div>
 
-{/* MÉTODOS DE PAGO DEL DÍA */}
+{/* MÉTODOS DE PAGO DEL DÍA - 🔧 CORREGIDO CON safePercentage */}
 <motion.div
   initial={{ opacity: 0, y: 20 }}
   animate={{ opacity: 1, y: 0 }}
@@ -2324,7 +2330,8 @@ export default function AdminDashboardPage() {
                     Efectivo
                   </Typography>
                   <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                    {((stats.cashFlow.efectivo / stats.todayBalance) * 100).toFixed(1)}% del total
+                    {/* 🔧 USAR safePercentage */}
+                    {safePercentage(stats.cashFlow.efectivo, stats.todayBalance)}% del total
                   </Typography>
                 </Box>
               </Box>
@@ -2343,7 +2350,8 @@ export default function AdminDashboardPage() {
                     Transferencia
                   </Typography>
                   <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                    {((stats.cashFlow.transferencia / stats.todayBalance) * 100).toFixed(1)}% del total
+                    {/* 🔧 USAR safePercentage */}
+                    {safePercentage(stats.cashFlow.transferencia, stats.todayBalance)}% del total
                   </Typography>
                 </Box>
               </Box>
@@ -2362,7 +2370,8 @@ export default function AdminDashboardPage() {
                     Tarjeta Débito
                   </Typography>
                   <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                    {((stats.cashFlow.debito / stats.todayBalance) * 100).toFixed(1)}% del total
+                    {/* 🔧 USAR safePercentage */}
+                    {safePercentage(stats.cashFlow.debito, stats.todayBalance)}% del total
                   </Typography>
                 </Box>
               </Box>
@@ -2381,7 +2390,8 @@ export default function AdminDashboardPage() {
                     Tarjeta Crédito
                   </Typography>
                   <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                    {((stats.cashFlow.credito / stats.todayBalance) * 100).toFixed(1)}% del total
+                    {/* 🔧 USAR safePercentage */}
+                    {safePercentage(stats.cashFlow.credito, stats.todayBalance)}% del total
                   </Typography>
                 </Box>
               </Box>
@@ -2394,7 +2404,7 @@ export default function AdminDashboardPage() {
       </Card>
     </Grid>
 
-    {/* DESGLOSE DE INGRESOS */}
+    {/* DESGLOSE DE INGRESOS - 🔧 CORREGIDO CON safePercentage */}
     <Grid size={{ xs: 12, md: 6 }}>
       <Card sx={{
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
@@ -2425,7 +2435,7 @@ export default function AdminDashboardPage() {
               </Box>
               <LinearProgress 
                 variant="determinate" 
-                value={(stats.todaySales / stats.todayBalance) * 100}
+                value={stats.todayBalance > 0 ? (stats.todaySales / stats.todayBalance) * 100 : 0}
                 sx={{
                   height: 8,
                   borderRadius: 4,
@@ -2449,7 +2459,7 @@ export default function AdminDashboardPage() {
               </Box>
               <LinearProgress 
                 variant="determinate" 
-                value={(stats.todayMembershipRevenue / stats.todayBalance) * 100}
+                value={stats.todayBalance > 0 ? (stats.todayMembershipRevenue / stats.todayBalance) * 100 : 0}
                 sx={{
                   height: 8,
                   borderRadius: 4,
@@ -2473,7 +2483,7 @@ export default function AdminDashboardPage() {
               </Box>
               <LinearProgress 
                 variant="determinate" 
-                value={(stats.todayLayawayPayments / stats.todayBalance) * 100}
+                value={stats.todayBalance > 0 ? (stats.todayLayawayPayments / stats.todayBalance) * 100 : 0}
                 sx={{
                   height: 8,
                   borderRadius: 4,
@@ -2507,7 +2517,7 @@ export default function AdminDashboardPage() {
   </Grid>
 </motion.div>
 
-{/* ESTADÍSTICAS DE USUARIOS */}
+{/* ESTADÍSTICAS DE USUARIOS - 🔧 CORREGIDO CON safePercentage */}
 <motion.div
   initial={{ opacity: 0, y: 20 }}
   animate={{ opacity: 1, y: 0 }}
@@ -2575,7 +2585,8 @@ export default function AdminDashboardPage() {
               Hombres
             </Typography>
             <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-              {((stats.usersByGender.male / stats.totalUsers) * 100).toFixed(1)}% del total
+              {/* 🔧 USAR safePercentage */}
+              {safePercentage(stats.usersByGender.male, stats.totalUsers)}% del total
             </Typography>
           </Box>
         </Grid>
@@ -2599,7 +2610,8 @@ export default function AdminDashboardPage() {
               Mujeres
             </Typography>
             <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-              {((stats.usersByGender.female / stats.totalUsers) * 100).toFixed(1)}% del total
+              {/* 🔧 USAR safePercentage */}
+              {safePercentage(stats.usersByGender.female, stats.totalUsers)}% del total
             </Typography>
           </Box>
         </Grid>
@@ -3036,14 +3048,14 @@ export default function AdminDashboardPage() {
                       color: darkProTokens.textPrimary,
                       fontSize: '14px'
                     }}
-                     formatter={(value: any, name: string) => {
-    const labels: { [key: string]: string } = {
-      'sales': 'Ventas POS',
-      'memberships': 'Membresías',
-      'layaways': 'Apartados'
-    };
-    return [formatPrice(value), labels[name] || name];
-  }}
+                    formatter={(value: any, name: string) => {
+                      const labels: { [key: string]: string } = {
+                        'sales': 'Ventas POS',
+                        'memberships': 'Membresías',
+                        'layaways': 'Apartados'
+                      };
+                      return [formatPrice(value), labels[name] || name];
+                    }}
                   />
                   <Legend />
                   <Area type="monotone" dataKey="sales" fill={`${currentColors.primary}30`} stroke={currentColors.primary} strokeWidth={3} name="Ventas POS" />
@@ -3078,11 +3090,14 @@ export default function AdminDashboardPage() {
                       color: darkProTokens.textPrimary,
                       fontSize: '14px'
                     }}
-                    formatter={(value: any, name: string) => [
-                      formatPrice(value), 
-                      name === 'sales' ? 'Ventas POS' : 
-                      name === 'memberships' ? 'Membresías' : 'Apartados'
-                    ]}
+                    formatter={(value: any, name: string) => {
+                      const labels: { [key: string]: string } = {
+                        'sales': 'Ventas POS',
+                        'memberships': 'Membresías',
+                        'layaways': 'Apartados'
+                      };
+                      return [formatPrice(value), labels[name] || name];
+                    }}
                   />
                   <Legend />
                   <Area type="monotone" dataKey="sales" fill={`${currentColors.primary}30`} stroke={currentColors.primary} strokeWidth={3} name="Ventas POS" />
@@ -3140,4 +3155,3 @@ export default function AdminDashboardPage() {
     </Box>
   );
 }
-              
