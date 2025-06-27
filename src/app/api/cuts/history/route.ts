@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
   .select('final_balance, is_manual'); // Cambiado aquí
 
 if (!statsError && statsData) {
-  const totalAmount = statsData.reduce((sum, cut) => sum + parseFloat(cut.final_balance || '0'), 0); /
+  const totalAmount = statsData.reduce((sum, cut) => sum + parseFloat(cut.final_balance || '0'), 0); 
         stats = {
           totalCuts: statsData.length,
           totalAmount: totalAmount,
