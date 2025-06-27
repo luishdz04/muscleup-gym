@@ -644,82 +644,85 @@ export default function AdminDashboardPage() {
   }, [loadRealDailyData]);
 
   // ✅ FUNCIÓN NUEVA CORREGIDA - loadMonthlyRealData para JUNIO 2025
-  const loadMonthlyRealData = useCallback(async (): Promise<MonthlyData[]> => {
-    const monthlyData: MonthlyData[] = [];
+ const loadMonthlyRealData = useCallback(async (): Promise<MonthlyData[]> => {
+  const monthlyData: MonthlyData[] = [];
+  
+  for (let i = config.monthsToShow - 1; i >= 0; i--) {
+    const monthString = getDateMonthsAgo(i);
+    const monthName = formatMonthName(monthString);
     
-    for (let i = config.monthsToShow - 1; i >= 0; i--) {
-      const monthString = getDateMonthsAgo(i);
-      const monthName = formatMonthName(monthString);
+    // ✅ USAR LA API CORREGIDA CON FORMATO CONSISTENTE
+    try {
+      const response = await fetch(`/api/cuts/monthly-data?month=${monthString}`);
       
-      // Intentar con endpoint mensual primero
-      try {
-        const response = await fetch(`/api/cuts/monthly-data?month=${monthString}`);
+      if (response.ok) {
+        const data = await response.json();
         
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data) {
-            monthlyData.push({
-              month: monthString,
-              monthName,
-              sales: data.data.sales || 0,
-              memberships: data.data.memberships || 0,
-              layaways: data.data.layaways || 0,
-              total: data.data.total || 0,
-              transactions: data.data.transactions || 0,
-              growth: 0
-            });
-            continue;
-          }
-        }
-      } catch (error) {
-        // Continuar con fallback
-      }
-      
-      // FALLBACK: Datos diarios
-      let monthTotal = 0;
-      let monthSales = 0;
-      let monthMemberships = 0;
-      let monthLayaways = 0;
-      let monthTransactions = 0;
-      
-      // Si es el mes actual (Junio 2025), usar datos del día actual
-      if (i === 0) {
-        const currentDayData = await loadRealDailyData(selectedDate);
-        if (currentDayData) {
-          monthSales = currentDayData.pos.total;
-          monthMemberships = currentDayData.memberships.total;
-          monthLayaways = currentDayData.abonos.total;
-          monthTotal = currentDayData.totals.total;
-          monthTransactions = currentDayData.totals.transactions;
+        // ✅ VERIFICAR EL NUEVO FORMATO (pos, abonos, memberships, totals)
+        if (data.success && data.totals) {
+          monthlyData.push({
+            month: monthString,
+            monthName,
+            sales: data.pos?.total || 0,           // ✅ Usar data.pos.total
+            memberships: data.memberships?.total || 0, // ✅ Usar data.memberships.total
+            layaways: data.abonos?.total || 0,    // ✅ Usar data.abonos.total
+            total: data.totals?.total || 0,       // ✅ Usar data.totals.total
+            transactions: data.totals?.transactions || 0, // ✅ Usar data.totals.transactions
+            growth: 0
+          });
+          continue;
         }
       }
-      
-      monthlyData.push({
-        month: monthString,
-        monthName,
-        sales: monthSales,
-        memberships: monthMemberships,
-        layaways: monthLayaways,
-        total: monthTotal,
-        transactions: monthTransactions,
-        growth: 0
-      });
+    } catch (error) {
+      console.log(`⚠️ Error consultando datos mensuales para ${monthString}:`, error);
+      // Continuar con fallback
     }
     
-    // Ordenar por fecha
-    monthlyData.sort((a, b) => a.month.localeCompare(b.month));
+    // FALLBACK: Datos diarios (mantener igual)
+    let monthTotal = 0;
+    let monthSales = 0;
+    let monthMemberships = 0;
+    let monthLayaways = 0;
+    let monthTransactions = 0;
     
-    // Calcular crecimiento
-    for (let i = 1; i < monthlyData.length; i++) {
-      if (monthlyData[i - 1].total > 0) {
-        monthlyData[i].growth = ((monthlyData[i].total - monthlyData[i - 1].total) / monthlyData[i - 1].total) * 100;
-      } else if (monthlyData[i].total > 0) {
-        monthlyData[i].growth = 100;
+    // Si es el mes actual (Junio 2025), usar datos del día actual
+    if (i === 0) {
+      const currentDayData = await loadRealDailyData(selectedDate);
+      if (currentDayData) {
+        monthSales = currentDayData.pos.total;
+        monthMemberships = currentDayData.memberships.total;
+        monthLayaways = currentDayData.abonos.total;
+        monthTotal = currentDayData.totals.total;
+        monthTransactions = currentDayData.totals.transactions;
       }
     }
     
-    return monthlyData;
-  }, [config.monthsToShow, loadRealDailyData, selectedDate]);
+    monthlyData.push({
+      month: monthString,
+      monthName,
+      sales: monthSales,
+      memberships: monthMemberships,
+      layaways: monthLayaways,
+      total: monthTotal,
+      transactions: monthTransactions,
+      growth: 0
+    });
+  }
+  
+  // Ordenar por fecha
+  monthlyData.sort((a, b) => a.month.localeCompare(b.month));
+  
+  // Calcular crecimiento
+  for (let i = 1; i < monthlyData.length; i++) {
+    if (monthlyData[i - 1].total > 0) {
+      monthlyData[i].growth = ((monthlyData[i].total - monthlyData[i - 1].total) / monthlyData[i - 1].total) * 100;
+    } else if (monthlyData[i].total > 0) {
+      monthlyData[i].growth = 100;
+    }
+  }
+  
+  return monthlyData;
+}, [config.monthsToShow, loadRealDailyData, selectedDate]);
 
   // ✅ FUNCIÓN PARA CARGAR DATOS DIARIOS
   const loadDailyData = useCallback(async () => {
