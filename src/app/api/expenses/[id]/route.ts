@@ -117,6 +117,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }, { status: 500 });
     }
 
+    // ⬇️ Sincroniza el corte automáticamente después de editar un egreso
+    if (updatedExpense && updatedExpense.expense_date) {
+      await fetch(`${request.nextUrl.origin}/api/expenses/sync-with-cut`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: updatedExpense.expense_date })
+      });
+    }
+
     return NextResponse.json({
       success: true,
       expense: updatedExpense
