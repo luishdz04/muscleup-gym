@@ -392,34 +392,35 @@ export default function ExpensesHistoryPage() {
     }
   };
 
-  const handleDeleteExpense = async () => {
-    if (!expenseToDelete) return;
-    
-    try {
-      setLoadingDelete(true);
-      console.log('🗑️ Eliminando egreso:', expenseToDelete);
-      
-      const response = await fetch(`/api/expenses/${expenseToDelete}`, {
-        method: 'DELETE'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setExpenses(expenses.filter(expense => expense.id !== expenseToDelete));
-        setDeleteDialogOpen(false);
-        setExpenseToDelete(null);
-        loadExpenses();
-      } else {
-        setError(data.error || 'Error al eliminar el egreso');
-      }
-    } catch (error) {
-      console.error('Error eliminando egreso:', error);
-      setError('Error al eliminar el egreso');
-    } finally {
-      setLoadingDelete(false);
+const handleDeleteExpense = async () => {
+  if (!expenseToDelete) return;
+
+  try {
+    setLoadingDelete(true);
+    console.log('🗑️ Eliminando egreso:', expenseToDelete);
+
+    // CORREGIDO: Usar endpoint de delete que sincroniza corte
+    const response = await fetch(`/api/expenses/delete/${expenseToDelete}`, {
+      method: 'DELETE'
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      setExpenses(expenses.filter(expense => expense.id !== expenseToDelete));
+      setDeleteDialogOpen(false);
+      setExpenseToDelete(null);
+      loadExpenses();
+    } else {
+      setError(data.error || 'Error al eliminar el egreso');
     }
-  };
+  } catch (error) {
+    console.error('Error eliminando egreso:', error);
+    setError('Error al eliminar el egreso');
+  } finally {
+    setLoadingDelete(false);
+  }
+};
 
   const handleUpdateExpense = async () => {
     if (!editingExpense) return;
