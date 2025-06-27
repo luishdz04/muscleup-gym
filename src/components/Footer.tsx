@@ -3,7 +3,8 @@ import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { 
   MapPinIcon,
-  ShieldCheckIcon 
+  ShieldCheckIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 
 export default function Footer() {
@@ -216,6 +217,30 @@ export default function Footer() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
                     <span className="text-base">866 112 7905</span>
+                  </motion.a>
+                </motion.div>
+
+                {/* Enlace a Preguntas Frecuentes */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+                  transition={{ delay: 0.8 }}
+                >
+                  <motion.a
+                    href="/preguntas-frecuentes"
+                    className="inline-flex items-center gap-2 text-white/80 hover:text-brand 
+                             transition-all duration-300 group"
+                    whileHover={{ x: 5 }}
+                  >
+                    <QuestionMarkCircleIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <span className="text-base">Preguntas Frecuentes</span>
+                    <motion.span
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      animate={{ x: [0, 3, 0] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                    >
+                      →
+                    </motion.span>
                   </motion.a>
                 </motion.div>
               </div>
