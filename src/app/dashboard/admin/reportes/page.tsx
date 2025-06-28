@@ -1,60 +1,285 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
 import { Calendar, DollarSign, Users, ShoppingCart, TrendingUp, TrendingDown } from 'lucide-react';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// Simular las funciones de consulta (reemplaza con las imports reales)
+// Inicializar cliente de Supabase
+const supabase = createBrowserSupabaseClient();
+
+// ============= FUNCIONES DE CONSULTA REALES =============
+
 const getDashboardMetrics = async (fechas) => {
-  // Simular datos
-  return {
-    totalIngresos: 85000,
-    totalGastos: 45000,
-    utilidadNeta: 40000,
-    membresiasTotales: 150,
-    membresiasActivas: 142,
-    membresiasVencidas: 8,
-    ingresosMembresías: 65000,
-    ventasPOSTotales: 20000,
-    apartadosActivos: 12,
-    apartadosPendientes: 8500,
-    productosVendidos: 340,
-    usuariosTotales: 180,
-    usuariosActivos: 142,
-    nuevosUsuarios: 25
-  };
+  try {
+    console.log('📊 Obteniendo métricas del dashboard...', fechas);
+
+    // Ingresos por membresías
+    const { data: membresías, error: errorMembresías } = await supabase
+      .from('user_memberships')
+      .select('amount_paid, status')
+      .gte('created_at', fechas.fechaInicio)
+      .lte('created_at', fechas.fechaFin);
+
+    if (errorMembresías) throw errorMembresías;
+
+    // Ingresos por ventas POS
+    const { data: ventas, error: errorVentas } = await supabase
+      .from('sales')
+      .select('total_amount, status, sale_type')
+      .gte('created_at', fechas.fechaInicio)
+      .lte('created_at', fechas.fechaFin)
+      .eq('status', 'completed');
+
+    if (errorVentas) throw errorVentas;
+
+    // Gastos totales
+    const { data: gastos, error: errorGastos } = await supabase
+      .from('expenses')
+      .select('amount')
+      .gte('expense_date', fechas.fechaInicio)
+      .lte('expense_date', fechas.fechaFin)
+      .eq('status', 'active');
+
+    if (errorGastos) throw errorGastos;
+
+    // Usuarios totales
+    const { count: usuariosTotales, error: errorUsuarios } = await supabase
+      .from('Users')
+      .select('*', { count: 'exact', head: true });
+
+    if (errorUsuarios) throw errorUsuarios;
+
+    // Membresías activas
+    const { data: membresiasActivas, error: errorMembresiasActivas } = await supabase
+      .from('user_memberships')
+      .select('userid, status')
+      .eq('status', 'active');
+
+    if (errorMembresiasActivas) throw errorMembresiasActivas;
+
+    // Apartados activos
+    const { data: apartados, error: errorApartados } = await supabase
+      .from('sales')
+      .select('pending_amount, status')
+      .eq('sale_type', 'layaway')
+      .in('status', ['pending', 'partial']);
+
+    if (errorApartados) throw errorApartados;
+
+    // Calcular métricas
+    const ingresosMembresías = membresías?.reduce((sum, m) => sum + (Number(m.amount_paid) || 0), 0) || 0;
+    const ingresosVentas = ventas?.filter(v => v.sale_type !== 'layaway')
+      .reduce((sum, v) => sum + (Number(v.total_amount) || 0), 0) || 0;
+    const totalIngresos = ingresosMembresías + ingresosVentas;
+    const totalGastos = gastos?.reduce((sum, g) => sum + (Number(g.amount) || 0), 0) || 0;
+
+    console.log('✅ Métricas obtenidas:', { totalIngresos, totalGastos, ingresosMembresías, ingresosVentas });
+
+    return {
+      totalIngresos,
+      totalGastos,
+      utilidadNeta: totalIngresos - totalGastos,
+      membresiasTotales: membresías?.length || 0,
+      membresiasActivas: membresiasActivas?.length || 0,
+      membresiasVencidas: 0,
+      ingresosMembresías,
+      ventasPOSTotales: ingresosVentas,
+      apartadosActivos: apartados?.length || 0,
+      apartadosPendientes: apartados?.reduce((sum, a) => sum + (Number(a.pending_amount) || 0), 0) || 0,
+      productosVendidos: ventas?.length || 0,
+      usuariosTotales: usuariosTotales || 0,
+      usuariosActivos: new Set(membresiasActivas?.map(u => u.userid)).size || 0,
+      nuevosUsuarios: 0
+    };
+  } catch (error) {
+    console.error('❌ Error obteniendo métricas:', error);
+    return {
+      totalIngresos: 0, totalGastos: 0, utilidadNeta: 0, membresiasTotales: 0,
+      membresiasActivas: 0, membresiasVencidas: 0, ingresosMembresías: 0,
+      ventasPOSTotales: 0, apartadosActivos: 0, apartadosPendientes: 0,
+      productosVendidos: 0, usuariosTotales: 0, usuariosActivos: 0, nuevosUsuarios: 0
+    };
+  }
 };
 
-const getVentasPorMetodo = async (fechas) => [
-  { metodo: 'Efectivo', total: 32000, transacciones: 45, comisiones: 0 },
-  { metodo: 'Transferencia', total: 28000, transacciones: 38, comisiones: 560 },
-  { metodo: 'Débito', total: 15000, transacciones: 22, comisiones: 450 },
-  { metodo: 'Crédito', total: 10000, transacciones: 18, comisiones: 800 }
-];
+const getVentasPorMetodo = async (fechas) => {
+  try {
+    console.log('💳 Obteniendo ventas por método de pago...');
 
-const getVentasPorCategoria = async (fechas) => [
-  { categoria: 'Suplementos', total: 15000, cantidad: 120, productos: 45 },
-  { categoria: 'Bebidas', total: 8000, cantidad: 200, productos: 80 },
-  { categoria: 'Snacks', total: 5000, cantidad: 150, productos: 60 },
-  { categoria: 'Accesorios', total: 12000, cantidad: 80, productos: 35 }
-];
+    // Ventas POS
+    const { data: ventasPOS, error: errorPOS } = await supabase
+      .from('sale_payment_details')
+      .select(`
+        payment_method,
+        amount,
+        commission_amount,
+        sales!inner(created_at, status)
+      `)
+      .gte('sales.created_at', fechas.fechaInicio)
+      .lte('sales.created_at', fechas.fechaFin)
+      .eq('sales.status', 'completed');
 
-const getGastosPorTipo = async (fechas) => [
-  { tipo: 'nomina', total: 25000, transacciones: 15, porcentaje: 55.6 },
-  { tipo: 'servicios', total: 8000, transacciones: 8, porcentaje: 17.8 },
-  { tipo: 'suplementos', total: 6000, transacciones: 12, porcentaje: 13.3 },
-  { tipo: 'mantenimiento', total: 4000, transacciones: 5, porcentaje: 8.9 },
-  { tipo: 'otros', total: 2000, transacciones: 6, porcentaje: 4.4 }
-];
+    if (errorPOS) throw errorPOS;
 
-const getVentasDiarias = async (fechas) => [
-  { fecha: '2025-06-01', membresías: 8000, pos: 2500, abonos: 1500, gastos: 3000, neto: 9000 },
-  { fecha: '2025-06-02', membresías: 12000, pos: 3200, abonos: 800, gastos: 2800, neto: 13200 },
-  { fecha: '2025-06-03', membresías: 6000, pos: 2800, abonos: 1200, gastos: 3500, neto: 6500 },
-  { fecha: '2025-06-04', membresías: 15000, pos: 4500, abonos: 2000, gastos: 4200, neto: 17300 },
-  { fecha: '2025-06-05', membresías: 9000, pos: 3800, abonos: 1800, gastos: 3800, neto: 10800 }
-];
+    // Membresías
+    const { data: ventasMembresías, error: errorMembresías } = await supabase
+      .from('membership_payment_details')
+      .select(`
+        payment_method,
+        amount,
+        commission_amount,
+        user_memberships!inner(created_at)
+      `)
+      .gte('user_memberships.created_at', fechas.fechaInicio)
+      .lte('user_memberships.created_at', fechas.fechaFin);
+
+    if (errorMembresías) throw errorMembresías;
+
+    // Combinar y agrupar por método
+    const metodosMap = new Map();
+
+    ventasPOS?.forEach(venta => {
+      const metodo = venta.payment_method || 'Sin especificar';
+      const existing = metodosMap.get(metodo) || { metodo, total: 0, transacciones: 0, comisiones: 0 };
+      existing.total += Number(venta.amount) || 0;
+      existing.transacciones += 1;
+      existing.comisiones += Number(venta.commission_amount) || 0;
+      metodosMap.set(metodo, existing);
+    });
+
+    ventasMembresías?.forEach(venta => {
+      const metodo = venta.payment_method || 'Sin especificar';
+      const existing = metodosMap.get(metodo) || { metodo, total: 0, transacciones: 0, comisiones: 0 };
+      existing.total += Number(venta.amount) || 0;
+      existing.transacciones += 1;
+      existing.comisiones += Number(venta.commission_amount) || 0;
+      metodosMap.set(metodo, existing);
+    });
+
+    const resultado = Array.from(metodosMap.values()).sort((a, b) => b.total - a.total);
+    console.log('✅ Ventas por método obtenidas:', resultado);
+    return resultado;
+  } catch (error) {
+    console.error('❌ Error obteniendo ventas por método:', error);
+    return [];
+  }
+};
+
+const getVentasPorCategoria = async (fechas) => {
+  try {
+    console.log('🛍️ Obteniendo ventas por categoría...');
+
+    const { data, error } = await supabase
+      .from('sale_items')
+      .select(`
+        quantity,
+        total_price,
+        products!inner(category),
+        sales!inner(created_at, status)
+      `)
+      .gte('sales.created_at', fechas.fechaInicio)
+      .lte('sales.created_at', fechas.fechaFin)
+      .eq('sales.status', 'completed');
+
+    if (error) throw error;
+
+    const categoriasMap = new Map();
+
+    data?.forEach(item => {
+      const categoria = item.products?.category || 'Sin categoría';
+      const existing = categoriasMap.get(categoria) || { categoria, total: 0, cantidad: 0, productos: 0 };
+      existing.total += Number(item.total_price) || 0;
+      existing.cantidad += Number(item.quantity) || 0;
+      existing.productos += 1;
+      categoriasMap.set(categoria, existing);
+    });
+
+    const resultado = Array.from(categoriasMap.values()).sort((a, b) => b.total - a.total);
+    console.log('✅ Ventas por categoría obtenidas:', resultado);
+    return resultado;
+  } catch (error) {
+    console.error('❌ Error obteniendo ventas por categoría:', error);
+    return [];
+  }
+};
+
+const getGastosPorTipo = async (fechas) => {
+  try {
+    console.log('💸 Obteniendo gastos por tipo...');
+
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('expense_type, amount')
+      .gte('expense_date', fechas.fechaInicio)
+      .lte('expense_date', fechas.fechaFin)
+      .eq('status', 'active');
+
+    if (error) throw error;
+
+    const tiposMap = new Map();
+    let totalGeneral = 0;
+
+    data?.forEach(gasto => {
+      const tipo = gasto.expense_type || 'otros';
+      const amount = Number(gasto.amount) || 0;
+      const existing = tiposMap.get(tipo) || { total: 0, count: 0 };
+      existing.total += amount;
+      existing.count += 1;
+      totalGeneral += amount;
+      tiposMap.set(tipo, existing);
+    });
+
+    const resultado = Array.from(tiposMap.entries()).map(([tipo, datos]) => ({
+      tipo: tipo.charAt(0).toUpperCase() + tipo.slice(1),
+      total: datos.total,
+      transacciones: datos.count,
+      porcentaje: totalGeneral > 0 ? (datos.total / totalGeneral) * 100 : 0
+    })).sort((a, b) => b.total - a.total);
+
+    console.log('✅ Gastos por tipo obtenidos:', resultado);
+    return resultado;
+  } catch (error) {
+    console.error('❌ Error obteniendo gastos por tipo:', error);
+    return [];
+  }
+};
+
+const getVentasDiarias = async (fechas) => {
+  try {
+    console.log('📈 Obteniendo ventas diarias...');
+
+    const { data: cortes, error } = await supabase
+      .from('cash_cuts')
+      .select('*')
+      .gte('cut_date', fechas.fechaInicio)
+      .lte('cut_date', fechas.fechaFin)
+      .order('cut_date');
+
+    if (error) throw error;
+
+    const resultado = cortes?.map(corte => ({
+      fecha: new Date(corte.cut_date).toLocaleDateString('es-MX', { 
+        month: 'short', 
+        day: 'numeric' 
+      }),
+      membresías: Number(corte.membership_total) || 0,
+      pos: Number(corte.pos_total) || 0,
+      abonos: Number(corte.abonos_total) || 0,
+      gastos: Number(corte.expenses_amount) || 0,
+      neto: Number(corte.final_balance) || 0
+    })) || [];
+
+    console.log('✅ Ventas diarias obtenidas:', resultado);
+    return resultado;
+  } catch (error) {
+    console.error('❌ Error obteniendo ventas diarias:', error);
+    return [];
+  }
+};
 
 // Componentes auxiliares
 const MetricCard = ({ title, value, icon: Icon, change, changeType = 'positive' }) => (
@@ -100,6 +325,7 @@ export default function ReportesPage() {
   const [gastosTipo, setGastosTipo] = useState([]);
   const [ventasDiarias, setVentasDiarias] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -107,6 +333,7 @@ export default function ReportesPage() {
 
   const cargarDatos = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [metricsData, ventasMetodoData, ventasCategoriaData, gastosTipoData, ventasDiariasData] = 
         await Promise.all([
@@ -124,6 +351,7 @@ export default function ReportesPage() {
       setVentasDiarias(ventasDiariasData);
     } catch (error) {
       console.error('Error cargando datos:', error);
+      setError('Error al cargar los datos. Verifica tu conexión a Supabase.');
     } finally {
       setLoading(false);
     }
@@ -135,6 +363,33 @@ export default function ReportesPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Cargando reportes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{error}</span>
+          </div>
+          <button
+            onClick={cargarDatos}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md font-medium"
+          >
+            Reintentar
+          </button>
+          <div className="mt-4 text-sm text-gray-600">
+            <p>Verifica que:</p>
+            <ul className="text-left mt-2 space-y-1">
+              <li>• Las variables de entorno de Supabase estén configuradas</li>
+              <li>• La conexión a internet esté activa</li>
+              <li>• Las tablas existan en tu base de datos</li>
+            </ul>
+          </div>
         </div>
       </div>
     );
@@ -240,7 +495,11 @@ export default function ReportesPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ metodo, porcentaje }) => `${metodo} (${((porcentaje || 0) * 100).toFixed(1)}%)`}
+                  label={({ metodo, total }) => {
+                    const totalGeneral = ventasMetodo.reduce((sum, item) => sum + item.total, 0);
+                    const porcentaje = totalGeneral > 0 ? (total / totalGeneral * 100).toFixed(1) : '0';
+                    return `${metodo} (${porcentaje}%)`;
+                  }}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="total"
