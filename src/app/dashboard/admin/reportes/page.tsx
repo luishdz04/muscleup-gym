@@ -5,7 +5,19 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
-import { Calendar, DollarSign, Users, ShoppingCart, TrendingUp, TrendingDown } from 'lucide-react';
+import { 
+  CalendarToday,
+  AttachMoney,
+  People,
+  ShoppingCart,
+  TrendingUp,
+  TrendingDown,
+  Refresh,
+  Assessment,
+  CreditCard,
+  Category,
+  AccountBalance
+} from '@mui/icons-material';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 // Inicializar cliente de Supabase
@@ -400,19 +412,22 @@ export default function ReportesPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">📊 Reportes y Analytics</h1>
+          <div className="flex items-center gap-3 mb-4">
+            <Assessment className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-gray-900">Reportes y Analytics</h1>
+          </div>
           
           {/* Filtros de fecha */}
           <div className="bg-white rounded-lg shadow-md p-4 mb-6">
             <div className="flex items-center space-x-4">
-              <Calendar className="w-5 h-5 text-gray-500" />
+              <CalendarToday className="w-5 h-5 text-gray-500" />
               <div className="flex items-center space-x-2">
                 <label className="text-sm font-medium text-gray-700">Desde:</label>
                 <input
                   type="date"
                   value={fechas.fechaInicio}
                   onChange={(e) => setFechas(prev => ({ ...prev, fechaInicio: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex items-center space-x-2">
@@ -421,13 +436,14 @@ export default function ReportesPage() {
                   type="date"
                   value={fechas.fechaFin}
                   onChange={(e) => setFechas(prev => ({ ...prev, fechaFin: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <button
                 onClick={cargarDatos}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors"
               >
+                <Refresh className="w-4 h-4" />
                 Actualizar
               </button>
             </div>
@@ -439,21 +455,21 @@ export default function ReportesPage() {
           <MetricCard
             title="Ingresos Totales"
             value={formatCurrency(metrics?.totalIngresos || 0)}
-            icon={DollarSign}
+            icon={AttachMoney}
             change="+12.5%"
             changeType="positive"
           />
           <MetricCard
             title="Utilidad Neta"
             value={formatCurrency(metrics?.utilidadNeta || 0)}
-            icon={TrendingUp}
+            icon={AccountBalance}
             change="+8.2%"
             changeType="positive"
           />
           <MetricCard
             title="Membresías Activas"
             value={metrics?.membresiasActivas || 0}
-            icon={Users}
+            icon={People}
             change="+15 nuevas"
             changeType="positive"
           />
@@ -470,7 +486,10 @@ export default function ReportesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Ventas diarias */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📈 Ventas Diarias</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Ventas Diarias</h3>
+            </div>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={ventasDiarias}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -487,7 +506,10 @@ export default function ReportesPage() {
 
           {/* Ventas por método de pago */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">💳 Ventas por Método de Pago</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Ventas por Método de Pago</h3>
+            </div>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -518,7 +540,10 @@ export default function ReportesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Ventas por categoría */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">🛍️ Ventas por Categoría</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <Category className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Ventas por Categoría</h3>
+            </div>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={ventasCategoria}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -532,7 +557,10 @@ export default function ReportesPage() {
 
           {/* Gastos por tipo */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">💸 Gastos por Tipo</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingDown className="w-5 h-5 text-red-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Gastos por Tipo</h3>
+            </div>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={gastosTipo}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -548,7 +576,10 @@ export default function ReportesPage() {
         {/* Métricas adicionales en grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">👥 Usuarios</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <People className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Usuarios</h3>
+            </div>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Total:</span>
@@ -566,7 +597,10 @@ export default function ReportesPage() {
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">🎫 Membresías</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Membresías</h3>
+            </div>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Vendidas:</span>
@@ -584,7 +618,10 @@ export default function ReportesPage() {
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📦 Apartados</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <ShoppingCart className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Apartados</h3>
+            </div>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Activos:</span>
@@ -604,17 +641,23 @@ export default function ReportesPage() {
 
         {/* Resumen financiero */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">💰 Resumen Financiero</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <AccountBalance className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Resumen Financiero</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+              <AttachMoney className="w-8 h-8 text-green-600 mx-auto mb-2" />
               <p className="text-sm text-gray-600">Ingresos Totales</p>
               <p className="text-2xl font-bold text-green-600">{formatCurrency(metrics?.totalIngresos || 0)}</p>
             </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
+            <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+              <TrendingDown className="w-8 h-8 text-red-600 mx-auto mb-2" />
               <p className="text-sm text-gray-600">Gastos Totales</p>
               <p className="text-2xl font-bold text-red-600">{formatCurrency(metrics?.totalGastos || 0)}</p>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <Assessment className="w-8 h-8 text-blue-600 mx-auto mb-2" />
               <p className="text-sm text-gray-600">Utilidad Neta</p>
               <p className="text-2xl font-bold text-blue-600">{formatCurrency(metrics?.utilidadNeta || 0)}</p>
             </div>
