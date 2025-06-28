@@ -168,211 +168,6 @@ function getDateDaysAgo(daysAgo) {
   return `${year}-${month}-${day}`;
 }
 
-// ============= FUNCIONES DE CONSULTA REALES (EXACTAMENTE COMO EL DASHBOARD) =============
-
-// ✅ FUNCIÓN CRÍTICA: loadRealDailyData (EXACTA del dashboard)
-const loadRealDailyData = useCallback(async (targetDate) => {
-  try {
-    console.log('📊 [REPORTES] Consultando API daily-data para:', targetDate);
-    
-    const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      
-      console.log('📊 [REPORTES] Respuesta de API:', data);
-      
-      // ✅ USAR LA VALIDACIÓN DEL DASHBOARD
-      if (data.success && data.totals) {
-        console.log('✅ [REPORTES] Datos válidos encontrados:', {
-          total: data.totals.total,
-          efectivo: data.totals.efectivo,
-          transferencia: data.totals.transferencia,
-          pos: data.pos?.total,
-          memberships: data.memberships?.total,
-          abonos: data.abonos?.total
-        });
-        return data;
-      } else {
-        console.log('⚠️ [REPORTES] Sin datos válidos para:', targetDate);
-        return null;
-      }
-    } else {
-      console.log('❌ [REPORTES] Error HTTP:', response.status);
-      return null;
-    }
-  } catch (error) {
-    console.error('❌ [REPORTES] Error en loadRealDailyData:', error);
-    return null;
-  }
-}, []);
-
-// ✅ FUNCIÓN CRÍTICA: loadWeeklyRealData (EXACTA del dashboard)
-const loadWeeklyRealData = useCallback(async () => {
-  console.log('📈 [REPORTES] Cargando datos semanales...');
-  const chartData = [];
-  
-  for (let i = 6; i >= 0; i--) {
-    const dateString = getDateDaysAgo(i);
-    const dayName = dateString.split('-').slice(1).join('/'); // "06/28"
-    
-    const dayData = await loadRealDailyData(dateString);
-    
-    // ✅ IMPORTANTE: Siempre agregar datos, incluso si son 0
-    chartData.push({
-      name: dayName,
-      sales: dayData?.pos?.total || 0,
-      memberships: dayData?.memberships?.total || 0,
-      layaways: dayData?.abonos?.total || 0,
-      date: dateString,
-      total: dayData?.totals?.total || 0
-    });
-  }
-  
-  console.log('✅ [REPORTES] Datos semanales obtenidos:', chartData);
-  return chartData;
-}, [loadRealDailyData]);
-
-// ✅ FUNCIÓN PRINCIPAL: loadDashboardStats (ADAPTADA del dashboard)
-const loadDashboardStats = useCallback(async (selectedPeriod = 'today') => {
-  try {
-    console.log('📊 [REPORTES] Iniciando carga de estadísticas para:', selectedPeriod);
-
-    let targetDate;
-    let totalIngresos = 0;
-    let totalPOS = 0;
-    let totalMemberships = 0;
-    let totalAbonos = 0;
-    let totalEfectivo = 0;
-    let totalTransferencia = 0;
-    let totalDebito = 0;
-    let totalCredito = 0;
-    let totalTransacciones = 0;
-
-    if (selectedPeriod === 'today') {
-      // ✅ USAR FECHA ACTUAL COMO EL DASHBOARD
-      targetDate = getMexicoDateLocal();
-      const dailyDataResult = await loadRealDailyData(targetDate);
-      
-      if (dailyDataResult && dailyDataResult.totals) {
-        totalIngresos = dailyDataResult.totals.total || 0;
-        totalPOS = dailyDataResult.pos?.total || 0;
-        totalMemberships = dailyDataResult.memberships?.total || 0;
-        totalAbonos = dailyDataResult.abonos?.total || 0;
-        totalEfectivo = dailyDataResult.totals.efectivo || 0;
-        totalTransferencia = dailyDataResult.totals.transferencia || 0;
-        totalDebito = dailyDataResult.totals.debito || 0;
-        totalCredito = dailyDataResult.totals.credito || 0;
-        totalTransacciones = dailyDataResult.totals.transactions || 0;
-        
-        console.log('✅ [REPORTES] Datos del día actual cargados:', {
-          totalIngresos, totalPOS, totalMemberships, totalAbonos
-        });
-      } else {
-        console.log('⚠️ [REPORTES] Sin datos para hoy:', targetDate);
-      }
-    } else if (selectedPeriod === 'week') {
-      // ✅ SUMAR DATOS DE LA SEMANA
-      for (let i = 6; i >= 0; i--) {
-        const dateString = getDateDaysAgo(i);
-        const dayData = await loadRealDailyData(dateString);
-        
-        if (dayData && dayData.totals) {
-          totalIngresos += dayData.totals.total || 0;
-          totalPOS += dayData.pos?.total || 0;
-          totalMemberships += dayData.memberships?.total || 0;
-          totalAbonos += dayData.abonos?.total || 0;
-          totalEfectivo += dayData.totals.efectivo || 0;
-          totalTransferencia += dayData.totals.transferencia || 0;
-          totalDebito += dayData.totals.debito || 0;
-          totalCredito += dayData.totals.credito || 0;
-          totalTransacciones += dayData.totals.transactions || 0;
-        }
-      }
-      console.log('✅ [REPORTES] Datos semanales acumulados:', { totalIngresos });
-    }
-
-    // ✅ CARGAR DATOS COMPLEMENTARIOS DE SUPABASE (como el dashboard)
-    const supabase = createBrowserSupabaseClient();
-
-    const { count: usuariosTotales } = await supabase
-      .from('Users')
-      .select('*', { count: 'exact', head: true })
-      .eq('rol', 'cliente');
-
-    const { data: membresiasActivas } = await supabase
-      .from('user_memberships')
-      .select('userid, status')
-      .eq('status', 'active');
-
-    const { data: apartados } = await supabase
-      .from('sales')
-      .select('pending_amount, status')
-      .eq('sale_type', 'layaway')
-      .in('status', ['pending', 'partial']);
-
-    const { data: gastos } = await supabase
-      .from('expenses')
-      .select('amount')
-      .eq('status', 'active');
-
-    // ✅ CARGAR DATOS GRÁFICOS
-    const realChartData = await loadWeeklyRealData();
-
-    const totalGastos = gastos?.reduce((sum, g) => sum + (Number(g.amount) || 0), 0) || 0;
-
-    // ✅ CONSTRUIR MÉTRICAS FINALES
-    const finalStats = {
-      totalIngresos,
-      totalGastos,
-      utilidadNeta: totalIngresos - totalGastos,
-      membresiasTotales: 0,
-      membresiasActivas: membresiasActivas?.length || 0,
-      membresiasVencidas: 0,
-      ingresosMembresías: totalMemberships,
-      ventasPOSTotales: totalPOS,
-      apartadosActivos: apartados?.length || 0,
-      apartadosPendientes: apartados?.reduce((sum, a) => sum + (Number(a.pending_amount) || 0), 0) || 0,
-      productosVendidos: totalTransacciones,
-      usuariosTotales: usuariosTotales || 0,
-      usuariosActivos: new Set(membresiasActivas?.map(u => u.userid)).size || 0,
-      nuevosUsuarios: 0,
-      // ✅ DESGLOSE DE MÉTODOS DE PAGO
-      cashFlow: {
-        efectivo: totalEfectivo,
-        transferencia: totalTransferencia,
-        debito: totalDebito,
-        credito: totalCredito
-      },
-      // ✅ DATOS PARA GRÁFICOS
-      chartData: realChartData,
-      pieData: []
-    };
-
-    // ✅ CONSTRUIR PIE DATA
-    if (totalIngresos > 0) {
-      const pieData = [];
-      if (totalEfectivo > 0) pieData.push({ name: 'Efectivo', value: totalEfectivo, color: colorSchemes.default.primary });
-      if (totalTransferencia > 0) pieData.push({ name: 'Transferencia', value: totalTransferencia, color: colorSchemes.default.secondary });
-      if (totalDebito > 0) pieData.push({ name: 'Débito', value: totalDebito, color: colorSchemes.default.tertiary });
-      if (totalCredito > 0) pieData.push({ name: 'Crédito', value: totalCredito, color: colorSchemes.default.quaternary });
-      finalStats.pieData = pieData;
-    }
-
-    console.log('✅ [REPORTES] Estadísticas finales calculadas:', finalStats);
-    return finalStats;
-    
-  } catch (err) {
-    console.error('❌ [REPORTES] Error en loadDashboardStats:', err);
-    throw err;
-  }
-}, [loadRealDailyData, loadWeeklyRealData]);
-
 // ✅ COMPONENTE PRINCIPAL
 export default function ReportesPage() {
   const [config, setConfig] = useState({
@@ -394,6 +189,209 @@ export default function ReportesPage() {
   const [currentMexicoTime, setCurrentMexicoTime] = useState('');
 
   const currentColors = colorSchemes[config.colorScheme];
+
+  // ✅ FUNCIÓN CRÍTICA: loadRealDailyData (AHORA DENTRO DEL COMPONENTE)
+  const loadRealDailyData = useCallback(async (targetDate) => {
+    try {
+      console.log('📊 [REPORTES] Consultando API daily-data para:', targetDate);
+      
+      const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        console.log('📊 [REPORTES] Respuesta de API:', data);
+        
+        // ✅ USAR LA VALIDACIÓN DEL DASHBOARD
+        if (data.success && data.totals) {
+          console.log('✅ [REPORTES] Datos válidos encontrados:', {
+            total: data.totals.total,
+            efectivo: data.totals.efectivo,
+            transferencia: data.totals.transferencia,
+            pos: data.pos?.total,
+            memberships: data.memberships?.total,
+            abonos: data.abonos?.total
+          });
+          return data;
+        } else {
+          console.log('⚠️ [REPORTES] Sin datos válidos para:', targetDate);
+          return null;
+        }
+      } else {
+        console.log('❌ [REPORTES] Error HTTP:', response.status);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ [REPORTES] Error en loadRealDailyData:', error);
+      return null;
+    }
+  }, []);
+
+  // ✅ FUNCIÓN CRÍTICA: loadWeeklyRealData (AHORA DENTRO DEL COMPONENTE)
+  const loadWeeklyRealData = useCallback(async () => {
+    console.log('📈 [REPORTES] Cargando datos semanales...');
+    const chartData = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const dateString = getDateDaysAgo(i);
+      const dayName = dateString.split('-').slice(1).join('/'); // "06/28"
+      
+      const dayData = await loadRealDailyData(dateString);
+      
+      // ✅ IMPORTANTE: Siempre agregar datos, incluso si son 0
+      chartData.push({
+        name: dayName,
+        sales: dayData?.pos?.total || 0,
+        memberships: dayData?.memberships?.total || 0,
+        layaways: dayData?.abonos?.total || 0,
+        date: dateString,
+        total: dayData?.totals?.total || 0
+      });
+    }
+    
+    console.log('✅ [REPORTES] Datos semanales obtenidos:', chartData);
+    return chartData;
+  }, [loadRealDailyData]);
+
+  // ✅ FUNCIÓN PRINCIPAL: loadDashboardStats (AHORA DENTRO DEL COMPONENTE)
+  const loadDashboardStats = useCallback(async (selectedPeriod = 'today') => {
+    try {
+      console.log('📊 [REPORTES] Iniciando carga de estadísticas para:', selectedPeriod);
+
+      let targetDate;
+      let totalIngresos = 0;
+      let totalPOS = 0;
+      let totalMemberships = 0;
+      let totalAbonos = 0;
+      let totalEfectivo = 0;
+      let totalTransferencia = 0;
+      let totalDebito = 0;
+      let totalCredito = 0;
+      let totalTransacciones = 0;
+
+      if (selectedPeriod === 'today') {
+        // ✅ USAR FECHA ACTUAL COMO EL DASHBOARD
+        targetDate = getMexicoDateLocal();
+        const dailyDataResult = await loadRealDailyData(targetDate);
+        
+        if (dailyDataResult && dailyDataResult.totals) {
+          totalIngresos = dailyDataResult.totals.total || 0;
+          totalPOS = dailyDataResult.pos?.total || 0;
+          totalMemberships = dailyDataResult.memberships?.total || 0;
+          totalAbonos = dailyDataResult.abonos?.total || 0;
+          totalEfectivo = dailyDataResult.totals.efectivo || 0;
+          totalTransferencia = dailyDataResult.totals.transferencia || 0;
+          totalDebito = dailyDataResult.totals.debito || 0;
+          totalCredito = dailyDataResult.totals.credito || 0;
+          totalTransacciones = dailyDataResult.totals.transactions || 0;
+          
+          console.log('✅ [REPORTES] Datos del día actual cargados:', {
+            totalIngresos, totalPOS, totalMemberships, totalAbonos
+          });
+        } else {
+          console.log('⚠️ [REPORTES] Sin datos para hoy:', targetDate);
+        }
+      } else if (selectedPeriod === 'week') {
+        // ✅ SUMAR DATOS DE LA SEMANA
+        for (let i = 6; i >= 0; i--) {
+          const dateString = getDateDaysAgo(i);
+          const dayData = await loadRealDailyData(dateString);
+          
+          if (dayData && dayData.totals) {
+            totalIngresos += dayData.totals.total || 0;
+            totalPOS += dayData.pos?.total || 0;
+            totalMemberships += dayData.memberships?.total || 0;
+            totalAbonos += dayData.abonos?.total || 0;
+            totalEfectivo += dayData.totals.efectivo || 0;
+            totalTransferencia += dayData.totals.transferencia || 0;
+            totalDebito += dayData.totals.debito || 0;
+            totalCredito += dayData.totals.credito || 0;
+            totalTransacciones += dayData.totals.transactions || 0;
+          }
+        }
+        console.log('✅ [REPORTES] Datos semanales acumulados:', { totalIngresos });
+      }
+
+      // ✅ CARGAR DATOS COMPLEMENTARIOS DE SUPABASE (como el dashboard)
+      const supabase = createBrowserSupabaseClient();
+
+      const { count: usuariosTotales } = await supabase
+        .from('Users')
+        .select('*', { count: 'exact', head: true })
+        .eq('rol', 'cliente');
+
+      const { data: membresiasActivas } = await supabase
+        .from('user_memberships')
+        .select('userid, status')
+        .eq('status', 'active');
+
+      const { data: apartados } = await supabase
+        .from('sales')
+        .select('pending_amount, status')
+        .eq('sale_type', 'layaway')
+        .in('status', ['pending', 'partial']);
+
+      const { data: gastos } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('status', 'active');
+
+      // ✅ CARGAR DATOS GRÁFICOS
+      const realChartData = await loadWeeklyRealData();
+
+      const totalGastos = gastos?.reduce((sum, g) => sum + (Number(g.amount) || 0), 0) || 0;
+
+      // ✅ CONSTRUIR MÉTRICAS FINALES
+      const finalStats = {
+        totalIngresos,
+        totalGastos,
+        utilidadNeta: totalIngresos - totalGastos,
+        membresiasTotales: 0,
+        membresiasActivas: membresiasActivas?.length || 0,
+        membresiasVencidas: 0,
+        ingresosMembresías: totalMemberships,
+        ventasPOSTotales: totalPOS,
+        apartadosActivos: apartados?.length || 0,
+        apartadosPendientes: apartados?.reduce((sum, a) => sum + (Number(a.pending_amount) || 0), 0) || 0,
+        productosVendidos: totalTransacciones,
+        usuariosTotales: usuariosTotales || 0,
+        usuariosActivos: new Set(membresiasActivas?.map(u => u.userid)).size || 0,
+        nuevosUsuarios: 0,
+        // ✅ DESGLOSE DE MÉTODOS DE PAGO
+        cashFlow: {
+          efectivo: totalEfectivo,
+          transferencia: totalTransferencia,
+          debito: totalDebito,
+          credito: totalCredito
+        },
+        // ✅ DATOS PARA GRÁFICOS
+        chartData: realChartData,
+        pieData: []
+      };
+
+      // ✅ CONSTRUIR PIE DATA
+      if (totalIngresos > 0) {
+        const pieData = [];
+        if (totalEfectivo > 0) pieData.push({ name: 'Efectivo', value: totalEfectivo, color: colorSchemes.default.primary });
+        if (totalTransferencia > 0) pieData.push({ name: 'Transferencia', value: totalTransferencia, color: colorSchemes.default.secondary });
+        if (totalDebito > 0) pieData.push({ name: 'Débito', value: totalDebito, color: colorSchemes.default.tertiary });
+        if (totalCredito > 0) pieData.push({ name: 'Crédito', value: totalCredito, color: colorSchemes.default.quaternary });
+        finalStats.pieData = pieData;
+      }
+
+      console.log('✅ [REPORTES] Estadísticas finales calculadas:', finalStats);
+      return finalStats;
+      
+    } catch (err) {
+      console.error('❌ [REPORTES] Error en loadDashboardStats:', err);
+      throw err;
+    }
+  }, [loadRealDailyData, loadWeeklyRealData]);
 
   useEffect(() => {
     const updateTime = () => {
