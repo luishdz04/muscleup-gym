@@ -1,5 +1,5 @@
 // lib/reports-queries.ts
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 import type { 
   DashboardMetrics, 
   VentasPorMetodo, 
@@ -13,67 +13,68 @@ import type {
   RangoFechas 
 } from '@/types/reports';
 
-// Inicializar Supabase (ajusta con tus credenciales)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // ============= MÉTRICAS PRINCIPALES =============
 export async function getDashboardMetrics(fechas: RangoFechas): Promise<DashboardMetrics> {
   try {
     // Ingresos por membresías
-    const { data: membresías } = await supabase
+    const { data: membresías, error: errorMembresías } = await supabase
       .from('user_memberships')
-      .select('amount_paid')
+      .select('amount_paid, status')
       .gte('created_at', fechas.fechaInicio)
       .lte('created_at', fechas.fechaFin);
 
+    if (errorMembresías) throw errorMembresías;
+
     // Ingresos por ventas POS
-    const { data: ventas } = await supabase
+    const { data: ventas, error: errorVentas } = await supabase
       .from('sales')
-      .select('total_amount, status')
+      .select('total_amount, status, sale_type')
       .gte('created_at', fechas.fechaInicio)
       .lte('created_at', fechas.fechaFin)
       .eq('status', 'completed');
 
+    if (errorVentas) throw errorVentas;
+
     // Gastos totales
-    const { data: gastos } = await supabase
+    const { data: gastos, error: errorGastos } = await supabase
       .from('expenses')
       .select('amount')
       .gte('expense_date', fechas.fechaInicio)
       .lte('expense_date', fechas.fechaFin)
       .eq('status', 'active');
 
-    // Usuarios totales y activos
-    const { data: usuariosTotales } = await supabase
-      .from('Users')
-      .select('id, createdAt')
-      .count();
+    if (errorGastos) throw errorGastos;
 
-    const { data: usuariosActivos } = await supabase
-      .from('user_memberships')
-      .select('userid')
-      .eq('status', 'active');
+    // Usuarios totales
+    const { count: usuariosTotales, error: errorUsuarios } = await supabase
+      .from('Users')
+      .select('*', { count: 'exact', head: true });
+
+    if (errorUsuarios) throw errorUsuarios;
 
     // Membresías activas
-    const { data: membresiasActivas } = await supabase
+    const { data: membresiasActivas, error: errorMembresiasActivas } = await supabase
       .from('user_memberships')
-      .select('*')
+      .select('userid, status')
       .eq('status', 'active');
 
+    if (errorMembresiasActivas) throw errorMembresiasActivas;
+
     // Apartados activos
-    const { data: apartados } = await supabase
+    const { data: apartados, error: errorApartados } = await supabase
       .from('sales')
-      .select('*')
+      .select('pending_amount, status')
       .eq('sale_type', 'layaway')
-      .eq('status', 'pending');
+      .in('status', ['pending', 'partial']);
+
+    if (errorApartados) throw errorApartados;
 
     // Calcular métricas
-    const ingresosMembresías = membresías?.reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0;
-    const ingresosVentas = ventas?.reduce((sum, v) => sum + (v.total_amount || 0), 0) || 0;
+    const ingresosMembresías = membresías?.reduce((sum, m) => sum + (Number(m.amount_paid) || 0), 0) || 0;
+    const ingresosVentas = ventas?.filter(v => v.sale_type !== 'layaway')
+      .reduce((sum, v) => sum + (Number(v.total_amount) || 0), 0) || 0;
     const totalIngresos = ingresosMembresías + ingresosVentas;
-    const totalGastos = gastos?.reduce((sum, g) => sum + (g.amount || 0), 0) || 0;
+    const totalGastos = gastos?.reduce((sum, g) => sum + (Number(g.amount) || 0), 0) || 0;
 
     return {
       totalIngresos,
@@ -81,19 +82,35 @@ export async function getDashboardMetrics(fechas: RangoFechas): Promise<Dashboar
       utilidadNeta: totalIngresos - totalGastos,
       membresiasTotales: membresías?.length || 0,
       membresiasActivas: membresiasActivas?.length || 0,
-      membresiasVencidas: 0, // Calcular según end_date
+      membresiasVencidas: 0, // TODO: Calcular según end_date
       ingresosMembresías,
       ventasPOSTotales: ingresosVentas,
       apartadosActivos: apartados?.length || 0,
-      apartadosPendientes: apartados?.reduce((sum, a) => sum + (a.pending_amount || 0), 0) || 0,
+      apartadosPendientes: apartados?.reduce((sum, a) => sum + (Number(a.pending_amount) || 0), 0) || 0,
       productosVendidos: ventas?.length || 0,
-      usuariosTotales: usuariosTotales?.length || 0,
-      usuariosActivos: new Set(usuariosActivos?.map(u => u.userid)).size || 0,
-      nuevosUsuarios: 0 // Calcular por fecha de creación
+      usuariosTotales: usuariosTotales || 0,
+      usuariosActivos: new Set(membresiasActivas?.map(u => u.userid)).size || 0,
+      nuevosUsuarios: 0 // TODO: Calcular por fecha de creación
     };
   } catch (error) {
     console.error('Error obteniendo métricas:', error);
-    throw error;
+    // Retornar valores por defecto en caso de error
+    return {
+      totalIngresos: 0,
+      totalGastos: 0,
+      utilidadNeta: 0,
+      membresiasTotales: 0,
+      membresiasActivas: 0,
+      membresiasVencidas: 0,
+      ingresosMembresías: 0,
+      ventasPOSTotales: 0,
+      apartadosActivos: 0,
+      apartadosPendientes: 0,
+      productosVendidos: 0,
+      usuariosTotales: 0,
+      usuariosActivos: 0,
+      nuevosUsuarios: 0
+    };
   }
 }
 
@@ -128,6 +145,7 @@ export async function getVentasPorMetodo(fechas: RangoFechas): Promise<VentasPor
     // Combinar y agrupar por método
     const metodosMap = new Map<string, VentasPorMetodo>();
 
+    // Procesar ventas POS
     ventasPOS?.forEach(venta => {
       const metodo = venta.payment_method;
       const existing = metodosMap.get(metodo) || { 
@@ -137,12 +155,13 @@ export async function getVentasPorMetodo(fechas: RangoFechas): Promise<VentasPor
         comisiones: 0 
       };
       
-      existing.total += venta.amount || 0;
+      existing.total += Number(venta.amount) || 0;
       existing.transacciones += 1;
-      existing.comisiones += venta.commission_amount || 0;
+      existing.comisiones += Number(venta.commission_amount) || 0;
       metodosMap.set(metodo, existing);
     });
 
+    // Procesar ventas de membresías
     ventasMembresías?.forEach(venta => {
       const metodo = venta.payment_method;
       const existing = metodosMap.get(metodo) || { 
@@ -152,23 +171,23 @@ export async function getVentasPorMetodo(fechas: RangoFechas): Promise<VentasPor
         comisiones: 0 
       };
       
-      existing.total += venta.amount || 0;
+      existing.total += Number(venta.amount) || 0;
       existing.transacciones += 1;
-      existing.comisiones += venta.commission_amount || 0;
+      existing.comisiones += Number(venta.commission_amount) || 0;
       metodosMap.set(metodo, existing);
     });
 
-    return Array.from(metodosMap.values());
+    return Array.from(metodosMap.values()).sort((a, b) => b.total - a.total);
   } catch (error) {
     console.error('Error obteniendo ventas por método:', error);
-    throw error;
+    return [];
   }
 }
 
 // ============= VENTAS POR CATEGORÍA =============
 export async function getVentasPorCategoria(fechas: RangoFechas): Promise<VentasPorCategoria[]> {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('sale_items')
       .select(`
         quantity,
@@ -180,10 +199,12 @@ export async function getVentasPorCategoria(fechas: RangoFechas): Promise<Ventas
       .lte('sales.created_at', fechas.fechaFin)
       .eq('sales.status', 'completed');
 
+    if (error) throw error;
+
     const categoriasMap = new Map<string, VentasPorCategoria>();
 
     data?.forEach(item => {
-      const categoria = item.products.category;
+      const categoria = item.products.category || 'Sin categoría';
       const existing = categoriasMap.get(categoria) || {
         categoria,
         total: 0,
@@ -191,51 +212,54 @@ export async function getVentasPorCategoria(fechas: RangoFechas): Promise<Ventas
         productos: 0
       };
 
-      existing.total += item.total_price || 0;
-      existing.cantidad += item.quantity || 0;
+      existing.total += Number(item.total_price) || 0;
+      existing.cantidad += Number(item.quantity) || 0;
       existing.productos += 1;
       categoriasMap.set(categoria, existing);
     });
 
-    return Array.from(categoriasMap.values());
+    return Array.from(categoriasMap.values()).sort((a, b) => b.total - a.total);
   } catch (error) {
     console.error('Error obteniendo ventas por categoría:', error);
-    throw error;
+    return [];
   }
 }
 
 // ============= GASTOS POR TIPO =============
 export async function getGastosPorTipo(fechas: RangoFechas): Promise<GastosPorTipo[]> {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('expenses')
       .select('expense_type, amount')
       .gte('expense_date', fechas.fechaInicio)
       .lte('expense_date', fechas.fechaFin)
       .eq('status', 'active');
 
+    if (error) throw error;
+
     const tiposMap = new Map<string, { total: number; count: number }>();
     let totalGeneral = 0;
 
     data?.forEach(gasto => {
-      const tipo = gasto.expense_type;
+      const tipo = gasto.expense_type || 'otros';
+      const amount = Number(gasto.amount) || 0;
       const existing = tiposMap.get(tipo) || { total: 0, count: 0 };
       
-      existing.total += gasto.amount || 0;
+      existing.total += amount;
       existing.count += 1;
-      totalGeneral += gasto.amount || 0;
+      totalGeneral += amount;
       tiposMap.set(tipo, existing);
     });
 
     return Array.from(tiposMap.entries()).map(([tipo, datos]) => ({
-      tipo,
+      tipo: tipo.charAt(0).toUpperCase() + tipo.slice(1), // Capitalizar primera letra
       total: datos.total,
       transacciones: datos.count,
       porcentaje: totalGeneral > 0 ? (datos.total / totalGeneral) * 100 : 0
-    }));
+    })).sort((a, b) => b.total - a.total);
   } catch (error) {
     console.error('Error obteniendo gastos por tipo:', error);
-    throw error;
+    return [];
   }
 }
 
