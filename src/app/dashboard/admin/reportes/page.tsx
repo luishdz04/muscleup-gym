@@ -194,87 +194,211 @@ function formatDateTime(dateString) {
   }
 }
 
-// ============= FUNCIONES DE CONSULTA REALES (usando el patrón del dashboard principal) =============
-const supabase = createBrowserSupabaseClient();
+// ============= FUNCIONES DE CONSULTA REALES (USANDO EL MISMO PATRÓN DEL DASHBOARD) =============
 
+// 🔧 FUNCIÓN HELPER PARA OBTENER FECHA N DÍAS ATRÁS
+function getDateDaysAgo(daysAgo) {
+  const now = new Date();
+  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  mexicoDate.setDate(mexicoDate.getDate() - daysAgo);
+  
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// 🔧 FUNCIÓN HELPER PARA OBTENER FECHA N MESES ATRÁS
+function getDateMonthsAgo(monthsAgo) {
+  const now = new Date();
+  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+  
+  let targetYear = mexicoDate.getFullYear();
+  let targetMonth = mexicoDate.getMonth() - monthsAgo;
+  
+  while (targetMonth < 0) {
+    targetMonth += 12;
+    targetYear--;
+  }
+  
+  const year = targetYear;
+  const month = String(targetMonth + 1).padStart(2, '0');
+  
+  return `${year}-${month}`;
+}
+
+// ✅ FUNCIÓN REAL - loadRealDailyData (igual que el dashboard)
+const loadRealDailyData = async (targetDate) => {
+  try {
+    console.log('📊 Cargando datos diarios desde API:', targetDate);
+    
+    const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.success && data.totals && data.totals.total > 0) {
+        console.log('✅ Datos diarios obtenidos:', data);
+        return data;
+      } else {
+        console.log('⚠️ Sin datos para:', targetDate);
+        return null;
+      }
+    } else {
+      console.log('❌ Error en API daily-data:', response.status);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Error loadRealDailyData:', error);
+    return null;
+  }
+};
+
+// ✅ FUNCIÓN REAL - loadWeeklyRealData (igual que el dashboard)
+const loadWeeklyRealData = async () => {
+  console.log('📈 Cargando datos semanales...');
+  const chartData = [];
+  
+  for (let i = 6; i >= 0; i--) {
+    const dateString = getDateDaysAgo(i);
+    const dayName = dateString.split('-').slice(1).join('/'); // "06/20"
+    
+    const dayData = await loadRealDailyData(dateString);
+    
+    chartData.push({
+      name: dayName,
+      sales: dayData?.pos?.total || 0,
+      memberships: dayData?.memberships?.total || 0,
+      layaways: dayData?.abonos?.total || 0,
+      date: dateString
+    });
+  }
+  
+  console.log('✅ Datos semanales cargados:', chartData);
+  return chartData;
+};
+
+// ✅ FUNCIÓN REAL - loadMonthlyRealData (igual que el dashboard)
+const loadMonthlyRealData = async (monthsToShow = 6) => {
+  console.log('📅 Cargando datos mensuales...');
+  const monthlyData = [];
+  
+  for (let i = monthsToShow - 1; i >= 0; i--) {
+    const monthString = getDateMonthsAgo(i);
+    
+    try {
+      console.log('📊 Consultando mes:', monthString);
+      const response = await fetch(`/api/cuts/monthly-data?month=${monthString}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.totals) {
+          monthlyData.push({
+            month: monthString,
+            monthName: new Date(monthString + '-01').toLocaleDateString('es-MX', { 
+              year: 'numeric', 
+              month: 'long' 
+            }),
+            sales: data.pos?.total || 0,
+            memberships: data.memberships?.total || 0,
+            layaways: data.abonos?.total || 0,
+            total: data.totals?.total || 0,
+            transactions: data.totals?.transactions || 0,
+            growth: 0
+          });
+          continue;
+        }
+      }
+    } catch (error) {
+      console.log(`⚠️ Error consultando ${monthString}:`, error);
+    }
+    
+    // FALLBACK: Sin datos para este mes
+    monthlyData.push({
+      month: monthString,
+      monthName: new Date(monthString + '-01').toLocaleDateString('es-MX', { 
+        year: 'numeric', 
+        month: 'long' 
+      }),
+      sales: 0,
+      memberships: 0,
+      layaways: 0,
+      total: 0,
+      transactions: 0,
+      growth: 0
+    });
+  }
+  
+  // Calcular crecimiento
+  for (let i = 1; i < monthlyData.length; i++) {
+    const current = monthlyData[i].total;
+    const previous = monthlyData[i - 1].total;
+    monthlyData[i].growth = previous > 0 ? ((current - previous) / previous) * 100 : 0;
+  }
+  
+  console.log('✅ Datos mensuales cargados:', monthlyData);
+  return monthlyData;
+};
+
+// ✅ FUNCIÓN PRINCIPAL - getDashboardMetrics (usando APIs reales)
 const getDashboardMetrics = async (fechas) => {
   try {
-    console.log('📊 Obteniendo métricas del dashboard...', fechas);
+    console.log('📊 Obteniendo métricas del período:', fechas);
 
-    // Ingresos por membresías
-    const { data: membresías, error: errorMembresías } = await supabase
-      .from('user_memberships')
-      .select('amount_paid, status')
-      .gte('created_at', fechas.fechaInicio)
-      .lte('created_at', fechas.fechaFin);
+    // 🔥 USAR DATOS REALES DE LAS APIS DEL DASHBOARD
+    let totalIngresos = 0;
+    let totalMemberships = 0;
+    let totalPOS = 0;
+    let totalAbonos = 0;
+    let totalTransacciones = 0;
 
-    if (errorMembresías) throw errorMembresías;
+    // Cargar datos día por día en el rango
+    const startDate = new Date(fechas.fechaInicio);
+    const endDate = new Date(fechas.fechaFin);
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const dateString = d.toISOString().split('T')[0];
+      const dayData = await loadRealDailyData(dateString);
+      
+      if (dayData && dayData.totals) {
+        totalIngresos += dayData.totals.total || 0;
+        totalMemberships += dayData.memberships?.total || 0;
+        totalPOS += dayData.pos?.total || 0;
+        totalAbonos += dayData.abonos?.total || 0;
+        totalTransacciones += dayData.totals.transactions || 0;
+      }
+    }
 
-    // Ingresos por ventas POS
-    const { data: ventas, error: errorVentas } = await supabase
-      .from('sales')
-      .select('total_amount, status, sale_type')
-      .gte('created_at', fechas.fechaInicio)
-      .lte('created_at', fechas.fechaFin)
-      .eq('status', 'completed');
+    // Cargar datos adicionales de Supabase para complementar
+    const supabase = createBrowserSupabaseClient();
 
-    if (errorVentas) throw errorVentas;
+    const { data: usuariosTotales } = await supabase.from('Users').select('id', { count: 'exact', head: true });
+    const { data: membresiasActivas } = await supabase.from('user_memberships').select('userid').eq('status', 'active');
+    const { data: apartados } = await supabase.from('sales').select('pending_amount, status').eq('sale_type', 'layaway').in('status', ['pending', 'partial']);
+    const { data: gastos } = await supabase.from('expenses').select('amount').gte('expense_date', fechas.fechaInicio).lte('expense_date', fechas.fechaFin).eq('status', 'active');
 
-    // Gastos totales
-    const { data: gastos, error: errorGastos } = await supabase
-      .from('expenses')
-      .select('amount')
-      .gte('expense_date', fechas.fechaInicio)
-      .lte('expense_date', fechas.fechaFin)
-      .eq('status', 'active');
-
-    if (errorGastos) throw errorGastos;
-
-    // Usuarios totales
-    const { count: usuariosTotales, error: errorUsuarios } = await supabase
-      .from('Users')
-      .select('*', { count: 'exact', head: true });
-
-    if (errorUsuarios) throw errorUsuarios;
-
-    // Membresías activas
-    const { data: membresiasActivas, error: errorMembresiasActivas } = await supabase
-      .from('user_memberships')
-      .select('userid, status')
-      .eq('status', 'active');
-
-    if (errorMembresiasActivas) throw errorMembresiasActivas;
-
-    // Apartados activos
-    const { data: apartados, error: errorApartados } = await supabase
-      .from('sales')
-      .select('pending_amount, status')
-      .eq('sale_type', 'layaway')
-      .in('status', ['pending', 'partial']);
-
-    if (errorApartados) throw errorApartados;
-
-    // Calcular métricas
-    const ingresosMembresías = membresías?.reduce((sum, m) => sum + (Number(m.amount_paid) || 0), 0) || 0;
-    const ingresosVentas = ventas?.filter(v => v.sale_type !== 'layaway')
-      .reduce((sum, v) => sum + (Number(v.total_amount) || 0), 0) || 0;
-    const totalIngresos = ingresosMembresías + ingresosVentas;
     const totalGastos = gastos?.reduce((sum, g) => sum + (Number(g.amount) || 0), 0) || 0;
 
-    console.log('✅ Métricas obtenidas:', { totalIngresos, totalGastos, ingresosMembresías, ingresosVentas });
+    console.log('✅ Métricas calculadas:', { totalIngresos, totalGastos, totalMemberships, totalPOS });
 
     return {
       totalIngresos,
       totalGastos,
       utilidadNeta: totalIngresos - totalGastos,
-      membresiasTotales: membresías?.length || 0,
+      membresiasTotales: 0, // Se podría calcular contando días
       membresiasActivas: membresiasActivas?.length || 0,
       membresiasVencidas: 0,
-      ingresosMembresías,
-      ventasPOSTotales: ingresosVentas,
+      ingresosMembresías: totalMemberships,
+      ventasPOSTotales: totalPOS,
       apartadosActivos: apartados?.length || 0,
       apartadosPendientes: apartados?.reduce((sum, a) => sum + (Number(a.pending_amount) || 0), 0) || 0,
-      productosVendidos: ventas?.length || 0,
+      productosVendidos: totalTransacciones,
       usuariosTotales: usuariosTotales || 0,
       usuariosActivos: new Set(membresiasActivas?.map(u => u.userid)).size || 0,
       nuevosUsuarios: 0
@@ -290,59 +414,55 @@ const getDashboardMetrics = async (fechas) => {
   }
 };
 
+// ✅ FUNCIÓN REAL - getVentasPorMetodo (basada en datos de cortes diarios)
 const getVentasPorMetodo = async (fechas) => {
   try {
-    console.log('💳 Obteniendo ventas por método de pago...');
+    console.log('💳 Obteniendo ventas por método...');
 
-    // Ventas POS
-    const { data: ventasPOS, error: errorPOS } = await supabase
-      .from('sale_payment_details')
-      .select(`
-        payment_method,
-        amount,
-        commission_amount,
-        sales!inner(created_at, status)
-      `)
-      .gte('sales.created_at', fechas.fechaInicio)
-      .lte('sales.created_at', fechas.fechaFin)
-      .eq('sales.status', 'completed');
-
-    if (errorPOS) throw errorPOS;
-
-    // Membresías
-    const { data: ventasMembresías, error: errorMembresías } = await supabase
-      .from('membership_payment_details')
-      .select(`
-        payment_method,
-        amount,
-        commission_amount,
-        user_memberships!inner(created_at)
-      `)
-      .gte('user_memberships.created_at', fechas.fechaInicio)
-      .lte('user_memberships.created_at', fechas.fechaFin);
-
-    if (errorMembresías) throw errorMembresías;
-
-    // Combinar y agrupar por método
     const metodosMap = new Map();
 
-    ventasPOS?.forEach(venta => {
-      const metodo = venta.payment_method || 'Sin especificar';
-      const existing = metodosMap.get(metodo) || { metodo, total: 0, transacciones: 0, comisiones: 0 };
-      existing.total += Number(venta.amount) || 0;
-      existing.transacciones += 1;
-      existing.comisiones += Number(venta.commission_amount) || 0;
-      metodosMap.set(metodo, existing);
-    });
-
-    ventasMembresías?.forEach(venta => {
-      const metodo = venta.payment_method || 'Sin especificar';
-      const existing = metodosMap.get(metodo) || { metodo, total: 0, transacciones: 0, comisiones: 0 };
-      existing.total += Number(venta.amount) || 0;
-      existing.transacciones += 1;
-      existing.comisiones += Number(venta.commission_amount) || 0;
-      metodosMap.set(metodo, existing);
-    });
+    // Cargar datos día por día
+    const startDate = new Date(fechas.fechaInicio);
+    const endDate = new Date(fechas.fechaFin);
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const dateString = d.toISOString().split('T')[0];
+      const dayData = await loadRealDailyData(dateString);
+      
+      if (dayData && dayData.totals) {
+        // Efectivo
+        if (dayData.totals.efectivo > 0) {
+          const existing = metodosMap.get('Efectivo') || { metodo: 'Efectivo', total: 0, transacciones: 0, comisiones: 0 };
+          existing.total += dayData.totals.efectivo;
+          existing.transacciones += 1;
+          metodosMap.set('Efectivo', existing);
+        }
+        
+        // Transferencia
+        if (dayData.totals.transferencia > 0) {
+          const existing = metodosMap.get('Transferencia') || { metodo: 'Transferencia', total: 0, transacciones: 0, comisiones: 0 };
+          existing.total += dayData.totals.transferencia;
+          existing.transacciones += 1;
+          metodosMap.set('Transferencia', existing);
+        }
+        
+        // Débito
+        if (dayData.totals.debito > 0) {
+          const existing = metodosMap.get('Débito') || { metodo: 'Débito', total: 0, transacciones: 0, comisiones: 0 };
+          existing.total += dayData.totals.debito;
+          existing.transacciones += 1;
+          metodosMap.set('Débito', existing);
+        }
+        
+        // Crédito
+        if (dayData.totals.credito > 0) {
+          const existing = metodosMap.get('Crédito') || { metodo: 'Crédito', total: 0, transacciones: 0, comisiones: 0 };
+          existing.total += dayData.totals.credito;
+          existing.transacciones += 1;
+          metodosMap.set('Crédito', existing);
+        }
+      }
+    }
 
     const resultado = Array.from(metodosMap.values()).sort((a, b) => b.total - a.total);
     console.log('✅ Ventas por método obtenidas:', resultado);
@@ -353,10 +473,12 @@ const getVentasPorMetodo = async (fechas) => {
   }
 };
 
+// ✅ FUNCIÓN REAL - getVentasPorCategoria (usando Supabase + filtro por fechas)
 const getVentasPorCategoria = async (fechas) => {
   try {
     console.log('🛍️ Obteniendo ventas por categoría...');
 
+    const supabase = createBrowserSupabaseClient();
     const { data, error } = await supabase
       .from('sale_items')
       .select(`
@@ -391,10 +513,12 @@ const getVentasPorCategoria = async (fechas) => {
   }
 };
 
+// ✅ FUNCIÓN REAL - getGastosPorTipo (usando Supabase + filtro por fechas)
 const getGastosPorTipo = async (fechas) => {
   try {
     console.log('💸 Obteniendo gastos por tipo...');
 
+    const supabase = createBrowserSupabaseClient();
     const { data, error } = await supabase
       .from('expenses')
       .select('expense_type, amount')
@@ -432,30 +556,22 @@ const getGastosPorTipo = async (fechas) => {
   }
 };
 
+// ✅ FUNCIÓN REAL - getVentasDiarias (usando loadWeeklyRealData)
 const getVentasDiarias = async (fechas) => {
   try {
     console.log('📈 Obteniendo ventas diarias...');
-
-    const { data: cortes, error } = await supabase
-      .from('cash_cuts')
-      .select('*')
-      .gte('cut_date', fechas.fechaInicio)
-      .lte('cut_date', fechas.fechaFin)
-      .order('cut_date');
-
-    if (error) throw error;
-
-    const resultado = cortes?.map(corte => ({
-      fecha: new Date(corte.cut_date).toLocaleDateString('es-MX', { 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      membresías: Number(corte.membership_total) || 0,
-      pos: Number(corte.pos_total) || 0,
-      abonos: Number(corte.abonos_total) || 0,
-      gastos: Number(corte.expenses_amount) || 0,
-      neto: Number(corte.final_balance) || 0
-    })) || [];
+    
+    // Usar la misma función que el dashboard
+    const weeklyData = await loadWeeklyRealData();
+    
+    const resultado = weeklyData.map(day => ({
+      fecha: day.name,
+      membresías: day.memberships,
+      pos: day.sales,
+      abonos: day.layaways,
+      gastos: 0, // Los gastos no están en los cortes diarios
+      neto: day.sales + day.memberships + day.layaways
+    }));
 
     console.log('✅ Ventas diarias obtenidas:', resultado);
     return resultado;
