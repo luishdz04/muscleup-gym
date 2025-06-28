@@ -55,7 +55,7 @@ import {
 } from 'recharts';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// 🎨 DARK PRO SYSTEM - TOKENS ENTERPRISE (igual que el dashboard principal)
+// 🎨 DARK PRO SYSTEM - TOKENS ENTERPRISE
 const darkProTokens = {
   background: '#000000',
   surfaceLevel1: '#121212',
@@ -112,8 +112,49 @@ const colorSchemes = {
   }
 };
 
-// ✅ FUNCIONES HELPER (iguales al dashboard principal)
-function formatPrice(amount) {
+// ✅ INTERFACES
+interface ReportStats {
+  totalIngresos: number;
+  totalGastos: number;
+  utilidadNeta: number;
+  membresiasTotales: number;
+  membresiasActivas: number;
+  membresiasVencidas: number;
+  ingresosMembresías: number;
+  ventasPOSTotales: number;
+  apartadosActivos: number;
+  apartadosPendientes: number;
+  productosVendidos: number;
+  usuariosTotales: number;
+  usuariosActivos: number;
+  nuevosUsuarios: number;
+  cashFlow: {
+    efectivo: number;
+    transferencia: number;
+    debito: number;
+    credito: number;
+  };
+  chartData: ChartData[];
+  pieData: PieData[];
+}
+
+interface ChartData {
+  name: string;
+  sales: number;
+  memberships: number;
+  layaways: number;
+  date: string;
+  total: number;
+}
+
+interface PieData {
+  name: string;
+  value: number;
+  color: string;
+}
+
+// ✅ FUNCIONES HELPER
+function formatPrice(amount: number): string {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
@@ -121,7 +162,7 @@ function formatPrice(amount) {
   }).format(amount || 0);
 }
 
-function getMexicoDateLocal() {
+function getMexicoDateLocal(): string {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
   const year = mexicoDate.getFullYear();
@@ -130,7 +171,7 @@ function getMexicoDateLocal() {
   return `${year}-${month}-${day}`;
 }
 
-function formatMexicoTimeLocal(date) {
+function formatMexicoTimeLocal(date: Date): string {
   return date.toLocaleString('es-MX', {
     timeZone: 'America/Mexico_City',
     hour: '2-digit',
@@ -140,7 +181,7 @@ function formatMexicoTimeLocal(date) {
   });
 }
 
-function formatDateTime(dateString) {
+function formatDateTime(dateString: string): string {
   try {
     const date = new Date(dateString);
     return date.toLocaleString('es-MX', {
@@ -157,7 +198,7 @@ function formatDateTime(dateString) {
   }
 }
 
-function getDateDaysAgo(daysAgo) {
+function getDateDaysAgo(daysAgo: number): string {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
   mexicoDate.setDate(mexicoDate.getDate() - daysAgo);
@@ -171,27 +212,53 @@ function getDateDaysAgo(daysAgo) {
 // ✅ COMPONENTE PRINCIPAL
 export default function ReportesPage() {
   const [config, setConfig] = useState({
-    colorScheme: 'default',
+    colorScheme: 'default' as keyof typeof colorSchemes,
     showAnimations: true,
     compactMode: false
   });
 
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
-  const [fullscreenChart, setFullscreenChart] = useState(null);
+  const [fullscreenChart, setFullscreenChart] = useState<string | null>(null);
   
   const [selectedPeriod, setSelectedPeriod] = useState('today'); // 'today', 'week', 'month'
   
-  const [stats, setStats] = useState(null);
+  // ✅ ESTADO INICIAL COMPLETO (como el dashboard)
+  const [stats, setStats] = useState<ReportStats>({
+    totalIngresos: 0,
+    totalGastos: 0,
+    utilidadNeta: 0,
+    membresiasTotales: 0,
+    membresiasActivas: 0,
+    membresiasVencidas: 0,
+    ingresosMembresías: 0,
+    ventasPOSTotales: 0,
+    apartadosActivos: 0,
+    apartadosPendientes: 0,
+    productosVendidos: 0,
+    usuariosTotales: 0,
+    usuariosActivos: 0,
+    nuevosUsuarios: 0,
+    cashFlow: {
+      efectivo: 0,
+      transferencia: 0,
+      debito: 0,
+      credito: 0
+    },
+    chartData: [],
+    pieData: []
+  });
+  
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [currentMexicoTime, setCurrentMexicoTime] = useState('');
 
   const currentColors = colorSchemes[config.colorScheme];
+  const supabase = createBrowserSupabaseClient();
 
-  // ✅ FUNCIÓN CRÍTICA: loadRealDailyData (AHORA DENTRO DEL COMPONENTE)
-  const loadRealDailyData = useCallback(async (targetDate) => {
+  // ✅ FUNCIÓN CRÍTICA: loadRealDailyData (MEJORADA)
+  const loadRealDailyData = useCallback(async (targetDate: string) => {
     try {
       console.log('📊 [REPORTES] Consultando API daily-data para:', targetDate);
       
@@ -207,7 +274,7 @@ export default function ReportesPage() {
         
         console.log('📊 [REPORTES] Respuesta de API:', data);
         
-        // ✅ USAR LA VALIDACIÓN DEL DASHBOARD
+        // ✅ VALIDACIÓN MEJORADA (sin requerir total > 0)
         if (data.success && data.totals) {
           console.log('✅ [REPORTES] Datos válidos encontrados:', {
             total: data.totals.total,
@@ -219,7 +286,7 @@ export default function ReportesPage() {
           });
           return data;
         } else {
-          console.log('⚠️ [REPORTES] Sin datos válidos para:', targetDate);
+          console.log('⚠️ [REPORTES] Estructura de datos inválida:', data);
           return null;
         }
       } else {
@@ -232,10 +299,10 @@ export default function ReportesPage() {
     }
   }, []);
 
-  // ✅ FUNCIÓN CRÍTICA: loadWeeklyRealData (AHORA DENTRO DEL COMPONENTE)
-  const loadWeeklyRealData = useCallback(async () => {
+  // ✅ FUNCIÓN CRÍTICA: loadWeeklyRealData (MEJORADA)
+  const loadWeeklyRealData = useCallback(async (): Promise<ChartData[]> => {
     console.log('📈 [REPORTES] Cargando datos semanales...');
-    const chartData = [];
+    const chartData: ChartData[] = [];
     
     for (let i = 6; i >= 0; i--) {
       const dateString = getDateDaysAgo(i);
@@ -258,12 +325,11 @@ export default function ReportesPage() {
     return chartData;
   }, [loadRealDailyData]);
 
-  // ✅ FUNCIÓN PRINCIPAL: loadDashboardStats (AHORA DENTRO DEL COMPONENTE)
-  const loadDashboardStats = useCallback(async (selectedPeriod = 'today') => {
+  // ✅ FUNCIÓN PRINCIPAL: loadDashboardStats (MEJORADA)
+  const loadDashboardStats = useCallback(async (period: string = 'today'): Promise<ReportStats> => {
     try {
-      console.log('📊 [REPORTES] Iniciando carga de estadísticas para:', selectedPeriod);
+      console.log('📊 [REPORTES] Iniciando carga de estadísticas para:', period);
 
-      let targetDate;
       let totalIngresos = 0;
       let totalPOS = 0;
       let totalMemberships = 0;
@@ -274,9 +340,9 @@ export default function ReportesPage() {
       let totalCredito = 0;
       let totalTransacciones = 0;
 
-      if (selectedPeriod === 'today') {
-        // ✅ USAR FECHA ACTUAL COMO EL DASHBOARD
-        targetDate = getMexicoDateLocal();
+      if (period === 'today') {
+        // ✅ USAR FECHA ACTUAL
+        const targetDate = getMexicoDateLocal();
         const dailyDataResult = await loadRealDailyData(targetDate);
         
         if (dailyDataResult && dailyDataResult.totals) {
@@ -296,7 +362,7 @@ export default function ReportesPage() {
         } else {
           console.log('⚠️ [REPORTES] Sin datos para hoy:', targetDate);
         }
-      } else if (selectedPeriod === 'week') {
+      } else if (period === 'week') {
         // ✅ SUMAR DATOS DE LA SEMANA
         for (let i = 6; i >= 0; i--) {
           const dateString = getDateDaysAgo(i);
@@ -317,9 +383,7 @@ export default function ReportesPage() {
         console.log('✅ [REPORTES] Datos semanales acumulados:', { totalIngresos });
       }
 
-      // ✅ CARGAR DATOS COMPLEMENTARIOS DE SUPABASE (como el dashboard)
-      const supabase = createBrowserSupabaseClient();
-
+      // ✅ CARGAR DATOS COMPLEMENTARIOS DE SUPABASE
       const { count: usuariosTotales } = await supabase
         .from('Users')
         .select('*', { count: 'exact', head: true })
@@ -346,8 +410,41 @@ export default function ReportesPage() {
 
       const totalGastos = gastos?.reduce((sum, g) => sum + (Number(g.amount) || 0), 0) || 0;
 
+      // ✅ CONSTRUIR PIE DATA
+      const pieData: PieData[] = [];
+      if (totalIngresos > 0) {
+        if (totalEfectivo > 0) {
+          pieData.push({ 
+            name: 'Efectivo', 
+            value: totalEfectivo, 
+            color: colorSchemes.default.primary 
+          });
+        }
+        if (totalTransferencia > 0) {
+          pieData.push({ 
+            name: 'Transferencia', 
+            value: totalTransferencia, 
+            color: colorSchemes.default.secondary 
+          });
+        }
+        if (totalDebito > 0) {
+          pieData.push({ 
+            name: 'Débito', 
+            value: totalDebito, 
+            color: colorSchemes.default.tertiary 
+          });
+        }
+        if (totalCredito > 0) {
+          pieData.push({ 
+            name: 'Crédito', 
+            value: totalCredito, 
+            color: colorSchemes.default.quaternary 
+          });
+        }
+      }
+
       // ✅ CONSTRUIR MÉTRICAS FINALES
-      const finalStats = {
+      const finalStats: ReportStats = {
         totalIngresos,
         totalGastos,
         utilidadNeta: totalIngresos - totalGastos,
@@ -362,37 +459,26 @@ export default function ReportesPage() {
         usuariosTotales: usuariosTotales || 0,
         usuariosActivos: new Set(membresiasActivas?.map(u => u.userid)).size || 0,
         nuevosUsuarios: 0,
-        // ✅ DESGLOSE DE MÉTODOS DE PAGO
         cashFlow: {
           efectivo: totalEfectivo,
           transferencia: totalTransferencia,
           debito: totalDebito,
           credito: totalCredito
         },
-        // ✅ DATOS PARA GRÁFICOS
         chartData: realChartData,
-        pieData: []
+        pieData: pieData
       };
-
-      // ✅ CONSTRUIR PIE DATA
-      if (totalIngresos > 0) {
-        const pieData = [];
-        if (totalEfectivo > 0) pieData.push({ name: 'Efectivo', value: totalEfectivo, color: colorSchemes.default.primary });
-        if (totalTransferencia > 0) pieData.push({ name: 'Transferencia', value: totalTransferencia, color: colorSchemes.default.secondary });
-        if (totalDebito > 0) pieData.push({ name: 'Débito', value: totalDebito, color: colorSchemes.default.tertiary });
-        if (totalCredito > 0) pieData.push({ name: 'Crédito', value: totalCredito, color: colorSchemes.default.quaternary });
-        finalStats.pieData = pieData;
-      }
 
       console.log('✅ [REPORTES] Estadísticas finales calculadas:', finalStats);
       return finalStats;
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ [REPORTES] Error en loadDashboardStats:', err);
       throw err;
     }
-  }, [loadRealDailyData, loadWeeklyRealData]);
+  }, [loadRealDailyData, loadWeeklyRealData, supabase]);
 
+  // ✅ EFECTO PARA ACTUALIZAR TIEMPO
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -404,11 +490,8 @@ export default function ReportesPage() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    cargarDatos();
-  }, [selectedPeriod, loadDashboardStats]);
-
-  const cargarDatos = async () => {
+  // ✅ FUNCIÓN PARA CARGAR DATOS
+  const cargarDatos = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -416,22 +499,27 @@ export default function ReportesPage() {
       const statsData = await loadDashboardStats(selectedPeriod);
       setStats(statsData);
       setLastUpdate(formatDateTime(new Date().toISOString()));
-      console.log('✅ [REPORTES] Datos cargados exitosamente');
-    } catch (error) {
+      console.log('✅ [REPORTES] Datos cargados exitosamente:', statsData);
+    } catch (error: any) {
       console.error('❌ [REPORTES] Error cargando datos:', error);
-      setError('Error al cargar los datos. Verifica tu conexión y las APIs.');
+      setError(`Error al cargar los datos: ${error.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [selectedPeriod, loadDashboardStats]);
+
+  // ✅ EFECTO PARA CARGAR DATOS CUANDO CAMBIA EL PERÍODO
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await cargarDatos();
   };
 
-  // ✅ COMPONENTE DE MÉTRICA (estilo dashboard principal)
+  // ✅ COMPONENTE DE MÉTRICA
   const MetricCard = ({ 
     title, 
     value, 
@@ -439,6 +527,13 @@ export default function ReportesPage() {
     icon, 
     color, 
     onClick
+  }: {
+    title: string;
+    value: string | number;
+    subtitle?: string;
+    icon: React.ReactNode;
+    color: string;
+    onClick?: () => void;
   }) => (
     <motion.div
       whileHover={{ scale: config.showAnimations ? 1.02 : 1, y: config.showAnimations ? -3 : 0 }}
@@ -453,7 +548,7 @@ export default function ReportesPage() {
         cursor: onClick ? 'pointer' : 'default',
         border: `1px solid ${color}40`,
         boxShadow: `0 4px 20px ${color}20`,
-        minHeight: 140, // Más compacto
+        minHeight: 140,
         '&:hover': { 
           boxShadow: `0 8px 32px ${color}40`,
           border: `1px solid ${color}60`
@@ -478,7 +573,7 @@ export default function ReportesPage() {
               height: 40,
               border: `2px solid ${darkProTokens.textPrimary}20`
             }}>
-              {React.cloneElement(icon, { 
+              {React.cloneElement(icon as React.ReactElement, { 
                 sx: { fontSize: 20, color: darkProTokens.textPrimary }
               })}
             </Avatar>
@@ -519,8 +614,6 @@ export default function ReportesPage() {
       </Card>
     </motion.div>
   );
-
-  const COLORS = [currentColors.primary, currentColors.secondary, currentColors.tertiary, currentColors.quaternary];
 
   if (loading) {
     return (
@@ -783,7 +876,7 @@ export default function ReportesPage() {
           <Grid size={{ xs: 6, sm: 3 }}>
             <MetricCard
               title="Ingresos Totales"
-              value={formatPrice(stats?.totalIngresos || 0)}
+              value={formatPrice(stats.totalIngresos)}
               icon={<AttachMoneyIcon />}
               color={currentColors.primary}
               subtitle={selectedPeriod === 'today' ? 'Hoy' : selectedPeriod === 'week' ? 'Esta semana' : 'Período'}
@@ -793,9 +886,9 @@ export default function ReportesPage() {
           <Grid size={{ xs: 6, sm: 3 }}>
             <MetricCard
               title="Utilidad Neta"
-              value={formatPrice(stats?.utilidadNeta || 0)}
+              value={formatPrice(stats.utilidadNeta)}
               icon={<AccountBalanceIcon />}
-              color={stats?.utilidadNeta >= 0 ? currentColors.secondary : darkProTokens.error}
+              color={stats.utilidadNeta >= 0 ? currentColors.secondary : darkProTokens.error}
               subtitle={`Ingresos - Gastos`}
             />
           </Grid>
@@ -803,20 +896,20 @@ export default function ReportesPage() {
           <Grid size={{ xs: 6, sm: 3 }}>
             <MetricCard
               title="Membresías"
-              value={formatPrice(stats?.ingresosMembresías || 0)}
+              value={formatPrice(stats.ingresosMembresías)}
               icon={<PeopleIcon />}
               color={currentColors.tertiary}
-              subtitle={`${stats?.membresiasActivas || 0} activas`}
+              subtitle={`${stats.membresiasActivas} activas`}
             />
           </Grid>
 
           <Grid size={{ xs: 6, sm: 3 }}>
             <MetricCard
               title="Ventas POS"
-              value={formatPrice(stats?.ventasPOSTotales || 0)}
+              value={formatPrice(stats.ventasPOSTotales)}
               icon={<ShoppingCartIcon />}
               color={currentColors.quaternary}
-              subtitle={`${stats?.productosVendidos || 0} transacciones`}
+              subtitle={`${stats.productosVendidos} transacciones`}
             />
           </Grid>
         </Grid>
@@ -843,7 +936,7 @@ export default function ReportesPage() {
                     📈 Tendencias (7 días)
                   </Typography>
                   <Chip
-                    label={`${stats?.chartData?.filter(d => d.total > 0).length || 0} días con datos`}
+                    label={`${stats.chartData.filter(d => d.total > 0).length} días con datos`}
                     size="small"
                     sx={{
                       bgcolor: `${currentColors.secondary}20`,
@@ -863,7 +956,7 @@ export default function ReportesPage() {
               </Box>
               
               <Box sx={{ height: 280, width: '100%' }}>
-                {stats?.chartData?.some(d => d.total > 0) ? (
+                {stats.chartData.some(d => d.total > 0) ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={stats.chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
@@ -885,7 +978,7 @@ export default function ReportesPage() {
                           color: darkProTokens.textPrimary,
                           fontSize: '12px'
                         }}
-                        formatter={(value, name) => [formatPrice(value), name]}
+                        formatter={(value: any, name: string) => [formatPrice(value), name]}
                       />
                       <Legend wrapperStyle={{ fontSize: '11px' }} />
                       
@@ -967,7 +1060,7 @@ export default function ReportesPage() {
                 </IconButton>
               </Box>
               
-              {stats?.pieData?.length > 0 ? (
+              {stats.pieData.length > 0 ? (
                 <Box sx={{ height: 220, width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -979,7 +1072,7 @@ export default function ReportesPage() {
                         innerRadius={30}
                         paddingAngle={3}
                         dataKey="value"
-                        label={({ name, value }) => {
+                        label={({ name, value }: any) => {
                           const total = stats.pieData.reduce((sum, item) => sum + item.value, 0);
                           const percent = total > 0 ? ((value / total) * 100).toFixed(0) : '0';
                           return `${name}\n${percent}%`;
@@ -999,7 +1092,7 @@ export default function ReportesPage() {
                           color: darkProTokens.textPrimary,
                           fontSize: '11px'
                         }}
-                        formatter={(value) => formatPrice(value)}
+                        formatter={(value: any) => formatPrice(value)}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1053,7 +1146,7 @@ export default function ReportesPage() {
                     Membresías
                   </Typography>
                   <Typography variant="body2" sx={{ color: currentColors.secondary, fontWeight: 700 }}>
-                    {formatPrice(stats?.ingresosMembresías || 0)}
+                    {formatPrice(stats.ingresosMembresías)}
                   </Typography>
                 </Box>
 
@@ -1062,7 +1155,7 @@ export default function ReportesPage() {
                     Ventas POS
                   </Typography>
                   <Typography variant="body2" sx={{ color: currentColors.primary, fontWeight: 700 }}>
-                    {formatPrice(stats?.ventasPOSTotales || 0)}
+                    {formatPrice(stats.ventasPOSTotales)}
                   </Typography>
                 </Box>
 
@@ -1071,7 +1164,7 @@ export default function ReportesPage() {
                     Gastos
                   </Typography>
                   <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
-                    -{formatPrice(stats?.totalGastos || 0)}
+                    -{formatPrice(stats.totalGastos)}
                   </Typography>
                 </Box>
 
@@ -1082,11 +1175,11 @@ export default function ReportesPage() {
                     Utilidad Neta
                   </Typography>
                   <Typography variant="h6" sx={{ 
-                    color: (stats?.utilidadNeta || 0) >= 0 ? currentColors.secondary : darkProTokens.error, 
+                    color: stats.utilidadNeta >= 0 ? currentColors.secondary : darkProTokens.error, 
                     fontWeight: 800,
-                    textShadow: `0 0 10px ${(stats?.utilidadNeta || 0) >= 0 ? currentColors.secondary : darkProTokens.error}40`
+                    textShadow: `0 0 10px ${stats.utilidadNeta >= 0 ? currentColors.secondary : darkProTokens.error}40`
                   }}>
-                    {formatPrice(stats?.utilidadNeta || 0)}
+                    {formatPrice(stats.utilidadNeta)}
                   </Typography>
                 </Box>
               </Stack>
@@ -1118,7 +1211,7 @@ export default function ReportesPage() {
                     💵 Efectivo
                   </Typography>
                   <Typography variant="body2" sx={{ color: currentColors.primary, fontWeight: 700 }}>
-                    {formatPrice(stats?.cashFlow?.efectivo || 0)}
+                    {formatPrice(stats.cashFlow.efectivo)}
                   </Typography>
                 </Box>
 
@@ -1127,7 +1220,7 @@ export default function ReportesPage() {
                     🏦 Transferencia
                   </Typography>
                   <Typography variant="body2" sx={{ color: currentColors.secondary, fontWeight: 700 }}>
-                    {formatPrice(stats?.cashFlow?.transferencia || 0)}
+                    {formatPrice(stats.cashFlow.transferencia)}
                   </Typography>
                 </Box>
 
@@ -1136,7 +1229,7 @@ export default function ReportesPage() {
                     💳 Débito
                   </Typography>
                   <Typography variant="body2" sx={{ color: currentColors.tertiary, fontWeight: 700 }}>
-                    {formatPrice(stats?.cashFlow?.debito || 0)}
+                    {formatPrice(stats.cashFlow.debito)}
                   </Typography>
                 </Box>
 
@@ -1145,7 +1238,7 @@ export default function ReportesPage() {
                     💎 Crédito
                   </Typography>
                   <Typography variant="body2" sx={{ color: currentColors.quaternary, fontWeight: 700 }}>
-                    {formatPrice(stats?.cashFlow?.credito || 0)}
+                    {formatPrice(stats.cashFlow.credito)}
                   </Typography>
                 </Box>
 
@@ -1160,7 +1253,7 @@ export default function ReportesPage() {
                     fontWeight: 800,
                     textShadow: `0 0 10px ${currentColors.primary}40`
                   }}>
-                    {formatPrice(stats?.totalIngresos || 0)}
+                    {formatPrice(stats.totalIngresos)}
                   </Typography>
                 </Box>
               </Stack>
@@ -1219,7 +1312,7 @@ export default function ReportesPage() {
                           border: `1px solid ${scheme.primary}60`
                         }
                       }}
-                      onClick={() => setConfig(prev => ({ ...prev, colorScheme: key }))}
+                      onClick={() => setConfig(prev => ({ ...prev, colorScheme: key as keyof typeof colorSchemes }))}
                     >
                       <Typography variant="caption" sx={{ 
                         color: darkProTokens.textPrimary, 
@@ -1327,7 +1420,7 @@ export default function ReportesPage() {
         <DialogContent sx={{ p: 3 }}>
           <Box sx={{ height: 500, width: '100%' }}>
             {/* Renderizado de gráficos fullscreen */}
-            {fullscreenChart === 'tendencias' && stats?.chartData && (
+            {fullscreenChart === 'tendencias' && stats.chartData && (
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={stats.chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
@@ -1340,7 +1433,7 @@ export default function ReportesPage() {
                       borderRadius: '8px',
                       color: darkProTokens.textPrimary
                     }}
-                    formatter={(value, name) => [formatPrice(value), name]}
+                    formatter={(value: any, name: string) => [formatPrice(value), name]}
                   />
                   <Legend />
                   <Area type="monotone" dataKey="memberships" fill={`${currentColors.secondary}30`} stroke={currentColors.secondary} strokeWidth={3} name="Membresías" />
@@ -1350,7 +1443,7 @@ export default function ReportesPage() {
               </ResponsiveContainer>
             )}
             
-            {fullscreenChart === 'pagos' && stats?.pieData?.length > 0 && (
+            {fullscreenChart === 'pagos' && stats.pieData.length > 0 && (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -1361,7 +1454,7 @@ export default function ReportesPage() {
                     innerRadius={100}
                     paddingAngle={5}
                     dataKey="value"
-                    label={({ name, value }) => {
+                    label={({ name, value }: any) => {
                       const total = stats.pieData.reduce((sum, item) => sum + item.value, 0);
                       const percent = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
                       return `${name} (${percent}%)`;
@@ -1378,7 +1471,7 @@ export default function ReportesPage() {
                       borderRadius: '8px',
                       color: darkProTokens.textPrimary
                     }}
-                    formatter={(value) => formatPrice(value)}
+                    formatter={(value: any) => formatPrice(value)}
                   />
                   <Legend />
                 </PieChart>
