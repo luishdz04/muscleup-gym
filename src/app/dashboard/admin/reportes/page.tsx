@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -22,13 +22,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Switch,
-  FormControlLabel,
-  Slider
+  FormControlLabel
 } from '@mui/material';
 import {
   Assessment as AssessmentIcon,
@@ -49,14 +44,11 @@ import {
   Save as SaveIcon,
   Receipt as ReceiptIcon,
   Analytics as AnalyticsIcon,
-  BarChart as BarChartIcon,
-  PieChart as PieChartIcon,
   Timeline as TimelineIcon,
-  DateRange as DateRangeIcon,
-  InsertChart as InsertChartIcon,
-  ShowChart as ShowChartIcon
+  PieChart as PieChartIcon,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend, ComposedChart, Area
@@ -88,10 +80,6 @@ const darkProTokens = {
   warningHover: '#E6A700',
   info: '#1976D2',
   infoHover: '#1565C0',
-  roleAdmin: '#E91E63',
-  roleStaff: '#1976D2',
-  roleTrainer: '#009688',
-  roleModerator: '#9C27B0',
   chart1: '#FFCC00',
   chart2: '#388E3C',
   chart3: '#1976D2',
@@ -102,7 +90,7 @@ const darkProTokens = {
   chart8: '#E91E63'
 };
 
-// 🎨 CONFIGURACIÓN DE COLORES PERSONALIZABLE (igual que el dashboard)
+// 🎨 CONFIGURACIÓN DE COLORES PERSONALIZABLE
 const colorSchemes = {
   default: {
     primary: '#FFCC00',
@@ -121,24 +109,6 @@ const colorSchemes = {
     secondary: '#F7931E',
     tertiary: '#FFD23F',
     quaternary: '#FF006E'
-  },
-  forest: {
-    primary: '#2E8B57',
-    secondary: '#228B22',
-    tertiary: '#32CD32',
-    quaternary: '#90EE90'
-  },
-  purple: {
-    primary: '#8A2BE2',
-    secondary: '#9932CC',
-    tertiary: '#BA55D3',
-    quaternary: '#DDA0DD'
-  },
-  fire: {
-    primary: '#DC143C',
-    secondary: '#FF4500',
-    tertiary: '#FF6347',
-    quaternary: '#FFA07A'
   }
 };
 
@@ -149,13 +119,6 @@ function formatPrice(amount) {
     currency: 'MXN',
     minimumFractionDigits: 2
   }).format(amount || 0);
-}
-
-function safePercentage(value, total) {
-  if (total === 0 || isNaN(total) || isNaN(value)) return '0.0';
-  const percentage = (value / total) * 100;
-  if (!isFinite(percentage)) return '0.0';
-  return percentage.toFixed(1);
 }
 
 function getMexicoDateLocal() {
@@ -194,9 +157,6 @@ function formatDateTime(dateString) {
   }
 }
 
-// ============= FUNCIONES DE CONSULTA REALES (USANDO EL MISMO PATRÓN DEL DASHBOARD) =============
-
-// 🔧 FUNCIÓN HELPER PARA OBTENER FECHA N DÍAS ATRÁS
 function getDateDaysAgo(daysAgo) {
   const now = new Date();
   const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
@@ -208,29 +168,12 @@ function getDateDaysAgo(daysAgo) {
   return `${year}-${month}-${day}`;
 }
 
-// 🔧 FUNCIÓN HELPER PARA OBTENER FECHA N MESES ATRÁS
-function getDateMonthsAgo(monthsAgo) {
-  const now = new Date();
-  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  
-  let targetYear = mexicoDate.getFullYear();
-  let targetMonth = mexicoDate.getMonth() - monthsAgo;
-  
-  while (targetMonth < 0) {
-    targetMonth += 12;
-    targetYear--;
-  }
-  
-  const year = targetYear;
-  const month = String(targetMonth + 1).padStart(2, '0');
-  
-  return `${year}-${month}`;
-}
+// ============= FUNCIONES DE CONSULTA REALES (EXACTAMENTE COMO EL DASHBOARD) =============
 
-// ✅ FUNCIÓN REAL - loadRealDailyData (igual que el dashboard)
-const loadRealDailyData = async (targetDate) => {
+// ✅ FUNCIÓN CRÍTICA: loadRealDailyData (EXACTA del dashboard)
+const loadRealDailyData = useCallback(async (targetDate) => {
   try {
-    console.log('📊 Cargando datos diarios desde API:', targetDate);
+    console.log('📊 [REPORTES] Consultando API daily-data para:', targetDate);
     
     const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
       method: 'GET',
@@ -242,156 +185,153 @@ const loadRealDailyData = async (targetDate) => {
     if (response.ok) {
       const data = await response.json();
       
-      if (data.success && data.totals && data.totals.total > 0) {
-        console.log('✅ Datos diarios obtenidos:', data);
+      console.log('📊 [REPORTES] Respuesta de API:', data);
+      
+      // ✅ USAR LA VALIDACIÓN DEL DASHBOARD
+      if (data.success && data.totals) {
+        console.log('✅ [REPORTES] Datos válidos encontrados:', {
+          total: data.totals.total,
+          efectivo: data.totals.efectivo,
+          transferencia: data.totals.transferencia,
+          pos: data.pos?.total,
+          memberships: data.memberships?.total,
+          abonos: data.abonos?.total
+        });
         return data;
       } else {
-        console.log('⚠️ Sin datos para:', targetDate);
+        console.log('⚠️ [REPORTES] Sin datos válidos para:', targetDate);
         return null;
       }
     } else {
-      console.log('❌ Error en API daily-data:', response.status);
+      console.log('❌ [REPORTES] Error HTTP:', response.status);
       return null;
     }
   } catch (error) {
-    console.error('❌ Error loadRealDailyData:', error);
+    console.error('❌ [REPORTES] Error en loadRealDailyData:', error);
     return null;
   }
-};
+}, []);
 
-// ✅ FUNCIÓN REAL - loadWeeklyRealData (igual que el dashboard)
-const loadWeeklyRealData = async () => {
-  console.log('📈 Cargando datos semanales...');
+// ✅ FUNCIÓN CRÍTICA: loadWeeklyRealData (EXACTA del dashboard)
+const loadWeeklyRealData = useCallback(async () => {
+  console.log('📈 [REPORTES] Cargando datos semanales...');
   const chartData = [];
   
   for (let i = 6; i >= 0; i--) {
     const dateString = getDateDaysAgo(i);
-    const dayName = dateString.split('-').slice(1).join('/'); // "06/20"
+    const dayName = dateString.split('-').slice(1).join('/'); // "06/28"
     
     const dayData = await loadRealDailyData(dateString);
     
+    // ✅ IMPORTANTE: Siempre agregar datos, incluso si son 0
     chartData.push({
       name: dayName,
       sales: dayData?.pos?.total || 0,
       memberships: dayData?.memberships?.total || 0,
       layaways: dayData?.abonos?.total || 0,
-      date: dateString
+      date: dateString,
+      total: dayData?.totals?.total || 0
     });
   }
   
-  console.log('✅ Datos semanales cargados:', chartData);
+  console.log('✅ [REPORTES] Datos semanales obtenidos:', chartData);
   return chartData;
-};
+}, [loadRealDailyData]);
 
-// ✅ FUNCIÓN REAL - loadMonthlyRealData (igual que el dashboard)
-const loadMonthlyRealData = async (monthsToShow = 6) => {
-  console.log('📅 Cargando datos mensuales...');
-  const monthlyData = [];
-  
-  for (let i = monthsToShow - 1; i >= 0; i--) {
-    const monthString = getDateMonthsAgo(i);
-    
-    try {
-      console.log('📊 Consultando mes:', monthString);
-      const response = await fetch(`/api/cuts/monthly-data?month=${monthString}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.success && data.totals) {
-          monthlyData.push({
-            month: monthString,
-            monthName: new Date(monthString + '-01').toLocaleDateString('es-MX', { 
-              year: 'numeric', 
-              month: 'long' 
-            }),
-            sales: data.pos?.total || 0,
-            memberships: data.memberships?.total || 0,
-            layaways: data.abonos?.total || 0,
-            total: data.totals?.total || 0,
-            transactions: data.totals?.transactions || 0,
-            growth: 0
-          });
-          continue;
-        }
-      }
-    } catch (error) {
-      console.log(`⚠️ Error consultando ${monthString}:`, error);
-    }
-    
-    // FALLBACK: Sin datos para este mes
-    monthlyData.push({
-      month: monthString,
-      monthName: new Date(monthString + '-01').toLocaleDateString('es-MX', { 
-        year: 'numeric', 
-        month: 'long' 
-      }),
-      sales: 0,
-      memberships: 0,
-      layaways: 0,
-      total: 0,
-      transactions: 0,
-      growth: 0
-    });
-  }
-  
-  // Calcular crecimiento
-  for (let i = 1; i < monthlyData.length; i++) {
-    const current = monthlyData[i].total;
-    const previous = monthlyData[i - 1].total;
-    monthlyData[i].growth = previous > 0 ? ((current - previous) / previous) * 100 : 0;
-  }
-  
-  console.log('✅ Datos mensuales cargados:', monthlyData);
-  return monthlyData;
-};
-
-// ✅ FUNCIÓN PRINCIPAL - getDashboardMetrics (usando APIs reales)
-const getDashboardMetrics = async (fechas) => {
+// ✅ FUNCIÓN PRINCIPAL: loadDashboardStats (ADAPTADA del dashboard)
+const loadDashboardStats = useCallback(async (selectedPeriod = 'today') => {
   try {
-    console.log('📊 Obteniendo métricas del período:', fechas);
+    console.log('📊 [REPORTES] Iniciando carga de estadísticas para:', selectedPeriod);
 
-    // 🔥 USAR DATOS REALES DE LAS APIS DEL DASHBOARD
+    let targetDate;
     let totalIngresos = 0;
-    let totalMemberships = 0;
     let totalPOS = 0;
+    let totalMemberships = 0;
     let totalAbonos = 0;
+    let totalEfectivo = 0;
+    let totalTransferencia = 0;
+    let totalDebito = 0;
+    let totalCredito = 0;
     let totalTransacciones = 0;
 
-    // Cargar datos día por día en el rango
-    const startDate = new Date(fechas.fechaInicio);
-    const endDate = new Date(fechas.fechaFin);
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dateString = d.toISOString().split('T')[0];
-      const dayData = await loadRealDailyData(dateString);
+    if (selectedPeriod === 'today') {
+      // ✅ USAR FECHA ACTUAL COMO EL DASHBOARD
+      targetDate = getMexicoDateLocal();
+      const dailyDataResult = await loadRealDailyData(targetDate);
       
-      if (dayData && dayData.totals) {
-        totalIngresos += dayData.totals.total || 0;
-        totalMemberships += dayData.memberships?.total || 0;
-        totalPOS += dayData.pos?.total || 0;
-        totalAbonos += dayData.abonos?.total || 0;
-        totalTransacciones += dayData.totals.transactions || 0;
+      if (dailyDataResult && dailyDataResult.totals) {
+        totalIngresos = dailyDataResult.totals.total || 0;
+        totalPOS = dailyDataResult.pos?.total || 0;
+        totalMemberships = dailyDataResult.memberships?.total || 0;
+        totalAbonos = dailyDataResult.abonos?.total || 0;
+        totalEfectivo = dailyDataResult.totals.efectivo || 0;
+        totalTransferencia = dailyDataResult.totals.transferencia || 0;
+        totalDebito = dailyDataResult.totals.debito || 0;
+        totalCredito = dailyDataResult.totals.credito || 0;
+        totalTransacciones = dailyDataResult.totals.transactions || 0;
+        
+        console.log('✅ [REPORTES] Datos del día actual cargados:', {
+          totalIngresos, totalPOS, totalMemberships, totalAbonos
+        });
+      } else {
+        console.log('⚠️ [REPORTES] Sin datos para hoy:', targetDate);
       }
+    } else if (selectedPeriod === 'week') {
+      // ✅ SUMAR DATOS DE LA SEMANA
+      for (let i = 6; i >= 0; i--) {
+        const dateString = getDateDaysAgo(i);
+        const dayData = await loadRealDailyData(dateString);
+        
+        if (dayData && dayData.totals) {
+          totalIngresos += dayData.totals.total || 0;
+          totalPOS += dayData.pos?.total || 0;
+          totalMemberships += dayData.memberships?.total || 0;
+          totalAbonos += dayData.abonos?.total || 0;
+          totalEfectivo += dayData.totals.efectivo || 0;
+          totalTransferencia += dayData.totals.transferencia || 0;
+          totalDebito += dayData.totals.debito || 0;
+          totalCredito += dayData.totals.credito || 0;
+          totalTransacciones += dayData.totals.transactions || 0;
+        }
+      }
+      console.log('✅ [REPORTES] Datos semanales acumulados:', { totalIngresos });
     }
 
-    // Cargar datos adicionales de Supabase para complementar
+    // ✅ CARGAR DATOS COMPLEMENTARIOS DE SUPABASE (como el dashboard)
     const supabase = createBrowserSupabaseClient();
 
-    const { data: usuariosTotales } = await supabase.from('Users').select('id', { count: 'exact', head: true });
-    const { data: membresiasActivas } = await supabase.from('user_memberships').select('userid').eq('status', 'active');
-    const { data: apartados } = await supabase.from('sales').select('pending_amount, status').eq('sale_type', 'layaway').in('status', ['pending', 'partial']);
-    const { data: gastos } = await supabase.from('expenses').select('amount').gte('expense_date', fechas.fechaInicio).lte('expense_date', fechas.fechaFin).eq('status', 'active');
+    const { count: usuariosTotales } = await supabase
+      .from('Users')
+      .select('*', { count: 'exact', head: true })
+      .eq('rol', 'cliente');
+
+    const { data: membresiasActivas } = await supabase
+      .from('user_memberships')
+      .select('userid, status')
+      .eq('status', 'active');
+
+    const { data: apartados } = await supabase
+      .from('sales')
+      .select('pending_amount, status')
+      .eq('sale_type', 'layaway')
+      .in('status', ['pending', 'partial']);
+
+    const { data: gastos } = await supabase
+      .from('expenses')
+      .select('amount')
+      .eq('status', 'active');
+
+    // ✅ CARGAR DATOS GRÁFICOS
+    const realChartData = await loadWeeklyRealData();
 
     const totalGastos = gastos?.reduce((sum, g) => sum + (Number(g.amount) || 0), 0) || 0;
 
-    console.log('✅ Métricas calculadas:', { totalIngresos, totalGastos, totalMemberships, totalPOS });
-
-    return {
+    // ✅ CONSTRUIR MÉTRICAS FINALES
+    const finalStats = {
       totalIngresos,
       totalGastos,
       utilidadNeta: totalIngresos - totalGastos,
-      membresiasTotales: 0, // Se podría calcular contando días
+      membresiasTotales: 0,
       membresiasActivas: membresiasActivas?.length || 0,
       membresiasVencidas: 0,
       ingresosMembresías: totalMemberships,
@@ -401,185 +341,37 @@ const getDashboardMetrics = async (fechas) => {
       productosVendidos: totalTransacciones,
       usuariosTotales: usuariosTotales || 0,
       usuariosActivos: new Set(membresiasActivas?.map(u => u.userid)).size || 0,
-      nuevosUsuarios: 0
+      nuevosUsuarios: 0,
+      // ✅ DESGLOSE DE MÉTODOS DE PAGO
+      cashFlow: {
+        efectivo: totalEfectivo,
+        transferencia: totalTransferencia,
+        debito: totalDebito,
+        credito: totalCredito
+      },
+      // ✅ DATOS PARA GRÁFICOS
+      chartData: realChartData,
+      pieData: []
     };
-  } catch (error) {
-    console.error('❌ Error obteniendo métricas:', error);
-    return {
-      totalIngresos: 0, totalGastos: 0, utilidadNeta: 0, membresiasTotales: 0,
-      membresiasActivas: 0, membresiasVencidas: 0, ingresosMembresías: 0,
-      ventasPOSTotales: 0, apartadosActivos: 0, apartadosPendientes: 0,
-      productosVendidos: 0, usuariosTotales: 0, usuariosActivos: 0, nuevosUsuarios: 0
-    };
-  }
-};
 
-// ✅ FUNCIÓN REAL - getVentasPorMetodo (basada en datos de cortes diarios)
-const getVentasPorMetodo = async (fechas) => {
-  try {
-    console.log('💳 Obteniendo ventas por método...');
-
-    const metodosMap = new Map();
-
-    // Cargar datos día por día
-    const startDate = new Date(fechas.fechaInicio);
-    const endDate = new Date(fechas.fechaFin);
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dateString = d.toISOString().split('T')[0];
-      const dayData = await loadRealDailyData(dateString);
-      
-      if (dayData && dayData.totals) {
-        // Efectivo
-        if (dayData.totals.efectivo > 0) {
-          const existing = metodosMap.get('Efectivo') || { metodo: 'Efectivo', total: 0, transacciones: 0, comisiones: 0 };
-          existing.total += dayData.totals.efectivo;
-          existing.transacciones += 1;
-          metodosMap.set('Efectivo', existing);
-        }
-        
-        // Transferencia
-        if (dayData.totals.transferencia > 0) {
-          const existing = metodosMap.get('Transferencia') || { metodo: 'Transferencia', total: 0, transacciones: 0, comisiones: 0 };
-          existing.total += dayData.totals.transferencia;
-          existing.transacciones += 1;
-          metodosMap.set('Transferencia', existing);
-        }
-        
-        // Débito
-        if (dayData.totals.debito > 0) {
-          const existing = metodosMap.get('Débito') || { metodo: 'Débito', total: 0, transacciones: 0, comisiones: 0 };
-          existing.total += dayData.totals.debito;
-          existing.transacciones += 1;
-          metodosMap.set('Débito', existing);
-        }
-        
-        // Crédito
-        if (dayData.totals.credito > 0) {
-          const existing = metodosMap.get('Crédito') || { metodo: 'Crédito', total: 0, transacciones: 0, comisiones: 0 };
-          existing.total += dayData.totals.credito;
-          existing.transacciones += 1;
-          metodosMap.set('Crédito', existing);
-        }
-      }
+    // ✅ CONSTRUIR PIE DATA
+    if (totalIngresos > 0) {
+      const pieData = [];
+      if (totalEfectivo > 0) pieData.push({ name: 'Efectivo', value: totalEfectivo, color: colorSchemes.default.primary });
+      if (totalTransferencia > 0) pieData.push({ name: 'Transferencia', value: totalTransferencia, color: colorSchemes.default.secondary });
+      if (totalDebito > 0) pieData.push({ name: 'Débito', value: totalDebito, color: colorSchemes.default.tertiary });
+      if (totalCredito > 0) pieData.push({ name: 'Crédito', value: totalCredito, color: colorSchemes.default.quaternary });
+      finalStats.pieData = pieData;
     }
 
-    const resultado = Array.from(metodosMap.values()).sort((a, b) => b.total - a.total);
-    console.log('✅ Ventas por método obtenidas:', resultado);
-    return resultado;
-  } catch (error) {
-    console.error('❌ Error obteniendo ventas por método:', error);
-    return [];
-  }
-};
-
-// ✅ FUNCIÓN REAL - getVentasPorCategoria (usando Supabase + filtro por fechas)
-const getVentasPorCategoria = async (fechas) => {
-  try {
-    console.log('🛍️ Obteniendo ventas por categoría...');
-
-    const supabase = createBrowserSupabaseClient();
-    const { data, error } = await supabase
-      .from('sale_items')
-      .select(`
-        quantity,
-        total_price,
-        products!inner(category),
-        sales!inner(created_at, status)
-      `)
-      .gte('sales.created_at', fechas.fechaInicio)
-      .lte('sales.created_at', fechas.fechaFin)
-      .eq('sales.status', 'completed');
-
-    if (error) throw error;
-
-    const categoriasMap = new Map();
-
-    data?.forEach(item => {
-      const categoria = item.products?.category || 'Sin categoría';
-      const existing = categoriasMap.get(categoria) || { categoria, total: 0, cantidad: 0, productos: 0 };
-      existing.total += Number(item.total_price) || 0;
-      existing.cantidad += Number(item.quantity) || 0;
-      existing.productos += 1;
-      categoriasMap.set(categoria, existing);
-    });
-
-    const resultado = Array.from(categoriasMap.values()).sort((a, b) => b.total - a.total);
-    console.log('✅ Ventas por categoría obtenidas:', resultado);
-    return resultado;
-  } catch (error) {
-    console.error('❌ Error obteniendo ventas por categoría:', error);
-    return [];
-  }
-};
-
-// ✅ FUNCIÓN REAL - getGastosPorTipo (usando Supabase + filtro por fechas)
-const getGastosPorTipo = async (fechas) => {
-  try {
-    console.log('💸 Obteniendo gastos por tipo...');
-
-    const supabase = createBrowserSupabaseClient();
-    const { data, error } = await supabase
-      .from('expenses')
-      .select('expense_type, amount')
-      .gte('expense_date', fechas.fechaInicio)
-      .lte('expense_date', fechas.fechaFin)
-      .eq('status', 'active');
-
-    if (error) throw error;
-
-    const tiposMap = new Map();
-    let totalGeneral = 0;
-
-    data?.forEach(gasto => {
-      const tipo = gasto.expense_type || 'otros';
-      const amount = Number(gasto.amount) || 0;
-      const existing = tiposMap.get(tipo) || { total: 0, count: 0 };
-      existing.total += amount;
-      existing.count += 1;
-      totalGeneral += amount;
-      tiposMap.set(tipo, existing);
-    });
-
-    const resultado = Array.from(tiposMap.entries()).map(([tipo, datos]) => ({
-      tipo: tipo.charAt(0).toUpperCase() + tipo.slice(1),
-      total: datos.total,
-      transacciones: datos.count,
-      porcentaje: totalGeneral > 0 ? (datos.total / totalGeneral) * 100 : 0
-    })).sort((a, b) => b.total - a.total);
-
-    console.log('✅ Gastos por tipo obtenidos:', resultado);
-    return resultado;
-  } catch (error) {
-    console.error('❌ Error obteniendo gastos por tipo:', error);
-    return [];
-  }
-};
-
-// ✅ FUNCIÓN REAL - getVentasDiarias (usando loadWeeklyRealData)
-const getVentasDiarias = async (fechas) => {
-  try {
-    console.log('📈 Obteniendo ventas diarias...');
+    console.log('✅ [REPORTES] Estadísticas finales calculadas:', finalStats);
+    return finalStats;
     
-    // Usar la misma función que el dashboard
-    const weeklyData = await loadWeeklyRealData();
-    
-    const resultado = weeklyData.map(day => ({
-      fecha: day.name,
-      membresías: day.memberships,
-      pos: day.sales,
-      abonos: day.layaways,
-      gastos: 0, // Los gastos no están en los cortes diarios
-      neto: day.sales + day.memberships + day.layaways
-    }));
-
-    console.log('✅ Ventas diarias obtenidas:', resultado);
-    return resultado;
-  } catch (error) {
-    console.error('❌ Error obteniendo ventas diarias:', error);
-    return [];
+  } catch (err) {
+    console.error('❌ [REPORTES] Error en loadDashboardStats:', err);
+    throw err;
   }
-};
+}, [loadRealDailyData, loadWeeklyRealData]);
 
 // ✅ COMPONENTE PRINCIPAL
 export default function ReportesPage() {
@@ -592,16 +384,9 @@ export default function ReportesPage() {
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [fullscreenChart, setFullscreenChart] = useState(null);
   
-  const [fechas, setFechas] = useState({
-    fechaInicio: '2025-06-01',
-    fechaFin: '2025-06-30'
-  });
+  const [selectedPeriod, setSelectedPeriod] = useState('today'); // 'today', 'week', 'month'
   
-  const [metrics, setMetrics] = useState(null);
-  const [ventasMetodo, setVentasMetodo] = useState([]);
-  const [ventasCategoria, setVentasCategoria] = useState([]);
-  const [gastosTipo, setGastosTipo] = useState([]);
-  const [ventasDiarias, setVentasDiarias] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState('');
@@ -623,30 +408,20 @@ export default function ReportesPage() {
 
   useEffect(() => {
     cargarDatos();
-  }, [fechas]);
+  }, [selectedPeriod, loadDashboardStats]);
 
   const cargarDatos = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [metricsData, ventasMetodoData, ventasCategoriaData, gastosTipoData, ventasDiariasData] = 
-        await Promise.all([
-          getDashboardMetrics(fechas),
-          getVentasPorMetodo(fechas),
-          getVentasPorCategoria(fechas),
-          getGastosPorTipo(fechas),
-          getVentasDiarias(fechas)
-        ]);
-
-      setMetrics(metricsData);
-      setVentasMetodo(ventasMetodoData);
-      setVentasCategoria(ventasCategoriaData);
-      setGastosTipo(gastosTipoData);
-      setVentasDiarias(ventasDiariasData);
+      console.log('🔄 [REPORTES] Iniciando carga de datos...');
+      const statsData = await loadDashboardStats(selectedPeriod);
+      setStats(statsData);
       setLastUpdate(formatDateTime(new Date().toISOString()));
+      console.log('✅ [REPORTES] Datos cargados exitosamente');
     } catch (error) {
-      console.error('Error cargando datos:', error);
-      setError('Error al cargar los datos. Verifica tu conexión a Supabase.');
+      console.error('❌ [REPORTES] Error cargando datos:', error);
+      setError('Error al cargar los datos. Verifica tu conexión y las APIs.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -668,21 +443,21 @@ export default function ReportesPage() {
     onClick
   }) => (
     <motion.div
-      whileHover={{ scale: config.showAnimations ? 1.02 : 1, y: config.showAnimations ? -5 : 0 }}
-      transition={{ duration: 0.3 }}
+      whileHover={{ scale: config.showAnimations ? 1.02 : 1, y: config.showAnimations ? -3 : 0 }}
+      transition={{ duration: 0.2 }}
     >
       <Card sx={{
         background: `linear-gradient(135deg, ${color}, ${color}DD)`,
         color: darkProTokens.textPrimary,
-        borderRadius: 4,
+        borderRadius: 3,
         overflow: 'hidden',
         position: 'relative',
         cursor: onClick ? 'pointer' : 'default',
         border: `1px solid ${color}40`,
-        boxShadow: `0 8px 32px ${color}20`,
-        minHeight: config.compactMode ? '160px' : { xs: '180px', sm: '200px', md: '220px' },
+        boxShadow: `0 4px 20px ${color}20`,
+        minHeight: 140, // Más compacto
         '&:hover': { 
-          boxShadow: `0 16px 48px ${color}40`,
+          boxShadow: `0 8px 32px ${color}40`,
           border: `1px solid ${color}60`
         },
         '&::before': {
@@ -697,24 +472,24 @@ export default function ReportesPage() {
       }}
       onClick={onClick}
       >
-        <CardContent sx={{ p: config.compactMode ? { xs: 1.5, sm: 2 } : { xs: 2, sm: 3 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <CardContent sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Avatar sx={{ 
               bgcolor: `${darkProTokens.textPrimary}15`, 
-              width: config.compactMode ? { xs: 40, sm: 48 } : { xs: 48, sm: 56, md: 64 }, 
-              height: config.compactMode ? { xs: 40, sm: 48 } : { xs: 48, sm: 56, md: 64 },
+              width: 40, 
+              height: 40,
               border: `2px solid ${darkProTokens.textPrimary}20`
             }}>
               {React.cloneElement(icon, { 
-                sx: { fontSize: config.compactMode ? { xs: 20, sm: 24 } : { xs: 24, sm: 28, md: 32 }, color: darkProTokens.textPrimary }
+                sx: { fontSize: 20, color: darkProTokens.textPrimary }
               })}
             </Avatar>
           </Box>
           
-          <Typography variant="h3" sx={{ 
+          <Typography variant="h4" sx={{ 
             fontWeight: 800, 
-            mb: 1,
-            fontSize: config.compactMode ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
+            mb: 0.5,
+            fontSize: { xs: '1.2rem', sm: '1.5rem' },
             background: `linear-gradient(45deg, ${darkProTokens.textPrimary}, ${currentColors.primary})`,
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
@@ -723,20 +498,21 @@ export default function ReportesPage() {
             {value}
           </Typography>
           
-          <Typography variant="h6" sx={{ 
+          <Typography variant="body1" sx={{ 
             opacity: 0.9, 
             fontWeight: 600,
-            fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem', md: '1.25rem' },
+            fontSize: { xs: '0.75rem', sm: '0.85rem' },
             textShadow: `0 2px 4px ${color}40`
           }}>
             {title}
           </Typography>
           
           {subtitle && (
-            <Typography variant="body2" sx={{ 
+            <Typography variant="caption" sx={{ 
               opacity: 0.7, 
-              mt: 1,
-              fontSize: config.compactMode ? { xs: '0.65rem', sm: '0.7rem' } : { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }
+              mt: 0.5,
+              fontSize: { xs: '0.65rem', sm: '0.7rem' },
+              display: 'block'
             }}>
               {subtitle}
             </Typography>
@@ -746,7 +522,7 @@ export default function ReportesPage() {
     </motion.div>
   );
 
-  const COLORS = [currentColors.primary, currentColors.secondary, currentColors.tertiary, currentColors.quaternary, darkProTokens.chart5];
+  const COLORS = [currentColors.primary, currentColors.secondary, currentColors.tertiary, currentColors.quaternary];
 
   if (loading) {
     return (
@@ -772,13 +548,13 @@ export default function ReportesPage() {
           >
             <Avatar sx={{ 
               bgcolor: currentColors.primary, 
-              width: 100, 
-              height: 100,
+              width: 80, 
+              height: 80,
               mx: 'auto',
               mb: 3,
               boxShadow: `0 0 40px ${currentColors.primary}60`
             }}>
-              <AssessmentIcon sx={{ fontSize: 50 }} />
+              <AnalyticsIcon sx={{ fontSize: 40 }} />
             </Avatar>
           </motion.div>
           
@@ -791,7 +567,7 @@ export default function ReportesPage() {
             Reportes MUP
           </Typography>
           <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
-            Cargando análisis avanzado del gimnasio...
+            Analizando datos del gimnasio...
           </Typography>
           
           <LinearProgress sx={{
@@ -822,803 +598,584 @@ export default function ReportesPage() {
         alignItems: 'center',
         justifyContent: 'center'
       }}>
-        <Box sx={{ textAlign: 'center', maxWidth: 'md', mx: 'auto' }}>
-          <Paper sx={{
-            p: 4,
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `1px solid ${darkProTokens.error}40`,
-            borderRadius: 4
+        <Paper sx={{
+          p: 4,
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `1px solid ${darkProTokens.error}40`,
+          borderRadius: 4,
+          textAlign: 'center',
+          maxWidth: 500
+        }}>
+          <Avatar sx={{ 
+            bgcolor: darkProTokens.error, 
+            width: 60, 
+            height: 60,
+            mx: 'auto',
+            mb: 2
           }}>
-            <Avatar sx={{ 
-              bgcolor: darkProTokens.error, 
-              width: 80, 
-              height: 80,
-              mx: 'auto',
-              mb: 3
-            }}>
-              <AssessmentIcon sx={{ fontSize: 40 }} />
-            </Avatar>
-            <Typography variant="h5" sx={{ color: darkProTokens.error, mb: 2, fontWeight: 700 }}>
-              Error al cargar reportes
-            </Typography>
-            <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
-              {error}
-            </Typography>
-            <Button
-              onClick={cargarDatos}
-              variant="contained"
-              startIcon={<RefreshIcon />}
-              sx={{
-                background: `linear-gradient(135deg, ${currentColors.primary}, ${currentColors.primary}DD)`,
-                fontWeight: 700,
-                px: 4,
-                py: 1.5
-              }}
-            >
-              Reintentar
-            </Button>
-          </Paper>
-        </Box>
+            <AnalyticsIcon sx={{ fontSize: 30 }} />
+          </Avatar>
+          <Typography variant="h5" sx={{ color: darkProTokens.error, mb: 2, fontWeight: 700 }}>
+            Error al cargar reportes
+          </Typography>
+          <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
+            {error}
+          </Typography>
+          <Button
+            onClick={cargarDatos}
+            variant="contained"
+            startIcon={<RefreshIcon />}
+            sx={{
+              background: `linear-gradient(135deg, ${currentColors.primary}, ${currentColors.primary}DD)`,
+              fontWeight: 700,
+              px: 4,
+              py: 1.5
+            }}
+          >
+            Reintentar
+          </Button>
+        </Paper>
       </Box>
     );
   }
 
   return (
     <Box sx={{ 
-      p: { xs: 2, sm: 3 },
+      p: 2,
       background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
       minHeight: '100vh',
       color: darkProTokens.textPrimary
     }}>
-      {/* SNACKBAR DE ERROR */}
-      <Snackbar 
-        open={!!error} 
-        autoHideDuration={8000} 
-        onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={() => setError(null)} 
-          severity="error" 
-          variant="filled"
-          sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-            color: darkProTokens.textPrimary,
-            fontWeight: 600,
-            borderRadius: 3
-          }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-
-      {/* HEADER */}
+      {/* HEADER COMPACTO */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
         <Paper sx={{
-          p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 },
-          mb: 4,
+          p: 3,
+          mb: 3,
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
           border: `1px solid ${darkProTokens.grayDark}`,
-          borderRadius: 4,
-          backdropFilter: 'blur(20px)',
-          position: 'relative',
-          overflow: 'hidden',
+          borderRadius: 3,
           '&::before': {
             content: '""',
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            height: '4px',
-            background: `linear-gradient(90deg, ${currentColors.primary}, ${currentColors.secondary}, ${currentColors.tertiary})`
+            height: '3px',
+            background: `linear-gradient(90deg, ${currentColors.primary}, ${currentColors.secondary})`
           }
         }}>
           <Box sx={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            mb: 3,
             flexWrap: 'wrap',
             gap: 2
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, sm: 3 } }}>
-              <motion.div
-                animate={config.showAnimations ? { 
-                  scale: [1, 1.05, 1],
-                  boxShadow: [
-                    `0 0 20px ${currentColors.primary}40`,
-                    `0 0 40px ${currentColors.primary}60`,
-                    `0 0 20px ${currentColors.primary}40`
-                  ]
-                } : {}}
-                transition={{ 
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              >
-                <Avatar sx={{ 
-                  bgcolor: currentColors.primary, 
-                  width: config.compactMode ? { xs: 50, sm: 60 } : { xs: 60, sm: 80, md: 90 }, 
-                  height: config.compactMode ? { xs: 50, sm: 60 } : { xs: 60, sm: 80, md: 90 },
-                  border: `3px solid ${currentColors.primary}40`
-                }}>
-                  <AnalyticsIcon sx={{ fontSize: config.compactMode ? { xs: 25, sm: 30 } : { xs: 30, sm: 40, md: 45 } }} />
-                </Avatar>
-              </motion.div>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar sx={{ 
+                bgcolor: currentColors.primary, 
+                width: 50, 
+                height: 50,
+                border: `3px solid ${currentColors.primary}40`
+              }}>
+                <AnalyticsIcon sx={{ fontSize: 25 }} />
+              </Avatar>
               
               <Box>
-                <Typography variant="h3" sx={{ 
+                <Typography variant="h4" sx={{ 
                   color: currentColors.primary, 
                   fontWeight: 800,
-                  textShadow: `0 0 20px ${currentColors.primary}40`,
-                  mb: 1,
-                  fontSize: config.compactMode ? { xs: '1.5rem', sm: '2rem' } : { xs: '1.8rem', sm: '2.5rem', md: '3rem' },
+                  fontSize: { xs: '1.5rem', sm: '2rem' },
                   background: `linear-gradient(45deg, ${currentColors.primary}, ${currentColors.secondary})`,
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
-                  📊 Reportes y Analytics
+                  📊 Reportes MUP
                 </Typography>
-                <Typography variant="h6" sx={{ 
-                  color: darkProTokens.textSecondary, 
-                  mb: 1,
-                  fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
-                }}>
-                  🚀 MuscleUp Gym - Business Intelligence
-                </Typography>
-                <Typography variant="body1" sx={{ 
+                <Typography variant="body2" sx={{ 
                   color: darkProTokens.info, 
                   fontWeight: 600,
-                  fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
+                  fontSize: { xs: '0.7rem', sm: '0.8rem' }
                 }}>
-                  ⏰ {currentMexicoTime}
+                  ⏰ {currentMexicoTime} • {lastUpdate && `✅ ${lastUpdate}`}
                 </Typography>
-                {lastUpdate && (
-                  <Typography variant="caption" sx={{ 
-                    color: darkProTokens.success,
-                    fontWeight: 600,
-                    fontSize: config.compactMode ? { xs: '0.65rem', sm: '0.7rem' } : { xs: '0.7rem', sm: '0.75rem' }
-                  }}>
-                    ✅ Actualizado: {lastUpdate}
-                  </Typography>
-                )}
               </Box>
             </Box>
             
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Chip
-                icon={<SpeedIcon />}
-                label="Real Time"
-                size="medium"
-                sx={{
-                  bgcolor: `${currentColors.secondary}20`,
-                  color: currentColors.secondary,
-                  border: `1px solid ${currentColors.secondary}40`,
-                  fontWeight: 700,
-                  fontSize: { xs: '0.7rem', sm: '0.9rem' }
-                }}
-              />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {/* SELECTOR DE PERÍODO */}
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Button
+                  size="small"
+                  variant={selectedPeriod === 'today' ? 'contained' : 'outlined'}
+                  onClick={() => setSelectedPeriod('today')}
+                  sx={{
+                    fontSize: '0.7rem',
+                    px: 2,
+                    py: 0.5,
+                    background: selectedPeriod === 'today' ? currentColors.primary : 'transparent',
+                    borderColor: currentColors.primary,
+                    color: selectedPeriod === 'today' ? darkProTokens.background : currentColors.primary
+                  }}
+                >
+                  Hoy
+                </Button>
+                <Button
+                  size="small"
+                  variant={selectedPeriod === 'week' ? 'contained' : 'outlined'}
+                  onClick={() => setSelectedPeriod('week')}
+                  sx={{
+                    fontSize: '0.7rem',
+                    px: 2,
+                    py: 0.5,
+                    background: selectedPeriod === 'week' ? currentColors.secondary : 'transparent',
+                    borderColor: currentColors.secondary,
+                    color: selectedPeriod === 'week' ? darkProTokens.background : currentColors.secondary
+                  }}
+                >
+                  Semana
+                </Button>
+              </Box>
 
               <IconButton
                 onClick={() => setConfigDialogOpen(true)}
+                size="small"
                 sx={{
                   bgcolor: `${currentColors.tertiary}20`,
                   color: currentColors.tertiary,
-                  border: `1px solid ${currentColors.tertiary}40`,
-                  '&:hover': {
-                    bgcolor: `${currentColors.tertiary}30`,
-                  }
+                  '&:hover': { bgcolor: `${currentColors.tertiary}30` }
                 }}
               >
-                <SettingsIcon />
+                <SettingsIcon fontSize="small" />
               </IconButton>
               
               <Button
-                size="large"
-                startIcon={refreshing ? <CircularProgress size={24} sx={{ color: darkProTokens.background }} /> : <RefreshIcon />}
+                size="small"
+                startIcon={refreshing ? <CircularProgress size={16} sx={{ color: darkProTokens.background }} /> : <RefreshIcon />}
                 onClick={handleRefresh}
                 disabled={refreshing}
                 variant="contained"
                 sx={{ 
                   background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
                   fontWeight: 700,
-                  px: { xs: 3, sm: 4 },
-                  py: { xs: 1, sm: 1.5 },
-                  borderRadius: 3,
-                  fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                  boxShadow: `0 8px 32px ${darkProTokens.info}30`,
-                  '&:hover': {
-                    transform: 'translateY(-3px)',
-                    boxShadow: `0 12px 48px ${darkProTokens.info}50`
-                  },
-                  transition: 'all 0.3s ease'
+                  px: 2,
+                  py: 0.5,
+                  fontSize: '0.7rem'
                 }}
               >
-                {refreshing ? 'Actualizando...' : 'Actualizar Datos'}
+                {refreshing ? 'Actualizando...' : 'Actualizar'}
               </Button>
-            </Box>
-          </Box>
-
-          {/* FILTROS DE FECHA */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: { xs: 2, sm: 4 },
-            p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 },
-            background: `linear-gradient(135deg, ${currentColors.secondary}15, ${currentColors.primary}10)`,
-            borderRadius: 3,
-            border: `1px solid ${currentColors.secondary}30`,
-            backdropFilter: 'blur(10px)',
-            flexWrap: 'wrap'
-          }}>
-            <CalendarTodayIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="body1" sx={{ 
-                color: darkProTokens.textPrimary, 
-                fontWeight: 600,
-                fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-              }}>
-                Desde:
-              </Typography>
-              <input
-                type="date"
-                value={fechas.fechaInicio}
-                onChange={(e) => setFechas(prev => ({ ...prev, fechaInicio: e.target.value }))}
-                style={{
-                  border: `1px solid ${currentColors.primary}40`,
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  background: darkProTokens.surfaceLevel3,
-                  color: darkProTokens.textPrimary,
-                  fontSize: '14px'
-                }}
-              />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="body1" sx={{ 
-                color: darkProTokens.textPrimary, 
-                fontWeight: 600,
-                fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-              }}>
-                Hasta:
-              </Typography>
-              <input
-                type="date"
-                value={fechas.fechaFin}
-                onChange={(e) => setFechas(prev => ({ ...prev, fechaFin: e.target.value }))}
-                style={{
-                  border: `1px solid ${currentColors.primary}40`,
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  background: darkProTokens.surfaceLevel3,
-                  color: darkProTokens.textPrimary,
-                  fontSize: '14px'
-                }}
-              />
             </Box>
           </Box>
         </Paper>
       </motion.div>
 
-      {/* MÉTRICAS PRINCIPALES */}
+      {/* MÉTRICAS PRINCIPALES - COMPACTAS */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
       >
-        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} lg={3}>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <MetricCard
               title="Ingresos Totales"
-              value={formatPrice(metrics?.totalIngresos || 0)}
+              value={formatPrice(stats?.totalIngresos || 0)}
               icon={<AttachMoneyIcon />}
               color={currentColors.primary}
-              subtitle={`+12.5% vs periodo anterior`}
+              subtitle={selectedPeriod === 'today' ? 'Hoy' : selectedPeriod === 'week' ? 'Esta semana' : 'Período'}
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} lg={3}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <MetricCard
               title="Utilidad Neta"
-              value={formatPrice(metrics?.utilidadNeta || 0)}
+              value={formatPrice(stats?.utilidadNeta || 0)}
               icon={<AccountBalanceIcon />}
-              color={currentColors.secondary}
+              color={stats?.utilidadNeta >= 0 ? currentColors.secondary : darkProTokens.error}
               subtitle={`Ingresos - Gastos`}
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} lg={3}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <MetricCard
-              title="Membresías Activas"
-              value={metrics?.membresiasActivas || 0}
+              title="Membresías"
+              value={formatPrice(stats?.ingresosMembresías || 0)}
               icon={<PeopleIcon />}
               color={currentColors.tertiary}
-              subtitle={`${metrics?.membresiasTotales || 0} vendidas en total`}
+              subtitle={`${stats?.membresiasActivas || 0} activas`}
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} lg={3}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <MetricCard
               title="Ventas POS"
-              value={formatPrice(metrics?.ventasPOSTotales || 0)}
+              value={formatPrice(stats?.ventasPOSTotales || 0)}
               icon={<ShoppingCartIcon />}
               color={currentColors.quaternary}
-              subtitle={`${metrics?.productosVendidos || 0} productos vendidos`}
+              subtitle={`${stats?.productosVendidos || 0} transacciones`}
             />
           </Grid>
         </Grid>
       </motion.div>
 
-      {/* GRÁFICOS PRINCIPALES */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.4 }}
-      >
-        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-          {/* Ventas diarias */}
-          <Grid item xs={12} lg={8}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4,
-              overflow: 'hidden'
-            }}>
-              <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 2, sm: 4 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <TimelineIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.primary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      📈 Tendencias de Ventas
-                    </Typography>
-                  </Box>
-                  <IconButton 
-                    onClick={() => setFullscreenChart('ventas')}
-                    sx={{ color: darkProTokens.textSecondary }}
-                  >
-                    <FullscreenIcon />
-                  </IconButton>
+      {/* GRÁFICOS COMPACTOS - MEJOR DISTRIBUCIÓN */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        {/* GRÁFICO PRINCIPAL - TENDENCIAS */}
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <Card sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3
+          }}>
+            <CardContent sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TimelineIcon sx={{ color: currentColors.primary, fontSize: 20 }} />
+                  <Typography variant="h6" sx={{ 
+                    color: currentColors.primary, 
+                    fontWeight: 700,
+                    fontSize: { xs: '0.9rem', sm: '1rem' }
+                  }}>
+                    📈 Tendencias (7 días)
+                  </Typography>
+                  <Chip
+                    label={`${stats?.chartData?.filter(d => d.total > 0).length || 0} días con datos`}
+                    size="small"
+                    sx={{
+                      bgcolor: `${currentColors.secondary}20`,
+                      color: currentColors.secondary,
+                      fontSize: '0.6rem',
+                      height: 20
+                    }}
+                  />
                 </Box>
-                
-                <Box sx={{ height: config.compactMode ? 250 : { xs: 250, sm: 300, md: 350 }, width: '100%' }}>
-                  {ventasDiarias.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={ventasDiarias} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-                        <XAxis 
-                          dataKey="fecha" 
-                          stroke={darkProTokens.textSecondary}
-                          fontSize={12}
-                        />
-                        <YAxis 
-                          stroke={darkProTokens.textSecondary}
-                          fontSize={12}
-                          tickFormatter={(value) => formatPrice(value)}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: darkProTokens.surfaceLevel4,
-                            border: `1px solid ${darkProTokens.grayDark}`,
-                            borderRadius: '8px',
-                            color: darkProTokens.textPrimary
-                          }}
-                          formatter={(value, name) => [formatPrice(value), name]}
-                        />
-                        <Legend />
-                        
-                        <Area
-                          type="monotone"
-                          dataKey="membresías"
-                          fill={`${currentColors.secondary}30`}
-                          stroke={currentColors.secondary}
-                          strokeWidth={3}
-                          name="Membresías"
-                        />
-                        
-                        <Bar
-                          dataKey="pos"
-                          fill={currentColors.primary}
-                          name="Ventas POS"
-                          radius={[4, 4, 0, 0]}
-                        />
-                        
-                        <Line
-                          type="monotone"
-                          dataKey="neto"
-                          stroke={currentColors.tertiary}
-                          strokeWidth={3}
-                          dot={{ fill: currentColors.tertiary, strokeWidth: 2, r: 6 }}
-                          name="Total Neto"
-                        />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <Box sx={{ 
-                      height: '100%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      flexDirection: 'column',
-                      gap: 2
-                    }}>
-                      <TimelineIcon sx={{ fontSize: { xs: 60, sm: 80 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                        Sin datos disponibles
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, textAlign: 'center', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                        Los gráficos aparecerán cuando haya datos<br />
-                        en el rango de fechas seleccionado
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Ventas por método de pago */}
-          <Grid item xs={12} lg={4}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4,
-              height: '100%'
-            }}>
-              <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 2, sm: 4 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <CreditCardIcon sx={{ color: currentColors.tertiary, fontSize: 28 }} />
-                    <Typography variant="h6" sx={{ 
-                      color: currentColors.tertiary, 
-                      fontWeight: 700,
-                      fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      💳 Métodos de Pago
-                    </Typography>
-                  </Box>
-                  <IconButton 
-                    onClick={() => setFullscreenChart('pagos')}
-                    sx={{ color: darkProTokens.textSecondary }}
-                  >
-                    <FullscreenIcon />
-                  </IconButton>
-                </Box>
-                
-                {ventasMetodo.length > 0 ? (
-                  <Box sx={{ height: config.compactMode ? { xs: 180, sm: 200 } : { xs: 220, sm: 250, md: 280 }, width: '100%' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={ventasMetodo}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={config.compactMode ? 70 : 90}
-                          innerRadius={config.compactMode ? 40 : 50}
-                          paddingAngle={5}
-                          dataKey="total"
-                          label={({ metodo, total }) => {
-                            const totalGeneral = ventasMetodo.reduce((sum, item) => sum + item.total, 0);
-                            const porcentaje = totalGeneral > 0 ? (total / totalGeneral * 100).toFixed(1) : '0';
-                            return `${metodo} (${porcentaje}%)`;
-                          }}
-                        >
-                          {ventasMetodo.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: darkProTokens.surfaceLevel4,
-                            border: `1px solid ${darkProTokens.grayDark}`,
-                            borderRadius: '8px',
-                            color: darkProTokens.textPrimary
-                          }}
-                          formatter={(value) => formatPrice(value)}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
+                <IconButton 
+                  size="small"
+                  onClick={() => setFullscreenChart('tendencias')}
+                  sx={{ color: darkProTokens.textSecondary }}
+                >
+                  <FullscreenIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              
+              <Box sx={{ height: 280, width: '100%' }}>
+                {stats?.chartData?.some(d => d.total > 0) ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={stats.chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke={darkProTokens.textSecondary}
+                        fontSize={10}
+                      />
+                      <YAxis 
+                        stroke={darkProTokens.textSecondary}
+                        fontSize={10}
+                        tickFormatter={(value) => value > 1000 ? `${(value/1000).toFixed(0)}k` : value.toFixed(0)}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: darkProTokens.surfaceLevel4,
+                          border: `1px solid ${darkProTokens.grayDark}`,
+                          borderRadius: '6px',
+                          color: darkProTokens.textPrimary,
+                          fontSize: '12px'
+                        }}
+                        formatter={(value, name) => [formatPrice(value), name]}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '11px' }} />
+                      
+                      <Area
+                        type="monotone"
+                        dataKey="memberships"
+                        fill={`${currentColors.secondary}30`}
+                        stroke={currentColors.secondary}
+                        strokeWidth={2}
+                        name="Membresías"
+                      />
+                      
+                      <Bar
+                        dataKey="sales"
+                        fill={currentColors.primary}
+                        name="Ventas POS"
+                        radius={[2, 2, 0, 0]}
+                      />
+                      
+                      <Line
+                        type="monotone"
+                        dataKey="layaways"
+                        stroke={currentColors.tertiary}
+                        strokeWidth={2}
+                        dot={{ fill: currentColors.tertiary, strokeWidth: 1, r: 3 }}
+                        name="Apartados"
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
                 ) : (
                   <Box sx={{ 
-                    height: config.compactMode ? { xs: 180, sm: 200 } : { xs: 220, sm: 250, md: 280 }, 
+                    height: '100%', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
                     flexDirection: 'column',
-                    gap: 2
+                    gap: 1
                   }}>
-                    <CreditCardIcon sx={{ fontSize: config.compactMode ? { xs: 35, sm: 45 } : { xs: 40, sm: 60 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                    <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textSecondary, 
-                      fontSize: config.compactMode ? { xs: '0.8rem', sm: '0.9rem' } : { xs: '0.9rem', sm: '1rem' }
-                    }}>
-                      Sin datos de pagos
+                    <TimelineIcon sx={{ fontSize: 40, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      Sin datos en los últimos 7 días
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textDisabled, textAlign: 'center' }}>
+                      Los cortes diarios aparecerán aquí cuando estén disponibles
                     </Typography>
                   </Box>
                 )}
-              </CardContent>
-            </Card>
-          </Grid>
+              </Box>
+            </CardContent>
+          </Card>
         </Grid>
-      </motion.div>
 
-      {/* GRÁFICOS SECUNDARIOS */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.6 }}
-      >
-        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-          {/* Ventas por categoría */}
-          <Grid item xs={12} lg={6}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4
-            }}>
-              <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 2, sm: 4 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <CategoryIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
+        {/* MÉTODOS DE PAGO */}
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <Card sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3,
+            height: '100%'
+          }}>
+            <CardContent sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CreditCardIcon sx={{ color: currentColors.tertiary, fontSize: 20 }} />
                   <Typography variant="h6" sx={{ 
-                    color: currentColors.primary, 
+                    color: currentColors.tertiary, 
                     fontWeight: 700,
-                    fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
+                    fontSize: { xs: '0.9rem', sm: '1rem' }
                   }}>
-                    🛍️ Ventas por Categoría
+                    💳 Métodos de Pago
                   </Typography>
                 </Box>
-                
-                <Box sx={{ height: config.compactMode ? 250 : { xs: 250, sm: 300 }, width: '100%' }}>
-                  {ventasCategoria.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={ventasCategoria}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-                        <XAxis 
-                          dataKey="categoria" 
-                          stroke={darkProTokens.textSecondary}
-                          fontSize={12}
-                        />
-                        <YAxis 
-                          stroke={darkProTokens.textSecondary}
-                          fontSize={12}
-                          tickFormatter={(value) => formatPrice(value)}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: darkProTokens.surfaceLevel4,
-                            border: `1px solid ${darkProTokens.grayDark}`,
-                            borderRadius: '8px',
-                            color: darkProTokens.textPrimary
-                          }}
-                          formatter={(value) => formatPrice(value)}
-                        />
-                        <Bar dataKey="total" fill={currentColors.primary} radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <Box sx={{ 
-                      height: '100%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      flexDirection: 'column',
-                      gap: 2
-                    }}>
-                      <CategoryIcon sx={{ fontSize: { xs: 40, sm: 60 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                      <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
-                        Sin ventas por categoría
-                      </Typography>
-                    </Box>
-                  )}
+                <IconButton 
+                  size="small"
+                  onClick={() => setFullscreenChart('pagos')}
+                  sx={{ color: darkProTokens.textSecondary }}
+                >
+                  <FullscreenIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              
+              {stats?.pieData?.length > 0 ? (
+                <Box sx={{ height: 220, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stats.pieData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={60}
+                        innerRadius={30}
+                        paddingAngle={3}
+                        dataKey="value"
+                        label={({ name, value }) => {
+                          const total = stats.pieData.reduce((sum, item) => sum + item.value, 0);
+                          const percent = total > 0 ? ((value / total) * 100).toFixed(0) : '0';
+                          return `${name}\n${percent}%`;
+                        }}
+                        labelLine={false}
+                        fontSize={9}
+                      >
+                        {stats.pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: darkProTokens.surfaceLevel4,
+                          border: `1px solid ${darkProTokens.grayDark}`,
+                          borderRadius: '6px',
+                          color: darkProTokens.textPrimary,
+                          fontSize: '11px'
+                        }}
+                        formatter={(value) => formatPrice(value)}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Gastos por tipo */}
-          <Grid item xs={12} lg={6}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 4
-            }}>
-              <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 2, sm: 4 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <TrendingDownIcon sx={{ color: darkProTokens.error, fontSize: 28 }} />
-                  <Typography variant="h6" sx={{ 
-                    color: darkProTokens.error, 
-                    fontWeight: 700,
-                    fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-                  }}>
-                    💸 Gastos por Tipo
+              ) : (
+                <Box sx={{ 
+                  height: 220, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: 1
+                }}>
+                  <CreditCardIcon sx={{ fontSize: 30, color: darkProTokens.grayMuted, opacity: 0.5 }} />
+                  <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                    Sin pagos registrados
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                    {selectedPeriod === 'today' ? 'Hoy' : 'En el período'}
                   </Typography>
                 </Box>
-                
-                <Box sx={{ height: config.compactMode ? 250 : { xs: 250, sm: 300 }, width: '100%' }}>
-                  {gastosTipo.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={gastosTipo}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-                        <XAxis 
-                          dataKey="tipo" 
-                          stroke={darkProTokens.textSecondary}
-                          fontSize={12}
-                        />
-                        <YAxis 
-                          stroke={darkProTokens.textSecondary}
-                          fontSize={12}
-                          tickFormatter={(value) => formatPrice(value)}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: darkProTokens.surfaceLevel4,
-                            border: `1px solid ${darkProTokens.grayDark}`,
-                            borderRadius: '8px',
-                            color: darkProTokens.textPrimary
-                          }}
-                          formatter={(value) => formatPrice(value)}
-                        />
-                        <Bar dataKey="total" fill={darkProTokens.error} radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <Box sx={{ 
-                      height: '100%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      flexDirection: 'column',
-                      gap: 2
-                    }}>
-                      <ReceiptIcon sx={{ fontSize: { xs: 40, sm: 60 }, color: darkProTokens.grayMuted, opacity: 0.5 }} />
-                      <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
-                        Sin gastos registrados
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+              )}
+            </CardContent>
+          </Card>
         </Grid>
-      </motion.div>
+      </Grid>
 
-      {/* RESUMEN FINANCIERO */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.8 }}
-      >
-        <Card sx={{
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.grayDark}`,
-          borderRadius: 4
-        }}>
-          <CardContent sx={{ p: config.compactMode ? { xs: 2, sm: 3 } : { xs: 3, sm: 4 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-              <AccountBalanceIcon sx={{ color: currentColors.primary, fontSize: 28 }} />
-              <Typography variant="h6" sx={{ 
-                color: currentColors.primary, 
-                fontWeight: 700,
-                fontSize: config.compactMode ? { xs: '0.9rem', sm: '1rem' } : { xs: '1rem', sm: '1.25rem' }
-              }}>
-                💰 Resumen Financiero del Período
-              </Typography>
-            </Box>
-            
-            <Grid container spacing={4}>
-              <Grid item xs={12} md={4}>
-                <Box sx={{ 
-                  textAlign: 'center', 
-                  p: 4, 
-                  background: `linear-gradient(135deg, ${currentColors.secondary}15, ${currentColors.secondary}05)`,
-                  borderRadius: 3,
-                  border: `1px solid ${currentColors.secondary}30`
+      {/* DESGLOSE FINANCIERO COMPACTO */}
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3
+          }}>
+            <CardContent sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <AttachMoneyIcon sx={{ color: currentColors.primary, fontSize: 20 }} />
+                <Typography variant="h6" sx={{ 
+                  color: currentColors.primary, 
+                  fontWeight: 700,
+                  fontSize: '0.9rem'
                 }}>
-                  <AttachMoneyIcon sx={{ 
-                    fontSize: config.compactMode ? { xs: 40, sm: 50 } : { xs: 50, sm: 60 }, 
-                    color: currentColors.secondary, 
-                    mb: 2 
-                  }} />
-                  <Typography variant="body2" sx={{ 
-                    color: darkProTokens.textSecondary, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-                  }}>
-                    Ingresos Totales
+                  💰 Desglose de Ingresos
+                </Typography>
+              </Box>
+
+              <Stack spacing={1.5}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    Membresías
                   </Typography>
-                  <Typography variant="h4" sx={{ 
-                    color: currentColors.secondary, 
-                    fontWeight: 800,
-                    fontSize: config.compactMode ? { xs: '1.5rem', sm: '1.8rem' } : { xs: '1.8rem', sm: '2.5rem' },
-                    textShadow: `0 0 20px ${currentColors.secondary}40`
-                  }}>
-                    {formatPrice(metrics?.totalIngresos || 0)}
+                  <Typography variant="body2" sx={{ color: currentColors.secondary, fontWeight: 700 }}>
+                    {formatPrice(stats?.ingresosMembresías || 0)}
                   </Typography>
                 </Box>
-              </Grid>
-              
-              <Grid item xs={12} md={4}>
-                <Box sx={{ 
-                  textAlign: 'center', 
-                  p: 4, 
-                  background: `linear-gradient(135deg, ${darkProTokens.error}15, ${darkProTokens.error}05)`,
-                  borderRadius: 3,
-                  border: `1px solid ${darkProTokens.error}30`
-                }}>
-                  <TrendingDownIcon sx={{ 
-                    fontSize: config.compactMode ? { xs: 40, sm: 50 } : { xs: 50, sm: 60 }, 
-                    color: darkProTokens.error, 
-                    mb: 2 
-                  }} />
-                  <Typography variant="body2" sx={{ 
-                    color: darkProTokens.textSecondary, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-                  }}>
-                    Gastos Totales
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    Ventas POS
                   </Typography>
-                  <Typography variant="h4" sx={{ 
-                    color: darkProTokens.error, 
-                    fontWeight: 800,
-                    fontSize: config.compactMode ? { xs: '1.5rem', sm: '1.8rem' } : { xs: '1.8rem', sm: '2.5rem' },
-                    textShadow: `0 0 20px ${darkProTokens.error}40`
-                  }}>
-                    {formatPrice(metrics?.totalGastos || 0)}
+                  <Typography variant="body2" sx={{ color: currentColors.primary, fontWeight: 700 }}>
+                    {formatPrice(stats?.ventasPOSTotales || 0)}
                   </Typography>
                 </Box>
-              </Grid>
-              
-              <Grid item xs={12} md={4}>
-                <Box sx={{ 
-                  textAlign: 'center', 
-                  p: 4, 
-                  background: `linear-gradient(135deg, ${currentColors.primary}15, ${currentColors.primary}05)`,
-                  borderRadius: 3,
-                  border: `1px solid ${currentColors.primary}30`
-                }}>
-                  <AssessmentIcon sx={{ 
-                    fontSize: config.compactMode ? { xs: 40, sm: 50 } : { xs: 50, sm: 60 }, 
-                    color: currentColors.primary, 
-                    mb: 2 
-                  }} />
-                  <Typography variant="body2" sx={{ 
-                    color: darkProTokens.textSecondary, 
-                    mb: 1,
-                    fontSize: config.compactMode ? { xs: '0.7rem', sm: '0.8rem' } : { xs: '0.8rem', sm: '0.875rem' }
-                  }}>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    Gastos
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
+                    -{formatPrice(stats?.totalGastos || 0)}
+                  </Typography>
+                </Box>
+
+                <Divider sx={{ borderColor: darkProTokens.grayMedium }} />
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
                     Utilidad Neta
                   </Typography>
-                  <Typography variant="h4" sx={{ 
-                    color: (metrics?.utilidadNeta || 0) >= 0 ? currentColors.primary : darkProTokens.error, 
+                  <Typography variant="h6" sx={{ 
+                    color: (stats?.utilidadNeta || 0) >= 0 ? currentColors.secondary : darkProTokens.error, 
                     fontWeight: 800,
-                    fontSize: config.compactMode ? { xs: '1.5rem', sm: '1.8rem' } : { xs: '1.8rem', sm: '2.5rem' },
-                    textShadow: `0 0 20px ${(metrics?.utilidadNeta || 0) >= 0 ? currentColors.primary : darkProTokens.error}40`
+                    textShadow: `0 0 10px ${(stats?.utilidadNeta || 0) >= 0 ? currentColors.secondary : darkProTokens.error}40`
                   }}>
-                    {formatPrice(metrics?.utilidadNeta || 0)}
+                    {formatPrice(stats?.utilidadNeta || 0)}
                   </Typography>
                 </Box>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      </motion.div>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+            border: `1px solid ${darkProTokens.grayDark}`,
+            borderRadius: 3
+          }}>
+            <CardContent sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <CreditCardIcon sx={{ color: currentColors.tertiary, fontSize: 20 }} />
+                <Typography variant="h6" sx={{ 
+                  color: currentColors.tertiary, 
+                  fontWeight: 700,
+                  fontSize: '0.9rem'
+                }}>
+                  💳 Métodos de Pago Detalle
+                </Typography>
+              </Box>
+
+              <Stack spacing={1}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    💵 Efectivo
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: currentColors.primary, fontWeight: 700 }}>
+                    {formatPrice(stats?.cashFlow?.efectivo || 0)}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    🏦 Transferencia
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: currentColors.secondary, fontWeight: 700 }}>
+                    {formatPrice(stats?.cashFlow?.transferencia || 0)}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    💳 Débito
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: currentColors.tertiary, fontWeight: 700 }}>
+                    {formatPrice(stats?.cashFlow?.debito || 0)}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    💎 Crédito
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: currentColors.quaternary, fontWeight: 700 }}>
+                    {formatPrice(stats?.cashFlow?.credito || 0)}
+                  </Typography>
+                </Box>
+
+                <Divider sx={{ borderColor: darkProTokens.grayMedium }} />
+
+                <Box sx={{ textAlign: 'center', mt: 1 }}>
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    Total del {selectedPeriod === 'today' ? 'día' : selectedPeriod === 'week' ? 'período semanal' : 'período'}
+                  </Typography>
+                  <Typography variant="h6" sx={{ 
+                    color: currentColors.primary, 
+                    fontWeight: 800,
+                    textShadow: `0 0 10px ${currentColors.primary}40`
+                  }}>
+                    {formatPrice(stats?.totalIngresos || 0)}
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* DIALOG DE CONFIGURACIÓN */}
       <Dialog 
         open={configDialogOpen} 
         onClose={() => setConfigDialogOpen(false)}
-        maxWidth="md"
+        maxWidth="sm"
         fullWidth
         sx={{
           '& .MuiDialog-paper': {
@@ -1636,51 +1193,48 @@ export default function ReportesPage() {
         }}>
           <SettingsIcon sx={{ color: currentColors.primary }} />
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            ⚙️ Configuración de Reportes
+            ⚙️ Configuración
           </Typography>
         </DialogTitle>
         
         <DialogContent sx={{ p: 3 }}>
-          <Stack spacing={4}>
-            {/* ESQUEMAS DE COLORES */}
+          <Stack spacing={3}>
             <Box>
               <Typography variant="h6" sx={{ color: currentColors.secondary, mb: 2, fontWeight: 600 }}>
-                🎨 Esquemas de Colores
+                🎨 Esquema de Colores
               </Typography>
-              <Grid container spacing={2}>
+              <Grid container spacing={1}>
                 {Object.entries(colorSchemes).map(([key, scheme]) => (
-                  <Grid item xs={6} sm={4} key={key}>
+                  <Grid size={{ xs: 4 }} key={key}>
                     <Paper 
                       sx={{
-                        p: 2,
+                        p: 1,
                         textAlign: 'center',
                         cursor: 'pointer',
                         border: config.colorScheme === key ? 
-                          `3px solid ${scheme.primary}` : 
+                          `2px solid ${scheme.primary}` : 
                           `1px solid ${darkProTokens.grayDark}`,
                         background: config.colorScheme === key ? 
                           `${scheme.primary}10` : 
                           darkProTokens.surfaceLevel3,
                         '&:hover': {
-                          border: `2px solid ${scheme.primary}60`
-                        },
-                        transition: 'all 0.3s ease'
+                          border: `1px solid ${scheme.primary}60`
+                        }
                       }}
                       onClick={() => setConfig(prev => ({ ...prev, colorScheme: key }))}
                     >
-                      <Typography variant="body2" sx={{ 
+                      <Typography variant="caption" sx={{ 
                         color: darkProTokens.textPrimary, 
-                        mb: 1, 
                         fontWeight: 600,
-                        textTransform: 'capitalize'
+                        textTransform: 'capitalize',
+                        fontSize: '0.7rem'
                       }}>
                         {key}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                        <Box sx={{ width: 16, height: 16, bgcolor: scheme.primary, borderRadius: '50%' }} />
-                        <Box sx={{ width: 16, height: 16, bgcolor: scheme.secondary, borderRadius: '50%' }} />
-                        <Box sx={{ width: 16, height: 16, bgcolor: scheme.tertiary, borderRadius: '50%' }} />
-                        <Box sx={{ width: 16, height: 16, bgcolor: scheme.quaternary, borderRadius: '50%' }} />
+                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', mt: 0.5 }}>
+                        <Box sx={{ width: 12, height: 12, bgcolor: scheme.primary, borderRadius: '50%' }} />
+                        <Box sx={{ width: 12, height: 12, bgcolor: scheme.secondary, borderRadius: '50%' }} />
+                        <Box sx={{ width: 12, height: 12, bgcolor: scheme.tertiary, borderRadius: '50%' }} />
                       </Box>
                     </Paper>
                   </Grid>
@@ -1688,12 +1242,11 @@ export default function ReportesPage() {
               </Grid>
             </Box>
 
-            {/* CONFIGURACIONES ADICIONALES */}
             <Box>
               <Typography variant="h6" sx={{ color: currentColors.tertiary, mb: 2, fontWeight: 600 }}>
-                ⚡ Configuraciones Adicionales
+                ⚡ Opciones
               </Typography>
-              <Stack spacing={2}>
+              <Stack spacing={1}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -1710,29 +1263,8 @@ export default function ReportesPage() {
                     />
                   }
                   label={
-                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600, fontSize: '0.9rem' }}>
                       🎭 Animaciones
-                    </Typography>
-                  }
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={config.compactMode}
-                      onChange={(e) => setConfig(prev => ({ ...prev, compactMode: e.target.checked }))}
-                      sx={{
-                        '& .MuiSwitch-switchBase.Mui-checked': {
-                          color: currentColors.secondary,
-                          '& + .MuiSwitch-track': {
-                            bgcolor: currentColors.secondary
-                          }
-                        }
-                      }}
-                    />
-                  }
-                  label={
-                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                      📱 Modo Compacto
                     </Typography>
                   }
                 />
@@ -1741,7 +1273,7 @@ export default function ReportesPage() {
           </Stack>
         </DialogContent>
         
-        <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayDark}` }}>
+        <DialogActions sx={{ p: 2, borderTop: `1px solid ${darkProTokens.grayDark}` }}>
           <Button 
             onClick={() => setConfigDialogOpen(false)}
             sx={{ color: darkProTokens.textSecondary }}
@@ -1757,18 +1289,15 @@ export default function ReportesPage() {
             startIcon={<SaveIcon />}
             sx={{
               background: `linear-gradient(135deg, ${currentColors.primary}, ${currentColors.primary}DD)`,
-              fontWeight: 700,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${currentColors.primary}DD, ${currentColors.primary}BB)`
-              }
+              fontWeight: 700
             }}
           >
-            Guardar y Aplicar
+            Aplicar
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* DIALOG DE PANTALLA COMPLETA PARA GRÁFICOS */}
+      {/* DIALOG FULLSCREEN */}
       <Dialog 
         open={!!fullscreenChart} 
         onClose={() => setFullscreenChart(null)}
@@ -1789,74 +1318,59 @@ export default function ReportesPage() {
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <ShowChartIcon sx={{ color: currentColors.primary }} />
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              📊 {fullscreenChart === 'ventas' ? 'Tendencias de Ventas' : 
-                  fullscreenChart === 'pagos' ? 'Métodos de Pago' : 
-                  'Análisis Detallado'} - Vista Completa
-            </Typography>
-          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            📊 Vista Completa - {fullscreenChart}
+          </Typography>
           <IconButton onClick={() => setFullscreenChart(null)} sx={{ color: darkProTokens.textSecondary }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         
-        <DialogContent sx={{ p: 4 }}>
-          {fullscreenChart === 'ventas' && ventasDiarias.length > 0 && (
-            <Box sx={{ height: 500, width: '100%' }}>
+        <DialogContent sx={{ p: 3 }}>
+          <Box sx={{ height: 500, width: '100%' }}>
+            {/* Renderizado de gráficos fullscreen */}
+            {fullscreenChart === 'tendencias' && stats?.chartData && (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={ventasDiarias} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <ComposedChart data={stats.chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke={darkProTokens.grayDark} />
-                  <XAxis dataKey="fecha" stroke={darkProTokens.textSecondary} fontSize={14} />
-                  <YAxis stroke={darkProTokens.textSecondary} fontSize={14} tickFormatter={(value) => formatPrice(value)} />
+                  <XAxis dataKey="name" stroke={darkProTokens.textSecondary} />
+                  <YAxis stroke={darkProTokens.textSecondary} tickFormatter={(value) => formatPrice(value)} />
                   <Tooltip 
                     contentStyle={{
                       backgroundColor: darkProTokens.surfaceLevel4,
                       border: `1px solid ${darkProTokens.grayDark}`,
                       borderRadius: '8px',
-                      color: darkProTokens.textPrimary,
-                      fontSize: '14px'
+                      color: darkProTokens.textPrimary
                     }}
                     formatter={(value, name) => [formatPrice(value), name]}
                   />
                   <Legend />
-                  <Area type="monotone" dataKey="membresías" fill={`${currentColors.secondary}30`} stroke={currentColors.secondary} strokeWidth={3} name="Membresías" />
-                  <Bar dataKey="pos" fill={currentColors.primary} name="Ventas POS" radius={[4, 4, 0, 0]} />
-                  <Line type="monotone" dataKey="neto" stroke={currentColors.tertiary} strokeWidth={3} dot={{ fill: currentColors.tertiary, strokeWidth: 2, r: 6 }} name="Total Neto" />
+                  <Area type="monotone" dataKey="memberships" fill={`${currentColors.secondary}30`} stroke={currentColors.secondary} strokeWidth={3} name="Membresías" />
+                  <Bar dataKey="sales" fill={currentColors.primary} name="Ventas POS" radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="layaways" stroke={currentColors.tertiary} strokeWidth={3} dot={{ fill: currentColors.tertiary, r: 6 }} name="Apartados" />
                 </ComposedChart>
               </ResponsiveContainer>
-            </Box>
-          )}
-          
-          {fullscreenChart === 'pagos' && ventasMetodo.length > 0 && (
-            <Box sx={{ height: 500, width: '100%' }}>
-              <Typography variant="h6" sx={{ 
-                color: currentColors.tertiary, 
-                mb: 3, 
-                fontWeight: 700,
-                textAlign: 'center'
-              }}>
-                💳 Distribución de Métodos de Pago
-              </Typography>
+            )}
+            
+            {fullscreenChart === 'pagos' && stats?.pieData?.length > 0 && (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={ventasMetodo}
+                    data={stats.pieData}
                     cx="50%"
                     cy="50%"
                     outerRadius={180}
                     innerRadius={100}
                     paddingAngle={5}
-                    dataKey="total"
-                    label={({ metodo, total }) => {
-                      const totalGeneral = ventasMetodo.reduce((sum, item) => sum + item.total, 0);
-                      const porcentaje = totalGeneral > 0 ? (total / totalGeneral * 100).toFixed(1) : '0';
-                      return `${metodo} (${porcentaje}%)`;
+                    dataKey="value"
+                    label={({ name, value }) => {
+                      const total = stats.pieData.reduce((sum, item) => sum + item.value, 0);
+                      const percent = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+                      return `${name} (${percent}%)`;
                     }}
                   >
-                    {ventasMetodo.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {stats.pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -1864,18 +1378,15 @@ export default function ReportesPage() {
                       backgroundColor: darkProTokens.surfaceLevel4,
                       border: `1px solid ${darkProTokens.grayDark}`,
                       borderRadius: '8px',
-                      color: darkProTokens.textPrimary,
-                      fontSize: '14px'
+                      color: darkProTokens.textPrimary
                     }}
                     formatter={(value) => formatPrice(value)}
                   />
-                  <Legend 
-                    wrapperStyle={{ color: darkProTokens.textSecondary, fontSize: '14px' }}
-                  />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            </Box>
-          )}
+            )}
+          </Box>
         </DialogContent>
       </Dialog>
     </Box>
