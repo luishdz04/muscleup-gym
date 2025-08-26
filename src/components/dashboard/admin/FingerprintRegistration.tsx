@@ -471,15 +471,15 @@ export default function FingerprintRegistration({
   break;
       
     case 'capture_status':
-      if (message.status && message.message) {
-        console.log(`📊 ${message.status}: ${message.message} (${message.progress}%)`);
-        setMessage(message.message);
-        setProgress(message.progress || 0);
-      }
-      break;
+  if (message.data) {
+    console.log(`📊 ${message.data.status}: ${message.data.message} (${message.data.progress}%)`);
+    setMessage(message.data.message || '');
+    setProgress(message.data.progress || 0);
+  }
+  break;
       
     case 'capture_result':
-      if (message.success && message.data) {
+       if (message.data?.success && message.data?.data) {
         const qualityMap: { [key: string]: number } = {
           'excellent': 98, 'good': 95, 'fair': 75, 'poor': 50
         };
@@ -487,12 +487,12 @@ export default function FingerprintRegistration({
         
         const captureResult: CaptureResult = {
           success: true,
-          template: message.data.template,
-          templateSize: message.data.templateSize || 0,
-          quality: message.data.quality || 'good',
+          template: message.data.data.template,
+          templateSize: message.data.data.templateSize || 0,
+          quality: message.data.data.quality || 'good',,
           qualityScore: qualityScore,
           captureTime: Date.now() - captureStartTime,
-          fingerprintId: message.data.fingerprintId || `fp_${Date.now()}`
+fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
         };
         
         console.log(`✅ Captura ${currentCapture + 1}/3 exitosa - Calidad: ${qualityScore}%`);
