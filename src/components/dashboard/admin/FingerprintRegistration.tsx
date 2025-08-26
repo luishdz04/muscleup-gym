@@ -449,26 +449,26 @@ export default function FingerprintRegistration({
   console.log('📨 Mensaje recibido:', message);
   
   switch (message.type) {
-    case 'welcome':
-      console.log('🎉 Conectado al ZK Access Agent');
-      
-      // ✅ CORRECCIÓN PRINCIPAL: Verificar deviceConnected directamente
-      const isDeviceConnected = message.deviceConnected === true;
-      
-      console.log(`📱 Estado del dispositivo: ${isDeviceConnected ? '✅ CONECTADO' : '❌ DESCONECTADO'}`);
-      console.log(`👤 Usuario del servidor: ${message.user || 'N/A'}`);
-      console.log(`⏰ Timestamp: ${message.timestamp || 'N/A'}`);
-      
-      setDeviceConnected(isDeviceConnected);
-      
-      if (isDeviceConnected) {
-        setWsError(null);
-        console.log('🎯 Sistema listo para captura de huellas');
-      } else {
-        setWsError('Dispositivo ZKTeco no conectado al servidor');
-        console.log('⚠️ Dispositivo ZKTeco no disponible para captura');
-      }
-      break;
+  case 'welcome':
+  console.log('🎉 Conectado al ZK Access Agent');
+  
+  // ✅ CORRECCIÓN: Leer deviceConnected de data
+  const isDeviceConnected = message.data?.deviceConnected === true;
+  
+  console.log(`📱 Estado del dispositivo: ${isDeviceConnected ? '✅ CONECTADO' : '❌ DESCONECTADO'}`);
+  console.log(`👤 Usuario del servidor: ${message.data?.user || 'N/A'}`);
+  console.log(`⏰ Timestamp: ${message.data?.timestamp || message.timestamp || 'N/A'}`);
+  
+  setDeviceConnected(isDeviceConnected);
+  
+  if (isDeviceConnected) {
+    setWsError(null);
+    console.log('🎯 Sistema listo para captura de huellas');
+  } else {
+    setWsError('Dispositivo ZKTeco no conectado al servidor');
+    console.log('⚠️ Dispositivo ZKTeco no disponible para captura');
+  }
+  break;
       
     case 'capture_status':
       if (message.status && message.message) {
