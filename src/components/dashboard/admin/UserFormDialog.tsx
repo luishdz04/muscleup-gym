@@ -557,7 +557,7 @@ const deleteFingerprintFromDatabase = async (
 // ✅ FUNCIÓN F22 SYNC COMPLETAMENTE CORREGIDA
 const syncFingerprintToF22Service = async (
   templateData: any,
-  wsUrl: string = 'ws://127.0.0.1:8082'
+  wsUrl: string = 'ws://127.0.0.1:8085/ws/'
 ): Promise<{ 
   success: boolean; 
   uid?: number; 
@@ -700,7 +700,7 @@ const deleteFingerprintFromF22Service = async (
   deviceUserId: string,
   userId: string,
   fingerIndex?: number,
-  wsUrl: string = 'ws://127.0.0.1:8082'
+  wsUrl: string = 'ws://127.0.0.1:8085/ws/'
 ): Promise<{ 
   success: boolean; 
   error?: string; 
