@@ -489,7 +489,7 @@ export default function FingerprintRegistration({
           success: true,
           template: message.data.data.template,
           templateSize: message.data.data.templateSize || 0,
-          quality: message.data.data.quality || 'good',,
+          quality: message.data.data.quality || 'good',
           qualityScore: qualityScore,
           captureTime: Date.now() - captureStartTime,
 fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
