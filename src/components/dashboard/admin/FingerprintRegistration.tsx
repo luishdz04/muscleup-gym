@@ -233,7 +233,7 @@ export default function FingerprintRegistration({
   const initializationRef = useRef(false);
   
   // 🎯 CONFIGURACIÓN WEBSOCKET
- const WS_URL = 'wss://c3d0-2806-108e-16-52a0-a063-7475-bedd-5460.ngrok-free.app';
+ const WS_URL = 'ws://localhost:8085/ws/';
   const RECONNECT_INTERVAL = 3000;
   const MAX_RECONNECT_ATTEMPTS = 5;
   const reconnectAttemptsRef = useRef(0);
