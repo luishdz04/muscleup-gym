@@ -53,7 +53,7 @@ import {
   Preview as PreviewIcon
 } from '@mui/icons-material';
 
-// 🎨 DARK PRO TOKENS (mismo que antes)
+// 🎨 DARK PRO TOKENS
 const darkProTokens = {
   background: '#000000',
   surfaceLevel1: '#121212',
@@ -88,7 +88,7 @@ const darkProTokens = {
   borderActive: '#E6B800'
 };
 
-// 🖐️ CONFIGURACIÓN DE DEDOS (mismo que antes)
+// 🖐️ CONFIGURACIÓN DE DEDOS
 const FINGER_CONFIG = [
   { id: 1, name: 'Pulgar Derecho', hand: 'right', finger: 'thumb', icon: '👍' },
   { id: 2, name: 'Índice Derecho', hand: 'right', finger: 'index', icon: '☝️' },
@@ -102,7 +102,7 @@ const FINGER_CONFIG = [
   { id: 10, name: 'Meñique Izquierdo', hand: 'left', finger: 'pinky', icon: '🤏' }
 ];
 
-// 📊 ESTADOS DEL PROCESO ACTUALIZADOS
+// 📊 ESTADOS DEL PROCESO
 const PROCESS_STEPS = [
   { 
     id: 'selection', 
@@ -165,7 +165,7 @@ interface FingerprintRegistrationProps {
     lastName: string;
     fingerprint: boolean;
   };
-  onFingerprintDataReady: (fingerprintData: any) => void; // ✅ NUEVO: Pasar datos al padre
+  onFingerprintDataReady: (fingerprintData: any) => void;
   onError: (message: string) => void;
 }
 
@@ -192,12 +192,12 @@ interface CaptureResult {
   fingerprintId: string;
 }
 
-// 🚀 COMPONENTE PRINCIPAL MODIFICADO - ✅ SOLO PREPARAR DATOS
+// 🚀 COMPONENTE PRINCIPAL
 export default function FingerprintRegistration({
   open,
   onClose,
   user,
-  onFingerprintDataReady, // ✅ NUEVO
+  onFingerprintDataReady,
   onError
 }: FingerprintRegistrationProps) {
   // 📊 Estados principales
@@ -232,8 +232,11 @@ export default function FingerprintRegistration({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initializationRef = useRef(false);
   
+  // ✅ FIX: Ref para mantener el dedo seleccionado
+  const selectedFingerRef = useRef<number | null>(null);
+  
   // 🎯 CONFIGURACIÓN WEBSOCKET
- const WS_URL = 'ws://localhost:8085/ws/';
+  const WS_URL = 'ws://localhost:8085/ws/';
   const RECONNECT_INTERVAL = 3000;
   const MAX_RECONNECT_ATTEMPTS = 5;
   const reconnectAttemptsRef = useRef(0);
@@ -264,6 +267,7 @@ export default function FingerprintRegistration({
     console.log('🔄 Reiniciando proceso...');
     setCurrentStep('selection');
     setSelectedFinger(null);
+    selectedFingerRef.current = null; // ✅ FIX: Limpiar ref
     setProgress(0);
     setMessage('');
     setError(null);
@@ -302,40 +306,36 @@ export default function FingerprintRegistration({
     onClose();
   }, [resetProcess, onClose]);
 
-  // ✅ FUNCIÓN PARA CONFIRMAR Y PASAR DATOS AL PADRE - NO GUARDA EN BD
+  // ✅ FUNCIÓN PARA CONFIRMAR Y PASAR DATOS AL PADRE
   const confirmFingerprintData = useCallback(() => {
-    if (!combinedTemplate || !selectedFinger) {
+    if (!combinedTemplate || !selectedFingerRef.current) {
       setError('No hay datos de huella para confirmar');
       return;
     }
 
     console.log('✅ Confirmando datos de huella para el padre...');
     
-    // 📊 PREPARAR DATOS PARA EL PADRE
     const fingerprintData = {
       user_id: user.id,
-      finger_index: selectedFinger,
-      finger_name: FINGER_CONFIG.find(f => f.id === selectedFinger)?.name || 'Desconocido',
+      finger_index: selectedFingerRef.current,
+      finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
       
-      // ✅ TEMPLATES MÚLTIPLES
       template: combinedTemplate.primary.template,
       primary_template: combinedTemplate.primary.template,
       verification_template: combinedTemplate.verification.template,
       backup_template: combinedTemplate.backup.template,
       combined_template: combinedTemplate,
       
-      // 📈 MÉTRICAS
       average_quality: Math.round(combinedTemplate.averageQuality),
       capture_count: 3,
       capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
       
-      // 🔒 METADATA
       device_user_id: parseInt(user.id.slice(-6), 16) % 9999,
       device_info: {
         deviceType: 'ZKTeco',
         captureMethod: 'multiple_capture',
         totalCaptures: 3,
-        wsConnection: 'localhost:8081',
+        wsConnection: 'localhost:8085',
         qualities: [
           combinedTemplate.primary.qualityScore,
           combinedTemplate.verification.qualityScore,
@@ -348,15 +348,12 @@ export default function FingerprintRegistration({
     
     console.log('📤 Pasando datos al componente padre:', fingerprintData);
     
-    // ✅ PASAR DATOS AL PADRE EN VEZ DE GUARDAR DIRECTAMENTE
     onFingerprintDataReady(fingerprintData);
-    
-    // ✅ CERRAR MODAL
     handleClose();
     
-  }, [combinedTemplate, selectedFinger, user, onFingerprintDataReady, handleClose]);
+  }, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
 
-  // ✅ FUNCIÓN processFinalTemplate MODIFICADA - SOLO PREPARAR
+  // ✅ processFinalTemplate
   const processFinalTemplate = useCallback(() => {
     setCurrentStep('processing');
     setMessage('Combinando templates biométricos...');
@@ -391,7 +388,6 @@ export default function FingerprintRegistration({
               combinedAt: new Date().toISOString()
             };
             
-            // ✅ SOLO PREPARAR DATOS, NO GUARDAR
             setCombinedTemplate(combinedTemplateData);
             setCurrentStep('ready');
             setMessage('¡Datos de huella listos! Presione "Confirmar" para agregar al formulario.');
@@ -408,9 +404,20 @@ export default function FingerprintRegistration({
     });
   }, [totalTime, stopTimers]);
 
-  // ✅ FUNCIÓN startSingleCapture (misma)
+  // ✅ FIX: startSingleCapture mejorado
   const startSingleCapture = useCallback((captureNumber: number) => {
     console.log(`🚀 Iniciando captura ${captureNumber}/3`);
+    
+    // ✅ FIX: Validar que tenemos un dedo seleccionado
+    const fingerIndex = selectedFingerRef.current || selectedFinger;
+    if (!fingerIndex) {
+      console.error('❌ No hay dedo seleccionado');
+      setError('Error: Se perdió la selección del dedo');
+      setIsProcessing(false);
+      setCurrentStep('selection');
+      stopTimers();
+      return;
+    }
     
     setCurrentCapture(captureNumber - 1);
     setCurrentStep(`capture${captureNumber}`);
@@ -422,7 +429,7 @@ export default function FingerprintRegistration({
       action: 'capture_fingerprint',
       userId: user.id,
       userName: `${user.firstName} ${user.lastName}`,
-      fingerIndex: selectedFinger,
+      fingerIndex: fingerIndex, // ✅ FIX: Usar el valor validado
       captureNumber: captureNumber,
       timestamp: Date.now()
     };
@@ -444,108 +451,107 @@ export default function FingerprintRegistration({
     }
   }, [selectedFinger, user, stopTimers]);
 
-  // ✅ FUNCIÓN handleWebSocketMessage (misma, pero llama processFinalTemplate)
- const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
-  console.log('📨 Mensaje recibido:', message);
-  
-  switch (message.type) {
-  case 'welcome':
-  console.log('🎉 Conectado al ZK Access Agent');
-  
-  // ✅ CORRECCIÓN: Leer deviceConnected de data
-  const isDeviceConnected = message.data?.deviceConnected === true;
-  
-  console.log(`📱 Estado del dispositivo: ${isDeviceConnected ? '✅ CONECTADO' : '❌ DESCONECTADO'}`);
-  console.log(`👤 Usuario del servidor: ${message.data?.user || 'N/A'}`);
-  console.log(`⏰ Timestamp: ${message.data?.timestamp || message.timestamp || 'N/A'}`);
-  
-  setDeviceConnected(isDeviceConnected);
-  
-  if (isDeviceConnected) {
-    setWsError(null);
-    console.log('🎯 Sistema listo para captura de huellas');
-  } else {
-    setWsError('Dispositivo ZKTeco no conectado al servidor');
-    console.log('⚠️ Dispositivo ZKTeco no disponible para captura');
-  }
-  break;
-      
-    case 'capture_status':
-  if (message.data) {
-    console.log(`📊 ${message.data.status}: ${message.data.message} (${message.data.progress}%)`);
-    setMessage(message.data.message || '');
-    setProgress(message.data.progress || 0);
-  }
-  break;
-      
-    case 'capture_result':
-       if (message.data?.success && message.data?.data) {
-        const qualityMap: { [key: string]: number } = {
-          'excellent': 98, 'good': 95, 'fair': 75, 'poor': 50
-        };
-        const qualityScore = qualityMap[message.data.quality] || 85;
+  // ✅ handleWebSocketMessage
+  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
+    console.log('📨 Mensaje recibido:', message);
+    
+    switch (message.type) {
+      case 'welcome':
+        console.log('🎉 Conectado al ZK Access Agent');
         
-        const captureResult: CaptureResult = {
-          success: true,
-          template: message.data.data.template,
-          templateSize: message.data.data.templateSize || 0,
-          quality: message.data.data.quality || 'good',
-          qualityScore: qualityScore,
-          captureTime: Date.now() - captureStartTime,
-fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
-        };
+        const isDeviceConnected = message.data?.deviceConnected === true;
         
-        console.log(`✅ Captura ${currentCapture + 1}/3 exitosa - Calidad: ${qualityScore}%`);
+        console.log(`📱 Estado del dispositivo: ${isDeviceConnected ? '✅ CONECTADO' : '❌ DESCONECTADO'}`);
+        console.log(`👤 Usuario del servidor: ${message.data?.user || 'N/A'}`);
+        console.log(`⏰ Timestamp: ${message.data?.timestamp || message.timestamp || 'N/A'}`);
         
-        setCaptureResults(prev => {
-          const newResults = [...prev, captureResult];
-          const capturesCompleted = newResults.length;
+        setDeviceConnected(isDeviceConnected);
+        
+        if (isDeviceConnected) {
+          setWsError(null);
+          console.log('🎯 Sistema listo para captura de huellas');
+        } else {
+          setWsError('Dispositivo ZKTeco no conectado al servidor');
+          console.log('⚠️ Dispositivo ZKTeco no disponible para captura');
+        }
+        break;
+        
+      case 'capture_status':
+        if (message.data) {
+          console.log(`📊 ${message.data.status}: ${message.data.message} (${message.data.progress}%)`);
+          setMessage(message.data.message || '');
+          setProgress(message.data.progress || 0);
+        }
+        break;
+        
+      case 'capture_result':
+        if (message.data?.success && message.data?.data) {
+          const qualityMap: { [key: string]: number } = {
+            'excellent': 98, 'good': 85, 'fair': 75, 'poor': 50
+          };
+          const qualityScore = qualityMap[message.data.data.quality] || 85;
           
-          setTimeout(() => {
-            if (capturesCompleted < 3) {
-              startSingleCapture(capturesCompleted + 1);
-            } else {
-              console.log('🎊 Todas las capturas completadas');
-              processFinalTemplate();
-            }
-          }, capturesCompleted < 3 ? 1500 : 500);
+          const captureResult: CaptureResult = {
+            success: true,
+            template: message.data.data.template,
+            templateSize: message.data.data.templateSize || 0,
+            quality: message.data.data.quality || 'good',
+            qualityScore: qualityScore,
+            captureTime: Date.now() - captureStartTime,
+            fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
+          };
           
-          return newResults;
-        });
+          console.log(`✅ Captura ${currentCapture + 1}/3 exitosa - Calidad: ${qualityScore}%`);
+          
+          setCaptureResults(prev => {
+            const newResults = [...prev, captureResult];
+            const capturesCompleted = newResults.length;
+            
+            setTimeout(() => {
+              if (capturesCompleted < 3) {
+                startSingleCapture(capturesCompleted + 1);
+              } else {
+                console.log('🎊 Todas las capturas completadas');
+                processFinalTemplate();
+              }
+            }, capturesCompleted < 3 ? 1500 : 500);
+            
+            return newResults;
+          });
+          
+        } else {
+          console.error('❌ Error en captura:', message.data?.error || message.error);
+          setError(message.data?.error || message.error || 'Error en captura de huella');
+          setIsProcessing(false);
+          setCurrentStep('selection');
+          stopTimers();
+        }
+        break;
         
-      } else {
-        console.error('❌ Error en captura:', message.error);
-        setError(message.error || 'Error en captura de huella');
+      case 'ping':
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            action: 'pong',
+            timestamp: new Date().toISOString()
+          }));
+        }
+        break;
+        
+      case 'error':
+      case 'command_error':
+        console.error('❌ Error del servidor:', message.data?.error || message.message || message.error);
+        setError(message.data?.error || message.message || message.error || 'Error de comunicación');
         setIsProcessing(false);
         setCurrentStep('selection');
         stopTimers();
-      }
-      break;
-      
-    case 'ping':
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          action: 'pong',
-          timestamp: new Date().toISOString()
-        }));
-      }
-      break;
-      
-    case 'error':
-    case 'command_error':
-      console.error('❌ Error del servidor:', message.message || message.error);
-      setError(message.message || message.error || 'Error de comunicación');
-      setIsProcessing(false);
-      setCurrentStep('selection');
-      stopTimers();
-      break;
-      
-    default:
-      console.log('📝 Mensaje no manejado:', message.type);
-  }
-}, [captureStartTime, stopTimers, startSingleCapture, processFinalTemplate, currentCapture]);
+        break;
+        
+      default:
+        console.log('📝 Mensaje no manejado:', message.type);
+    }
+  }, [captureStartTime, stopTimers, startSingleCapture, processFinalTemplate, currentCapture]);
 
-  // ✅ Resto de funciones WebSocket (mismas)
+  // Resto de funciones WebSocket
   const attemptReconnect = useCallback(() => {
     if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttemptsRef.current++;
@@ -591,7 +597,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
         setWsReconnecting(false);
         setDeviceConnected(false);
         
-        if (event.code !== 1000) {
+        if (event.code !== 1000 && initializationRef.current) {
           setWsError('Conexión perdida con el sensor biométrico');
           attemptReconnect();
         }
@@ -612,14 +618,15 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
     }
   }, [handleWebSocketMessage, attemptReconnect]);
 
-  // 🚀 INICIAR PROCESO (mismo)
+  // 🚀 INICIAR PROCESO
   const startMultipleCaptureProcess = useCallback(() => {
-    if (!selectedFinger || !wsConnected || !deviceConnected) {
+    const fingerIndex = selectedFingerRef.current || selectedFinger;
+    if (!fingerIndex || !wsConnected || !deviceConnected) {
       setError('Seleccione un dedo y verifique la conexión del dispositivo');
       return;
     }
     
-    console.log('🚀 Iniciando proceso de captura múltiple...');
+    console.log('🚀 Iniciando proceso de captura múltiple con dedo:', fingerIndex);
     
     setIsProcessing(true);
     setError(null);
@@ -642,7 +649,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
     
   }, [selectedFinger, wsConnected, deviceConnected, startTotalTimer, startSingleCapture]);
 
-  // ✅ useEffect (mismo)
+  // useEffect para inicialización
   useEffect(() => {
     if (open && !initializationRef.current) {
       console.log('🚀 Inicializando modal de captura múltiple...');
@@ -702,7 +709,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
         }
       }}
     >
-      {/* HEADER - igual que antes */}
+      {/* HEADER */}
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -768,7 +775,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
       </DialogTitle>
 
       <DialogContent sx={{ p: 0 }}>
-        {/* ESTADO ACTUAL - igual que antes */}
+        {/* ESTADO ACTUAL */}
         <Box sx={{
           p: 3,
           bgcolor: `${currentStepInfo.color}10`,
@@ -945,7 +952,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
                 
                 <Grid container spacing={2}>
                   {FINGER_CONFIG.map((finger) => (
-                    <Grid key={finger.id} size={{ xs: 6, sm: 4, md: 2.4 }}>
+                    <Grid item xs={6} sm={4} md={2.4} key={finger.id}>
                       <Card
                         sx={{
                           cursor: 'pointer',
@@ -965,7 +972,10 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
                         }}
                       >
                         <CardActionArea
-                          onClick={() => setSelectedFinger(finger.id)}
+                          onClick={() => {
+                            setSelectedFinger(finger.id);
+                            selectedFingerRef.current = finger.id; // ✅ FIX: Guardar en ref
+                          }}
                           sx={{ p: 2, textAlign: 'center' }}
                         >
                           <Typography variant="h4" sx={{ mb: 1 }}>
@@ -1070,7 +1080,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
             </Zoom>
           )}
 
-          {/* ✅ DATOS LISTOS PARA CONFIRMAR */}
+          {/* DATOS LISTOS PARA CONFIRMAR */}
           {currentStep === 'ready' && (
             <Slide direction="up" in>
               <Box>
@@ -1189,7 +1199,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
         </Box>
       </DialogContent>
 
-      {/* ✅ ACCIONES MODIFICADAS */}
+      {/* ACCIONES */}
       <DialogActions sx={{ p: 3, gap: 2, borderTop: `1px solid ${darkProTokens.grayDark}` }}>
         {currentStep === 'selection' && (
           <>
@@ -1270,7 +1280,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
           </>
         )}
 
-        {/* ✅ BOTONES PARA ESTADO 'ready' */}
+        {/* BOTONES PARA ESTADO 'ready' */}
         {currentStep === 'ready' && (
           <>
             <Button
@@ -1304,7 +1314,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
               Cancelar
             </Button>
 
-            {/* ✅ BOTÓN PRINCIPAL: CONFIRMAR DATOS */}
+            {/* BOTÓN PRINCIPAL: CONFIRMAR DATOS */}
             <Button
               variant="contained"
               startIcon={<CheckCircleIcon />}
@@ -1333,7 +1343,7 @@ fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
         )}
       </DialogActions>
 
-      {/* CSS ANIMATIONS (mismo que antes) */}
+      {/* CSS ANIMATIONS */}
       <style jsx>{`
         @keyframes pulse {
           0%, 100% { 
