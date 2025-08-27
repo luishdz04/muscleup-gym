@@ -554,7 +554,6 @@ const deleteFingerprintFromDatabase = async (
   }
 };
 
-// ✅ FUNCIÓN F22 SYNC COMPLETAMENTE CORREGIDA
 const syncFingerprintToF22Service = async (
   templateData: any,
   wsUrl: string = 'ws://127.0.0.1:8085/ws/'
@@ -607,7 +606,6 @@ const syncFingerprintToF22Service = async (
       
       ws = new WebSocket(wsUrl);
       
-      // Timeout corregido
       timeoutId = setTimeout(() => {
         rejectOnce(new Error(`Timeout en conexión con F22 (${WS_TIMEOUT/1000}s)`));
       }, WS_TIMEOUT);
@@ -615,54 +613,63 @@ const syncFingerprintToF22Service = async (
       ws.onopen = () => {
         console.log('✅ [F22-SYNC] WebSocket conectado');
         
-        // Enviar comando de conexión
+        // ✅ ENVIAR COMANDO CORRECTO DE CONEXIÓN
         ws!.send(JSON.stringify({
-          action: 'connect_device'
+          type: 'device',
+          action: 'connect',
+          data: {
+            deviceType: 'F22',
+            deviceId: 'F22_0' // O el ID que uses
+          }
         }));
       };
       
       ws.onmessage = (event) => {
         try {
           const response = JSON.parse(event.data);
-          console.log('📨 [F22-SYNC] Respuesta:', response.type);
+          console.log('📨 [F22-SYNC] Respuesta:', response.type, response.action);
           
-          if (response.type === 'device_connected') {
-            console.log('🔒 [F22-SYNC] F22 conectado, enviando template...');
-            
-            // ✅ PAYLOAD CORREGIDO CON TODOS LOS DATOS NECESARIOS
-            const templatePayload = {
-              template: templateData.template,
-              device_user_id: templateData.device_user_id,
-              finger_index: templateData.finger_index,
-              user_id: templateData.user_id,
-              first_name: templateData.first_name || '',
-              last_name: templateData.last_name || '',
-              name: templateData.name || `${templateData.first_name} ${templateData.last_name}`.trim()
-            };
-            
-            ws!.send(JSON.stringify({
-              action: 'sync_template_from_db',
-              templateData: templatePayload
-            }));
+          // ✅ MANEJAR RESPUESTA DE CONEXIÓN
+          if (response.type === 'device' && response.action === 'connect') {
+            if (response.data?.isSuccess) {
+              console.log('🔒 [F22-SYNC] F22 conectado, enviando template...');
+              
+              // ✅ ENVIAR COMANDO DE SINCRONIZACIÓN
+              ws!.send(JSON.stringify({
+                type: 'device',
+                action: 'sync_fingerprint',
+                data: {
+                  deviceType: 'F22',
+                  userId: templateData.user_id,
+                  deviceUserId: templateData.device_user_id,
+                  templates: [{
+                    fingerIndex: templateData.finger_index,
+                    template: templateData.template,
+                    primary: true
+                  }],
+                  userName: templateData.name || `${templateData.first_name} ${templateData.last_name}`.trim()
+                }
+              }));
+            } else {
+              rejectOnce(new Error('No se pudo conectar el dispositivo F22'));
+            }
           }
           
-          else if (response.type === 'sync_template_result') {
-            if (response.data && response.data.success) {
+          // ✅ MANEJAR RESPUESTA DE SINCRONIZACIÓN
+          else if (response.type === 'sync_result' || 
+                   (response.type === 'device' && response.action === 'sync_fingerprint')) {
+            if (response.data?.success) {
               console.log('✅ [F22-SYNC] Template sincronizado exitosamente');
               resolveOnce({
                 success: true,
-                uid: response.data.uid,
-                device_user_id: response.data.device_user_id,
-                finger_name: response.data.finger_name,
-                message: response.data.message
+                uid: response.data.uid || templateData.device_user_id,
+                device_user_id: response.data.deviceUserId || templateData.device_user_id,
+                finger_name: templateData.finger_name,
+                message: response.data.message || 'Sincronizado exitosamente'
               });
             } else {
               rejectOnce(new Error(response.data?.error || 'Error desconocido en F22'));
             }
-          }
-          
-          else if (response.type === 'device_connection_error') {
-            rejectOnce(new Error('F22 no conectado al servicio'));
           }
           
           else if (response.type === 'error' || response.type === 'command_error') {
