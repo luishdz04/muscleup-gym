@@ -619,7 +619,7 @@ const syncFingerprintToF22Service = async (
           action: 'connect',
           data: {
             deviceType: 'F22',
-            deviceId: 'F22_0' // O el ID que uses
+            deviceId: 'F22_001' // O el ID que uses
           }
         }));
       };
