@@ -763,43 +763,74 @@ const deleteFingerprintFromF22Service = async (
       ws.onopen = () => {
         console.log('🔌 [F22-DELETE] WebSocket conectado');
         
+        // ✅ USAR EL MISMO FORMATO DE CONEXIÓN QUE SYNC
         ws!.send(JSON.stringify({
-          action: 'connect_device'
+          type: 'device',
+          action: 'connect',
+          data: {
+            deviceType: 'F22',
+            deviceId: 'F22_001'
+          }
         }));
       };
       
       ws.onmessage = (event) => {
         try {
           const response = JSON.parse(event.data);
-          console.log('📨 [F22-DELETE] Respuesta:', response.type);
+          console.log('📨 [F22-DELETE] Respuesta:', response.type, response.action);
           
-          if (response.type === 'device_connected') {
-            console.log('🔒 [F22-DELETE] F22 conectado, enviando comando delete...');
-            
-            // ✅ COMANDO CORREGIDO CON TODOS LOS PARÁMETROS
-            const deleteCommand: WebSocketMessage = {
-              action: 'delete_user',
-              device_user_id: deviceUserId,
-              userId: userId,
-              source: 'frontend_userform',
-              updated_by: 'luishdz04'
-            };
-            
-            // ✅ MANEJO CORRECTO DE fingerIndex
-            if (fingerIndex !== undefined && fingerIndex !== null) {
-              deleteCommand.finger_index = fingerIndex;
-              console.log('🖐️ [F22-DELETE] Eliminando dedo específico:', fingerIndex);
+          // ✅ MANEJAR RESPUESTA DE CONEXIÓN (igual que sync)
+          if (response.type === 'device' && response.action === 'connect') {
+            if (response.data?.isSuccess) {
+              console.log('🔒 [F22-DELETE] F22 conectado, enviando comando delete...');
+              
+              // ✅ ENVIAR COMANDO DELETE CON ESTRUCTURA CORRECTA
+              const deleteCommand = {
+                type: 'device',
+                action: 'delete_fingerprint',
+                data: {
+                  deviceType: 'F22',
+                  deviceUserId: deviceUserId,
+                  userId: userId,
+                  source: 'frontend_userform',
+                  updatedBy: 'luishdz04'
+                }
+              };
+              
+              // Agregar finger_index o bandera deleteAll
+              if (fingerIndex !== undefined && fingerIndex !== null) {
+                deleteCommand.data.fingerIndex = fingerIndex;
+                console.log('🖐️ [F22-DELETE] Eliminando dedo específico:', fingerIndex);
+              } else {
+                deleteCommand.data.deleteAll = true;
+                console.log('🗑️ [F22-DELETE] Eliminando todas las huellas');
+              }
+              
+              ws!.send(JSON.stringify(deleteCommand));
             } else {
-              deleteCommand.deleteAll = true;
-              console.log('🗑️ [F22-DELETE] Eliminando todas las huellas');
+              rejectOnce(new Error('No se pudo conectar el dispositivo F22'));
             }
-            
-            ws!.send(JSON.stringify(deleteCommand));
           }
           
+          // ✅ MANEJAR RESPUESTA DE ELIMINACIÓN
+          else if (response.type === 'delete_result' || 
+                   (response.type === 'device' && response.action === 'delete_fingerprint')) {
+            if (response.data?.success) {
+              console.log('✅ [F22-DELETE] Eliminación exitosa');
+              resolveOnce({
+                success: true,
+                deletedTemplates: response.data.deletedTemplates || response.data.deleted_templates || 0,
+                userDeleted: response.data.userDeleted || response.data.user_deleted || false
+              });
+            } else {
+              rejectOnce(new Error(response.data?.error || 'Error eliminando del F22'));
+            }
+          }
+          
+          // También manejar el formato de respuesta antiguo por si el backend no se ha actualizado
           else if (response.type === 'delete_user_result') {
             if (response.data && response.data.success) {
-              console.log('✅ [F22-DELETE] Eliminación exitosa');
+              console.log('✅ [F22-DELETE] Eliminación exitosa (formato legacy)');
               resolveOnce({
                 success: true,
                 deletedTemplates: response.data.deleted_templates || 0,
@@ -825,7 +856,7 @@ const deleteFingerprintFromF22Service = async (
       };
       
       ws.onclose = (event) => {
-        console.log('🔌 [F22-DELETE] WebSocket cerrado:', event.code);
+        console.log('🔌 [F22-DELETE] WebSocket cerrado:', event.code, event.reason);
         
         if (!isResolved && event.code !== 1000) {
           rejectOnce(new Error(`Conexión perdida con F22 (código: ${event.code})`));
@@ -834,7 +865,7 @@ const deleteFingerprintFromF22Service = async (
       
       ws.onerror = (error) => {
         console.error('❌ [F22-DELETE] Error WebSocket:', error);
-        rejectOnce(new Error('Error de conexión con F22'));
+        rejectOnce(new Error('Error de conexión con servicio F22'));
       };
       
     } catch (error: any) {
