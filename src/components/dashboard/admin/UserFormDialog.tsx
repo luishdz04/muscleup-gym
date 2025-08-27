@@ -718,6 +718,7 @@ const deleteFingerprintFromF22Service = async (
     let ws: WebSocket | null = null;
     let timeoutId: NodeJS.Timeout | null = null;
     let isResolved = false;
+    let deviceConnected = false;
 
     const cleanup = () => {
       if (timeoutId) {
@@ -763,15 +764,8 @@ const deleteFingerprintFromF22Service = async (
       ws.onopen = () => {
         console.log('🔌 [F22-DELETE] WebSocket conectado');
         
-        // ✅ USAR EL MISMO FORMATO DE CONEXIÓN QUE SYNC
-        ws!.send(JSON.stringify({
-          type: 'device',
-          action: 'connect',
-          data: {
-            deviceType: 'F22',
-            deviceId: 'F22_001'
-          }
-        }));
+        // El backend envía un mensaje welcome cuando se conecta
+        // No necesitamos enviar connect manualmente
       };
       
       ws.onmessage = (event) => {
@@ -779,74 +773,54 @@ const deleteFingerprintFromF22Service = async (
           const response = JSON.parse(event.data);
           console.log('📨 [F22-DELETE] Respuesta:', response.type, response.action);
           
-          // ✅ MANEJAR RESPUESTA DE CONEXIÓN (igual que sync)
-          if (response.type === 'device' && response.action === 'connect') {
-            if (response.data?.isSuccess) {
-              console.log('🔒 [F22-DELETE] F22 conectado, enviando comando delete...');
-              
-              // ✅ ENVIAR COMANDO DELETE CON ESTRUCTURA CORRECTA
-              const deleteCommand = {
-                type: 'device',
-                action: 'delete_fingerprint',
-                data: {
-                  deviceType: 'F22',
-                  deviceUserId: deviceUserId,
-                  userId: userId,
-                  source: 'frontend_userform',
-                  updatedBy: 'luishdz04'
-                }
-              };
-              
-              // Agregar finger_index o bandera deleteAll
-              if (fingerIndex !== undefined && fingerIndex !== null) {
-                deleteCommand.data.fingerIndex = fingerIndex;
-                console.log('🖐️ [F22-DELETE] Eliminando dedo específico:', fingerIndex);
-              } else {
-                deleteCommand.data.deleteAll = true;
-                console.log('🗑️ [F22-DELETE] Eliminando todas las huellas');
+          // Manejar mensaje welcome del backend
+          if (response.type === 'welcome' && response.action === 'connected') {
+            console.log('🎉 [F22-DELETE] Welcome recibido, enviando comando delete...');
+            deviceConnected = true;
+            
+            // Ahora sí enviar comando de eliminación con estructura correcta
+            const deleteCommand = {
+              type: 'biometric',  // ✅ IMPORTANTE: debe ser 'biometric'
+              action: 'delete_user',  // ✅ Acción que espera el backend
+              data: {
+                device_user_id: deviceUserId,  // Como string está bien
+                userId: userId,
+                deleteAll: fingerIndex === undefined
               }
-              
-              ws!.send(JSON.stringify(deleteCommand));
+            };
+            
+            // Agregar finger_index si es específico
+            if (fingerIndex !== undefined && fingerIndex !== null) {
+              deleteCommand.data.finger_index = fingerIndex;
+              console.log('🖐️ [F22-DELETE] Eliminando dedo específico:', fingerIndex);
             } else {
-              rejectOnce(new Error('No se pudo conectar el dispositivo F22'));
+              console.log('🗑️ [F22-DELETE] Eliminando todas las huellas');
             }
+            
+            ws!.send(JSON.stringify(deleteCommand));
           }
           
-          // ✅ MANEJAR RESPUESTA DE ELIMINACIÓN
-          else if (response.type === 'delete_result' || 
-                   (response.type === 'device' && response.action === 'delete_fingerprint')) {
+          // Manejar respuesta de eliminación
+          else if (response.type === 'delete_user_result') {
             if (response.data?.success) {
               console.log('✅ [F22-DELETE] Eliminación exitosa');
               resolveOnce({
                 success: true,
-                deletedTemplates: response.data.deletedTemplates || response.data.deleted_templates || 0,
-                userDeleted: response.data.userDeleted || response.data.user_deleted || false
+                deletedTemplates: response.data.data?.deleted_templates || 0,
+                userDeleted: response.data.data?.user_deleted || false
               });
             } else {
-              rejectOnce(new Error(response.data?.error || 'Error eliminando del F22'));
+              const errorMsg = response.data?.error || 'Error desconocido en eliminación';
+              console.error('❌ [F22-DELETE] Error:', errorMsg);
+              rejectOnce(new Error(errorMsg));
             }
           }
           
-          // También manejar el formato de respuesta antiguo por si el backend no se ha actualizado
-          else if (response.type === 'delete_user_result') {
-            if (response.data && response.data.success) {
-              console.log('✅ [F22-DELETE] Eliminación exitosa (formato legacy)');
-              resolveOnce({
-                success: true,
-                deletedTemplates: response.data.deleted_templates || 0,
-                userDeleted: response.data.user_deleted || false
-              });
-            } else {
-              rejectOnce(new Error(response.data?.error || 'Error eliminando del F22'));
-            }
-          }
-          
-          else if (response.type === 'device_connection_error') {
-            rejectOnce(new Error('F22 no conectado'));
-          }
-          
-          else if (response.type === 'error' || response.type === 'command_error') {
-            rejectOnce(new Error(response.message || response.error || 'Error en comando F22'));
+          // Manejar errores generales
+          else if (response.type === 'error') {
+            const errorMsg = response.data?.error || response.message || 'Error desconocido';
+            console.error('❌ [F22-DELETE] Error del servidor:', errorMsg);
+            rejectOnce(new Error(errorMsg));
           }
           
         } catch (parseError) {
