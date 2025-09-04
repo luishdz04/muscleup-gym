@@ -19,7 +19,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Checkbox,
   CircularProgress,
   Accordion,
   AccordionSummary,
@@ -30,10 +29,7 @@ import {
   Badge,
   Container,
   LinearProgress,
-  Tooltip,
-  Fade,
-  Slide,
-  Slider
+  Tooltip
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -103,27 +99,34 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import InfoIcon from '@mui/icons-material/Info';
 import GroupIcon from '@mui/icons-material/Group';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import StarIcon from '@mui/icons-material/Star';
-import SecurityIcon from '@mui/icons-material/Security';
-import ScheduleIcon from '@mui/icons-material/Schedule';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import FeatureIcon from '@mui/icons-material/AutoAwesome';
-import PreviewIcon from '@mui/icons-material/Preview';
-import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import QrCodeIcon from '@mui/icons-material/QrCode';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import LockIcon from '@mui/icons-material/Lock';
-import TimerIcon from '@mui/icons-material/Timer';
+import FeatureIcon from '@mui/icons-material/AutoAwesome';
+import PreviewIcon from '@mui/icons-material/Preview';
 import LimitIcon from '@mui/icons-material/Speed';
+import TodayIcon from '@mui/icons-material/Today';
 
-// Interfaces y constantes
+// Interfaces actualizadas y simplificadas
+interface DaySchedule {
+  enabled: boolean;
+  start_time: string;
+  end_time: string;
+}
+
+interface DailySchedules {
+  monday: DaySchedule;
+  tuesday: DaySchedule;
+  wednesday: DaySchedule;
+  thursday: DaySchedule;
+  friday: DaySchedule;
+  saturday: DaySchedule;
+  sunday: DaySchedule;
+}
+
 interface PlanFormData {
   name: string;
   description: string;
@@ -151,25 +154,13 @@ interface PlanFormData {
   gym_access: boolean;
   classes_included: boolean;
   guest_passes: number;
-  has_time_restrictions: boolean;
-  allowed_days: number[];
-  time_slots: { start: string; end: string }[];
+  // Simplificado - control de acceso
   access_control_enabled: boolean;
   max_daily_entries: number;
-  max_weekly_entries: number;
-  max_monthly_entries: number;
-  allow_guest_qr_codes: boolean;
-  max_guest_passes_per_month: number;
-  enforce_photo_verification: boolean;
-  auto_deactivate_expired: boolean;
-  require_checkin_checkout: boolean;
-  access_start_time: string;
-  access_end_time: string;
-  allowed_weekdays: string[];
-  special_schedule_override: boolean;
+  daily_schedules: DailySchedules;
 }
 
-// Datos iniciales
+// Datos iniciales actualizados
 const INITIAL_FORM_DATA: PlanFormData = {
   name: '',
   description: '',
@@ -197,22 +188,18 @@ const INITIAL_FORM_DATA: PlanFormData = {
   gym_access: true,
   classes_included: false,
   guest_passes: 0,
-  has_time_restrictions: false,
-  allowed_days: [1, 2, 3, 4, 5, 6, 7],
-  time_slots: [{ start: '06:00', end: '22:00' }],
-  access_control_enabled: true,
-  max_daily_entries: 2,
-  max_weekly_entries: 10,
-  max_monthly_entries: 30,
-  allow_guest_qr_codes: true,
-  max_guest_passes_per_month: 2,
-  enforce_photo_verification: false,
-  auto_deactivate_expired: true,
-  require_checkin_checkout: false,
-  access_start_time: '06:00',
-  access_end_time: '23:00',
-  allowed_weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-  special_schedule_override: false
+  // Control de acceso simplificado
+  access_control_enabled: false,
+  max_daily_entries: 1,
+  daily_schedules: {
+    monday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+    tuesday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+    wednesday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+    thursday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+    friday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+    saturday: { enabled: true, start_time: '08:00', end_time: '20:00' },
+    sunday: { enabled: true, start_time: '09:00', end_time: '18:00' }
+  }
 };
 
 const PREDEFINED_FEATURES = [
@@ -234,25 +221,15 @@ const PREDEFINED_FEATURES = [
   'Suplementos con descuento'
 ];
 
-const DAY_NAMES = [
-  { value: 1, label: 'Lunes', short: 'L' },
-  { value: 2, label: 'Martes', short: 'M' },
-  { value: 3, label: 'Miércoles', short: 'X' },
-  { value: 4, label: 'Jueves', short: 'J' },
-  { value: 5, label: 'Viernes', short: 'V' },
-  { value: 6, label: 'Sábado', short: 'S' },
-  { value: 7, label: 'Domingo', short: 'D' }
-];
-
-const WEEKDAY_NAMES = [
-  { value: 'monday', label: 'Lunes', short: 'L' },
-  { value: 'tuesday', label: 'Martes', short: 'M' },
-  { value: 'wednesday', label: 'Miércoles', short: 'X' },
-  { value: 'thursday', label: 'Jueves', short: 'J' },
-  { value: 'friday', label: 'Viernes', short: 'V' },
-  { value: 'saturday', label: 'Sábado', short: 'S' },
-  { value: 'sunday', label: 'Domingo', short: 'D' }
-];
+const WEEKDAY_CONFIG = [
+  { key: 'monday', label: 'Lunes', short: 'L' },
+  { key: 'tuesday', label: 'Martes', short: 'M' },
+  { key: 'wednesday', label: 'Miércoles', short: 'X' },
+  { key: 'thursday', label: 'Jueves', short: 'J' },
+  { key: 'friday', label: 'Viernes', short: 'V' },
+  { key: 'saturday', label: 'Sábado', short: 'S' },
+  { key: 'sunday', label: 'Domingo', short: 'D' }
+] as const;
 
 export default function CrearPlanPage() {
   const router = useRouter();
@@ -262,8 +239,6 @@ export default function CrearPlanPage() {
   const [formData, setFormData] = useState<PlanFormData>(INITIAL_FORM_DATA);
   const [originalFormData, setOriginalFormData] = useState<PlanFormData>(INITIAL_FORM_DATA);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   
   // Estados para características
@@ -275,9 +250,7 @@ export default function CrearPlanPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [hasFormChanges, setHasFormChanges] = useState(false);
 
-  // 🚀 FUNCIONES DE NOTIFICACIÓN MEJORADAS
-
-  // Toast personalizado para éxito
+  // 🚀 FUNCIONES DE NOTIFICACIÓN (mantener las existentes)
   const showSuccessToast = (message: string) => {
     toast.success(message, {
       icon: '🎉',
@@ -293,7 +266,6 @@ export default function CrearPlanPage() {
     });
   };
 
-  // Toast personalizado para errores
   const showErrorToast = (message: string) => {
     toast.error(message, {
       icon: '❌',
@@ -309,7 +281,6 @@ export default function CrearPlanPage() {
     });
   };
 
-  // Toast personalizado para advertencias
   const showWarningToast = (message: string) => {
     toast.warning(message, {
       icon: '⚠️',
@@ -325,7 +296,6 @@ export default function CrearPlanPage() {
     });
   };
 
-  // Toast personalizado para información
   const showInfoToast = (message: string) => {
     toast.info(message, {
       icon: '💡',
@@ -340,8 +310,6 @@ export default function CrearPlanPage() {
       }
     });
   };
-
-  // 🚀 FUNCIONES CON SWEETALERT2
 
   // Confirmación antes de salir con cambios no guardados
   const confirmExit = async () => {
@@ -375,18 +343,365 @@ export default function CrearPlanPage() {
     });
 
     if (result.isConfirmed) {
-      // Guardar y luego salir
       showInfoToast('Guardando plan antes de salir...');
-      await handleSave(true); // true indica que debe salir después de guardar
+      await handleSave(true);
     } else if (result.isDenied) {
-      // Salir sin guardar
       showInfoToast('Saliendo sin guardar cambios');
       router.push('/dashboard/admin/planes');
     }
-    // Si es dismiss/cancel, no hacer nada
   };
 
-  // Confirmación con vista previa antes de guardar
+  // Obtener usuario actual
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const supabase = createBrowserSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setCurrentUser(session.user);
+        }
+      } catch (error) {
+        console.error('❌ Error obteniendo usuario actual:', error);
+        showErrorToast('Error al obtener información del usuario');
+      }
+    };
+    getCurrentUser();
+  }, []);
+
+  // Detectar cambios en el formulario
+  useEffect(() => {
+    const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData);
+    setHasFormChanges(hasChanges);
+  }, [formData, originalFormData]);
+
+  // Calcular progreso
+  useEffect(() => {
+    let progress = 0;
+    const totalFields = 8;
+    let completedFields = 0;
+
+    if (formData.name.trim()) completedFields++;
+    if (formData.description.trim()) completedFields++;
+    if (formData.monthly_price > 0 || formData.visit_price > 0) completedFields++;
+    if (formData.inscription_price >= 0) completedFields++;
+    if (formData.features.length > 0) completedFields++;
+    if (formData.gym_access || formData.classes_included) completedFields++;
+    if (formData.validity_type) completedFields++;
+    if (!formData.access_control_enabled || formData.max_daily_entries > 0) completedFields++;
+
+    progress = (completedFields / totalFields) * 100;
+    setFormProgress(progress);
+  }, [formData]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Manejador de input
+  const handleInputChange = (field: keyof PlanFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+
+    if (field === 'name' && value.trim().length > 3) {
+      showInfoToast('Nombre del plan configurado correctamente');
+    }
+  };
+
+  // Manejador para actualizar horario de un día específico
+  const updateDaySchedule = (day: keyof DailySchedules, field: keyof DaySchedule, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      daily_schedules: {
+        ...prev.daily_schedules,
+        [day]: {
+          ...prev.daily_schedules[day],
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  // Agregar característica
+  const addFeature = () => {
+    if (newFeature.trim() && !formData.features.includes(newFeature.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        features: [...prev.features, newFeature.trim()]
+      }));
+      showSuccessToast(`Característica "${newFeature.trim()}" agregada`);
+      setNewFeature('');
+    } else if (formData.features.includes(newFeature.trim())) {
+      showWarningToast('Esta característica ya existe');
+    }
+  };
+
+  // Agregar característica predefinida
+  const addPredefinedFeature = (feature: string) => {
+    if (!formData.features.includes(feature)) {
+      setFormData(prev => ({
+        ...prev,
+        features: [...prev.features, feature]
+      }));
+      showSuccessToast(`"${feature}" agregada al plan`);
+    } else {
+      showWarningToast('Esta característica ya está incluida');
+    }
+  };
+
+  // Eliminar característica
+  const removeFeature = (featureToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      features: prev.features.filter(f => f !== featureToRemove)
+    }));
+    showWarningToast(`Característica eliminada`);
+  };
+
+  // Validación del formulario
+  const validateForm = async (): Promise<boolean> => {
+    const newErrors: {[key: string]: string} = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'El nombre del plan es obligatorio';
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = 'La descripción del plan es obligatoria';
+    }
+
+    if (formData.monthly_price <= 0 && formData.visit_price <= 0) {
+      newErrors.pricing = 'Debe establecer al menos un precio válido';
+    }
+
+    if (formData.validity_type === 'limited') {
+      if (!formData.validity_start_date || !formData.validity_end_date) {
+        newErrors.validity = 'Las fechas de vigencia son obligatorias para planes con tiempo limitado';
+      }
+      
+      if (new Date(formData.validity_start_date) >= new Date(formData.validity_end_date)) {
+        newErrors.validity = 'La fecha de inicio debe ser anterior a la fecha de fin';
+      }
+    }
+
+    if (formData.access_control_enabled) {
+      if (formData.max_daily_entries <= 0) {
+        newErrors.access_control = 'El límite diario de entradas debe ser mayor a 0';
+      }
+      
+      // Validar que al menos un día esté habilitado
+      const hasEnabledDay = Object.values(formData.daily_schedules).some(schedule => schedule.enabled);
+      if (!hasEnabledDay) {
+        newErrors.access_control = 'Debe habilitar al menos un día de acceso';
+      }
+      
+      // Validar horarios de días habilitados
+      Object.entries(formData.daily_schedules).forEach(([day, schedule]) => {
+        if (schedule.enabled && schedule.start_time >= schedule.end_time) {
+          newErrors[`schedule_${day}`] = `El horario de ${day} es inválido`;
+        }
+      });
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      await Swal.fire({
+        ...getSwalConfig(),
+        title: '⚠️ Verificaciones Pendientes',
+        html: `
+          <div style="text-align: left; color: ${darkProTokens.textSecondary};">
+            <p>Por favor corrige los siguientes problemas:</p>
+            <ul style="margin: 15px 0; padding-left: 20px;">
+              ${Object.values(newErrors).map(error => `<li style="margin: 8px 0;">• ${error}</li>`).join('')}
+            </ul>
+          </div>
+        `,
+        icon: 'warning',
+        confirmButtonText: '✏️ Corregir'
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  // Función para realizar el guardado
+  const performSave = async (exitAfterSave = false) => {
+    if (!mountedRef.current) return;
+
+    try {
+      setLoading(true);
+      
+      const loadingToastId = toast.loading('🚀 Creando plan MUP Pro...', {
+        style: {
+          background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
+          color: darkProTokens.textPrimary,
+          border: `1px solid ${darkProTokens.primary}40`,
+          borderRadius: '12px',
+        }
+      });
+
+      if (!currentUser) {
+        throw new Error('No se pudo identificar al usuario actual');
+      }
+
+      const supabase = createBrowserSupabaseClient();
+      
+      // Preparar datos del plan
+      const planData = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        is_active: formData.is_active,
+        inscription_price: formData.inscription_price || 0,
+        visit_price: formData.visit_price || 0,
+        weekly_price: formData.weekly_price || 0,
+        biweekly_price: formData.biweekly_price || 0,
+        monthly_price: formData.monthly_price || 0,
+        bimonthly_price: formData.bimonthly_price || 0,
+        quarterly_price: formData.quarterly_price || 0,
+        semester_price: formData.semester_price || 0,
+        annual_price: formData.annual_price || 0,
+        weekly_duration: formData.weekly_duration || 7,
+        biweekly_duration: formData.biweekly_duration || 15,
+        monthly_duration: formData.monthly_duration || 30,
+        bimonthly_duration: formData.bimonthly_duration || 60,
+        quarterly_duration: formData.quarterly_duration || 90,
+        semester_duration: formData.semester_duration || 180,
+        annual_duration: formData.annual_duration || 365,
+        validity_type: formData.validity_type,
+        validity_start_date: formData.validity_start_date || null,
+        validity_end_date: formData.validity_end_date || null,
+        features: formData.features || [],
+        gym_access: formData.gym_access,
+        classes_included: formData.classes_included,
+        guest_passes: formData.guest_passes || 0,
+        created_by: currentUser?.id || null,
+        updated_by: currentUser?.id || null
+      };
+
+      // Insertar plan en Supabase
+      const { data: createdPlan, error: insertError } = await supabase
+        .from('membership_plans')
+        .insert(planData)
+        .select()
+        .single();
+
+      if (insertError) {
+        throw new Error(insertError.message || 'Error al guardar el plan');
+      }
+
+      // Insertar restricciones de control de acceso si está habilitado
+      if (formData.access_control_enabled && createdPlan) {
+        const accessRestrictionData = {
+          plan_id: createdPlan.id,
+          access_control_enabled: true,
+          max_daily_entries: formData.max_daily_entries,
+          daily_schedules: formData.daily_schedules,
+          created_by: currentUser?.id,
+          updated_by: currentUser?.id
+        };
+
+        const { error: accessError } = await supabase
+          .from('plan_access_restrictions')
+          .insert(accessRestrictionData);
+
+        if (accessError) {
+          console.error('⚠️ Error al guardar restricciones de acceso:', accessError);
+          showWarningToast('Plan creado pero hubo un problema con las restricciones de acceso');
+        }
+      }
+
+      if (!mountedRef.current) return;
+
+      toast.dismiss(loadingToastId);
+      showSuccessToast('¡Plan creado exitosamente!');
+
+      const result = await Swal.fire({
+        ...getSwalConfig(),
+        title: '🎉 ¡Plan Creado Exitosamente!',
+        html: `
+          <div style="text-align: center; color: ${darkProTokens.textSecondary};">
+            <div style="background: ${darkProTokens.success}15; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid ${darkProTokens.success}40;">
+              <h3 style="color: ${darkProTokens.success}; margin: 0 0 10px 0;">✅ "${formData.name}"</h3>
+              <p style="margin: 0; color: ${darkProTokens.textSecondary};">Plan configurado con éxito en MUP Pro</p>
+            </div>
+            <p>¿Qué deseas hacer ahora?</p>
+          </div>
+        `,
+        icon: 'success',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: '📋 Ver todos los planes',
+        denyButtonText: '➕ Crear otro plan',
+        cancelButtonText: '📝 Editar este plan',
+        reverseButtons: true
+      });
+
+      if (result.isConfirmed || exitAfterSave) {
+        showInfoToast('Redirigiendo a lista de planes...');
+        setTimeout(() => {
+          if (mountedRef.current) {
+            router.push('/dashboard/admin/planes');
+          }
+        }, 1000);
+      } else if (result.isDenied) {
+        showInfoToast('Preparando nuevo formulario...');
+        setFormData(INITIAL_FORM_DATA);
+        setOriginalFormData(INITIAL_FORM_DATA);
+        setExpandedAccordion('basic');
+        showSuccessToast('Formulario limpio. ¡Listo para crear otro plan!');
+      }
+
+    } catch (err: any) {
+      if (!mountedRef.current) return;
+      
+      const errorMessage = err.message || 'Error inesperado al guardar el plan';
+      showErrorToast(errorMessage);
+      
+      await Swal.fire({
+        ...getSwalConfig(),
+        title: '❌ Error al Crear Plan',
+        html: `
+          <div style="text-align: center; color: ${darkProTokens.textSecondary};">
+            <div style="background: ${darkProTokens.error}15; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid ${darkProTokens.error}40;">
+              <p style="margin: 0; color: ${darkProTokens.error};">${errorMessage}</p>
+            </div>
+            <p>Por favor, intenta nuevamente o contacta al soporte técnico.</p>
+          </div>
+        `,
+        icon: 'error',
+        confirmButtonText: '🔄 Intentar de nuevo'
+      });
+      
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Manejador de guardado principal
+  const handleSave = async (exitAfterSave = false) => {
+    const isValid = await validateForm();
+    if (isValid) {
+      await confirmSave(exitAfterSave);
+    }
+  };
+
+  // Confirmación antes de guardar
   const confirmSave = async (exitAfterSave = false) => {
     const totalPrices = [
       formData.inscription_price,
@@ -426,19 +741,10 @@ export default function CrearPlanPage() {
               <strong style="color: ${darkProTokens.error};">🔒 Control de Acceso:</strong>
               <p style="margin: 5px 0 0 0; font-size: 14px;">
                 Límite diario: ${formData.max_daily_entries} entradas<br>
-                Días permitidos: ${formData.allowed_weekdays.length}<br>
-                Horario: ${formData.access_start_time} - ${formData.access_end_time}
+                Horarios personalizados por día
               </p>
             </div>
           ` : ''}
-
-          <div style="background: ${darkProTokens.warning}15; padding: 10px; border-radius: 6px; border: 1px solid ${darkProTokens.warning}30;">
-            <strong style="color: ${darkProTokens.warning};">📅 Estado:</strong>
-            <p style="margin: 5px 0 0 0; font-size: 14px;">
-              ${formData.is_active ? '✅ Activo' : '❌ Inactivo'} • 
-              ${formData.validity_type === 'permanent' ? 'Vigencia permanente' : 'Vigencia limitada'}
-            </p>
-          </div>
         </div>
       `,
       icon: 'question',
@@ -451,455 +757,6 @@ export default function CrearPlanPage() {
 
     if (result.isConfirmed) {
       await performSave(exitAfterSave);
-    }
-  };
-
-  // Confirmación para eliminar característica
-  const confirmRemoveFeature = async (feature: string) => {
-    const result = await Swal.fire({
-      ...getSwalConfig(),
-      title: '🗑️ Eliminar Característica',
-      html: `
-        <div style="text-align: center; color: ${darkProTokens.textSecondary};">
-          <p>¿Estás seguro de que deseas eliminar esta característica?</p>
-          <div style="background: ${darkProTokens.warning}15; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid ${darkProTokens.warning}40;">
-            <strong style="color: ${darkProTokens.warning};">"${feature}"</strong>
-          </div>
-          <p style="font-size: 14px;">Esta acción no se puede deshacer.</p>
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: '🗑️ Eliminar',
-      cancelButtonText: '❌ Cancelar',
-      confirmButtonColor: darkProTokens.error
-    });
-
-    if (result.isConfirmed) {
-      removeFeature(feature);
-      showSuccessToast(`Característica "${feature}" eliminada`);
-    }
-  };
-
-  // Obtener usuario actual
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      try {
-        const supabase = createBrowserSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setCurrentUser(session.user);
-        }
-      } catch (error) {
-        console.error('❌ Error obteniendo usuario actual:', error);
-        showErrorToast('Error al obtener información del usuario');
-      }
-    };
-    getCurrentUser();
-  }, []);
-
-  // Detectar cambios en el formulario
-  useEffect(() => {
-    const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData);
-    setHasFormChanges(hasChanges);
-  }, [formData, originalFormData]);
-
-  // Calcular progreso
-  useEffect(() => {
-    let progress = 0;
-    const totalFields = 12;
-    let completedFields = 0;
-
-    if (formData.name.trim()) completedFields++;
-    if (formData.description.trim()) completedFields++;
-    if (formData.monthly_price > 0) completedFields++;
-    if (formData.inscription_price >= 0) completedFields++;
-    if (formData.features.length > 0) completedFields++;
-    if (formData.gym_access || formData.classes_included) completedFields++;
-    if (formData.validity_type) completedFields++;
-    if (!formData.has_time_restrictions || formData.allowed_days.length > 0) completedFields++;
-    if (!formData.has_time_restrictions || formData.time_slots.length > 0) completedFields++;
-    if (formData.access_control_enabled && formData.max_daily_entries > 0) completedFields++;
-    if (formData.allowed_weekdays.length > 0) completedFields++;
-    completedFields++;
-
-    progress = (completedFields / totalFields) * 100;
-    setFormProgress(progress);
-  }, [formData]);
-
-  // Cleanup
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  // 🚀 MANEJADORES MEJORADOS CON NOTIFICACIONES
-
-  // Manejador de input con validación en tiempo real
-  const handleInputChange = (field: keyof PlanFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Limpiar errores
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-
-    // Feedback inmediato para campos importantes
-    if (field === 'name' && value.trim().length > 3) {
-      showInfoToast('Nombre del plan configurado correctamente');
-    }
-  };
-
-  // Manejador para días de la semana
-  const handleWeekdayToggle = (weekday: string) => {
-    const isCurrentlySelected = formData.allowed_weekdays.includes(weekday);
-    
-    setFormData(prev => ({
-      ...prev,
-      allowed_weekdays: isCurrentlySelected
-        ? prev.allowed_weekdays.filter(d => d !== weekday)
-        : [...prev.allowed_weekdays, weekday]
-    }));
-
-    const dayName = WEEKDAY_NAMES.find(d => d.value === weekday)?.label;
-    if (isCurrentlySelected) {
-      showWarningToast(`${dayName} removido de días permitidos`);
-    } else {
-      showSuccessToast(`${dayName} agregado a días permitidos`);
-    }
-  };
-
-  // Agregar característica mejorada
-  const addFeature = () => {
-    if (newFeature.trim() && !formData.features.includes(newFeature.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        features: [...prev.features, newFeature.trim()]
-      }));
-      showSuccessToast(`Característica "${newFeature.trim()}" agregada`);
-      setNewFeature('');
-    } else if (formData.features.includes(newFeature.trim())) {
-      showWarningToast('Esta característica ya existe');
-    }
-  };
-
-  // Agregar característica predefinida
-  const addPredefinedFeature = (feature: string) => {
-    if (!formData.features.includes(feature)) {
-      setFormData(prev => ({
-        ...prev,
-        features: [...prev.features, feature]
-      }));
-      showSuccessToast(`"${feature}" agregada al plan`);
-    } else {
-      showWarningToast('Esta característica ya está incluida');
-    }
-  };
-
-  // Eliminar característica con confirmación
-  const removeFeature = (featureToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.filter(f => f !== featureToRemove)
-    }));
-  };
-
-  // Agregar franja horaria
-  const addTimeSlot = () => {
-    setFormData(prev => ({
-      ...prev,
-      time_slots: [...prev.time_slots, { start: '06:00', end: '22:00' }]
-    }));
-    showInfoToast('Nueva franja horaria agregada');
-  };
-
-  // Eliminar franja horaria
-  const removeTimeSlot = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      time_slots: prev.time_slots.filter((_, i) => i !== index)
-    }));
-    showWarningToast('Franja horaria eliminada');
-  };
-
-  // Actualizar franja horaria
-  const updateTimeSlot = (index: number, field: 'start' | 'end', value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      time_slots: prev.time_slots.map((slot, i) => 
-        i === index ? { ...slot, [field]: value } : slot
-      )
-    }));
-  };
-
-  // 🚀 VALIDACIÓN MEJORADA CON SWEETALERT2
-  const validateForm = async (): Promise<boolean> => {
-    const newErrors: {[key: string]: string} = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'El nombre del plan es obligatorio';
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = 'La descripción del plan es obligatoria';
-    }
-
-    if (formData.monthly_price <= 0 && formData.visit_price <= 0) {
-      newErrors.pricing = 'Debe establecer al menos un precio válido';
-    }
-
-    if (formData.validity_type === 'limited') {
-      if (!formData.validity_start_date || !formData.validity_end_date) {
-        newErrors.validity = 'Las fechas de vigencia son obligatorias para planes con tiempo limitado';
-      }
-      
-      if (new Date(formData.validity_start_date) >= new Date(formData.validity_end_date)) {
-        newErrors.validity = 'La fecha de inicio debe ser anterior a la fecha de fin';
-      }
-    }
-
-    if (formData.has_time_restrictions && formData.allowed_days.length === 0) {
-      newErrors.schedule = 'Debe seleccionar al menos un día permitido';
-    }
-
-    if (formData.access_control_enabled) {
-      if (formData.max_daily_entries <= 0) {
-        newErrors.access_control = 'El límite diario de entradas debe ser mayor a 0';
-      }
-      
-      if (formData.max_weekly_entries < formData.max_daily_entries) {
-        newErrors.access_control = 'El límite semanal debe ser mayor o igual al límite diario';
-      }
-      
-      if (formData.max_monthly_entries < formData.max_weekly_entries) {
-        newErrors.access_control = 'El límite mensual debe ser mayor o igual al límite semanal';
-      }
-      
-      if (formData.allowed_weekdays.length === 0) {
-        newErrors.access_control = 'Debe seleccionar al menos un día de acceso';
-      }
-      
-      if (formData.access_start_time >= formData.access_end_time) {
-        newErrors.access_control = 'La hora de inicio debe ser anterior a la hora de fin';
-      }
-    }
-
-    setErrors(newErrors);
-
-    // Si hay errores, mostrar SweetAlert2 con detalles
-    if (Object.keys(newErrors).length > 0) {
-      await Swal.fire({
-        ...getSwalConfig(),
-        title: '⚠️ Verificaciones Pendientes',
-        html: `
-          <div style="text-align: left; color: ${darkProTokens.textSecondary};">
-            <p>Por favor corrige los siguientes problemas:</p>
-            <ul style="margin: 15px 0; padding-left: 20px;">
-              ${Object.values(newErrors).map(error => `<li style="margin: 8px 0;">• ${error}</li>`).join('')}
-            </ul>
-          </div>
-        `,
-        icon: 'warning',
-        confirmButtonText: '✏️ Corregir'
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  // 🚀 FUNCIÓN DE GUARDADO REAL (separada de la confirmación)
-  const performSave = async (exitAfterSave = false) => {
-    if (!mountedRef.current) return;
-
-    try {
-      setLoading(true);
-      
-      // Toast de progreso
-      const loadingToastId = toast.loading('🚀 Creando plan MUP Pro...', {
-        style: {
-          background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
-          color: darkProTokens.textPrimary,
-          border: `1px solid ${darkProTokens.primary}40`,
-          borderRadius: '12px',
-        }
-      });
-
-      if (!currentUser) {
-        throw new Error('No se pudo identificar al usuario actual');
-      }
-
-      // Crear cliente Supabase
-      const supabase = createBrowserSupabaseClient();
-      
-      // Preparar datos del plan
-      const planData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        is_active: formData.is_active,
-        inscription_price: formData.inscription_price || 0,
-        visit_price: formData.visit_price || 0,
-        weekly_price: formData.weekly_price || 0,
-        biweekly_price: formData.biweekly_price || 0,
-        monthly_price: formData.monthly_price || 0,
-        bimonthly_price: formData.bimonthly_price || 0,
-        quarterly_price: formData.quarterly_price || 0,
-        semester_price: formData.semester_price || 0,
-        annual_price: formData.annual_price || 0,
-        weekly_duration: formData.weekly_duration || 7,
-        biweekly_duration: formData.biweekly_duration || 15,
-        monthly_duration: formData.monthly_duration || 30,
-        bimonthly_duration: formData.bimonthly_duration || 60,
-        quarterly_duration: formData.quarterly_duration || 90,
-        semester_duration: formData.semester_duration || 180,
-        annual_duration: formData.annual_duration || 365,
-        validity_type: formData.validity_type,
-        validity_start_date: formData.validity_start_date || null,
-        validity_end_date: formData.validity_end_date || null,
-        features: formData.features || [],
-        gym_access: formData.gym_access,
-        classes_included: formData.classes_included,
-        guest_passes: formData.guest_passes || 0,
-        has_time_restrictions: formData.has_time_restrictions,
-        allowed_days: formData.allowed_days || [],
-        time_slots: formData.time_slots || [],
-        created_by: currentUser?.id || null,
-        updated_by: currentUser?.id || null
-      };
-
-      // Insertar plan en Supabase
-      const { data: createdPlan, error: insertError } = await supabase
-        .from('membership_plans')
-        .insert(planData)
-        .select()
-        .single();
-
-      if (insertError) {
-        throw new Error(insertError.message || 'Error al guardar el plan');
-      }
-
-      // Insertar restricciones de control de acceso
-      if (formData.access_control_enabled && createdPlan) {
-        const accessRestrictionData = {
-          plan_id: createdPlan.id,
-          has_time_restrictions: formData.has_time_restrictions,
-          access_start_time: formData.access_start_time,
-          access_end_time: formData.access_end_time,
-          allowed_weekdays: formData.allowed_weekdays,
-          max_daily_entries: formData.max_daily_entries,
-          max_weekly_entries: formData.max_weekly_entries,
-          max_monthly_entries: formData.max_monthly_entries,
-          allow_guest_qr_codes: formData.allow_guest_qr_codes,
-          max_guest_passes_per_month: formData.max_guest_passes_per_month,
-          enforce_photo_verification: formData.enforce_photo_verification,
-          auto_deactivate_expired: formData.auto_deactivate_expired,
-          require_checkin_checkout: formData.require_checkin_checkout,
-          special_schedule_override: formData.special_schedule_override,
-          created_by: currentUser?.id,
-          updated_by: currentUser?.id
-        };
-
-        const { error: accessError } = await supabase
-          .from('plan_access_restrictions')
-          .insert(accessRestrictionData);
-
-        if (accessError) {
-          console.error('⚠️ Error al guardar restricciones de acceso:', accessError);
-        }
-      }
-
-      if (!mountedRef.current) return;
-
-      // Quitar toast de loading
-      toast.dismiss(loadingToastId);
-
-      // Toast de éxito
-      showSuccessToast('¡Plan creado exitosamente con control de acceso integrado!');
-
-      // SweetAlert2 de confirmación final con opciones
-      const result = await Swal.fire({
-        ...getSwalConfig(),
-        title: '🎉 ¡Plan Creado Exitosamente!',
-        html: `
-          <div style="text-align: center; color: ${darkProTokens.textSecondary};">
-            <div style="background: ${darkProTokens.success}15; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid ${darkProTokens.success}40;">
-              <h3 style="color: ${darkProTokens.success}; margin: 0 0 10px 0;">✅ "${formData.name}"</h3>
-              <p style="margin: 0; color: ${darkProTokens.textSecondary};">Plan configurado con éxito en MUP Pro</p>
-            </div>
-            <p>¿Qué deseas hacer ahora?</p>
-          </div>
-        `,
-        icon: 'success',
-        showCancelButton: true,
-        showDenyButton: true,
-        confirmButtonText: '📋 Ver todos los planes',
-        denyButtonText: '➕ Crear otro plan',
-        cancelButtonText: '📝 Editar este plan',
-        reverseButtons: true
-      });
-
-      if (result.isConfirmed || exitAfterSave) {
-        // Ir a lista de planes
-        showInfoToast('Redirigiendo a lista de planes...');
-        setTimeout(() => {
-          if (mountedRef.current) {
-            router.push('/dashboard/admin/planes');
-          }
-        }, 1000);
-      } else if (result.isDenied) {
-        // Crear otro plan
-        showInfoToast('Preparando nuevo formulario...');
-        setFormData(INITIAL_FORM_DATA);
-        setOriginalFormData(INITIAL_FORM_DATA);
-        setExpandedAccordion('basic');
-        showSuccessToast('Formulario limpio. ¡Listo para crear otro plan!');
-      } else {
-        // Editar este plan (quedar en la página)
-        showInfoToast('Puedes seguir editando el plan');
-      }
-
-    } catch (err: any) {
-      if (!mountedRef.current) return;
-      
-      const errorMessage = err.message || 'Error inesperado al guardar el plan';
-      showErrorToast(errorMessage);
-      
-      // SweetAlert2 para errores críticos
-      await Swal.fire({
-        ...getSwalConfig(),
-        title: '❌ Error al Crear Plan',
-        html: `
-          <div style="text-align: center; color: ${darkProTokens.textSecondary};">
-            <div style="background: ${darkProTokens.error}15; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid ${darkProTokens.error}40;">
-              <p style="margin: 0; color: ${darkProTokens.error};">${errorMessage}</p>
-            </div>
-            <p>Por favor, intenta nuevamente o contacta al soporte técnico.</p>
-          </div>
-        `,
-        icon: 'error',
-        confirmButtonText: '🔄 Intentar de nuevo'
-      });
-      
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
-    }
-  };
-
-  // 🚀 MANEJADOR DE GUARDADO PRINCIPAL CON VALIDACIÓN Y CONFIRMACIÓN
-  const handleSave = async (exitAfterSave = false) => {
-    const isValid = await validateForm();
-    if (isValid) {
-      await confirmSave(exitAfterSave);
     }
   };
 
@@ -935,7 +792,7 @@ export default function CrearPlanPage() {
       color: darkProTokens.textPrimary
     }}>
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* HEADER MEJORADO */}
+        {/* HEADER */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -979,7 +836,7 @@ export default function CrearPlanPage() {
                     color: darkProTokens.textSecondary,
                     fontWeight: 500
                   }}>
-                    Configure un nuevo plan con control de acceso inteligente
+                    Configure un nuevo plan de membresía
                   </Typography>
                 </Box>
               </Box>
@@ -1013,7 +870,7 @@ export default function CrearPlanPage() {
           </Paper>
         </motion.div>
 
-        {/* FORMULARIO CON COMPONENTES */}
+        {/* FORMULARIO */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1026,7 +883,7 @@ export default function CrearPlanPage() {
             overflow: 'hidden',
             backdropFilter: 'blur(10px)'
           }}>
-            {/* INFORMACIÓN BÁSICA */}
+            {/* 1. INFORMACIÓN BÁSICA */}
             <Accordion 
               expanded={expandedAccordion === 'basic'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'basic' ? false : 'basic')}
@@ -1187,7 +1044,7 @@ export default function CrearPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 2. ESTRUCTURA DE PRECIOS */}
+            {/* 2. ESTRUCTURA DE PRECIOS (sin cambios) */}
             <Accordion 
               expanded={expandedAccordion === 'pricing'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'pricing' ? false : 'pricing')}
@@ -1405,7 +1262,7 @@ export default function CrearPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-                        {/* 3. CARACTERÍSTICAS */}
+            {/* 3. CARACTERÍSTICAS (sin cambios) */}
             <Accordion 
               expanded={expandedAccordion === 'features'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'features' ? false : 'features')}
@@ -1545,7 +1402,7 @@ export default function CrearPlanPage() {
                     </Card>
                   </Grid>
                   
-                  <Grid size={{ xs: 12, md: 4 }}>
+                                    <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={{
                       background: `${darkProTokens.warning}10`,
                       border: `2px solid ${darkProTokens.warning}30`,
@@ -1676,7 +1533,7 @@ export default function CrearPlanPage() {
                             <Chip
                               key={index}
                               label={feature}
-                              onDelete={() => confirmRemoveFeature(feature)}
+                              onDelete={() => removeFeature(feature)}
                               deleteIcon={<DeleteIcon />}
                               sx={{
                                 bgcolor: `${darkProTokens.success}20`,
@@ -1700,7 +1557,7 @@ export default function CrearPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 4. 🚀 CONTROL DE ACCESO INTELIGENTE */}
+            {/* 4. 🚀 CONTROL DE ACCESO SIMPLIFICADO */}
             <Accordion 
               expanded={expandedAccordion === 'access_control'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'access_control' ? false : 'access_control')}
@@ -1709,600 +1566,6 @@ export default function CrearPlanPage() {
                 '&:before': { display: 'none' },
                 '& .MuiAccordionSummary-root': {
                   background: expandedAccordion === 'access_control' 
-                    ? `${darkProTokens.error}15`
-                    : 'transparent',
-                  borderBottom: `1px solid ${darkProTokens.grayDark}`,
-                  minHeight: 80
-                }
-              }}
-            >
-              <AccordionSummary 
-                expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.error }} />}
-                sx={{ px: 4 }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-                  <Avatar sx={{ 
-                    background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-                    color: darkProTokens.textPrimary
-                  }}>
-                    <SecurityIcon />
-                  </Avatar>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h5" sx={{ 
-                      color: darkProTokens.error, 
-                      fontWeight: 700
-                    }}>
-                      🚀 Control de Acceso Inteligente
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Configure límites, horarios y restricciones automáticas
-                    </Typography>
-                  </Box>
-                  <Chip 
-                    label={formData.access_control_enabled ? 'ACTIVO' : 'DESACTIVADO'}
-                    sx={{
-                      bgcolor: formData.access_control_enabled 
-                        ? `${darkProTokens.error}20`
-                        : `${darkProTokens.grayDark}20`,
-                      color: formData.access_control_enabled ? darkProTokens.error : darkProTokens.textDisabled,
-                      border: formData.access_control_enabled 
-                        ? `1px solid ${darkProTokens.error}40`
-                        : `1px solid ${darkProTokens.grayDark}40`
-                    }}
-                  />
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 4 }}>
-                <Grid container spacing={4}>
-                  {/* ACTIVAR CONTROL DE ACCESO */}
-                  <Grid size={12}>
-                    <Card sx={{
-                      bgcolor: `${darkProTokens.error}10`,
-                      border: `2px solid ${darkProTokens.error}30`,
-                      borderRadius: 3,
-                      p: 3
-                    }}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.access_control_enabled}
-                            onChange={(e) => {
-                              handleInputChange('access_control_enabled', e.target.checked);
-                              if (e.target.checked) {
-                                showSuccessToast('🔒 Control de acceso inteligente activado');
-                              } else {
-                                showWarningToast('Control de acceso desactivado');
-                              }
-                            }}
-                            sx={{
-                              '& .MuiSwitch-switchBase.Mui-checked': { 
-                                color: darkProTokens.error,
-                                '& + .MuiSwitch-track': { backgroundColor: darkProTokens.error }
-                              }
-                            }}
-                          />
-                        }
-                        label={
-                          <Box>
-                            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                              🔒 Activar Control de Acceso Inteligente
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Aplique límites automáticos y validaciones de entrada
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </Card>
-                  </Grid>
-
-                  {formData.access_control_enabled && (
-                    <AnimatePresence>
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        style={{ width: '100%' }}
-                      >
-                        <Grid container spacing={4}>
-                          {/* LÍMITES DE ENTRADAS */}
-                          <Grid size={12}>
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              mb: 3, 
-                              fontWeight: 700,
-                              textAlign: 'center'
-                            }}>
-                              ⚡ Límites de Entradas
-                            </Typography>
-                            <Grid container spacing={3}>
-                              <Grid size={{ xs: 12, md: 4 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.warning}10`,
-                                  border: `2px solid ${darkProTokens.warning}30`,
-                                  borderRadius: 3,
-                                  p: 3,
-                                  textAlign: 'center'
-                                }}>
-                                  <LimitIcon sx={{ color: darkProTokens.warning, fontSize: 32, mb: 1 }} />
-                                  <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.warning, 
-                                    mb: 2, 
-                                    fontWeight: 700
-                                  }}>
-                                    Límite Diario
-                                  </Typography>
-                                  <TextField
-                                    fullWidth
-                                    type="number"
-                                    value={formData.max_daily_entries}
-                                    onChange={(e) => {
-                                      const value = parseInt(e.target.value) || 1;
-                                      handleInputChange('max_daily_entries', value);
-                                      showInfoToast(`Límite diario: ${value} entradas`);
-                                    }}
-                                    sx={darkProFieldStyle}
-                                    InputProps={{
-                                      endAdornment: <InputAdornment position="end">entradas/día</InputAdornment>,
-                                      inputProps: { min: 1, max: 20 }
-                                    }}
-                                  />
-                                </Card>
-                              </Grid>
-
-                              <Grid size={{ xs: 12, md: 4 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.info}10`,
-                                  border: `2px solid ${darkProTokens.info}30`,
-                                  borderRadius: 3,
-                                  p: 3,
-                                  textAlign: 'center'
-                                }}>
-                                  <CalendarTodayIcon sx={{ color: darkProTokens.info, fontSize: 32, mb: 1 }} />
-                                  <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.info, 
-                                    mb: 2, 
-                                    fontWeight: 700
-                                  }}>
-                                    Límite Semanal
-                                  </Typography>
-                                  <TextField
-                                    fullWidth
-                                    type="number"
-                                    value={formData.max_weekly_entries}
-                                    onChange={(e) => {
-                                      const value = parseInt(e.target.value) || 7;
-                                      handleInputChange('max_weekly_entries', value);
-                                      if (value < formData.max_daily_entries) {
-                                        showWarningToast('El límite semanal debe ser mayor al diario');
-                                      } else {
-                                        showInfoToast(`Límite semanal: ${value} entradas`);
-                                      }
-                                    }}
-                                    sx={darkProFieldStyle}
-                                    InputProps={{
-                                      endAdornment: <InputAdornment position="end">entradas/semana</InputAdornment>,
-                                      inputProps: { min: 1, max: 50 }
-                                    }}
-                                  />
-                                </Card>
-                              </Grid>
-
-                              <Grid size={{ xs: 12, md: 4 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.primary}10`,
-                                  border: `2px solid ${darkProTokens.primary}30`,
-                                  borderRadius: 3,
-                                  p: 3,
-                                  textAlign: 'center'
-                                }}>
-                                  <StarIcon sx={{ color: darkProTokens.primary, fontSize: 32, mb: 1 }} />
-                                  <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.primary, 
-                                    mb: 2, 
-                                    fontWeight: 700
-                                  }}>
-                                    Límite Mensual
-                                  </Typography>
-                                  <TextField
-                                    fullWidth
-                                    type="number"
-                                    value={formData.max_monthly_entries}
-                                    onChange={(e) => {
-                                      const value = parseInt(e.target.value) || 30;
-                                      handleInputChange('max_monthly_entries', value);
-                                      if (value < formData.max_weekly_entries) {
-                                        showWarningToast('El límite mensual debe ser mayor al semanal');
-                                      } else {
-                                        showInfoToast(`Límite mensual: ${value} entradas`);
-                                      }
-                                    }}
-                                    sx={darkProFieldStyle}
-                                    InputProps={{
-                                      endAdornment: <InputAdornment position="end">entradas/mes</InputAdornment>,
-                                      inputProps: { min: 1, max: 200 }
-                                    }}
-                                  />
-                                </Card>
-                              </Grid>
-                            </Grid>
-                          </Grid>
-
-                          {/* HORARIOS DE ACCESO */}
-                          <Grid size={12}>
-                            <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              mb: 3, 
-                              fontWeight: 700,
-                              textAlign: 'center'
-                            }}>
-                              🕐 Horarios de Acceso
-                            </Typography>
-                            
-                            <Grid container spacing={3}>
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.success}10`,
-                                  border: `2px solid ${darkProTokens.success}30`,
-                                  borderRadius: 3,
-                                  p: 3
-                                }}>
-                                  <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.success, 
-                                    mb: 2, 
-                                    fontWeight: 700,
-                                    textAlign: 'center'
-                                  }}>
-                                    🌅 Horario de Entrada
-                                  </Typography>
-                                  <TextField
-                                    fullWidth
-                                    label="Hora de Inicio"
-                                    type="time"
-                                    value={formData.access_start_time}
-                                    onChange={(e) => {
-                                      handleInputChange('access_start_time', e.target.value);
-                                      showInfoToast(`Horario de entrada: ${e.target.value}`);
-                                    }}
-                                    InputLabelProps={{ shrink: true }}
-                                    sx={darkProFieldStyle}
-                                  />
-                                </Card>
-                              </Grid>
-
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.error}10`,
-                                  border: `2px solid ${darkProTokens.error}30`,
-                                  borderRadius: 3,
-                                  p: 3
-                                }}>
-                                  <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.error, 
-                                    mb: 2, 
-                                    fontWeight: 700,
-                                    textAlign: 'center'
-                                  }}>
-                                    🌙 Horario de Salida
-                                  </Typography>
-                                  <TextField
-                                    fullWidth
-                                    label="Hora de Fin"
-                                    type="time"
-                                    value={formData.access_end_time}
-                                    onChange={(e) => {
-                                      handleInputChange('access_end_time', e.target.value);
-                                      if (e.target.value <= formData.access_start_time) {
-                                        showWarningToast('La hora de fin debe ser posterior al inicio');
-                                      } else {
-                                        showInfoToast(`Horario de salida: ${e.target.value}`);
-                                      }
-                                    }}
-                                    InputLabelProps={{ shrink: true }}
-                                    sx={darkProFieldStyle}
-                                  />
-                                </Card>
-                              </Grid>
-                            </Grid>
-                          </Grid>
-
-                          {/* DÍAS PERMITIDOS */}
-                          <Grid size={12}>
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              mb: 3, 
-                              fontWeight: 700,
-                              textAlign: 'center'
-                            }}>
-                              📅 Días de Acceso Permitido
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
-                              {WEEKDAY_NAMES.map((day) => (
-                                <motion.div
-                                  key={day.value}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  <Card
-                                    onClick={() => handleWeekdayToggle(day.value)}
-                                    sx={{
-                                      p: 2,
-                                      minWidth: 80,
-                                      textAlign: 'center',
-                                      cursor: 'pointer',
-                                      background: formData.allowed_weekdays.includes(day.value)
-                                        ? `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`
-                                        : `${darkProTokens.grayDark}20`,
-                                      border: formData.allowed_weekdays.includes(day.value)
-                                        ? `2px solid ${darkProTokens.primary}60`
-                                        : `2px solid ${darkProTokens.grayDark}40`,
-                                      transition: 'all 0.3s ease',
-                                      '&:hover': {
-                                        transform: 'translateY(-2px)',
-                                        boxShadow: `0 4px 12px ${formData.allowed_weekdays.includes(day.value) ? darkProTokens.primary : darkProTokens.grayDark}40`
-                                      }
-                                    }}
-                                  >
-                                    <Typography variant="h4" sx={{ 
-                                      color: formData.allowed_weekdays.includes(day.value) 
-                                        ? darkProTokens.primary 
-                                        : darkProTokens.textDisabled,
-                                      fontWeight: 700,
-                                      mb: 1
-                                    }}>
-                                      {day.short}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ 
-                                      color: formData.allowed_weekdays.includes(day.value) 
-                                        ? darkProTokens.primary 
-                                        : darkProTokens.textDisabled,
-                                      fontWeight: 600
-                                    }}>
-                                      {day.label}
-                                    </Typography>
-                                    {formData.allowed_weekdays.includes(day.value) && (
-                                      <CheckCircleIcon sx={{ 
-                                        color: darkProTokens.primary, 
-                                        fontSize: 16,
-                                        mt: 1,
-                                        display: 'block',
-                                        mx: 'auto'
-                                      }} />
-                                    )}
-                                  </Card>
-                                </motion.div>
-                              ))}
-                            </Box>
-                          </Grid>
-
-                          {/* OPCIONES AVANZADAS */}
-                          <Grid size={12}>
-                            <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              mb: 3, 
-                              fontWeight: 700,
-                              textAlign: 'center'
-                            }}>
-                              ⚙️ Configuraciones Avanzadas
-                            </Typography>
-                            
-                            <Grid container spacing={3}>
-                              {/* QR CODES PARA INVITADOS */}
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.info}10`,
-                                  border: `2px solid ${darkProTokens.info}30`,
-                                  borderRadius: 3,
-                                  p: 3
-                                }}>
-                                  <FormControlLabel
-                                    control={
-                                      <Switch
-                                        checked={formData.allow_guest_qr_codes}
-                                        onChange={(e) => {
-                                          handleInputChange('allow_guest_qr_codes', e.target.checked);
-                                          if (e.target.checked) {
-                                            showSuccessToast('📱 Códigos QR para invitados activados');
-                                          } else {
-                                            showWarningToast('Códigos QR para invitados desactivados');
-                                          }
-                                        }}
-                                        sx={{
-                                          '& .MuiSwitch-switchBase.Mui-checked': { 
-                                            color: darkProTokens.info,
-                                            '& + .MuiSwitch-track': { backgroundColor: darkProTokens.info }
-                                          }
-                                        }}
-                                      />
-                                    }
-                                    label={
-                                      <Box>
-                                        <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                                          <QrCodeIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                          Códigos QR para Invitados
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                          Generar códigos QR temporales para invitados
-                                        </Typography>
-                                      </Box>
-                                    }
-                                  />
-                                  
-                                  {formData.allow_guest_qr_codes && (
-                                    <Box sx={{ mt: 2 }}>
-                                      <TextField
-                                        fullWidth
-                                        label="Máximo invitados por mes"
-                                        type="number"
-                                        value={formData.max_guest_passes_per_month}
-                                        onChange={(e) => {
-                                          const value = parseInt(e.target.value) || 0;
-                                          handleInputChange('max_guest_passes_per_month', value);
-                                          showInfoToast(`Límite de invitados: ${value}/mes`);
-                                        }}
-                                        sx={darkProFieldStyle}
-                                        InputProps={{
-                                          startAdornment: <InputAdornment position="start"><GroupIcon /></InputAdornment>,
-                                          inputProps: { min: 0, max: 10 }
-                                        }}
-                                      />
-                                    </Box>
-                                  )}
-                                </Card>
-                              </Grid>
-
-                              {/* VERIFICACIÓN FOTOGRÁFICA */}
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.warning}10`,
-                                  border: `2px solid ${darkProTokens.warning}30`,
-                                  borderRadius: 3,
-                                  p: 3,
-                                  height: '100%'
-                                }}>
-                                  <FormControlLabel
-                                    control={
-                                      <Switch
-                                        checked={formData.enforce_photo_verification}
-                                        onChange={(e) => {
-                                          handleInputChange('enforce_photo_verification', e.target.checked);
-                                          if (e.target.checked) {
-                                            showSuccessToast('📸 Verificación fotográfica activada');
-                                          } else {
-                                            showWarningToast('Verificación fotográfica desactivada');
-                                          }
-                                        }}
-                                        sx={{
-                                          '& .MuiSwitch-switchBase.Mui-checked': { 
-                                            color: darkProTokens.warning,
-                                            '& + .MuiSwitch-track': { backgroundColor: darkProTokens.warning }
-                                          }
-                                        }}
-                                      />
-                                    }
-                                    label={
-                                      <Box>
-                                        <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                                          <PhotoCameraIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                          Verificación Fotográfica
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                          Requiere foto al momento del acceso
-                                        </Typography>
-                                      </Box>
-                                    }
-                                  />
-                                </Card>
-                              </Grid>
-
-                              {/* CHECK-IN/CHECK-OUT */}
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.success}10`,
-                                  border: `2px solid ${darkProTokens.success}30`,
-                                  borderRadius: 3,
-                                  p: 3,
-                                  height: '100%'
-                                }}>
-                                  <FormControlLabel
-                                    control={
-                                      <Switch
-                                        checked={formData.require_checkin_checkout}
-                                        onChange={(e) => {
-                                          handleInputChange('require_checkin_checkout', e.target.checked);
-                                          if (e.target.checked) {
-                                            showSuccessToast('⏰ Check-in/Check-out activado');
-                                          } else {
-                                            showWarningToast('Check-in/Check-out desactivado');
-                                          }
-                                        }}
-                                        sx={{
-                                          '& .MuiSwitch-switchBase.Mui-checked': { 
-                                            color: darkProTokens.success,
-                                            '& + .MuiSwitch-track': { backgroundColor: darkProTokens.success }
-                                          }
-                                        }}
-                                      />
-                                    }
-                                    label={
-                                      <Box>
-                                        <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                                          <TimerIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                          Check-In/Check-Out
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                          Registrar entrada y salida obligatoria
-                                        </Typography>
-                                      </Box>
-                                    }
-                                  />
-                                </Card>
-                              </Grid>
-
-                              {/* AUTO-DESACTIVACIÓN */}
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.error}10`,
-                                  border: `2px solid ${darkProTokens.error}30`,
-                                  borderRadius: 3,
-                                  p: 3,
-                                  height: '100%'
-                                }}>
-                                  <FormControlLabel
-                                    control={
-                                      <Switch
-                                        checked={formData.auto_deactivate_expired}
-                                        onChange={(e) => {
-                                          handleInputChange('auto_deactivate_expired', e.target.checked);
-                                          if (e.target.checked) {
-                                            showSuccessToast('🔒 Auto-desactivación habilitada');
-                                          } else {
-                                            showWarningToast('Auto-desactivación deshabilitada');
-                                          }
-                                        }}
-                                        sx={{
-                                          '& .MuiSwitch-switchBase.Mui-checked': { 
-                                            color: darkProTokens.error,
-                                            '& + .MuiSwitch-track': { backgroundColor: darkProTokens.error }
-                                          }
-                                        }}
-                                      />
-                                    }
-                                    label={
-                                      <Box>
-                                        <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                                          <LockIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                          Auto-desactivación
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                                          Bloquear acceso automáticamente al vencer
-                                        </Typography>
-                                      </Box>
-                                    }
-                                  />
-                                </Card>
-                              </Grid>
-                            </Grid>
-                          </Grid>
-                        </Grid>
-                      </motion.div>
-                    </AnimatePresence>
-                  )}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* 5. RESTRICCIONES DE HORARIO (EXISTENTE) */}
-            <Accordion 
-              expanded={expandedAccordion === 'schedule'} 
-              onChange={() => setExpandedAccordion(expandedAccordion === 'schedule' ? false : 'schedule')}
-              sx={{
-                backgroundColor: 'transparent',
-                '&:before': { display: 'none' },
-                '& .MuiAccordionSummary-root': {
-                  background: expandedAccordion === 'schedule' 
                     ? `${darkProTokens.warning}15`
                     : 'transparent',
                   borderBottom: `1px solid ${darkProTokens.grayDark}`,
@@ -2326,28 +1589,29 @@ export default function CrearPlanPage() {
                       color: darkProTokens.warning, 
                       fontWeight: 700
                     }}>
-                      Restricciones de Horario Adicionales
+                      Control de Acceso
                     </Typography>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Configure franjas horarias específicas y días personalizados
+                      Configure límites de entrada y horarios por día
                     </Typography>
                   </Box>
                   <Chip 
-                    label={formData.has_time_restrictions ? 'CON RESTRICCIONES' : 'ACCESO COMPLETO'}
+                    label={formData.access_control_enabled ? 'ACTIVO' : 'DESACTIVADO'}
                     sx={{
-                      bgcolor: formData.has_time_restrictions 
+                      bgcolor: formData.access_control_enabled 
                         ? `${darkProTokens.warning}20`
-                        : `${darkProTokens.success}20`,
-                      color: formData.has_time_restrictions ? darkProTokens.warning : darkProTokens.success,
-                      border: formData.has_time_restrictions 
+                        : `${darkProTokens.grayDark}20`,
+                      color: formData.access_control_enabled ? darkProTokens.warning : darkProTokens.textDisabled,
+                      border: formData.access_control_enabled 
                         ? `1px solid ${darkProTokens.warning}40`
-                        : `1px solid ${darkProTokens.success}40`
+                        : `1px solid ${darkProTokens.grayDark}40`
                     }}
                   />
                 </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 4 }}>
                 <Grid container spacing={4}>
+                  {/* ACTIVAR CONTROL DE ACCESO */}
                   <Grid size={12}>
                     <Card sx={{
                       bgcolor: `${darkProTokens.warning}10`,
@@ -2358,13 +1622,13 @@ export default function CrearPlanPage() {
                       <FormControlLabel
                         control={
                           <Switch
-                            checked={formData.has_time_restrictions}
+                            checked={formData.access_control_enabled}
                             onChange={(e) => {
-                              handleInputChange('has_time_restrictions', e.target.checked);
+                              handleInputChange('access_control_enabled', e.target.checked);
                               if (e.target.checked) {
-                                showWarningToast('🕐 Restricciones de horario adicionales activadas');
+                                showSuccessToast('🔒 Control de acceso activado');
                               } else {
-                                showSuccessToast('Acceso completo sin restricciones adicionales');
+                                showWarningToast('Control de acceso desactivado');
                               }
                             }}
                             sx={{
@@ -2378,18 +1642,18 @@ export default function CrearPlanPage() {
                         label={
                           <Box>
                             <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                              🕐 Aplicar Restricciones de Horario Adicionales
+                              🔒 Activar Control de Acceso
                             </Typography>
                             <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Limite el acceso a múltiples franjas horarias específicas
+                              Aplique límites de entrada y configure horarios específicos por día
                             </Typography>
                           </Box>
                         }
                       />
                     </Card>
                   </Grid>
-                  
-                  {formData.has_time_restrictions && (
+
+                  {formData.access_control_enabled && (
                     <AnimatePresence>
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
@@ -2398,132 +1662,149 @@ export default function CrearPlanPage() {
                         style={{ width: '100%' }}
                       >
                         <Grid container spacing={4}>
+                          {/* LÍMITE DE ENTRADAS POR DÍA */}
                           <Grid size={12}>
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              mb: 2, 
-                              fontWeight: 700
+                            <Card sx={{
+                              background: `${darkProTokens.error}10`,
+                              border: `2px solid ${darkProTokens.error}30`,
+                              borderRadius: 3,
+                              p: 3,
+                              textAlign: 'center',
+                              mb: 3
                             }}>
-                              Días Permitidos (Configuración Avanzada)
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                              {DAY_NAMES.map((day) => (
-                                <FormControlLabel
-                                  key={day.value}
-                                  control={
-                                    <Checkbox
-                                      checked={formData.allowed_days.includes(day.value)}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          handleInputChange('allowed_days', [...formData.allowed_days, day.value]);
-                                          showSuccessToast(`${day.label} agregado a días permitidos`);
-                                        } else {
-                                          handleInputChange('allowed_days', formData.allowed_days.filter(d => d !== day.value));
-                                          showWarningToast(`${day.label} removido de días permitidos`);
-                                        }
-                                      }}
-                                      sx={{ 
-                                        color: darkProTokens.warning,
-                                        '&.Mui-checked': { color: darkProTokens.warning }
-                                      }}
-                                    />
-                                  }
-                                  label={
-                                    <Typography sx={{ color: darkProTokens.textPrimary }}>
-                                      {day.label}
-                                    </Typography>
-                                  }
-                                  sx={{
-                                    bgcolor: formData.allowed_days.includes(day.value) 
-                                      ? `${darkProTokens.warning}15`
-                                      : 'transparent',
-                                    border: `1px solid ${formData.allowed_days.includes(day.value) 
-                                      ? darkProTokens.warning + '40' 
-                                      : darkProTokens.grayDark}`,
-                                    borderRadius: 2,
-                                    p: 1,
-                                    minWidth: 120,
-                                    transition: 'all 0.3s ease'
-                                  }}
-                                />
-                              ))}
-                            </Box>
-                          </Grid>
-                          
-                          <Grid size={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                              <Typography variant="h6" sx={{ 
-                                color: darkProTokens.textPrimary, 
+                              <LimitIcon sx={{ color: darkProTokens.error, fontSize: 48, mb: 2 }} />
+                              <Typography variant="h5" sx={{ 
+                                color: darkProTokens.error, 
+                                mb: 2, 
                                 fontWeight: 700
                               }}>
-                                Múltiples Franjas Horarias
+                                Límite de Entradas por Día
                               </Typography>
-                              <Button
-                                onClick={addTimeSlot}
-                                variant="outlined"
-                                startIcon={<AddIcon />}
-                                sx={{
-                                  borderColor: darkProTokens.warning,
-                                  color: darkProTokens.warning,
-                                  '&:hover': {
-                                    borderColor: darkProTokens.warningHover,
-                                    bgcolor: `${darkProTokens.warning}10`,
-                                    transform: 'translateY(-2px)'
-                                  }
-                                }}
-                              >
-                                Agregar Franja
-                              </Button>
-                            </Box>
+                              <Box sx={{ maxWidth: 300, mx: 'auto' }}>
+                                <TextField
+                                  fullWidth
+                                  type="number"
+                                  value={formData.max_daily_entries}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 1;
+                                    handleInputChange('max_daily_entries', value);
+                                    showInfoToast(`Límite diario: ${value} ${value === 1 ? 'entrada' : 'entradas'}`);
+                                  }}
+                                  sx={darkProFieldStyle}
+                                  InputProps={{
+                                    endAdornment: <InputAdornment position="end">entradas/día</InputAdornment>,
+                                    inputProps: { min: 1, max: 20 }
+                                  }}
+                                />
+                              </Box>
+                            </Card>
+                          </Grid>
+
+                          {/* HORARIOS POR DÍA */}
+                          <Grid size={12}>
+                            <Typography variant="h5" sx={{ 
+                              color: darkProTokens.textPrimary, 
+                              mb: 3, 
+                              fontWeight: 700,
+                              textAlign: 'center'
+                            }}>
+                              📅 Configuración de Horarios por Día
+                            </Typography>
                             
-                            <Stack spacing={2}>
-                              {formData.time_slots.map((slot, index) => (
-                                <Card key={index} sx={{
-                                  bgcolor: `${darkProTokens.warning}10`,
-                                  border: `1px solid ${darkProTokens.warning}30`,
-                                  p: 3
-                                }}>
-                                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                    <Typography sx={{ color: darkProTokens.warning, fontWeight: 700, minWidth: 80 }}>
-                                      Franja {index + 1}:
-                                    </Typography>
-                                    <TextField
-                                      label="Inicio"
-                                      type="time"
-                                      value={slot.start}
-                                      onChange={(e) => updateTimeSlot(index, 'start', e.target.value)}
-                                      InputLabelProps={{ shrink: true }}
-                                      sx={{ ...darkProFieldStyle, flex: 1 }}
-                                    />
-                                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                                      →
-                                    </Typography>
-                                    <TextField
-                                      label="Fin"
-                                      type="time"
-                                      value={slot.end}
-                                      onChange={(e) => updateTimeSlot(index, 'end', e.target.value)}
-                                      InputLabelProps={{ shrink: true }}
-                                      sx={{ ...darkProFieldStyle, flex: 1 }}
-                                    />
-                                    {formData.time_slots.length > 1 && (
-                                      <IconButton
-                                        onClick={() => removeTimeSlot(index)}
-                                        sx={{ 
-                                          color: darkProTokens.error,
-                                          '&:hover': {
-                                            bgcolor: `${darkProTokens.error}15`,
-                                            transform: 'scale(1.1)'
-                                          }
-                                        }}
-                                      >
-                                        <DeleteIcon />
-                                      </IconButton>
-                                    )}
-                                  </Box>
-                                </Card>
+                            <Grid container spacing={2}>
+                              {WEEKDAY_CONFIG.map((day) => (
+                                <Grid key={day.key} size={{ xs: 12, md: 6, lg: 4 }}>
+                                  <motion.div whileHover={{ scale: 1.02 }}>
+                                    <Card sx={{
+                                      background: formData.daily_schedules[day.key as keyof DailySchedules].enabled
+                                        ? `${darkProTokens.success}10`
+                                        : `${darkProTokens.grayDark}20`,
+                                      border: formData.daily_schedules[day.key as keyof DailySchedules].enabled
+                                        ? `2px solid ${darkProTokens.success}30`
+                                        : `2px solid ${darkProTokens.grayDark}40`,
+                                      borderRadius: 3,
+                                      p: 3,
+                                      transition: 'all 0.3s ease'
+                                    }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                          <Avatar sx={{
+                                            bgcolor: formData.daily_schedules[day.key as keyof DailySchedules].enabled
+                                              ? darkProTokens.success
+                                              : darkProTokens.grayDark,
+                                            color: darkProTokens.textPrimary,
+                                            fontWeight: 700,
+                                            width: 36,
+                                            height: 36
+                                          }}>
+                                            {day.short}
+                                          </Avatar>
+                                          <Typography variant="h6" sx={{ 
+                                            color: darkProTokens.textPrimary,
+                                            fontWeight: 700
+                                          }}>
+                                            {day.label}
+                                          </Typography>
+                                        </Box>
+                                        <Switch
+                                          checked={formData.daily_schedules[day.key as keyof DailySchedules].enabled}
+                                          onChange={(e) => {
+                                            updateDaySchedule(day.key as keyof DailySchedules, 'enabled', e.target.checked);
+                                            if (e.target.checked) {
+                                              showSuccessToast(`${day.label} habilitado`);
+                                            } else {
+                                              showWarningToast(`${day.label} deshabilitado`);
+                                            }
+                                          }}
+                                          sx={{
+                                            '& .MuiSwitch-switchBase.Mui-checked': { 
+                                              color: darkProTokens.success,
+                                              '& + .MuiSwitch-track': { backgroundColor: darkProTokens.success }
+                                            }
+                                          }}
+                                        />
+                                      </Box>
+                                      
+                                      {formData.daily_schedules[day.key as keyof DailySchedules].enabled && (
+                                        <AnimatePresence>
+                                          <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                          >
+                                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                              <TextField
+                                                label="Desde"
+                                                type="time"
+                                                value={formData.daily_schedules[day.key as keyof DailySchedules].start_time}
+                                                onChange={(e) => updateDaySchedule(day.key as keyof DailySchedules, 'start_time', e.target.value)}
+                                                InputLabelProps={{ shrink: true }}
+                                                sx={{ ...darkProFieldStyle, flex: 1 }}
+                                              />
+                                              <Typography sx={{ color: darkProTokens.textPrimary }}>→</Typography>
+                                              <TextField
+                                                label="Hasta"
+                                                type="time"
+                                                value={formData.daily_schedules[day.key as keyof DailySchedules].end_time}
+                                                onChange={(e) => {
+                                                  updateDaySchedule(day.key as keyof DailySchedules, 'end_time', e.target.value);
+                                                  const schedule = formData.daily_schedules[day.key as keyof DailySchedules];
+                                                  if (e.target.value <= schedule.start_time) {
+                                                    showWarningToast('La hora de fin debe ser posterior al inicio');
+                                                  }
+                                                }}
+                                                InputLabelProps={{ shrink: true }}
+                                                sx={{ ...darkProFieldStyle, flex: 1 }}
+                                              />
+                                            </Box>
+                                          </motion.div>
+                                        </AnimatePresence>
+                                      )}
+                                    </Card>
+                                  </motion.div>
+                                </Grid>
                               ))}
-                            </Stack>
+                            </Grid>
                           </Grid>
                         </Grid>
                       </motion.div>
@@ -2533,7 +1814,7 @@ export default function CrearPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 6. VISTA PREVIA Y GUARDADO CON PANEL DE CONTROL MEJORADO */}
+            {/* 5. VISTA PREVIA Y GUARDADO */}
             <Accordion 
               expanded={expandedAccordion === 'preview'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'preview' ? false : 'preview')}
@@ -2564,21 +1845,12 @@ export default function CrearPlanPage() {
                       color: darkProTokens.primary, 
                       fontWeight: 700
                     }}>
-                      🚀 Vista Previa y Guardado Pro
+                      Vista Previa y Guardado
                     </Typography>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Revise la configuración completa con control de acceso integrado
+                      Revise la configuración completa del plan
                     </Typography>
                   </Box>
-                  <Chip 
-                    icon={<SecurityIcon />} 
-                    label="Sistema Integrado"
-                    sx={{ 
-                      bgcolor: `${darkProTokens.primary}20`,
-                      color: darkProTokens.primary,
-                      border: `1px solid ${darkProTokens.primary}40`
-                    }}
-                  />
                 </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 4 }}>
@@ -2621,12 +1893,12 @@ export default function CrearPlanPage() {
                             />
                             {formData.access_control_enabled && (
                               <Chip 
-                                icon={<SecurityIcon />}
-                                label="CONTROL INTELIGENTE" 
+                                icon={<AccessTimeIcon />}
+                                label="CONTROL ACTIVO" 
                                 sx={{
-                                  bgcolor: `${darkProTokens.error}20`,
-                                  color: darkProTokens.error,
-                                  border: `1px solid ${darkProTokens.error}40`,
+                                  bgcolor: `${darkProTokens.warning}20`,
+                                  color: darkProTokens.warning,
+                                  border: `1px solid ${darkProTokens.warning}40`,
                                   fontWeight: 700
                                 }}
                               />
@@ -2716,55 +1988,26 @@ export default function CrearPlanPage() {
                               mb: 2, 
                               fontWeight: 700
                             }}>
-                              🔒 Control de Acceso Inteligente
+                              🔒 Control de Acceso
                             </Typography>
-                            <Grid container spacing={2}>
-                              <Grid size={{ xs: 12, md: 4 }}>
-                                <Card sx={{
-                                  bgcolor: darkProTokens.surfaceLevel3,
-                                  p: 2,
-                                  textAlign: 'center',
-                                  border: `1px solid ${darkProTokens.error}40`
-                                }}>
-                                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                    Límite Diario
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
-                                    {formData.max_daily_entries} entradas
-                                  </Typography>
-                                </Card>
-                              </Grid>
-                              <Grid size={{ xs: 12, md: 4 }}>
-                                <Card sx={{
-                                  bgcolor: darkProTokens.surfaceLevel3,
-                                  p: 2,
-                                  textAlign: 'center',
-                                  border: `1px solid ${darkProTokens.warning}40`
-                                }}>
-                                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                    Horario
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
-                                    {formData.access_start_time} - {formData.access_end_time}
-                                  </Typography>
-                                </Card>
-                              </Grid>
-                              <Grid size={{ xs: 12, md: 4 }}>
-                                <Card sx={{
-                                  bgcolor: darkProTokens.surfaceLevel3,
-                                  p: 2,
-                                  textAlign: 'center',
-                                  border: `1px solid ${darkProTokens.info}40`
-                                }}>
-                                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                    Días Activos
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
-                                    {formData.allowed_weekdays.length} días
-                                  </Typography>
-                                </Card>
-                              </Grid>
-                            </Grid>
+                            <Box sx={{ 
+                              p: 2, 
+                              bgcolor: `${darkProTokens.warning}10`,
+                              border: `1px solid ${darkProTokens.warning}30`,
+                              borderRadius: 2,
+                              mb: 3
+                            }}>
+                              <Typography variant="body1" sx={{ 
+                                color: darkProTokens.warning, 
+                                fontWeight: 700,
+                                mb: 1
+                              }}>
+                                Límite diario: {formData.max_daily_entries} {formData.max_daily_entries === 1 ? 'entrada' : 'entradas'}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                Días habilitados: {Object.values(formData.daily_schedules).filter(s => s.enabled).length} de 7
+                              </Typography>
+                            </Box>
                           </>
                         )}
                       </CardContent>
@@ -2772,7 +2015,7 @@ export default function CrearPlanPage() {
                   </Grid>
                   
                   <Grid size={{ xs: 12, lg: 4 }}>
-                    {/* 🚀 PANEL DE CONTROL MEJORADO CON BOTONES INTELIGENTES */}
+                    {/* PANEL DE CONTROL */}
                     <Card sx={{
                       background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
                       border: `1px solid ${darkProTokens.grayDark}`,
@@ -2787,10 +2030,10 @@ export default function CrearPlanPage() {
                         fontWeight: 700,
                         textAlign: 'center'
                       }}>
-                        🚀 Centro de Control Pro
+                        🚀 Centro de Control
                       </Typography>
                       
-                      {/* VALIDACIONES MEJORADAS */}
+                      {/* VALIDACIONES */}
                       <Box sx={{ mb: 3 }}>
                         <Typography variant="body1" sx={{ 
                           color: darkProTokens.textPrimary, 
@@ -2804,7 +2047,7 @@ export default function CrearPlanPage() {
                           { label: 'Información básica', check: !!formData.name.trim() && !!formData.description.trim() },
                           { label: 'Precios configurados', check: formData.monthly_price > 0 || formData.visit_price > 0 },
                           { label: 'Características definidas', check: formData.features.length > 0 || formData.gym_access || formData.classes_included },
-                          { label: 'Control de acceso', check: !formData.access_control_enabled || (formData.max_daily_entries > 0 && formData.allowed_weekdays.length > 0) },
+                          { label: 'Control de acceso', check: !formData.access_control_enabled || (formData.max_daily_entries > 0 && Object.values(formData.daily_schedules).some(s => s.enabled)) },
                           { label: 'Configuración válida', check: Object.keys(errors).length === 0 }
                         ].map((validation, index) => (
                           <Box key={index} sx={{ 
@@ -2817,7 +2060,7 @@ export default function CrearPlanPage() {
                               ? `${darkProTokens.success}10`
                               : `${darkProTokens.warning}10`,
                             border: validation.check 
-                                                            ? `1px solid ${darkProTokens.success}30`
+                              ? `1px solid ${darkProTokens.success}30`
                               : `1px solid ${darkProTokens.warning}30`,
                             borderRadius: 1
                           }}>
@@ -2839,7 +2082,7 @@ export default function CrearPlanPage() {
                       
                       <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
                       
-                      {/* INFORMACIÓN DEL USUARIO ACTUALIZADA */}
+                      {/* INFORMACIÓN DEL USUARIO */}
                       <Box sx={{ mb: 3 }}>
                         <Typography variant="body2" sx={{ 
                           color: darkProTokens.textSecondary, 
@@ -2870,18 +2113,18 @@ export default function CrearPlanPage() {
                               color: darkProTokens.textPrimary, 
                               fontWeight: 600
                             }}>
-                              luishdz044
+                              luishdz04
                             </Typography>
                             <Typography variant="caption" sx={{ 
                               color: darkProTokens.textSecondary
                             }}>
-                              26 de junio de 2025 • 06:55 UTC
+                              4 de septiembre de 2025 • 03:48 UTC
                             </Typography>
                           </Box>
                         </Box>
                       </Box>
                       
-                      {/* 🚀 BOTONES DE ACCIÓN MEJORADOS CON SWEETALERT2 */}
+                      {/* BOTONES DE ACCIÓN */}
                       <Stack spacing={2}>
                         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                           <Button
@@ -2940,135 +2183,9 @@ export default function CrearPlanPage() {
                             ← Volver a Planes
                           </Button>
                         </motion.div>
-
-                        {/* 🚀 NUEVO BOTÓN: GUARDAR Y CREAR OTRO */}
-                        {hasFormChanges && (
-                          <motion.div 
-                            whileHover={{ scale: 1.02 }} 
-                            whileTap={{ scale: 0.98 }}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                          >
-                            <Button
-                              variant="outlined"
-                              size="medium"
-                              fullWidth
-                              onClick={async () => {
-                                const result = await Swal.fire({
-                                  ...getSwalConfig(),
-                                  title: '🚀 Crear Plan y Continuar',
-                                  html: `
-                                    <div style="text-align: center; color: ${darkProTokens.textSecondary};">
-                                      <p>¿Deseas crear este plan y preparar el formulario para crear otro?</p>
-                                      <div style="background: ${darkProTokens.primary}15; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid ${darkProTokens.primary}40;">
-                                        <strong style="color: ${darkProTokens.primary};">"${formData.name}"</strong>
-                                      </div>
-                                    </div>
-                                  `,
-                                  icon: 'question',
-                                  showCancelButton: true,
-                                  confirmButtonText: '🚀 Crear y Continuar',
-                                  cancelButtonText: '❌ Cancelar'
-                                });
-                                
-                                if (result.isConfirmed) {
-                                  await performSave(false);
-                                }
-                              }}
-                              disabled={loading}
-                              startIcon={<AddIcon />}
-                              sx={{
-                                borderColor: darkProTokens.primary,
-                                color: darkProTokens.primary,
-                                '&:hover': {
-                                  borderColor: darkProTokens.primaryHover,
-                                  bgcolor: `${darkProTokens.primary}10`,
-                                  color: darkProTokens.primary,
-                                  transform: 'translateY(-2px)'
-                                },
-                                '&:disabled': {
-                                  borderColor: darkProTokens.grayDark,
-                                  color: darkProTokens.textDisabled
-                                },
-                                transition: 'all 0.3s ease'
-                              }}
-                            >
-                              + Crear y Continuar
-                            </Button>
-                          </motion.div>
-                        )}
                       </Stack>
                       
-                      {/* ESTADÍSTICAS MEJORADAS */}
-                      <Box sx={{ 
-                        mt: 3, 
-                        p: 2, 
-                        bgcolor: darkProTokens.surfaceLevel1,
-                        borderRadius: 2,
-                        border: `1px solid ${darkProTokens.grayDark}`
-                      }}>
-                        <Typography variant="body2" sx={{ 
-                          color: darkProTokens.textSecondary, 
-                          mb: 1,
-                          textAlign: 'center'
-                        }}>
-                          Resumen Pro de Configuración:
-                        </Typography>
-                        <Grid container spacing={1}>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                                {formData.features.length}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Características
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
-                                {[
-                                  formData.inscription_price, 
-                                  formData.visit_price, 
-                                  formData.weekly_price, 
-                                  formData.biweekly_price,
-                                  formData.monthly_price, 
-                                  formData.bimonthly_price,
-                                  formData.quarterly_price, 
-                                  formData.semester_price,
-                                  formData.annual_price
-                                ].filter(p => p > 0).length}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Modalidades
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
-                                {formData.access_control_enabled ? formData.allowed_weekdays.length : 7}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Días Activos
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h6" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
-                                {formData.access_control_enabled ? formData.max_daily_entries : '∞'}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Límite Diario
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        </Grid>
-                      </Box>
-
-                      {/* 🚀 INDICADOR DE CAMBIOS NO GUARDADOS */}
+                      {/* INDICADOR DE CAMBIOS NO GUARDADOS */}
                       {hasFormChanges && (
                         <motion.div
                           initial={{ opacity: 0 }}
@@ -3098,7 +2215,7 @@ export default function CrearPlanPage() {
           </Paper>
         </motion.div>
 
-        {/* 🚀 ESTILOS CSS PERSONALIZADOS PARA SWEETALERT2 */}
+        {/* ESTILOS CSS PERSONALIZADOS PARA SWEETALERT2 */}
         <style jsx global>{`
           .dark-pro-popup {
             background: ${darkProTokens.surfaceLevel2} !important;
