@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -20,7 +20,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Checkbox,
   CircularProgress,
   Accordion,
   AccordionSummary,
@@ -31,24 +30,24 @@ import {
   Badge,
   Container,
   LinearProgress,
-  Tooltip,
-  Slide
+  Tooltip
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter, useParams } from 'next/navigation';
 
+// 🚀 IMPORTACIONES PARA NOTIFICACIONES PRO
+import Swal from 'sweetalert2';
+import { toast } from 'react-toastify';
+
 // 🎨 DARK PRO SYSTEM - TOKENS CSS VARIABLES
 const darkProTokens = {
-  // Base Colors
   background: '#000000',
   surfaceLevel1: '#121212',
   surfaceLevel2: '#1E1E1E',
   surfaceLevel3: '#252525',
   surfaceLevel4: '#2E2E2E',
-  
-  // Neutrals
   grayDark: '#333333',
   grayMedium: '#444444',
   grayLight: '#555555',
@@ -58,14 +57,10 @@ const darkProTokens = {
   textDisabled: '#888888',
   iconDefault: '#FFFFFF',
   iconMuted: '#AAAAAA',
-  
-  // Primary Accent (Golden)
   primary: '#FFCC00',
   primaryHover: '#E6B800',
   primaryActive: '#CCAA00',
   primaryDisabled: 'rgba(255,204,0,0.3)',
-  
-  // Semantic Colors
   success: '#388E3C',
   successHover: '#2E7D32',
   error: '#D32F2F',
@@ -74,8 +69,6 @@ const darkProTokens = {
   warningHover: '#E6A700',
   info: '#1976D2',
   infoHover: '#1565C0',
-  
-  // Focus & Interactions
   focusRing: 'rgba(255,204,0,0.4)',
   hoverOverlay: 'rgba(255,204,0,0.05)',
   activeOverlay: 'rgba(255,204,0,0.1)',
@@ -83,6 +76,20 @@ const darkProTokens = {
   borderHover: '#FFCC00',
   borderActive: '#E6B800'
 };
+
+// 🚀 CONFIGURACIÓN PERSONALIZADA DE SWEETALERT2
+const getSwalConfig = () => ({
+  background: darkProTokens.surfaceLevel2,
+  color: darkProTokens.textPrimary,
+  confirmButtonColor: darkProTokens.primary,
+  cancelButtonColor: darkProTokens.grayDark,
+  customClass: {
+    popup: 'dark-pro-popup',
+    title: 'dark-pro-title',
+    htmlContainer: 'dark-pro-content'
+  },
+  buttonsStyling: true
+});
 
 // Iconos
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
@@ -92,71 +99,81 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import InfoIcon from '@mui/icons-material/Info';
 import GroupIcon from '@mui/icons-material/Group';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import StarIcon from '@mui/icons-material/Star';
-import ScheduleIcon from '@mui/icons-material/Schedule';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import FeatureIcon from '@mui/icons-material/AutoAwesome';
 import PreviewIcon from '@mui/icons-material/Preview';
 import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import UpdateIcon from '@mui/icons-material/Update';
-import HistoryIcon from '@mui/icons-material/History';
-import PersonIcon from '@mui/icons-material/Person';
-import SecurityIcon from '@mui/icons-material/Security';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import LimitIcon from '@mui/icons-material/Speed';
+import TodayIcon from '@mui/icons-material/Today';
 
-// ✅ INTERFACE COMPLETA - IGUAL QUE CREAR
+// Interfaces actualizadas y simplificadas
+interface DaySchedule {
+  enabled: boolean;
+  start_time: string;
+  end_time: string;
+}
+
+interface DailySchedules {
+  monday: DaySchedule;
+  tuesday: DaySchedule;
+  wednesday: DaySchedule;
+  thursday: DaySchedule;
+  friday: DaySchedule;
+  saturday: DaySchedule;
+  sunday: DaySchedule;
+}
+
 interface PlanFormData {
   id?: string;
   name: string;
   description: string;
   is_active: boolean;
-  
-  // ✅ PRECIOS COMPLETOS
   inscription_price: number;
   visit_price: number;
   weekly_price: number;
-  biweekly_price: number;      // ✅ AGREGADO - quincenal
+  biweekly_price: number;
   monthly_price: number;
-  bimonthly_price: number;     // ✅ AGREGADO - bimestral
+  bimonthly_price: number;
   quarterly_price: number;
-  semester_price: number;      // ✅ AGREGADO - semestral
+  semester_price: number;
   annual_price: number;
-  
-  // ✅ DURACIONES COMPLETAS
   weekly_duration: number;
-  biweekly_duration: number;   // ✅ AGREGADO
+  biweekly_duration: number;
   monthly_duration: number;
-  bimonthly_duration: number;  // ✅ AGREGADO
+  bimonthly_duration: number;
   quarterly_duration: number;
-  semester_duration: number;   // ✅ AGREGADO
+  semester_duration: number;
   annual_duration: number;
-  
-  // Vigencia
   validity_type: 'permanent' | 'limited';
   validity_start_date: string | null;
   validity_end_date: string | null;
-  
-  // Características
   features: string[];
   gym_access: boolean;
   classes_included: boolean;
   guest_passes: number;
-  
-  // Restricciones de horario
-  has_time_restrictions: boolean;
-  allowed_days: number[];
-  time_slots: { start: string; end: string }[];
-  
+  // Simplificado - control de acceso
+  access_control_enabled: boolean;
+  max_daily_entries: number;
+  daily_schedules: DailySchedules;
   // Metadatos
   created_at?: string | null;
   updated_at?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
+}
+
+// ACTUALIZAR LA INTERFACE DE RESTRICCIONES DE ACCESO
+interface PlanAccessRestriction {
+  id?: string;
+  plan_id: string;
+  access_control_enabled: boolean;
+  max_daily_entries: number;
+  daily_schedules: DailySchedules;
 }
 
 const PREDEFINED_FEATURES = [
@@ -178,15 +195,15 @@ const PREDEFINED_FEATURES = [
   'Suplementos con descuento'
 ];
 
-const DAY_NAMES = [
-  { value: 1, label: 'Lunes', short: 'L' },
-  { value: 2, label: 'Martes', short: 'M' },
-  { value: 3, label: 'Miércoles', short: 'X' },
-  { value: 4, label: 'Jueves', short: 'J' },
-  { value: 5, label: 'Viernes', short: 'V' },
-  { value: 6, label: 'Sábado', short: 'S' },
-  { value: 7, label: 'Domingo', short: 'D' }
-];
+const WEEKDAY_CONFIG = [
+  { key: 'monday', label: 'Lunes', short: 'L' },
+  { key: 'tuesday', label: 'Martes', short: 'M' },
+  { key: 'wednesday', label: 'Miércoles', short: 'X' },
+  { key: 'thursday', label: 'Jueves', short: 'J' },
+  { key: 'friday', label: 'Viernes', short: 'V' },
+  { key: 'saturday', label: 'Sábado', short: 'S' },
+  { key: 'sunday', label: 'Domingo', short: 'D' }
+] as const;
 
 export default function EditarPlanPage() {
   const router = useRouter();
@@ -199,7 +216,6 @@ export default function EditarPlanPage() {
     name: '',
     description: '',
     is_active: true,
-    
     inscription_price: 0,
     visit_price: 0,
     weekly_price: 0,
@@ -209,7 +225,6 @@ export default function EditarPlanPage() {
     quarterly_price: 0,
     semester_price: 0,
     annual_price: 0,
-    
     weekly_duration: 7,
     biweekly_duration: 15,
     monthly_duration: 30,
@@ -217,27 +232,31 @@ export default function EditarPlanPage() {
     quarterly_duration: 90,
     semester_duration: 180,
     annual_duration: 365,
-    
     validity_type: 'permanent',
     validity_start_date: null,
     validity_end_date: null,
-    
     features: [],
     gym_access: true,
     classes_included: false,
     guest_passes: 0,
-    
-    has_time_restrictions: false,
-    allowed_days: [1, 2, 3, 4, 5, 6, 7],
-    time_slots: [{ start: '06:00', end: '22:00' }]
+    access_control_enabled: false,
+    max_daily_entries: 1,
+    daily_schedules: {
+      monday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+      tuesday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+      wednesday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+      thursday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+      friday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+      saturday: { enabled: true, start_time: '08:00', end_time: '20:00' },
+      sunday: { enabled: true, start_time: '09:00', end_time: '18:00' }
+    }
   });
   
   const [originalFormData, setOriginalFormData] = useState<PlanFormData>({} as PlanFormData);
   const [loading, setLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [accessRestrictionId, setAccessRestrictionId] = useState<string | null>(null);
   
   // Estados para características
   const [newFeature, setNewFeature] = useState('');
@@ -247,6 +266,107 @@ export default function EditarPlanPage() {
   // Estados de usuario
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [hasFormChanges, setHasFormChanges] = useState(false);
+
+  // 🚀 FUNCIONES DE NOTIFICACIÓN
+  const showSuccessToast = (message: string) => {
+    toast.success(message, {
+      icon: '🎉',
+      style: {
+        background: `linear-gradient(135deg, ${darkProTokens.success}20, ${darkProTokens.success}10)`,
+        color: darkProTokens.textPrimary,
+        border: `1px solid ${darkProTokens.success}40`,
+        borderRadius: '12px',
+      },
+      progressStyle: {
+        background: `linear-gradient(90deg, ${darkProTokens.success}, ${darkProTokens.successHover})`
+      }
+    });
+  };
+
+  const showErrorToast = (message: string) => {
+    toast.error(message, {
+      icon: '❌',
+      style: {
+        background: `linear-gradient(135deg, ${darkProTokens.error}20, ${darkProTokens.error}10)`,
+        color: darkProTokens.textPrimary,
+        border: `1px solid ${darkProTokens.error}40`,
+        borderRadius: '12px',
+      },
+      progressStyle: {
+        background: `linear-gradient(90deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`
+      }
+    });
+  };
+
+  const showWarningToast = (message: string) => {
+    toast.warning(message, {
+      icon: '⚠️',
+      style: {
+        background: `linear-gradient(135deg, ${darkProTokens.warning}20, ${darkProTokens.warning}10)`,
+        color: darkProTokens.textPrimary,
+        border: `1px solid ${darkProTokens.warning}40`,
+        borderRadius: '12px',
+      },
+      progressStyle: {
+        background: `linear-gradient(90deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`
+      }
+    });
+  };
+
+  const showInfoToast = (message: string) => {
+    toast.info(message, {
+      icon: '💡',
+      style: {
+        background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
+        color: darkProTokens.textPrimary,
+        border: `1px solid ${darkProTokens.info}40`,
+        borderRadius: '12px',
+      },
+      progressStyle: {
+        background: `linear-gradient(90deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`
+      }
+    });
+  };
+
+  // Confirmación antes de salir con cambios no guardados
+  const confirmExit = async () => {
+    if (!hasFormChanges) {
+      router.push('/dashboard/admin/planes');
+      return;
+    }
+
+    const result = await Swal.fire({
+      ...getSwalConfig(),
+      title: '⚠️ Cambios sin guardar',
+      html: `
+        <div style="text-align: left; color: ${darkProTokens.textSecondary};">
+          <p>Tienes cambios sin guardar en el plan:</p>
+          <ul style="margin: 15px 0; padding-left: 20px;">
+            ${formData.name ? `<li>✓ Nombre: <strong>${formData.name}</strong></li>` : ''}
+            ${formData.description ? `<li>✓ Descripción configurada</li>` : ''}
+            ${formData.features.length > 0 ? `<li>✓ ${formData.features.length} características</li>` : ''}
+            ${formData.access_control_enabled ? `<li>✓ Control de acceso configurado</li>` : ''}
+          </ul>
+          <p>¿Qué deseas hacer?</p>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: '💾 Guardar y salir',
+      denyButtonText: '🚪 Salir sin guardar',
+      cancelButtonText: '✋ Cancelar',
+      reverseButtons: true
+    });
+
+    if (result.isConfirmed) {
+      showInfoToast('Guardando cambios antes de salir...');
+      await handleUpdate(true);
+    } else if (result.isDenied) {
+      showInfoToast('Saliendo sin guardar cambios');
+      router.push('/dashboard/admin/planes');
+    }
+  };
 
   // Obtener usuario actual
   useEffect(() => {
@@ -264,7 +384,7 @@ export default function EditarPlanPage() {
     getCurrentUser();
   }, []);
 
-  // Cargar plan existente
+  // Cargar plan existente y sus restricciones
   useEffect(() => {
     if (!planId) {
       setLoadingPlan(false);
@@ -274,9 +394,10 @@ export default function EditarPlanPage() {
     const loadPlan = async () => {
       try {
         setLoadingPlan(true);
-        setError(null);
         
         const supabase = createBrowserSupabaseClient();
+        
+        // Cargar plan
         const { data: plan, error: fetchError } = await supabase
           .from('membership_plans')
           .select('*')
@@ -290,58 +411,66 @@ export default function EditarPlanPage() {
         if (!plan) {
           throw new Error('Plan no encontrado en la base de datos');
         }
-        
-        // ✅ MAPEAR DATOS CORRECTAMENTE INCLUYENDO CAMPOS FALTANTES
+
+        // Cargar restricciones de acceso si existen
+        const { data: accessRestrictions } = await supabase
+          .from('plan_access_restrictions')
+          .select('*')
+          .eq('plan_id', planId)
+          .single();
+
+        // Preparar datos del formulario
         const planData: PlanFormData = {
           id: plan.id,
           name: plan.name || '',
           description: plan.description || '',
           is_active: Boolean(plan.is_active),
-          
-          // ✅ PRECIOS COMPLETOS
           inscription_price: Number(plan.inscription_price) || 0,
           visit_price: Number(plan.visit_price) || 0,
           weekly_price: Number(plan.weekly_price) || 0,
-          biweekly_price: Number(plan.biweekly_price) || 0,      // ✅ AGREGADO
+          biweekly_price: Number(plan.biweekly_price) || 0,
           monthly_price: Number(plan.monthly_price) || 0,
-          bimonthly_price: Number(plan.bimonthly_price) || 0,    // ✅ AGREGADO
+          bimonthly_price: Number(plan.bimonthly_price) || 0,
           quarterly_price: Number(plan.quarterly_price) || 0,
-          semester_price: Number(plan.semester_price) || 0,      // ✅ AGREGADO
+          semester_price: Number(plan.semester_price) || 0,
           annual_price: Number(plan.annual_price) || 0,
-          
-          // ✅ DURACIONES COMPLETAS
           weekly_duration: Number(plan.weekly_duration) || 7,
-          biweekly_duration: Number(plan.biweekly_duration) || 15,    // ✅ AGREGADO
+          biweekly_duration: Number(plan.biweekly_duration) || 15,
           monthly_duration: Number(plan.monthly_duration) || 30,
-          bimonthly_duration: Number(plan.bimonthly_duration) || 60,  // ✅ AGREGADO
+          bimonthly_duration: Number(plan.bimonthly_duration) || 60,
           quarterly_duration: Number(plan.quarterly_duration) || 90,
-          semester_duration: Number(plan.semester_duration) || 180,  // ✅ AGREGADO
+          semester_duration: Number(plan.semester_duration) || 180,
           annual_duration: Number(plan.annual_duration) || 365,
-          
-          // Vigencia
           validity_type: plan.validity_type || 'permanent',
           validity_start_date: plan.validity_start_date || null,
           validity_end_date: plan.validity_end_date || null,
-          
-          // Características
           features: Array.isArray(plan.features) ? plan.features : [],
           gym_access: Boolean(plan.gym_access),
           classes_included: Boolean(plan.classes_included),
           guest_passes: Number(plan.guest_passes) || 0,
-          
-          // Restricciones
-          has_time_restrictions: Boolean(plan.has_time_restrictions),
-          allowed_days: Array.isArray(plan.allowed_days) ? plan.allowed_days : [1, 2, 3, 4, 5, 6, 7],
-          time_slots: Array.isArray(plan.time_slots) && plan.time_slots.length > 0 
-            ? plan.time_slots 
-            : [{ start: '06:00', end: '22:00' }],
-          
-          // Metadatos
+          // Control de acceso simplificado
+          access_control_enabled: accessRestrictions ? accessRestrictions.access_control_enabled : false,
+          max_daily_entries: accessRestrictions ? accessRestrictions.max_daily_entries : 1,
+          daily_schedules: accessRestrictions && accessRestrictions.daily_schedules 
+            ? accessRestrictions.daily_schedules 
+            : {
+                monday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+                tuesday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+                wednesday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+                thursday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+                friday: { enabled: true, start_time: '06:00', end_time: '22:00' },
+                saturday: { enabled: true, start_time: '08:00', end_time: '20:00' },
+                sunday: { enabled: true, start_time: '09:00', end_time: '18:00' }
+              },
           created_at: plan.created_at || null,
           updated_at: plan.updated_at || null,
           created_by: plan.created_by || null,
           updated_by: plan.updated_by || null
         };
+
+        if (accessRestrictions?.id) {
+          setAccessRestrictionId(accessRestrictions.id);
+        }
         
         if (mountedRef.current) {
           setFormData(planData);
@@ -350,7 +479,7 @@ export default function EditarPlanPage() {
         
       } catch (err: any) {
         if (mountedRef.current) {
-          setError(err.message || 'Error cargando el plan');
+          showErrorToast(err.message || 'Error cargando el plan');
         }
       } finally {
         if (mountedRef.current) {
@@ -372,7 +501,7 @@ export default function EditarPlanPage() {
   // Calcular progreso del formulario
   useEffect(() => {
     let completedFields = 0;
-    const totalFields = 10;
+    const totalFields = 8;
 
     if (formData.name.trim()) completedFields++;
     if (formData.description.trim()) completedFields++;
@@ -380,9 +509,8 @@ export default function EditarPlanPage() {
     if (formData.inscription_price >= 0) completedFields++;
     if (formData.features.length > 0 || formData.gym_access || formData.classes_included) completedFields++;
     if (formData.validity_type) completedFields++;
-    if (!formData.has_time_restrictions || formData.allowed_days.length > 0) completedFields++;
-    if (!formData.has_time_restrictions || formData.time_slots.length > 0) completedFields++;
-    completedFields += 2; // is_active y id siempre existen
+    if (!formData.access_control_enabled || formData.max_daily_entries > 0) completedFields++;
+    completedFields++; // is_active siempre existe
 
     const progress = (completedFields / totalFields) * 100;
     setFormProgress(progress);
@@ -395,7 +523,7 @@ export default function EditarPlanPage() {
     };
   }, []);
 
-  // Manejadores de input
+  // Manejadores
   const handleInputChange = (field: keyof PlanFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
@@ -408,13 +536,30 @@ export default function EditarPlanPage() {
     }
   };
 
+  // Manejador para actualizar horario de un día específico
+  const updateDaySchedule = (day: keyof DailySchedules, field: keyof DaySchedule, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      daily_schedules: {
+        ...prev.daily_schedules,
+        [day]: {
+          ...prev.daily_schedules[day],
+          [field]: value
+        }
+      }
+    }));
+  };
+
   const addFeature = () => {
     if (newFeature.trim() && !formData.features.includes(newFeature.trim())) {
       setFormData(prev => ({
         ...prev,
         features: [...prev.features, newFeature.trim()]
       }));
+      showSuccessToast(`Característica "${newFeature.trim()}" agregada`);
       setNewFeature('');
+    } else if (formData.features.includes(newFeature.trim())) {
+      showWarningToast('Esta característica ya existe');
     }
   };
 
@@ -424,6 +569,9 @@ export default function EditarPlanPage() {
         ...prev,
         features: [...prev.features, feature]
       }));
+      showSuccessToast(`"${feature}" agregada al plan`);
+    } else {
+      showWarningToast('Esta característica ya está incluida');
     }
   };
 
@@ -432,33 +580,11 @@ export default function EditarPlanPage() {
       ...prev,
       features: prev.features.filter(f => f !== featureToRemove)
     }));
-  };
-
-  const addTimeSlot = () => {
-    setFormData(prev => ({
-      ...prev,
-      time_slots: [...prev.time_slots, { start: '06:00', end: '22:00' }]
-    }));
-  };
-
-  const removeTimeSlot = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      time_slots: prev.time_slots.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateTimeSlot = (index: number, field: 'start' | 'end', value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      time_slots: prev.time_slots.map((slot, i) => 
-        i === index ? { ...slot, [field]: value } : slot
-      )
-    }));
+    showWarningToast(`Característica eliminada`);
   };
 
   // Función de validación
-  const validateForm = (): boolean => {
+  const validateForm = async (): Promise<boolean> => {
     const newErrors: {[key: string]: string} = {};
 
     if (!formData.name.trim()) {
@@ -485,27 +611,63 @@ export default function EditarPlanPage() {
       }
     }
 
-    if (formData.has_time_restrictions && formData.allowed_days.length === 0) {
-      newErrors.schedule = 'Debe seleccionar al menos un día permitido';
+    if (formData.access_control_enabled) {
+      if (formData.max_daily_entries <= 0) {
+        newErrors.access_control = 'El límite diario de entradas debe ser mayor a 0';
+      }
+      
+      // Validar que al menos un día esté habilitado
+      const hasEnabledDay = Object.values(formData.daily_schedules).some(schedule => schedule.enabled);
+      if (!hasEnabledDay) {
+        newErrors.access_control = 'Debe habilitar al menos un día de acceso';
+      }
+      
+      // Validar horarios de días habilitados
+      Object.entries(formData.daily_schedules).forEach(([day, schedule]) => {
+        if (schedule.enabled && schedule.start_time >= schedule.end_time) {
+          newErrors[`schedule_${day}`] = `El horario de ${day} es inválido`;
+        }
+      });
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    if (Object.keys(newErrors).length > 0) {
+      await Swal.fire({
+        ...getSwalConfig(),
+        title: '⚠️ Verificaciones Pendientes',
+        html: `
+          <div style="text-align: left; color: ${darkProTokens.textSecondary};">
+            <p>Por favor corrige los siguientes problemas:</p>
+            <ul style="margin: 15px 0; padding-left: 20px;">
+              ${Object.values(newErrors).map(error => `<li style="margin: 8px 0;">• ${error}</li>`).join('')}
+            </ul>
+          </div>
+        `,
+        icon: 'warning',
+        confirmButtonText: '✏️ Corregir'
+      });
+      return false;
+    }
+
+    return true;
   };
 
   // Función principal de actualización
-  const handleUpdate = async () => {
+  const performUpdate = async (exitAfterSave = false) => {
     if (!mountedRef.current) return;
 
     try {
       setLoading(true);
-      setError(null);
-
-      // Validaciones
-      if (!validateForm()) {
-        setLoading(false);
-        return;
-      }
+      
+      const loadingToastId = toast.loading('🚀 Actualizando plan MUP Pro...', {
+        style: {
+          background: `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`,
+          color: darkProTokens.textPrimary,
+          border: `1px solid ${darkProTokens.primary}40`,
+          borderRadius: '12px',
+        }
+      });
 
       if (!currentUser) {
         throw new Error('No se pudo identificar al usuario actual');
@@ -513,13 +675,11 @@ export default function EditarPlanPage() {
 
       const supabase = createBrowserSupabaseClient();
       
-      // ✅ PREPARAR DATOS COMPLETOS SEGÚN ESQUEMA
+      // Preparar datos del plan
       const updateData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         is_active: formData.is_active,
-        
-        // ✅ PRECIOS COMPLETOS
         inscription_price: formData.inscription_price || 0,
         visit_price: formData.visit_price || 0,
         weekly_price: formData.weekly_price || 0,
@@ -529,8 +689,6 @@ export default function EditarPlanPage() {
         quarterly_price: formData.quarterly_price || 0,
         semester_price: formData.semester_price || 0,
         annual_price: formData.annual_price || 0,
-        
-        // ✅ DURACIONES COMPLETAS
         weekly_duration: formData.weekly_duration || 7,
         biweekly_duration: formData.biweekly_duration || 15,
         monthly_duration: formData.monthly_duration || 30,
@@ -538,29 +696,18 @@ export default function EditarPlanPage() {
         quarterly_duration: formData.quarterly_duration || 90,
         semester_duration: formData.semester_duration || 180,
         annual_duration: formData.annual_duration || 365,
-        
-        // Vigencia
         validity_type: formData.validity_type,
         validity_start_date: formData.validity_start_date,
         validity_end_date: formData.validity_end_date,
-        
-        // Características
         features: formData.features || [],
         gym_access: formData.gym_access,
         classes_included: formData.classes_included,
         guest_passes: formData.guest_passes || 0,
-        
-        // Restricciones
-        has_time_restrictions: formData.has_time_restrictions,
-        allowed_days: formData.allowed_days || [],
-        time_slots: formData.time_slots || [],
-        
-        // Metadatos
         updated_by: currentUser.id,
         updated_at: new Date().toISOString()
       };
 
-      // Actualizar en Supabase
+      // Actualizar plan en Supabase
       const { data, error: updateError } = await supabase
         .from('membership_plans')
         .update(updateData)
@@ -572,9 +719,64 @@ export default function EditarPlanPage() {
         throw new Error(updateError.message || 'Error al actualizar el plan');
       }
 
+      // Actualizar o crear restricciones de acceso
+      if (formData.access_control_enabled) {
+        const accessRestrictionData = {
+          plan_id: planId,
+          access_control_enabled: true,
+          max_daily_entries: formData.max_daily_entries,
+          daily_schedules: formData.daily_schedules,
+          updated_by: currentUser?.id,
+          updated_at: new Date().toISOString()
+        };
+
+        if (accessRestrictionId) {
+          // Actualizar existente
+          const { error: accessError } = await supabase
+            .from('plan_access_restrictions')
+            .update(accessRestrictionData)
+            .eq('id', accessRestrictionId);
+
+          if (accessError) {
+            console.error('⚠️ Error al actualizar restricciones de acceso:', accessError);
+            showWarningToast('Plan actualizado pero hubo un problema con las restricciones de acceso');
+          }
+        } else {
+          // Crear nueva
+          const { data: newRestriction, error: accessError } = await supabase
+            .from('plan_access_restrictions')
+            .insert({
+              ...accessRestrictionData,
+              created_by: currentUser?.id
+            })
+            .select()
+            .single();
+
+          if (accessError) {
+            console.error('⚠️ Error al crear restricciones de acceso:', accessError);
+            showWarningToast('Plan actualizado pero hubo un problema con las restricciones de acceso');
+          } else if (newRestriction) {
+            setAccessRestrictionId(newRestriction.id);
+          }
+        }
+      } else if (!formData.access_control_enabled && accessRestrictionId) {
+        // Eliminar restricciones si se deshabilitó el control
+        const { error: deleteError } = await supabase
+          .from('plan_access_restrictions')
+          .delete()
+          .eq('id', accessRestrictionId);
+
+        if (deleteError) {
+          console.error('⚠️ Error al eliminar restricciones de acceso:', deleteError);
+        } else {
+          setAccessRestrictionId(null);
+        }
+      }
+
       if (!mountedRef.current) return;
 
-      setSuccessMessage('Plan actualizado exitosamente');
+      toast.dismiss(loadingToastId);
+      showSuccessToast('¡Plan actualizado exitosamente!');
       
       // Actualizar datos originales
       const updatedPlanData: PlanFormData = {
@@ -584,17 +786,57 @@ export default function EditarPlanPage() {
       };
       
       setOriginalFormData(JSON.parse(JSON.stringify(updatedPlanData)));
-      
-      // Redirigir después de 3 segundos
-      setTimeout(() => {
-        if (mountedRef.current) {
-          router.push('/dashboard/admin/planes');
-        }
-      }, 3000);
+
+      // Mostrar confirmación final
+      const result = await Swal.fire({
+        ...getSwalConfig(),
+        title: '🎉 ¡Plan Actualizado!',
+        html: `
+          <div style="text-align: center; color: ${darkProTokens.textSecondary};">
+            <div style="background: ${darkProTokens.success}15; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid ${darkProTokens.success}40;">
+              <h3 style="color: ${darkProTokens.success}; margin: 0 0 10px 0;">✅ "${formData.name}"</h3>
+              <p style="margin: 0; color: ${darkProTokens.textSecondary};">Plan actualizado con éxito en MUP Pro</p>
+            </div>
+            <p>¿Qué deseas hacer ahora?</p>
+          </div>
+        `,
+        icon: 'success',
+        showCancelButton: true,
+        confirmButtonText: '📋 Ver todos los planes',
+        cancelButtonText: '📝 Seguir editando',
+        reverseButtons: true
+      });
+
+      if (result.isConfirmed || exitAfterSave) {
+        showInfoToast('Redirigiendo a lista de planes...');
+        setTimeout(() => {
+          if (mountedRef.current) {
+            router.push('/dashboard/admin/planes');
+          }
+        }, 1000);
+      }
 
     } catch (err: any) {
       if (!mountedRef.current) return;
-      setError(err.message || 'Error inesperado al actualizar el plan');
+      
+      const errorMessage = err.message || 'Error inesperado al actualizar el plan';
+      showErrorToast(errorMessage);
+      
+      await Swal.fire({
+        ...getSwalConfig(),
+        title: '❌ Error al Actualizar',
+        html: `
+          <div style="text-align: center; color: ${darkProTokens.textSecondary};">
+            <div style="background: ${darkProTokens.error}15; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid ${darkProTokens.error}40;">
+              <p style="margin: 0; color: ${darkProTokens.error};">${errorMessage}</p>
+            </div>
+            <p>Por favor, intenta nuevamente o contacta al soporte técnico.</p>
+          </div>
+        `,
+        icon: 'error',
+        confirmButtonText: '🔄 Intentar de nuevo'
+      });
+      
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -602,7 +844,74 @@ export default function EditarPlanPage() {
     }
   };
 
-  // 🎨 ESTILOS DARK PRO
+  // Manejador de actualización con validación
+  const handleUpdate = async (exitAfterSave = false) => {
+    const isValid = await validateForm();
+    if (isValid) {
+      await confirmUpdate(exitAfterSave);
+    }
+  };
+
+  // Confirmación antes de actualizar
+  const confirmUpdate = async (exitAfterSave = false) => {
+    const result = await Swal.fire({
+      ...getSwalConfig(),
+      title: '🚀 Confirmar Actualización',
+      html: `
+        <div style="text-align: left; color: ${darkProTokens.textSecondary}; max-height: 400px; overflow-y: auto;">
+          <div style="background: ${darkProTokens.primary}15; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid ${darkProTokens.primary}40;">
+            <h3 style="color: ${darkProTokens.primary}; margin: 0 0 10px 0;">📋 ${formData.name}</h3>
+            <p style="margin: 0; color: ${darkProTokens.textSecondary};">${formData.description}</p>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <div style="background: ${darkProTokens.success}15; padding: 10px; border-radius: 6px; border: 1px solid ${darkProTokens.success}30;">
+              <strong style="color: ${darkProTokens.success};">✨ Características:</strong>
+              <p style="margin: 5px 0 0 0; font-size: 14px;">${formData.features.length} incluidas</p>
+            </div>
+            <div style="background: ${darkProTokens.info}15; padding: 10px; border-radius: 6px; border: 1px solid ${darkProTokens.info}30;">
+              <strong style="color: ${darkProTokens.info};">💰 Modalidades:</strong>
+              <p style="margin: 5px 0 0 0; font-size: 14px;">
+                ${[
+                  formData.inscription_price,
+                  formData.visit_price,
+                  formData.weekly_price,
+                  formData.biweekly_price,
+                  formData.monthly_price,
+                  formData.bimonthly_price,
+                  formData.quarterly_price,
+                  formData.semester_price,
+                  formData.annual_price
+                ].filter(p => p > 0).length} configuradas
+              </p>
+            </div>
+          </div>
+
+          ${formData.access_control_enabled ? `
+            <div style="background: ${darkProTokens.warning}15; padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid ${darkProTokens.warning}30;">
+              <strong style="color: ${darkProTokens.warning};">🔒 Control de Acceso:</strong>
+              <p style="margin: 5px 0 0 0; font-size: 14px;">
+                Límite diario: ${formData.max_daily_entries} entradas<br>
+                Días habilitados: ${Object.values(formData.daily_schedules).filter(s => s.enabled).length} de 7
+              </p>
+            </div>
+          ` : ''}
+        </div>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: '🚀 Actualizar Plan',
+      cancelButtonText: '✏️ Seguir editando',
+      reverseButtons: true,
+      width: 600
+    });
+
+    if (result.isConfirmed) {
+      await performUpdate(exitAfterSave);
+    }
+  };
+
+  // Estilos Dark Pro
   const darkProFieldStyle = {
     '& .MuiOutlinedInput-root': {
       backgroundColor: darkProTokens.surfaceLevel1,
@@ -689,7 +998,7 @@ export default function EditarPlanPage() {
       color: darkProTokens.textPrimary
     }}>
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* 🎯 HEADER SIMPLIFICADO */}
+        {/* HEADER */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -707,7 +1016,7 @@ export default function EditarPlanPage() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <Tooltip title="Volver a Planes">
                   <IconButton
-                    onClick={() => router.push('/dashboard/admin/planes')}
+                    onClick={confirmExit}
                     sx={{ 
                       background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
                       color: darkProTokens.background,
@@ -727,7 +1036,7 @@ export default function EditarPlanPage() {
                     fontWeight: 700,
                     mb: 1
                   }}>
-                    Editar Plan MUP
+                    ✏️ Editar Plan MUP Pro
                   </Typography>
                   <Typography variant="h6" sx={{ 
                     color: darkProTokens.textSecondary,
@@ -778,38 +1087,7 @@ export default function EditarPlanPage() {
           </Paper>
         </motion.div>
 
-        {/* 🚨 MENSAJES */}
-        <Snackbar
-          open={!!error}
-          autoHideDuration={6000}
-          onClose={() => setError(null)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert severity="error" onClose={() => setError(null)} sx={{ 
-            bgcolor: `${darkProTokens.error}20`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.error}40`
-          }}>
-            {error}
-          </Alert>
-        </Snackbar>
-
-        <Snackbar
-          open={!!successMessage}
-          autoHideDuration={4000}
-          onClose={() => setSuccessMessage(null)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ 
-            bgcolor: `${darkProTokens.success}20`,
-            color: darkProTokens.textPrimary,
-            border: `1px solid ${darkProTokens.success}40`
-          }}>
-            {successMessage}
-          </Alert>
-        </Snackbar>
-
-        {/* 📋 ERRORES DE VALIDACIÓN */}
+        {/* MENSAJES DE VALIDACIÓN */}
         {Object.keys(errors).length > 0 && (
           <Alert severity="warning" sx={{ 
             mb: 4,
@@ -828,7 +1106,7 @@ export default function EditarPlanPage() {
           </Alert>
         )}
 
-        {/* 🎨 FORMULARIO - IGUAL QUE CREAR */}
+        {/* FORMULARIO */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1002,7 +1280,7 @@ export default function EditarPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 2. ESTRUCTURA DE PRECIOS - COMPLETA */}
+            {/* 2. ESTRUCTURA DE PRECIOS (sin cambios) */}
             <Accordion 
               expanded={expandedAccordion === 'pricing'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'pricing' ? false : 'pricing')}
@@ -1040,6 +1318,17 @@ export default function EditarPlanPage() {
                       Configure los precios para diferentes modalidades de membresía
                     </Typography>
                   </Box>
+                  {(formData.monthly_price > 0 || formData.visit_price > 0) && (
+                    <Chip 
+                      icon={<TrendingUpIcon />} 
+                      label={`$${Math.max(formData.monthly_price, formData.visit_price).toLocaleString('es-MX')}`}
+                      sx={{ 
+                        bgcolor: `${darkProTokens.info}20`,
+                        color: darkProTokens.info,
+                        border: `1px solid ${darkProTokens.info}40`
+                      }}
+                    />
+                  )}
                 </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 4 }}>
@@ -1050,7 +1339,13 @@ export default function EditarPlanPage() {
                       label="Precio de Inscripción"
                       type="number"
                       value={formData.inscription_price}
-                      onChange={(e) => handleInputChange('inscription_price', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        handleInputChange('inscription_price', value);
+                        if (value > 0) {
+                          showInfoToast(`Precio de inscripción: $${value.toLocaleString('es-MX')}`);
+                        }
+                      }}
                       sx={darkProFieldStyle}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
@@ -1064,7 +1359,13 @@ export default function EditarPlanPage() {
                       label="Precio por Visita"
                       type="number"
                       value={formData.visit_price}
-                      onChange={(e) => handleInputChange('visit_price', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        handleInputChange('visit_price', value);
+                        if (value > 0) {
+                          showInfoToast(`Precio por visita: $${value.toLocaleString('es-MX')}`);
+                        }
+                      }}
                       sx={darkProFieldStyle}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
@@ -1072,7 +1373,7 @@ export default function EditarPlanPage() {
                     />
                   </Grid>
                   
-                  {/* ✅ MODALIDADES COMPLETAS - IGUAL QUE CREAR */}
+                  {/* MODALIDADES DE MEMBRESÍA */}
                   <Grid size={12}>
                     <Typography variant="h6" sx={{ 
                       color: darkProTokens.textPrimary, 
@@ -1133,8 +1434,8 @@ export default function EditarPlanPage() {
                           color: '#45B7D1',
                           icon: '👑'
                         }
-                      ].map((period) => (
-                        <Grid key={period.key} size={{ xs: 12, sm: 6, md: 4 }}>
+                                      ].map((period) => (
+                        <Grid key={period.key} item xs={12} sm={6} md={4}>
                           <motion.div whileHover={{ scale: 1.02, y: -4 }}>
                             <Card sx={{
                               background: `linear-gradient(135deg, ${period.color}15, ${period.color}08)`,
@@ -1168,7 +1469,13 @@ export default function EditarPlanPage() {
                                   fullWidth
                                   type="number"
                                   value={formData[period.key as keyof PlanFormData] as number}
-                                  onChange={(e) => handleInputChange(period.key as keyof PlanFormData, parseFloat(e.target.value) || 0)}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    handleInputChange(period.key as keyof PlanFormData, value);
+                                    if (value > 0) {
+                                      showSuccessToast(`${period.label}: $${value.toLocaleString('es-MX')} configurado`);
+                                    }
+                                  }}
                                   sx={{
                                     ...darkProFieldStyle,
                                     '& .MuiOutlinedInput-root': {
@@ -1191,7 +1498,7 @@ export default function EditarPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 3. CARACTERÍSTICAS - IGUAL QUE CREAR */}
+            {/* 3. CARACTERÍSTICAS (sin cambios) */}
             <Accordion 
               expanded={expandedAccordion === 'features'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'features' ? false : 'features')}
@@ -1259,7 +1566,14 @@ export default function EditarPlanPage() {
                         control={
                           <Switch
                             checked={formData.gym_access}
-                            onChange={(e) => handleInputChange('gym_access', e.target.checked)}
+                            onChange={(e) => {
+                              handleInputChange('gym_access', e.target.checked);
+                              if (e.target.checked) {
+                                showSuccessToast('Acceso al gimnasio activado');
+                              } else {
+                                showWarningToast('Acceso al gimnasio desactivado');
+                              }
+                            }}
                             sx={{
                               '& .MuiSwitch-switchBase.Mui-checked': { 
                                 color: darkProTokens.success,
@@ -1294,7 +1608,14 @@ export default function EditarPlanPage() {
                         control={
                           <Switch
                             checked={formData.classes_included}
-                            onChange={(e) => handleInputChange('classes_included', e.target.checked)}
+                            onChange={(e) => {
+                              handleInputChange('classes_included', e.target.checked);
+                              if (e.target.checked) {
+                                showSuccessToast('Clases grupales incluidas');
+                              } else {
+                                showWarningToast('Clases grupales excluidas');
+                              }
+                            }}
                             sx={{
                               '& .MuiSwitch-switchBase.Mui-checked': { 
                                 color: darkProTokens.info,
@@ -1332,7 +1653,13 @@ export default function EditarPlanPage() {
                         fullWidth
                         type="number"
                         value={formData.guest_passes}
-                        onChange={(e) => handleInputChange('guest_passes', parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          handleInputChange('guest_passes', value);
+                          if (value > 0) {
+                            showInfoToast(`Configurados ${value} pases de invitado`);
+                          }
+                        }}
                         sx={darkProFieldStyle}
                         InputProps={{
                           startAdornment: (
@@ -1364,6 +1691,11 @@ export default function EditarPlanPage() {
                         value={newFeature}
                         onChange={(e) => setNewFeature(e.target.value)}
                         placeholder="Escriba una característica personalizada..."
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            addFeature();
+                          }
+                        }}
                         sx={darkProFieldStyle}
                       />
                       <Button
@@ -1407,8 +1739,10 @@ export default function EditarPlanPage() {
                               bgcolor: `${darkProTokens.primary}20`,
                               color: darkProTokens.primary,
                               border: `1px solid ${darkProTokens.primary}40`,
-                              cursor: 'pointer'
-                            }
+                              cursor: 'pointer',
+                              transform: 'translateY(-2px)'
+                            },
+                            transition: 'all 0.3s ease'
                           }}
                         />
                       ))}
@@ -1428,7 +1762,7 @@ export default function EditarPlanPage() {
                           fontWeight: 700,
                           textAlign: 'center'
                         }}>
-                          Características Incluidas:
+                          Características Incluidas ({formData.features.length}):
                         </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
                           {formData.features.map((feature, index) => (
@@ -1443,7 +1777,10 @@ export default function EditarPlanPage() {
                                 border: `1px solid ${darkProTokens.success}40`,
                                 '& .MuiChip-deleteIcon': { 
                                   color: darkProTokens.success,
-                                  '&:hover': { color: darkProTokens.error }
+                                  '&:hover': { 
+                                    color: darkProTokens.error,
+                                    transform: 'scale(1.2)'
+                                  }
                                 }
                               }}
                             />
@@ -1456,15 +1793,15 @@ export default function EditarPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 4. RESTRICCIONES DE HORARIO - IGUAL QUE CREAR */}
+            {/* 4. 🚀 CONTROL DE ACCESO SIMPLIFICADO - ACTUALIZADO */}
             <Accordion 
-              expanded={expandedAccordion === 'schedule'} 
-              onChange={() => setExpandedAccordion(expandedAccordion === 'schedule' ? false : 'schedule')}
+              expanded={expandedAccordion === 'access_control'} 
+              onChange={() => setExpandedAccordion(expandedAccordion === 'access_control' ? false : 'access_control')}
               sx={{
                 backgroundColor: 'transparent',
                 '&:before': { display: 'none' },
                 '& .MuiAccordionSummary-root': {
-                  background: expandedAccordion === 'schedule' 
+                  background: expandedAccordion === 'access_control' 
                     ? `${darkProTokens.warning}15`
                     : 'transparent',
                   borderBottom: `1px solid ${darkProTokens.grayDark}`,
@@ -1488,28 +1825,29 @@ export default function EditarPlanPage() {
                       color: darkProTokens.warning, 
                       fontWeight: 700
                     }}>
-                      Restricciones de Horario
+                      Control de Acceso
                     </Typography>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Configure días y horarios específicos de acceso
+                      Configure límites de entrada y horarios por día
                     </Typography>
                   </Box>
                   <Chip 
-                    label={formData.has_time_restrictions ? 'CON RESTRICCIONES' : 'ACCESO COMPLETO'}
+                    label={formData.access_control_enabled ? 'ACTIVO' : 'DESACTIVADO'}
                     sx={{
-                      bgcolor: formData.has_time_restrictions 
+                      bgcolor: formData.access_control_enabled 
                         ? `${darkProTokens.warning}20`
-                        : `${darkProTokens.success}20`,
-                                      color: formData.has_time_restrictions ? darkProTokens.warning : darkProTokens.success,
-                      border: formData.has_time_restrictions 
+                        : `${darkProTokens.grayDark}20`,
+                      color: formData.access_control_enabled ? darkProTokens.warning : darkProTokens.textDisabled,
+                      border: formData.access_control_enabled 
                         ? `1px solid ${darkProTokens.warning}40`
-                        : `1px solid ${darkProTokens.success}40`
+                        : `1px solid ${darkProTokens.grayDark}40`
                     }}
                   />
                 </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 4 }}>
                 <Grid container spacing={4}>
+                  {/* ACTIVAR CONTROL DE ACCESO */}
                   <Grid size={12}>
                     <Card sx={{
                       bgcolor: `${darkProTokens.warning}10`,
@@ -1520,8 +1858,15 @@ export default function EditarPlanPage() {
                       <FormControlLabel
                         control={
                           <Switch
-                            checked={formData.has_time_restrictions}
-                            onChange={(e) => handleInputChange('has_time_restrictions', e.target.checked)}
+                            checked={formData.access_control_enabled}
+                            onChange={(e) => {
+                              handleInputChange('access_control_enabled', e.target.checked);
+                              if (e.target.checked) {
+                                showSuccessToast('🔒 Control de acceso activado');
+                              } else {
+                                showWarningToast('Control de acceso desactivado');
+                              }
+                            }}
                             sx={{
                               '& .MuiSwitch-switchBase.Mui-checked': { 
                                 color: darkProTokens.warning,
@@ -1533,18 +1878,18 @@ export default function EditarPlanPage() {
                         label={
                           <Box>
                             <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                              🕐 Aplicar Restricciones de Horario
+                              🔒 Activar Control de Acceso
                             </Typography>
                             <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Limite el acceso a días y horarios específicos
+                              Aplique límites de entrada y configure horarios específicos por día
                             </Typography>
                           </Box>
                         }
                       />
                     </Card>
                   </Grid>
-                  
-                  {formData.has_time_restrictions && (
+
+                  {formData.access_control_enabled && (
                     <AnimatePresence>
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
@@ -1553,128 +1898,149 @@ export default function EditarPlanPage() {
                         style={{ width: '100%' }}
                       >
                         <Grid container spacing={4}>
+                          {/* LÍMITE DE ENTRADAS POR DÍA */}
                           <Grid size={12}>
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              mb: 2, 
-                              fontWeight: 700
+                            <Card sx={{
+                              background: `${darkProTokens.error}10`,
+                              border: `2px solid ${darkProTokens.error}30`,
+                              borderRadius: 3,
+                              p: 3,
+                              textAlign: 'center',
+                              mb: 3
                             }}>
-                              Días Permitidos
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                              {DAY_NAMES.map((day) => (
-                                <FormControlLabel
-                                  key={day.value}
-                                  control={
-                                    <Checkbox
-                                      checked={formData.allowed_days.includes(day.value)}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          handleInputChange('allowed_days', [...formData.allowed_days, day.value]);
-                                        } else {
-                                          handleInputChange('allowed_days', formData.allowed_days.filter(d => d !== day.value));
-                                        }
-                                      }}
-                                      sx={{ 
-                                        color: darkProTokens.warning,
-                                        '&.Mui-checked': { color: darkProTokens.warning }
-                                      }}
-                                    />
-                                  }
-                                  label={
-                                    <Typography sx={{ color: darkProTokens.textPrimary }}>
-                                      {day.label}
-                                    </Typography>
-                                  }
-                                  sx={{
-                                    bgcolor: formData.allowed_days.includes(day.value) 
-                                      ? `${darkProTokens.warning}15`
-                                      : 'transparent',
-                                    border: `1px solid ${formData.allowed_days.includes(day.value) 
-                                      ? darkProTokens.warning + '40' 
-                                      : darkProTokens.grayDark}`,
-                                    borderRadius: 2,
-                                    p: 1,
-                                    minWidth: 120
-                                  }}
-                                />
-                              ))}
-                            </Box>
-                          </Grid>
-                          
-                          <Grid size={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                              <Typography variant="h6" sx={{ 
-                                color: darkProTokens.textPrimary, 
+                              <LimitIcon sx={{ color: darkProTokens.error, fontSize: 48, mb: 2 }} />
+                              <Typography variant="h5" sx={{ 
+                                color: darkProTokens.error, 
+                                mb: 2, 
                                 fontWeight: 700
                               }}>
-                                Horarios de Acceso
+                                Límite de Entradas por Día
                               </Typography>
-                              <Button
-                                onClick={addTimeSlot}
-                                variant="outlined"
-                                startIcon={<AddIcon />}
-                                sx={{
-                                  borderColor: darkProTokens.warning,
-                                  color: darkProTokens.warning,
-                                  '&:hover': {
-                                    borderColor: darkProTokens.warningHover,
-                                    bgcolor: `${darkProTokens.warning}10`
-                                  }
-                                }}
-                              >
-                                Agregar Horario
-                              </Button>
-                            </Box>
+                              <Box sx={{ maxWidth: 300, mx: 'auto' }}>
+                                <TextField
+                                  fullWidth
+                                  type="number"
+                                  value={formData.max_daily_entries}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 1;
+                                    handleInputChange('max_daily_entries', value);
+                                    showInfoToast(`Límite diario: ${value} ${value === 1 ? 'entrada' : 'entradas'}`);
+                                  }}
+                                  sx={darkProFieldStyle}
+                                  InputProps={{
+                                    endAdornment: <InputAdornment position="end">entradas/día</InputAdornment>,
+                                    inputProps: { min: 1, max: 20 }
+                                  }}
+                                />
+                              </Box>
+                            </Card>
+                          </Grid>
+
+                          {/* HORARIOS POR DÍA */}
+                          <Grid size={12}>
+                            <Typography variant="h5" sx={{ 
+                              color: darkProTokens.textPrimary, 
+                              mb: 3, 
+                              fontWeight: 700,
+                              textAlign: 'center'
+                            }}>
+                              📅 Configuración de Horarios por Día
+                            </Typography>
                             
-                            <Stack spacing={2}>
-                              {formData.time_slots.map((slot, index) => (
-                                <Card key={index} sx={{
-                                  bgcolor: `${darkProTokens.warning}10`,
-                                  border: `1px solid ${darkProTokens.warning}30`,
-                                  p: 3
-                                }}>
-                                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                    <Typography sx={{ color: darkProTokens.warning, fontWeight: 700, minWidth: 80 }}>
-                                      Horario {index + 1}:
-                                    </Typography>
-                                    <TextField
-                                      label="Inicio"
-                                      type="time"
-                                      value={slot.start}
-                                      onChange={(e) => updateTimeSlot(index, 'start', e.target.value)}
-                                      InputLabelProps={{ shrink: true }}
-                                      sx={{ ...darkProFieldStyle, flex: 1 }}
-                                    />
-                                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                                      →
-                                    </Typography>
-                                    <TextField
-                                      label="Fin"
-                                      type="time"
-                                      value={slot.end}
-                                      onChange={(e) => updateTimeSlot(index, 'end', e.target.value)}
-                                      InputLabelProps={{ shrink: true }}
-                                      sx={{ ...darkProFieldStyle, flex: 1 }}
-                                    />
-                                    {formData.time_slots.length > 1 && (
-                                      <IconButton
-                                        onClick={() => removeTimeSlot(index)}
-                                        sx={{ 
-                                          color: darkProTokens.error,
-                                          '&:hover': {
-                                            bgcolor: `${darkProTokens.error}15`,
-                                            transform: 'scale(1.1)'
-                                          }
-                                        }}
-                                      >
-                                        <DeleteIcon />
-                                      </IconButton>
-                                    )}
-                                  </Box>
-                                </Card>
+                            <Grid container spacing={2}>
+                              {WEEKDAY_CONFIG.map((day) => (
+                                <Grid key={day.key} size={{ xs: 12, md: 6, lg: 4 }}>
+                                  <motion.div whileHover={{ scale: 1.02 }}>
+                                    <Card sx={{
+                                      background: formData.daily_schedules[day.key as keyof DailySchedules].enabled
+                                        ? `${darkProTokens.success}10`
+                                        : `${darkProTokens.grayDark}20`,
+                                      border: formData.daily_schedules[day.key as keyof DailySchedules].enabled
+                                        ? `2px solid ${darkProTokens.success}30`
+                                        : `2px solid ${darkProTokens.grayDark}40`,
+                                      borderRadius: 3,
+                                      p: 3,
+                                      transition: 'all 0.3s ease'
+                                    }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                          <Avatar sx={{
+                                            bgcolor: formData.daily_schedules[day.key as keyof DailySchedules].enabled
+                                              ? darkProTokens.success
+                                              : darkProTokens.grayDark,
+                                            color: darkProTokens.textPrimary,
+                                            fontWeight: 700,
+                                            width: 36,
+                                            height: 36
+                                          }}>
+                                            {day.short}
+                                          </Avatar>
+                                          <Typography variant="h6" sx={{ 
+                                            color: darkProTokens.textPrimary,
+                                            fontWeight: 700
+                                          }}>
+                                            {day.label}
+                                          </Typography>
+                                        </Box>
+                                        <Switch
+                                          checked={formData.daily_schedules[day.key as keyof DailySchedules].enabled}
+                                          onChange={(e) => {
+                                            updateDaySchedule(day.key as keyof DailySchedules, 'enabled', e.target.checked);
+                                            if (e.target.checked) {
+                                              showSuccessToast(`${day.label} habilitado`);
+                                            } else {
+                                              showWarningToast(`${day.label} deshabilitado`);
+                                            }
+                                          }}
+                                          sx={{
+                                            '& .MuiSwitch-switchBase.Mui-checked': { 
+                                              color: darkProTokens.success,
+                                              '& + .MuiSwitch-track': { backgroundColor: darkProTokens.success }
+                                            }
+                                          }}
+                                        />
+                                      </Box>
+                                      
+                                      {formData.daily_schedules[day.key as keyof DailySchedules].enabled && (
+                                        <AnimatePresence>
+                                          <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                          >
+                                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                              <TextField
+                                                label="Desde"
+                                                type="time"
+                                                value={formData.daily_schedules[day.key as keyof DailySchedules].start_time}
+                                                onChange={(e) => updateDaySchedule(day.key as keyof DailySchedules, 'start_time', e.target.value)}
+                                                InputLabelProps={{ shrink: true }}
+                                                sx={{ ...darkProFieldStyle, flex: 1 }}
+                                              />
+                                              <Typography sx={{ color: darkProTokens.textPrimary }}>→</Typography>
+                                              <TextField
+                                                label="Hasta"
+                                                type="time"
+                                                value={formData.daily_schedules[day.key as keyof DailySchedules].end_time}
+                                                onChange={(e) => {
+                                                  updateDaySchedule(day.key as keyof DailySchedules, 'end_time', e.target.value);
+                                                  const schedule = formData.daily_schedules[day.key as keyof DailySchedules];
+                                                  if (e.target.value <= schedule.start_time) {
+                                                    showWarningToast('La hora de fin debe ser posterior al inicio');
+                                                  }
+                                                }}
+                                                InputLabelProps={{ shrink: true }}
+                                                sx={{ ...darkProFieldStyle, flex: 1 }}
+                                              />
+                                            </Box>
+                                          </motion.div>
+                                        </AnimatePresence>
+                                      )}
+                                    </Card>
+                                  </motion.div>
+                                </Grid>
                               ))}
-                            </Stack>
+                            </Grid>
                           </Grid>
                         </Grid>
                       </motion.div>
@@ -1721,21 +2087,12 @@ export default function EditarPlanPage() {
                       Revise los cambios antes de actualizar el plan
                     </Typography>
                   </Box>
-                  <Chip 
-                    icon={<InfoIcon />} 
-                    label="Listo para Actualizar"
-                    sx={{ 
-                      bgcolor: `${darkProTokens.primary}20`,
-                      color: darkProTokens.primary,
-                      border: `1px solid ${darkProTokens.primary}40`
-                    }}
-                  />
                 </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 4 }}>
                 <Grid container spacing={4}>
                   <Grid size={{ xs: 12, lg: 8 }}>
-                    {/* VISTA PREVIA DEL PLAN */}
+                    {/* Vista previa del plan */}
                     <Card sx={{
                       background: `linear-gradient(135deg, ${darkProTokens.primary}15, ${darkProTokens.primary}08)`,
                       border: `2px solid ${darkProTokens.primary}40`,
@@ -1751,7 +2108,7 @@ export default function EditarPlanPage() {
                               fontWeight: 700,
                               mb: 1
                             }}>
-                              {formData.name || 'Nombre del Plan'}
+                              🚀 {formData.name || 'Nombre del Plan'}
                             </Typography>
                             <Typography variant="h6" sx={{ 
                               color: darkProTokens.textSecondary, 
@@ -1760,77 +2117,89 @@ export default function EditarPlanPage() {
                               {formData.description || 'Descripción del plan...'}
                             </Typography>
                           </Box>
-                          <Chip 
-                            label={formData.is_active ? 'ACTIVO' : 'INACTIVO'} 
-                            sx={{
-                              bgcolor: formData.is_active ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
-                              color: formData.is_active ? darkProTokens.success : darkProTokens.error,
-                              border: `1px solid ${formData.is_active ? darkProTokens.success : darkProTokens.error}40`,
-                              fontWeight: 700
-                            }}
-                          />
+                          <Stack spacing={1}>
+                            <Chip 
+                              label={formData.is_active ? 'ACTIVO' : 'INACTIVO'} 
+                              sx={{
+                                bgcolor: formData.is_active ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
+                                color: formData.is_active ? darkProTokens.success : darkProTokens.error,
+                                border: `1px solid ${formData.is_active ? darkProTokens.success : darkProTokens.error}40`,
+                                fontWeight: 700
+                              }}
+                            />
+                            {formData.access_control_enabled && (
+                              <Chip 
+                                icon={<AccessTimeIcon />}
+                                label="CONTROL ACTIVO" 
+                                sx={{
+                                  bgcolor: `${darkProTokens.warning}20`,
+                                  color: darkProTokens.warning,
+                                  border: `1px solid ${darkProTokens.warning}40`,
+                                  fontWeight: 700
+                                }}
+                              />
+                            )}
+                          </Stack>
                         </Box>
                         
                         <Divider sx={{ borderColor: `${darkProTokens.primary}40`, my: 3 }} />
                         
                         {/* PRECIOS */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="h5" sx={{ 
-                            color: darkProTokens.primary, 
-                            mb: 2, 
-                            fontWeight: 700
-                          }}>
-                            💰 Estructura de Precios
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {[
-                              { label: 'Inscripción', value: formData.inscription_price, color: darkProTokens.warning },
-                              { label: 'Visita', value: formData.visit_price, color: darkProTokens.info },
-                              { label: 'Semanal', value: formData.weekly_price, color: darkProTokens.success },
-                              { label: 'Quincenal', value: formData.biweekly_price, color: darkProTokens.info },
-                              { label: 'Mensual', value: formData.monthly_price, color: darkProTokens.primary },
-                              { label: 'Bimestral', value: formData.bimonthly_price, color: darkProTokens.warning },
-                              { label: 'Trimestral', value: formData.quarterly_price, color: '#FF6B35' },
-                              { label: 'Semestral', value: formData.semester_price, color: '#9C27B0' },
-                              { label: 'Anual', value: formData.annual_price, color: '#45B7D1' }
-                            ].filter(price => price.value > 0).map((price) => (
-                              <Grid key={price.label} size={{ xs: 6, sm: 4, md: 3 }}>
-                                <Card sx={{
-                                  bgcolor: `${price.color}15`,
-                                  border: `1px solid ${price.color}30`,
-                                  borderRadius: 2,
-                                  p: 2,
-                                  textAlign: 'center'
-                                }}>
-                                  <Typography variant="caption" sx={{ 
-                                    color: price.color, 
-                                    fontWeight: 700
-                                  }}>
-                                    {price.label}
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.textPrimary, 
-                                    fontWeight: 700
-                                  }}>
-                                    ${price.value.toLocaleString('es-MX')}
-                                  </Typography>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </Box>
-                        
+                        <Typography variant="h5" sx={{ 
+                          color: darkProTokens.textPrimary, 
+                          mb: 2, 
+                          fontWeight: 700
+                        }}>
+                          💰 Estructura de Precios
+                        </Typography>
+                        <Grid container spacing={2} sx={{ mb: 4 }}>
+                          {formData.inscription_price > 0 && (
+                            <Grid size={{ xs: 6, md: 3 }}>
+                              <Card sx={{
+                                bgcolor: darkProTokens.surfaceLevel3,
+                                p: 2,
+                                textAlign: 'center',
+                                border: `1px solid ${darkProTokens.primary}40`
+                              }}>
+                                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                  Inscripción
+                                </Typography>
+                                <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                                  ${formData.inscription_price.toLocaleString('es-MX')}
+                                </Typography>
+                              </Card>
+                            </Grid>
+                          )}
+                          {formData.monthly_price > 0 && (
+                            <Grid size={{ xs: 6, md: 3 }}>
+                              <Card sx={{
+                                bgcolor: darkProTokens.surfaceLevel3,
+                                p: 2,
+                                textAlign: 'center',
+                                border: `1px solid ${darkProTokens.primary}40`
+                              }}>
+                                <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                  Mensual
+                                </Typography>
+                                <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
+                                  ${formData.monthly_price.toLocaleString('es-MX')}
+                                </Typography>
+                              </Card>
+                            </Grid>
+                          )}
+                        </Grid>
+
                         {/* CARACTERÍSTICAS */}
                         {formData.features.length > 0 && (
-                          <Box sx={{ mb: 3 }}>
+                          <>
                             <Typography variant="h5" sx={{ 
-                              color: darkProTokens.success, 
+                              color: darkProTokens.textPrimary, 
                               mb: 2, 
                               fontWeight: 700
                             }}>
                               ✨ Características Incluidas
                             </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 4 }}>
                               {formData.features.map((feature, index) => (
                                 <Chip
                                   key={index}
@@ -1839,155 +2208,44 @@ export default function EditarPlanPage() {
                                   sx={{
                                     bgcolor: `${darkProTokens.success}20`,
                                     color: darkProTokens.success,
-                                    border: `1px solid ${darkProTokens.success}40`,
-                                    '& .MuiChip-icon': { color: darkProTokens.success }
+                                    border: `1px solid ${darkProTokens.success}40`
                                   }}
                                 />
                               ))}
                             </Box>
-                          </Box>
+                          </>
                         )}
-                        
-                        {/* BENEFICIOS */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="h5" sx={{ 
-                            color: darkProTokens.info, 
-                            mb: 2, 
-                            fontWeight: 700
-                          }}>
-                            🎯 Beneficios Principales
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {[
-                              { 
-                                label: 'Acceso al Gimnasio', 
-                                value: formData.gym_access,
-                                icon: <FitnessCenterIcon />
-                              },
-                              { 
-                                label: 'Clases Grupales', 
-                                value: formData.classes_included,
-                                icon: <GroupIcon />
-                              },
-                              { 
-                                label: `${formData.guest_passes} Pases de Invitado`, 
-                                value: formData.guest_passes > 0,
-                                icon: <GroupIcon />
-                              }
-                            ].filter(benefit => benefit.value).map((benefit, index) => (
-                              <Grid key={index} size={{ xs: 12, sm: 6 }}>
-                                <Box sx={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: 2,
-                                  p: 2,
-                                  bgcolor: `${darkProTokens.info}10`,
-                                  border: `1px solid ${darkProTokens.info}30`,
-                                  borderRadius: 2
-                                }}>
-                                  <Avatar sx={{ 
-                                    bgcolor: darkProTokens.info,
-                                    color: darkProTokens.textPrimary,
-                                    width: 32,
-                                    height: 32
-                                  }}>
-                                    {benefit.icon}
-                                  </Avatar>
-                                  <Typography sx={{ 
-                                    color: darkProTokens.textPrimary, 
-                                    fontWeight: 600
-                                  }}>
-                                    {benefit.label}
-                                  </Typography>
-                                </Box>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </Box>
-                        
-                        {/* RESTRICCIONES */}
-                        {formData.has_time_restrictions && (
-                          <Box>
+
+                        {/* CONTROL DE ACCESO */}
+                        {formData.access_control_enabled && (
+                          <>
                             <Typography variant="h5" sx={{ 
-                              color: darkProTokens.warning, 
+                              color: darkProTokens.textPrimary, 
                               mb: 2, 
                               fontWeight: 700
                             }}>
-                              🕐 Restricciones de Acceso
+                              🔒 Control de Acceso
                             </Typography>
-                            <Grid container spacing={2}>
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Typography variant="body1" sx={{ 
-                                  color: darkProTokens.warning, 
-                                  mb: 1, 
-                                  fontWeight: 600
-                                }}>
-                                  Días Permitidos:
-                                </Typography>
-                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                  {DAY_NAMES.filter(day => formData.allowed_days.includes(day.value)).map((day) => (
-                                    <Chip
-                                      key={day.value}
-                                      label={day.short}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: darkProTokens.warning,
-                                        color: darkProTokens.background,
-                                        fontWeight: 700
-                                      }}
-                                    />
-                                  ))}
-                                </Box>
-                              </Grid>
-                              
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Typography variant="body1" sx={{ 
-                                  color: darkProTokens.warning, 
-                                  mb: 1, 
-                                  fontWeight: 600
-                                }}>
-                                  Horarios:
-                                </Typography>
-                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                  {formData.time_slots.map((slot, index) => (
-                                    <Chip
-                                      key={index}
-                                      label={`${slot.start} - ${slot.end}`}
-                                      icon={<AccessTimeIcon />}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: `${darkProTokens.warning}20`,
-                                        color: darkProTokens.warning,
-                                        border: `1px solid ${darkProTokens.warning}40`,
-                                        '& .MuiChip-icon': { color: darkProTokens.warning }
-                                      }}
-                                    />
-                                  ))}
-                                </Box>
-                              </Grid>
-                            </Grid>
-                          </Box>
+                            <Box sx={{ 
+                              p: 2, 
+                              bgcolor: `${darkProTokens.warning}10`,
+                              border: `1px solid ${darkProTokens.warning}30`,
+                              borderRadius: 2,
+                              mb: 3
+                            }}>
+                              <Typography variant="body1" sx={{ 
+                                color: darkProTokens.warning, 
+                                fontWeight: 700,
+                                mb: 1
+                              }}>
+                                Límite diario: {formData.max_daily_entries} {formData.max_daily_entries === 1 ? 'entrada' : 'entradas'}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                Días habilitados: {Object.values(formData.daily_schedules).filter(s => s.enabled).length} de 7
+                              </Typography>
+                            </Box>
+                          </>
                         )}
-                        
-                        {/* VIGENCIA */}
-                        <Box sx={{ 
-                          mt: 3, 
-                          p: 2, 
-                          bgcolor: `${darkProTokens.info}10`, 
-                          borderRadius: 2, 
-                          border: `1px solid ${darkProTokens.info}30`,
-                          textAlign: 'center'
-                        }}>
-                          <Typography variant="h6" sx={{ 
-                            color: darkProTokens.info, 
-                            fontWeight: 700
-                          }}>
-                            📅 Vigencia: {formData.validity_type === 'permanent' 
-                              ? 'Permanente' 
-                              : `${formData.validity_start_date} → ${formData.validity_end_date}`
-                            }
-                          </Typography>
-                        </Box>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -2025,6 +2283,7 @@ export default function EditarPlanPage() {
                           { label: 'Información básica', check: !!formData.name.trim() && !!formData.description.trim() },
                           { label: 'Precios configurados', check: formData.monthly_price > 0 || formData.visit_price > 0 },
                           { label: 'Características definidas', check: formData.features.length > 0 || formData.gym_access || formData.classes_included },
+                          { label: 'Control de acceso', check: !formData.access_control_enabled || (formData.max_daily_entries > 0 && Object.values(formData.daily_schedules).some(s => s.enabled)) },
                           { label: 'Configuración válida', check: Object.keys(errors).length === 0 }
                         ].map((validation, index) => (
                           <Box key={index} sx={{ 
@@ -2095,7 +2354,7 @@ export default function EditarPlanPage() {
                             <Typography variant="caption" sx={{ 
                               color: darkProTokens.textSecondary
                             }}>
-                              12 de junio de 2025 • 00:11 UTC
+                              4 de septiembre de 2025 • 04:22 UTC
                             </Typography>
                           </Box>
                         </Box>
@@ -2132,153 +2391,93 @@ export default function EditarPlanPage() {
                       
                       {/* BOTONES DE ACCIÓN */}
                       <Stack spacing={2}>
-                        <Button
-                          variant="contained"
-                          size="large"
-                          fullWidth
-                          onClick={handleUpdate}
-                          disabled={loading || !hasFormChanges || !formData.name.trim() || !formData.description.trim()}
-                          startIcon={loading ? <CircularProgress size={20} /> : <UpdateIcon />}
-                          sx={{
-                            background: hasFormChanges 
-                              ? `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`
-                              : `linear-gradient(135deg, ${darkProTokens.grayMedium}, ${darkProTokens.grayDark})`,
-                            color: hasFormChanges ? darkProTokens.background : darkProTokens.textDisabled,
-                            fontWeight: 700,
-                            py: 1.5,
-                            borderRadius: 2,
-                            '&:hover': hasFormChanges ? { 
-                              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-                              transform: 'translateY(-2px)',
-                              boxShadow: `0 6px 20px ${darkProTokens.primary}40`
-                            } : {},
-                            '&:disabled': {
-                              bgcolor: darkProTokens.grayMedium,
-                              color: darkProTokens.textDisabled
-                            },
-                            transition: 'all 0.3s ease'
-                          }}
-                        >
-                          {loading 
-                            ? 'Actualizando Plan...' 
-                            : hasFormChanges 
-                              ? '💾 Actualizar Plan MUP' 
-                              : '✅ Sin cambios'
-                          }
-                        </Button>
-                        
-                        <Button
-                          variant="outlined"
-                          size="large"
-                          fullWidth
-                          onClick={() => router.push('/dashboard/admin/planes')}
-                          disabled={loading}
-                          startIcon={<ArrowBackIcon />}
-                          sx={{
-                            borderColor: darkProTokens.grayDark,
-                            color: darkProTokens.textSecondary,
-                            '&:hover': {
-                              borderColor: darkProTokens.textSecondary,
-                              bgcolor: darkProTokens.hoverOverlay,
-                              color: darkProTokens.textPrimary
-                            },
-                            '&:disabled': {
-                              borderColor: darkProTokens.grayDark,
-                              color: darkProTokens.textDisabled
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Button
+                            variant="contained"
+                            size="large"
+                            fullWidth
+                            onClick={() => handleUpdate(false)}
+                            disabled={loading || !hasFormChanges || !formData.name.trim() || !formData.description.trim()}
+                            startIcon={loading ? <CircularProgress size={20} /> : <UpdateIcon />}
+                            sx={{
+                              background: hasFormChanges 
+                                ? `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`
+                                : `linear-gradient(135deg, ${darkProTokens.grayMedium}, ${darkProTokens.grayDark})`,
+                              color: hasFormChanges ? darkProTokens.background : darkProTokens.textDisabled,
+                              fontWeight: 700,
+                              py: 1.5,
+                              borderRadius: 2,
+                              '&:hover': hasFormChanges ? { 
+                                background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+                                transform: 'translateY(-2px)',
+                                boxShadow: `0 6px 20px ${darkProTokens.primary}40`
+                              } : {},
+                              '&:disabled': {
+                                bgcolor: darkProTokens.grayMedium,
+                                color: darkProTokens.textDisabled
+                              },
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            {loading 
+                              ? 'Actualizando Plan...' 
+                              : hasFormChanges 
+                                ? '💾 Actualizar Plan MUP' 
+                                : '✅ Sin cambios'
                             }
-                          }}
-                        >
-                          ← Volver a Planes
-                        </Button>
+                          </Button>
+                        </motion.div>
+                        
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Button
+                            variant="outlined"
+                            size="large"
+                            fullWidth
+                            onClick={confirmExit}
+                            disabled={loading}
+                            startIcon={<ArrowBackIcon />}
+                            sx={{
+                              borderColor: darkProTokens.grayDark,
+                              color: darkProTokens.textSecondary,
+                              '&:hover': {
+                                borderColor: darkProTokens.textSecondary,
+                                bgcolor: darkProTokens.hoverOverlay,
+                                color: darkProTokens.textPrimary,
+                                transform: 'translateX(-2px)'
+                              },
+                              '&:disabled': {
+                                borderColor: darkProTokens.grayDark,
+                                color: darkProTokens.textDisabled
+                              },
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            ← Volver a Planes
+                          </Button>
+                        </motion.div>
                       </Stack>
                       
-                      {/* ESTADÍSTICAS RÁPIDAS */}
-                      <Box sx={{ 
-                        mt: 3, 
-                        p: 2, 
-                        bgcolor: darkProTokens.surfaceLevel1,
-                        borderRadius: 2,
-                        border: `1px solid ${darkProTokens.grayDark}`
-                      }}>
-                        <Typography variant="body2" sx={{ 
-                          color: darkProTokens.textSecondary, 
-                          mb: 1,
-                          textAlign: 'center'
-                        }}>
-                          Resumen de Configuración:
-                        </Typography>
-                        <Grid container spacing={1}>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h6" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                                {formData.features.length}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Características
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
-                                {[
-                                  formData.inscription_price, 
-                                  formData.visit_price, 
-                                  formData.weekly_price, 
-                                  formData.biweekly_price,
-                                  formData.monthly_price, 
-                                  formData.bimonthly_price,
-                                  formData.quarterly_price, 
-                                  formData.semester_price,
-                                  formData.annual_price
-                                ].filter(p => p > 0).length}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Modalidades
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
-                                {formData.has_time_restrictions ? formData.allowed_days.length : 7}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Días Activos
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid size={6}>
-                            <Box sx={{ textAlign: 'center' }}>
-                              <Typography variant="h6" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                                {formData.guest_passes}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Pases VIP
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        </Grid>
-                      </Box>
-
-                      {/* INDICADOR DE CAMBIOS */}
+                      {/* INDICADOR DE CAMBIOS NO GUARDADOS */}
                       {hasFormChanges && (
-                        <Alert 
-                          severity="info" 
-                          sx={{ 
-                            mt: 3,
-                            bgcolor: `${darkProTokens.info}20`,
-                            color: darkProTokens.textPrimary,
-                            border: `1px solid ${darkProTokens.info}40`
-                          }}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          style={{ marginTop: 16 }}
                         >
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ⚠️ Tienes cambios sin guardar
-                          </Typography>
-                          <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                            Recuerda actualizar para conservar los cambios
-                          </Typography>
-                        </Alert>
+                          <Alert 
+                            severity="warning" 
+                            sx={{ 
+                              bgcolor: `${darkProTokens.warning}15`,
+                              color: darkProTokens.textPrimary,
+                              border: `1px solid ${darkProTokens.warning}40`,
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                              ⚠️ Tienes cambios sin guardar
+                            </Typography>
+                          </Alert>
+                        </motion.div>
                       )}
                     </Card>
                   </Grid>
@@ -2287,6 +2486,103 @@ export default function EditarPlanPage() {
             </Accordion>
           </Paper>
         </motion.div>
+
+        {/* ESTILOS CSS PERSONALIZADOS PARA SWEETALERT2 */}
+        <style jsx global>{`
+          .dark-pro-popup {
+            background: ${darkProTokens.surfaceLevel2} !important;
+            border: 2px solid ${darkProTokens.grayDark} !important;
+            border-radius: 16px !important;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5) !important;
+          }
+          
+          .dark-pro-title {
+            color: ${darkProTokens.textPrimary} !important;
+            font-weight: 700 !important;
+            font-size: 1.5rem !important;
+          }
+          
+          .dark-pro-content {
+            color: ${darkProTokens.textSecondary} !important;
+            font-size: 1rem !important;
+          }
+          
+          .swal2-confirm {
+            background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover}) !important;
+            color: ${darkProTokens.background} !important;
+            font-weight: 700 !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 12px 24px !important;
+            font-size: 1rem !important;
+            transition: all 0.3s ease !important;
+          }
+          
+          .swal2-confirm:hover {
+            background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive}) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 25px ${darkProTokens.primary}40 !important;
+          }
+          
+          .swal2-cancel {
+            background: ${darkProTokens.grayDark} !important;
+            color: ${darkProTokens.textPrimary} !important;
+            font-weight: 600 !important;
+            border: 1px solid ${darkProTokens.grayMedium} !important;
+            border-radius: 8px !important;
+            padding: 12px 24px !important;
+            font-size: 1rem !important;
+            transition: all 0.3s ease !important;
+          }
+          
+          .swal2-cancel:hover {
+            background: ${darkProTokens.grayMedium} !important;
+            border-color: ${darkProTokens.textSecondary} !important;
+            transform: translateY(-1px) !important;
+          }
+          
+          .swal2-deny {
+            background: ${darkProTokens.error} !important;
+            color: ${darkProTokens.textPrimary} !important;
+            font-weight: 600 !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 12px 24px !important;
+            font-size: 1rem !important;
+            transition: all 0.3s ease !important;
+          }
+          
+          .swal2-deny:hover {
+            background: ${darkProTokens.errorHover} !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 6px 20px ${darkProTokens.error}40 !important;
+          }
+          
+          .swal2-icon.swal2-warning {
+            border-color: ${darkProTokens.warning} !important;
+            color: ${darkProTokens.warning} !important;
+          }
+          
+          .swal2-icon.swal2-success {
+            border-color: ${darkProTokens.success} !important;
+            color: ${darkProTokens.success} !important;
+          }
+          
+          .swal2-icon.swal2-error {
+            border-color: ${darkProTokens.error} !important;
+            color: ${darkProTokens.error} !important;
+          }
+          
+          .swal2-icon.swal2-question {
+            border-color: ${darkProTokens.info} !important;
+            color: ${darkProTokens.info} !important;
+          }
+          
+          .swal2-icon.swal2-info {
+            border-color: ${darkProTokens.primary} !important;
+            color: ${darkProTokens.primary} !important;
+          }
+        `}</style>
       </Container>
     </Box>
   );
