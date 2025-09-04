@@ -155,8 +155,35 @@ import InfoIcon from '@mui/icons-material/Info';
 import CloseIcon from '@mui/icons-material/Close';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import WarningIcon from '@mui/icons-material/Warning';
+import LockIcon from '@mui/icons-material/Lock';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
 
-// ✅ INTERFAZ COMPLETA
+// Interfaces actualizadas
+interface DaySchedule {
+  enabled: boolean;
+  start_time: string;
+  end_time: string;
+}
+
+interface DailySchedules {
+  monday: DaySchedule;
+  tuesday: DaySchedule;
+  wednesday: DaySchedule;
+  thursday: DaySchedule;
+  friday: DaySchedule;
+  saturday: DaySchedule;
+  sunday: DaySchedule;
+}
+
+interface PlanAccessRestriction {
+  id: string;
+  plan_id: string;
+  access_control_enabled: boolean;
+  max_daily_entries: number;
+  daily_schedules: DailySchedules;
+}
+
+// ✅ INTERFAZ COMPLETA ACTUALIZADA
 interface MembershipPlan {
   id: string;
   name: string;
@@ -195,17 +222,25 @@ interface MembershipPlan {
   guest_passes: number;
   equipment_access: string[];
   
-  // Restricciones
-  has_time_restrictions: boolean;
-  allowed_days: number[];
-  time_slots: { start: string; end: string }[];
-  
   // Metadatos
   created_at: string;
   created_by: string | null;
   updated_at: string;
   updated_by: string | null;
+  
+  // NUEVA - Relación con restricciones de acceso
+  access_restrictions?: PlanAccessRestriction;
 }
+
+const WEEKDAY_CONFIG = [
+  { key: 'monday', label: 'Lunes', short: 'L' },
+  { key: 'tuesday', label: 'Martes', short: 'M' },
+  { key: 'wednesday', label: 'Miércoles', short: 'X' },
+  { key: 'thursday', label: 'Jueves', short: 'J' },
+  { key: 'friday', label: 'Viernes', short: 'V' },
+  { key: 'saturday', label: 'Sábado', short: 'S' },
+  { key: 'sunday', label: 'Domingo', short: 'D' }
+] as const;
 
 export default function PlanesPage() {
   const router = useRouter();
@@ -286,7 +321,7 @@ export default function PlanesPage() {
     });
   };
 
-  // Cargar planes
+  // Cargar planes con restricciones de acceso
   useEffect(() => {
     loadPlans();
   }, []);
@@ -296,10 +331,13 @@ export default function PlanesPage() {
       setLoading(true);
       const supabase = createBrowserSupabaseClient();
       
-      // ✅ SELECT * PARA OBTENER TODOS LOS CAMPOS
+      // ✅ CARGAR PLANES CON SUS RESTRICCIONES DE ACCESO
       const { data, error } = await supabase
         .from('membership_plans')
-        .select('*')
+        .select(`
+          *,
+          access_restrictions:plan_access_restrictions(*)
+        `)
         .order('monthly_price', { ascending: true });
 
       if (error) {
@@ -307,12 +345,21 @@ export default function PlanesPage() {
         throw error;
       }
       
-      console.log('✅ Planes cargados:', data);
-      setPlans(data || []);
+      console.log('✅ Planes cargados con restricciones:', data);
+      
+      // Mapear los datos para asegurar que access_restrictions sea un objeto, no un array
+      const mappedPlans = data?.map(plan => ({
+        ...plan,
+        access_restrictions: Array.isArray(plan.access_restrictions) 
+          ? plan.access_restrictions[0] 
+          : plan.access_restrictions
+      })) || [];
+      
+      setPlans(mappedPlans);
       
       // ✅ NOTIFICACIÓN: Mostrar éxito al cargar planes
-      if (data && data.length > 0) {
-        showInfoToast(`📊 ${data.length} planes cargados correctamente`);
+      if (mappedPlans && mappedPlans.length > 0) {
+        showInfoToast(`📊 ${mappedPlans.length} planes cargados correctamente`);
       } else {
         showWarningToast('📋 No hay planes configurados aún');
       }
@@ -436,7 +483,7 @@ export default function PlanesPage() {
 
       const supabase = createBrowserSupabaseClient();
       
-      // ✅ ELIMINAR DE SUPABASE
+      // ✅ ELIMINAR DE SUPABASE (las restricciones se eliminan en cascada)
       const { error: deleteError } = await supabase
         .from('membership_plans')
         .delete()
@@ -533,14 +580,15 @@ export default function PlanesPage() {
     return 'Sin precio';
   };
 
-  // Formatear días
-  const formatDays = (days: number[]) => {
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    return days.map(day => dayNames[day]).join(', ');
-  };
-
-  // Ver detalles del plan con SweetAlert2
+  // Ver detalles del plan con SweetAlert2 - ACTUALIZADO
   const viewPlanDetails = async (plan: MembershipPlan) => {
+    // Calcular días habilitados si hay restricciones
+    const enabledDays = plan.access_restrictions?.daily_schedules 
+      ? Object.entries(plan.access_restrictions.daily_schedules)
+          .filter(([_, schedule]) => schedule.enabled)
+          .map(([day, _]) => WEEKDAY_CONFIG.find(w => w.key === day)?.label || day)
+      : [];
+
     await Swal.fire({
       ...getSwalConfig(),
       title: `🏋️ ${plan.name}`,
@@ -621,14 +669,22 @@ export default function PlanesPage() {
             </div>
           </div>
           
-          <!-- Restricciones -->
-          ${plan.has_time_restrictions ? `
+          <!-- Control de Acceso - ACTUALIZADO -->
+          ${plan.access_restrictions?.access_control_enabled ? `
             <div style="background: ${darkProTokens.warning}15; padding: 15px; border-radius: 8px; border: 1px solid ${darkProTokens.warning}40;">
-              <h4 style="color: ${darkProTokens.warning}; margin: 0 0 15px 0;">⏰ Restricciones de Horario</h4>
-              <p style="margin: 5px 0;"><strong>Días permitidos:</strong> ${formatDays(plan.allowed_days)}</p>
-              ${plan.time_slots.map((slot, index) => `
-                <p style="margin: 5px 0;"><strong>Horario ${index + 1}:</strong> ${slot.start} - ${slot.end}</p>
-              `).join('')}
+              <h4 style="color: ${darkProTokens.warning}; margin: 0 0 15px 0;">🔒 Control de Acceso</h4>
+              <p style="margin: 5px 0;"><strong>Límite diario:</strong> ${plan.access_restrictions.max_daily_entries} ${plan.access_restrictions.max_daily_entries === 1 ? 'entrada' : 'entradas'}</p>
+              <p style="margin: 5px 0;"><strong>Días permitidos:</strong> ${enabledDays.join(', ') || 'Ninguno'}</p>
+              ${Object.entries(plan.access_restrictions.daily_schedules)
+                .filter(([_, schedule]) => schedule.enabled)
+                .map(([day, schedule]) => {
+                  const dayConfig = WEEKDAY_CONFIG.find(w => w.key === day);
+                  return `
+                    <p style="margin: 5px 0; padding-left: 20px;">
+                      <strong>${dayConfig?.label || day}:</strong> ${schedule.start_time} - ${schedule.end_time}
+                    </p>
+                  `;
+                }).join('')}
             </div>
           ` : `
             <div style="background: ${darkProTokens.success}15; padding: 15px; border-radius: 8px; border: 1px solid ${darkProTokens.success}40;">
@@ -667,7 +723,7 @@ export default function PlanesPage() {
     if (plan.gym_access) score += 20;
     if (plan.classes_included) score += 30;
     if (plan.guest_passes > 0) score += 15;
-    if (!plan.has_time_restrictions) score += 25;
+    if (!plan.access_restrictions?.access_control_enabled) score += 25;
     if (plan.features && plan.features.length > 3) score += 10;
     return Math.min(score, 100);
   };
@@ -853,7 +909,7 @@ export default function PlanesPage() {
             />
             <Chip
               icon={<AccessTimeIcon />}
-              label={`${plans.filter(p => p.has_time_restrictions).length} con restricciones`}
+              label={`${plans.filter(p => p.access_restrictions?.access_control_enabled).length} con restricciones`}
               size="small"
               sx={{
                 bgcolor: `${darkProTokens.warning}20`,
@@ -867,7 +923,7 @@ export default function PlanesPage() {
         </Box>
       </Paper>
 
-      {/* 📊 ESTADÍSTICAS DARK PRO PROFESIONALES */}
+      {/* 📊 ESTADÍSTICAS DARK PRO PROFESIONALES - ACTUALIZADAS */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Paper sx={{
@@ -939,7 +995,7 @@ export default function PlanesPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: darkProTokens.background }}>
-                  {plans.filter(p => p.has_time_restrictions).length}
+                  {plans.filter(p => p.access_restrictions?.access_control_enabled).length}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8, color: darkProTokens.background }}>
                   Con Restricciones
@@ -978,7 +1034,7 @@ export default function PlanesPage() {
         </Grid>
       </Grid>
 
-      {/* 📋 TABLA DE PLANES CON DARK PRO SYSTEM */}
+      {/* 📋 TABLA DE PLANES CON DARK PRO SYSTEM - ACTUALIZADA */}
       <TableContainer 
         component={Paper} 
         sx={{
@@ -1060,6 +1116,11 @@ export default function PlanesPage() {
               const popularity = getPlanPopularity(plan);
               const bestPrice = getBestPrice(plan);
               const bestPriceLabel = getBestPriceLabel(plan);
+              
+              // Calcular días habilitados
+              const enabledDaysCount = plan.access_restrictions?.daily_schedules 
+                ? Object.values(plan.access_restrictions.daily_schedules).filter(s => s.enabled).length 
+                : 7;
               
               return (
                 <TableRow 
@@ -1233,25 +1294,34 @@ export default function PlanesPage() {
                     </Box>
                   </TableCell>
                   
-                  {/* ⏰ RESTRICCIONES */}
+                  {/* ⏰ RESTRICCIONES - ACTUALIZADO */}
                   <TableCell>
-                    {plan.has_time_restrictions ? (
-                      <Chip 
-                        size="small" 
-                        label="Con Horarios"
-                        icon={<AccessTimeIcon />}
-                        sx={{ 
-                          bgcolor: `${darkProTokens.warning}20`, 
-                          color: darkProTokens.warning,
-                          border: `1px solid ${darkProTokens.warning}40`,
-                          '& .MuiChip-icon': { color: darkProTokens.warning }
-                        }}
-                      />
+                    {plan.access_restrictions?.access_control_enabled ? (
+                      <Box>
+                        <Chip 
+                          size="small" 
+                          label={`${plan.access_restrictions.max_daily_entries} entrada${plan.access_restrictions.max_daily_entries > 1 ? 's' : ''}/día`}
+                          icon={<LockIcon />}
+                          sx={{ 
+                            bgcolor: `${darkProTokens.warning}20`, 
+                            color: darkProTokens.warning,
+                            border: `1px solid ${darkProTokens.warning}40`,
+                            '& .MuiChip-icon': { color: darkProTokens.warning },
+                            mb: 0.5
+                          }}
+                        />
+                        <Typography variant="caption" sx={{ 
+                          display: 'block',
+                          color: darkProTokens.textSecondary 
+                        }}>
+                          {enabledDaysCount}/7 días activos
+                        </Typography>
+                      </Box>
                     ) : (
                       <Chip 
                         size="small" 
                         label="24/7"
-                        icon={<SecurityIcon />}
+                        icon={<LockOpenIcon />}
                         sx={{ 
                           bgcolor: `${darkProTokens.success}20`, 
                           color: darkProTokens.success,
@@ -1262,7 +1332,7 @@ export default function PlanesPage() {
                     )}
                   </TableCell>
                   
-                  {/* 🔄 ESTADO */}
+                                    {/* 🔄 ESTADO */}
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Switch
@@ -1369,7 +1439,8 @@ export default function PlanesPage() {
           50% { 
             opacity: 0.8; 
             transform: scale(1.02);
-                  }
+          }
+        }
         
         @keyframes glow {
           0%, 100% {
