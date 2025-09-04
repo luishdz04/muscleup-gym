@@ -124,6 +124,13 @@ import TimerIcon from '@mui/icons-material/Timer';
 import LimitIcon from '@mui/icons-material/Speed';
 
 // Interfaces y constantes
+interface DaySchedule {
+  day: string;
+  isOpen: boolean;
+  startTime: string;
+  endTime: string;
+}
+
 interface PlanFormData {
   name: string;
   description: string;
@@ -163,9 +170,8 @@ interface PlanFormData {
   enforce_photo_verification: boolean;
   auto_deactivate_expired: boolean;
   require_checkin_checkout: boolean;
-  access_start_time: string;
-  access_end_time: string;
-  allowed_weekdays: string[];
+  // Removed: access_start_time, access_end_time, allowed_weekdays - replaced with individual day schedules
+  individual_day_schedules: DaySchedule[];
   special_schedule_override: boolean;
 }
 
@@ -209,9 +215,15 @@ const INITIAL_FORM_DATA: PlanFormData = {
   enforce_photo_verification: false,
   auto_deactivate_expired: true,
   require_checkin_checkout: false,
-  access_start_time: '06:00',
-  access_end_time: '23:00',
-  allowed_weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+  individual_day_schedules: [
+    { day: 'monday', isOpen: true, startTime: '06:00', endTime: '22:00' },
+    { day: 'tuesday', isOpen: true, startTime: '07:00', endTime: '23:00' },
+    { day: 'wednesday', isOpen: false, startTime: '00:00', endTime: '00:00' },
+    { day: 'thursday', isOpen: true, startTime: '06:00', endTime: '22:00' },
+    { day: 'friday', isOpen: true, startTime: '06:00', endTime: '22:00' },
+    { day: 'saturday', isOpen: true, startTime: '08:00', endTime: '20:00' },
+    { day: 'sunday', isOpen: true, startTime: '09:00', endTime: '18:00' }
+  ],
   special_schedule_override: false
 };
 
@@ -426,8 +438,8 @@ export default function CrearPlanPage() {
               <strong style="color: ${darkProTokens.error};">🔒 Control de Acceso:</strong>
               <p style="margin: 5px 0 0 0; font-size: 14px;">
                 Límite diario: ${formData.max_daily_entries} entradas<br>
-                Días permitidos: ${formData.allowed_weekdays.length}<br>
-                Horario: ${formData.access_start_time} - ${formData.access_end_time}
+                Días abiertos: ${formData.individual_day_schedules.filter(d => d.isOpen).length}/7<br>
+                Horarios individualizados por día
               </p>
             </div>
           ` : ''}
@@ -520,7 +532,7 @@ export default function CrearPlanPage() {
     if (!formData.has_time_restrictions || formData.allowed_days.length > 0) completedFields++;
     if (!formData.has_time_restrictions || formData.time_slots.length > 0) completedFields++;
     if (formData.access_control_enabled && formData.max_daily_entries > 0) completedFields++;
-    if (formData.allowed_weekdays.length > 0) completedFields++;
+    if (formData.individual_day_schedules.filter(d => d.isOpen).length > 0) completedFields++;
     completedFields++;
 
     progress = (completedFields / totalFields) * 100;
@@ -558,22 +570,24 @@ export default function CrearPlanPage() {
     }
   };
 
-  // Manejador para días de la semana
-  const handleWeekdayToggle = (weekday: string) => {
-    const isCurrentlySelected = formData.allowed_weekdays.includes(weekday);
-    
+  // Manejador para horarios individuales por día
+  const handleDayScheduleChange = (dayIndex: number, field: keyof DaySchedule, value: any) => {
     setFormData(prev => ({
       ...prev,
-      allowed_weekdays: isCurrentlySelected
-        ? prev.allowed_weekdays.filter(d => d !== weekday)
-        : [...prev.allowed_weekdays, weekday]
+      individual_day_schedules: prev.individual_day_schedules.map((daySchedule, index) => 
+        index === dayIndex ? { ...daySchedule, [field]: value } : daySchedule
+      )
     }));
 
-    const dayName = WEEKDAY_NAMES.find(d => d.value === weekday)?.label;
-    if (isCurrentlySelected) {
-      showWarningToast(`${dayName} removido de días permitidos`);
-    } else {
-      showSuccessToast(`${dayName} agregado a días permitidos`);
+    const dayName = WEEKDAY_NAMES.find(d => d.value === formData.individual_day_schedules[dayIndex]?.day)?.label;
+    if (field === 'isOpen') {
+      if (value) {
+        showSuccessToast(`${dayName} abierto para acceso`);
+      } else {
+        showWarningToast(`${dayName} cerrado`);
+      }
+    } else if (field === 'startTime' || field === 'endTime') {
+      showInfoToast(`${dayName}: horario actualizado`);
     }
   };
 
@@ -683,12 +697,18 @@ export default function CrearPlanPage() {
         newErrors.access_control = 'El límite mensual debe ser mayor o igual al límite semanal';
       }
       
-      if (formData.allowed_weekdays.length === 0) {
-        newErrors.access_control = 'Debe seleccionar al menos un día de acceso';
+      const openDays = formData.individual_day_schedules.filter(day => day.isOpen);
+      if (openDays.length === 0) {
+        newErrors.access_control = 'Debe tener al menos un día abierto para el acceso';
       }
       
-      if (formData.access_start_time >= formData.access_end_time) {
-        newErrors.access_control = 'La hora de inicio debe ser anterior a la hora de fin';
+      // Validar horarios de días abiertos
+      for (const daySchedule of openDays) {
+        if (daySchedule.startTime >= daySchedule.endTime) {
+          const dayName = WEEKDAY_NAMES.find(d => d.value === daySchedule.day)?.label;
+          newErrors.access_control = `${dayName}: La hora de inicio debe ser anterior a la hora de fin`;
+          break;
+        }
       }
     }
 
@@ -791,9 +811,7 @@ export default function CrearPlanPage() {
         const accessRestrictionData = {
           plan_id: createdPlan.id,
           has_time_restrictions: formData.has_time_restrictions,
-          access_start_time: formData.access_start_time,
-          access_end_time: formData.access_end_time,
-          allowed_weekdays: formData.allowed_weekdays,
+          individual_day_schedules: formData.individual_day_schedules,
           max_daily_entries: formData.max_daily_entries,
           max_weekly_entries: formData.max_weekly_entries,
           max_monthly_entries: formData.max_monthly_entries,
@@ -1700,15 +1718,15 @@ export default function CrearPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 4. 🚀 CONTROL DE ACCESO INTELIGENTE */}
+            {/* 4. CONTROL DE ACCESO UNIFICADO */}
             <Accordion 
-              expanded={expandedAccordion === 'access_control'} 
-              onChange={() => setExpandedAccordion(expandedAccordion === 'access_control' ? false : 'access_control')}
+              expanded={expandedAccordion === 'access'} 
+              onChange={() => setExpandedAccordion(expandedAccordion === 'access' ? false : 'access')}
               sx={{
                 backgroundColor: 'transparent',
                 '&:before': { display: 'none' },
                 '& .MuiAccordionSummary-root': {
-                  background: expandedAccordion === 'access_control' 
+                  background: expandedAccordion === 'access' 
                     ? `${darkProTokens.error}15`
                     : 'transparent',
                   borderBottom: `1px solid ${darkProTokens.grayDark}`,
@@ -1732,10 +1750,10 @@ export default function CrearPlanPage() {
                       color: darkProTokens.error, 
                       fontWeight: 700
                     }}>
-                      🚀 Control de Acceso Inteligente
+                      🔒 Control de Acceso
                     </Typography>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Configure límites, horarios y restricciones automáticas
+                      Límites de entradas biométricas y horarios individuales por día
                     </Typography>
                   </Box>
                   <Chip 
@@ -1769,7 +1787,7 @@ export default function CrearPlanPage() {
                             onChange={(e) => {
                               handleInputChange('access_control_enabled', e.target.checked);
                               if (e.target.checked) {
-                                showSuccessToast('🔒 Control de acceso inteligente activado');
+                                showSuccessToast('🔒 Control de acceso activado');
                               } else {
                                 showWarningToast('Control de acceso desactivado');
                               }
@@ -1785,10 +1803,10 @@ export default function CrearPlanPage() {
                         label={
                           <Box>
                             <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                              🔒 Activar Control de Acceso Inteligente
+                              🔒 Activar Control de Acceso
                             </Typography>
                             <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Aplique límites automáticos y validaciones de entrada
+                              Aplicar límites automáticos y horarios específicos por día
                             </Typography>
                           </Box>
                         }
@@ -1813,7 +1831,7 @@ export default function CrearPlanPage() {
                               fontWeight: 700,
                               textAlign: 'center'
                             }}>
-                              ⚡ Límites de Entradas
+                              ⚡ Límites de Entradas (Biométrico)
                             </Typography>
                             <Grid container spacing={3}>
                               <Grid size={{ xs: 12, md: 4 }}>
@@ -1928,7 +1946,7 @@ export default function CrearPlanPage() {
                             </Grid>
                           </Grid>
 
-                          {/* HORARIOS DE ACCESO */}
+                          {/* HORARIOS POR DÍA INDIVIDUAL */}
                           <Grid size={12}>
                             <Divider sx={{ borderColor: darkProTokens.grayDark, my: 3 }} />
                             <Typography variant="h6" sx={{ 
@@ -1937,143 +1955,124 @@ export default function CrearPlanPage() {
                               fontWeight: 700,
                               textAlign: 'center'
                             }}>
-                              🕐 Horarios de Acceso
+                              📅 Horarios por Día Individual
                             </Typography>
                             
                             <Grid container spacing={3}>
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.success}10`,
-                                  border: `2px solid ${darkProTokens.success}30`,
-                                  borderRadius: 3,
-                                  p: 3
-                                }}>
-                                  <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.success, 
-                                    mb: 2, 
-                                    fontWeight: 700,
-                                    textAlign: 'center'
-                                  }}>
-                                    🌅 Horario de Entrada
-                                  </Typography>
-                                  <TextField
-                                    fullWidth
-                                    label="Hora de Inicio"
-                                    type="time"
-                                    value={formData.access_start_time}
-                                    onChange={(e) => {
-                                      handleInputChange('access_start_time', e.target.value);
-                                      showInfoToast(`Horario de entrada: ${e.target.value}`);
-                                    }}
-                                    InputLabelProps={{ shrink: true }}
-                                    sx={darkProFieldStyle}
-                                  />
-                                </Card>
-                              </Grid>
+                              {formData.individual_day_schedules.map((daySchedule, index) => {
+                                const dayInfo = WEEKDAY_NAMES.find(d => d.value === daySchedule.day);
+                                return (
+                                  <Grid key={daySchedule.day} size={{ xs: 12, md: 6, lg: 4 }}>
+                                    <motion.div whileHover={{ scale: 1.02, y: -4 }}>
+                                      <Card sx={{
+                                        background: daySchedule.isOpen 
+                                          ? `linear-gradient(135deg, ${darkProTokens.success}20, ${darkProTokens.success}10)`
+                                          : `linear-gradient(135deg, ${darkProTokens.grayDark}20, ${darkProTokens.grayDark}10)`,
+                                        border: daySchedule.isOpen
+                                          ? `2px solid ${darkProTokens.success}40`
+                                          : `2px solid ${darkProTokens.grayDark}40`,
+                                        borderRadius: 3,
+                                        p: 3,
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                          borderColor: daySchedule.isOpen 
+                                            ? `${darkProTokens.success}60`
+                                            : `${darkProTokens.grayDark}60`,
+                                          boxShadow: `0 8px 25px ${daySchedule.isOpen 
+                                            ? darkProTokens.success 
+                                            : darkProTokens.grayDark}20`,
+                                        }
+                                      }}>
+                                        {/* Header del día */}
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                          <Typography variant="h6" sx={{ 
+                                            color: daySchedule.isOpen ? darkProTokens.success : darkProTokens.textDisabled, 
+                                            fontWeight: 700,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
+                                          }}>
+                                            {dayInfo?.short} {dayInfo?.label}
+                                          </Typography>
+                                          <Switch
+                                            checked={daySchedule.isOpen}
+                                            onChange={(e) => handleDayScheduleChange(index, 'isOpen', e.target.checked)}
+                                            sx={{
+                                              '& .MuiSwitch-switchBase.Mui-checked': { 
+                                                color: darkProTokens.success,
+                                                '& + .MuiSwitch-track': { backgroundColor: darkProTokens.success }
+                                              }
+                                            }}
+                                          />
+                                        </Box>
 
-                              <Grid size={{ xs: 12, md: 6 }}>
-                                <Card sx={{
-                                  background: `${darkProTokens.error}10`,
-                                  border: `2px solid ${darkProTokens.error}30`,
-                                  borderRadius: 3,
-                                  p: 3
-                                }}>
-                                  <Typography variant="h6" sx={{ 
-                                    color: darkProTokens.error, 
-                                    mb: 2, 
-                                    fontWeight: 700,
-                                    textAlign: 'center'
-                                  }}>
-                                    🌙 Horario de Salida
-                                  </Typography>
-                                  <TextField
-                                    fullWidth
-                                    label="Hora de Fin"
-                                    type="time"
-                                    value={formData.access_end_time}
-                                    onChange={(e) => {
-                                      handleInputChange('access_end_time', e.target.value);
-                                      if (e.target.value <= formData.access_start_time) {
-                                        showWarningToast('La hora de fin debe ser posterior al inicio');
-                                      } else {
-                                        showInfoToast(`Horario de salida: ${e.target.value}`);
-                                      }
-                                    }}
-                                    InputLabelProps={{ shrink: true }}
-                                    sx={darkProFieldStyle}
-                                  />
-                                </Card>
-                              </Grid>
+                                        {/* Horarios */}
+                                        <AnimatePresence>
+                                          {daySchedule.isOpen && (
+                                            <motion.div
+                                              initial={{ opacity: 0, height: 0 }}
+                                              animate={{ opacity: 1, height: 'auto' }}
+                                              exit={{ opacity: 0, height: 0 }}
+                                            >
+                                              <Grid container spacing={2}>
+                                                <Grid size={6}>
+                                                  <TextField
+                                                    fullWidth
+                                                    label="Apertura"
+                                                    type="time"
+                                                    value={daySchedule.startTime}
+                                                    onChange={(e) => handleDayScheduleChange(index, 'startTime', e.target.value)}
+                                                    InputLabelProps={{ shrink: true }}
+                                                    sx={{
+                                                      ...darkProFieldStyle,
+                                                      '& .MuiOutlinedInput-root': {
+                                                        backgroundColor: `${darkProTokens.success}10`,
+                                                        border: `2px solid ${darkProTokens.success}20`,
+                                                      }
+                                                    }}
+                                                  />
+                                                </Grid>
+                                                <Grid size={6}>
+                                                  <TextField
+                                                    fullWidth
+                                                    label="Cierre"
+                                                    type="time"
+                                                    value={daySchedule.endTime}
+                                                    onChange={(e) => handleDayScheduleChange(index, 'endTime', e.target.value)}
+                                                    InputLabelProps={{ shrink: true }}
+                                                    sx={{
+                                                      ...darkProFieldStyle,
+                                                      '& .MuiOutlinedInput-root': {
+                                                        backgroundColor: `${darkProTokens.error}10`,
+                                                        border: `2px solid ${darkProTokens.error}20`,
+                                                      }
+                                                    }}
+                                                  />
+                                                </Grid>
+                                              </Grid>
+                                            </motion.div>
+                                          )}
+                                          {!daySchedule.isOpen && (
+                                            <motion.div
+                                              initial={{ opacity: 0 }}
+                                              animate={{ opacity: 1 }}
+                                            >
+                                              <Typography variant="h4" sx={{ 
+                                                textAlign: 'center', 
+                                                color: darkProTokens.textDisabled,
+                                                fontWeight: 700
+                                              }}>
+                                                CERRADO
+                                              </Typography>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
+                                      </Card>
+                                    </motion.div>
+                                  </Grid>
+                                );
+                              })}
                             </Grid>
-                          </Grid>
-
-                          {/* DÍAS PERMITIDOS */}
-                          <Grid size={12}>
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              mb: 3, 
-                              fontWeight: 700,
-                              textAlign: 'center'
-                            }}>
-                              📅 Días de Acceso Permitido
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
-                              {WEEKDAY_NAMES.map((day) => (
-                                <motion.div
-                                  key={day.value}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  <Card
-                                    onClick={() => handleWeekdayToggle(day.value)}
-                                    sx={{
-                                      p: 2,
-                                      minWidth: 80,
-                                      textAlign: 'center',
-                                      cursor: 'pointer',
-                                      background: formData.allowed_weekdays.includes(day.value)
-                                        ? `linear-gradient(135deg, ${darkProTokens.primary}20, ${darkProTokens.primary}10)`
-                                        : `${darkProTokens.grayDark}20`,
-                                      border: formData.allowed_weekdays.includes(day.value)
-                                        ? `2px solid ${darkProTokens.primary}60`
-                                        : `2px solid ${darkProTokens.grayDark}40`,
-                                      transition: 'all 0.3s ease',
-                                      '&:hover': {
-                                        transform: 'translateY(-2px)',
-                                        boxShadow: `0 4px 12px ${formData.allowed_weekdays.includes(day.value) ? darkProTokens.primary : darkProTokens.grayDark}40`
-                                      }
-                                    }}
-                                  >
-                                    <Typography variant="h4" sx={{ 
-                                      color: formData.allowed_weekdays.includes(day.value) 
-                                        ? darkProTokens.primary 
-                                        : darkProTokens.textDisabled,
-                                      fontWeight: 700,
-                                      mb: 1
-                                    }}>
-                                      {day.short}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ 
-                                      color: formData.allowed_weekdays.includes(day.value) 
-                                        ? darkProTokens.primary 
-                                        : darkProTokens.textDisabled,
-                                      fontWeight: 600
-                                    }}>
-                                      {day.label}
-                                    </Typography>
-                                    {formData.allowed_weekdays.includes(day.value) && (
-                                      <CheckCircleIcon sx={{ 
-                                        color: darkProTokens.primary, 
-                                        fontSize: 16,
-                                        mt: 1,
-                                        display: 'block',
-                                        mx: 'auto'
-                                      }} />
-                                    )}
-                                  </Card>
-                                </motion.div>
-                              ))}
-                            </Box>
                           </Grid>
 
                           {/* OPCIONES AVANZADAS */}
@@ -2294,246 +2293,7 @@ export default function CrearPlanPage() {
               </AccordionDetails>
             </Accordion>
 
-            {/* 5. RESTRICCIONES DE HORARIO (EXISTENTE) */}
-            <Accordion 
-              expanded={expandedAccordion === 'schedule'} 
-              onChange={() => setExpandedAccordion(expandedAccordion === 'schedule' ? false : 'schedule')}
-              sx={{
-                backgroundColor: 'transparent',
-                '&:before': { display: 'none' },
-                '& .MuiAccordionSummary-root': {
-                  background: expandedAccordion === 'schedule' 
-                    ? `${darkProTokens.warning}15`
-                    : 'transparent',
-                  borderBottom: `1px solid ${darkProTokens.grayDark}`,
-                  minHeight: 80
-                }
-              }}
-            >
-              <AccordionSummary 
-                expandIcon={<ExpandMoreIcon sx={{ color: darkProTokens.warning }} />}
-                sx={{ px: 4 }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-                  <Avatar sx={{ 
-                    background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
-                    color: darkProTokens.background
-                  }}>
-                    <AccessTimeIcon />
-                  </Avatar>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h5" sx={{ 
-                      color: darkProTokens.warning, 
-                      fontWeight: 700
-                    }}>
-                      Restricciones de Horario Adicionales
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Configure franjas horarias específicas y días personalizados
-                    </Typography>
-                  </Box>
-                  <Chip 
-                    label={formData.has_time_restrictions ? 'CON RESTRICCIONES' : 'ACCESO COMPLETO'}
-                    sx={{
-                      bgcolor: formData.has_time_restrictions 
-                        ? `${darkProTokens.warning}20`
-                        : `${darkProTokens.success}20`,
-                      color: formData.has_time_restrictions ? darkProTokens.warning : darkProTokens.success,
-                      border: formData.has_time_restrictions 
-                        ? `1px solid ${darkProTokens.warning}40`
-                        : `1px solid ${darkProTokens.success}40`
-                    }}
-                  />
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 4 }}>
-                <Grid container spacing={4}>
-                  <Grid size={12}>
-                    <Card sx={{
-                      bgcolor: `${darkProTokens.warning}10`,
-                      border: `2px solid ${darkProTokens.warning}30`,
-                      borderRadius: 3,
-                      p: 3
-                    }}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.has_time_restrictions}
-                            onChange={(e) => {
-                              handleInputChange('has_time_restrictions', e.target.checked);
-                              if (e.target.checked) {
-                                showWarningToast('🕐 Restricciones de horario adicionales activadas');
-                              } else {
-                                showSuccessToast('Acceso completo sin restricciones adicionales');
-                              }
-                            }}
-                            sx={{
-                              '& .MuiSwitch-switchBase.Mui-checked': { 
-                                color: darkProTokens.warning,
-                                '& + .MuiSwitch-track': { backgroundColor: darkProTokens.warning }
-                              }
-                            }}
-                          />
-                        }
-                        label={
-                          <Box>
-                            <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                              🕐 Aplicar Restricciones de Horario Adicionales
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              Limite el acceso a múltiples franjas horarias específicas
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </Card>
-                  </Grid>
-                  
-                  {formData.has_time_restrictions && (
-                    <AnimatePresence>
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        style={{ width: '100%' }}
-                      >
-                        <Grid container spacing={4}>
-                          <Grid size={12}>
-                            <Typography variant="h6" sx={{ 
-                              color: darkProTokens.textPrimary, 
-                              mb: 2, 
-                              fontWeight: 700
-                            }}>
-                              Días Permitidos (Configuración Avanzada)
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                              {DAY_NAMES.map((day) => (
-                                <FormControlLabel
-                                  key={day.value}
-                                  control={
-                                    <Checkbox
-                                      checked={formData.allowed_days.includes(day.value)}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          handleInputChange('allowed_days', [...formData.allowed_days, day.value]);
-                                          showSuccessToast(`${day.label} agregado a días permitidos`);
-                                        } else {
-                                          handleInputChange('allowed_days', formData.allowed_days.filter(d => d !== day.value));
-                                          showWarningToast(`${day.label} removido de días permitidos`);
-                                        }
-                                      }}
-                                      sx={{ 
-                                        color: darkProTokens.warning,
-                                        '&.Mui-checked': { color: darkProTokens.warning }
-                                      }}
-                                    />
-                                  }
-                                  label={
-                                    <Typography sx={{ color: darkProTokens.textPrimary }}>
-                                      {day.label}
-                                    </Typography>
-                                  }
-                                  sx={{
-                                    bgcolor: formData.allowed_days.includes(day.value) 
-                                      ? `${darkProTokens.warning}15`
-                                      : 'transparent',
-                                    border: `1px solid ${formData.allowed_days.includes(day.value) 
-                                      ? darkProTokens.warning + '40' 
-                                      : darkProTokens.grayDark}`,
-                                    borderRadius: 2,
-                                    p: 1,
-                                    minWidth: 120,
-                                    transition: 'all 0.3s ease'
-                                  }}
-                                />
-                              ))}
-                            </Box>
-                          </Grid>
-                          
-                          <Grid size={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                              <Typography variant="h6" sx={{ 
-                                color: darkProTokens.textPrimary, 
-                                fontWeight: 700
-                              }}>
-                                Múltiples Franjas Horarias
-                              </Typography>
-                              <Button
-                                onClick={addTimeSlot}
-                                variant="outlined"
-                                startIcon={<AddIcon />}
-                                sx={{
-                                  borderColor: darkProTokens.warning,
-                                  color: darkProTokens.warning,
-                                  '&:hover': {
-                                    borderColor: darkProTokens.warningHover,
-                                    bgcolor: `${darkProTokens.warning}10`,
-                                    transform: 'translateY(-2px)'
-                                  }
-                                }}
-                              >
-                                Agregar Franja
-                              </Button>
-                            </Box>
-                            
-                            <Stack spacing={2}>
-                              {formData.time_slots.map((slot, index) => (
-                                <Card key={index} sx={{
-                                  bgcolor: `${darkProTokens.warning}10`,
-                                  border: `1px solid ${darkProTokens.warning}30`,
-                                  p: 3
-                                }}>
-                                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                    <Typography sx={{ color: darkProTokens.warning, fontWeight: 700, minWidth: 80 }}>
-                                      Franja {index + 1}:
-                                    </Typography>
-                                    <TextField
-                                      label="Inicio"
-                                      type="time"
-                                      value={slot.start}
-                                      onChange={(e) => updateTimeSlot(index, 'start', e.target.value)}
-                                      InputLabelProps={{ shrink: true }}
-                                      sx={{ ...darkProFieldStyle, flex: 1 }}
-                                    />
-                                    <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
-                                      →
-                                    </Typography>
-                                    <TextField
-                                      label="Fin"
-                                      type="time"
-                                      value={slot.end}
-                                      onChange={(e) => updateTimeSlot(index, 'end', e.target.value)}
-                                      InputLabelProps={{ shrink: true }}
-                                      sx={{ ...darkProFieldStyle, flex: 1 }}
-                                    />
-                                    {formData.time_slots.length > 1 && (
-                                      <IconButton
-                                        onClick={() => removeTimeSlot(index)}
-                                        sx={{ 
-                                          color: darkProTokens.error,
-                                          '&:hover': {
-                                            bgcolor: `${darkProTokens.error}15`,
-                                            transform: 'scale(1.1)'
-                                          }
-                                        }}
-                                      >
-                                        <DeleteIcon />
-                                      </IconButton>
-                                    )}
-                                  </Box>
-                                </Card>
-                              ))}
-                            </Stack>
-                          </Grid>
-                        </Grid>
-                      </motion.div>
-                    </AnimatePresence>
-                  )}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* 6. VISTA PREVIA Y GUARDADO CON PANEL DE CONTROL MEJORADO */}
+            {/* 5. VISTA PREVIA Y GUARDADO CON PANEL DE CONTROL MEJORADO */}
             <Accordion 
               expanded={expandedAccordion === 'preview'} 
               onChange={() => setExpandedAccordion(expandedAccordion === 'preview' ? false : 'preview')}
@@ -2716,7 +2476,7 @@ export default function CrearPlanPage() {
                               mb: 2, 
                               fontWeight: 700
                             }}>
-                              🔒 Control de Acceso Inteligente
+                              🔒 Control de Acceso
                             </Typography>
                             <Grid container spacing={2}>
                               <Grid size={{ xs: 12, md: 4 }}>
@@ -2742,10 +2502,10 @@ export default function CrearPlanPage() {
                                   border: `1px solid ${darkProTokens.warning}40`
                                 }}>
                                   <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                    Horario
+                                    Días Abiertos
                                   </Typography>
                                   <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
-                                    {formData.access_start_time} - {formData.access_end_time}
+                                    {formData.individual_day_schedules.filter(d => d.isOpen).length}/7
                                   </Typography>
                                 </Card>
                               </Grid>
@@ -2757,10 +2517,10 @@ export default function CrearPlanPage() {
                                   border: `1px solid ${darkProTokens.info}40`
                                 }}>
                                   <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                    Días Activos
+                                    Sistema
                                   </Typography>
                                   <Typography variant="h6" sx={{ color: darkProTokens.info, fontWeight: 700 }}>
-                                    {formData.allowed_weekdays.length} días
+                                    Individual
                                   </Typography>
                                 </Card>
                               </Grid>
@@ -3048,10 +2808,10 @@ export default function CrearPlanPage() {
                           <Grid size={6}>
                             <Box sx={{ textAlign: 'center' }}>
                               <Typography variant="h6" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
-                                {formData.access_control_enabled ? formData.allowed_weekdays.length : 7}
+                                {formData.access_control_enabled ? formData.individual_day_schedules.filter(d => d.isOpen).length : 7}
                               </Typography>
                               <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                Días Activos
+                                Días Abiertos
                               </Typography>
                             </Box>
                           </Grid>
