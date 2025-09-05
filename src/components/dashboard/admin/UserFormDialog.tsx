@@ -878,79 +878,74 @@ const deleteFingerprintFromF22Service = async (
   });
 };
 
-// En FingerprintRegistration.tsx, agregar esta función ANTES de confirmFingerprintData
-const getNextDeviceUserId = async (): Promise<number> => {
+// En UserFormDialog.tsx, agregar esta función
+const createDeviceUserMapping = async (
+  userId: string, 
+  deviceUserId: number,
+  deviceId: string = 'F22_001'
+): Promise<{ success: boolean; error?: string }> => {
   try {
-    // Primero intentar desde el API
-    const response = await fetch('/api/biometric/get-next-device-id');
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Siguiente ID del API:', data.nextId);
-      return data.nextId || 1;
+    console.log('📍 [MAPPING] Creando mapping en device_user_mappings...', {
+      user_id: userId,
+      device_user_id: deviceUserId,
+      device_id: deviceId
+    });
+    
+    const supabase = createBrowserSupabaseClient();
+    
+    // Verificar si ya existe un mapping
+    const { data: existing, error: checkError } = await supabase
+      .from('device_user_mappings')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('device_id', deviceId)
+      .single();
+    
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows
+      throw checkError;
     }
-  } catch (error) {
-    console.error('❌ Error obteniendo ID del API:', error);
+    
+    if (existing) {
+      // Actualizar existente
+      console.log('📝 [MAPPING] Actualizando mapping existente...');
+      const { error: updateError } = await supabase
+        .from('device_user_mappings')
+        .update({
+          device_user_id: deviceUserId,
+          is_active: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
+      
+      if (updateError) throw updateError;
+      
+      console.log('✅ [MAPPING] Mapping actualizado exitosamente');
+    } else {
+      // Crear nuevo
+      console.log('🆕 [MAPPING] Creando nuevo mapping...');
+      const { error: insertError } = await supabase
+        .from('device_user_mappings')
+        .insert({
+          user_id: userId,
+          device_id: deviceId,
+          device_user_id: deviceUserId,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      
+      if (insertError) throw insertError;
+      
+      console.log('✅ [MAPPING] Mapping creado exitosamente');
+    }
+    
+    return { success: true };
+    
+  } catch (error: any) {
+    console.error('❌ [MAPPING] Error:', error);
+    return { success: false, error: error.message };
   }
-  
-  // Fallback: generar un ID basado en timestamp
-  // Esto da números como 1001, 1002, etc.
-  const baseId = 1000;
-  const randomPart = Math.floor(Math.random() * 100);
-  return baseId + randomPart;
 };
-
-// Modificar confirmFingerprintData para usar async
-const confirmFingerprintData = useCallback(async () => {
-  if (!combinedTemplate || !selectedFingerRef.current) {
-    setError('No hay datos de huella para confirmar');
-    return;
-  }
-
-  console.log('✅ Confirmando datos de huella...');
-  
-  // CAMBIO IMPORTANTE: Obtener ID secuencial
-  const deviceUserId = await getNextDeviceUserId();
-  console.log('🔢 Device User ID asignado:', deviceUserId);
-  
-  const fingerprintData = {
-    user_id: user.id,
-    finger_index: selectedFingerRef.current,
-    finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
-    
-    template: combinedTemplate.primary.template,
-    primary_template: combinedTemplate.primary.template,
-    verification_template: combinedTemplate.verification.template,
-    backup_template: combinedTemplate.backup.template,
-    combined_template: combinedTemplate,
-    
-    average_quality: Math.round(combinedTemplate.averageQuality),
-    capture_count: 3,
-    capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
-    
-    device_user_id: deviceUserId, // ✅ USAR EL ID SECUENCIAL
-    
-    device_info: {
-      deviceType: 'ZKTeco',
-      captureMethod: 'multiple_capture',
-      totalCaptures: 3,
-      wsConnection: 'localhost:8085',
-      deviceUserId: deviceUserId, // ✅ TAMBIÉN AQUÍ
-      qualities: [
-        combinedTemplate.primary.qualityScore,
-        combinedTemplate.verification.qualityScore,
-        combinedTemplate.backup.qualityScore
-      ],
-      capturedBy: 'luishdz04',
-      capturedAt: new Date().toISOString()
-    }
-  };
-  
-  console.log('📤 Pasando datos al componente padre con device_user_id:', deviceUserId);
-  
-  onFingerprintDataReady(fingerprintData);
-  handleClose();
-  
-}, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
 
 // 🚀 COMPONENTE PRINCIPAL ULTRA FUNCIONAL
 export default function UserFormDialog({ open, onClose, user, onSave }: UserFormDialogProps) {
