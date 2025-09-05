@@ -2834,7 +2834,7 @@ if (fingerprintState.pendingData && fingerprintState.status === 'captured') {
       primary_template: fingerprintState.pendingData.primary_template,
       verification_template: fingerprintState.pendingData.verification_template,
       backup_template: fingerprintState.pendingData.backup_template,
-      combined_template: fingerprintState.pendingData.combined_template,
+combined_template: fingerprintState.pendingData.combined_template || fingerprintState.pendingData.template,
       average_quality: fingerprintState.pendingData.average_quality,
       capture_count: fingerprintState.pendingData.capture_count,
       capture_time_ms: fingerprintState.pendingData.capture_time_ms,
