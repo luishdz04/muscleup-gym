@@ -369,67 +369,59 @@ export default function FingerprintRegistration({
   }, [user.id]);
 
   // ✅ FUNCIÓN ACTUALIZADA: Confirmar y pasar datos al padre con device_user_id correcto
-  const confirmFingerprintData = useCallback(async () => {
-    if (!combinedTemplate || !selectedFingerRef.current) {
-      setError('No hay datos de huella para confirmar');
-      return;
-    }
+ // ✅ FUNCIÓN CORREGIDA Y FINAL PARA LOGRAR TU OBJETIVO
+const confirmFingerprintData = useCallback(() => {
+  if (!combinedTemplate || !selectedFingerRef.current) {
+    setError('No hay datos de huella para confirmar');
+    return;
+  }
 
-    console.log('✅ Obteniendo device_user_id antes de confirmar...');
+  console.log('✅ Confirmando datos de huella...');
+  
+  // AQUÍ ESTÁ LA MAGIA: Calculamos el ID del dispositivo a partir del ID de Supabase.
+  // Es rápido, no usa la red y nunca dará Timeout.
+  const calculatedDeviceUserId = parseInt(user.id.slice(-6), 16) % 9999;
+  
+  const fingerprintData = {
+    user_id: user.id,
+    finger_index: selectedFingerRef.current,
+    finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
     
-    try {
-      // Obtener el siguiente device_user_id disponible si no tenemos uno
-      let finalDeviceUserId = deviceUserId;
-      
-      if (!finalDeviceUserId || finalDeviceUserId === 0) {
-        finalDeviceUserId = await getNextDeviceUserId();
-      }
-      
-      console.log('✅ Confirmando datos de huella con device_user_id:', finalDeviceUserId);
-      
-      const fingerprintData = {
-        user_id: user.id,
-        finger_index: selectedFingerRef.current,
-        finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
-        
-        template: combinedTemplate.primary.template,
-        primary_template: combinedTemplate.primary.template,
-        verification_template: combinedTemplate.verification.template,
-        backup_template: combinedTemplate.backup.template,
-        combined_template: combinedTemplate,
-        
-        average_quality: Math.round(combinedTemplate.averageQuality),
-        capture_count: 3,
-        capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
-        
-        device_user_id: finalDeviceUserId, // ✅ USAR EL ID SECUENCIAL CORRECTO
-        device_info: {
-          deviceType: 'ZKTeco',
-          captureMethod: 'multiple_capture',
-          totalCaptures: 3,
-          wsConnection: 'localhost:8085',
-          deviceUserId: finalDeviceUserId, // ✅ TAMBIÉN AQUÍ
-          qualities: [
-            combinedTemplate.primary.qualityScore,
-            combinedTemplate.verification.qualityScore,
-            combinedTemplate.backup.qualityScore
-          ],
-          capturedBy: 'luishdz04',
-          capturedAt: new Date().toISOString()
-        }
-      };
-      
-      console.log('📤 Pasando datos al componente padre con device_user_id:', finalDeviceUserId);
-      
-      onFingerprintDataReady(fingerprintData);
-      handleClose();
-      
-    } catch (error) {
-      console.error('❌ Error confirmando huella:', error);
-      setError('Error obteniendo ID de dispositivo');
+    template: combinedTemplate.primary.template,
+    primary_template: combinedTemplate.primary.template,
+    verification_template: combinedTemplate.verification.template,
+    backup_template: combinedTemplate.backup.template,
+    combined_template: combinedTemplate,
+    
+    average_quality: Math.round(combinedTemplate.averageQuality),
+    capture_count: 3,
+    capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
+    
+    // Usamos el ID calculado. Este es el número que se guardará en el F22.
+    device_user_id: calculatedDeviceUserId, 
+    
+    device_info: {
+      deviceType: 'ZKTeco',
+      captureMethod: 'multiple_capture',
+      totalCaptures: 3,
+      wsConnection: 'localhost:8085',
+      deviceUserId: calculatedDeviceUserId, // Lo incluimos aquí también por consistencia
+      qualities: [
+        combinedTemplate.primary.qualityScore,
+        combinedTemplate.verification.qualityScore,
+        combinedTemplate.backup.qualityScore
+      ],
+      capturedBy: 'luishdz04',
+      capturedAt: new Date().toISOString()
     }
-    
-  }, [combinedTemplate, user, deviceUserId, getNextDeviceUserId, onFingerprintDataReady, handleClose]);
+  };
+  
+  console.log('📤 Pasando datos al componente padre con device_user_id calculado:', calculatedDeviceUserId);
+  
+  onFingerprintDataReady(fingerprintData);
+  handleClose();
+  
+}, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
 
   // ✅ processFinalTemplate
   const processFinalTemplate = useCallback(() => {
