@@ -208,6 +208,9 @@ export default function FingerprintRegistration({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // ✅ NUEVO: Estado para device_user_id secuencial
+  const [deviceUserId, setDeviceUserId] = useState<number>(0);
+  
   // 🔄 Estados de captura múltiple
   const [currentCapture, setCurrentCapture] = useState<number>(0);
   const [captureResults, setCaptureResults] = useState<CaptureResult[]>([]);
@@ -278,6 +281,7 @@ export default function FingerprintRegistration({
     setElapsedTime(0);
     setTotalTime(0);
     setIsProcessing(false);
+    setDeviceUserId(0); // ✅ RESET device_user_id
     stopTimers();
   }, [stopTimers]);
 
@@ -306,52 +310,126 @@ export default function FingerprintRegistration({
     onClose();
   }, [resetProcess, onClose]);
 
-  // ✅ FUNCIÓN PARA CONFIRMAR Y PASAR DATOS AL PADRE
-  const confirmFingerprintData = useCallback(() => {
+  // ✅ NUEVA FUNCIÓN: Obtener el siguiente device_user_id disponible
+  const getNextDeviceUserId = useCallback(async (): Promise<number> => {
+    try {
+      console.log('🔢 Solicitando siguiente device_user_id al backend...');
+      
+      // Enviar comando al WebSocket para obtener el siguiente ID
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        return new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Timeout obteniendo device_user_id'));
+          }, 5000);
+          
+          // Listener temporal para la respuesta
+          const handleMessage = (event: MessageEvent) => {
+            try {
+              const message = JSON.parse(event.data);
+              if (message.type === 'next_device_user_id_result') {
+                clearTimeout(timeoutId);
+                const nextId = message.data?.deviceUserId || 1;
+                console.log('✅ Siguiente device_user_id disponible:', nextId);
+                setDeviceUserId(nextId);
+                resolve(nextId);
+                // Remover listener
+                if (wsRef.current) {
+                  wsRef.current.removeEventListener('message', handleMessage);
+                }
+              }
+            } catch (error) {
+              console.error('Error parseando respuesta:', error);
+            }
+          };
+          
+          // Agregar listener
+          wsRef.current.addEventListener('message', handleMessage);
+          
+          // Enviar comando
+          wsRef.current.send(JSON.stringify({
+            action: 'get_next_device_user_id',
+            userId: user.id,
+            timestamp: Date.now()
+          }));
+        });
+      } else {
+        // Fallback: Si no hay WebSocket, usar un ID basado en timestamp pero más bajo
+        const fallbackId = (Date.now() % 1000) + 1; // Rango 1-1000
+        console.warn('⚠️ WebSocket no disponible, usando fallback ID:', fallbackId);
+        setDeviceUserId(fallbackId);
+        return fallbackId;
+      }
+    } catch (error) {
+      console.error('❌ Error obteniendo device_user_id:', error);
+      // Fallback
+      const fallbackId = Math.floor(Math.random() * 100) + 1; // Rango 1-100
+      setDeviceUserId(fallbackId);
+      return fallbackId;
+    }
+  }, [user.id]);
+
+  // ✅ FUNCIÓN ACTUALIZADA: Confirmar y pasar datos al padre con device_user_id correcto
+  const confirmFingerprintData = useCallback(async () => {
     if (!combinedTemplate || !selectedFingerRef.current) {
       setError('No hay datos de huella para confirmar');
       return;
     }
 
-    console.log('✅ Confirmando datos de huella para el padre...');
+    console.log('✅ Obteniendo device_user_id antes de confirmar...');
     
-    const fingerprintData = {
-      user_id: user.id,
-      finger_index: selectedFingerRef.current,
-      finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
+    try {
+      // Obtener el siguiente device_user_id disponible si no tenemos uno
+      let finalDeviceUserId = deviceUserId;
       
-      template: combinedTemplate.primary.template,
-      primary_template: combinedTemplate.primary.template,
-      verification_template: combinedTemplate.verification.template,
-      backup_template: combinedTemplate.backup.template,
-      combined_template: combinedTemplate,
-      
-      average_quality: Math.round(combinedTemplate.averageQuality),
-      capture_count: 3,
-      capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
-      
-      device_user_id: parseInt(user.id.slice(-6), 16) % 9999,
-      device_info: {
-        deviceType: 'ZKTeco',
-        captureMethod: 'multiple_capture',
-        totalCaptures: 3,
-        wsConnection: 'localhost:8085',
-        qualities: [
-          combinedTemplate.primary.qualityScore,
-          combinedTemplate.verification.qualityScore,
-          combinedTemplate.backup.qualityScore
-        ],
-        capturedBy: 'luishdz04',
-        capturedAt: new Date().toISOString()
+      if (!finalDeviceUserId || finalDeviceUserId === 0) {
+        finalDeviceUserId = await getNextDeviceUserId();
       }
-    };
+      
+      console.log('✅ Confirmando datos de huella con device_user_id:', finalDeviceUserId);
+      
+      const fingerprintData = {
+        user_id: user.id,
+        finger_index: selectedFingerRef.current,
+        finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
+        
+        template: combinedTemplate.primary.template,
+        primary_template: combinedTemplate.primary.template,
+        verification_template: combinedTemplate.verification.template,
+        backup_template: combinedTemplate.backup.template,
+        combined_template: combinedTemplate,
+        
+        average_quality: Math.round(combinedTemplate.averageQuality),
+        capture_count: 3,
+        capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
+        
+        device_user_id: finalDeviceUserId, // ✅ USAR EL ID SECUENCIAL CORRECTO
+        device_info: {
+          deviceType: 'ZKTeco',
+          captureMethod: 'multiple_capture',
+          totalCaptures: 3,
+          wsConnection: 'localhost:8085',
+          deviceUserId: finalDeviceUserId, // ✅ TAMBIÉN AQUÍ
+          qualities: [
+            combinedTemplate.primary.qualityScore,
+            combinedTemplate.verification.qualityScore,
+            combinedTemplate.backup.qualityScore
+          ],
+          capturedBy: 'luishdz04',
+          capturedAt: new Date().toISOString()
+        }
+      };
+      
+      console.log('📤 Pasando datos al componente padre con device_user_id:', finalDeviceUserId);
+      
+      onFingerprintDataReady(fingerprintData);
+      handleClose();
+      
+    } catch (error) {
+      console.error('❌ Error confirmando huella:', error);
+      setError('Error obteniendo ID de dispositivo');
+    }
     
-    console.log('📤 Pasando datos al componente padre:', fingerprintData);
-    
-    onFingerprintDataReady(fingerprintData);
-    handleClose();
-    
-  }, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
+  }, [combinedTemplate, user, deviceUserId, getNextDeviceUserId, onFingerprintDataReady, handleClose]);
 
   // ✅ processFinalTemplate
   const processFinalTemplate = useCallback(() => {
@@ -618,8 +696,8 @@ export default function FingerprintRegistration({
     }
   }, [handleWebSocketMessage, attemptReconnect]);
 
-  // 🚀 INICIAR PROCESO
-  const startMultipleCaptureProcess = useCallback(() => {
+  // 🚀 FUNCIÓN ACTUALIZADA: Iniciar proceso con obtención de device_user_id
+  const startMultipleCaptureProcess = useCallback(async () => {
     const fingerIndex = selectedFingerRef.current || selectedFinger;
     if (!fingerIndex || !wsConnected || !deviceConnected) {
       setError('Seleccione un dedo y verifique la conexión del dispositivo');
@@ -627,6 +705,14 @@ export default function FingerprintRegistration({
     }
     
     console.log('🚀 Iniciando proceso de captura múltiple con dedo:', fingerIndex);
+    
+    // ✅ OBTENER device_user_id AL INICIO DEL PROCESO
+    try {
+      const nextId = await getNextDeviceUserId();
+      console.log('📝 device_user_id asignado para este proceso:', nextId);
+    } catch (error) {
+      console.warn('⚠️ No se pudo obtener device_user_id, se asignará después');
+    }
     
     setIsProcessing(true);
     setError(null);
@@ -647,7 +733,7 @@ export default function FingerprintRegistration({
       startSingleCapture(1);
     }, 2000);
     
-  }, [selectedFinger, wsConnected, deviceConnected, startTotalTimer, startSingleCapture]);
+  }, [selectedFinger, wsConnected, deviceConnected, startTotalTimer, startSingleCapture, getNextDeviceUserId]);
 
   // useEffect para inicialización
   useEffect(() => {
@@ -758,6 +844,20 @@ export default function FingerprintRegistration({
               }}
             />
           </Tooltip>
+          
+          {/* ✅ NUEVO: Mostrar device_user_id si está asignado */}
+          {deviceUserId > 0 && (
+            <Chip
+              label={`ID: ${deviceUserId}`}
+              size="small"
+              sx={{
+                bgcolor: `${darkProTokens.info}20`,
+                color: darkProTokens.info,
+                border: `1px solid ${darkProTokens.info}40`,
+                fontWeight: 600
+              }}
+            />
+          )}
           
           <IconButton 
             onClick={handleClose}
@@ -952,7 +1052,7 @@ export default function FingerprintRegistration({
                 
                 <Grid container spacing={2}>
                   {FINGER_CONFIG.map((finger) => (
-                    <Grid item xs={6} sm={4} md={2.4} key={finger.id}>
+                    <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={finger.id}>
                       <Card
                         sx={{
                           cursor: 'pointer',
@@ -1127,6 +1227,18 @@ export default function FingerprintRegistration({
                         fontWeight: 600
                       }}
                     />
+                    {/* ✅ MOSTRAR device_user_id asignado */}
+                    {deviceUserId > 0 && (
+                      <Chip
+                        label={`ID F22: ${deviceUserId}`}
+                        sx={{
+                          bgcolor: `${darkProTokens.warning}20`,
+                          color: darkProTokens.warning,
+                          border: `1px solid ${darkProTokens.warning}40`,
+                          fontWeight: 600
+                        }}
+                      />
+                    )}
                   </Box>
 
                   {/* Detalle de capturas */}
