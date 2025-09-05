@@ -2838,11 +2838,26 @@ combined_template: fingerprintState.pendingData.combined_template || fingerprint
       enrolled_at: new Date().toISOString(),
     };
 
-    // Guardar en BD
-    const dbResult = await saveFingerprintToDatabase(templateDataForDB);
-    
-    if (dbResult.success) {
-      console.log('✅ [SUBMIT] Huella guardada en BD');
+// 💾 GUARDAR EN BD
+console.log('💾 [SUBMIT] Guardando huella en BD...');
+const dbResult = await saveFingerprintToDatabase(templateDataForDB);
+
+if (dbResult.success) {
+  console.log('✅ [SUBMIT] Huella guardada en BD');
+  
+  // 🆕 AGREGAR ESTO: CREAR MAPPING EN device_user_mappings
+  const mappingResult = await createDeviceUserMapping(
+    userId,
+    fingerprintState.pendingData.device_user_id, // ID secuencial (1, 2, 3...)
+    'F22_001' // ID del dispositivo físico
+  );
+  
+  if (mappingResult.success) {
+    console.log('✅ [SUBMIT] Mapping creado en device_user_mappings tabla');
+  } else {
+    console.warn('⚠️ [SUBMIT] Error creando mapping:', mappingResult.error);
+    // No fallar todo el proceso, solo advertir
+  }
       
       // ✅ PREPARAR DATOS PARA F22 CON NOMBRE COMPLETO
       const f22SyncData = {
