@@ -377,56 +377,58 @@ export default function FingerprintRegistration({
     
   }, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
 
-  // ✅ PROCESAR TEMPLATE FINAL
-  const processFinalTemplate = useCallback(() => {
-    setCurrentStep('processing');
-    setMessage('Combinando templates biométricos...');
-    setProgress(0);
+ const processFinalTemplate = useCallback(() => {
+  setCurrentStep('processing');
+  setMessage('Combinando templates biométricos...');
+  setProgress(0);
+  
+  setCaptureResults(currentResults => {
+    console.log('🔄 Procesando templates finales:', currentResults);
     
-    setCaptureResults(currentResults => {
-      console.log('🔄 Procesando templates finales:', currentResults);
-      
-      if (currentResults.length !== 3) {
-        console.error('❌ Error: Se esperaban 3 capturas, se recibieron:', currentResults.length);
-        setError('Error en el proceso de captura múltiple');
-        setIsProcessing(false);
-        setCurrentStep('selection');
-        return currentResults;
-      }
-      
-      const processInterval = setInterval(() => {
-        setProgress(prev => {
-          const newProgress = prev + 10;
-          if (newProgress >= 100) {
-            clearInterval(processInterval);
-            
-            const avgQuality = currentResults.reduce((sum, result) => sum + result.qualityScore, 0) / currentResults.length;
-            setFinalQuality(Math.round(avgQuality));
-            
-            const combinedTemplateData = {
-              primary: currentResults[0],
-              verification: currentResults[1], 
-              backup: currentResults[2],
-              averageQuality: avgQuality,
-              totalCaptureTime: totalTime,
-              combinedAt: new Date().toISOString()
-            };
-            
-            setCombinedTemplate(combinedTemplateData);
-            setCurrentStep('ready');
-            setMessage('¡Datos de huella listos! Presione "Confirmar" para agregar al formulario.');
-            setIsProcessing(false);
-            stopTimers();
-            
-            return 100;
-          }
-          return newProgress;
-        });
-      }, 200);
-      
+    if (currentResults.length !== 3) {
+      console.error('❌ Error: Se esperaban 3 capturas, se recibieron:', currentResults.length);
+      setError('Error en el proceso de captura múltiple');
+      setIsProcessing(false);
+      setCurrentStep('selection');
       return currentResults;
-    });
-  }, [totalTime, stopTimers]);
+    }
+    
+    const processInterval = setInterval(() => {
+      setProgress(prev => {
+        const newProgress = prev + 10;
+        if (newProgress >= 100) {
+          clearInterval(processInterval);
+          
+          const avgQuality = currentResults.reduce((sum, result) => sum + result.qualityScore, 0) / currentResults.length;
+          setFinalQuality(Math.round(avgQuality));
+          
+          const combinedTemplateData = {
+            primary: currentResults[0],
+            verification: currentResults[1], 
+            backup: currentResults[2],
+            averageQuality: avgQuality,
+            totalCaptureTime: totalTime,
+            combinedAt: new Date().toISOString()
+          };
+          
+          setCombinedTemplate(combinedTemplateData);
+          setCurrentStep('ready');
+          setMessage('¡Datos de huella listos! Presione "Confirmar" para agregar al formulario.');
+          setIsProcessing(false);
+          stopTimers();
+          
+          // NO USES combinedTemplate AQUÍ, USA combinedTemplateData
+          console.log('✅ Template combinado creado:', combinedTemplateData);
+          
+          return 100;
+        }
+        return newProgress;
+      });
+    }, 200);
+    
+    return currentResults;
+  });
+}, [totalTime, stopTimers]);
 
   // ✅ INICIAR CAPTURA INDIVIDUAL
   const startSingleCapture = useCallback((captureNumber: number) => {
