@@ -554,6 +554,7 @@ const deleteFingerprintFromDatabase = async (
   }
 };
 
+// ✅ FUNCIÓN CORREGIDA PARA SINCRONIZAR CON F22 (CON NOMBRE COMPLETO)
 const syncFingerprintToF22Service = async (
   templateData: any,
   wsUrl: string = 'ws://127.0.0.1:8085/ws/'
@@ -601,7 +602,8 @@ const syncFingerprintToF22Service = async (
       console.log('🔄 [F22-SYNC] Iniciando sincronización con F22...', {
         device_user_id: templateData.device_user_id,
         finger_index: templateData.finger_index,
-        user_id: templateData.user_id
+        user_id: templateData.user_id,
+        userName: templateData.userName || templateData.fullName
       });
       
       ws = new WebSocket(wsUrl);
@@ -613,13 +615,13 @@ const syncFingerprintToF22Service = async (
       ws.onopen = () => {
         console.log('✅ [F22-SYNC] WebSocket conectado');
         
-        // ✅ ENVIAR COMANDO CORRECTO DE CONEXIÓN
+        // Enviar comando de conexión al dispositivo
         ws!.send(JSON.stringify({
           type: 'device',
           action: 'connect',
           data: {
             deviceType: 'F22',
-            deviceId: 'F22_001' // O el ID que uses
+            deviceId: 'F22_001'
           }
         }));
       };
@@ -629,25 +631,43 @@ const syncFingerprintToF22Service = async (
           const response = JSON.parse(event.data);
           console.log('📨 [F22-SYNC] Respuesta:', response.type, response.action);
           
-          // ✅ MANEJAR RESPUESTA DE CONEXIÓN
+          // Manejar respuesta de conexión
           if (response.type === 'device' && response.action === 'connect') {
             if (response.data?.isSuccess) {
               console.log('🔒 [F22-SYNC] F22 conectado, enviando template...');
               
-              // ✅ ENVIAR COMANDO DE SINCRONIZACIÓN
+              // ✅ PREPARAR NOMBRE COMPLETO CORRECTAMENTE
+              const fullName = templateData.userName || 
+                             templateData.fullName ||
+                             `${templateData.firstName || ''} ${templateData.lastName || ''}`.trim() ||
+                             `USR${templateData.device_user_id}`;
+              
+              // ✅ ASEGURAR QUE device_user_id SEA NÚMERO
+              const deviceUserId = parseInt(templateData.device_user_id);
+              
+              console.log('📝 [F22-SYNC] Enviando con nombre:', fullName);
+              console.log('🔢 [F22-SYNC] Device User ID:', deviceUserId);
+              
+              // Enviar template con toda la información
               ws!.send(JSON.stringify({
                 type: 'device',
                 action: 'sync_fingerprint',
                 data: {
                   deviceType: 'F22',
+                  deviceId: 'F22_001',
                   userId: templateData.user_id,
-                  deviceUserId: templateData.device_user_id,
+                  deviceUserId: deviceUserId, // ✅ Número, no string
                   templates: [{
                     fingerIndex: templateData.finger_index,
                     template: templateData.template,
                     primary: true
                   }],
-                  userName: templateData.name || `${templateData.first_name} ${templateData.last_name}`.trim()
+                  userName: fullName,  // ✅ Nombre completo formateado
+                  userInfo: {
+                    firstName: templateData.firstName || '',
+                    lastName: templateData.lastName || '',
+                    fullName: fullName
+                  }
                 }
               }));
             } else {
@@ -655,20 +675,23 @@ const syncFingerprintToF22Service = async (
             }
           }
           
-          // ✅ MANEJAR RESPUESTA DE SINCRONIZACIÓN
+          // Manejar respuesta de sincronización
           else if (response.type === 'sync_result' || 
+                   response.type === 'fingerprint_sync_result' ||
                    (response.type === 'device' && response.action === 'sync_fingerprint')) {
-            if (response.data?.success) {
+            const responseData = response.data || {};
+            
+            if (responseData.success || responseData.isSuccess) {
               console.log('✅ [F22-SYNC] Template sincronizado exitosamente');
               resolveOnce({
                 success: true,
-                uid: response.data.uid || templateData.device_user_id,
-                device_user_id: response.data.deviceUserId || templateData.device_user_id,
+                uid: responseData.uid || responseData.userId || templateData.device_user_id,
+                device_user_id: responseData.deviceUserId || templateData.device_user_id,
                 finger_name: templateData.finger_name,
-                message: response.data.message || 'Sincronizado exitosamente'
+                message: responseData.message || 'Sincronizado exitosamente'
               });
             } else {
-              rejectOnce(new Error(response.data?.error || 'Error desconocido en F22'));
+              rejectOnce(new Error(responseData.error || 'Error desconocido en F22'));
             }
           }
           
@@ -701,8 +724,7 @@ const syncFingerprintToF22Service = async (
     }
   });
 };
-
-// ✅ FUNCIÓN F22 DELETE COMPLETAMENTE CORREGIDA
+// ✅ FUNCIÓN CORREGIDA PARA ELIMINAR HUELLA DEL F22
 const deleteFingerprintFromF22Service = async (
   deviceUserId: string,
   userId: string,
@@ -718,7 +740,6 @@ const deleteFingerprintFromF22Service = async (
     let ws: WebSocket | null = null;
     let timeoutId: NodeJS.Timeout | null = null;
     let isResolved = false;
-    let deviceConnected = false;
 
     const cleanup = () => {
       if (timeoutId) {
@@ -763,9 +784,6 @@ const deleteFingerprintFromF22Service = async (
       
       ws.onopen = () => {
         console.log('🔌 [F22-DELETE] WebSocket conectado');
-        
-        // El backend envía un mensaje welcome cuando se conecta
-        // No necesitamos enviar connect manualmente
       };
       
       ws.onmessage = (event) => {
@@ -773,52 +791,63 @@ const deleteFingerprintFromF22Service = async (
           const response = JSON.parse(event.data);
           console.log('📨 [F22-DELETE] Respuesta:', response.type, response.action);
           
-          // Manejar mensaje welcome del backend
+          // Manejar mensaje welcome
           if (response.type === 'welcome' && response.action === 'connected') {
-            console.log('🎉 [F22-DELETE] Welcome recibido, enviando comando delete...');
-            deviceConnected = true;
+            console.log('🎉 [F22-DELETE] Enviando comando de eliminación...');
             
-            // Ahora sí enviar comando de eliminación con estructura correcta
+            // ✅ COMANDO CORREGIDO - COMPATIBLE CON BACKEND
             const deleteCommand = {
-              type: 'biometric',  // ✅ IMPORTANTE: debe ser 'biometric'
-              action: 'delete_user',  // ✅ Acción que espera el backend
+              type: 'device',
+              action: 'delete_fingerprint',
               data: {
-                device_user_id: deviceUserId,  // Como string está bien
+                deviceType: 'F22',
+                deviceId: 'F22_001',
+                deviceUserId: parseInt(deviceUserId), // ✅ Asegurar que sea número
                 userId: userId,
-                deleteAll: fingerIndex === undefined
+                fingerIndex: fingerIndex !== undefined ? fingerIndex : null,
+                deleteAll: fingerIndex === undefined || fingerIndex === null
               }
             };
             
-            // Agregar finger_index si es específico
-            if (fingerIndex !== undefined && fingerIndex !== null) {
-              deleteCommand.data.finger_index = fingerIndex;
-              console.log('🖐️ [F22-DELETE] Eliminando dedo específico:', fingerIndex);
-            } else {
-              console.log('🗑️ [F22-DELETE] Eliminando todas las huellas');
-            }
-            
+            console.log('📤 [F22-DELETE] Comando enviado:', JSON.stringify(deleteCommand));
             ws!.send(JSON.stringify(deleteCommand));
           }
           
-          // Manejar respuesta de eliminación
-          else if (response.type === 'delete_user_result') {
-            if (response.data?.success) {
-              console.log('✅ [F22-DELETE] Eliminación exitosa');
+          // ✅ MANEJAR MÚLTIPLES TIPOS DE RESPUESTA
+          else if (
+            response.type === 'delete_fingerprint_result' || 
+            response.type === 'delete_user_result' ||
+            response.type === 'device_response' ||
+            (response.type === 'device' && response.action === 'delete_fingerprint')
+          ) {
+            const responseData = response.data || {};
+            
+            if (responseData.success || responseData.isSuccess) {
+              console.log('✅ [F22-DELETE] Eliminación exitosa:', responseData);
               resolveOnce({
                 success: true,
-                deletedTemplates: response.data.data?.deleted_templates || 0,
-                userDeleted: response.data.data?.user_deleted || false
+                deletedTemplates: responseData.deletedTemplates || 
+                                 responseData.deleted_templates || 
+                                 responseData.deletedCount || 
+                                 responseData.deleted_count || 0,
+                userDeleted: responseData.userDeleted || 
+                            responseData.user_deleted || false
               });
             } else {
-              const errorMsg = response.data?.error || 'Error desconocido en eliminación';
-              console.error('❌ [F22-DELETE] Error:', errorMsg);
+              const errorMsg = responseData.error || 
+                             responseData.message || 
+                             'Error desconocido en eliminación';
+              console.error('❌ [F22-DELETE] Error en respuesta:', errorMsg);
               rejectOnce(new Error(errorMsg));
             }
           }
           
-          // Manejar errores generales
-          else if (response.type === 'error') {
-            const errorMsg = response.data?.error || response.message || 'Error desconocido';
+          // Manejar errores
+          else if (response.type === 'error' || response.type === 'command_error') {
+            const errorMsg = response.data?.error || 
+                           response.message || 
+                           response.error || 
+                           'Error desconocido';
             console.error('❌ [F22-DELETE] Error del servidor:', errorMsg);
             rejectOnce(new Error(errorMsg));
           }
@@ -2709,89 +2738,102 @@ export default function UserFormDialog({ open, onClose, user, onSave }: UserForm
       await onSave(userData);
       console.log('✅ [SUBMIT] Usuario guardado en BD');
       
-      // 4️⃣ PROCESAR HUELLA PENDIENTE
-      if (fingerprintState.pendingData && fingerprintState.status === 'captured') {
-        console.log('🖐️ [SUBMIT] Procesando huella pendiente...');
-        setFingerprintState(prev => ({
-          ...prev,
-          syncStatus: 'syncing'
-        }));
+     // 4️⃣ PROCESAR HUELLA PENDIENTE
+if (fingerprintState.pendingData && fingerprintState.status === 'captured') {
+  console.log('🖐️ [SUBMIT] Procesando huella pendiente...');
+  setFingerprintState(prev => ({
+    ...prev,
+    syncStatus: 'syncing'
+  }));
+  
+  try {
+    // ✅ PREPARAR NOMBRE COMPLETO
+    const fullName = `${processedFormData.firstName || ''} ${processedFormData.lastName || ''}`.trim();
+    
+    // Preparar datos para BD
+    const templateDataForDB = {
+      user_id: userId,
+      template: fingerprintState.pendingData.template,
+      device_user_id: fingerprintState.pendingData.device_user_id,
+      finger_index: fingerprintState.pendingData.finger_index,
+      finger_name: fingerprintState.pendingData.finger_name,
+      primary_template: fingerprintState.pendingData.primary_template,
+      verification_template: fingerprintState.pendingData.verification_template,
+      backup_template: fingerprintState.pendingData.backup_template,
+      combined_template: fingerprintState.pendingData.combined_template,
+      average_quality: fingerprintState.pendingData.average_quality,
+      capture_count: fingerprintState.pendingData.capture_count,
+      capture_time_ms: fingerprintState.pendingData.capture_time_ms,
+      device_info: fingerprintState.pendingData.device_info || {},
+      sdk_version: 'official_zkteco',
+      enrolled_at: new Date().toISOString(),
+    };
+
+    // Guardar en BD
+    const dbResult = await saveFingerprintToDatabase(templateDataForDB);
+    
+    if (dbResult.success) {
+      console.log('✅ [SUBMIT] Huella guardada en BD');
+      
+      // ✅ PREPARAR DATOS PARA F22 CON NOMBRE COMPLETO
+      const f22SyncData = {
+        ...templateDataForDB,
+        // ✅ ASEGURAR NOMBRE COMPLETO
+        userName: fullName,
+        fullName: fullName,
+        firstName: processedFormData.firstName || '',
+        lastName: processedFormData.lastName || '',
+        // ✅ ASEGURAR QUE device_user_id SEA NÚMERO
+        device_user_id: parseInt(templateDataForDB.device_user_id.toString())
+      };
+      
+      console.log('📤 [SUBMIT] Datos para F22:', {
+        userName: f22SyncData.userName,
+        device_user_id: f22SyncData.device_user_id
+      });
+
+      try {
+        const f22Result = await syncFingerprintToF22Service(f22SyncData);
         
-        try {
-          // Preparar datos para BD
-          const templateDataForDB = {
-            user_id: userId,
-            template: fingerprintState.pendingData.template,
-            device_user_id: fingerprintState.pendingData.device_user_id,
-            finger_index: fingerprintState.pendingData.finger_index,
-            finger_name: fingerprintState.pendingData.finger_name,
-            primary_template: fingerprintState.pendingData.primary_template,
-            verification_template: fingerprintState.pendingData.verification_template,
-            backup_template: fingerprintState.pendingData.backup_template,
-            combined_template: fingerprintState.pendingData.combined_template,
-            average_quality: fingerprintState.pendingData.average_quality,
-            capture_count: fingerprintState.pendingData.capture_count,
-            capture_time_ms: fingerprintState.pendingData.capture_time_ms,
-            device_info: fingerprintState.pendingData.device_info || {},
-            sdk_version: 'official_zkteco',
-            enrolled_at: new Date().toISOString(),
-          };
-
-          // Guardar en BD
-          const dbResult = await saveFingerprintToDatabase(templateDataForDB);
-          
-          if (dbResult.success) {
-            console.log('✅ [SUBMIT] Huella guardada en BD');
-            
-            // Sincronizar con F22
-            const f22SyncData = {
-              ...templateDataForDB,
-              name: `${processedFormData.firstName || ''} ${processedFormData.lastName || ''}`.trim(),
-              first_name: processedFormData.firstName,
-              last_name: processedFormData.lastName
-            };
-
-            try {
-              const f22Result = await syncFingerprintToF22Service(f22SyncData);
-              
-              if (f22Result.success) {
-                console.log('✅ [SUBMIT] Huella sincronizada con F22');
-                setFingerprintState(prev => ({
-                  ...prev,
-                  status: 'saved',
-                  syncStatus: 'success',
-                  message: '🎉 Usuario y huella guardados exitosamente!',
-                  pendingData: null
-                }));
-                updatedFormData.fingerprint = true;
-              } else {
-                throw new Error(f22Result.error || 'Error en F22');
-              }
-            } catch (f22Error: any) {
-              console.warn('⚠️ [SUBMIT] Error F22:', f22Error.message);
-              setFingerprintState(prev => ({
-                ...prev,
-                status: 'saved',
-                syncStatus: 'error',
-                error: `BD actualizada, error F22: ${f22Error.message}`,
-                pendingData: null
-              }));
-              updatedFormData.fingerprint = true; // BD actualizada
-            }
-            
-          } else {
-            throw new Error(dbResult.error || 'Error guardando en BD');
-          }
-          
-        } catch (fingerprintError: any) {
-          console.error('💥 [SUBMIT] Error procesando huella:', fingerprintError);
+        if (f22Result.success) {
+          console.log('✅ [SUBMIT] Huella sincronizada con F22');
           setFingerprintState(prev => ({
             ...prev,
-            syncStatus: 'error',
-            error: `Error: ${fingerprintError.message}`
+            status: 'saved',
+            syncStatus: 'success',
+            message: `🎉 Usuario y huella guardados exitosamente! ID F22: ${f22Result.device_user_id}`,
+            pendingData: null
           }));
+          updatedFormData.fingerprint = true;
+        } else {
+          throw new Error(f22Result.error || 'Error en F22');
         }
+      } catch (f22Error: any) {
+        console.warn('⚠️ [SUBMIT] Error F22:', f22Error.message);
+        setFingerprintState(prev => ({
+          ...prev,
+          status: 'saved',
+          syncStatus: 'error',
+          error: `BD actualizada, error F22: ${f22Error.message}`,
+          pendingData: null
+        }));
+        updatedFormData.fingerprint = true; // BD actualizada
       }
+      
+    } else {
+      throw new Error(dbResult.error || 'Error guardando en BD');
+    }
+    
+  } catch (fingerprintError: any) {
+    console.error('💥 [SUBMIT] Error procesando huella:', fingerprintError);
+    setFingerprintState(prev => ({
+      ...prev,
+      syncStatus: 'error',
+      error: `Error: ${fingerprintError.message}`
+    }));
+  }
+}
+
       
       // 5️⃣ REGENERAR CONTRATO SI ES NECESARIO
       if (formData.rol === 'cliente' && (hasFormChanges || fingerprintState.status === 'saved')) {
