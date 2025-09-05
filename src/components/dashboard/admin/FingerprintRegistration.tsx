@@ -231,8 +231,6 @@ export default function FingerprintRegistration({
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initializationRef = useRef(false);
-  
-  // ✅ FIX: Ref para mantener el dedo seleccionado
   const selectedFingerRef = useRef<number | null>(null);
   
   // 🎯 CONFIGURACIÓN WEBSOCKET
@@ -267,7 +265,7 @@ export default function FingerprintRegistration({
     console.log('🔄 Reiniciando proceso...');
     setCurrentStep('selection');
     setSelectedFinger(null);
-    selectedFingerRef.current = null; // ✅ FIX: Limpiar ref
+    selectedFingerRef.current = null;
     setProgress(0);
     setMessage('');
     setError(null);
@@ -284,7 +282,6 @@ export default function FingerprintRegistration({
   // 🚪 CERRAR MODAL
   const handleClose = useCallback(() => {
     console.log('🚪 Cerrando modal...');
-    
     initializationRef.current = false;
     resetProcess();
     
@@ -306,14 +303,93 @@ export default function FingerprintRegistration({
     onClose();
   }, [resetProcess, onClose]);
 
-  // ✅ FUNCIÓN PARA CONFIRMAR Y PASAR DATOS AL PADRE
+// En FingerprintRegistration.tsx, agregar esta función ANTES de confirmFingerprintData
+const getNextDeviceUserId = async (): Promise<number> => {
+  try {
+    // Primero intentar desde el API
+    const response = await fetch('/api/biometric/get-next-device-id');
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Siguiente ID del API:', data.nextId);
+      return data.nextId || 1;
+    }
+  } catch (error) {
+    console.error('❌ Error obteniendo ID del API:', error);
+  }
+  
+  // Fallback: generar un ID basado en timestamp
+  // Esto da números como 1001, 1002, etc.
+  const baseId = 1000;
+  const randomPart = Math.floor(Math.random() * 100);
+  return baseId + randomPart;
+};
+
+// Modificar confirmFingerprintData para usar async
+const confirmFingerprintData = useCallback(async () => {
+  if (!combinedTemplate || !selectedFingerRef.current) {
+    setError('No hay datos de huella para confirmar');
+    return;
+  }
+
+  console.log('✅ Confirmando datos de huella...');
+  
+  // CAMBIO IMPORTANTE: Obtener ID secuencial
+  const deviceUserId = await getNextDeviceUserId();
+  console.log('🔢 Device User ID asignado:', deviceUserId);
+  
+  const fingerprintData = {
+    user_id: user.id,
+    finger_index: selectedFingerRef.current,
+    finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
+    
+    template: combinedTemplate.primary.template,
+    primary_template: combinedTemplate.primary.template,
+    verification_template: combinedTemplate.verification.template,
+    backup_template: combinedTemplate.backup.template,
+    combined_template: combinedTemplate,
+    
+    average_quality: Math.round(combinedTemplate.averageQuality),
+    capture_count: 3,
+    capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
+    
+    device_user_id: deviceUserId, // ✅ USAR EL ID SECUENCIAL
+    
+    device_info: {
+      deviceType: 'ZKTeco',
+      captureMethod: 'multiple_capture',
+      totalCaptures: 3,
+      wsConnection: 'localhost:8085',
+      deviceUserId: deviceUserId, // ✅ TAMBIÉN AQUÍ
+      qualities: [
+        combinedTemplate.primary.qualityScore,
+        combinedTemplate.verification.qualityScore,
+        combinedTemplate.backup.qualityScore
+      ],
+      capturedBy: 'luishdz04',
+      capturedAt: new Date().toISOString()
+    }
+  };
+  
+  console.log('📤 Pasando datos al componente padre con device_user_id:', deviceUserId);
+  
+  onFingerprintDataReady(fingerprintData);
+  handleClose();
+  
+}, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
+  
+
+  // ✅ FUNCIÓN CORREGIDA Y FINAL PARA LOGRAR TU OBJETIVO
   const confirmFingerprintData = useCallback(() => {
     if (!combinedTemplate || !selectedFingerRef.current) {
       setError('No hay datos de huella para confirmar');
       return;
     }
 
-    console.log('✅ Confirmando datos de huella para el padre...');
+    console.log('✅ Confirmando datos de huella...');
+    
+    // AQUÍ ESTÁ LA MAGIA: Calculamos el ID del dispositivo a partir del ID de Supabase.
+    // Es rápido, no usa la red y nunca dará Timeout.
+    const calculatedDeviceUserId = parseInt(user.id.slice(-6), 16) % 9999;
     
     const fingerprintData = {
       user_id: user.id,
@@ -330,12 +406,15 @@ export default function FingerprintRegistration({
       capture_count: 3,
       capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
       
-      device_user_id: parseInt(user.id.slice(-6), 16) % 9999,
+      // Usamos el ID calculado. Este es el número que se guardará en el F22.
+      device_user_id: calculatedDeviceUserId, 
+      
       device_info: {
         deviceType: 'ZKTeco',
         captureMethod: 'multiple_capture',
         totalCaptures: 3,
         wsConnection: 'localhost:8085',
+        deviceUserId: calculatedDeviceUserId, // Lo incluimos aquí también por consistencia
         qualities: [
           combinedTemplate.primary.qualityScore,
           combinedTemplate.verification.qualityScore,
@@ -346,14 +425,13 @@ export default function FingerprintRegistration({
       }
     };
     
-    console.log('📤 Pasando datos al componente padre:', fingerprintData);
+    console.log('📤 Pasando datos al componente padre con device_user_id calculado:', calculatedDeviceUserId);
     
     onFingerprintDataReady(fingerprintData);
     handleClose();
     
   }, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
 
-  // ✅ processFinalTemplate
   const processFinalTemplate = useCallback(() => {
     setCurrentStep('processing');
     setMessage('Combinando templates biométricos...');
@@ -404,11 +482,9 @@ export default function FingerprintRegistration({
     });
   }, [totalTime, stopTimers]);
 
-  // ✅ FIX: startSingleCapture mejorado
   const startSingleCapture = useCallback((captureNumber: number) => {
     console.log(`🚀 Iniciando captura ${captureNumber}/3`);
     
-    // ✅ FIX: Validar que tenemos un dedo seleccionado
     const fingerIndex = selectedFingerRef.current || selectedFinger;
     if (!fingerIndex) {
       console.error('❌ No hay dedo seleccionado');
@@ -429,7 +505,7 @@ export default function FingerprintRegistration({
       action: 'capture_fingerprint',
       userId: user.id,
       userName: `${user.firstName} ${user.lastName}`,
-      fingerIndex: fingerIndex, // ✅ FIX: Usar el valor validado
+      fingerIndex: fingerIndex,
       captureNumber: captureNumber,
       timestamp: Date.now()
     };
@@ -451,7 +527,6 @@ export default function FingerprintRegistration({
     }
   }, [selectedFinger, user, stopTimers]);
 
-  // ✅ handleWebSocketMessage
   const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
     console.log('📨 Mensaje recibido:', message);
     
@@ -462,8 +537,6 @@ export default function FingerprintRegistration({
         const isDeviceConnected = message.data?.deviceConnected === true;
         
         console.log(`📱 Estado del dispositivo: ${isDeviceConnected ? '✅ CONECTADO' : '❌ DESCONECTADO'}`);
-        console.log(`👤 Usuario del servidor: ${message.data?.user || 'N/A'}`);
-        console.log(`⏰ Timestamp: ${message.data?.timestamp || message.timestamp || 'N/A'}`);
         
         setDeviceConnected(isDeviceConnected);
         
@@ -478,7 +551,6 @@ export default function FingerprintRegistration({
         
       case 'capture_status':
         if (message.data) {
-          console.log(`📊 ${message.data.status}: ${message.data.message} (${message.data.progress}%)`);
           setMessage(message.data.message || '');
           setProgress(message.data.progress || 0);
         }
@@ -551,7 +623,7 @@ export default function FingerprintRegistration({
     }
   }, [captureStartTime, stopTimers, startSingleCapture, processFinalTemplate, currentCapture]);
 
-  // Resto de funciones WebSocket
+  // WebSocket connection logic
   const attemptReconnect = useCallback(() => {
     if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttemptsRef.current++;
@@ -618,7 +690,7 @@ export default function FingerprintRegistration({
     }
   }, [handleWebSocketMessage, attemptReconnect]);
 
-  // 🚀 INICIAR PROCESO
+  // ✅ FUNCIÓN DE INICIO SIMPLIFICADA
   const startMultipleCaptureProcess = useCallback(() => {
     const fingerIndex = selectedFingerRef.current || selectedFinger;
     if (!fingerIndex || !wsConnected || !deviceConnected) {
@@ -684,7 +756,6 @@ export default function FingerprintRegistration({
     }
   }, [open, resetProcess, connectWebSocket, stopTimers]);
 
-  // 🎨 OBTENER STEP ACTUAL
   const getCurrentStepInfo = () => {
     return PROCESS_STEPS.find(step => step.id === currentStep) || PROCESS_STEPS[0];
   };
@@ -709,7 +780,6 @@ export default function FingerprintRegistration({
         }
       }}
     >
-      {/* HEADER */}
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -775,7 +845,6 @@ export default function FingerprintRegistration({
       </DialogTitle>
 
       <DialogContent sx={{ p: 0 }}>
-        {/* ESTADO ACTUAL */}
         <Box sx={{
           p: 3,
           bgcolor: `${currentStepInfo.color}10`,
@@ -809,7 +878,6 @@ export default function FingerprintRegistration({
             )}
           </Box>
           
-          {/* Barra de progreso */}
           {isProcessing && (
             <LinearProgress
               variant="determinate"
@@ -827,7 +895,6 @@ export default function FingerprintRegistration({
             />
           )}
           
-          {/* Indicadores de progreso */}
           {(currentStep.startsWith('capture') || currentStep === 'processing' || currentStep === 'ready') && (
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
               {[0, 1, 2].map((index) => (
@@ -856,7 +923,6 @@ export default function FingerprintRegistration({
             </Box>
           )}
           
-          {/* Métricas */}
           {(totalTime > 0 || finalQuality !== null) && (
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
               {totalTime > 0 && (
@@ -905,9 +971,7 @@ export default function FingerprintRegistration({
           )}
         </Box>
 
-        {/* CONTENIDO PRINCIPAL */}
         <Box sx={{ p: 3 }}>
-          {/* ERRORES */}
           {(error || wsError) && (
             <Fade in>
               <Alert 
@@ -939,7 +1003,6 @@ export default function FingerprintRegistration({
             </Fade>
           )}
 
-          {/* SELECTOR DE DEDOS */}
           {currentStep === 'selection' && (
             <Fade in>
               <Box>
@@ -952,7 +1015,7 @@ export default function FingerprintRegistration({
                 
                 <Grid container spacing={2}>
                   {FINGER_CONFIG.map((finger) => (
-                    <Grid item xs={6} sm={4} md={2.4} key={finger.id}>
+                    <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={finger.id}>
                       <Card
                         sx={{
                           cursor: 'pointer',
@@ -974,7 +1037,7 @@ export default function FingerprintRegistration({
                         <CardActionArea
                           onClick={() => {
                             setSelectedFinger(finger.id);
-                            selectedFingerRef.current = finger.id; // ✅ FIX: Guardar en ref
+                            selectedFingerRef.current = finger.id;
                           }}
                           sx={{ p: 2, textAlign: 'center' }}
                         >
@@ -1003,7 +1066,6 @@ export default function FingerprintRegistration({
             </Fade>
           )}
 
-          {/* PROCESO EN CURSO */}
           {currentStep !== 'selection' && currentStep !== 'ready' && (
             <Zoom in>
               <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -1064,7 +1126,6 @@ export default function FingerprintRegistration({
                   />
                 )}
 
-                {/* Instrucciones */}
                 {currentStep.startsWith('capture') && (
                   <Box sx={{ mt: 2, p: 2, bgcolor: `${darkProTokens.primary}10`, borderRadius: 2, maxWidth: 400, mx: 'auto' }}>
                     <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontSize: '0.9rem' }}>
@@ -1080,7 +1141,6 @@ export default function FingerprintRegistration({
             </Zoom>
           )}
 
-          {/* DATOS LISTOS PARA CONFIRMAR */}
           {currentStep === 'ready' && (
             <Slide direction="up" in>
               <Box>
@@ -1088,7 +1148,6 @@ export default function FingerprintRegistration({
                   🎯 ¡Datos de Huella Capturados Exitosamente!
                 </Typography>
                 
-                {/* Resumen */}
                 <Box sx={{ p: 3, bgcolor: `${darkProTokens.success}10`, borderRadius: 2, mb: 3 }}>
                   <Typography variant="h6" sx={{ color: darkProTokens.success, mb: 2, fontWeight: 600 }}>
                     ✅ Capturas Completadas
@@ -1128,8 +1187,7 @@ export default function FingerprintRegistration({
                       }}
                     />
                   </Box>
-
-                  {/* Detalle de capturas */}
+                  
                   {captureResults.length > 0 && (
                     <Box>
                       <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
@@ -1173,7 +1231,6 @@ export default function FingerprintRegistration({
                   )}
                 </Box>
 
-                {/* Información importante */}
                 <Alert 
                   severity="info" 
                   sx={{ 
@@ -1199,7 +1256,6 @@ export default function FingerprintRegistration({
         </Box>
       </DialogContent>
 
-      {/* ACCIONES */}
       <DialogActions sx={{ p: 3, gap: 2, borderTop: `1px solid ${darkProTokens.grayDark}` }}>
         {currentStep === 'selection' && (
           <>
@@ -1280,7 +1336,6 @@ export default function FingerprintRegistration({
           </>
         )}
 
-        {/* BOTONES PARA ESTADO 'ready' */}
         {currentStep === 'ready' && (
           <>
             <Button
@@ -1314,7 +1369,6 @@ export default function FingerprintRegistration({
               Cancelar
             </Button>
 
-            {/* BOTÓN PRINCIPAL: CONFIRMAR DATOS */}
             <Button
               variant="contained"
               startIcon={<CheckCircleIcon />}
@@ -1342,20 +1396,6 @@ export default function FingerprintRegistration({
           </>
         )}
       </DialogActions>
-
-      {/* CSS ANIMATIONS */}
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { 
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% { 
-            transform: scale(1.05);
-            opacity: 0.8;
-          }
-        }
-      `}</style>
     </Dialog>
   );
-}
+} 
