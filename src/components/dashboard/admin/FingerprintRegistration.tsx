@@ -306,39 +306,14 @@ export default function FingerprintRegistration({
     onClose();
   }, [resetProcess, onClose]);
 
-  // ✅ FUNCIÓN PARA OBTENER EL SIGUIENTE ID DISPONIBLE
-  const getNextDeviceUserId = async (): Promise<number> => {
-    try {
-      // Primero intentar desde el API
-      const response = await fetch('/api/biometric/get-next-device-id');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Siguiente ID del API:', data.nextId);
-        return data.nextId || 1;
-      }
-    } catch (error) {
-      console.error('❌ Error obteniendo ID del API:', error);
-    }
-    
-    // Fallback: generar un ID basado en timestamp
-    // Esto da números como 1001, 1002, etc.
-    const baseId = 1000;
-    const randomPart = Math.floor(Math.random() * 100);
-    return baseId + randomPart;
-  };
-
-  // ✅ FUNCIÓN PARA CONFIRMAR Y PASAR DATOS AL PADRE (MODIFICADA)
-  const confirmFingerprintData = useCallback(async () => {
+  // ✅ FUNCIÓN PARA CONFIRMAR Y PASAR DATOS AL PADRE
+  const confirmFingerprintData = useCallback(() => {
     if (!combinedTemplate || !selectedFingerRef.current) {
       setError('No hay datos de huella para confirmar');
       return;
     }
 
-    console.log('✅ Confirmando datos de huella...');
-    
-    // CAMBIO IMPORTANTE: Obtener ID secuencial
-    const deviceUserId = await getNextDeviceUserId();
-    console.log('🔢 Device User ID asignado:', deviceUserId);
+    console.log('✅ Confirmando datos de huella para el padre...');
     
     const fingerprintData = {
       user_id: user.id,
@@ -355,14 +330,12 @@ export default function FingerprintRegistration({
       capture_count: 3,
       capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
       
-      device_user_id: deviceUserId, // ✅ USAR EL ID SECUENCIAL
-      
+      device_user_id: parseInt(user.id.slice(-6), 16) % 9999,
       device_info: {
         deviceType: 'ZKTeco',
         captureMethod: 'multiple_capture',
         totalCaptures: 3,
         wsConnection: 'localhost:8085',
-        deviceUserId: deviceUserId, // ✅ TAMBIÉN AQUÍ
         qualities: [
           combinedTemplate.primary.qualityScore,
           combinedTemplate.verification.qualityScore,
@@ -373,7 +346,7 @@ export default function FingerprintRegistration({
       }
     };
     
-    console.log('📤 Pasando datos al componente padre con device_user_id:', deviceUserId);
+    console.log('📤 Pasando datos al componente padre:', fingerprintData);
     
     onFingerprintDataReady(fingerprintData);
     handleClose();
