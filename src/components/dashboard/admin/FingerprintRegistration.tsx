@@ -303,6 +303,81 @@ export default function FingerprintRegistration({
     onClose();
   }, [resetProcess, onClose]);
 
+// En FingerprintRegistration.tsx, agregar esta función ANTES de confirmFingerprintData
+const getNextDeviceUserId = async (): Promise<number> => {
+  try {
+    // Primero intentar desde el API
+    const response = await fetch('/api/biometric/get-next-device-id');
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Siguiente ID del API:', data.nextId);
+      return data.nextId || 1;
+    }
+  } catch (error) {
+    console.error('❌ Error obteniendo ID del API:', error);
+  }
+  
+  // Fallback: generar un ID basado en timestamp
+  // Esto da números como 1001, 1002, etc.
+  const baseId = 1000;
+  const randomPart = Math.floor(Math.random() * 100);
+  return baseId + randomPart;
+};
+
+// Modificar confirmFingerprintData para usar async
+const confirmFingerprintData = useCallback(async () => {
+  if (!combinedTemplate || !selectedFingerRef.current) {
+    setError('No hay datos de huella para confirmar');
+    return;
+  }
+
+  console.log('✅ Confirmando datos de huella...');
+  
+  // CAMBIO IMPORTANTE: Obtener ID secuencial
+  const deviceUserId = await getNextDeviceUserId();
+  console.log('🔢 Device User ID asignado:', deviceUserId);
+  
+  const fingerprintData = {
+    user_id: user.id,
+    finger_index: selectedFingerRef.current,
+    finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
+    
+    template: combinedTemplate.primary.template,
+    primary_template: combinedTemplate.primary.template,
+    verification_template: combinedTemplate.verification.template,
+    backup_template: combinedTemplate.backup.template,
+    combined_template: combinedTemplate,
+    
+    average_quality: Math.round(combinedTemplate.averageQuality),
+    capture_count: 3,
+    capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
+    
+    device_user_id: deviceUserId, // ✅ USAR EL ID SECUENCIAL
+    
+    device_info: {
+      deviceType: 'ZKTeco',
+      captureMethod: 'multiple_capture',
+      totalCaptures: 3,
+      wsConnection: 'localhost:8085',
+      deviceUserId: deviceUserId, // ✅ TAMBIÉN AQUÍ
+      qualities: [
+        combinedTemplate.primary.qualityScore,
+        combinedTemplate.verification.qualityScore,
+        combinedTemplate.backup.qualityScore
+      ],
+      capturedBy: 'luishdz04',
+      capturedAt: new Date().toISOString()
+    }
+  };
+  
+  console.log('📤 Pasando datos al componente padre con device_user_id:', deviceUserId);
+  
+  onFingerprintDataReady(fingerprintData);
+  handleClose();
+  
+}, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
+  
+
   // ✅ FUNCIÓN CORREGIDA Y FINAL PARA LOGRAR TU OBJETIVO
   const confirmFingerprintData = useCallback(() => {
     if (!combinedTemplate || !selectedFingerRef.current) {
