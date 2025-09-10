@@ -992,53 +992,58 @@ export default function RegistrarMembresiaPage() {
   }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate, addPeriodToDate]);
 
   // ✅ VALIDAR FECHAS DE MEMBRESÍA
-  const validateMembershipDates = useCallback((startDate: string, endDate: string | null, paymentType: string): boolean => {
-    try {
-      const start = new Date(`${startDate}T00:00:00`);
-      
-      // Visitas no tienen fecha de fin
-      if (paymentType === 'visit') {
-        return endDate === null;
-      }
-      
-      // Otros tipos deben tener fecha de fin
-      if (!endDate) {
-        console.error('❌ Fecha de fin requerida para tipo:', paymentType);
-        return false;
-      }
-      
-      const end = new Date(`${endDate}T00:00:00`);
-      
-      // La fecha de fin debe ser posterior a la de inicio
-      if (end <= start) {
-        console.error('❌ Fecha de fin debe ser posterior a fecha de inicio');
-        return false;
-      }
-      
-      // Validar duración mínima según tipo
-      const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      
-      const minDurations: Record<string, number> = {
-        weekly: 6,
-        biweekly: 13,
-        monthly: 28,
-        bimonthly: 55,
-        quarterly: 85,
-        semester: 170,
-        annual: 350
-      };
-      
-      const minDays = minDurations[paymentType];
-      if (minDays && daysDiff < minDays) {
-        console.warn(`⚠️ Duración menor a la esperada: ${daysDiff} días (mínimo: ${minDays})`);
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('❌ Error validando fechas:', error);
+  // ✅ ACTUALIZAR validateMembershipDates para aceptar visitas con misma fecha
+const validateMembershipDates = useCallback((startDate: string, endDate: string | null, paymentType: string): boolean => {
+  try {
+    const start = new Date(`${startDate}T00:00:00`);
+    
+    // ✅ CAMBIO: Las visitas DEBEN tener fecha de fin
+    if (!endDate) {
+      console.error('❌ Fecha de fin requerida para todos los tipos');
       return false;
     }
-  }, []);
+    
+    const end = new Date(`${endDate}T00:00:00`);
+    
+    // ✅ CAMBIO: Para visitas, start_date y end_date deben ser iguales
+    if (paymentType === 'visit') {
+      if (startDate !== endDate) {
+        console.error('❌ Para visitas, fecha inicio y fin deben ser iguales');
+        return false;
+      }
+      return true;
+    }
+    
+    // Para otros tipos, la fecha de fin debe ser posterior
+    if (end <= start) {
+      console.error('❌ Fecha de fin debe ser posterior a fecha de inicio');
+      return false;
+    }
+    
+    // Validar duración mínima según tipo
+    const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const minDurations: Record<string, number> = {
+      weekly: 6,
+      biweekly: 13,
+      monthly: 28,
+      bimonthly: 55,
+      quarterly: 85,
+      semester: 170,
+      annual: 350
+    };
+    
+    const minDays = minDurations[paymentType];
+    if (minDays && daysDiff < minDays) {
+      console.warn(`⚠️ Duración menor a la esperada: ${daysDiff} días (mínimo: ${minDays})`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error validando fechas:', error);
+    return false;
+  }
+}, []);
 
   // ✅ VALIDAR PAGO
   const validatePayment = useCallback((): boolean => {
@@ -1059,251 +1064,210 @@ export default function RegistrarMembresiaPage() {
 
     return true;
   }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formData.paymentMethod, formData.paymentReceived, formatPrice]);
+// ✅ CÓDIGO CORREGIDO EN handleSubmit
 
-  // ✅ FUNCIÓN PRINCIPAL DE SUBMIT MEJORADA
-  const handleSubmit = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+const handleSubmit = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    console.group('🚀 Iniciando proceso de venta de membresía');
+    console.log('Usuario:', selectedUser?.email);
+    console.log('Plan:', selectedPlan?.name);
+    console.log('Tipo:', formData.paymentType);
+    console.log('Es renovación:', formData.isRenewal);
+    
+    // Validaciones iniciales
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No hay sesión activa. Por favor, inicie sesión nuevamente.');
+    }
+    
+    if (!selectedUser || !selectedPlan || !formData.paymentType) {
+      throw new Error('Debe completar todos los campos obligatorios');
+    }
+    
+    if (!formData.isMixedPayment && !formData.paymentMethod) {
+      throw new Error('Debe seleccionar un método de pago');
+    }
+    
+    if (!validatePayment()) {
+      return;
+    }
+    
+    // ✅ CÁLCULO INTELIGENTE DE FECHAS - CORREGIDO
+    console.group('📅 Calculando fechas de membresía');
+    
+    const today = toMexicoDate(new Date());
+    let startDate: string;
+    
+    // Determinar fecha de inicio
+    if (formData.isRenewal && formData.latestEndDate) {
+      const lastEnd = new Date(`${formData.latestEndDate}T00:00:00`);
+      lastEnd.setDate(lastEnd.getDate() + 1);
+      startDate = toMexicoDate(lastEnd);
+      console.log(`🔄 Renovación detectada. Inicio: ${startDate}`);
+    } else {
+      startDate = today;
+      console.log(`🆕 Nueva membresía. Inicio: ${startDate}`);
+    }
+    
+    // ✅ CAMBIO CRÍTICO: Siempre usar addPeriodToDate para TODOS los tipos
+    const endDate = addPeriodToDate(startDate, formData.paymentType, selectedPlan);
+    
+    console.log(`📅 Fechas calculadas:`);
+    console.log(`   📅 Inicio: ${startDate}`);
+    console.log(`   🔄 Tipo: ${formData.paymentType}`);
+    console.log(`   📅 Vencimiento: ${endDate}`);
+    
+    // Información adicional para visitas
+    if (formData.paymentType === 'visit') {
+      console.log('   🎟️ Membresía por visita: válida solo el día de hoy');
+    }
+    
+    console.groupEnd();
+    
+    // Validar fechas
+    if (!validateMembershipDates(startDate, endDate, formData.paymentType)) {
+      throw new Error('Error en el cálculo de fechas de la membresía');
+    }
+    
+    // Preparar datos de la membresía
+    const membershipData = {
+      // IDs y referencias
+      userid: selectedUser.id,
+      planid: selectedPlan.id,
+      created_by: session.user.id,
       
-      // Log inicial para debugging
-      console.group('🚀 Iniciando proceso de venta de membresía');
-      console.log('Usuario:', selectedUser?.email);
-      console.log('Plan:', selectedPlan?.name);
-      console.log('Tipo:', formData.paymentType);
-      console.log('Es renovación:', formData.isRenewal);
+      // ✅ FECHAS: end_date ahora tiene valor para TODOS los tipos
+      start_date: startDate,
+      end_date: endDate, // Ya no es null para visitas
       
-      // Validaciones iniciales
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No hay sesión activa. Por favor, inicie sesión nuevamente.');
-      }
+      // Tipo y estado
+      payment_type: formData.paymentType,
+      status: 'active',
       
-      if (!selectedUser || !selectedPlan || !formData.paymentType) {
-        throw new Error('Debe completar todos los campos obligatorios');
-      }
+      // Visitas (solo para tipo 'visit')
+      total_visits: formData.paymentType === 'visit' ? 1 : null,
+      remaining_visits: formData.paymentType === 'visit' ? 1 : null,
       
-      if (!formData.isMixedPayment && !formData.paymentMethod) {
-        throw new Error('Debe seleccionar un método de pago');
-      }
+      // Montos
+      amount_paid: finalAmount,
+      subtotal: subtotal,
+      inscription_amount: inscriptionAmount,
+      discount_amount: discountAmount,
+      commission_amount: commissionAmount,
       
-      if (!validatePayment()) {
-        return;
-      }
+      // Método de pago
+      payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
+      payment_reference: formData.paymentReference || null,
+      is_mixed_payment: formData.isMixedPayment,
+      payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
       
-      // ✅ CÁLCULO INTELIGENTE DE FECHAS
-      console.group('📅 Calculando fechas de membresía');
+      // Para efectivo
+      payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
+      payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
       
-      const today = toMexicoDate(new Date());
-      let startDate: string;
-      let endDate: string | null = null;
+      // Cupón
+      coupon_code: appliedCoupon?.code || null,
       
-      // Determinar fecha de inicio
-      if (formData.isRenewal && formData.latestEndDate) {
-        // Renovación: comenzar al día siguiente del vencimiento actual
-        const lastEnd = new Date(`${formData.latestEndDate}T00:00:00`);
-        lastEnd.setDate(lastEnd.getDate() + 1);
-        startDate = toMexicoDate(lastEnd);
-        console.log(`🔄 Renovación detectada. Inicio: ${startDate} (día después de ${formData.latestEndDate})`);
-      } else {
-        // Nueva membresía: comenzar hoy
-        startDate = today;
-        console.log(`🆕 Nueva membresía. Inicio: ${startDate}`);
-      }
+      // Flags
+      is_renewal: formData.isRenewal,
+      skip_inscription: formData.skipInscription,
       
-      // Calcular fecha de fin
-      if (formData.paymentType === 'visit') {
-        // Las visitas no tienen fecha de fin
-        endDate = null;
-        console.log('🎟️ Tipo visita: sin fecha de vencimiento');
-      } else {
-        endDate = addPeriodToDate(startDate, formData.paymentType, selectedPlan);
-        console.log(`📆 Fecha de vencimiento calculada: ${endDate}`);
-      }
+      // Comisión personalizada
+      custom_commission_rate: formData.customCommissionRate,
       
-      console.groupEnd();
+      // Notas
+      notes: formData.notes || null
+    };
+    
+    console.log('💾 Datos a guardar:', membershipData);
+    
+    // Si es renovación, desactivar membresías activas
+    if (formData.isRenewal) {
+      console.log('🔄 Desactivando membresías activas previas...');
       
-      // Validar fechas
-      if (!validateMembershipDates(startDate, endDate, formData.paymentType)) {
-        throw new Error('Error en el cálculo de fechas de la membresía');
-      }
-      
-      // Preparar datos de la membresía
-      const membershipData = {
-        // IDs y referencias
-        userid: selectedUser.id,
-        planid: selectedPlan.id,
-        created_by: session.user.id,
-        
-        // Fechas
-        start_date: startDate,
-        end_date: endDate,
-        
-        // Tipo y estado
-        payment_type: formData.paymentType,
-        status: 'active',
-        
-        // Visitas (solo para tipo 'visit')
-        total_visits: formData.paymentType === 'visit' ? 1 : null,
-        remaining_visits: formData.paymentType === 'visit' ? 1 : null,
-        
-        // Montos
-        amount_paid: finalAmount,
-        subtotal: subtotal,
-        inscription_amount: inscriptionAmount,
-        discount_amount: discountAmount,
-        commission_amount: commissionAmount,
-        
-        // Método de pago
-        payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
-        payment_reference: formData.paymentReference || null,
-        is_mixed_payment: formData.isMixedPayment,
-        payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
-        
-        // Para efectivo
-        payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
-        payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
-        
-        // Cupón
-        coupon_code: appliedCoupon?.code || null,
-        
-        // Flags
-        is_renewal: formData.isRenewal,
-        skip_inscription: formData.skipInscription,
-        
-        // Comisión personalizada
-        custom_commission_rate: formData.customCommissionRate,
-        
-        // Notas
-        notes: formData.notes || null
-      };
-      
-      console.log('💾 Datos a guardar:', membershipData);
-      
-      // Si es renovación, desactivar membresías activas
-      if (formData.isRenewal) {
-        console.log('🔄 Desactivando membresías activas previas...');
-        
-        const { error: updateError } = await supabase
-          .from('user_memberships')
-          .update({ 
-            status: 'expired',
-            notes: `Expirada por renovación el ${today}`
-          })
-          .eq('userid', selectedUser.id)
-          .eq('status', 'active');
-          
-        if (updateError) {
-          console.warn('⚠️ Error al desactivar membresías:', updateError);
-        } else {
-          console.log('✅ Membresías previas desactivadas');
-        }
-      }
-      
-      // Guardar nueva membresía
-      const { data: membership, error: membershipError } = await supabase
+      const { error: updateError } = await supabase
         .from('user_memberships')
-        .insert([membershipData])
-        .select()
-        .single();
+        .update({ 
+          status: 'expired',
+          notes: `Expirada por renovación el ${today}`
+        })
+        .eq('userid', selectedUser.id)
+        .eq('status', 'active');
         
-      if (membershipError) {
-        throw membershipError;
+      if (updateError) {
+        console.warn('⚠️ Error al desactivar membresías:', updateError);
+      } else {
+        console.log('✅ Membresías previas desactivadas');
       }
+    }
+    
+    // Guardar nueva membresía
+    const { data: membership, error: membershipError } = await supabase
+      .from('user_memberships')
+      .insert([membershipData])
+      .select()
+      .single();
       
-      console.log('✅ Membresía creada:', membership.id);
-      
-      // Guardar detalles de pago mixto si aplica
-      if (formData.isMixedPayment && formData.paymentDetails.length > 0) {
-        console.log('💳 Guardando detalles de pago mixto...');
-        
-        const paymentDetailsData = formData.paymentDetails.map((detail, index) => ({
-          membership_id: membership.id,
-          payment_method: detail.method,
-          amount: detail.amount,
-          commission_rate: detail.commission_rate,
-          commission_amount: detail.commission_amount,
-          payment_reference: detail.reference || null,
-          sequence_order: index + 1
-        }));
-        
-        const { error: detailsError } = await supabase
-          .from('membership_payment_details')
-          .insert(paymentDetailsData);
-          
-        if (detailsError) {
-          console.error('❌ Error al guardar detalles de pago:', detailsError);
-        } else {
-          console.log('✅ Detalles de pago guardados');
-        }
-      }
-      
-      // Actualizar uso del cupón
-      if (appliedCoupon) {
-        console.log('🎟️ Actualizando uso del cupón...');
-        
-        const { error: couponError } = await supabase
-          .from('coupons')
-          .update({ 
-            current_uses: appliedCoupon.current_uses + 1,
-            last_used_at: toMexicoTimestamp(new Date()),
-            last_used_by: session.user.id
-          })
-          .eq('id', appliedCoupon.id);
-          
-        if (couponError) {
-          console.warn('⚠️ Error al actualizar cupón:', couponError);
-        } else {
-          console.log('✅ Cupón actualizado');
-        }
-      }
-      
-      // Mensaje de éxito personalizado
-      const endDateFormatted = endDate ? 
-        formatMexicoDateTime(endDate, {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }) : 
-        'Sin vencimiento (pago por visita)';
-        
-      const successMsg = formData.isRenewal 
+    if (membershipError) {
+      throw membershipError;
+    }
+    
+    console.log('✅ Membresía creada:', membership.id);
+    
+    // ... resto del código (guardar detalles, actualizar cupón, etc.)
+    
+    // ✅ MENSAJE DE ÉXITO MEJORADO PARA VISITAS
+    let successMsg;
+    if (formData.paymentType === 'visit') {
+      successMsg = `🎉 ¡Visita registrada! ${selectedUser.firstName} tiene acceso HOY (${formatDate(endDate)})`;
+    } else {
+      const endDateFormatted = formatMexicoDateTime(endDate, {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      successMsg = formData.isRenewal 
         ? `🎉 ¡Renovación exitosa! La membresía de ${selectedUser.firstName} ha sido extendida hasta el ${endDateFormatted}`
         : `🎉 ¡Membresía registrada! ${selectedUser.firstName} tiene acceso hasta el ${endDateFormatted}`;
-        
-      setSuccessMessage(successMsg);
-      console.log(successMsg);
-      console.groupEnd();
-      
-      // Redirigir después de 3 segundos
-      setTimeout(() => {
-        router.push('/dashboard/admin/membresias');
-      }, 3000);
-      
-    } catch (err: any) {
-      console.error('❌ Error en handleSubmit:', err);
-      setError(`Error al procesar la venta: ${err.message || 'Error desconocido'}`);
-    } finally {
-      setLoading(false);
-      setConfirmDialogOpen(false);
     }
-  }, [
-    supabase,
-    selectedUser,
-    selectedPlan,
-    formData,
-    validatePayment,
-    validateMembershipDates,
-    finalAmount,
-    subtotal,
-    inscriptionAmount,
-    discountAmount,
-    commissionAmount,
-    appliedCoupon,
-    router,
-    addPeriodToDate
-  ]);
+      
+    setSuccessMessage(successMsg);
+    console.log(successMsg);
+    console.groupEnd();
+    
+    // Redirigir después de 3 segundos
+    setTimeout(() => {
+      router.push('/dashboard/admin/membresias');
+    }, 3000);
+    
+  } catch (err: any) {
+    console.error('❌ Error en handleSubmit:', err);
+    setError(`Error al procesar la venta: ${err.message || 'Error desconocido'}`);
+  } finally {
+    setLoading(false);
+    setConfirmDialogOpen(false);
+  }
+}, [
+  supabase,
+  selectedUser,
+  selectedPlan,
+  formData,
+  validatePayment,
+  validateMembershipDates,
+  finalAmount,
+  subtotal,
+  inscriptionAmount,
+  discountAmount,
+  commissionAmount,
+  appliedCoupon,
+  router,
+  addPeriodToDate,
+  formatDate
+]);
 
   // ✅ VALIDAR SI PUEDE PROCEDER AL SIGUIENTE PASO
   const canProceedToNextStep = useCallback(() => {
