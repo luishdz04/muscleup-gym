@@ -244,7 +244,7 @@ const RegistroWizard = () => {
             opacity: 0.8
           }}
         >
-          🚀 Registro v3.0 - Componentizado - {getCurrentMexicoDate()} by @luishdz044
+          🚀 Registro v4.0 - Con Zod - {getCurrentMexicoDate()} by @luishdz044
         </div>
       )}
 
