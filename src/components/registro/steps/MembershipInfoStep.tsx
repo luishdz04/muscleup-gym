@@ -1,3 +1,4 @@
+// src/components/registro/steps/MembershipInfoStep.tsx
 'use client';
 
 import React from 'react';
@@ -20,11 +21,12 @@ export const MembershipInfoStep: React.FC<MembershipInfoStepProps> = ({
     <div className="animate-fadeIn">
       <h2 className="text-xl font-bold mb-4 text-yellow-400">Información de Membresía</h2>
       
+      {/* SIN validaciones manuales - Zod se encarga */}
       <div className="mb-4">
         <label className="block mb-1">¿Cómo te enteraste de nosotros? <span className="text-yellow-400">*</span></label>
         <select
           className={styles.input}
-          {...register('referredBy', { required: 'Este campo es obligatorio' })}
+          {...register('referredBy')}
         >
           <option value="">Selecciona</option>
           <option value="Redes sociales">Redes sociales</option>
@@ -41,7 +43,7 @@ export const MembershipInfoStep: React.FC<MembershipInfoStepProps> = ({
         <label className="block mb-1">Principal motivación para entrenar <span className="text-yellow-400">*</span></label>
         <select
           className={styles.input}
-          {...register('mainMotivation', { required: 'Este campo es obligatorio' })}
+          {...register('mainMotivation')}
         >
           <option value="">Selecciona</option>
           <option value="Bajar de peso">Bajar de peso</option>
@@ -70,7 +72,7 @@ export const MembershipInfoStep: React.FC<MembershipInfoStepProps> = ({
         <label className="block mb-1">Nivel de entrenamiento actual <span className="text-yellow-400">*</span></label>
         <select
           className={styles.input}
-          {...register('trainingLevel', { required: 'Este campo es obligatorio' })}
+          {...register('trainingLevel')}
         >
           <option value="">Selecciona</option>
           <option value="Principiante">Principiante (menos de 3 meses)</option>
