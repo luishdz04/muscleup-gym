@@ -1,3 +1,4 @@
+// src/components/registro/steps/ContractSignatureStep.tsx
 'use client';
 
 import React from 'react';
@@ -114,20 +115,20 @@ export const ContractSignatureStep: React.FC<ContractSignatureStepProps> = ({
         </div>
       </div>
       
-      {/* Aceptación del reglamento */}
+      {/* Aceptación del reglamento - SIN validaciones manuales - Zod se encarga */}
       <div className="mb-6">
         <label className="flex items-center">
           <input
             type="checkbox"
             className={styles.checkbox}
-            {...register('acceptedRules', { required: 'Debes aceptar el reglamento para continuar' })}
+            {...register('acceptedRules')}
           />
           <span>Acepto las normativas completas de MUSCLE UP GYM <span className="text-yellow-400">*</span></span>
         </label>
         {errors.acceptedRules && <p className={styles.errorText}>{errors.acceptedRules.message}</p>}
       </div>
       
-      {/* Campo de INE para menores */}
+      {/* Campo de INE para menores - Zod maneja la validación condicional */}
       {showTutorField && (
         <div className="mb-6">
           <div className="bg-yellow-900 bg-opacity-30 p-3 rounded mb-3 border border-yellow-600">
