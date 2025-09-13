@@ -56,7 +56,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
         />
       </div>
 
-      {/* Nombre y apellido - SIN validaciones manuales */}
+      {/* Nombre y apellido - SIN validaciones manuales, Zod se encarga */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block mb-1">Nombre(s) <span className="text-yellow-400">*</span></label>
