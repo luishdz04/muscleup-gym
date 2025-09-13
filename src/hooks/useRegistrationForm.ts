@@ -1,12 +1,27 @@
-// hooks/useRegistrationForm.ts
+// src/hooks/useRegistrationForm.ts
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { toMexicoDate, toMexicoTimestamp } from '@/utils/dateHelpers';
+
+// Importar esquemas de Zod
+import { 
+  step1Schema, 
+  step2Schema, 
+  step3Schema, 
+  createStep4Schema,
+  createFullRegistrationSchema,
+  type Step1Data,
+  type Step2Data,
+  type Step3Data,
+  type Step4Data,
+  type FullRegistrationData
+} from '@/schemas/registrationSchema';
 
 // ✅ CONFIGURAR DAYJS PARA ZONA HORARIA DE MÉXICO
 dayjs.extend(utc);
@@ -16,40 +31,8 @@ const MEXICO_TZ = 'America/Mexico_City';
 const STORAGE_KEY = 'registration-form';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-// Tipos originales de tu aplicación
-type FormData = {
-  // Paso 1
-  profilePhoto: FileList;
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  whatsapp: string;
-  birthDate: string;
-  street: string;
-  number: string;
-  neighborhood: string;
-  state: string;
-  city: string;
-  postalCode: string;
-  country: string;
-  gender: string;
-  maritalStatus: string;
-  // Paso 2
-  emergencyName: string;
-  emergencyPhone: string;
-  medicalCondition: string;
-  bloodType: string;
-  // Paso 3
-  referredBy: string;
-  mainMotivation: string;
-  receivePlans: boolean;
-  trainingLevel: string;
-  // Paso 4
-  acceptedRules: boolean;
-  tutorINE?: FileList;
-};
+// Usar el tipo completo de Zod en lugar del tipo manual
+type FormData = FullRegistrationData;
 
 interface SignatureCanvasRef {
   clear: () => void;
@@ -71,7 +54,7 @@ const fieldsPerStep: { [key: number]: (keyof FormData)[] } = {
   4: ['acceptedRules'] as (keyof FormData)[]
 };
 
-// Funciones utilitarias (extraídas de tu código)
+// Funciones utilitarias (mantener las mismas)
 const isValidFile = (file: unknown): file is File => {
   return typeof file === 'object' && 
          file !== null && 
@@ -96,12 +79,28 @@ const calculateAge = (birthDateString: string): number => {
   return now.diff(birthDate, 'year');
 };
 
-const validateAge = (birthDateString: string): boolean | string => {
+// ✅ Función de validación por paso usando Zod
+const validateStepWithZod = async (step: number, data: any, isMinor: boolean = false) => {
   try {
-    const age = calculateAge(birthDateString);
-    return (age >= 10 && age <= 100) || 'La edad debe estar entre 10 y 100 años';
+    switch (step) {
+      case 1:
+        await step1Schema.parseAsync(data);
+        return true;
+      case 2:
+        await step2Schema.parseAsync(data);
+        return true;
+      case 3:
+        await step3Schema.parseAsync(data);
+        return true;
+      case 4:
+        await createStep4Schema(isMinor).parseAsync(data);
+        return true;
+      default:
+        return false;
+    }
   } catch (error) {
-    return 'Fecha de nacimiento inválida';
+    console.error('Error de validación Zod:', error);
+    return false;
   }
 };
 
@@ -124,8 +123,9 @@ export const useRegistrationForm = () => {
   // Ref para firma
   const sigCanvas = useRef<SignatureCanvasRef | null>(null);
 
-  // Configuración del formulario
+  // ✅ CONFIGURACIÓN DEL FORMULARIO CON ZOD RESOLVER
   const formMethods = useForm<FormData>({
+    resolver: zodResolver(createFullRegistrationSchema(showTutorField)),
     mode: 'onChange',
     defaultValues: {
       receivePlans: false,
@@ -147,7 +147,7 @@ export const useRegistrationForm = () => {
 
   const formValues = watch();
 
-  // ✅ FUNCIÓN PARA CONVERTIR A BASE64 (de tu código original)
+  // ✅ FUNCIÓN PARA CONVERTIR A BASE64 (mantener igual)
   const toBase64 = useCallback(async (file: File): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
       if (!isValidFile(file)) {
@@ -173,7 +173,7 @@ export const useRegistrationForm = () => {
     });
   }, []);
 
-  // ✅ FUNCIÓN PARA CREAR PREVIEW SEGURO (de tu código)
+  // ✅ FUNCIÓN PARA CREAR PREVIEW SEGURO (mantener igual)
   const createSafePreview = useCallback(async (file: File): Promise<string> => {
     try {
       const base64 = await toBase64(file);
@@ -184,7 +184,7 @@ export const useRegistrationForm = () => {
     }
   }, [toBase64]);
 
-  // Funciones para manejo de fotos (adaptadas de tu código)
+  // Funciones para manejo de fotos (mantener iguales)
   const handleProfilePhotoCapture = useCallback(async (file: File) => {
     try {
       if (!file || !isValidFile(file)) {
@@ -274,7 +274,7 @@ export const useRegistrationForm = () => {
     }
   }, []);
 
-  // Navegación entre pasos
+  // ✅ NAVEGACIÓN CON VALIDACIÓN ZOD MEJORADA
   const getFieldsForStep = useCallback((currentStep: number): (keyof FormData)[] => {
     const fields = fieldsPerStep[currentStep] || [];
     return fields as (keyof FormData)[];
@@ -282,6 +282,8 @@ export const useRegistrationForm = () => {
 
   const goNext = async () => {
     const fieldsToValidate = getFieldsForStep(step);
+    
+    // ✅ Usar validación de React Hook Form que ya incluye Zod
     const valid = await trigger(fieldsToValidate);
     
     if (valid) {
@@ -291,7 +293,17 @@ export const useRegistrationForm = () => {
       setStep((s) => s + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      alert('Por favor, completa todos los campos requeridos correctamente.');
+      // ✅ Mostrar errores específicos de Zod si están disponibles
+      const currentErrors = Object.keys(errors).filter(key => 
+        fieldsToValidate.includes(key as keyof FormData)
+      );
+      
+      if (currentErrors.length > 0) {
+        const firstError = errors[currentErrors[0] as keyof FormData];
+        alert(firstError?.message || 'Por favor, completa todos los campos requeridos correctamente.');
+      } else {
+        alert('Por favor, completa todos los campos requeridos correctamente.');
+      }
     }
   };
   
@@ -307,10 +319,12 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // ✅ FUNCIÓN DE ENVÍO (copiada y adaptada de tu código original)
+  // ✅ FUNCIÓN DE ENVÍO (mantener igual con validación Zod automática)
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
       setIsSubmitting(true);
+      
+      console.log("🚀 [SUBMIT] Iniciando proceso con validación Zod completada");
       
       // Verificar firma
       let signatureDataUrl = '';
@@ -432,7 +446,7 @@ export const useRegistrationForm = () => {
         tutorINE: tutorINEBase64,
         isMinor: showTutorField,
         metadata: {
-          version: '2.1-mx-timezone-corrected',
+          version: '3.0-with-zod-validation',
           processedAt: toMexicoTimestamp(currentMexicoTime),
           processedBy: 'luishdz044',
           mexicoTimezone: MEXICO_TZ,
@@ -479,7 +493,7 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // Efectos (adaptados de tu código original)
+  // ✅ EFECTOS CON RESOLVER ZOD DINÁMICO
   
   // Cargar datos guardados
   useEffect(() => {
@@ -588,15 +602,24 @@ export const useRegistrationForm = () => {
     }
   }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl, profilePhotoFile, tutorINEFile]);
 
-  // Verificar si el usuario es menor de edad
+  // ✅ ACTUALIZAR RESOLVER CUANDO CAMBIE showTutorField
   useEffect(() => {
     const birthDate = formValues.birthDate;
     if (birthDate) {
       try {
         const age = calculateAge(birthDate);
-        setShowTutorField(age < 18);
+        const isMinorNew = age < 18;
         
-        if (age < 18 && step === 4) {
+        if (isMinorNew !== showTutorField) {
+          setShowTutorField(isMinorNew);
+          
+          // ✅ Actualizar el resolver dinámicamente para incluir/excluir tutorINE
+          const newResolver = zodResolver(createFullRegistrationSchema(isMinorNew));
+          // Nota: React Hook Form no permite cambiar resolver dinámicamente de forma fácil
+          // Pero la validación se aplicará correctamente en el siguiente trigger/submit
+        }
+        
+        if (isMinorNew && step === 4) {
           if (!fieldsPerStep[4].includes('tutorINE')) {
             fieldsPerStep[4].push('tutorINE');
           }
@@ -610,7 +633,7 @@ export const useRegistrationForm = () => {
         console.error("Error al calcular edad:", error);
       }
     }
-  }, [formValues.birthDate, step]);
+  }, [formValues.birthDate, step, showTutorField]);
 
   // Prevenir cierre accidental
   useEffect(() => {
@@ -644,6 +667,16 @@ export const useRegistrationForm = () => {
       window.location.href = url;
     } else {
       window.location.href = '/registro/firmado';
+    }
+  };
+
+  // ✅ FUNCIÓN DE VALIDACIÓN SIMPLE PARA USAR EN COMPONENTES
+  const validateAge = (birthDateString: string): boolean | string => {
+    try {
+      const age = calculateAge(birthDateString);
+      return (age >= 10 && age <= 100) || 'La edad debe estar entre 10 y 100 años';
+    } catch (error) {
+      return 'Fecha de nacimiento inválida';
     }
   };
 
