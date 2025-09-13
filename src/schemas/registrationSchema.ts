@@ -1,4 +1,4 @@
-// schemas/registrationSchema.ts
+// src/schemas/registrationSchema.ts
 import { z } from 'zod';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -17,40 +17,27 @@ const calculateAge = (birthDateString: string): number => {
   return now.diff(birthDate, 'year');
 };
 
-// Validación personalizada para archivos
+// ✅ VALIDACIÓN DE ARCHIVO CORREGIDA (solución de Gemini)
 const fileValidation = z
-  .any()
-  .refine((files) => {
-    if (!files || files.length === 0) return false;
-    return files[0] instanceof File;
-  }, "Archivo requerido")
-  .refine((files) => {
-    if (!files || files.length === 0) return true;
-    return files[0].size <= MAX_FILE_SIZE;
-  }, "El archivo debe ser menor a 5MB")
-  .refine((files) => {
-    if (!files || files.length === 0) return true;
-    return files[0].type.startsWith('image/');
-  }, "Solo se permiten imágenes");
+  .instanceof(FileList, { message: "Archivo requerido" })
+  .refine((fileList) => fileList.length > 0, "Archivo requerido")
+  .refine((fileList) => fileList[0]?.size <= MAX_FILE_SIZE, "El archivo debe ser menor a 5MB")
+  .refine(
+    (fileList) => fileList[0]?.type.startsWith("image/"),
+    "Solo se permiten imágenes"
+  );
 
-// Validación opcional para archivos
+// ✅ VALIDACIÓN OPCIONAL DE ARCHIVO CORREGIDA
 const optionalFileValidation = z
-  .any()
+  .instanceof(FileList)
   .optional()
-  .refine((files) => {
-    if (!files || files.length === 0) return true;
-    return files[0] instanceof File;
-  }, "Archivo inválido")
-  .refine((files) => {
-    if (!files || files.length === 0) return true;
-    return files[0].size <= MAX_FILE_SIZE;
-  }, "El archivo debe ser menor a 5MB")
-  .refine((files) => {
-    if (!files || files.length === 0) return true;
-    return files[0].type.startsWith('image/');
-  }, "Solo se permiten imágenes");
+  .refine((fileList) => !fileList || fileList.length === 0 || fileList[0]?.size <= MAX_FILE_SIZE, "El archivo debe ser menor a 5MB")
+  .refine(
+    (fileList) => !fileList || fileList.length === 0 || fileList[0]?.type.startsWith("image/"),
+    "Solo se permiten imágenes"
+  );
 
-// Esquema principal dividido por pasos
+// Esquemas por paso
 export const step1Schema = z.object({
   profilePhoto: fileValidation,
   firstName: z
@@ -169,71 +156,34 @@ export const step3Schema = z.object({
   })
 });
 
-// Esquema dinámico para el paso 4 (depende de si es menor de edad)
-export const createStep4Schema = (isMinor: boolean) => {
-  const baseSchema = z.object({
+// ✅ ESQUEMA COMPLETO Y UNIFICADO (solución de Gemini)
+export const fullRegistrationSchema = step1Schema
+  .merge(step2Schema)
+  .merge(step3Schema)
+  .extend({
+    // Campos del paso 4
     acceptedRules: z
       .boolean()
-      .refine((val) => val === true, 'Debes aceptar el reglamento')
+      .refine((val) => val === true, 'Debes aceptar el reglamento'),
+    tutorINE: optionalFileValidation // Lo definimos como opcional aquí
+  })
+  .superRefine((data, ctx) => {
+    // ✅ Lógica condicional para el INE del tutor (solución de Gemini)
+    const age = calculateAge(data.birthDate);
+    if (age < 18) {
+      if (!data.tutorINE || data.tutorINE.length === 0) {
+        // Si es menor y no hay archivo, agregamos un error
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "El INE del tutor es requerido para menores de edad",
+          path: ["tutorINE"],
+        });
+      }
+    }
   });
 
-  if (isMinor) {
-    return baseSchema.extend({
-      tutorINE: fileValidation
-    });
-  }
-
-  return baseSchema;
-};
-
-// Esquema completo para validación final
-export const createFullRegistrationSchema = (isMinor: boolean) => {
-  return step1Schema
-    .merge(step2Schema)
-    .merge(step3Schema)
-    .merge(createStep4Schema(isMinor));
-};
-
-// Tipos TypeScript generados automáticamente
+// Tipos generados automáticamente
 export type Step1Data = z.infer<typeof step1Schema>;
 export type Step2Data = z.infer<typeof step2Schema>;
 export type Step3Data = z.infer<typeof step3Schema>;
-export type Step4Data = z.infer<ReturnType<typeof createStep4Schema>>;
-export type FullRegistrationData = z.infer<ReturnType<typeof createFullRegistrationSchema>>;
-
-// Utilidades de validación
-export const validateStep = (step: number, data: any, isMinor: boolean = false) => {
-  try {
-    switch (step) {
-      case 1:
-        return step1Schema.parse(data);
-      case 2:
-        return step2Schema.parse(data);
-      case 3:
-        return step3Schema.parse(data);
-      case 4:
-        return createStep4Schema(isMinor).parse(data);
-      default:
-        throw new Error('Paso inválido');
-    }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        errors: error.errors
-      };
-    }
-    throw error;
-  }
-};
-
-export const getFieldErrors = (errors: z.ZodError) => {
-  const fieldErrors: Record<string, string> = {};
-  
-  errors.errors.forEach((error) => {
-    const field = error.path.join('.');
-    fieldErrors[field] = error.message;
-  });
-  
-  return fieldErrors;
-};
+export type FullRegistrationData = z.infer<typeof fullRegistrationSchema>;
