@@ -1,3 +1,4 @@
+// src/components/registro/steps/PersonalDataStep.tsx
 'use client';
 
 import React from 'react';
@@ -55,7 +56,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
         />
       </div>
 
-      {/* Nombre y apellido */}
+      {/* Nombre y apellido - SIN validaciones manuales */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block mb-1">Nombre(s) <span className="text-yellow-400">*</span></label>
@@ -63,10 +64,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
             type="text"
             className={styles.input}
             placeholder="Escribe tu nombre"
-            {...register('firstName', {
-              required: 'Este campo es obligatorio',
-              minLength: { value: 2, message: 'Nombre demasiado corto' }
-            })}
+            {...register('firstName')}
           />
           {errors.firstName && <p className={styles.errorText}>{errors.firstName.message}</p>}
         </div>
@@ -77,33 +75,25 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
             type="text"
             className={styles.input}
             placeholder="Escribe tus apellidos"
-            {...register('lastName', {
-              required: 'Este campo es obligatorio',
-              minLength: { value: 2, message: 'Apellido demasiado corto' }
-            })}
+            {...register('lastName')}
           />
           {errors.lastName && <p className={styles.errorText}>{errors.lastName.message}</p>}
         </div>
       </div>
       
-      {/* Correo y contraseña */}
+      {/* Correo - SIN validaciones manuales */}
       <div className="mb-4">
         <label className="block mb-1">Correo electrónico <span className="text-yellow-400">*</span></label>
         <input
           type="email"
           className={styles.input}
           placeholder="tu@correo.com"
-          {...register('email', {
-            required: 'Este campo es obligatorio',
-            pattern: {
-              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-              message: 'Correo electrónico inválido'
-            }
-          })}
+          {...register('email')}
         />
         {errors.email && <p className={styles.errorText}>{errors.email.message}</p>}
       </div>
       
+      {/* Contraseñas - SIN validaciones manuales */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block mb-1">Contraseña <span className="text-yellow-400">*</span></label>
@@ -111,10 +101,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
             type="password"
             className={styles.input}
             placeholder="Al menos 8 caracteres"
-            {...register('password', {
-              required: 'Este campo es obligatorio',
-              minLength: { value: 8, message: 'La contraseña debe tener al menos 8 caracteres' }
-            })}
+            {...register('password')}
           />
           {errors.password && <p className={styles.errorText}>{errors.password.message}</p>}
           <PasswordStrengthMeter password={watch('password')} />
@@ -126,23 +113,19 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
             type="password"
             className={styles.input}
             placeholder="Repite tu contraseña"
-            {...register('confirmPassword', {
-              required: 'Este campo es obligatorio',
-              validate: value => value === watch('password') || 'Las contraseñas no coinciden'
-            })}
+            {...register('confirmPassword')}
           />
           {errors.confirmPassword && <p className={styles.errorText}>{errors.confirmPassword.message}</p>}
         </div>
       </div>
       
-      {/* WhatsApp */}
+      {/* WhatsApp - SIN validaciones manuales */}
       <div className="mb-4">
         <label className="block mb-1">WhatsApp <span className="text-yellow-400">*</span></label>
         <div className={styles.phoneInputContainer}>
           <Controller
             control={control}
             name="whatsapp"
-            rules={{ required: 'Este campo es obligatorio' }}
             render={({ field: { value, onChange, name, ref } }) => (
               <PhoneInput
                 value={value}
@@ -165,22 +148,19 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
         {errors.whatsapp && <p className={styles.errorText}>{errors.whatsapp.message}</p>}
       </div>
       
-      {/* Fecha de nacimiento */}
+      {/* Fecha de nacimiento - SIN validaciones manuales */}
       <div className="mb-4">
         <label className="block mb-1">Fecha de nacimiento <span className="text-yellow-400">*</span></label>
         <input
           type="date"
           className={styles.dateInput}
           max={getCurrentMexicoDate()}
-          {...register('birthDate', {
-            required: 'Este campo es obligatorio',
-            validate: validateAge
-          })}
+          {...register('birthDate')}
         />
         {errors.birthDate && <p className={styles.errorText}>{errors.birthDate.message}</p>}
       </div>
 
-      {/* Dirección */}
+      {/* Dirección - SIN validaciones manuales */}
       <div className="mb-4">
         <h3 className="text-lg font-semibold mb-2 text-gray-300">Dirección</h3>
         
@@ -191,7 +171,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
               type="text"
               className={styles.input}
               placeholder="Nombre de la calle"
-              {...register('street', { required: 'Este campo es obligatorio' })}
+              {...register('street')}
             />
             {errors.street && <p className={styles.errorText}>{errors.street.message}</p>}
           </div>
@@ -202,7 +182,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
               type="text"
               className={styles.input}
               placeholder="Número"
-              {...register('number', { required: 'Este campo es obligatorio' })}
+              {...register('number')}
             />
             {errors.number && <p className={styles.errorText}>{errors.number.message}</p>}
           </div>
@@ -214,7 +194,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
             type="text"
             className={styles.input}
             placeholder="Nombre de la colonia"
-            {...register('neighborhood', { required: 'Este campo es obligatorio' })}
+            {...register('neighborhood')}
           />
           {errors.neighborhood && <p className={styles.errorText}>{errors.neighborhood.message}</p>}
         </div>
@@ -226,7 +206,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
               type="text"
               className={styles.input}
               placeholder="Estado"
-              {...register('state', { required: 'Este campo es obligatorio' })}
+              {...register('state')}
             />
             {errors.state && <p className={styles.errorText}>{errors.state.message}</p>}
           </div>
@@ -237,7 +217,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
               type="text"
               className={styles.input}
               placeholder="Ciudad"
-              {...register('city', { required: 'Este campo es obligatorio' })}
+              {...register('city')}
             />
             {errors.city && <p className={styles.errorText}>{errors.city.message}</p>}
           </div>
@@ -250,10 +230,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
               type="text"
               className={styles.input}
               placeholder="Código Postal"
-              {...register('postalCode', { 
-                required: 'Este campo es obligatorio',
-                pattern: { value: /^\d{4,5}$/, message: 'Código postal inválido' }
-              })}
+              {...register('postalCode')}
             />
             {errors.postalCode && <p className={styles.errorText}>{errors.postalCode.message}</p>}
           </div>
@@ -271,13 +248,13 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
         </div>
       </div>
       
-      {/* Género y estado civil */}
+      {/* Género y estado civil - SIN validaciones manuales */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block mb-1">Género <span className="text-yellow-400">*</span></label>
           <select
             className={styles.input}
-            {...register('gender', { required: 'Este campo es obligatorio' })}
+            {...register('gender')}
           >
             <option value="">Selecciona</option>
             <option value="Masculino">Masculino</option>
@@ -292,7 +269,7 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
           <label className="block mb-1">Estado Civil <span className="text-yellow-400">*</span></label>
           <select
             className={styles.input}
-            {...register('maritalStatus', { required: 'Este campo es obligatorio' })}
+            {...register('maritalStatus')}
           >
             <option value="">Selecciona</option>
             <option value="Soltero/a">Soltero/a</option>
