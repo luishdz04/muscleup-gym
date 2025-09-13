@@ -1,7 +1,7 @@
 /**
  * @file Contiene todos los esquemas de validación de Zod para el proceso de registro.
  * @author Luis Hernandez (luishdz04)
- * @version 3.2.0 - Corregido para Build de Next.js
+ * @version 3.3.0 - Final Build Fix
  */
 import { z } from 'zod';
 import dayjs from 'dayjs';
@@ -26,16 +26,15 @@ const calculateAge = (birthDateString: string): number => {
 
 // --- Esquemas Reutilizables ---
 
-// ✅ SOLUCIÓN: Hacemos la validación de FileList condicional al entorno del navegador.
 const isBrowser = typeof window !== 'undefined';
 
 /**
  * Esquema de validación para un archivo de imagen OBLIGATORIO.
  */
 const requiredImageFileSchema = z
-  .any() // Empezamos con `any` que funciona en servidor y navegador
+  .any()
   .refine(
-    (files) => (isBrowser ? files instanceof FileList : true), // Validamos FileList solo en el navegador
+    (files) => (isBrowser ? files instanceof FileList : true),
     "Se requiere una imagen."
   )
   .refine((files) => files && files.length > 0, "Se requiere una imagen.")
@@ -144,17 +143,19 @@ export const step3Schema = z.object({
 
 // --- Esquema Completo con Lógica Condicional ---
 
-export const fullRegistrationSchema = step1Schema
-  .merge(step2Schema)
-  .merge(step3Schema)
-  .extend({
+// ✅ SOLUCIÓN FINAL: Combinamos las "formas" (shapes) de los esquemas en lugar de usar `.merge()`
+// Esto es más robusto para el proceso de build de Next.js.
+export const fullRegistrationSchema = z.object({
+    ...step1Schema.shape,
+    ...step2Schema.shape,
+    ...step3Schema.shape,
     // Campos del paso 4
     acceptedRules: z.boolean().refine((val) => val === true, 'Debes aceptar el reglamento para continuar.'),
     tutorINE: optionalImageFileSchema, // Definido como opcional por defecto
   })
   .superRefine((data, ctx) => {
     // Lógica condicional: si es menor de edad, el INE del tutor es obligatorio.
-    if (!data.birthDate) return; // Si no hay fecha, no podemos validar la edad
+    if (!data.birthDate) return;
     const age = calculateAge(data.birthDate);
     if (age < 18) {
       if (!data.tutorINE || data.tutorINE.length === 0) {
