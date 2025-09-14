@@ -55,57 +55,69 @@ export async function middleware(request: NextRequest) {
   // 2. ✅ SEGURO: Usa getUser() para obtener usuario verificado
   const { data: { user } } = await supabase.auth.getUser();
   
-  // 3. ⚡ OPTIMIZACIÓN: Consultar rol UNA SOLA VEZ
-  let userRole: string | null = null;
-  if (user) {
-    const { data: userData } = await supabase
-      .from('Users')
-      .select('rol')
-      .eq('id', user.id)
-      .single();
-    userRole = userData?.rol || null;
-  }
-
-  console.log('Middleware - Path:', request.nextUrl.pathname);
-  console.log('Middleware - User:', user ? `Autenticado (Rol: ${userRole})` : 'No autenticado');
-  
-  // 4. Define rutas
-  const publicRoutes = ['/', '/login', '/reset-password', '/registro'];
+  // 3. Define rutas
+  const publicRoutes = ['/', '/login', '/reset-password', '/registro', '/registro-pendiente', '/bienvenido'];
   const adminRoutes = ['/dashboard/admin'];
+  const protectedRoutes = ['/dashboard'];
   const pathname = request.nextUrl.pathname;
 
   const isPublicRoute = publicRoutes.some(route => 
     pathname === route || pathname.startsWith(route + '/')
   );
   const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
-  // 5. Lógica de protección
-  if (!user && !isPublicRoute) {
-    // Sin usuario en ruta protegida -> login
-    console.log('Middleware - Redirigiendo a login (sin sesión y en ruta protegida)');
+  console.log('🛡️ Middleware - Path:', pathname);
+  console.log('🛡️ Middleware - User:', user ? `Autenticado (ID: ${user.id})` : 'No autenticado');
+
+  // 4. 🚨 BLOQUEO CRÍTICO: Sin usuario en cualquier ruta protegida
+  if (!user && (isProtectedRoute || isAdminRoute)) {
+    console.log('🚨 Middleware - ACCESO DENEGADO: Sin autenticación');
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (user && isPublicRoute && pathname !== '/') {
-    // Usuario en ruta pública -> dashboard
-    console.log('Middleware - Redirigiendo a dashboard (ruta pública con sesión)');
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-  
-  // 6. ✅ PROTECCIÓN CRÍTICA: Verificar acceso a rutas admin
-  if (user && isAdminRoute) {
-    console.log('Middleware - Verificando acceso a ruta admin...');
-    console.log('Middleware - Rol verificado:', userRole);
+  // 5. 🔥 BLOQUEO ESTRICTO DE RUTAS ADMIN
+  if (isAdminRoute) {
+    console.log('🔒 Middleware - Verificando acceso ADMIN...');
+    
+    if (!user) {
+      console.log('🚨 Middleware - BLOQUEADO: Sin usuario en ruta admin');
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    // ⚡ Consultar rol para usuarios autenticados en rutas admin
+    const { data: userData } = await supabase
+      .from('Users')
+      .select('rol')
+      .eq('id', user.id)
+      .single();
+    
+    const userRole = userData?.rol || null;
+    console.log('🔍 Middleware - Rol verificado:', userRole);
     
     if (userRole !== 'admin' && userRole !== 'empleado') {
-      console.log('Middleware - ⛔ ACCESO DENEGADO a ruta admin');
+      console.log('🚨 Middleware - ACCESO DENEGADO: Rol insuficiente');
       return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
     }
   }
 
+  // 6. Redirección desde rutas públicas si ya está autenticado
+  if (user && isPublicRoute && pathname !== '/' && pathname !== '/bienvenido' && pathname !== '/registro-pendiente') {
+    console.log('🔄 Middleware - Redirigiendo a dashboard (ya autenticado)');
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+  
   // 7. ✅ REDIRECCIÓN INTELIGENTE desde /dashboard
   if (user && pathname === '/dashboard') {
-    console.log('Middleware - Redirigiendo según rol:', userRole);
+    // Consultar rol solo cuando sea necesario
+    const { data: userData } = await supabase
+      .from('Users')
+      .select('rol')
+      .eq('id', user.id)
+      .single();
+    
+    const userRole = userData?.rol || 'cliente';
+    console.log('🎯 Middleware - Redirigiendo según rol:', userRole);
     
     switch (userRole) {
       case 'admin':
@@ -118,12 +130,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // 8. Si pasa todas las validaciones, permite continuar
+  console.log('✅ Middleware - Acceso permitido');
   return response;
 }
 
 export const config = {
-  // ✅ MATCHER OPTIMIZADO: Excluye archivos estáticos y manifest
+  // ✅ MATCHER ESTRICTO: Incluye todas las rutas del dashboard
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\.png$|.*\\.jpg$|.*\\.ico$).*)',
+    '/dashboard/:path*',
+    '/login',
+    '/registro/:path*',
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\.png$|.*\\.jpg$|.*\\.ico$|.*\\.svg$).*)',
   ],
 };
