@@ -1,4 +1,3 @@
-// src/hooks/useRegistrationForm.ts
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -9,13 +8,27 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { toMexicoDate, toMexicoTimestamp } from '@/utils/dateHelpers';
 
-// ✅ IMPORTAR ESQUEMA UNIFICADO (solución de Gemini)
+// ✅ IMPORTAR ESQUEMAS ACTUALIZADOS DE ZOD 4
 import {
   fullRegistrationSchema,
-  type FullRegistrationData
-} from '@/schemas/registrationSchema';
+  step1Schema,
+  step2Schema,
+  step3Schema,
+  step4Schema,
+  partialStep1Schema,
+  partialStep2Schema,
+  partialStep3Schema,
+  partialStep4Schema,
+  validateField,
+  useRealtimeValidation,
+  type RegistrationFormData,
+  type Step1Data,
+  type Step2Data,
+  type Step3Data,
+  type Step4Data
+} from '@/schemas/registrationSchemas';
 
-// ✅ CONFIGURAR DAYJS PARA ZONA HORARIA DE MÉXICO
+// ✅ CONFIGURAR DAYJS
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -23,8 +36,8 @@ const MEXICO_TZ = 'America/Mexico_City';
 const STORAGE_KEY = 'registration-form';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-// Usar el tipo generado de Zod
-type FormData = FullRegistrationData;
+// 🆕 USAR EL TIPO ACTUALIZADO
+type FormData = RegistrationFormData;
 
 interface SignatureCanvasRef {
   clear: () => void;
@@ -33,7 +46,16 @@ interface SignatureCanvasRef {
   getTrimmedCanvas?: () => HTMLCanvasElement;
 }
 
-// Campos por paso (mantener tu lógica existente)
+// 🆕 VALIDACIÓN EN TIEMPO REAL - Estado para errores de campos
+interface FieldValidationState {
+  [key: string]: {
+    error: string | null;
+    isValidating: boolean;
+    hasBeenTouched: boolean;
+  };
+}
+
+// Campos por paso (actualizado con nuevos tipos)
 const fieldsPerStep: { [key: number]: (keyof FormData)[] } = {
   1: [
     'profilePhoto', 'firstName', 'lastName', 'email', 'password', 
@@ -43,10 +65,10 @@ const fieldsPerStep: { [key: number]: (keyof FormData)[] } = {
   ] as (keyof FormData)[],
   2: ['emergencyName', 'emergencyPhone', 'medicalCondition', 'bloodType'] as (keyof FormData)[],
   3: ['referredBy', 'mainMotivation', 'trainingLevel'] as (keyof FormData)[],
-  4: ['acceptedRules'] as (keyof FormData)[]
+  4: ['acceptedRules', 'tutorINE'] as (keyof FormData)[] // 🆕 Agregado tutorINE
 };
 
-// Funciones utilitarias
+// Funciones utilitarias mejoradas
 const isValidFile = (file: unknown): file is File => {
   return typeof file === 'object' && 
          file !== null && 
@@ -66,6 +88,7 @@ const getCurrentMexicoDate = (): string => {
 };
 
 const calculateAge = (birthDateString: string): number => {
+  if (!birthDateString) return 0;
   const birthDate = dayjs.tz(birthDateString, MEXICO_TZ);
   const now = dayjs().tz(MEXICO_TZ);
   return now.diff(birthDate, 'year');
@@ -96,13 +119,21 @@ export const useRegistrationForm = () => {
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [tutorINEFile, setTutorINEFile] = useState<File | null>(null);
   
+  // 🆕 ESTADOS PARA VALIDACIÓN EN TIEMPO REAL
+  const [fieldValidation, setFieldValidation] = useState<FieldValidationState>({});
+  const [realtimeValidationEnabled, setRealtimeValidationEnabled] = useState(false);
+  
   // Ref para firma
   const sigCanvas = useRef<SignatureCanvasRef | null>(null);
 
-  // ✅ CONFIGURACIÓN DEL FORMULARIO SIMPLIFICADA (solución de Gemini)
-  const formMethods = useForm<FullRegistrationData>({
-    resolver: zodResolver(fullRegistrationSchema), // ✅ Usa el esquema unificado directamente
-    mode: 'onChange',
+  // 🆕 HOOK DE VALIDACIÓN EN TIEMPO REAL
+  const { validateFieldRealtime } = useRealtimeValidation();
+
+  // ✅ CONFIGURACIÓN DEL FORMULARIO CON ESQUEMA PRINCIPAL
+  const formMethods = useForm<RegistrationFormData>({
+    resolver: zodResolver(fullRegistrationSchema),
+    mode: 'onChange', // Importante para validación en tiempo real
+    reValidateMode: 'onChange',
     defaultValues: {
       receivePlans: false,
       country: 'México',
@@ -114,16 +145,79 @@ export const useRegistrationForm = () => {
     handleSubmit,
     control,
     watch,
-    formState: { errors, isDirty, dirtyFields, isValid },
+    formState: { errors, isDirty, dirtyFields, isValid, touchedFields },
     trigger,
     setValue,
     reset,
     getValues,
+    clearErrors,
+    setError
   } = formMethods;
 
   const formValues = watch();
 
-  // Funciones para convertir a base64
+  // 🆕 FUNCIÓN DE VALIDACIÓN EN TIEMPO REAL
+  const validateFieldInRealtime = useCallback(async (
+    fieldName: keyof FormData, 
+    value: any,
+    currentStep: number
+  ) => {
+    if (!realtimeValidationEnabled) return;
+
+    // Marcar como validando
+    setFieldValidation(prev => ({
+      ...prev,
+      [fieldName]: {
+        ...prev[fieldName],
+        isValidating: true,
+        hasBeenTouched: true
+      }
+    }));
+
+    // Usar debounce para evitar validaciones excesivas
+    setTimeout(async () => {
+      const validation = validateFieldRealtime(fieldName, value, currentStep);
+      
+      setFieldValidation(prev => ({
+        ...prev,
+        [fieldName]: {
+          error: validation.success ? null : validation.error,
+          isValidating: false,
+          hasBeenTouched: true
+        }
+      }));
+
+      // Sincronizar con React Hook Form
+      if (!validation.success && validation.error) {
+        setError(fieldName, { 
+          type: 'manual', 
+          message: validation.error 
+        });
+      } else {
+        clearErrors(fieldName);
+      }
+    }, 300); // Debounce de 300ms
+  }, [realtimeValidationEnabled, validateFieldRealtime, setError, clearErrors]);
+
+  // 🆕 FUNCIÓN PARA OBTENER EL ESTADO DE VALIDACIÓN DE UN CAMPO
+  const getFieldValidationState = useCallback((fieldName: keyof FormData) => {
+    const validation = fieldValidation[fieldName];
+    const formError = errors[fieldName];
+    
+    return {
+      hasError: !!(validation?.error || formError),
+      error: validation?.error || formError?.message || null,
+      isValidating: validation?.isValidating || false,
+      hasBeenTouched: validation?.hasBeenTouched || touchedFields[fieldName] || false
+    };
+  }, [fieldValidation, errors, touchedFields]);
+
+  // 🆕 FUNCIÓN PARA ACTIVAR VALIDACIÓN EN TIEMPO REAL
+  const enableRealtimeValidation = useCallback(() => {
+    setRealtimeValidationEnabled(true);
+  }, []);
+
+  // Funciones para convertir a base64 (sin cambios)
   const toBase64 = useCallback(async (file: File): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
       if (!isValidFile(file)) {
@@ -159,7 +253,7 @@ export const useRegistrationForm = () => {
     }
   }, [toBase64]);
 
-  // Funciones para manejo de fotos
+  // 🆕 FUNCIONES DE MANEJO DE ARCHIVOS MEJORADAS
   const handleProfilePhotoCapture = useCallback(async (file: File) => {
     try {
       if (!file || !isValidFile(file)) {
@@ -170,16 +264,26 @@ export const useRegistrationForm = () => {
       const safePreview = await createSafePreview(file);
       setPreviewUrl(safePreview);
       
+      // Crear FileList para Zod 4
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
       const fileList = dataTransfer.files;
       
-      setValue('profilePhoto', fileList, { shouldValidate: true });
+      setValue('profilePhoto', fileList, { shouldValidate: true, shouldDirty: true });
+      
+      // 🆕 Validar en tiempo real
+      if (realtimeValidationEnabled) {
+        validateFieldInRealtime('profilePhoto', fileList, 1);
+      }
+      
     } catch (error) {
       console.error('Error procesando foto de perfil:', error);
-      alert(`Error al procesar la imagen: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      setError('profilePhoto', { 
+        type: 'manual', 
+        message: error instanceof Error ? error.message : 'Error desconocido' 
+      });
     }
-  }, [setValue, createSafePreview]);
+  }, [setValue, createSafePreview, realtimeValidationEnabled, validateFieldInRealtime, setError]);
 
   const handleTutorINECapture = useCallback(async (file: File) => {
     try {
@@ -195,17 +299,33 @@ export const useRegistrationForm = () => {
       dataTransfer.items.add(file);
       const fileList = dataTransfer.files;
       
-      setValue('tutorINE', fileList, { shouldValidate: true });
+      setValue('tutorINE', fileList, { shouldValidate: true, shouldDirty: true });
+      
+      // 🆕 Validar en tiempo real
+      if (realtimeValidationEnabled) {
+        validateFieldInRealtime('tutorINE', fileList, 4);
+      }
+      
     } catch (error) {
       console.error('Error procesando INE del tutor:', error);
-      alert(`Error al procesar la imagen: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      setError('tutorINE', { 
+        type: 'manual', 
+        message: error instanceof Error ? error.message : 'Error desconocido' 
+      });
     }
-  }, [setValue, createSafePreview]);
+  }, [setValue, createSafePreview, realtimeValidationEnabled, validateFieldInRealtime, setError]);
 
   const clearPhoto = useCallback(() => {
     setProfilePhotoFile(null);
     setPreviewUrl(null);
     setValue('profilePhoto', undefined as any, {shouldDirty: true, shouldValidate: true});
+    clearErrors('profilePhoto');
+    
+    // Limpiar validación en tiempo real
+    setFieldValidation(prev => ({
+      ...prev,
+      profilePhoto: { error: null, isValidating: false, hasBeenTouched: false }
+    }));
     
     try {
       const savedData = localStorage.getItem(STORAGE_KEY);
@@ -218,12 +338,19 @@ export const useRegistrationForm = () => {
     } catch (e) {
       console.error("Error al actualizar localStorage:", e);
     }
-  }, [setValue]);
+  }, [setValue, clearErrors]);
 
   const clearTutorINE = useCallback(() => {
     setTutorINEFile(null);
     setTutorINEUrl(null);
     setValue('tutorINE', undefined as any, {shouldDirty: true, shouldValidate: true});
+    clearErrors('tutorINE');
+    
+    // Limpiar validación en tiempo real
+    setFieldValidation(prev => ({
+      ...prev,
+      tutorINE: { error: null, isValidating: false, hasBeenTouched: false }
+    }));
     
     try {
       const savedData = localStorage.getItem(STORAGE_KEY);
@@ -236,7 +363,7 @@ export const useRegistrationForm = () => {
     } catch (e) {
       console.error("Error al actualizar localStorage:", e);
     }
-  }, [setValue]);
+  }, [setValue, clearErrors]);
 
   const clearSignature = useCallback(() => {
     if (sigCanvas.current) {
@@ -248,13 +375,19 @@ export const useRegistrationForm = () => {
     }
   }, []);
 
-  // Navegación entre pasos
+  // Navegación entre pasos mejorada
   const getFieldsForStep = useCallback((currentStep: number): (keyof FormData)[] => {
     const fields = fieldsPerStep[currentStep] || [];
     return fields as (keyof FormData)[];
   }, []);
 
+  // 🆕 NAVEGACIÓN CON VALIDACIÓN MEJORADA
   const goNext = async () => {
+    // Activar validación en tiempo real desde el primer intento de navegación
+    if (!realtimeValidationEnabled) {
+      enableRealtimeValidation();
+    }
+
     const fieldsToValidate = getFieldsForStep(step);
     const valid = await trigger(fieldsToValidate);
     
@@ -271,7 +404,16 @@ export const useRegistrationForm = () => {
       
       if (currentErrors.length > 0) {
         const firstError = errors[currentErrors[0] as keyof FormData];
-        alert(firstError?.message || 'Por favor, completa todos los campos requeridos correctamente.');
+        const errorMessage = firstError?.message || 'Por favor, completa todos los campos requeridos correctamente.';
+        
+        // 🆕 Mostrar mensaje más específico
+        alert(`❌ ${errorMessage}\n\nRevisa los campos marcados en rojo.`);
+        
+        // Hacer scroll al primer campo con error
+        const firstErrorElement = document.querySelector(`[name="${currentErrors[0]}"]`);
+        if (firstErrorElement) {
+          firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       } else {
         alert('Por favor, completa todos los campos requeridos correctamente.');
       }
@@ -290,12 +432,31 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // Función de envío
+  // 🆕 EFECTO PARA VALIDACIÓN EN TIEMPO REAL DE CAMPOS INDIVIDUALES
+  useEffect(() => {
+    if (!realtimeValidationEnabled) return;
+
+    const subscription = watch((value, { name, type }) => {
+      if (name && type === 'change') {
+        const fieldName = name as keyof FormData;
+        const fieldValue = value[fieldName];
+        
+        // Solo validar si el campo ha sido tocado
+        if (touchedFields[fieldName] || fieldValidation[fieldName]?.hasBeenTouched) {
+          validateFieldInRealtime(fieldName, fieldValue, step);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch, realtimeValidationEnabled, step, touchedFields, fieldValidation, validateFieldInRealtime]);
+
+  // Función de envío (sin cambios significativos, solo actualizamos los tipos)
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
       setIsSubmitting(true);
       
-      console.log("🚀 [SUBMIT] Iniciando proceso con Zod corregido");
+      console.log("🚀 [SUBMIT] Iniciando proceso con Zod 4.1.8");
       
       // Verificar firma
       let signatureDataUrl = '';
@@ -417,9 +578,9 @@ export const useRegistrationForm = () => {
         tutorINE: tutorINEBase64,
         isMinor: showTutorField,
         metadata: {
-          version: '3.0-zod-corrected-gemini',
+          version: '4.0-zod-4.1.8-realtime',
           processedAt: toMexicoTimestamp(currentMexicoTime),
-          processedBy: 'luishdz044',
+          processedBy: 'MuscleUpGYM',
           mexicoTimezone: MEXICO_TZ,
           currentMexicoDate: getCurrentMexicoDate()
         }
@@ -464,7 +625,7 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // Efectos
+  // Efectos (mayoría sin cambios, algunos mejorados)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -505,7 +666,7 @@ export const useRegistrationForm = () => {
     }
   }, [reset]);
 
-  // Progreso y guardado
+  // Progreso y guardado (sin cambios significativos)
   useEffect(() => {
     if (!isDirty) return;
     
@@ -568,20 +729,26 @@ export const useRegistrationForm = () => {
     }
   }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl, profilePhotoFile, tutorINEFile]);
 
-  // ✅ SOLO NECESITAS ESTE useEffect PARA MOSTRAR/OCULTAR EL CAMPO EN LA UI (solución de Gemini)
+  // ✅ VALIDACIÓN CONDICIONAL PARA TUTOR (mejorada)
   useEffect(() => {
     const birthDate = formValues.birthDate;
     if (birthDate) {
       try {
         const age = calculateAge(birthDate);
-        setShowTutorField(age < 18);
+        const isMinor = age < 18;
+        setShowTutorField(isMinor);
+        
+        // 🆕 Validar automáticamente el campo tutorINE cuando cambia la edad
+        if (realtimeValidationEnabled) {
+          validateFieldInRealtime('tutorINE', formValues.tutorINE, 4);
+        }
       } catch (error) {
         setShowTutorField(false);
       }
     }
-  }, [formValues.birthDate]);
+  }, [formValues.birthDate, formValues.tutorINE, realtimeValidationEnabled, validateFieldInRealtime]);
 
-  // Prevenir cierre accidental
+  // Prevenir cierre accidental (sin cambios)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -596,11 +763,11 @@ export const useRegistrationForm = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty, isSubmitting]);
 
-  // Función auxiliar
+  // Función auxiliar (sin cambios)
   const getLastCompletedStep = useCallback((data: Partial<FormData>): number => {
     if (data.acceptedRules) return 4;
     if (data.referredBy && data.mainMotivation && data.trainingLevel) return 3;
-    if (data.emergencyName && data.emergencyPhone && data.medicalCondition && data.bloodType) return 2;
+    if (data.emergencyName && data.emergencyPhone && data.bloodType) return 2;
     if (data.firstName && data.lastName && data.email) return 1;
     return 0;
   }, []);
@@ -617,15 +784,24 @@ export const useRegistrationForm = () => {
   };
 
   return {
-    // Estados
+    // Estados existentes
     step, formProgress, isSubmitting, showTutorField, completedSteps, showSuccessModal, userId,
     previewUrl, tutorINEUrl, profilePhotoFile, tutorINEFile,
+    
+    // 🆕 NUEVOS ESTADOS PARA VALIDACIÓN EN TIEMPO REAL
+    fieldValidation,
+    realtimeValidationEnabled,
     
     // Refs
     sigCanvas,
     
-    // Métodos de formulario
+    // Métodos de formulario existentes
     register, handleSubmit, control, watch, errors, isDirty, trigger, setValue, reset, getValues, formValues,
+    
+    // 🆕 NUEVAS FUNCIONES PARA VALIDACIÓN EN TIEMPO REAL
+    getFieldValidationState,
+    enableRealtimeValidation,
+    validateFieldInRealtime,
     
     // Funciones de navegación
     goNext, goBack, goToStep,
