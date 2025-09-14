@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -45,7 +45,8 @@ interface ProcessStatus {
   };
 }
 
-export default function BienvenidoPage() {
+// 🔥 COMPONENTE QUE USA useSearchParams
+function BienvenidoContent() {
   const [status, setStatus] = useState<ProcessStatus>({
     isProcessing: true,
     isCompleted: false,
@@ -400,5 +401,56 @@ export default function BienvenidoPage() {
         </Paper>
       </Container>
     </Box>
+  );
+}
+
+// 🚀 COMPONENTE PRINCIPAL CON SUSPENSE BOUNDARY
+export default function BienvenidoPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ 
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+        color: darkProTokens.textPrimary,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <Container maxWidth="md">
+          <Paper sx={{
+            p: 6,
+            textAlign: 'center',
+            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel1}, ${darkProTokens.surfaceLevel2})`,
+            border: `2px solid ${darkProTokens.primary}30`,
+            borderRadius: 4
+          }}>
+            <CircularProgress 
+              sx={{ 
+                color: darkProTokens.primary,
+                mb: 3
+              }} 
+              size={60} 
+            />
+            
+            <Typography variant="h4" sx={{ 
+              color: darkProTokens.primary,
+              fontWeight: 700,
+              mb: 2
+            }}>
+              Cargando...
+            </Typography>
+            
+            <Typography variant="body1" sx={{ 
+              color: darkProTokens.textSecondary
+            }}>
+              Preparando tu página de bienvenida
+            </Typography>
+          </Paper>
+        </Container>
+      </Box>
+    }>
+      <BienvenidoContent />
+    </Suspense>
   );
 }
