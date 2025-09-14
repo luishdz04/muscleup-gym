@@ -34,13 +34,11 @@ async function updateSession(request: NextRequest) {
     }
   );
 
-  // IMPORTANTE: Refresca la sesión del usuario
   await supabase.auth.getSession();
   return response;
 }
 
 export async function middleware(request: NextRequest) {
-  // 1. Inicializa Supabase y refresca la sesión
   const response = await updateSession(request);
   const supabase = createServerClient(
     SUPABASE_URL,
@@ -52,10 +50,8 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // 2. ✅ SEGURO: Usa getUser() para obtener usuario verificado
   const { data: { user } } = await supabase.auth.getUser();
   
-  // 3. Define rutas
   const publicRoutes = ['/', '/login', '/reset-password', '/registro', '/registro-pendiente', '/bienvenido'];
   const adminRoutes = ['/dashboard/admin'];
   const protectedRoutes = ['/dashboard'];
@@ -70,46 +66,43 @@ export async function middleware(request: NextRequest) {
   console.log('🛡️ Middleware - Path:', pathname);
   console.log('🛡️ Middleware - User:', user ? `Autenticado (ID: ${user.id})` : 'No autenticado');
 
-  // 4. 🚨 BLOQUEO CRÍTICO: Sin usuario en cualquier ruta protegida
+  // 🚨 BLOQUEO CRÍTICO: Sin usuario en cualquier ruta protegida
   if (!user && (isProtectedRoute || isAdminRoute)) {
-    console.log('🚨 Middleware - ACCESO DENEGADO: Sin autenticación');
-    return NextResponse.redirect(new URL('/login', request.url));
+    console.log(`🚨 Middleware - ACCESO DENEGADO a ruta protegida (${pathname}) sin sesión.`);
+    // ✅ REDIRECCIÓN SEGURA: A página principal
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // 5. 🔥 BLOQUEO ESTRICTO DE RUTAS ADMIN
-  if (isAdminRoute) {
-    console.log('🔒 Middleware - Verificando acceso ADMIN...');
+  // 🔒 VERIFICACIÓN DE ROL PARA RUTAS ADMIN
+  if (user && isAdminRoute) {
+    console.log('🔍 Middleware - Verificando acceso ADMIN...');
     
-    if (!user) {
-      console.log('🚨 Middleware - BLOQUEADO: Sin usuario en ruta admin');
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    // ⚡ Consultar rol para usuarios autenticados en rutas admin
     const { data: userData } = await supabase
       .from('Users')
       .select('rol')
       .eq('id', user.id)
       .single();
     
-    const userRole = userData?.rol || null;
+    const userRole = userData?.rol;
     console.log('🔍 Middleware - Rol verificado:', userRole);
     
     if (userRole !== 'admin' && userRole !== 'empleado') {
-      console.log('🚨 Middleware - ACCESO DENEGADO: Rol insuficiente');
+      console.log(`🚨 Middleware - ACCESO DENEGADO a ruta admin. Rol: ${userRole}`);
       return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
     }
   }
 
-  // 6. Redirección desde rutas públicas si ya está autenticado
-  if (user && isPublicRoute && pathname !== '/' && pathname !== '/bienvenido' && pathname !== '/registro-pendiente') {
-    console.log('🔄 Middleware - Redirigiendo a dashboard (ya autenticado)');
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // 🔄 REDIRECCIÓN SI YA ESTÁ LOGUEADO
+  if (user && isPublicRoute && pathname !== '/') {
+    // Excluir páginas del proceso de registro
+    if (pathname !== '/bienvenido' && pathname !== '/registro-pendiente') {
+      console.log(`🔄 Middleware - Usuario logueado en ruta pública (${pathname}). Redirigiendo a dashboard.`);
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
   }
   
-  // 7. ✅ REDIRECCIÓN INTELIGENTE desde /dashboard
+  // ✅ REDIRECCIÓN INTELIGENTE DESDE /dashboard
   if (user && pathname === '/dashboard') {
-    // Consultar rol solo cuando sea necesario
     const { data: userData } = await supabase
       .from('Users')
       .select('rol')
@@ -129,17 +122,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 8. Si pasa todas las validaciones, permite continuar
   console.log('✅ Middleware - Acceso permitido');
   return response;
 }
 
 export const config = {
-  // ✅ MATCHER ESTRICTO: Incluye todas las rutas del dashboard
+  // ✅ MATCHER SIMPLIFICADO Y SEGURO
+  // Lista explícitamente las rutas a proteger
   matcher: [
-    '/dashboard/:path*',
+    '/',
     '/login',
     '/registro/:path*',
-    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\.png$|.*\\.jpg$|.*\\.ico$|.*\\.svg$).*)',
+    '/bienvenido',
+    '/registro-pendiente',
+    '/dashboard/:path*', // Protege /dashboard y TODAS sus sub-rutas
   ],
 };
