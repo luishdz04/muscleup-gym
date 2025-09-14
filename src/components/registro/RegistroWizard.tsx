@@ -1,4 +1,3 @@
-// src/components/registro/RegistroWizard.tsx
 'use client';
 
 import React from 'react';
@@ -25,6 +24,10 @@ const RegistroWizard = () => {
     profilePhotoFile,
     tutorINEFile,
     
+    // 🆕 NUEVOS ESTADOS PARA VALIDACIÓN EN TIEMPO REAL
+    fieldValidation,
+    realtimeValidationEnabled,
+    
     // Ref para firma
     sigCanvas,
     
@@ -40,6 +43,11 @@ const RegistroWizard = () => {
     reset,
     getValues,
     formValues,
+    
+    // 🆕 NUEVAS FUNCIONES PARA VALIDACIÓN EN TIEMPO REAL
+    getFieldValidationState,
+    enableRealtimeValidation,
+    validateFieldInRealtime,
     
     // Funciones de navegación
     goNext,
@@ -64,16 +72,64 @@ const RegistroWizard = () => {
     validateAge
   } = useRegistrationForm();
 
-  // Renderizar el paso actual
+  // 🆕 FUNCIÓN PARA OBTENER INDICADOR VISUAL DE VALIDACIÓN
+  const getFieldIndicator = (fieldName: string) => {
+    const state = getFieldValidationState(fieldName);
+    
+    if (!state.hasBeenTouched && !realtimeValidationEnabled) return null;
+    
+    if (state.isValidating) {
+      return (
+        <div className="inline-flex items-center ml-2">
+          <div className="animate-spin h-3 w-3 border-2 border-yellow-400 border-t-transparent rounded-full"></div>
+        </div>
+      );
+    }
+    
+    if (state.hasError) {
+      return (
+        <div className="inline-flex items-center ml-2">
+          <svg className="h-4 w-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+        </div>
+      );
+    }
+    
+    if (state.hasBeenTouched && !state.hasError) {
+      return (
+        <div className="inline-flex items-center ml-2">
+          <svg className="h-4 w-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
+  // Renderizar el paso actual con validaciones mejoradas
   const renderCurrentStep = () => {
+    const commonProps = {
+      register,
+      errors,
+      control,
+      watch,
+      formValues,
+      // 🆕 PROPS PARA VALIDACIÓN EN TIEMPO REAL
+      getFieldValidationState,
+      getFieldIndicator,
+      validateFieldInRealtime,
+      realtimeValidationEnabled,
+      enableRealtimeValidation
+    };
+
     switch (step) {
       case 1:
         return (
           <PersonalDataStep
-            register={register}
-            errors={errors}
-            control={control}
-            watch={watch}
+            {...commonProps}
             getCurrentMexicoDate={getCurrentMexicoDate}
             validateAge={validateAge}
             handleProfilePhotoCapture={handleProfilePhotoCapture}
@@ -86,9 +142,7 @@ const RegistroWizard = () => {
       case 2:
         return (
           <EmergencyContactStep
-            register={register}
-            errors={errors}
-            control={control}
+            {...commonProps}
             onNext={goNext}
             onBack={goBack}
           />
@@ -97,8 +151,7 @@ const RegistroWizard = () => {
       case 3:
         return (
           <MembershipInfoStep
-            register={register}
-            errors={errors}
+            {...commonProps}
             onNext={goNext}
             onBack={goBack}
           />
@@ -107,8 +160,7 @@ const RegistroWizard = () => {
       case 4:
         return (
           <ContractSignatureStep
-            register={register}
-            errors={errors}
+            {...commonProps}
             isSubmitting={isSubmitting}
             showTutorField={showTutorField}
             tutorINEUrl={tutorINEUrl}
@@ -125,6 +177,21 @@ const RegistroWizard = () => {
         return null;
     }
   };
+
+  // 🆕 CALCULAR ESTADO DE VALIDACIÓN GLOBAL
+  const getValidationSummary = () => {
+    const totalFields = Object.keys(fieldValidation).length;
+    const validFields = Object.values(fieldValidation).filter(
+      field => field.hasBeenTouched && !field.error
+    ).length;
+    const errorFields = Object.values(fieldValidation).filter(
+      field => field.hasBeenTouched && field.error
+    ).length;
+
+    return { totalFields, validFields, errorFields };
+  };
+
+  const validationSummary = getValidationSummary();
 
   return (
     <div className="min-h-screen bg-black text-white px-4 py-8">
@@ -143,21 +210,46 @@ const RegistroWizard = () => {
         </p>
       </div>
       
-      {/* Barra de progreso */}
+      {/* 🆕 INDICADOR DE VALIDACIÓN EN TIEMPO REAL */}
+      {realtimeValidationEnabled && (
+        <div className="max-w-2xl mx-auto mb-4">
+          <div className="bg-zinc-800 rounded-lg p-3 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm text-gray-300">Validación en tiempo real activa</span>
+            </div>
+            {validationSummary.totalFields > 0 && (
+              <div className="text-xs text-gray-400">
+                ✅ {validationSummary.validFields} válidos 
+                {validationSummary.errorFields > 0 && ` • ❌ ${validationSummary.errorFields} con errores`}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Barra de progreso mejorada */}
       <div className="max-w-2xl mx-auto mb-6">
         <div className="flex justify-between mb-2 text-sm">
           <span>Progreso del registro</span>
-          <span>{formProgress}%</span>
+          <span className="flex items-center space-x-2">
+            <span>{formProgress}%</span>
+            {realtimeValidationEnabled && validationSummary.errorFields === 0 && validationSummary.validFields > 0 && (
+              <span className="text-green-400 text-xs">✓ Sin errores</span>
+            )}
+          </span>
         </div>
         <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-yellow-400 transition-all duration-500 ease-out"
+            className={`h-full transition-all duration-500 ease-out ${
+              validationSummary.errorFields > 0 ? 'bg-red-400' : 'bg-yellow-400'
+            }`}
             style={{ width: `${formProgress}%` }}
           ></div>
         </div>
       </div>
       
-      {/* Indicador de pasos navegable */}
+      {/* Indicador de pasos navegable mejorado */}
       <div className="max-w-2xl mx-auto mb-6">
         <div className="flex mb-1">
           {[1, 2, 3, 4].map(stepNumber => (
@@ -244,11 +336,11 @@ const RegistroWizard = () => {
             opacity: 0.8
           }}
         >
-          🚀 Registro v4.0 - Con Zod - {getCurrentMexicoDate()} by @luishdz044
+          🚀 Registro v4.1.8 - Zod Real-time - {getCurrentMexicoDate()} by @MuscleUpGYM
         </div>
       )}
 
-      {/* Estilos CSS para animaciones */}
+      {/* Estilos CSS mejorados para validaciones */}
       <style jsx>{`
         .animate-fadeIn {
           animation: fadeIn 0.5s ease-in-out;
@@ -265,7 +357,24 @@ const RegistroWizard = () => {
           }
         }
 
-        /* Mejoras visuales para el progreso */
+        /* Animación para campos con error */
+        .field-error {
+          animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+          0%, 20%, 50%, 80%, 100% {
+            transform: translateX(0);
+          }
+          10%, 30%, 70%, 90% {
+            transform: translateX(-5px);
+          }
+          40%, 60% {
+            transform: translateX(5px);
+          }
+        }
+
+        /* Barra de progreso mejorada */
         .progress-bar-enhanced {
           background: linear-gradient(
             90deg,
@@ -293,6 +402,22 @@ const RegistroWizard = () => {
         
         .smooth-transition {
           transition: all 0.3s ease;
+        }
+
+        /* Indicadores de validación */
+        .validation-success {
+          border-left: 3px solid #10b981;
+          background-color: rgba(16, 185, 129, 0.1);
+        }
+        
+        .validation-error {
+          border-left: 3px solid #ef4444;
+          background-color: rgba(239, 68, 68, 0.1);
+        }
+        
+        .validation-pending {
+          border-left: 3px solid #f59e0b;
+          background-color: rgba(245, 158, 11, 0.1);
         }
       `}</style>
     </div>
