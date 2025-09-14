@@ -1,3 +1,4 @@
+// 📁 src/app/dashboard/admin/catalogo/inventario/components/ProductStockDialog.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,7 +9,7 @@ import {
   DialogActions,
   Button,
   TextField,
-  Grid as Grid,
+  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -16,728 +17,792 @@ import {
   Typography,
   Box,
   Chip,
-  IconButton,
-  InputAdornment,
+  Alert,
+  CircularProgress,
   Card,
   CardContent,
-  Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Avatar
+  Avatar,
+  Divider,
+  LinearProgress
 } from '@mui/material';
 import {
-  Close as CloseIcon,
   Save as SaveIcon,
-  Inventory as InventoryIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  SwapHoriz as SwapHorizIcon,
-  Add as AddIcon,
-  Remove as RemoveIcon,
-  Build as BuildIcon,
-  History as HistoryIcon
+  Close as CloseIcon,
+  TrendingUp as EntradaIcon,
+  TrendingDown as SalidaIcon,
+  Build as AjusteIcon,
+  SwapHoriz as TransferenciaIcon,
+  Warning as WarningIcon,
+  Info as InfoIcon,
+  Inventory2 as StockIcon
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'framer-motion';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  current_stock: number;
-  min_stock: number;
-  max_stock: number;
-  unit: string;
-  cost_price: number;
-  sale_price: number;
-  location?: string;
+// 🎯 IMPORTACIONES CON TIPADO FUERTE
+import { useInventory } from '@/hooks/useCatalog';
+import { Product } from '@/services/catalogService'; // ✅ TIPADO FUERTE APLICADO
+
+// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
+const darkProTokens = {
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+} as const;
+
+// 🎯 TIPOS MEJORADOS CON TIPADO FUERTE
+type MovementType = 'entrada' | 'salida' | 'ajuste' | 'transferencia';
+type MovementColor = 'success' | 'error' | 'warning' | 'info';
+
+interface MovementTypeConfig {
+  value: MovementType;
+  label: string;
+  description: string;
+  icon: React.ReactElement;
+  color: string;
+  bgColor: string;
+  borderColor: string;
 }
 
-interface InventoryMovement {
-  id: string;
-  movement_type: string;
+interface FormData {
+  movementType: MovementType;
   quantity: number;
-  previous_stock: number;
-  new_stock: number;
-  unit_cost: number;
-  total_cost: number;
   reason: string;
-  notes?: string;
-  created_at: string;
-  created_by?: string;
-  Users?: {
-    name: string;
-    email: string;
-  };
+  notes: string;
+  unitCost: number;
 }
 
+interface FormErrors {
+  quantity?: string;
+  reason?: string;
+  unitCost?: string;
+}
+
+// 🎯 TIPOS DE MOVIMIENTO CON CONFIGURACIÓN TIPADA
+const MOVEMENT_TYPES: MovementTypeConfig[] = [
+  {
+    value: 'entrada',
+    label: 'Entrada de Stock',
+    description: 'Aumentar inventario (compras, devoluciones)',
+    icon: <EntradaIcon />,
+    color: darkProTokens.success,
+    bgColor: `${darkProTokens.success}10`,
+    borderColor: `${darkProTokens.success}30`
+  },
+  {
+    value: 'salida',
+    label: 'Salida de Stock',
+    description: 'Reducir inventario (ventas, mermas, daños)',
+    icon: <SalidaIcon />,
+    color: darkProTokens.error,
+    bgColor: `${darkProTokens.error}10`,
+    borderColor: `${darkProTokens.error}30`
+  },
+  {
+    value: 'ajuste',
+    label: 'Ajuste de Inventario',
+    description: 'Corregir diferencias por conteo físico',
+    icon: <AjusteIcon />,
+    color: darkProTokens.warning,
+    bgColor: `${darkProTokens.warning}10`,
+    borderColor: `${darkProTokens.warning}30`
+  },
+  {
+    value: 'transferencia',
+    label: 'Transferencia',
+    description: 'Mover stock entre ubicaciones',
+    icon: <TransferenciaIcon />,
+    color: darkProTokens.info,
+    bgColor: `${darkProTokens.info}10`,
+    borderColor: `${darkProTokens.info}30`
+  }
+] as const;
+
+// 🎯 RAZONES PREDEFINIDAS CON TIPADO FUERTE
+const MOVEMENT_REASONS: Record<MovementType, string[]> = {
+  entrada: [
+    'Compra a proveedor',
+    'Devolución de cliente',
+    'Producción interna',
+    'Transferencia recibida',
+    'Ajuste por conteo',
+    'Corrección de error',
+    'Otro'
+  ],
+  salida: [
+    'Venta',
+    'Merma',
+    'Producto dañado',
+    'Muestra gratis',
+    'Uso interno',
+    'Transferencia enviada',
+    'Vencimiento',
+    'Otro'
+  ],
+  ajuste: [
+    'Conteo físico',
+    'Diferencia en sistema',
+    'Corrección de error',
+    'Auditoría',
+    'Otro'
+  ],
+  transferencia: [
+    'Cambio de ubicación',
+    'Reorganización',
+    'Distribución',
+    'Otro'
+  ]
+} as const;
+
+// ✅ INTERFACE MEJORADA CON TIPADO FUERTE
 interface ProductStockDialogProps {
   open: boolean;
   onClose: () => void;
-  product?: Product | null;
+  product?: Product | null; // ✅ TIPADO FUERTE APLICADO
   onSave: () => void;
 }
 
-const MOVEMENT_TYPES = [
-  { value: 'entrada', label: '📦 Entrada', icon: <TrendingUpIcon />, color: 'success' },
-  { value: 'salida', label: '📤 Salida', icon: <TrendingDownIcon />, color: 'error' },
-  { value: 'ajuste', label: '🔧 Ajuste', icon: <BuildIcon />, color: 'warning' },
-  { value: 'transferencia', label: '🔄 Transferencia', icon: <SwapHorizIcon />, color: 'info' }
-];
+export default function ProductStockDialog({
+  open,
+  onClose,
+  product,
+  onSave
+}: ProductStockDialogProps) {
+  
+  // 🎯 HOOK PARA AJUSTAR STOCK (USA FUNCIÓN SQL ATÓMICA)
+  const { adjustStock } = useInventory();
 
-const ENTRY_REASONS = [
-  'Compra a proveedor',
-  'Devolución de cliente',
-  'Transferencia de sucursal',
-  'Ajuste por inventario',
-  'Producto promocional',
-  'Otro'
-];
-
-const EXIT_REASONS = [
-  'Venta',
-  'Producto dañado',
-  'Producto vencido',
-  'Transferencia a sucursal',
-  'Muestra gratuita',
-  'Merma',
-  'Otro'
-];
-
-const ADJUSTMENT_REASONS = [
-  'Corrección de inventario',
-  'Conteo físico',
-  'Error de captura',
-  'Diferencia de sistema',
-  'Otro'
-];
-
-// Función para formatear precio
-const formatPrice = (amount: number): string => {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN'
-  }).format(amount);
-};
-
-// Función para formatear fecha
-const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleString('es-MX', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-// Función para mostrar notificaciones
-const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
-  console.log(`${type.toUpperCase()}: ${message}`);
-  if (type === 'error') {
-    alert(`❌ ${message}`);
-  } else if (type === 'success') {
-    alert(`✅ ${message}`);
-  } else {
-    alert(`ℹ️ ${message}`);
-  }
-};
-
-export default function ProductStockDialog({ open, onClose, product, onSave }: ProductStockDialogProps) {
-  const [movementData, setMovementData] = useState({
-    movement_type: 'entrada',
+  // 🎯 ESTADO DEL FORMULARIO CON TIPADO FUERTE
+  const [formData, setFormData] = useState<FormData>({
+    movementType: 'entrada',
     quantity: 0,
-    unit_cost: 0,
     reason: '',
-    notes: ''
+    notes: '',
+    unitCost: 0
   });
 
-  const [movements, setMovements] = useState<InventoryMovement[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [newStock, setNewStock] = useState(0);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [loading, setLoading] = useState<boolean>(false);
+  const [previewStock, setPreviewStock] = useState<number>(0);
 
-  const supabase = createClientComponentClient();
-
-  // Cargar historial de movimientos
-  const loadMovementHistory = async () => {
-    if (!product?.id) return;
-
-    try {
-      setLoadingHistory(true);
-      const { data, error } = await supabase
-        .from('inventory_movements')
-        .select(`
-          *,
-          Users (
-            name,
-            email
-          )
-        `)
-        .eq('product_id', product.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setMovements(data || []);
-    } catch (error) {
-      console.error('Error loading movement history:', error);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  // Calcular nuevo stock
-  const calculateNewStock = (currentStock: number, movementType: string, quantity: number): number => {
-    switch (movementType) {
-      case 'entrada':
-        return currentStock + quantity;
-      case 'salida':
-        return Math.max(0, currentStock - quantity);
-      case 'ajuste':
-        return quantity; // En ajuste, la cantidad es el stock final
-      case 'transferencia':
-        return Math.max(0, currentStock - quantity);
-      default:
-        return currentStock;
-    }
-  };
-
-  // Manejar cambios en el formulario
-  const handleInputChange = (field: string, value: any) => {
-    const newData = { ...movementData, [field]: value };
-    setMovementData(newData);
-
-    // Calcular nuevo stock
-    if (field === 'movement_type' || field === 'quantity') {
-      const calculatedStock = calculateNewStock(
-        product?.current_stock || 0,
-        field === 'movement_type' ? value : newData.movement_type,
-        field === 'quantity' ? value : newData.quantity
-      );
-      setNewStock(calculatedStock);
-    }
-
-    // Limpiar razón si cambia tipo de movimiento
-    if (field === 'movement_type') {
-      setMovementData(prev => ({ ...prev, reason: '' }));
-    }
-
-    // Limpiar error del campo
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
+  // 🎯 EFECTOS CON TIPADO MEJORADO
+  useEffect(() => {
+    if (product && open) {
+      setFormData({
+        movementType: 'entrada',
+        quantity: 0,
+        reason: '',
+        notes: '',
+        unitCost: product.cost_price || 0
       });
+      setPreviewStock(product.current_stock);
     }
-  };
+    setErrors({});
+  }, [product, open]);
 
-  // Validar formulario
+  // 🎯 CALCULAR PREVIEW DEL STOCK RESULTANTE CON VALIDACIÓN DE TIPOS
+  useEffect(() => {
+    if (!product) return;
+
+    let newStock = product.current_stock;
+    
+    switch (formData.movementType) {
+      case 'entrada':
+        newStock = product.current_stock + formData.quantity;
+        break;
+      case 'salida':
+        newStock = product.current_stock - formData.quantity;
+        break;
+      case 'ajuste':
+        newStock = formData.quantity; // En ajuste, quantity es el stock final
+        break;
+      case 'transferencia':
+        newStock = product.current_stock - formData.quantity;
+        break;
+    }
+
+    setPreviewStock(Math.max(0, newStock));
+  }, [formData.movementType, formData.quantity, product?.current_stock]);
+
+  // 🎯 VALIDACIONES CON TIPADO FUERTE
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    if (!product) return false;
+    
+    const newErrors: FormErrors = {};
 
-    if (movementData.quantity <= 0) {
+    if (formData.quantity <= 0) {
       newErrors.quantity = 'La cantidad debe ser mayor a 0';
     }
 
-    if (movementData.movement_type === 'salida' && movementData.quantity > (product?.current_stock || 0)) {
-      newErrors.quantity = 'No hay suficiente stock disponible';
-    }
-
-    if (movementData.movement_type === 'ajuste' && movementData.quantity < 0) {
+    if (formData.movementType === 'ajuste' && formData.quantity < 0) {
       newErrors.quantity = 'El stock final no puede ser negativo';
     }
 
-    if (!movementData.reason.trim()) {
-      newErrors.reason = 'La razón es requerida';
+    if ((formData.movementType === 'salida' || formData.movementType === 'transferencia') && 
+        formData.quantity > product.current_stock) {
+      newErrors.quantity = `No hay suficiente stock. Stock actual: ${product.current_stock}`;
     }
 
-    if ((movementData.movement_type === 'entrada' || movementData.movement_type === 'ajuste') && movementData.unit_cost < 0) {
-      newErrors.unit_cost = 'El costo unitario no puede ser negativo';
+    if (!formData.reason.trim()) {
+      newErrors.reason = 'La razón del movimiento es obligatoria';
+    }
+
+    if (formData.unitCost < 0) {
+      newErrors.unitCost = 'El costo unitario no puede ser negativo';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Guardar movimiento
-  const handleSave = async () => {
-    if (!product || !validateForm()) {
-      showNotification('Por favor corrige los errores en el formulario', 'error');
-      return;
+  // 🎯 MANEJAR CAMBIOS EN EL FORMULARIO CON TIPADO
+  const handleChange = <K extends keyof FormData>(field: K, value: FormData[K]) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field as keyof FormErrors]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
     }
+  };
 
+  // 🎯 MANEJAR GUARDAR CON VALIDACIÓN DE TIPOS
+  const handleSave = async (): Promise<void> => {
+    if (!validateForm() || !product) return;
+
+    setLoading(true);
     try {
-      setLoading(true);
-
-      const user = await supabase.auth.getUser();
-      const userId = user.data.user?.id;
-
-      // Preparar datos del movimiento
-      const movementRecord = {
-        product_id: product.id,
-        movement_type: movementData.movement_type,
-        quantity: movementData.movement_type === 'ajuste' 
-          ? movementData.quantity - product.current_stock 
-          : movementData.quantity,
-        previous_stock: product.current_stock,
-        new_stock: newStock,
-        unit_cost: movementData.unit_cost || 0,
-        total_cost: (movementData.unit_cost || 0) * movementData.quantity,
-        reason: movementData.reason,
-        notes: movementData.notes,
-        created_by: userId
-      };
-
-      // Insertar movimiento en base de datos
-      const { error: movementError } = await supabase
-        .from('inventory_movements')
-        .insert([movementRecord]);
-
-      if (movementError) throw movementError;
-
-      // Actualizar stock del producto
-      const { error: productError } = await supabase
-        .from('products')
-        .update({ 
-          current_stock: newStock,
-          updated_by: userId
-        })
-        .eq('id', product.id);
-
-      if (productError) throw productError;
-
-      showNotification('Movimiento de inventario registrado correctamente', 'success');
-      
-      // Resetear formulario
-      setMovementData({
-        movement_type: 'entrada',
-        quantity: 0,
-        unit_cost: 0,
-        reason: '',
-        notes: ''
+      const result = await adjustStock({
+        productId: product.id,
+        movementType: formData.movementType,
+        quantity: formData.quantity,
+        reason: formData.reason,
+        notes: formData.notes,
+        unitCost: formData.unitCost
       });
-      setNewStock(0);
-      setErrors({});
-      
-      onSave();
-      loadMovementHistory();
+
+      if (result.success) {
+        onSave();
+        onClose();
+      }
     } catch (error) {
-      console.error('Error saving movement:', error);
-      showNotification('Error al registrar el movimiento', 'error');
+      console.error('Error al ajustar stock:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Inicializar cuando se abre el diálogo
-  useEffect(() => {
-    if (open && product) {
-      setMovementData({
-        movement_type: 'entrada',
-        quantity: 0,
-        unit_cost: product.cost_price || 0,
-        reason: '',
-        notes: ''
-      });
-      setNewStock(product.current_stock);
-      setErrors({});
-      loadMovementHistory();
-    }
-  }, [open, product]);
-
-  if (!product) return null;
-
-  const availableReasons = () => {
-    switch (movementData.movement_type) {
-      case 'entrada':
-        return ENTRY_REASONS;
-      case 'salida':
-        return EXIT_REASONS;
-      case 'ajuste':
-        return ADJUSTMENT_REASONS;
-      case 'transferencia':
-        return EXIT_REASONS;
-      default:
-        return [];
-    }
-  };
-
-  const getMovementTypeConfig = (type: string) => {
+  // 🎯 HELPERS CON TIPADO FUERTE
+  const getMovementConfig = (type: MovementType): MovementTypeConfig => {
     return MOVEMENT_TYPES.find(t => t.value === type) || MOVEMENT_TYPES[0];
   };
 
+  const getAvailableReasons = (): readonly string[] => {
+    return MOVEMENT_REASONS[formData.movementType] || [];
+  };
+
+  const getPreviewColor = (): string => {
+    if (!product) return darkProTokens.textSecondary;
+    if (previewStock === 0) return darkProTokens.error;
+    if (previewStock <= product.min_stock) return darkProTokens.warning;
+    if (product.max_stock && previewStock > product.max_stock) return darkProTokens.info;
+    return darkProTokens.success;
+  };
+
+  // ✅ EARLY RETURN CON VALIDACIÓN DE TIPO
+  if (!product) return null;
+
+  const currentConfig = getMovementConfig(formData.movementType);
+
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={onClose}
-      maxWidth="lg"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          maxHeight: '90vh'
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `2px solid ${darkProTokens.primary}30`,
+          borderRadius: 4,
+          color: darkProTokens.textPrimary
         }
       }}
     >
       <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+        borderBottom: `1px solid ${darkProTokens.primary}30`,
+        display: 'flex',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        pb: 2
+        gap: 2
       }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <InventoryIcon />
-          <Box>
-            <Typography variant="h6" fontWeight="bold">
-              📦 Gestión de Stock
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              {product.name} - SKU: {product.sku}
-            </Typography>
-          </Box>
+        <StockIcon sx={{ color: darkProTokens.primary }} />
+        <Box>
+          <Typography variant="h6" fontWeight="bold">
+            Ajustar Stock - {product.name}
+          </Typography>
+          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+            Stock actual: {product.current_stock} {product.unit}
+          </Typography>
         </Box>
-        <IconButton onClick={onClose} sx={{ color: 'white' }}>
-          <CloseIcon />
-        </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 0 }}>
-        <Box sx={{ p: 3 }}>
-          <Grid container spacing={3}>
-            {/* 📊 Estado Actual del Producto */}
-            <Grid size={12}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-                border: '1px solid rgba(102, 126, 234, 0.2)',
-                borderRadius: 2
-              }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <InventoryIcon color="primary" />
-                    Estado Actual del Inventario
-                  </Typography>
+      <DialogContent sx={{ p: 4 }}>
+        <Grid container spacing={3}>
+          {/* 📊 INFORMACIÓN DEL PRODUCTO */}
+          <Grid size={{ xs: 12 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2} mb={2}>
+                  <Avatar sx={{ 
+                    backgroundColor: `${darkProTokens.primary}20`,
+                    color: darkProTokens.primary,
+                    width: 56,
+                    height: 56,
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {product.name.charAt(0)}
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                      {product.name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      SKU: {product.sku || 'Sin SKU'} | Categoría: {product.category}
+                    </Typography>
+                    <Box display="flex" gap={2} mt={1}>
+                      <Chip 
+                        label={`Stock: ${product.current_stock} ${product.unit}`}
+                        sx={{
+                          backgroundColor: `${darkProTokens.info}20`,
+                          color: darkProTokens.info,
+                          border: `1px solid ${darkProTokens.info}30`
+                        }}
+                        size="small"
+                      />
+                      <Chip 
+                        label={`Min: ${product.min_stock}`}
+                        sx={{
+                          backgroundColor: `${darkProTokens.warning}20`,
+                          color: darkProTokens.warning,
+                          border: `1px solid ${darkProTokens.warning}30`
+                        }}
+                        size="small"
+                      />
+                      <Chip 
+                        label={`Max: ${product.max_stock || 'N/A'}`}
+                        sx={{
+                          backgroundColor: `${darkProTokens.success}20`,
+                          color: darkProTokens.success,
+                          border: `1px solid ${darkProTokens.success}30`
+                        }}
+                        size="small"
+                      />
+                    </Box>
+                  </Box>
+                </Box>
 
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <Box textAlign="center" sx={{ p: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Stock Actual
-                        </Typography>
-                        <Typography variant="h4" fontWeight="bold" color="primary">
-                          {product.current_stock}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {product.unit}
-                        </Typography>
-                      </Box>
-                    </Grid>
+                {/* 📊 BARRA DE PROGRESO DEL STOCK */}
+                <Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      Nivel de Stock
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      {product.max_stock ? 
+                        `${((product.current_stock / product.max_stock) * 100).toFixed(0)}%` : 
+                        '-- %'
+                      }
+                    </Typography>
+                  </Box>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={product.max_stock ? Math.min((product.current_stock / product.max_stock) * 100, 100) : 50}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: `${darkProTokens.grayDark}`,
+                      '& .MuiLinearProgress-bar': {
+                        backgroundColor: product.current_stock === 0 ? darkProTokens.error :
+                                        product.current_stock <= product.min_stock ? darkProTokens.warning :
+                                        darkProTokens.success
+                      }
+                    }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
 
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <Box textAlign="center" sx={{ p: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Stock Mínimo
-                        </Typography>
-                        <Typography variant="h4" fontWeight="bold" color="warning.main">
-                          {product.min_stock}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {product.unit}
-                        </Typography>
+          {/* 🎯 TIPOS DE MOVIMIENTO */}
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
+              Tipo de Movimiento
+            </Typography>
+            <Grid container spacing={2}>
+              {MOVEMENT_TYPES.map((movement) => (
+                <Grid key={movement.value} size={{ xs: 12, sm: 6 }}>
+                  <Card
+                    sx={{
+                      background: formData.movementType === movement.value ? 
+                        movement.bgColor : 
+                        `${darkProTokens.surfaceLevel1}`,
+                      border: formData.movementType === movement.value ? 
+                        `2px solid ${movement.color}` : 
+                        `1px solid ${darkProTokens.grayDark}`,
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        borderColor: movement.color,
+                        backgroundColor: movement.bgColor
+                      }
+                    }}
+                    onClick={() => handleChange('movementType', movement.value)}
+                  >
+                    <CardContent sx={{ p: 2 }}>
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <Avatar sx={{
+                          backgroundColor: movement.bgColor,
+                          color: movement.color,
+                          width: 40,
+                          height: 40
+                        }}>
+                          {movement.icon}
+                        </Avatar>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="subtitle2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                            {movement.label}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                            {movement.description}
+                          </Typography>
+                        </Box>
                       </Box>
-                    </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
 
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <Box textAlign="center" sx={{ p: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Stock Máximo
-                        </Typography>
-                        <Typography variant="h4" fontWeight="bold" color="info.main">
-                          {product.max_stock}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {product.unit}
-                        </Typography>
-                      </Box>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <Box textAlign="center" sx={{ p: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Valor Total
-                        </Typography>
-                        <Typography variant="h4" fontWeight="bold" color="success.main">
-                          {formatPrice(product.current_stock * product.cost_price)}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Costo: {formatPrice(product.cost_price)}
-                        </Typography>
-                      </Box>
-                    </Grid>
+          {/* 📝 FORMULARIO DE MOVIMIENTO */}
+          <Grid size={{ xs: 12 }}>
+            <Card sx={{ 
+              background: currentConfig.bgColor, 
+              border: `2px solid ${currentConfig.borderColor}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: currentConfig.color, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  {currentConfig.icon}
+                  {currentConfig.label}
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label={formData.movementType === 'ajuste' ? 'Stock Final' : 'Cantidad'}
+                      value={formData.quantity}
+                      onChange={(e) => handleChange('quantity', parseInt(e.target.value) || 0)}
+                      error={!!errors.quantity}
+                      helperText={errors.quantity || (
+                        formData.movementType === 'ajuste' ? 
+                        'Ingresa el stock final deseado' : 
+                        `Cantidad a ${formData.movementType === 'entrada' ? 'agregar' : 'reducir'}`
+                      )}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
+                        }
+                      }}
+                    />
                   </Grid>
 
-                  {/* Alerta de stock bajo */}
-                  {product.current_stock <= product.min_stock && (
-                    <Alert severity="warning" sx={{ mt: 2 }}>
-                      ⚠️ Este producto tiene stock bajo. Se recomienda reabastecer pronto.
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Costo Unitario"
+                      value={formData.unitCost}
+                      onChange={(e) => handleChange('unitCost', parseFloat(e.target.value) || 0)}
+                      error={!!errors.unitCost}
+                      helperText={errors.unitCost || 'Para calcular el costo total del movimiento'}
+                      InputProps={{
+                        startAdornment: <Box sx={{ color: darkProTokens.textSecondary, mr: 1 }}>$</Box>,
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
+                        }
+                      }}
+                    />
+                  </Grid>
 
-            {/* 📝 Nuevo Movimiento */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, rgba(240, 147, 251, 0.1) 0%, rgba(245, 87, 108, 0.1) 100%)',
-                border: '1px solid rgba(240, 147, 251, 0.2)',
-                borderRadius: 2,
-                height: 'fit-content'
-              }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <AddIcon color="primary" />
-                    Registrar Movimiento
-                  </Typography>
-
-                  <Grid container spacing={2}>
-                    <Grid size={12}>
-                      <FormControl fullWidth>
-                        <InputLabel>Tipo de Movimiento</InputLabel>
-                        <Select
-                          value={movementData.movement_type}
-                          label="Tipo de Movimiento"
-                          onChange={(e) => handleInputChange('movement_type', e.target.value)}
-                        >
-                          {MOVEMENT_TYPES.map((type) => (
-                            <MenuItem key={type.value} value={type.value}>
-                              <Box display="flex" alignItems="center" gap={1}>
-                                {type.icon}
-                                {type.label}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <TextField
-                        fullWidth
-                        label={movementData.movement_type === 'ajuste' ? 'Stock Final' : 'Cantidad'}
-                        type="number"
-                        value={movementData.quantity}
-                        onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
-                        error={!!errors.quantity}
-                        helperText={errors.quantity}
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">{product.unit}</InputAdornment>,
-                        }}
-                      />
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <TextField
-                        fullWidth
-                        label="Costo Unitario"
-                        type="number"
-                        value={movementData.unit_cost}
-                        onChange={(e) => handleInputChange('unit_cost', parseFloat(e.target.value) || 0)}
-                        error={!!errors.unit_cost}
-                        helperText={errors.unit_cost}
-                        disabled={movementData.movement_type === 'salida'}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                        }}
-                      />
-                    </Grid>
-
-                    <Grid size={12}>
-                      <FormControl fullWidth error={!!errors.reason}>
-                        <InputLabel>Razón del Movimiento</InputLabel>
-                        <Select
-                          value={movementData.reason}
-                          label="Razón del Movimiento"
-                          onChange={(e) => handleInputChange('reason', e.target.value)}
-                        >
-                          {availableReasons().map((reason) => (
-                            <MenuItem key={reason} value={reason}>
-                              {reason}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.reason && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
-                            {errors.reason}
-                          </Typography>
-                        )}
-                      </FormControl>
-                    </Grid>
-
-                    <Grid size={12}>
-                      <TextField
-                        fullWidth
-                        label="Notas Adicionales"
-                        value={movementData.notes}
-                        onChange={(e) => handleInputChange('notes', e.target.value)}
-                        multiline
-                        rows={2}
-                        placeholder="Información adicional sobre este movimiento..."
-                      />
-                    </Grid>
-
-                    {/* Vista previa del cambio */}
-                    <Grid size={12}>
-                      <Box sx={{ 
-                        p: 2, 
-                        borderRadius: 2, 
-                        background: 'rgba(102, 126, 234, 0.1)',
-                        border: '1px solid rgba(102, 126, 234, 0.2)'
+                  <Grid size={{ xs: 12 }}>
+                    <FormControl fullWidth error={!!errors.reason}>
+                      <InputLabel sx={{ 
+                        color: darkProTokens.textSecondary,
+                        '&.Mui-focused': { color: darkProTokens.primary }
                       }}>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Vista Previa del Cambio:
-                        </Typography>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Chip 
-                            label={`${product.current_stock} ${product.unit}`} 
-                            size="small" 
-                            color="default"
-                          />
-                          <Box sx={{ mx: 1 }}>→</Box>
-                          <Chip 
-                            label={`${newStock} ${product.unit}`} 
-                            size="small" 
-                            color={newStock > product.current_stock ? 'success' : newStock < product.current_stock ? 'error' : 'default'}
-                          />
-                        </Box>
-                        {movementData.unit_cost > 0 && (
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            Costo Total: {formatPrice(movementData.unit_cost * movementData.quantity)}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Grid>
-
-                    <Grid size={12}>
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        startIcon={<SaveIcon />}
-                        onClick={handleSave}
-                        disabled={loading || movementData.quantity <= 0}
+                        Razón del Movimiento *
+                      </InputLabel>
+                      <Select
+                        value={formData.reason}
+                        label="Razón del Movimiento *"
+                        onChange={(e) => handleChange('reason', e.target.value)}
                         sx={{
-                          background: 'linear-gradient(45deg, #FFCC00 30%, #FFD700 90%)',
-                          color: '#000',
-                          fontWeight: 'bold',
-                          '&:hover': {
-                            background: 'linear-gradient(45deg, #FFD700 30%, #FFCC00 90%)',
+                          color: darkProTokens.textPrimary,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${darkProTokens.primary}30`
                           },
-                          '&:disabled': {
-                            background: 'grey.300',
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.primary
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: darkProTokens.primary
+                          }
+                        }}
+                        MenuProps={{
+                          PaperProps: {
+                            sx: {
+                              background: darkProTokens.surfaceLevel2,
+                              border: `1px solid ${darkProTokens.primary}30`,
+                              color: darkProTokens.textPrimary
+                            }
                           }
                         }}
                       >
-                        {loading ? 'Registrando...' : 'Registrar Movimiento'}
-                      </Button>
-                    </Grid>
+                        {getAvailableReasons().map((reason) => (
+                          <MenuItem key={reason} value={reason}>
+                            {reason}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    {errors.reason && (
+                      <Typography variant="caption" sx={{ color: darkProTokens.error, mt: 0.5 }}>
+                        {errors.reason}
+                      </Typography>
+                    )}
                   </Grid>
-                </CardContent>
-              </Card>
-            </Grid>
 
-            {/* 📜 Historial de Movimientos */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, rgba(168, 237, 234, 0.1) 0%, rgba(254, 214, 227, 0.1) 100%)',
-                border: '1px solid rgba(168, 237, 234, 0.2)',
-                borderRadius: 2
-              }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <HistoryIcon color="primary" />
-                    Historial Reciente
-                  </Typography>
-
-                  {loadingHistory ? (
-                    <Typography>Cargando historial...</Typography>
-                  ) : movements.length === 0 ? (
-                    <Typography color="text.secondary" textAlign="center" sx={{ py: 3 }}>
-                      No hay movimientos registrados
-                    </Typography>
-                  ) : (
-                    <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Tipo</TableCell>
-                            <TableCell align="right">Cantidad</TableCell>
-                            <TableCell align="right">Stock</TableCell>
-                            <TableCell>Fecha</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {movements.map((movement) => {
-                            const typeConfig = getMovementTypeConfig(movement.movement_type);
-                            return (
-                              <TableRow key={movement.id}>
-                                <TableCell>
-                                  <Box display="flex" alignItems="center" gap={1}>
-                                    {typeConfig.icon}
-                                    <Box>
-                                      <Typography variant="body2" fontWeight="bold">
-                                        {typeConfig.label}
-                                      </Typography>
-                                      <Typography variant="caption" color="text.secondary">
-                                        {movement.reason}
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <Typography 
-                                    variant="body2" 
-                                    color={movement.quantity > 0 ? 'success.main' : 'error.main'}
-                                    fontWeight="bold"
-                                  >
-                                    {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <Typography variant="body2">
-                                    {movement.previous_stock} → {movement.new_stock}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell>
-                                  <Typography variant="caption">
-                                    {formatDate(movement.created_at)}
-                                  </Typography>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <TextField
+                      fullWidth
+                      label="Notas Adicionales"
+                      value={formData.notes}
+                      onChange={(e) => handleChange('notes', e.target.value)}
+                      multiline
+                      rows={3}
+                      placeholder="Detalles adicionales sobre este movimiento..."
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
+                        }
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
           </Grid>
-        </Box>
+
+          {/* 📊 PREVIEW DEL RESULTADO */}
+          <Grid size={{ xs: 12 }}>
+            <Card sx={{ 
+              background: `${getPreviewColor()}10`, 
+              border: `2px solid ${getPreviewColor()}30`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2} mb={2}>
+                  <InfoIcon sx={{ color: getPreviewColor() }} />
+                  <Typography variant="h6" fontWeight="bold" sx={{ color: getPreviewColor() }}>
+                    Preview del Resultado
+                  </Typography>
+                </Box>
+
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <Box textAlign="center" sx={{ p: 2 }}>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Stock Actual
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                        {product.current_stock}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        {product.unit}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <Box textAlign="center" sx={{ p: 2 }}>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Cambio
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: currentConfig.color }}>
+                        {formData.movementType === 'ajuste' ? 
+                          (formData.quantity - product.current_stock > 0 ? '+' : '') + (formData.quantity - product.current_stock) :
+                          formData.movementType === 'entrada' ? '+' + formData.quantity :
+                          '-' + formData.quantity
+                        }
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        {product.unit}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <Box textAlign="center" sx={{ p: 2 }}>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Stock Final
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: getPreviewColor() }}>
+                        {previewStock}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        {product.unit}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={{ xs: 12 }}>
+                    <Divider sx={{ backgroundColor: `${getPreviewColor()}30`, my: 1 }} />
+                    <Box display="flex" justifyContent="center">
+                      <Typography variant="body2" fontWeight="bold" sx={{ color: getPreviewColor() }}>
+                        Costo Total del Movimiento: ${(formData.unitCost * formData.quantity).toFixed(2)}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                {/* 🚨 ALERTAS */}
+                {previewStock === 0 && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    ⚠️ El producto quedará sin stock después de este movimiento
+                  </Alert>
+                )}
+                
+                {previewStock <= product.min_stock && previewStock > 0 && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    ⚠️ El stock quedará por debajo del mínimo establecido ({product.min_stock} {product.unit})
+                  </Alert>
+                )}
+
+                {product.max_stock && previewStock > product.max_stock && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    ℹ️ El stock excederá el máximo establecido ({product.max_stock} {product.unit})
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* 🚨 ERRORES GENERALES */}
+        {Object.keys(errors).length > 0 && (
+          <Alert severity="error" sx={{ mt: 3 }}>
+            Por favor, corrige los errores antes de continuar.
+          </Alert>
+        )}
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, pt: 0 }}>
-        <Button onClick={onClose}>
-          Cerrar
+      <DialogActions sx={{ 
+        p: 3, 
+        borderTop: `1px solid ${darkProTokens.grayDark}`,
+        gap: 2
+      }}>
+        <Button
+          onClick={onClose}
+          disabled={loading}
+          startIcon={<CloseIcon />}
+          sx={{ 
+            color: darkProTokens.textSecondary,
+            borderColor: `${darkProTokens.textSecondary}60`,
+            px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
+          }}
+        >
+          Cancelar
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={loading || Object.keys(errors).length > 0}
+          startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+          variant="contained"
+          sx={{
+            background: `linear-gradient(135deg, ${currentConfig.color}, ${currentConfig.color}CC)`,
+            color: darkProTokens.background,
+            fontWeight: 700,
+            px: 4, py: 1.5, borderRadius: 3,
+            '&:hover': {
+              background: `linear-gradient(135deg, ${currentConfig.color}CC, ${currentConfig.color}AA)`,
+            },
+            '&:disabled': {
+              background: darkProTokens.primaryDisabled,
+              color: darkProTokens.textDisabled
+            }
+          }}
+        >
+          {loading ? 'Procesando...' : 'Aplicar Movimiento'}
         </Button>
       </DialogActions>
     </Dialog>

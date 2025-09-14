@@ -2,19 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { toMexicoDate, toMexicoTimestamp } from '@/utils/dateHelpers';
 
-// ✅ CORRECCIÓN 1: IMPORTAR EL TIPO CORRECTO
-import {
-  fullRegistrationSchema,
-  type RegistrationFormData  // ✅ ESTE ES EL TIPO CORRECTO QUE EXPORTAS
-} from '@/schemas/registrationSchema';
-
-// ✅ CONFIGURAR DAYJS
+// ✅ CONFIGURAR DAYJS PARA ZONA HORARIA DE MÉXICO
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -22,8 +15,48 @@ const MEXICO_TZ = 'America/Mexico_City';
 const STORAGE_KEY = 'registration-form';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-// ✅ USAR EL TIPO CORRECTO
-type FormData = RegistrationFormData;
+// Tipos originales de tu aplicación
+type FormData = {
+  // Paso 1
+  profilePhoto: FileList;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  whatsapp: string;
+  birthDate: string;
+  street: string;
+  number: string;
+  neighborhood: string;
+  state: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  gender: string;
+  maritalStatus: string;
+  // Paso 2
+  emergencyName: string;
+  emergencyPhone: string;
+  medicalCondition: string;
+  bloodType: string;
+  // Paso 3
+  referredBy: string;
+  mainMotivation: string;
+  receivePlans: boolean;
+  trainingLevel: string;
+  // Paso 4
+  acceptedRules: boolean;
+  tutorINE?: FileList;
+};
+
+// ✅ NUEVO: Tipo extendido para datos guardados en localStorage
+type SavedFormData = FormData & {
+  profilePhotoPreview?: string;
+  tutorINEPreview?: string;
+  hasProfilePhotoFile?: boolean;
+  hasTutorINEFile?: boolean;
+};
 
 interface SignatureCanvasRef {
   clear: () => void;
@@ -32,7 +65,7 @@ interface SignatureCanvasRef {
   getTrimmedCanvas?: () => HTMLCanvasElement;
 }
 
-// Campos por paso (sin cambios)
+// Campos por paso (mantener tu lógica existente)
 const fieldsPerStep: { [key: number]: (keyof FormData)[] } = {
   1: [
     'profilePhoto', 'firstName', 'lastName', 'email', 'password', 
@@ -45,15 +78,11 @@ const fieldsPerStep: { [key: number]: (keyof FormData)[] } = {
   4: ['acceptedRules'] as (keyof FormData)[]
 };
 
-// Funciones utilitarias (sin cambios)
+// Funciones utilitarias (extraídas de tu código)
 const isValidFile = (file: unknown): file is File => {
-  return typeof file === 'object' && 
-         file !== null && 
-         'name' in file && 
-         'size' in file && 
-         'type' in file &&
-         (file as File).size <= MAX_FILE_SIZE &&
-         (file as File).type.startsWith('image/');
+  return file instanceof File && 
+         file.size <= MAX_FILE_SIZE &&
+         file.type.startsWith('image/');
 };
 
 const isBlobUrl = (url: string): boolean => {
@@ -89,16 +118,17 @@ export const useRegistrationForm = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // ✅ ESTADOS PARA PREVIEW - mantener para UI pero simplificar lógica
+  // Estados para archivos
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [tutorINEUrl, setTutorINEUrl] = useState<string | null>(null);
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [tutorINEFile, setTutorINEFile] = useState<File | null>(null);
   
   // Ref para firma
   const sigCanvas = useRef<SignatureCanvasRef | null>(null);
 
-  // ✅ CONFIGURACIÓN DEL FORMULARIO CON EL TIPO CORRECTO
-  const formMethods = useForm<RegistrationFormData>({
-    resolver: zodResolver(fullRegistrationSchema),
+  // Configuración del formulario
+  const formMethods = useForm<FormData>({
     mode: 'onChange',
     defaultValues: {
       receivePlans: false,
@@ -111,7 +141,7 @@ export const useRegistrationForm = () => {
     handleSubmit,
     control,
     watch,
-    formState: { errors, isDirty },
+    formState: { errors, isDirty, dirtyFields, isValid },
     trigger,
     setValue,
     reset,
@@ -120,7 +150,7 @@ export const useRegistrationForm = () => {
 
   const formValues = watch();
 
-  // Funciones para convertir a base64 (sin cambios)
+  // ✅ FUNCIÓN PARA CONVERTIR A BASE64 (de tu código original)
   const toBase64 = useCallback(async (file: File): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
       if (!isValidFile(file)) {
@@ -146,6 +176,7 @@ export const useRegistrationForm = () => {
     });
   }, []);
 
+  // ✅ FUNCIÓN PARA CREAR PREVIEW SEGURO (de tu código)
   const createSafePreview = useCallback(async (file: File): Promise<string> => {
     try {
       const base64 = await toBase64(file);
@@ -156,18 +187,17 @@ export const useRegistrationForm = () => {
     }
   }, [toBase64]);
 
-  // ✅ FUNCIONES SIMPLIFICADAS PARA MANEJO DE ARCHIVOS
+  // Funciones para manejo de fotos (adaptadas de tu código)
   const handleProfilePhotoCapture = useCallback(async (file: File) => {
     try {
       if (!file || !isValidFile(file)) {
         throw new Error("No se ha proporcionado un archivo válido");
       }
       
-      // Crear preview para UI
+      setProfilePhotoFile(file);
       const safePreview = await createSafePreview(file);
       setPreviewUrl(safePreview);
       
-      // ✅ ACTUALIZAR REACT-HOOK-FORM DIRECTAMENTE
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
       const fileList = dataTransfer.files;
@@ -185,11 +215,10 @@ export const useRegistrationForm = () => {
         throw new Error("No se ha proporcionado un archivo válido");
       }
       
-      // Crear preview para UI
+      setTutorINEFile(file);
       const safePreview = await createSafePreview(file);
       setTutorINEUrl(safePreview);
       
-      // ✅ ACTUALIZAR REACT-HOOK-FORM DIRECTAMENTE
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
       const fileList = dataTransfer.files;
@@ -202,14 +231,16 @@ export const useRegistrationForm = () => {
   }, [setValue, createSafePreview]);
 
   const clearPhoto = useCallback(() => {
+    setProfilePhotoFile(null);
     setPreviewUrl(null);
     setValue('profilePhoto', undefined as any, {shouldDirty: true, shouldValidate: true});
     
     try {
       const savedData = localStorage.getItem(STORAGE_KEY);
       if (savedData) {
-        const parsedData = JSON.parse(savedData);
+        const parsedData: SavedFormData = JSON.parse(savedData);
         delete parsedData.profilePhotoPreview;
+        delete parsedData.hasProfilePhotoFile;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedData));
       }
     } catch (e) {
@@ -218,14 +249,16 @@ export const useRegistrationForm = () => {
   }, [setValue]);
 
   const clearTutorINE = useCallback(() => {
+    setTutorINEFile(null);
     setTutorINEUrl(null);
     setValue('tutorINE', undefined as any, {shouldDirty: true, shouldValidate: true});
     
     try {
       const savedData = localStorage.getItem(STORAGE_KEY);
       if (savedData) {
-        const parsedData = JSON.parse(savedData);
+        const parsedData: SavedFormData = JSON.parse(savedData);
         delete parsedData.tutorINEPreview;
+        delete parsedData.hasTutorINEFile;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedData));
       }
     } catch (e) {
@@ -233,6 +266,7 @@ export const useRegistrationForm = () => {
     }
   }, [setValue]);
 
+  // Función para limpiar la firma
   const clearSignature = useCallback(() => {
     if (sigCanvas.current) {
       try {
@@ -243,7 +277,7 @@ export const useRegistrationForm = () => {
     }
   }, []);
 
-  // Navegación entre pasos (sin cambios)
+  // Navegación entre pasos
   const getFieldsForStep = useCallback((currentStep: number): (keyof FormData)[] => {
     const fields = fieldsPerStep[currentStep] || [];
     return fields as (keyof FormData)[];
@@ -260,16 +294,7 @@ export const useRegistrationForm = () => {
       setStep((s) => s + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      const currentErrors = Object.keys(errors).filter(key => 
-        fieldsToValidate.includes(key as keyof FormData)
-      );
-      
-      if (currentErrors.length > 0) {
-        const firstError = errors[currentErrors[0] as keyof FormData];
-        alert(firstError?.message || 'Por favor, completa todos los campos requeridos correctamente.');
-      } else {
-        alert('Por favor, completa todos los campos requeridos correctamente.');
-      }
+      alert('Por favor, completa todos los campos requeridos correctamente.');
     }
   };
   
@@ -285,14 +310,12 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // ✅ CORRECCIÓN 2: FUNCIÓN DE ENVÍO UNIFICADA
+  // ✅ FUNCIÓN DE ENVÍO (copiada y adaptada de tu código original)
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
       setIsSubmitting(true);
       
-      console.log("🚀 [SUBMIT] Iniciando proceso con Zod 4.1.8 corregido");
-      
-      // Verificar firma (sin cambios)
+      // Verificar firma
       let signatureDataUrl = '';
       if (sigCanvas.current) {
         try {
@@ -324,44 +347,30 @@ export const useRegistrationForm = () => {
         return;
       }
 
-      // ✅ PROCESAMIENTO DE IMÁGENES CORREGIDO - USANDO DATA VALIDADO POR ZOD
+      // Procesar imágenes
       let profilePhotoBase64 = '';
       let tutorINEBase64 = '';
       
       try {
-        // ✅ Confiar en el 'data' validado por Zod - ESTA ES LA CLAVE
-        const profilePhotoList = data.profilePhoto;
-        if (profilePhotoList && profilePhotoList.length > 0) {
-          const file = profilePhotoList[0]; // Extraer el primer archivo del FileList
-          if (isValidFile(file)) {
-            profilePhotoBase64 = await toBase64(file);
-            
-            if (isBlobUrl(profilePhotoBase64)) {
-              throw new Error("Error crítico: foto de perfil generó blob URL");
-            }
-          } else {
-            throw new Error("Foto de perfil no válida");
+        if (profilePhotoFile && isValidFile(profilePhotoFile)) {
+          profilePhotoBase64 = await toBase64(profilePhotoFile);
+          
+          if (isBlobUrl(profilePhotoBase64)) {
+            throw new Error("Error crítico: foto de perfil generó blob URL");
           }
         } else {
-          throw new Error("No hay foto de perfil");
+          throw new Error("No hay foto de perfil válida");
         }
         
-        // ✅ Para el INE del tutor - Zod ya validó que es requerido si es menor
         if (showTutorField) {
-          const tutorINEList = data.tutorINE;
-          if (tutorINEList && tutorINEList.length > 0) {
-            const file = tutorINEList[0]; // Extraer el primer archivo del FileList
-            if (isValidFile(file)) {
-              tutorINEBase64 = await toBase64(file);
-              
-              if (isBlobUrl(tutorINEBase64)) {
-                throw new Error("Error crítico: INE del tutor generó blob URL");
-              }
-            } else {
-              throw new Error("INE del tutor no válido");
+          if (tutorINEFile && isValidFile(tutorINEFile)) {
+            tutorINEBase64 = await toBase64(tutorINEFile);
+            
+            if (isBlobUrl(tutorINEBase64)) {
+              throw new Error("Error crítico: INE del tutor generó blob URL");
             }
           } else {
-            throw new Error("No hay foto de INE para menor de edad");
+            throw new Error("No hay foto de INE válida para menor de edad");
           }
         }
         
@@ -372,7 +381,7 @@ export const useRegistrationForm = () => {
         return;
       }
 
-      // Validación final (sin cambios)
+      // Validación final: verificar que no hay blob URLs
       const urlsToCheck = [profilePhotoBase64, tutorINEBase64, signatureDataUrl].filter(Boolean);
       const hasBlobUrls = urlsToCheck.some(url => isBlobUrl(url));
       
@@ -383,7 +392,7 @@ export const useRegistrationForm = () => {
         return;
       }
 
-      // Construir payload (sin cambios)
+      // Construir payload
       const currentMexicoTime = new Date();
       const birthDateObj = new Date(data.birthDate);
       
@@ -426,15 +435,15 @@ export const useRegistrationForm = () => {
         tutorINE: tutorINEBase64,
         isMinor: showTutorField,
         metadata: {
-          version: '4.0-zod-corrected-final',
+          version: '2.1-mx-timezone-corrected',
           processedAt: toMexicoTimestamp(currentMexicoTime),
-          processedBy: 'MuscleUpGYM',
+          processedBy: 'luishdz044',
           mexicoTimezone: MEXICO_TZ,
           currentMexicoDate: getCurrentMexicoDate()
         }
       };
 
-      // Llamada al API (sin cambios)
+      // Llamada al API
       try {
         const res = await fetch('/api/register', {
           method: 'POST',
@@ -473,15 +482,18 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // Efectos (ajustar para FileList)
+  // Efectos (adaptados de tu código original)
+  
+  // Cargar datos guardados
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
       try {
-        const parsedData = JSON.parse(savedData);
+        const parsedData: SavedFormData = JSON.parse(savedData);
         
+        // Restaurar previews si son válidos
         if (parsedData.profilePhotoPreview && !isBlobUrl(parsedData.profilePhotoPreview)) {
           setPreviewUrl(parsedData.profilePhotoPreview);
         }
@@ -492,9 +504,10 @@ export const useRegistrationForm = () => {
         
         if (parsedData.firstName || parsedData.email) {
           if (confirm("Encontramos un registro previo. ¿Deseas continuar donde lo dejaste?")) {
-            const { profilePhotoPreview, tutorINEPreview, ...formData } = parsedData;
+            const { profilePhotoPreview, tutorINEPreview, hasProfilePhotoFile, hasTutorINEFile, ...formData } = parsedData;
             reset(formData);
             
+            // Determinar step y completados
             const lastStep = getLastCompletedStep(formData);
             setStep(Math.min(lastStep + 1, 4));
             
@@ -514,29 +527,35 @@ export const useRegistrationForm = () => {
     }
   }, [reset]);
 
-  // Progreso y guardado
+  // Calcular progreso y guardar datos
   useEffect(() => {
-    if (!isDirty) return;
+  if (!isDirty) return;
+  
+  try {
+    const dataToSave: SavedFormData = { ...formValues };
     
-    try {
-      const dataToSave = { ...formValues };
-      Object.keys(dataToSave).forEach((key) => {
-        const value = dataToSave[key as keyof typeof dataToSave];
-        if (value instanceof FileList || value instanceof File) {
-          delete dataToSave[key as keyof typeof dataToSave];
-        }
-      });
-      
-      if (previewUrl && !isBlobUrl(previewUrl)) {
-        dataToSave.profilePhotoPreview = previewUrl;
+    // ✅ CORREGIDO: Verificación de tipo más específica para FileList
+    (Object.keys(dataToSave) as Array<keyof SavedFormData>).forEach((key) => {
+      const value = dataToSave[key];
+      // ✅ Cambiar esta línea:
+      if ((value as any) instanceof FileList || value instanceof File) {
+        delete dataToSave[key];
       }
+    });
+    
+    if (previewUrl && !isBlobUrl(previewUrl)) {
+      dataToSave.profilePhotoPreview = previewUrl;
+      dataToSave.hasProfilePhotoFile = !!profilePhotoFile;
+    }
+    
+    if (tutorINEUrl && !isBlobUrl(tutorINEUrl)) {
+      dataToSave.tutorINEPreview = tutorINEUrl;
+      dataToSave.hasTutorINEFile = !!tutorINEFile;
+    }
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
       
-      if (tutorINEUrl && !isBlobUrl(tutorINEUrl)) {
-        dataToSave.tutorINEPreview = tutorINEUrl;
-      }
-      
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-      
+      // Calcular progreso
       let completedFields = 0;
       let requiredFields = 0;
       
@@ -573,20 +592,31 @@ export const useRegistrationForm = () => {
     } catch (error) {
       console.error("Error al guardar o calcular progreso:", error);
     }
-  }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl]);
+  }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl, profilePhotoFile, tutorINEFile]);
 
-  // Mostrar campo de tutor
+  // Verificar si el usuario es menor de edad
   useEffect(() => {
     const birthDate = formValues.birthDate;
     if (birthDate) {
       try {
         const age = calculateAge(birthDate);
         setShowTutorField(age < 18);
+        
+        if (age < 18 && step === 4) {
+          if (!fieldsPerStep[4].includes('tutorINE')) {
+            fieldsPerStep[4].push('tutorINE');
+          }
+        } else if (step === 4) {
+          const index = fieldsPerStep[4].indexOf('tutorINE');
+          if (index !== -1) {
+            fieldsPerStep[4].splice(index, 1);
+          }
+        }
       } catch (error) {
-        setShowTutorField(false);
+        console.error("Error al calcular edad:", error);
       }
     }
-  }, [formValues.birthDate]);
+  }, [formValues.birthDate, step]);
 
   // Prevenir cierre accidental
   useEffect(() => {
@@ -603,7 +633,7 @@ export const useRegistrationForm = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty, isSubmitting]);
 
-  // Función auxiliar
+  // Función auxiliar para determinar último paso completado
   const getLastCompletedStep = useCallback((data: Partial<FormData>): number => {
     if (data.acceptedRules) return 4;
     if (data.referredBy && data.mainMotivation && data.trainingLevel) return 3;
@@ -613,32 +643,53 @@ export const useRegistrationForm = () => {
   }, []);
 
   const handleCloseSuccessModal = () => {
-    setShowSuccessModal(false);
-    
-    if (userId) {
-      const url = `/registro/firmado?userId=${encodeURIComponent(userId)}`;
-      window.location.href = url;
-    } else {
-      window.location.href = '/registro/firmado';
-    }
-  };
+  setShowSuccessModal(false);
+  
+  // ✅ NUEVO FLUJO: Redirigir a página de confirmación de email
+  window.location.href = '/registro-pendiente';
+};
 
   return {
     // Estados
-    step, formProgress, isSubmitting, showTutorField, completedSteps, showSuccessModal, userId,
-    previewUrl, tutorINEUrl,
+    step,
+    formProgress,
+    isSubmitting,
+    showTutorField,
+    completedSteps,
+    showSuccessModal,
+    userId,
+    previewUrl,
+    tutorINEUrl,
+    profilePhotoFile,
+    tutorINEFile,
     
     // Refs
     sigCanvas,
     
     // Métodos de formulario
-    register, handleSubmit, control, watch, errors, isDirty, trigger, setValue, reset, getValues, formValues,
+    register,
+    handleSubmit,
+    control,
+    watch,
+    errors,
+    isDirty,
+    trigger,
+    setValue,
+    reset,
+    getValues,
+    formValues,
     
     // Funciones de navegación
-    goNext, goBack, goToStep,
+    goNext,
+    goBack,
+    goToStep,
     
     // Funciones de archivos
-    handleProfilePhotoCapture, handleTutorINECapture, clearPhoto, clearTutorINE, clearSignature,
+    handleProfilePhotoCapture,
+    handleTutorINECapture,
+    clearPhoto,
+    clearTutorINE,
+    clearSignature,
     
     // Función de envío
     onSubmit,
@@ -647,6 +698,7 @@ export const useRegistrationForm = () => {
     handleCloseSuccessModal,
     
     // Utilidades
-    getCurrentMexicoDate, validateAge
+    getCurrentMexicoDate,
+    validateAge
   };
 };

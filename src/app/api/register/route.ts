@@ -153,7 +153,7 @@ const processAndUploadFile = async (
 };
 
 export async function POST(req: NextRequest) {
-  console.log("🚀 API de registro iniciada v2.0 - Sin blob URLs - 2024-06-24 by @luishdz044");
+  console.log("🚀 API de registro v3.0 (con verificación de email) iniciada - 2025-09-14 by @luishdz044");
   
   try {
     // Obtener los datos del cuerpo de la solicitud
@@ -224,12 +224,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ 1. CREAR USUARIO EN SUPABASE AUTH
-    console.log("👤 [AUTH] Creando usuario en Supabase Auth...");
+    // ✅ 1. CREAR USUARIO EN SUPABASE AUTH (SIN CONFIRMAR EMAIL)
+    console.log("👤 [AUTH] Creando usuario en Supabase Auth (pendiente de verificación)...");
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: data.personalInfo.email,
       password: data.personalInfo.password,
-      email_confirm: true, // Auto-confirmar email
+      email_confirm: false, // ✅ CAMBIO CLAVE! Requiere confirmación de email
       user_metadata: {
         firstName: data.personalInfo.firstName,
         lastName: data.personalInfo.lastName || '',
@@ -251,50 +251,10 @@ export async function POST(req: NextRequest) {
     const userId = authData.user.id;
     console.log("✅ [AUTH] Usuario creado en Auth con ID:", userId);
     
-    // ✅ 3. PREPARAR DATOS DEL USUARIO PRINCIPAL
-    const userData = {
-      id: userId, // IMPORTANTE: Usar el ID de Supabase Auth
-      firstName: data.personalInfo.firstName,
-      lastName: data.personalInfo.lastName || '',
-      email: data.personalInfo.email,
-      whatsapp: data.personalInfo.whatsapp || '',
-      birthDate: data.personalInfo.birthDate || null,
-      gender: data.personalInfo.gender || '',
-      maritalStatus: data.personalInfo.maritalStatus || '',
-      isMinor: data.isMinor || false,
-      rol: 'cliente', // Asignar el rol predeterminado
-      emailSent: false,
-      whatsappSent: false,
-      fingerprint: false,
-      createdAt: new Date().toISOString(),
-      // ✅ IMPORTANTE: NO incluir URLs aquí, se actualizarán después de subir archivos
-      profilePictureUrl: null,
-      signatureUrl: null,
-      contractPdfUrl: null
-    };
-
-    console.log("💾 [USER] Insertando usuario en tabla Users...");
-
-    // ✅ 4. INSERTAR USUARIO PRINCIPAL
-    const { error: insertError } = await supabaseAdmin
-      .from('Users')
-      .insert(userData);
-
-    if (insertError) {
-      console.error("❌ [USER] Error al insertar usuario:", insertError);
-      // Si falla la inserción en DB, eliminamos el usuario de Auth para mantener consistencia
-      console.log("🧹 [CLEANUP] Eliminando usuario de Auth por error en DB...");
-      await supabaseAdmin.auth.admin.deleteUser(userId);
-      return NextResponse.json(
-        { success: false, message: `Error al insertar usuario: ${insertError.message}` }, 
-        { status: 500 }
-      );
-    }
-
-    console.log("✅ [USER] Usuario insertado correctamente con ID:", userId);
-
-    // ✅ 5. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
+    // ✅ 3. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
     const fileUploadResults: { [key: string]: any } = {};
+    let profilePictureUrl = null;
+    let signatureUrl = null;
 
     // ✅ PROCESAR FOTO DE PERFIL
     if (data.profilePhoto) {
@@ -309,13 +269,8 @@ export async function POST(req: NextRequest) {
       fileUploadResults.profilePhoto = profileResult;
       
       if (profileResult.success && profileResult.url) {
-        // Actualizar usuario con URL de foto de perfil
-        await supabaseAdmin
-          .from('Users')
-          .update({ profilePictureUrl: profileResult.url })
-          .eq('id', userId);
-        
-        console.log("✅ [PROFILE] Foto de perfil actualizada en BD");
+        profilePictureUrl = profileResult.url;
+        console.log("✅ [PROFILE] Foto de perfil procesada");
       } else {
         console.error("❌ [PROFILE] Error:", profileResult.error);
       }
@@ -334,13 +289,8 @@ export async function POST(req: NextRequest) {
       fileUploadResults.signature = signatureResult;
       
       if (signatureResult.success && signatureResult.url) {
-        // Actualizar usuario con URL de firma
-        await supabaseAdmin
-          .from('Users')
-          .update({ signatureUrl: signatureResult.url })
-          .eq('id', userId);
-        
-        console.log("✅ [SIGNATURE] Firma actualizada en BD");
+        signatureUrl = signatureResult.url;
+        console.log("✅ [SIGNATURE] Firma procesada");
       } else {
         console.error("❌ [SIGNATURE] Error:", signatureResult.error);
       }
@@ -364,6 +314,51 @@ export async function POST(req: NextRequest) {
         console.error("❌ [TUTOR-INE] Error:", tutorINEResult.error);
       }
     }
+
+    // ✅ 4. PREPARAR DATOS DEL USUARIO PRINCIPAL
+    const userData = {
+      id: userId, // IMPORTANTE: Usar el ID de Supabase Auth
+      firstName: data.personalInfo.firstName,
+      lastName: data.personalInfo.lastName || '',
+      email: data.personalInfo.email,
+      whatsapp: data.personalInfo.whatsapp || '',
+      birthDate: data.personalInfo.birthDate || null,
+      gender: data.personalInfo.gender || '',
+      maritalStatus: data.personalInfo.maritalStatus || '',
+      isMinor: data.isMinor || false,
+      rol: 'cliente', // Asignar el rol predeterminado
+      profilePictureUrl: profilePictureUrl,
+      signatureUrl: signatureUrl,
+      contractPdfUrl: null,
+      // ✅ NUEVOS CAMPOS PARA CONTROL DE CONFIRMACIÓN
+      emailConfirmed: false,
+      pendingWelcomeEmail: true,
+      registrationCompleted: false,
+      emailSent: false,
+      whatsappSent: false,
+      fingerprint: false,
+      createdAt: new Date().toISOString()
+    };
+
+    console.log("💾 [USER] Insertando usuario en tabla Users...");
+
+    // ✅ 5. INSERTAR USUARIO PRINCIPAL
+    const { error: insertError } = await supabaseAdmin
+      .from('Users')
+      .insert(userData);
+
+    if (insertError) {
+      console.error("❌ [USER] Error al insertar usuario:", insertError);
+      // Si falla la inserción en DB, eliminamos el usuario de Auth para mantener consistencia
+      console.log("🧹 [CLEANUP] Eliminando usuario de Auth por error en DB...");
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return NextResponse.json(
+        { success: false, message: `Error al insertar usuario: ${insertError.message}` }, 
+        { status: 500 }
+      );
+    }
+
+    console.log("✅ [USER] Usuario insertado correctamente con ID:", userId);
 
     // ✅ 6. INSERTAR DIRECCIÓN
     if (data.personalInfo?.address || data.personalInfo) {
@@ -399,13 +394,13 @@ export async function POST(req: NextRequest) {
     try {
       console.log("🚨 [EMERGENCY] Insertando contacto de emergencia...");
       
-const emergencyData = {
-  userId: userId,
-  name: data.emergencyContact?.name || '',
-  phone: data.emergencyContact?.phone || '',
-  medicalCondition: data.emergencyContact?.medicalCondition || '',
-  bloodType: data.emergencyContact?.bloodType || ''
-};
+      const emergencyData = {
+        userId: userId,
+        name: data.emergencyContact?.name || '',
+        phone: data.emergencyContact?.phone || '',
+        medicalCondition: data.emergencyContact?.medicalCondition || '',
+        bloodType: data.emergencyContact?.bloodType || ''
+      };
     
       const { error: contactError } = await supabaseAdmin
         .from('emergency_contacts')
@@ -424,13 +419,13 @@ const emergencyData = {
     try {
       console.log("🎯 [MEMBERSHIP] Insertando información de membresía...");
       
-const membershipData = {
-  userId: userId,
-  referredBy: data.membershipData?.referredBy || '',
-  mainMotivation: data.membershipData?.mainMotivation || '',
-  receivePlans: data.membershipData?.receivePlans || false,
-  trainingLevel: data.membershipData?.trainingLevel || ''
-};
+      const membershipData = {
+        userId: userId,
+        referredBy: data.membershipData?.referredBy || '',
+        mainMotivation: data.membershipData?.mainMotivation || '',
+        receivePlans: data.membershipData?.receivePlans || false,
+        trainingLevel: data.membershipData?.trainingLevel || ''
+      };
     
       const { error: membershipError } = await supabaseAdmin
         .from('membership_info')
@@ -445,100 +440,16 @@ const membershipData = {
       console.error("💥 [MEMBERSHIP] Error general al insertar información de membresía:", membershipError);
     }
     
-    // ✅ 9. PROCESOS AUTOMÁTICOS (PDF, EMAIL, WHATSAPP)
-    try {
-      console.log("🎬 [AUTO] Iniciando procesos automáticos...");
-      
-      // 1. Generar PDF automáticamente
-      console.log("📄 [PDF] Generando PDF automáticamente...");
-      const pdfRes = await fetch(new URL('/api/generate-pdf', req.url).toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId })
-      });
-      
-      if (!pdfRes.ok) {
-        const errorText = await pdfRes.text();
-        console.error("❌ [PDF] Error al generar PDF:", errorText);
-      } else {
-        const pdfData = await pdfRes.json();
-        console.log("✅ [PDF] PDF generado exitosamente:", pdfData);
-        
-        // 2. Enviar correo con el PDF
-        console.log("📧 [EMAIL] Enviando correo de bienvenida...");
-        try {
-          const emailRes = await fetch(new URL('/api/send-welcome-email', req.url).toString(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userId })
-          });
-          
-          if (!emailRes.ok) {
-            const errorText = await emailRes.text();
-            console.error("❌ [EMAIL] Error al enviar correo:", errorText);
-          } else {
-            const emailData = await emailRes.json();
-            console.log("✅ [EMAIL] Correo enviado exitosamente");
-            
-            // Marcar email como enviado
-            await supabaseAdmin
-              .from('Users')
-              .update({ 
-                emailSent: true,
-                emailSentAt: new Date().toISOString()
-              })
-              .eq('id', userId);
-          }
-        } catch (emailError) {
-          console.error("💥 [EMAIL] Error crítico:", emailError);
-        }
-        
-        // 3. Enviar mensaje de WhatsApp (solo si hay número)
-        if (userData.whatsapp) {
-          console.log("📱 [WHATSAPP] Enviando mensaje de bienvenida...");
-          try {
-            const whatsappRes = await fetch(new URL('/api/send-welcome-whatsapp', req.url).toString(), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: userId })
-            });
-            
-            if (!whatsappRes.ok) {
-              const errorText = await whatsappRes.text();
-              console.error("❌ [WHATSAPP] Error al enviar WhatsApp:", errorText);
-            } else {
-              const whatsappData = await whatsappRes.json();
-              console.log("✅ [WHATSAPP] WhatsApp enviado exitosamente");
-              
-              // Marcar WhatsApp como enviado
-              await supabaseAdmin
-                .from('Users')
-                .update({ 
-                  whatsappSent: true,
-                  whatsappSentAt: new Date().toISOString()
-                })
-                .eq('id', userId);
-            }
-          } catch (whatsappError) {
-            console.error("💥 [WHATSAPP] Error crítico:", whatsappError);
-          }
-        } else {
-          console.log("ℹ️ [WHATSAPP] Usuario no proporcionó número, omitiendo envío");
-        }
-      }
-    } catch (autoProcessError) {
-      console.error("💥 [AUTO] Error en procesamiento automático:", autoProcessError);
-      // Continuamos a pesar del error
-    }
-
-    // ✅ 10. RESPUESTA FINAL CON RESUMEN
+    // ✅ 9. RESPUESTA FINAL - SIN PROCESOS AUTOMÁTICOS
     const response = {
       success: true,
-      message: 'Usuario registrado correctamente',
+      message: 'Registro exitoso. Por favor, revisa tu correo para verificar tu cuenta antes de continuar.',
       userId: userId,
+      emailVerificationRequired: true,
       summary: {
         userCreated: true,
         authUserCreated: true,
+        emailConfirmationPending: true,
         filesProcessed: {
           profilePhoto: fileUploadResults.profilePhoto?.success || false,
           signature: fileUploadResults.signature?.success || false,
@@ -550,19 +461,19 @@ const membershipData = {
           membershipInfo: true
         },
         automaticProcesses: {
-          pdfGenerated: true,
-          emailSent: true,
-          whatsappSent: !!userData.whatsapp
+          pdfGenerated: false, // Se generará después de confirmar email
+          emailSent: false,    // Se enviará después de confirmar email
+          whatsappSent: false  // Se enviará después de confirmar email
         }
       },
       metadata: {
-        version: '2.0-no-blob',
+        version: '3.0-email-verification',
         processedAt: new Date().toISOString(),
         processedBy: 'luishdz044'
       }
     };
 
-    console.log("🎉 [SUCCESS] Registro completado exitosamente:", {
+    console.log("🎉 [SUCCESS] Registro inicial completado. Esperando confirmación del usuario:", {
       userId,
       filesUploaded: Object.values(fileUploadResults).filter(r => r?.success).length
     });

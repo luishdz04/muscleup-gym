@@ -1,3 +1,4 @@
+// 📁 src/app/dashboard/admin/catalogo/inventario/components/InventoryMovementDialog.tsx
 'use client';
 
 import React from 'react';
@@ -9,524 +10,670 @@ import {
   Button,
   Typography,
   Box,
-  Chip,
-  IconButton,
+  Grid,
   Card,
   CardContent,
-  Grid as Grid,
-  Divider,
+  Chip,
   Avatar,
+  Divider,
+  Alert,
   Table,
   TableBody,
   TableCell,
   TableContainer,
+  TableHead,
   TableRow,
   Paper
 } from '@mui/material';
 import {
   Close as CloseIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  SwapHoriz as SwapHorizIcon,
-  Build as BuildIcon,
+  History as HistoryIcon,
+  TrendingUp as EntradaIcon,
+  TrendingDown as SalidaIcon,
+  Build as AjusteIcon,
+  SwapHoriz as TransferenciaIcon,
   Person as PersonIcon,
-  Inventory as InventoryIcon,
+  Schedule as TimeIcon,
+  Receipt as ReceiptIcon,
+  Inventory as ProductIcon,
   AttachMoney as MoneyIcon,
-  CalendarToday as CalendarIcon,
-  Assignment as AssignmentIcon,
-  LocationOn as LocationIcon
+  Description as NotesIcon,
+  Info as InfoIcon,
+  CheckCircle as SuccessIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 
-interface InventoryMovement {
-  id: string;
-  product_id: string;
-  movement_type: string;
-  quantity: number;
-  previous_stock: number;
-  new_stock: number;
-  unit_cost: number;
-  total_cost: number;
-  reason: string;
-  notes?: string;
-  created_at: string;
-  products: {
-    name: string;
-    sku: string;
-    unit: string;
-    category: string;
-    location?: string;
-  };
-  Users?: {
-    name: string;
-    email: string;
-  };
+// 🎯 IMPORTACIONES CON TIPADO FUERTE CORREGIDO
+import { InventoryMovement } from '@/services/catalogService';
+
+// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
+const darkProTokens = {
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+} as const;
+
+// 🎯 TIPOS MEJORADOS CON TIPADO FUERTE
+type MovementType = 'entrada' | 'salida' | 'ajuste' | 'transferencia';
+type AlertSeverity = 'error' | 'warning' | 'info' | 'success';
+
+interface MovementConfig {
+  label: string;
+  icon: React.ReactElement;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  description: string;
 }
 
+interface StockStatus {
+  status: AlertSeverity;
+  message: string;
+  icon: React.ReactElement;
+}
+
+// 🎯 CONFIGURACIÓN DE TIPOS DE MOVIMIENTO CON TIPADO FUERTE
+const MOVEMENT_CONFIG: Record<MovementType, MovementConfig> = {
+  entrada: {
+    label: 'Entrada de Stock',
+    icon: <EntradaIcon />,
+    color: darkProTokens.success,
+    bgColor: `${darkProTokens.success}10`,
+    borderColor: `${darkProTokens.success}30`,
+    description: 'Incremento de inventario'
+  },
+  salida: {
+    label: 'Salida de Stock',
+    icon: <SalidaIcon />,
+    color: darkProTokens.error,
+    bgColor: `${darkProTokens.error}10`,
+    borderColor: `${darkProTokens.error}30`,
+    description: 'Reducción de inventario'
+  },
+  ajuste: {
+    label: 'Ajuste de Inventario',
+    icon: <AjusteIcon />,
+    color: darkProTokens.warning,
+    bgColor: `${darkProTokens.warning}10`,
+    borderColor: `${darkProTokens.warning}30`,
+    description: 'Corrección de stock'
+  },
+  transferencia: {
+    label: 'Transferencia',
+    icon: <TransferenciaIcon />,
+    color: darkProTokens.info,
+    bgColor: `${darkProTokens.info}10`,
+    borderColor: `${darkProTokens.info}30`,
+    description: 'Movimiento entre ubicaciones'
+  }
+} as const;
+
+// ✅ INTERFACE MEJORADA CON TIPADO FUERTE
 interface InventoryMovementDialogProps {
   open: boolean;
   onClose: () => void;
   movement?: InventoryMovement | null;
 }
 
-const MOVEMENT_TYPES = [
-  { 
-    value: 'entrada', 
-    label: '📦 Entrada', 
-    icon: <TrendingUpIcon />, 
-    color: 'success',
-    description: 'Incremento de stock por compra, devolución o transferencia entrante'
-  },
-  { 
-    value: 'salida', 
-    label: '📤 Salida', 
-    icon: <TrendingDownIcon />, 
-    color: 'error',
-    description: 'Reducción de stock por venta, merma o transferencia saliente'
-  },
-  { 
-    value: 'ajuste', 
-    label: '🔧 Ajuste', 
-    icon: <BuildIcon />, 
-    color: 'warning',
-    description: 'Corrección de inventario por conteo físico o error de sistema'
-  },
-  { 
-    value: 'transferencia', 
-    label: '🔄 Transferencia', 
-    icon: <SwapHorizIcon />, 
-    color: 'info',
-    description: 'Movimiento entre ubicaciones o sucursales'
-  }
-];
+export default function InventoryMovementDialog({
+  open,
+  onClose,
+  movement
+}: InventoryMovementDialogProps) {
 
-// Función para formatear precio
-const formatPrice = (amount: number): string => {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN'
-  }).format(amount);
-};
-
-// Función para formatear fecha completa
-const formatDateTime = (dateString: string): string => {
-  return new Date(dateString).toLocaleString('es-MX', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-};
-
-// Función para formatear fecha corta
-const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('es-MX', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-};
-
-// Función para formatear hora
-const formatTime = (dateString: string): string => {
-  return new Date(dateString).toLocaleTimeString('es-MX', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-};
-
-export default function InventoryMovementDialog({ open, onClose, movement }: InventoryMovementDialogProps) {
+  // ✅ EARLY RETURN CON VALIDACIÓN DE TIPO
   if (!movement) return null;
 
-  const typeConfig = MOVEMENT_TYPES.find(t => t.value === movement.movement_type) || MOVEMENT_TYPES[0];
-  
-  // Calcular diferencia de stock
-  const stockDifference = movement.new_stock - movement.previous_stock;
-  const isPositiveMovement = stockDifference > 0;
+  // 🎯 OBTENER CONFIGURACIÓN DEL MOVIMIENTO CON TIPADO SEGURO
+  const config: MovementConfig = MOVEMENT_CONFIG[movement.movement_type] || MOVEMENT_CONFIG.entrada;
+
+  // 🎯 FUNCIONES UTILITARIAS CON VALIDACIONES DE UNDEFINED
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) return 'Fecha no disponible';
+    return new Date(dateString).toLocaleString('es-MX', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short'
+    });
+  };
+
+  const formatPrice = (price: number): string => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  };
+
+  // ✅ FUNCIÓN CON VALIDACIÓN DE UNDEFINED
+  const getStockDifference = (): number => {
+    // Validar que ambos valores existan y sean números
+    const newStock = movement.new_stock ?? 0;
+    const previousStock = movement.previous_stock ?? 0;
+    return newStock - previousStock;
+  };
+
+  const getDifferenceColor = (): string => {
+    const diff = getStockDifference();
+    if (diff > 0) return darkProTokens.success;
+    if (diff < 0) return darkProTokens.error;
+    return darkProTokens.textSecondary;
+  };
+
+  const getTotalCost = (): number => {
+    return Math.abs(movement.quantity) * (movement.unit_cost || 0);
+  };
+
+  // ✅ FUNCIÓN CON VALIDACIONES COMPLETAS
+  const getStockStatus = (): StockStatus | null => {
+    const product = movement.products;
+    if (!product) return null;
+
+    const newStock = movement.new_stock ?? 0;
+
+    if (newStock === 0) {
+      return { 
+        status: 'error', 
+        message: 'Stock agotado', 
+        icon: <WarningIcon /> 
+      };
+    }
+    
+    if (newStock <= product.min_stock) {
+      return { 
+        status: 'warning', 
+        message: 'Stock por debajo del mínimo', 
+        icon: <WarningIcon /> 
+      };
+    }
+    
+    if (product.max_stock && newStock > product.max_stock) {
+      return { 
+        status: 'info', 
+        message: 'Stock por encima del máximo', 
+        icon: <InfoIcon /> 
+      };
+    }
+    
+    return { 
+      status: 'success', 
+      message: 'Stock en nivel normal', 
+      icon: <SuccessIcon /> 
+    };
+  };
+
+  // ✅ VALORES SEGUROS CON DEFAULTS
+  const safeValues = {
+    newStock: movement.new_stock ?? 0,
+    previousStock: movement.previous_stock ?? 0,
+    createdAt: movement.created_at || new Date().toISOString(),
+    createdBy: movement.created_by || 'Sistema',
+    referenceId: movement.reference_id || null
+  };
+
+  const stockStatus = getStockStatus();
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={onClose}
       maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          maxHeight: '90vh'
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          border: `2px solid ${darkProTokens.primary}30`,
+          borderRadius: 4,
+          color: darkProTokens.textPrimary
         }
       }}
     >
       <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+        background: `linear-gradient(135deg, ${config.bgColor}, ${config.borderColor})`,
+        borderBottom: `1px solid ${config.borderColor}`,
+        display: 'flex',
         alignItems: 'center',
-        background: `linear-gradient(135deg, ${typeConfig.color === 'success' ? '#4caf50' : 
-                                                   typeConfig.color === 'error' ? '#f44336' :
-                                                   typeConfig.color === 'warning' ? '#ff9800' : '#2196f3'} 0%, 
-                                                   ${typeConfig.color === 'success' ? '#388e3c' : 
-                                                     typeConfig.color === 'error' ? '#d32f2f' :
-                                                     typeConfig.color === 'warning' ? '#f57c00' : '#1976d2'} 100%)`,
-        color: 'white',
-        pb: 2
+        gap: 2
       }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          {typeConfig.icon}
-          <Box>
-            <Typography variant="h6" fontWeight="bold">
-              {typeConfig.label}
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Movimiento #{movement.id.slice(-8).toUpperCase()}
-            </Typography>
-          </Box>
+        <Avatar sx={{
+          backgroundColor: config.bgColor,
+          color: config.color,
+          width: 48,
+          height: 48
+        }}>
+          {config.icon}
+        </Avatar>
+        <Box>
+          <Typography variant="h6" fontWeight="bold" sx={{ color: config.color }}>
+            {config.label}
+          </Typography>
+          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+            Movimiento #{movement.id} • {formatDate(safeValues.createdAt)}
+          </Typography>
         </Box>
-        <IconButton onClick={onClose} sx={{ color: 'white' }}>
-          <CloseIcon />
-        </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 0 }}>
-        <Box sx={{ p: 3 }}>
-          <Grid container spacing={3}>
-            {/* 🛍️ Información del Producto */}
-            <Grid size={12}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-                border: '1px solid rgba(102, 126, 234, 0.2)',
-                borderRadius: 2
-              }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <InventoryIcon color="primary" />
-                    Información del Producto
-                  </Typography>
+      <DialogContent sx={{ p: 4 }}>
+        <Grid container spacing={3}>
+          {/* 📦 INFORMACIÓN DEL PRODUCTO */}
+          <Grid size={{ xs: 12 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: darkProTokens.textPrimary, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <ProductIcon sx={{ color: darkProTokens.primary }} />
+                  Información del Producto
+                </Typography>
+                
+                <Box display="flex" alignItems="center" gap={3}>
+                  <Avatar sx={{ 
+                    backgroundColor: `${darkProTokens.primary}20`,
+                    color: darkProTokens.primary,
+                    width: 64,
+                    height: 64,
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {movement.products?.name?.charAt(0) || 'P'}
+                  </Avatar>
                   
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 8 }}>
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <Avatar sx={{ 
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          width: 56,
-                          height: 56,
-                          fontSize: '1.5rem',
-                          fontWeight: 'bold'
-                        }}>
-                          {movement.products.name.charAt(0)}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="h6" fontWeight="bold">
-                            {movement.products.name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            SKU: {movement.products.sku}
-                          </Typography>
-                          <Chip 
-                            label={movement.products.category} 
-                            size="small" 
-                            color="primary" 
-                            sx={{ mt: 0.5 }}
-                          />
-                        </Box>
-                      </Box>
-                    </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 4 }}>
-                      {movement.products.location && (
-                        <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
-                          <LocationIcon fontSize="small" color="action" />
-                          <Typography variant="body2" color="text.secondary">
-                            {movement.products.location}
-                          </Typography>
-                        </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                      {movement.products?.name || 'Producto no encontrado'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      SKU: {movement.products?.sku || 'Sin SKU'} | 
+                      Categoría: {movement.products?.category || 'Sin categoría'}
+                    </Typography>
+                    <Box display="flex" gap={1} mt={1}>
+                      <Chip 
+                        label={`${movement.products?.current_stock || 0} ${movement.products?.unit || 'piezas'} disponibles`}
+                        size="small"
+                        sx={{
+                          backgroundColor: `${darkProTokens.info}20`,
+                          color: darkProTokens.info,
+                          border: `1px solid ${darkProTokens.info}30`
+                        }}
+                      />
+                      {movement.products?.location && (
+                        <Chip 
+                          label={`Ubicación: ${movement.products.location}`}
+                          size="small"
+                          sx={{
+                            backgroundColor: `${darkProTokens.textSecondary}20`,
+                            color: darkProTokens.textSecondary,
+                            border: `1px solid ${darkProTokens.textSecondary}30`
+                          }}
+                        />
                       )}
-                      <Typography variant="body2" color="text.secondary">
-                        Unidad: {movement.products.unit}
+                    </Box>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* 📊 DETALLES DEL MOVIMIENTO */}
+          <Grid size={{ xs: 12, md: 8 }}>
+            <Card sx={{ 
+              background: config.bgColor, 
+              border: `2px solid ${config.borderColor}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: config.color, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <ReceiptIcon />
+                  Detalles del Movimiento
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Box sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Cantidad
                       </Typography>
-                    </Grid>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: config.color }}>
+                        {movement.movement_type === 'ajuste' ? 
+                          `${getStockDifference() > 0 ? '+' : ''}${getStockDifference()}` :
+                          `${movement.movement_type === 'entrada' ? '+' : '-'}${Math.abs(movement.quantity)}`
+                        }
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        {movement.products?.unit || 'unidades'}
+                      </Typography>
+                    </Box>
                   </Grid>
-                </CardContent>
-              </Card>
-            </Grid>
 
-            {/* 📊 Detalles del Movimiento */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{ 
-                background: `linear-gradient(135deg, ${typeConfig.color === 'success' ? 'rgba(76, 175, 80, 0.1)' : 
-                                                       typeConfig.color === 'error' ? 'rgba(244, 67, 54, 0.1)' :
-                                                       typeConfig.color === 'warning' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(33, 150, 243, 0.1)'} 0%, 
-                                                       ${typeConfig.color === 'success' ? 'rgba(56, 142, 60, 0.1)' : 
-                                                         typeConfig.color === 'error' ? 'rgba(211, 47, 47, 0.1)' :
-                                                         typeConfig.color === 'warning' ? 'rgba(245, 124, 0, 0.1)' : 'rgba(25, 118, 210, 0.1)'} 100%)`,
-                border: `1px solid ${typeConfig.color === 'success' ? 'rgba(76, 175, 80, 0.2)' : 
-                                     typeConfig.color === 'error' ? 'rgba(244, 67, 54, 0.2)' :
-                                     typeConfig.color === 'warning' ? 'rgba(255, 152, 0, 0.2)' : 'rgba(33, 150, 243, 0.2)'}`,
-                borderRadius: 2,
-                height: '100%'
-              }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {typeConfig.icon}
-                    Detalles del Movimiento
-                  </Typography>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Box sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Costo Unitario
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                        {formatPrice(movement.unit_cost || 0)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        por {movement.products?.unit || 'unidad'}
+                      </Typography>
+                    </Box>
+                  </Grid>
 
-                  <Box sx={{ mb: 2 }}>
-                    <Chip 
-                      icon={typeConfig.icon}
-                      label={typeConfig.label}
-                      color={typeConfig.color as any}
-                      sx={{ mb: 1 }}
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      {typeConfig.description}
-                    </Typography>
-                  </Box>
+                  <Grid size={{ xs: 12 }}>
+                    <Divider sx={{ backgroundColor: `${config.color}30`, my: 1 }} />
+                    <Box display="flex" justifyContent="center" alignItems="center" sx={{ p: 1 }}>
+                      <MoneyIcon sx={{ color: config.color, mr: 1 }} />
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: config.color }}>
+                        Costo Total: {formatPrice(getTotalCost())}
+                      </Typography>
+                    </Box>
+                  </Grid>
 
-                  <TableContainer component={Paper} sx={{ boxShadow: 'none', backgroundColor: 'transparent' }}>
-                    <Table size="small">
-                      <TableBody>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 'bold', borderBottom: 'none' }}>
-                            Cantidad:
-                          </TableCell>
-                          <TableCell sx={{ borderBottom: 'none' }}>
-                            <Typography 
-                              variant="h6" 
-                              fontWeight="bold" 
-                              color={isPositiveMovement ? 'success.main' : 'error.main'}
-                            >
-                              {isPositiveMovement ? '+' : ''}{movement.quantity} {movement.products.unit}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                        
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 'bold', borderBottom: 'none' }}>
-                            Stock Anterior:
-                          </TableCell>
-                          <TableCell sx={{ borderBottom: 'none' }}>
-                            <Typography variant="body1">
-                              {movement.previous_stock} {movement.products.unit}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                        
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 'bold', borderBottom: 'none' }}>
-                            Stock Nuevo:
-                          </TableCell>
-                          <TableCell sx={{ borderBottom: 'none' }}>
-                            <Typography variant="body1" fontWeight="bold">
-                              {movement.new_stock} {movement.products.unit}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                        
-                        {movement.unit_cost > 0 && (
-                          <>
-                            <TableRow>
-                              <TableCell sx={{ fontWeight: 'bold', borderBottom: 'none' }}>
-                                Costo Unitario:
-                              </TableCell>
-                              <TableCell sx={{ borderBottom: 'none' }}>
-                                <Typography variant="body1">
-                                  {formatPrice(movement.unit_cost)}
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                            
-                            <TableRow>
-                              <TableCell sx={{ fontWeight: 'bold', borderBottom: 'none' }}>
-                                Costo Total:
-                              </TableCell>
-                              <TableCell sx={{ borderBottom: 'none' }}>
-                                <Typography variant="h6" fontWeight="bold" color="primary">
-                                  {formatPrice(movement.total_cost)}
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                          </>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </CardContent>
-              </Card>
-            </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Box sx={{ 
+                      p: 2, 
+                      background: `${darkProTokens.textSecondary}10`,
+                      borderRadius: 2,
+                      border: `1px solid ${darkProTokens.textSecondary}30`
+                    }}>
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 1 }}>
+                        Razón del Movimiento:
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        {movement.reason || 'Sin razón especificada'}
+                      </Typography>
+                    </Box>
+                  </Grid>
 
-            {/* 📅 Información Temporal y Usuario */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, rgba(168, 237, 234, 0.1) 0%, rgba(254, 214, 227, 0.1) 100%)',
-                border: '1px solid rgba(168, 237, 234, 0.2)',
-                borderRadius: 2,
-                height: '100%'
-              }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CalendarIcon color="primary" />
-                    Información del Registro
-                  </Typography>
-
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      📅 Fecha y Hora:
-                    </Typography>
-                    <Typography variant="body1" fontWeight="bold">
-                      {formatDateTime(movement.created_at)}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      👤 Registrado por:
-                    </Typography>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                        <PersonIcon fontSize="small" />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body1" fontWeight="bold">
-                          {movement.Users?.name || 'Sistema'}
+                  {movement.notes && (
+                    <Grid size={{ xs: 12 }}>
+                      <Box sx={{ 
+                        p: 2, 
+                        background: `${darkProTokens.info}10`,
+                        borderRadius: 2,
+                        border: `1px solid ${darkProTokens.info}30`
+                      }}>
+                        <Typography variant="subtitle2" fontWeight="bold" sx={{ 
+                          color: darkProTokens.info, 
+                          mb: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1
+                        }}>
+                          <NotesIcon />
+                          Notas Adicionales:
                         </Typography>
-                        {movement.Users?.email && (
-                          <Typography variant="body2" color="text.secondary">
-                            {movement.Users.email}
-                          </Typography>
-                        )}
+                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                          {movement.notes}
+                        </Typography>
                       </Box>
+                    </Grid>
+                  )}
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* 📈 CAMBIO DE STOCK CON VALIDACIONES */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: darkProTokens.textPrimary, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <HistoryIcon sx={{ color: darkProTokens.primary }} />
+                  Cambio de Stock
+                </Typography>
+                
+                <Box display="flex" flexDirection="column" gap={2}>
+                  <Box textAlign="center" sx={{ p: 2 }}>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      Stock Anterior
+                    </Typography>
+                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                      {safeValues.previousStock}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      {movement.products?.unit || 'unidades'}
+                    </Typography>
+                  </Box>
+
+                  <Box display="flex" justifyContent="center" alignItems="center">
+                    <Box sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      backgroundColor: getDifferenceColor(),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {getStockDifference() > 0 ? <EntradaIcon /> : 
+                       getStockDifference() < 0 ? <SalidaIcon /> : 
+                       <AjusteIcon />}
                     </Box>
                   </Box>
 
-                  <Box sx={{ 
-                    p: 2, 
-                    borderRadius: 2, 
-                    background: 'rgba(102, 126, 234, 0.1)',
-                    border: '1px solid rgba(102, 126, 234, 0.2)'
-                  }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      🔍 ID del Movimiento:
+                  <Box textAlign="center" sx={{ p: 2 }}>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      Stock Nuevo
                     </Typography>
-                    <Typography variant="body2" fontFamily="monospace">
-                      {movement.id}
+                    <Typography variant="h4" fontWeight="bold" sx={{ color: getDifferenceColor() }}>
+                      {safeValues.newStock}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      {movement.products?.unit || 'unidades'}
                     </Typography>
                   </Box>
-                </CardContent>
-              </Card>
-            </Grid>
 
-            {/* 📝 Razón y Notas */}
-            <Grid size={12}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, rgba(255, 236, 210, 0.1) 0%, rgba(252, 182, 159, 0.1) 100%)',
-                border: '1px solid rgba(255, 236, 210, 0.2)',
-                borderRadius: 2
-              }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <AssignmentIcon color="primary" />
-                    Razón y Observaciones
-                  </Typography>
+                  <Divider sx={{ backgroundColor: `${darkProTokens.grayDark}60` }} />
 
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                        Razón del Movimiento:
-                      </Typography>
-                      <Typography variant="body1" fontWeight="bold" sx={{ mb: 2 }}>
-                        {movement.reason}
-                      </Typography>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                        Notas Adicionales:
-                      </Typography>
-                      <Typography variant="body1">
-                        {movement.notes || 'Sin notas adicionales'}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* 📊 Resumen Visual */}
-            <Grid size={12}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%)',
-                border: '1px solid rgba(255, 193, 7, 0.2)',
-                borderRadius: 2
-              }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <MoneyIcon color="primary" />
-                    Resumen del Impacto
-                  </Typography>
-
-                  <Grid container spacing={3} textAlign="center">
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <Box sx={{ p: 2 }}>
-                        <Typography variant="h4" fontWeight="bold" color="primary">
-                          {Math.abs(stockDifference)}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Unidades {isPositiveMovement ? 'agregadas' : 'retiradas'}
-                        </Typography>
-                      </Box>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <Box sx={{ p: 2 }}>
-                        <Typography 
-                          variant="h4" 
-                          fontWeight="bold" 
-                          color={isPositiveMovement ? 'success.main' : 'error.main'}
-                        >
-                          {isPositiveMovement ? '+' : ''}{((stockDifference / movement.previous_stock) * 100).toFixed(1)}%
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Variación porcentual
-                        </Typography>
-                      </Box>
-                    </Grid>
-
-                    {movement.total_cost > 0 && (
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{ p: 2 }}>
-                          <Typography variant="h4" fontWeight="bold" color="success.main">
-                            {formatPrice(movement.total_cost)}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Valor total del movimiento
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    )}
-
-                    <Grid size={{ xs: 12, md: movement.total_cost > 0 ? 3 : 6 }}>
-                      <Box sx={{ p: 2 }}>
-                        <Typography variant="h4" fontWeight="bold" color="info.main">
-                          {movement.new_stock}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Stock resultante
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </Card>
-            </Grid>
+                  <Box textAlign="center" sx={{ p: 1 }}>
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: getDifferenceColor() }}>
+                      Diferencia: {getStockDifference() > 0 ? '+' : ''}{getStockDifference()}
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
-        </Box>
+
+          {/* ⚠️ ALERTA DE ESTADO DEL STOCK */}
+          {stockStatus && (
+            <Grid size={{ xs: 12 }}>
+              <Alert 
+                severity={stockStatus.status}
+                icon={stockStatus.icon}
+                sx={{
+                  background: stockStatus.status === 'error' ? `${darkProTokens.error}20` :
+                             stockStatus.status === 'warning' ? `${darkProTokens.warning}20` :
+                             stockStatus.status === 'info' ? `${darkProTokens.info}20` :
+                             `${darkProTokens.success}20`,
+                  border: `1px solid ${
+                    stockStatus.status === 'error' ? darkProTokens.error :
+                    stockStatus.status === 'warning' ? darkProTokens.warning :
+                    stockStatus.status === 'info' ? darkProTokens.info :
+                    darkProTokens.success
+                  }30`,
+                  color: darkProTokens.textPrimary,
+                  '& .MuiAlert-icon': {
+                    color: stockStatus.status === 'error' ? darkProTokens.error :
+                           stockStatus.status === 'warning' ? darkProTokens.warning :
+                           stockStatus.status === 'info' ? darkProTokens.info :
+                           darkProTokens.success
+                  }
+                }}
+              >
+                <Typography variant="body2" fontWeight="bold">
+                  Estado del Stock: {stockStatus.message}
+                </Typography>
+                {movement.products && (
+                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    Stock mínimo: {movement.products.min_stock} | 
+                    Stock máximo: {movement.products.max_stock || 'No definido'}
+                  </Typography>
+                )}
+              </Alert>
+            </Grid>
+          )}
+
+          {/* 👤 INFORMACIÓN DE AUDITORÍA CON VALIDACIONES */}
+          <Grid size={{ xs: 12 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: darkProTokens.textPrimary, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <PersonIcon sx={{ color: darkProTokens.primary }} />
+                  Información de Auditoría
+                </Typography>
+                
+                <TableContainer>
+                  <Table size="small">
+                    <TableBody>
+                      <TableRow>
+                        <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                          ID del Movimiento:
+                        </TableCell>
+                        <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
+                          #{movement.id}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                          Usuario:
+                        </TableCell>
+                        <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
+                          {safeValues.createdBy}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                          Fecha y Hora:
+                        </TableCell>
+                        <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <TimeIcon sx={{ color: darkProTokens.info, fontSize: 16 }} />
+                            {formatDate(safeValues.createdAt)}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                          Tipo de Operación:
+                        </TableCell>
+                        <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
+                          <Chip
+                            icon={config.icon}
+                            label={config.label}
+                            size="small"
+                            sx={{
+                              backgroundColor: config.bgColor,
+                              color: config.color,
+                              border: `1px solid ${config.borderColor}`,
+                              fontWeight: 'bold'
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                      {/* ✅ CAMPO REFERENCE_ID CON VALIDACIÓN */}
+                      {safeValues.referenceId && (
+                        <TableRow>
+                          <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                            Referencia:
+                          </TableCell>
+                          <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
+                            {safeValues.referenceId}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, pt: 0 }}>
-        <Button onClick={onClose} variant="contained" fullWidth>
+      <DialogActions sx={{ 
+        p: 3, 
+        borderTop: `1px solid ${darkProTokens.grayDark}`,
+        justifyContent: 'center'
+      }}>
+        <Button
+          onClick={onClose}
+          startIcon={<CloseIcon />}
+          variant="contained"
+          sx={{
+            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+            color: darkProTokens.background,
+            fontWeight: 700,
+            px: 4, py: 1.5, borderRadius: 3,
+            '&:hover': {
+              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+            }
+          }}
+        >
           Cerrar
         </Button>
       </DialogActions>

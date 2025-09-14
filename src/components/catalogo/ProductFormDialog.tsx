@@ -13,123 +13,34 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Switch,
+  FormControlLabel,
   Typography,
   Box,
   Chip,
-  IconButton,
   InputAdornment,
   Alert,
-  Card,
-  CardContent,
-  Switch,
-  FormControlLabel,
+  CircularProgress,
   Autocomplete,
-  CircularProgress
+  Divider,
+  Card,
+  CardContent
 } from '@mui/material';
 import {
+  Save as SaveIcon,
   Close as CloseIcon,
   Inventory as InventoryIcon,
   AttachMoney as MoneyIcon,
   Category as CategoryIcon,
-  QrCode as BarcodeIcon,
   Business as BusinessIcon,
-  Image as ImageIcon,
-  Calculate as CalculateIcon,
-  Save as SaveIcon
+  ViewStream as BarcodeIcon,
+  Description as DescriptionIcon
 } from '@mui/icons-material';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { useSuppliers, useProducts } from '@/hooks/useCatalog';
+import { Product } from '@/services/catalogService';
 
-// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
-const darkProTokens = {
-  // Base Colors
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  
-  // Neutrals
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  
-  // Primary Accent (Golden)
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  
-  // Semantic Colors
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  
-  // User Roles
-  roleAdmin: '#FFCC00',
-  roleStaff: '#1976D2',
-  roleTrainer: '#009688',
-  roleUser: '#777777',
-  roleModerator: '#9C27B0',
-  roleGuest: '#444444',
-  
-  // Interactions
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
-
-interface Product {
-  id: string;
-  name: string;
-  sku?: string;
-  barcode?: string;
-  brand?: string;
-  category: string;
-  subcategory?: string;
-  description?: string;
-  cost_price: number;
-  sale_price: number;
-  profit_margin?: number;
-  current_stock: number;
-  min_stock: number;
-  max_stock?: number;
-  unit: string;
-  supplier_id?: string;
-  image_url?: string;
-  is_active?: boolean;
-  is_taxable?: boolean;
-  tax_rate?: number;
-  location?: string;
-  expiry_date?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Supplier {
-  id: string;
-  company_name: string;
-  is_active: boolean;
-}
-
-interface ProductFormDialogProps {
-  open: boolean;
-  onClose: () => void;
-  product?: Product | null;
-  onSave: () => void;
-}
-
-interface ProductFormData {
+// ✅ AGREGAR ESTA INTERFAZ AQUÍ
+interface FormDataType {
   name: string;
   description: string;
   sku: string;
@@ -145,108 +56,143 @@ interface ProductFormData {
   max_stock: number;
   unit: string;
   supplier_id: string;
-  image_url: string;
+  location: string;
+  expiry_date: string | null; // ✅ ESTO ES LO CLAVE
   is_active: boolean;
   is_taxable: boolean;
   tax_rate: number;
-  location: string;
-  expiry_date: string;
 }
 
-const CATEGORIES = [
-  'Suplementos',
-  'Bebidas',
-  'Ropa Deportiva',
-  'Accesorios',
-  'Equipamiento',
-  'Snacks',
-  'Proteínas',
-  'Vitaminas',
-  'Equipos de Gimnasio',
-  'Limpieza',
+
+// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
+const darkProTokens = {
+  background: '#000000',
+  surfaceLevel1: '#121212',
+  surfaceLevel2: '#1E1E1E',
+  surfaceLevel3: '#252525',
+  surfaceLevel4: '#2E2E2E',
+  grayDark: '#333333',
+  grayMedium: '#444444',
+  grayLight: '#555555',
+  grayMuted: '#777777',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textDisabled: '#888888',
+  primary: '#FFCC00',
+  primaryHover: '#E6B800',
+  primaryActive: '#CCAA00',
+  primaryDisabled: 'rgba(255,204,0,0.3)',
+  success: '#388E3C',
+  successHover: '#2E7D32',
+  error: '#D32F2F',
+  errorHover: '#B71C1C',
+  warning: '#FFB300',
+  warningHover: '#E6A700',
+  info: '#1976D2',
+  infoHover: '#1565C0',
+  hoverOverlay: 'rgba(255,204,0,0.05)',
+  activeOverlay: 'rgba(255,204,0,0.1)',
+  borderDefault: '#333333',
+  borderHover: '#FFCC00',
+  borderActive: '#E6B800'
+};
+
+// 🎯 CATEGORÍAS PREDEFINIDAS
+const PRODUCT_CATEGORIES = [
+  'Electrodomésticos',
+  'Electrónicos',
+  'Ropa y Accesorios',
+  'Hogar y Jardín',
+  'Deportes',
+  'Salud y Belleza',
+  'Automotriz',
+  'Libros y Medios',
+  'Juguetes',
+  'Alimentos y Bebidas',
+  'Herramientas',
+  'Oficina',
+  'Mascotas',
   'Otros'
 ];
 
-const UNITS = [
-  { value: 'pieza', label: 'Pieza' },
-  { value: 'kg', label: 'Kilogramo' },
-  { value: 'g', label: 'Gramo' },
-  { value: 'l', label: 'Litro' },
-  { value: 'ml', label: 'Mililitro' },
-  { value: 'caja', label: 'Caja' },
-  { value: 'paquete', label: 'Paquete' },
-  { value: 'botella', label: 'Botella' },
-  { value: 'sobre', label: 'Sobre' },
-  { value: 'bote', label: 'Bote' }
+// 🎯 UNIDADES PREDEFINIDAS
+const PRODUCT_UNITS = [
+  'pieza',
+  'kilogramo',
+  'gramo',
+  'litro',
+  'mililitro',
+  'metro',
+  'centímetro',
+  'paquete',
+  'caja',
+  'docena',
+  'par',
+  'rollo',
+  'botella',
+  'lata',
+  'bolsa'
 ];
 
-export default function ProductFormDialog({ 
-  open, 
-  onClose, 
-  product, 
-  onSave 
+// 🎯 ESTADO INICIAL DEL FORMULARIO - CENTRALIZADO
+const INITIAL_FORM_STATE = {
+  name: '',
+  description: '',
+  sku: '',
+  barcode: '',
+  category: '',
+  subcategory: '',
+  brand: '',
+  cost_price: 0,
+  sale_price: 0,
+  profit_margin: 0,
+  current_stock: 0,
+  min_stock: 0,
+  max_stock: 1000,
+  unit: 'pieza',
+  supplier_id: '',
+  location: '',
+  expiry_date:  null, // ✅ Cambiar de '' a null
+  is_active: true,
+  is_taxable: true,
+  tax_rate: 16
+};
+
+
+interface ProductFormDialogProps {
+  open: boolean;
+  onClose: () => void;
+  product?: Product | null;
+  onSave: () => void;
+}
+
+export default function ProductFormDialog({
+  open,
+  onClose,
+  product,
+  onSave
 }: ProductFormDialogProps) {
-  const [formData, setFormData] = useState<ProductFormData>({
-    name: '',
-    description: '',
-    sku: '',
-    barcode: '',
-    category: '',
-    subcategory: '',
-    brand: '',
-    cost_price: 0,
-    sale_price: 0,
-    profit_margin: 0,
-    current_stock: 0,
-    min_stock: 0,
-    max_stock: 1000,
-    unit: 'pieza',
-    supplier_id: '',
-    image_url: '',
-    is_active: true,
-    is_taxable: true,
-    tax_rate: 16,
-    location: '',
-    expiry_date: ''
+  
+  // 🎯 HOOKS PARA DATOS
+  const { 
+    suppliers, 
+    loading: suppliersLoading 
+  } = useSuppliers({ 
+    status: 'active', 
+    limit: 100 
   });
 
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const { 
+    createProduct, 
+    updateProduct 
+  } = useProducts();
+
+  // 🎯 ESTADO DEL FORMULARIO
+const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'warning' | 'info';
-  }>({
-    open: false,
-    message: '',
-    severity: 'info'
-  });
 
-  const supabase = createBrowserSupabaseClient();
-
-  // ✅ Mostrar notificación
-  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
-    setNotification({ open: true, message, severity });
-  };
-
-  // ✅ Cargar proveedores
-  const loadSuppliers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, company_name, is_active')
-        .eq('is_active', true)
-        .order('company_name');
-
-      if (error) throw error;
-      setSuppliers(data || []);
-    } catch (error) {
-      console.error('Error loading suppliers:', error);
-    }
-  };
-
-  // ✅ Cargar datos del producto si está editando
+  // 🎯 EFECTOS - CARGAR DATOS DEL PRODUCTO SI EXISTE
   useEffect(() => {
     if (product) {
       setFormData({
@@ -265,70 +211,36 @@ export default function ProductFormDialog({
         max_stock: product.max_stock || 1000,
         unit: product.unit || 'pieza',
         supplier_id: product.supplier_id || '',
-        image_url: product.image_url || '',
+        location: product.location || '',
+        expiry_date: product.expiry_date, // ✅ Sin || ''
         is_active: product.is_active !== false,
         is_taxable: product.is_taxable !== false,
-        tax_rate: product.tax_rate || 16,
-        location: product.location || '',
-        expiry_date: product.expiry_date || ''
+        tax_rate: product.tax_rate || 16
       });
     } else {
-      // Resetear formulario para nuevo producto
-      setFormData({
-        name: '',
-        description: '',
-        sku: '',
-        barcode: '',
-        category: '',
-        subcategory: '',
-        brand: '',
-        cost_price: 0,
-        sale_price: 0,
-        profit_margin: 0,
-        current_stock: 0,
-        min_stock: 0,
-        max_stock: 1000,
-        unit: 'pieza',
-        supplier_id: '',
-        image_url: '',
-        is_active: true,
-        is_taxable: true,
-        tax_rate: 16,
-        location: '',
-        expiry_date: ''
-      });
+      setFormData(INITIAL_FORM_STATE);
     }
     setErrors({});
   }, [product, open]);
 
-  // ✅ Cargar proveedores al abrir
-  useEffect(() => {
-    if (open) {
-      loadSuppliers();
-    }
-  }, [open]);
-
-  // ✅ Calcular margen de ganancia automáticamente
+  // 🎯 CALCULAR MARGEN DE GANANCIA AUTOMÁTICAMENTE
   useEffect(() => {
     if (formData.cost_price > 0 && formData.sale_price > 0) {
       const margin = ((formData.sale_price - formData.cost_price) / formData.cost_price) * 100;
-      setFormData(prev => ({
-        ...prev,
-        profit_margin: Math.round(margin * 100) / 100
-      }));
+      setFormData(prev => ({ ...prev, profit_margin: Math.round(margin * 100) / 100 }));
     }
   }, [formData.cost_price, formData.sale_price]);
 
-  // ✅ Validar formulario
+  // 🎯 VALIDACIONES
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre del producto es requerido';
+      newErrors.name = 'El nombre del producto es obligatorio';
     }
 
     if (!formData.category.trim()) {
-      newErrors.category = 'La categoría es requerida';
+      newErrors.category = 'La categoría es obligatoria';
     }
 
     if (formData.cost_price < 0) {
@@ -339,8 +251,8 @@ export default function ProductFormDialog({
       newErrors.sale_price = 'El precio de venta no puede ser negativo';
     }
 
-    if (formData.sale_price < formData.cost_price) {
-      newErrors.sale_price = 'El precio de venta debe ser mayor al precio de costo';
+    if (formData.sale_price > 0 && formData.cost_price > 0 && formData.sale_price < formData.cost_price) {
+      newErrors.sale_price = 'El precio de venta no puede ser menor al precio de costo';
     }
 
     if (formData.current_stock < 0) {
@@ -355,6 +267,10 @@ export default function ProductFormDialog({
       newErrors.max_stock = 'El stock máximo debe ser mayor al stock mínimo';
     }
 
+    if (formData.sku && formData.sku.length < 3) {
+      newErrors.sku = 'El SKU debe tener al menos 3 caracteres';
+    }
+
     if (formData.tax_rate < 0 || formData.tax_rate > 100) {
       newErrors.tax_rate = 'La tasa de impuesto debe estar entre 0 y 100';
     }
@@ -363,229 +279,149 @@ export default function ProductFormDialog({
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ Manejar cambios en campos
-  const handleFieldChange = (field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  // 🎯 MANEJAR CAMBIOS EN EL FORMULARIO
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
-  // ✅ Generar SKU automático
-  const generateSKU = () => {
-    const categoryCode = formData.category.substring(0, 3).toUpperCase();
-    const brandCode = formData.brand ? formData.brand.substring(0, 2).toUpperCase() : 'XX';
-    const timestamp = Date.now().toString().slice(-4);
-    const generatedSKU = `${categoryCode}${brandCode}${timestamp}`;
-    
-    handleFieldChange('sku', generatedSKU);
-  };
-
-  // ✅ Guardar producto
+  // 🎯 MANEJAR GUARDAR - CORREGIDO PARA USAR LOS HOOKS
   const handleSave = async () => {
     if (!validateForm()) return;
 
+    setLoading(true);
     try {
-      setLoading(true);
-
-      const user = await supabase.auth.getUser();
-      const userId = user.data.user?.id;
-
-      const productData = {
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        sku: formData.sku.trim() || null,
-        barcode: formData.barcode.trim() || null,
-        category: formData.category.trim(),
-        subcategory: formData.subcategory.trim() || null,
-        brand: formData.brand.trim() || null,
-        cost_price: formData.cost_price,
-        sale_price: formData.sale_price,
-        profit_margin: formData.profit_margin,
-        current_stock: formData.current_stock,
-        min_stock: formData.min_stock,
-        max_stock: formData.max_stock,
-        unit: formData.unit,
-        supplier_id: formData.supplier_id || null,
-        image_url: formData.image_url.trim() || null,
-        is_active: formData.is_active,
-        is_taxable: formData.is_taxable,
-        tax_rate: formData.tax_rate,
-        location: formData.location.trim() || null,
-        expiry_date: formData.expiry_date || null,
-        updated_at: new Date().toISOString(),
-        updated_by: userId
+      // ✅ LIMPIAR DATOS ANTES DE ENVIAR
+      const cleanedData = {
+        ...formData,
+        // Convertir cadenas vacías a undefined para campos opcionales
+        sku: formData.sku.trim() || undefined,
+        barcode: formData.barcode.trim() || undefined,
+        description: formData.description.trim() || undefined,
+        subcategory: formData.subcategory.trim() || undefined,
+        brand: formData.brand.trim() || undefined,
+        supplier_id: formData.supplier_id || undefined,
+        location: formData.location.trim() || undefined,
+        expiry_date: formData.expiry_date, // ✅ Ya es string | null, no necesita conversión
       };
 
-      if (product) {
-        // ✅ Actualizar producto existente
-        const { error } = await supabase
-          .from('products')
-          .update(productData)
-          .eq('id', product.id);
-
-        if (error) throw error;
-        showNotification('Producto actualizado correctamente', 'success');
-      } else {
-        // ✅ Crear nuevo producto
-        const { error } = await supabase
-          .from('products')
-          .insert([{
-            ...productData,
-            created_at: new Date().toISOString(),
-            created_by: userId
-          }]);
-
-        if (error) throw error;
-        showNotification('Producto creado correctamente', 'success');
-      }
-
-      onSave();
-      onClose();
-    } catch (error: any) {
-      console.error('Error saving product:', error);
+      let result;
       
-      if (error.code === '23505') {
-        if (error.constraint?.includes('sku')) {
-          setErrors({ sku: 'Ya existe un producto con este SKU' });
-        } else if (error.constraint?.includes('barcode')) {
-          setErrors({ barcode: 'Ya existe un producto con este código de barras' });
-        } else {
-          showNotification('Ya existe un producto con esta información', 'error');
-        }
+      if (product) {
+        // ✅ ACTUALIZAR PRODUCTO EXISTENTE
+        result = await updateProduct(product.id, cleanedData);
       } else {
-        showNotification('Error al guardar producto', 'error');
+        // ✅ CREAR NUEVO PRODUCTO  
+        result = await createProduct(cleanedData);
       }
+      
+      if (result.success) {
+        onSave(); // Recargar la lista en el componente padre
+        onClose(); // Cerrar el diálogo
+      } else {
+        // El hook ya maneja las notificaciones de error
+        console.error('Error al guardar:', result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error inesperado al guardar producto:', error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={onClose}
       maxWidth="lg"
       fullWidth
       PaperProps={{
-        sx: { 
-          borderRadius: 4,
+        sx: {
           background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${darkProTokens.primary}50`,
-          color: darkProTokens.textPrimary,
-          maxHeight: '90vh',
-          boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`
+          border: `2px solid ${darkProTokens.primary}30`,
+          borderRadius: 4,
+          color: darkProTokens.textPrimary
         }
       }}
     >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-        color: darkProTokens.background,
-        pb: 2,
-        borderRadius: '16px 16px 0 0'
-      }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <InventoryIcon sx={{ fontSize: 35 }} />
-          <Typography variant="h5" fontWeight="bold">
-            {product ? 'Editar Producto' : 'Nuevo Producto'}
-          </Typography>
-        </Box>
-        <IconButton 
-          onClick={onClose} 
-          sx={{ 
-            color: darkProTokens.background,
-            '&:hover': {
-              backgroundColor: `${darkProTokens.background}20`
-            }
-          }} 
-          disabled={loading}
-        >
-          <CloseIcon />
-        </IconButton>
+      <DialogTitle 
+        component="div"
+        sx={{ 
+          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+          borderBottom: `1px solid ${darkProTokens.primary}30`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2
+        }}
+      >
+        <InventoryIcon sx={{ color: darkProTokens.primary }} />
+        <Typography variant="h6" fontWeight="bold">
+          {product ? 'Editar Producto' : 'Nuevo Producto'}
+        </Typography>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 4, overflow: 'auto' }}>
-        <Grid container spacing={4}>
-          {/* ✅ INFORMACIÓN BÁSICA CON DARK PRO SYSTEM */}
-          <Grid size={12}>
-            <Card sx={{
-              background: `${darkProTokens.info}10`,
-              border: `1px solid ${darkProTokens.info}30`,
+      <DialogContent sx={{ p: 4 }}>
+        <Grid container spacing={3}>
+          {/* 📋 INFORMACIÓN BÁSICA */}
+          <Grid size={{ xs: 12 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
               borderRadius: 3
             }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  color: darkProTokens.info,
-                  fontWeight: 700,
-                  mb: 3
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: darkProTokens.primary, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
                 }}>
-                  <InventoryIcon />
+                  <DescriptionIcon />
                   Información Básica
                 </Typography>
                 
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 8 }}>
                     <TextField
                       fullWidth
                       label="Nombre del Producto *"
                       value={formData.name}
-                      onChange={(e) => handleFieldChange('name', e.target.value)}
+                      onChange={(e) => handleChange('name', e.target.value)}
                       error={!!errors.name}
                       helperText={errors.name}
-                      InputProps={{
-                        sx: {
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
                           color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.error }
-                      }}
                     />
                   </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
+                  
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <TextField
                       fullWidth
                       label="Marca"
                       value={formData.brand}
-                      onChange={(e) => handleFieldChange('brand', e.target.value)}
-                      InputProps={{
-                        sx: {
+                      onChange={(e) => handleChange('brand', e.target.value)}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
                           color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
@@ -593,193 +429,160 @@ export default function ProductFormDialog({
                     />
                   </Grid>
 
-                  <Grid size={12}>
+                  <Grid size={{ xs: 12 }}>
                     <TextField
                       fullWidth
                       label="Descripción"
+                      value={formData.description}
+                      onChange={(e) => handleChange('description', e.target.value)}
                       multiline
                       rows={3}
-                      value={formData.description}
-                      onChange={(e) => handleFieldChange('description', e.target.value)}
-                      placeholder="Describe las características del producto..."
-                      InputProps={{
-                        sx: {
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
                           color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
                     />
                   </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+          {/* 🏷️ CÓDIGOS Y CATEGORÍAS */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: darkProTokens.primary, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <CategoryIcon />
+                  Códigos y Categorías
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
                       label="SKU"
                       value={formData.sku}
-                      onChange={(e) => handleFieldChange('sku', e.target.value)}
+                      onChange={(e) => handleChange('sku', e.target.value.toUpperCase())}
                       error={!!errors.sku}
-                      helperText={errors.sku}
+                      helperText={errors.sku || 'Código único del producto'}
                       InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <Button 
-                              size="small" 
-                              onClick={generateSKU}
-                              sx={{
-                                color: darkProTokens.primary,
-                                fontWeight: 600
-                              }}
-                            >
-                              Generar
-                            </Button>
-                          </InputAdornment>
-                        ),
                         startAdornment: (
                           <InputAdornment position="start">
                             <BarcodeIcon sx={{ color: darkProTokens.primary }} />
                           </InputAdornment>
                         ),
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
                       }}
-                      InputLabelProps={{
-                        sx: { 
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.error }
-                      }}
                     />
                   </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
                       label="Código de Barras"
                       value={formData.barcode}
-                      onChange={(e) => handleFieldChange('barcode', e.target.value)}
-                      error={!!errors.barcode}
-                      helperText={errors.barcode}
-                      InputProps={{
-                        sx: {
+                      onChange={(e) => handleChange('barcode', e.target.value)}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
                           color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.error }
-                      }}
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12, md: 8 }}>
                     <Autocomplete
-                      options={CATEGORIES}
-                      value={formData.category}
-                      onChange={(_, newValue) => handleFieldChange('category', newValue || '')}
                       freeSolo
+                      options={PRODUCT_CATEGORIES}
+                      value={formData.category}
+                      onChange={(_, newValue) => handleChange('category', newValue || '')}
                       renderInput={(params) => (
-                        <TextField 
-                          {...params} 
-                          label="Categoría *" 
+                        <TextField
+                          {...params}
+                          label="Categoría *"
                           error={!!errors.category}
                           helperText={errors.category}
-                          InputProps={{
-                            ...params.InputProps,
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <CategoryIcon sx={{ color: darkProTokens.primary }} />
-                              </InputAdornment>
-                            ),
-                            sx: {
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
                               color: darkProTokens.textPrimary,
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: `${darkProTokens.primary}30`
-                              },
-                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.primary
-                              },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.primary
-                              }
-                            }
-                          }}
-                          InputLabelProps={{
-                            sx: { 
+                              '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                              '&:hover fieldset': { borderColor: darkProTokens.primary },
+                              '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                            },
+                            '& .MuiInputLabel-root': { 
                               color: darkProTokens.textSecondary,
                               '&.Mui-focused': { color: darkProTokens.primary }
                             }
                           }}
-                          FormHelperTextProps={{
-                            sx: { color: darkProTokens.error }
-                          }}
                         />
+                      )}
+                      PaperComponent={({ children, ...props }) => (
+                        <Box
+                          {...props}
+                          sx={{
+                            background: darkProTokens.surfaceLevel2,
+                            border: `1px solid ${darkProTokens.primary}30`,
+                            borderRadius: 2,
+                            color: darkProTokens.textPrimary
+                          }}
+                        >
+                          {children}
+                        </Box>
                       )}
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <TextField
                       fullWidth
                       label="Subcategoría"
                       value={formData.subcategory}
-                      onChange={(e) => handleFieldChange('subcategory', e.target.value)}
-                      InputProps={{
-                        sx: {
+                      onChange={(e) => handleChange('subcategory', e.target.value)}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
                           color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
@@ -791,430 +594,309 @@ export default function ProductFormDialog({
             </Card>
           </Grid>
 
-          {/* ✅ PRECIOS CON DARK PRO SYSTEM */}
-          <Grid size={12}>
-            <Card sx={{
-              background: `${darkProTokens.success}10`,
-              border: `1px solid ${darkProTokens.success}30`,
+          {/* 💰 PRECIOS Y COSTOS */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
               borderRadius: 3
             }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  color: darkProTokens.success,
-                  fontWeight: 700,
-                  mb: 3
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: darkProTokens.primary, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
                 }}>
                   <MoneyIcon />
-                  Precios y Rentabilidad
+                  Precios y Costos
                 </Typography>
                 
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 3 }}>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
-                      label="Precio de Costo *"
                       type="number"
+                      label="Precio de Costo"
                       value={formData.cost_price}
-                      onChange={(e) => handleFieldChange('cost_price', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleChange('cost_price', parseFloat(e.target.value) || 0)}
                       error={!!errors.cost_price}
                       helperText={errors.cost_price}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
                       }}
-                      InputLabelProps={{
-                        sx: { 
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.error }
-                      }}
                     />
                   </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
-                      label="Precio de Venta *"
                       type="number"
+                      label="Precio de Venta"
                       value={formData.sale_price}
-                      onChange={(e) => handleFieldChange('sale_price', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleChange('sale_price', parseFloat(e.target.value) || 0)}
                       error={!!errors.sale_price}
                       helperText={errors.sale_price}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
                       }}
-                      InputLabelProps={{
-                        sx: { 
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.error }
-                      }}
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12 }}>
+                    <Box sx={{ 
+                      p: 2, 
+                      background: `${darkProTokens.success}10`,
+                      border: `1px solid ${darkProTokens.success}30`,
+                      borderRadius: 2,
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                        Margen de Ganancia: {formData.profit_margin.toFixed(2)}%
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                        Ganancia por unidad: ${(formData.sale_price - formData.cost_price).toFixed(2)}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.is_taxable}
+                          onChange={(e) => handleChange('is_taxable', e.target.checked)}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': {
+                              color: darkProTokens.primary,
+                            },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: darkProTokens.primary,
+                            },
+                          }}
+                        />
+                      }
+                      label="Producto Gravado"
+                      sx={{ color: darkProTokens.textPrimary }}
+                    />
+                  </Grid>
+
+                  {formData.is_taxable && (
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Tasa de Impuesto (%)"
+                        value={formData.tax_rate}
+                        onChange={(e) => handleChange('tax_rate', parseFloat(e.target.value) || 0)}
+                        error={!!errors.tax_rate}
+                        helperText={errors.tax_rate}
+                        InputProps={{
+                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                        }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            color: darkProTokens.textPrimary,
+                            '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                            '&:hover fieldset': { borderColor: darkProTokens.primary },
+                            '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          },
+                          '& .MuiInputLabel-root': { 
+                            color: darkProTokens.textSecondary,
+                            '&.Mui-focused': { color: darkProTokens.primary }
+                          }
+                        }}
+                      />
+                    </Grid>
+                  )}
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* 📦 INVENTARIO */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: darkProTokens.primary, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <InventoryIcon />
+                  Control de Inventario
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
-                      label="Margen de Ganancia"
-                      value={`${formData.profit_margin}%`}
-                      InputProps={{
-                        readOnly: true,
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <CalculateIcon sx={{ color: darkProTokens.primary }} />
-                          </InputAdornment>
-                        ),
-                        sx: {
-                          color: formData.profit_margin > 0 ? darkProTokens.success : darkProTokens.error,
-                          fontWeight: 'bold',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          }
+                      type="number"
+                      label="Stock Actual"
+                      value={formData.current_stock}
+                      onChange={(e) => handleChange('current_stock', parseInt(e.target.value) || 0)}
+                      error={!!errors.current_stock}
+                      helperText={errors.current_stock || (product ? 'Solo lectura - usar ajuste de stock' : '')}
+                      disabled={!!product} // Solo lectura en edición
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
                         }
-                      }}
-                      InputLabelProps={{
-                        sx: { color: darkProTokens.textSecondary }
                       }}
                     />
                   </Grid>
-
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <Box>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.is_taxable}
-                            onChange={(e) => handleFieldChange('is_taxable', e.target.checked)}
-                            sx={{
-                              '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: darkProTokens.primary,
-                              },
-                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: darkProTokens.primary,
-                              },
-                            }}
-                          />
-                        }
-                        label={
-                          <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                            Producto Gravado
-                          </Typography>
-                        }
-                      />
-                      {formData.is_taxable && (
+                  
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Autocomplete
+                      freeSolo
+                      options={PRODUCT_UNITS}
+                      value={formData.unit}
+                      onChange={(_, newValue) => handleChange('unit', newValue || 'pieza')}
+                      renderInput={(params) => (
                         <TextField
-                          fullWidth
-                          label="Tasa de IVA (%)"
-                          type="number"
-                          value={formData.tax_rate}
-                          onChange={(e) => handleFieldChange('tax_rate', parseFloat(e.target.value) || 16)}
-                          error={!!errors.tax_rate}
-                          helperText={errors.tax_rate}
-                          sx={{ mt: 1 }}
-                          InputProps={{
-                            endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                            sx: {
+                          {...params}
+                          label="Unidad de Medida"
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
                               color: darkProTokens.textPrimary,
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: `${darkProTokens.primary}30`
-                              },
-                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.primary
-                              },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: darkProTokens.primary
-                              }
-                            }
-                          }}
-                          InputLabelProps={{
-                            sx: { 
+                              '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                              '&:hover fieldset': { borderColor: darkProTokens.primary },
+                              '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                            },
+                            '& .MuiInputLabel-root': { 
                               color: darkProTokens.textSecondary,
                               '&.Mui-focused': { color: darkProTokens.primary }
                             }
                           }}
-                          FormHelperTextProps={{
-                            sx: { color: darkProTokens.error }
-                          }}
                         />
                       )}
-                    </Box>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* ✅ INVENTARIO CON DARK PRO SYSTEM */}
-          <Grid size={12}>
-            <Card sx={{
-              background: `${darkProTokens.warning}10`,
-              border: `1px solid ${darkProTokens.warning}30`,
-              borderRadius: 3
-            }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  color: darkProTokens.warning,
-                  fontWeight: 700,
-                  mb: 3
-                }}>
-                  📦 Control de Inventario
-                </Typography>
-                
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <FormControl fullWidth>
-                      <InputLabel sx={{ 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
-                      }}>
-                        Unidad
-                      </InputLabel>
-                      <Select
-                        value={formData.unit}
-                        label="Unidad"
-                        onChange={(e) => handleFieldChange('unit', e.target.value)}
-                        sx={{
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }}
-                      >
-                        {UNITS.map((unit) => (
-                          <MenuItem key={unit.value} value={unit.value}>
-                            {unit.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <TextField
-                      fullWidth
-                      label="Stock Actual"
-                      type="number"
-                      value={formData.current_stock}
-                      onChange={(e) => handleFieldChange('current_stock', parseInt(e.target.value) || 0)}
-                      error={!!errors.current_stock}
-                      helperText={errors.current_stock}
-                      InputProps={{
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.error }
-                      }}
+                      PaperComponent={({ children, ...props }) => (
+                        <Box
+                          {...props}
+                          sx={{
+                            background: darkProTokens.surfaceLevel2,
+                            border: `1px solid ${darkProTokens.primary}30`,
+                            borderRadius: 2,
+                            color: darkProTokens.textPrimary
+                          }}
+                        >
+                          {children}
+                        </Box>
+                      )}
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <TextField
-                      fullWidth
-                      label="Stock Mínimo"
-                      type="number"
-                      value={formData.min_stock}
-                      onChange={(e) => handleFieldChange('min_stock', parseInt(e.target.value) || 0)}
-                      error={!!errors.min_stock}
-                      helperText={errors.min_stock}
-                      InputProps={{
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.error }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <TextField
-                      fullWidth
-                      label="Stock Máximo"
-                      type="number"
-                      value={formData.max_stock}
-                      onChange={(e) => handleFieldChange('max_stock', parseInt(e.target.value) || 1000)}
-                      error={!!errors.max_stock}
-                      helperText={errors.max_stock}
-                      InputProps={{
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                      FormHelperTextProps={{
-                        sx: { color: darkProTokens.error }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <TextField
-                      fullWidth
-                      label="Ubicación"
-                      value={formData.location}
-                      onChange={(e) => handleFieldChange('location', e.target.value)}
-                      placeholder="Ej: A1-B2"
-                      InputProps={{
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 2 }}>
-                    <TextField
-                      fullWidth
-                      label="Fecha de Vencimiento"
-                      type="date"
-                      value={formData.expiry_date}
-                      onChange={(e) => handleFieldChange('expiry_date', e.target.value)}
-                      InputLabelProps={{
-                        shrink: true,
-                        sx: { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                      InputProps={{
-                        sx: {
-                          color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                    />
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* ✅ PROVEEDOR E IMAGEN CON DARK PRO SYSTEM */}
-          <Grid size={12}>
-            <Card sx={{
-              background: `${darkProTokens.roleModerator}10`,
-              border: `1px solid ${darkProTokens.roleModerator}30`,
-              borderRadius: 3
-            }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  color: darkProTokens.roleModerator,
-                  fontWeight: 700,
-                  mb: 3
-                }}>
-                  🏢 Proveedor e Imagen
-                </Typography>
-                
-                <Grid container spacing={3}>
                   <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Stock Mínimo"
+                      value={formData.min_stock}
+                      onChange={(e) => handleChange('min_stock', parseInt(e.target.value) || 0)}
+                      error={!!errors.min_stock}
+                      helperText={errors.min_stock || 'Nivel de alerta'}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
+                        }
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Stock Máximo"
+                      value={formData.max_stock}
+                      onChange={(e) => handleChange('max_stock', parseInt(e.target.value) || 1000)}
+                      error={!!errors.max_stock}
+                      helperText={errors.max_stock || 'Capacidad máxima'}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
+                        }
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* 🏢 PROVEEDOR Y OTROS */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card sx={{ 
+              background: `${darkProTokens.surfaceLevel1}`, 
+              border: `1px solid ${darkProTokens.grayDark}`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: darkProTokens.primary, 
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <BusinessIcon />
+                  Información Adicional
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12 }}>
                     <FormControl fullWidth>
                       <InputLabel sx={{ 
                         color: darkProTokens.textSecondary,
@@ -1225,7 +907,8 @@ export default function ProductFormDialog({
                       <Select
                         value={formData.supplier_id}
                         label="Proveedor"
-                        onChange={(e) => handleFieldChange('supplier_id', e.target.value)}
+                        onChange={(e) => handleChange('supplier_id', e.target.value)}
+                        disabled={suppliersLoading}
                         sx={{
                           color: darkProTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
@@ -1238,8 +921,19 @@ export default function ProductFormDialog({
                             borderColor: darkProTokens.primary
                           }
                         }}
+                        MenuProps={{
+                          PaperProps: {
+                            sx: {
+                              background: darkProTokens.surfaceLevel2,
+                              border: `1px solid ${darkProTokens.primary}30`,
+                              color: darkProTokens.textPrimary
+                            }
+                          }
+                        }}
                       >
-                        <MenuItem value="">Sin proveedor</MenuItem>
+                        <MenuItem value="">
+                          <em>Sin proveedor asignado</em>
+                        </MenuItem>
                         {suppliers.map((supplier) => (
                           <MenuItem key={supplier.id} value={supplier.id}>
                             {supplier.company_name}
@@ -1252,94 +946,115 @@ export default function ProductFormDialog({
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
-                      label="URL de Imagen"
-                      value={formData.image_url}
-                      onChange={(e) => handleFieldChange('image_url', e.target.value)}
-                      placeholder="https://ejemplo.com/imagen.jpg"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <ImageIcon sx={{ color: darkProTokens.primary }} />
-                          </InputAdornment>
-                        ),
-                        sx: {
+                      label="Ubicación/Anaquel"
+                      value={formData.location}
+                      onChange={(e) => handleChange('location', e.target.value)}
+                      placeholder="Ej: A1, Zona B, etc."
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
                           color: darkProTokens.textPrimary,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
-                          }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { 
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
                           color: darkProTokens.textSecondary,
                           '&.Mui-focused': { color: darkProTokens.primary }
                         }
                       }}
                     />
                   </Grid>
-                </Grid>
 
-                <Box sx={{ mt: 3 }}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={formData.is_active}
-                        onChange={(e) => handleFieldChange('is_active', e.target.checked)}
-                        sx={{
-                          '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: darkProTokens.primary,
-                          },
-                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                            backgroundColor: darkProTokens.primary,
-                          },
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                        ✅ Producto Activo
-                      </Typography>
-                    }
-                  />
-                </Box>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Fecha de Vencimiento"
+                      value={formData.expiry_date || ''} // ✅ Aquí SÍ convertir null a string vacía para el input
+                      onChange={(e) => handleChange('expiry_date', e.target.value || null)} // ✅ Convertir string vacía a null
+                      InputLabelProps={{ shrink: true }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: darkProTokens.textPrimary,
+                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
+                          '&:hover fieldset': { borderColor: darkProTokens.primary },
+                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                        },
+                        '& .MuiInputLabel-root': { 
+                          color: darkProTokens.textSecondary,
+                          '&.Mui-focused': { color: darkProTokens.primary }
+                        }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12 }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.is_active}
+                          onChange={(e) => handleChange('is_active', e.target.checked)}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': {
+                              color: darkProTokens.primary,
+                            },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: darkProTokens.primary,
+                            },
+                          }}
+                        />
+                      }
+                      label="Producto Activo"
+                      sx={{ color: darkProTokens.textPrimary }}
+                    />
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
+
+        {/* 🚨 ERRORES GENERALES */}
+        {Object.keys(errors).length > 0 && (
+          <Alert severity="error" sx={{ mt: 3 }}>
+            Por favor, corrige los errores en el formulario antes de continuar.
+          </Alert>
+        )}
       </DialogContent>
 
-      <DialogActions sx={{ p: 4, pt: 0 }}>
-        <Button 
-          onClick={onClose} 
+      <DialogActions sx={{ 
+        p: 3, 
+        borderTop: `1px solid ${darkProTokens.grayDark}`,
+        gap: 2
+      }}>
+        <Button
+          onClick={onClose}
           disabled={loading}
+          startIcon={<CloseIcon />}
           sx={{ 
             color: darkProTokens.textSecondary,
-            fontWeight: 600,
-            px: 3
+            borderColor: `${darkProTokens.textSecondary}60`,
+            px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
           }}
         >
           Cancelar
         </Button>
-        <Button 
-          onClick={handleSave} 
-          variant="contained"
+        <Button
+          onClick={handleSave}
           disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <SaveIcon />}
+          startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+          variant="contained"
           sx={{
             background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
             color: darkProTokens.background,
             fontWeight: 700,
-            px: 4,
-            py: 1.5,
+            px: 4, py: 1.5, borderRadius: 3,
             '&:hover': {
               background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-              transform: 'translateY(-1px)'
+            },
+            '&:disabled': {
+              background: darkProTokens.primaryDisabled,
+              color: darkProTokens.textDisabled
             }
           }}
         >

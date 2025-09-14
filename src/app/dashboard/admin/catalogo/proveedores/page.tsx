@@ -1,6 +1,7 @@
+// 📁 src/app/dashboard/admin/catalogo/proveedores/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -9,7 +10,6 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   Chip,
   IconButton,
   TextField,
@@ -18,57 +18,64 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
   Alert,
+  Snackbar,
+  CircularProgress,
   Fab,
   Avatar,
-  Rating,
+  Tooltip,
   Menu,
   ListItemIcon,
   ListItemText,
-  Badge,
-  CircularProgress,
-  Snackbar
+  Rating,
+  Badge
 } from '@mui/material';
 import {
-  Add as AddIcon,
   Search as SearchIcon,
   FilterList as FilterIcon,
+  Business as BusinessIcon,
+  TrendingUp as TrendingUpIcon,
+  AccountBalance as AccountBalanceIcon,
+  Star as StarIcon,
+  CheckCircle as CheckCircleIcon,
+  Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Visibility as VisibilityIcon,
+  Restore as RestoreIcon,
   MoreVert as MoreVertIcon,
-  Business as BusinessIcon,
+  Refresh as RefreshIcon,
+  FileDownload as ExportIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
+  WhatsApp as WhatsAppIcon,
   Language as WebsiteIcon,
-  Star as StarIcon,
-  LocalShipping as DeliveryIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
   Assessment as AssessmentIcon,
-  RestoreFromTrash as RestoreIcon,
-  ArrowBack as ArrowBackIcon,
-  Refresh as RefreshIcon
+  CreditCard as CreditIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'framer-motion';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+
+// 🎯 IMPORTAR NUESTROS HOOKS ENTERPRISE Y TIPOS
+import { useSuppliers, useSupplierStats } from '@/hooks/useCatalog';
+import { Supplier } from '@/services/catalogService'; // Mejora #3: Tipado fuerte
 import SupplierFormDialog from '@/components/catalogo/SupplierFormDialog';
 
-// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
+// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
 const darkProTokens = {
-  // Base Colors
   background: '#000000',
   surfaceLevel1: '#121212',
   surfaceLevel2: '#1E1E1E',
   surfaceLevel3: '#252525',
   surfaceLevel4: '#2E2E2E',
-  
-  // Neutrals
   grayDark: '#333333',
   grayMedium: '#444444',
   grayLight: '#555555',
@@ -76,14 +83,10 @@ const darkProTokens = {
   textPrimary: '#FFFFFF',
   textSecondary: '#CCCCCC',
   textDisabled: '#888888',
-  
-  // Primary Accent (Golden)
   primary: '#FFCC00',
   primaryHover: '#E6B800',
   primaryActive: '#CCAA00',
   primaryDisabled: 'rgba(255,204,0,0.3)',
-  
-  // Semantic Colors
   success: '#388E3C',
   successHover: '#2E7D32',
   error: '#D32F2F',
@@ -92,16 +95,6 @@ const darkProTokens = {
   warningHover: '#E6A700',
   info: '#1976D2',
   infoHover: '#1565C0',
-  
-  // User Roles
-  roleAdmin: '#FFCC00',
-  roleStaff: '#1976D2',
-  roleTrainer: '#009688',
-  roleUser: '#777777',
-  roleModerator: '#9C27B0',
-  roleGuest: '#444444',
-  
-  // Interactions
   hoverOverlay: 'rgba(255,204,0,0.05)',
   activeOverlay: 'rgba(255,204,0,0.1)',
   borderDefault: '#333333',
@@ -109,223 +102,101 @@ const darkProTokens = {
   borderActive: '#E6B800'
 };
 
-interface Supplier {
-  id: string;
-  company_name: string;
-  contact_person?: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-  rating?: number;
-  categories?: string[];
-  credit_limit?: number;
-  current_balance?: number;
-  delivery_time?: number;
-  is_active?: boolean;
-  created_at: string;
-  updated_at: string;
-}
+const STATUS_FILTERS = [
+  { value: 'active', label: '✅ Proveedores Activos' },
+  { value: 'inactive', label: '❌ Proveedores Inactivos' },
+  { value: 'all', label: '📋 Todos los Proveedores' }
+];
 
-interface SupplierStats {
-  totalSuppliers: number;
-  activeSuppliers: number;
-  totalCreditLimit: number;
-  totalBalance: number;
-}
+const RATING_FILTERS = [
+  { value: '', label: 'Todas las calificaciones' },
+  { value: 5, label: '⭐⭐⭐⭐⭐ 5 estrellas' },
+  { value: 4, label: '⭐⭐⭐⭐ 4+ estrellas' },
+  { value: 3, label: '⭐⭐⭐ 3+ estrellas' },
+  { value: 2, label: '⭐⭐ 2+ estrellas' },
+  { value: 1, label: '⭐ 1+ estrellas' }
+];
 
 export default function ProveedoresPage() {
   const router = useRouter();
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [filteredSuppliers, setFilteredSuppliers] = useState<Supplier[]>([]);
-  const [stats, setStats] = useState<SupplierStats>({
-    totalSuppliers: 0,
-    activeSuppliers: 0,
-    totalCreditLimit: 0,
-    totalBalance: 0
+  
+  // 🎯 USAR NUESTROS HOOKS ENTERPRISE
+  const {
+    suppliers,
+    loading,
+    error,
+    total,
+    page,
+    hasMore,
+    filters,
+    notification,
+    createSupplier,
+    updateSupplier,
+    deleteSupplier,
+    restoreSupplier,
+    updateFilters,
+    changePage,
+    reload,
+    closeNotification
+  } = useSuppliers({
+    status: 'active',
+    limit: 20
   });
-  
-  // Estados de filtros
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('active');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [ratingFilter, setRatingFilter] = useState('');
-  const [loading, setLoading] = useState(true);
-  
-  // Estados de dialogs
-  const [formDialogOpen, setFormDialogOpen] = useState(false);
+
+  const {
+    stats,
+    loading: statsLoading,
+    error: statsError,
+    reload: reloadStats
+  } = useSupplierStats();
+
+  // 🎯 ESTADOS LOCALES SIMPLIFICADOS - MEJORA #3: TIPADO FUERTE
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
-  
-  // Estados de menú
+  const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuSupplier, setMenuSupplier] = useState<Supplier | null>(null);
 
-  // Estados de notificaciones
-  const [notification, setNotification] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'warning' | 'info';
-  }>({
-    open: false,
-    message: '',
-    severity: 'info'
-  });
+  // ✅ MEJORA #2: MEMORIZAR CÁLCULO DE CATEGORÍAS ÚNICAS
+  const uniqueCategories = useMemo(() => {
+    const allCategories = suppliers.flatMap(s => s.categories || []);
+    return [...new Set(allCategories)];
+  }, [suppliers]);
 
-  const supabase = createBrowserSupabaseClient();
-
-  // ✅ Formatear precio
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
+  // 🎯 FUNCIONES SIMPLIFICADAS - MEJORA #1: ELIMINAR ESTADOS REDUNDANTES
+  const handleSearch = (value: string) => {
+    updateFilters({ search: value, page: 1 }); // Resetear página al filtrar
   };
 
-  // ✅ Mostrar notificación
-  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
-    setNotification({ open: true, message, severity });
+  const handleCategoryFilter = (value: string) => {
+    updateFilters({ category: value, page: 1 });
   };
 
-  // ✅ Cargar proveedores
-  const loadSuppliers = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .order('company_name');
-
-      if (error) throw error;
-      
-      setSuppliers(data || []);
-      calculateStats(data || []);
-    } catch (error) {
-      console.error('Error loading suppliers:', error);
-      showNotification('Error al cargar proveedores', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const handleRatingFilter = (value: string) => {
+    updateFilters({ rating: value ? parseInt(value) : undefined, page: 1 });
   };
 
-  // ✅ Calcular estadísticas
-  const calculateStats = (supplierList: Supplier[]) => {
-    const activeSuppliers = supplierList.filter(s => s.is_active !== false);
-    const totalCreditLimit = activeSuppliers.reduce((sum, s) => sum + (s.credit_limit || 0), 0);
-    const totalBalance = activeSuppliers.reduce((sum, s) => sum + (s.current_balance || 0), 0);
-
-    setStats({
-      totalSuppliers: supplierList.length,
-      activeSuppliers: activeSuppliers.length,
-      totalCreditLimit,
-      totalBalance
-    });
+  const handleStatusFilter = (value: string) => {
+    updateFilters({ status: value as any, page: 1 });
   };
 
-  // ✅ Filtrar proveedores
-  useEffect(() => {
-    let filtered = suppliers;
-
-    // Filtro por estado
-    if (statusFilter === 'active') {
-      filtered = filtered.filter(supplier => supplier.is_active !== false);
-    } else if (statusFilter === 'inactive') {
-      filtered = filtered.filter(supplier => supplier.is_active === false);
-    }
-
-    // Filtro por búsqueda
-    if (searchTerm) {
-      filtered = filtered.filter(supplier =>
-        supplier.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (supplier.contact_person && supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (supplier.email && supplier.email.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-    }
-
-    // Filtro por categoría
-    if (categoryFilter) {
-      filtered = filtered.filter(supplier => 
-        supplier.categories && supplier.categories.includes(categoryFilter)
-      );
-    }
-
-    // Filtro por rating
-    if (ratingFilter) {
-      const rating = parseInt(ratingFilter);
-      filtered = filtered.filter(supplier => (supplier.rating || 5) >= rating);
-    }
-
-    setFilteredSuppliers(filtered);
-  }, [suppliers, searchTerm, statusFilter, categoryFilter, ratingFilter]);
-
-  // ✅ Eliminar proveedor
-  const handleDeleteSupplier = async () => {
-    if (!supplierToDelete) return;
-
-    try {
-      // Intentar eliminación real
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', supplierToDelete.id);
-
-      if (error) throw error;
-
-      showNotification('Proveedor eliminado correctamente', 'success');
-      setDeleteDialogOpen(false);
-      setSupplierToDelete(null);
-      loadSuppliers();
-    } catch (error: any) {
-      console.error('Error deleting supplier:', error);
-      
-      // Si hay referencias, hacer soft delete
-      if (error.code === '23503') {
-        try {
-          const { error: softError } = await supabase
-            .from('suppliers')
-            .update({ 
-              is_active: false,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', supplierToDelete.id);
-
-          if (softError) throw softError;
-          
-          showNotification('Proveedor desactivado (tiene productos asociados)', 'warning');
-          setDeleteDialogOpen(false);
-          setSupplierToDelete(null);
-          loadSuppliers();
-        } catch (softDeleteError) {
-          showNotification('Error al eliminar proveedor', 'error');
-        }
-      } else {
-        showNotification('Error al eliminar proveedor', 'error');
-      }
-    }
+  const openSupplierDialog = (supplier?: Supplier) => {
+    setSelectedSupplier(supplier || null);
+    setSupplierDialogOpen(true);
+    setMenuAnchor(null);
   };
 
-  // ✅ Restaurar proveedor
-  const handleRestoreSupplier = async (supplier: Supplier) => {
-    try {
-      const { error } = await supabase
-        .from('suppliers')
-        .update({ 
-          is_active: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', supplier.id);
-
-      if (error) throw error;
-
-      showNotification('Proveedor restaurado correctamente', 'success');
-      loadSuppliers();
-    } catch (error) {
-      console.error('Error restoring supplier:', error);
-      showNotification('Error al restaurar proveedor', 'error');
-    }
+  const closeSupplierDialog = () => {
+    setSelectedSupplier(null);
+    setSupplierDialogOpen(false);
   };
 
-  // Manejar menú
+  const handleSupplierSave = () => {
+  console.log('🔄 Proveedor guardado, recargando datos...');
+  reload(); // Recargar la lista de proveedores
+  reloadStats(); // Recargar las estadísticas también
+  closeSupplierDialog(); // Cerrar el diálogo
+};
+
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, supplier: Supplier) => {
     setMenuAnchor(event.currentTarget);
     setMenuSupplier(supplier);
@@ -336,252 +207,49 @@ export default function ProveedoresPage() {
     setMenuSupplier(null);
   };
 
-  // Obtener categorías únicas
-  const getUniqueCategories = () => {
-    const categories = new Set<string>();
-    suppliers.forEach(supplier => {
-      if (supplier.categories && Array.isArray(supplier.categories)) {
-        supplier.categories.forEach(cat => categories.add(cat));
-      }
-    });
-    return Array.from(categories);
+  const handleDelete = async (supplierId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este proveedor?')) return;
+    
+    await deleteSupplier(supplierId);
+    handleMenuClose();
   };
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    loadSuppliers();
-  }, []);
+  const handleRestore = async (supplierId: string) => {
+    await restoreSupplier(supplierId);
+    handleMenuClose();
+  };
 
-  const SupplierCard = ({ supplier }: { supplier: Supplier }) => (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Card sx={{ 
-        height: '100%',
-        opacity: supplier.is_active === false ? 0.6 : 1,
-        border: supplier.is_active === false ? `1px dashed ${darkProTokens.error}` : `1px solid ${darkProTokens.grayDark}`,
-        background: supplier.is_active === false 
-          ? `${darkProTokens.surfaceLevel2}80` 
-          : `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        color: darkProTokens.textPrimary,
-        '&:hover': { 
-          boxShadow: `0 8px 32px ${darkProTokens.primary}20`,
-          transform: 'translateY(-4px)',
-          borderColor: darkProTokens.primary
-        },
-        transition: 'all 0.3s ease',
-        borderRadius: 3
-      }}>
-        <CardContent sx={{ flexGrow: 1 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
-            <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ 
-                bgcolor: supplier.is_active === false ? darkProTokens.grayMuted : darkProTokens.primary,
-                color: darkProTokens.background
-              }}>
-                <BusinessIcon />
-              </Avatar>
-              {supplier.is_active === false && (
-                <Chip 
-                  label="INACTIVO" 
-                  sx={{
-                    backgroundColor: darkProTokens.error,
-                    color: darkProTokens.textPrimary,
-                    fontWeight: 700
-                  }} 
-                  size="small" 
-                />
-              )}
-            </Box>
-            <IconButton 
-              size="small"
-              onClick={(e) => handleMenuOpen(e, supplier)}
-              sx={{ color: darkProTokens.textSecondary }}
-            >
-              <MoreVertIcon />
-            </IconButton>
-          </Box>
-          
-          <Typography variant="h6" component="h2" fontWeight="bold" sx={{ 
-            mb: 1,
-            color: darkProTokens.textPrimary 
-          }}>
-            {supplier.company_name}
-          </Typography>
-          
-          {supplier.contact_person && (
-            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }} gutterBottom>
-              Contacto: {supplier.contact_person}
-            </Typography>
-          )}
-          
-          {supplier.email && (
-            <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
-              <EmailIcon fontSize="small" sx={{ color: darkProTokens.primary }} />
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                {supplier.email}
-              </Typography>
-            </Box>
-          )}
-          
-          {supplier.phone && (
-            <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
-              <PhoneIcon fontSize="small" sx={{ color: darkProTokens.info }} />
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                {supplier.phone}
-              </Typography>
-            </Box>
-          )}
-          
-          {supplier.website && (
-            <Box display="flex" alignItems="center" gap={1} sx={{ mb: 2 }}>
-              <WebsiteIcon fontSize="small" sx={{ color: darkProTokens.success }} />
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }} noWrap>
-                {supplier.website}
-              </Typography>
-            </Box>
-          )}
-          
-          {/* Rating */}
-          <Box display="flex" alignItems="center" gap={1} sx={{ mb: 2 }}>
-            <Rating 
-              value={supplier.rating || 5} 
-              readOnly 
-              size="small"
-              icon={<StarIcon fontSize="inherit" />}
-              emptyIcon={<StarIcon fontSize="inherit" />}
-              sx={{
-                '& .MuiRating-iconFilled': { color: darkProTokens.primary },
-                '& .MuiRating-iconEmpty': { color: darkProTokens.grayMuted }
-              }}
-            />
-            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-              ({supplier.rating || 5}/5)
-            </Typography>
-          </Box>
-          
-          {/* Categorías */}
-          {supplier.categories && supplier.categories.length > 0 && (
-            <Box display="flex" flexWrap="wrap" gap={0.5} sx={{ mb: 2 }}>
-              {supplier.categories.slice(0, 3).map((category, index) => (
-                <Chip 
-                  key={index}
-                  label={category} 
-                  size="small" 
-                  sx={{
-                    fontSize: '0.7rem',
-                    backgroundColor: `${darkProTokens.info}20`,
-                    color: darkProTokens.info,
-                    border: `1px solid ${darkProTokens.info}40`
-                  }}
-                />
-              ))}
-              {supplier.categories.length > 3 && (
-                <Chip 
-                  label={`+${supplier.categories.length - 3}`}
-                  size="small" 
-                  sx={{
-                    fontSize: '0.7rem',
-                    backgroundColor: `${darkProTokens.warning}20`,
-                    color: darkProTokens.warning,
-                    border: `1px solid ${darkProTokens.warning}40`
-                  }}
-                />
-              )}
-            </Box>
-          )}
-          
-          {/* Información financiera */}
-          <Box sx={{ 
-            mt: 2, 
-            pt: 2, 
-            borderTop: `1px solid ${darkProTokens.grayDark}` 
-          }}>
-            <Grid container spacing={1}>
-              <Grid size={6}>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  Límite crédito:
-                </Typography>
-                <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-                  {formatPrice(supplier.credit_limit || 0)}
-                </Typography>
-              </Grid>
-              <Grid size={6}>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  Saldo actual:
-                </Typography>
-                <Typography 
-                  variant="body2" 
-                  fontWeight="bold"
-                  sx={{ 
-                    color: (supplier.current_balance || 0) > 0 ? darkProTokens.error : darkProTokens.success
-                  }}
-                >
-                  {formatPrice(supplier.current_balance || 0)}
-                </Typography>
-              </Grid>
-            </Grid>
-            
-            <Box display="flex" alignItems="center" gap={1} sx={{ mt: 1 }}>
-              <DeliveryIcon fontSize="small" sx={{ color: darkProTokens.warning }} />
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                Entrega: {supplier.delivery_time || 7} días
-              </Typography>
-            </Box>
-          </Box>
-        </CardContent>
-        
-        <CardActions sx={{ px: 2, pb: 2 }}>
-          {supplier.is_active === false ? (
-            <Button 
-              size="small" 
-              startIcon={<RestoreIcon />}
-              onClick={() => handleRestoreSupplier(supplier)}
-              sx={{ 
-                color: darkProTokens.success,
-                fontWeight: 600
-              }}
-            >
-              Restaurar
-            </Button>
-          ) : (
-            <Button 
-              size="small" 
-              startIcon={<EditIcon />}
-              onClick={() => {
-                setSelectedSupplier(supplier);
-                setFormDialogOpen(true);
-              }}
-              sx={{ 
-                color: darkProTokens.primary,
-                fontWeight: 600
-              }}
-            >
-              Editar
-            </Button>
-          )}
-          
-          <Button 
-            size="small" 
-            startIcon={<VisibilityIcon />}
-            onClick={() => {
-              // TODO: Ver detalles
-            }}
-            sx={{ 
-              color: darkProTokens.info,
-              fontWeight: 600
-            }}
-          >
-            Ver
-          </Button>
-        </CardActions>
-      </Card>
-    </motion.div>
-  );
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(price);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getBalanceColor = (supplier: Supplier): 'error' | 'warning' | 'success' | 'info' => {
+    const balance = supplier.current_balance || 0;
+    const creditLimit = supplier.credit_limit || 0;
+    
+    if (balance < 0) return 'error';
+    if (creditLimit > 0 && balance >= creditLimit * 0.8) return 'warning';
+    if (balance > 0) return 'info';
+    return 'success';
+  };
+
+  const getRatingColor = (rating: number): string => {
+    if (rating >= 4.5) return darkProTokens.success;
+    if (rating >= 3.5) return darkProTokens.primary;
+    if (rating >= 2.5) return darkProTokens.warning;
+    return darkProTokens.error;
+  };
 
   return (
     <Box sx={{ 
@@ -590,16 +258,16 @@ export default function ProveedoresPage() {
       color: darkProTokens.textPrimary,
       p: 3
     }}>
-      {/* ✅ SNACKBAR CON DARK PRO SYSTEM */}
+      {/* 🔔 NOTIFICACIÓN ENTERPRISE */}
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
-        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        onClose={closeNotification}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert 
           severity={notification.severity}
-          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          onClose={closeNotification}
           sx={{
             background: notification.severity === 'success' ? 
               `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
@@ -609,23 +277,15 @@ export default function ProveedoresPage() {
               `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
               `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
             color: darkProTokens.textPrimary,
-            border: `1px solid ${
-              notification.severity === 'success' ? darkProTokens.success :
-              notification.severity === 'error' ? darkProTokens.error :
-              notification.severity === 'warning' ? darkProTokens.warning :
-              darkProTokens.info
-            }60`,
-            borderRadius: 3,
             fontWeight: 600,
-            '& .MuiAlert-icon': { color: darkProTokens.textPrimary },
-            '& .MuiAlert-action': { color: darkProTokens.textPrimary }
+            borderRadius: 3
           }}
         >
           {notification.message}
         </Alert>
       </Snackbar>
 
-      {/* ✅ HEADER CON DARK PRO SYSTEM */}
+      {/* 📊 HEADER CON ESTADÍSTICAS ENTERPRISE */}
       <Paper sx={{
         p: 4,
         mb: 4,
@@ -655,191 +315,168 @@ export default function ProveedoresPage() {
               color: darkProTokens.textSecondary,
               fontWeight: 300
             }}>
-              Red de Suministros | Control de Proveedores y Relaciones Comerciales
+              Directorio | Relaciones Comerciales | Control de Crédito
             </Typography>
           </Box>
           
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
-              startIcon={<ArrowBackIcon />}
-              onClick={() => router.push('/dashboard/admin/catalogo')}
-              sx={{ 
-                color: darkProTokens.primary,
-                borderColor: `${darkProTokens.primary}60`,
-                px: 3,
-                py: 1.5,
-                borderRadius: 3,
-                fontWeight: 600,
-                '&:hover': {
-                  borderColor: darkProTokens.primary,
-                  backgroundColor: `${darkProTokens.primary}10`,
-                  transform: 'translateY(-2px)'
-                }
-              }}
               variant="outlined"
+              startIcon={<AssessmentIcon />}
+              sx={{ 
+                color: darkProTokens.textSecondary,
+                borderColor: `${darkProTokens.textSecondary}60`,
+                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
+              }}
             >
-              Catálogo
+              Reportes
             </Button>
             
             <Button
-              startIcon={<RefreshIcon />}
-              onClick={loadSuppliers}
-              disabled={loading}
-              sx={{
+              variant="outlined"
+              startIcon={<ExportIcon />}
+              sx={{ 
                 color: darkProTokens.textSecondary,
                 borderColor: `${darkProTokens.textSecondary}60`,
-                px: 3,
-                py: 1.5,
-                borderRadius: 3,
-                fontWeight: 600,
-                '&:hover': {
-                  borderColor: darkProTokens.textSecondary,
-                  backgroundColor: `${darkProTokens.textSecondary}10`,
-                  transform: 'translateY(-2px)'
-                }
+                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
               }}
-              variant="outlined"
             >
-              Actualizar
+              Exportar
             </Button>
-
+            
             <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setSelectedSupplier(null);
-                setFormDialogOpen(true);
-              }}
-              sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-                color: darkProTokens.background,
-                fontWeight: 700,
-                px: 4,
-                py: 1.5,
-                borderRadius: 3,
-                '&:hover': {
-                  background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-                  transform: 'translateY(-2px)'
-                }
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={reload}
+              disabled={loading}
+              sx={{ 
+                color: darkProTokens.textSecondary,
+                borderColor: `${darkProTokens.textSecondary}60`,
+                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
               }}
             >
-              Nuevo Proveedor
+              {loading ? <CircularProgress size={20} /> : 'Actualizar'}
             </Button>
           </Box>
         </Box>
 
-        {/* ✅ ESTADÍSTICAS CON DARK PRO SYSTEM */}
-        <Grid container spacing={3}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ 
-              background: `${darkProTokens.info}10`, 
-              border: `1px solid ${darkProTokens.info}30`,
-              borderRadius: 3,
-              color: darkProTokens.textPrimary
-            }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
-                      {stats.totalSuppliers}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Total Proveedores
-                    </Typography>
+        {/* 📊 ESTADÍSTICAS CON LOADING STATE */}
+        {statsLoading ? (
+          <Box display="flex" justifyContent="center" py={4}>
+            <CircularProgress sx={{ color: darkProTokens.primary }} />
+          </Box>
+        ) : statsError ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Error al cargar estadísticas: {statsError}
+          </Alert>
+        ) : stats ? (
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card sx={{ 
+                background: `${darkProTokens.info}10`, 
+                border: `1px solid ${darkProTokens.info}30`,
+                borderRadius: 3
+              }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                        {stats.totalSuppliers}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Total de Proveedores
+                      </Typography>
+                    </Box>
+                    <BusinessIcon sx={{ fontSize: 40, color: darkProTokens.info, opacity: 0.8 }} />
                   </Box>
-                  <BusinessIcon sx={{ fontSize: 40, color: darkProTokens.info, opacity: 0.8 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ 
-              background: `${darkProTokens.success}10`, 
-              border: `1px solid ${darkProTokens.success}30`,
-              borderRadius: 3,
-              color: darkProTokens.textPrimary
-            }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                      {stats.activeSuppliers}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Proveedores Activos
-                    </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card sx={{ 
+                background: `${darkProTokens.success}10`, 
+                border: `1px solid ${darkProTokens.success}30`,
+                borderRadius: 3
+              }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                        {stats.activeSuppliers}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Proveedores Activos
+                      </Typography>
+                    </Box>
+                    <CheckCircleIcon sx={{ fontSize: 40, color: darkProTokens.success, opacity: 0.8 }} />
                   </Box>
-                  <TrendingUpIcon sx={{ fontSize: 40, color: darkProTokens.success, opacity: 0.8 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ 
-              background: `${darkProTokens.primary}10`, 
-              border: `1px solid ${darkProTokens.primary}30`,
-              borderRadius: 3,
-              color: darkProTokens.textPrimary
-            }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
-                      {formatPrice(stats.totalCreditLimit)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Límite Total Crédito
-                    </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card sx={{ 
+                background: `${darkProTokens.warning}10`, 
+                border: `1px solid ${darkProTokens.warning}30`,
+                borderRadius: 3
+              }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                        {formatPrice(stats.totalCreditLimit)}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Límite de Crédito Total
+                      </Typography>
+                    </Box>
+                    <CreditIcon sx={{ fontSize: 40, color: darkProTokens.warning, opacity: 0.8 }} />
                   </Box>
-                  <AssessmentIcon sx={{ fontSize: 40, color: darkProTokens.primary, opacity: 0.8 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ 
-              background: `${darkProTokens.warning}10`, 
-              border: `1px solid ${darkProTokens.warning}30`,
-              borderRadius: 3,
-              color: darkProTokens.textPrimary
-            }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
-                      {formatPrice(stats.totalBalance)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                      Saldo Pendiente
-                    </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card sx={{ 
+                background: `${darkProTokens.error}10`, 
+                border: `1px solid ${darkProTokens.error}30`,
+                borderRadius: 3
+              }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                        {formatPrice(stats.totalBalance)}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        Saldo Pendiente Total
+                      </Typography>
+                    </Box>
+                    <AccountBalanceIcon sx={{ fontSize: 40, color: darkProTokens.error, opacity: 0.8 }} />
                   </Box>
-                  <TrendingDownIcon sx={{ fontSize: 40, color: darkProTokens.warning, opacity: 0.8 }} />
-                </Box>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
-        </Grid>
+        ) : null}
       </Paper>
 
-      {/* ✅ FILTROS CON DARK PRO SYSTEM */}
+      {/* 🔍 FILTROS ENTERPRISE - MEJORA #1: USAR ESTADO CENTRALIZADO */}
       <Paper sx={{ 
         p: 3, 
         mb: 3,
         background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
         border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 3,
-        color: darkProTokens.textPrimary
+        borderRadius: 3
       }}>
-        <Grid container spacing={2}>
+        <Grid container spacing={2} alignItems="center">
           <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
               placeholder="Buscar proveedores..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={filters.search || ''} // ✅ Usar estado centralizado
+              onChange={(e) => handleSearch(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -868,59 +505,22 @@ export default function ProveedoresPage() {
                 color: darkProTokens.textSecondary,
                 '&.Mui-focused': { color: darkProTokens.primary }
               }}>
-                Estado
-              </InputLabel>
-              <Select
-                value={statusFilter}
-                label="Estado"
-                onChange={(e) => setStatusFilter(e.target.value)}
-                sx={{
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  }
-                }}
-              >
-                <MenuItem value="active">✅ Activos</MenuItem>
-                <MenuItem value="inactive">❌ Inactivos</MenuItem>
-                <MenuItem value="all">📋 Todos</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ 
-                color: darkProTokens.textSecondary,
-                '&.Mui-focused': { color: darkProTokens.primary }
-              }}>
                 Categoría
               </InputLabel>
               <Select
-                value={categoryFilter}
+                value={filters.category || ''} // ✅ Usar estado centralizado
                 label="Categoría"
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                onChange={(e) => handleCategoryFilter(e.target.value)}
                 sx={{
                   color: darkProTokens.textPrimary,
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: `${darkProTokens.primary}30`
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
                   }
                 }}
               >
                 <MenuItem value="">Todas</MenuItem>
-                {getUniqueCategories().map((category) => (
+                {/* ✅ MEJORA #2: USAR CATEGORÍAS MEMORIZADAS */}
+                {uniqueCategories.map((category) => (
                   <MenuItem key={category} value={category}>
                     {category}
                   </MenuItem>
@@ -935,31 +535,52 @@ export default function ProveedoresPage() {
                 color: darkProTokens.textSecondary,
                 '&.Mui-focused': { color: darkProTokens.primary }
               }}>
-                Rating mínimo
+                Calificación
               </InputLabel>
               <Select
-                value={ratingFilter}
-                label="Rating mínimo"
-                onChange={(e) => setRatingFilter(e.target.value)}
+                value={filters.rating?.toString() || ''} // ✅ Usar estado centralizado
+                label="Calificación"
+                onChange={(e) => handleRatingFilter(e.target.value)}
                 sx={{
                   color: darkProTokens.textPrimary,
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: `${darkProTokens.primary}30`
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
                   }
                 }}
               >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="5">⭐⭐⭐⭐⭐ (5)</MenuItem>
-                <MenuItem value="4">⭐⭐⭐⭐ (4+)</MenuItem>
-                <MenuItem value="3">⭐⭐⭐ (3+)</MenuItem>
-                <MenuItem value="2">⭐⭐ (2+)</MenuItem>
-                <MenuItem value="1">⭐ (1+)</MenuItem>
+                {RATING_FILTERS.map((filter) => (
+                  <MenuItem key={filter.value} value={filter.value}>
+                    {filter.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel sx={{ 
+                color: darkProTokens.textSecondary,
+                '&.Mui-focused': { color: darkProTokens.primary }
+              }}>
+                Estado
+              </InputLabel>
+              <Select
+                value={filters.status}
+                label="Estado"
+                onChange={(e) => handleStatusFilter(e.target.value)}
+                sx={{
+                  color: darkProTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${darkProTokens.primary}30`
+                  }
+                }}
+              >
+                {STATUS_FILTERS.map((filter) => (
+                  <MenuItem key={filter.value} value={filter.value}>
+                    {filter.label}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Grid>
@@ -967,10 +588,9 @@ export default function ProveedoresPage() {
           <Grid size={{ xs: 12, md: 2 }}>
             <Typography variant="body2" sx={{ 
               color: darkProTokens.textSecondary, 
-              pt: 2,
-              textAlign: 'center'
+              textAlign: 'center' 
             }}>
-              {filteredSuppliers.length} de {suppliers.length}
+              {suppliers.length} de {total} proveedores
             </Typography>
           </Grid>
           
@@ -980,18 +600,17 @@ export default function ProveedoresPage() {
               variant="outlined"
               startIcon={<FilterIcon />}
               onClick={() => {
-                setSearchTerm('');
-                setStatusFilter('active');
-                setCategoryFilter('');
-                setRatingFilter('');
+                // ✅ LIMPIAR FILTROS USANDO ESTADO CENTRALIZADO
+                updateFilters({ 
+                  search: '', 
+                  category: '', 
+                  rating: undefined,
+                  page: 1 
+                });
               }}
               sx={{
                 color: darkProTokens.textSecondary,
-                borderColor: `${darkProTokens.textSecondary}40`,
-                '&:hover': {
-                  borderColor: darkProTokens.textSecondary,
-                  backgroundColor: `${darkProTokens.textSecondary}10`
-                }
+                borderColor: `${darkProTokens.textSecondary}40`
               }}
             >
               Limpiar
@@ -1000,65 +619,263 @@ export default function ProveedoresPage() {
         </Grid>
       </Paper>
 
-      {/* ✅ GRID DE PROVEEDORES CON DARK PRO SYSTEM */}
-      <AnimatePresence mode="wait">
+      {/* 📋 TABLA DE PROVEEDORES ENTERPRISE */}
+      <Paper sx={{ 
+        mb: 3,
+        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        border: `1px solid ${darkProTokens.grayDark}`,
+        borderRadius: 3
+      }}>
         {loading ? (
-          <Box 
-            display="flex" 
-            justifyContent="center" 
-            alignItems="center" 
-            minHeight="40vh"
-            sx={{ color: darkProTokens.textPrimary }}
-          >
-            <CircularProgress sx={{ color: darkProTokens.primary }} size={60} thickness={4} />
+          <Box display="flex" justifyContent="center" p={4}>
+            <CircularProgress sx={{ color: darkProTokens.primary }} size={40} />
           </Box>
-        ) : filteredSuppliers.length === 0 ? (
-          <Paper sx={{ 
-            p: 8, 
-            textAlign: 'center',
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `1px solid ${darkProTokens.grayDark}`,
-            borderRadius: 3,
-            color: darkProTokens.textPrimary
-          }}>
-            <BusinessIcon sx={{ fontSize: 80, color: darkProTokens.textSecondary, mb: 2 }} />
-            <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }} gutterBottom>
-              No se encontraron proveedores
-            </Typography>
-            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
-              {suppliers.length === 0 
-                ? 'Comienza agregando tu primer proveedor'
-                : 'Intenta ajustar los filtros de búsqueda'
-              }
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setSelectedSupplier(null);
-                setFormDialogOpen(true);
-              }}
-              sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-                color: darkProTokens.background,
-                fontWeight: 700
-              }}
-            >
-              {suppliers.length === 0 ? 'Agregar Primer Proveedor' : 'Agregar Proveedor'}
-            </Button>
-          </Paper>
+        ) : error ? (
+          <Alert severity="error" sx={{ m: 3 }}>
+            Error al cargar proveedores: {error}
+          </Alert>
         ) : (
-          <Grid container spacing={3}>
-            {filteredSuppliers.map((supplier) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={supplier.id}>
-                <SupplierCard supplier={supplier} />
-              </Grid>
-            ))}
-          </Grid>
+          <>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ 
+                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`
+                  }}>
+                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Proveedor</TableCell>
+                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Contacto</TableCell>
+                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Categorías</TableCell>
+                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Calificación</TableCell>
+                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Estado</TableCell>
+                    <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Crédito</TableCell>
+                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {suppliers.map((supplier) => (
+                    <TableRow 
+                      key={supplier.id} 
+                      hover
+                      sx={{ 
+                        opacity: supplier.is_active === false ? 0.6 : 1,
+                        backgroundColor: supplier.is_active === false ? `${darkProTokens.error}10` : 'transparent',
+                        '&:hover': {
+                          backgroundColor: `${darkProTokens.primary}05`
+                        }
+                      }}
+                    >
+                      <TableCell>
+                        <Box display="flex" alignItems="center" gap={2}>
+                          <Avatar sx={{ 
+                            backgroundColor: `${darkProTokens.primary}20`,
+                            color: darkProTokens.primary,
+                            fontWeight: 'bold'
+                          }}>
+                            {supplier.company_name.charAt(0)}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                              {supplier.company_name}
+                            </Typography>
+                            {supplier.rfc && (
+                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                                RFC: {supplier.rfc}
+                              </Typography>
+                            )}
+                            {supplier.is_active === false && (
+                              <Chip 
+                                label="INACTIVO" 
+                                sx={{
+                                  backgroundColor: darkProTokens.error,
+                                  color: darkProTokens.textPrimary,
+                                  fontWeight: 700,
+                                  ml: 1
+                                }} 
+                                size="small" 
+                              />
+                            )}
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box>
+                          {supplier.contact_person && (
+                            <Typography variant="subtitle2" sx={{ color: darkProTokens.textPrimary }}>
+                              {supplier.contact_person}
+                            </Typography>
+                          )}
+                          <Box display="flex" gap={1} mt={0.5}>
+                            {supplier.email && (
+                              <Tooltip title={supplier.email}>
+                                <IconButton size="small" sx={{ color: darkProTokens.info }}>
+                                  <EmailIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {supplier.phone && (
+                              <Tooltip title={supplier.phone}>
+                                <IconButton size="small" sx={{ color: darkProTokens.success }}>
+                                  <PhoneIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {supplier.whatsapp && (
+                              <Tooltip title={supplier.whatsapp}>
+                                <IconButton size="small" sx={{ color: darkProTokens.success }}>
+                                  <WhatsAppIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {supplier.website && (
+                              <Tooltip title={supplier.website}>
+                                <IconButton size="small" sx={{ color: darkProTokens.primary }}>
+                                  <WebsiteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box display="flex" flexWrap="wrap" gap={0.5}>
+                          {supplier.categories && supplier.categories.length > 0 ? (
+                            supplier.categories.slice(0, 2).map((category, index) => (
+                              <Chip 
+                                key={index}
+                                label={category} 
+                                size="small" 
+                                sx={{
+                                  backgroundColor: `${darkProTokens.info}20`,
+                                  color: darkProTokens.info,
+                                  border: `1px solid ${darkProTokens.info}40`
+                                }}
+                              />
+                            ))
+                          ) : (
+                            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                              Sin categorías
+                            </Typography>
+                          )}
+                          {supplier.categories && supplier.categories.length > 2 && (
+                            <Chip 
+                              label={`+${supplier.categories.length - 2}`}
+                              size="small" 
+                              sx={{
+                                backgroundColor: `${darkProTokens.textSecondary}20`,
+                                color: darkProTokens.textSecondary,
+                                border: `1px solid ${darkProTokens.textSecondary}40`
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Box display="flex" flexDirection="column" alignItems="center">
+                          <Rating 
+                            value={supplier.rating || 0} 
+                            readOnly 
+                            size="small"
+                            sx={{
+                              '& .MuiRating-iconFilled': {
+                                color: getRatingColor(supplier.rating || 0)
+                              }
+                            }}
+                          />
+                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                            {supplier.rating || 0}/5
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          size="small"
+                          icon={supplier.is_active === false ? <WarningIcon /> : <CheckCircleIcon />}
+                          label={supplier.is_active === false ? 'Inactivo' : 'Activo'}
+                          sx={{
+                            backgroundColor: supplier.is_active === false ? `${darkProTokens.error}20` : `${darkProTokens.success}20`,
+                            color: supplier.is_active === false ? darkProTokens.error : darkProTokens.success,
+                            border: `1px solid ${supplier.is_active === false ? darkProTokens.error : darkProTokens.success}40`
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Box>
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                            Límite: {formatPrice(supplier.credit_limit || 0)}
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: getBalanceColor(supplier) === 'error' ? darkProTokens.error :
+                                    getBalanceColor(supplier) === 'warning' ? darkProTokens.warning :
+                                    getBalanceColor(supplier) === 'info' ? darkProTokens.info :
+                                    darkProTokens.success
+                            }}
+                          >
+                            Saldo: {formatPrice(supplier.current_balance || 0)}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, supplier)}
+                          sx={{ color: darkProTokens.textSecondary }}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            
+            <TablePagination
+              component="div"
+              count={total}
+              page={page - 1} // TablePagination usa índice base 0
+              onPageChange={(_, newPage) => changePage(newPage + 1)}
+              rowsPerPage={filters.limit || 20}
+              onRowsPerPageChange={(e) => {
+                updateFilters({ limit: parseInt(e.target.value, 10) });
+              }}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) => 
+                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+              }
+              sx={{
+                color: darkProTokens.textSecondary,
+                borderTop: `1px solid ${darkProTokens.grayDark}`,
+                '& .MuiTablePagination-selectIcon': { color: darkProTokens.textSecondary },
+                '& .MuiTablePagination-actions button': { color: darkProTokens.textSecondary }
+              }}
+            />
+          </>
         )}
-      </AnimatePresence>
+      </Paper>
 
-      {/* ✅ MENÚ DE ACCIONES CON DARK PRO SYSTEM */}
+      {/* 🎯 FAB PARA AGREGAR PROVEEDOR */}
+      <Fab
+        color="primary"
+        sx={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+          color: darkProTokens.background,
+          fontWeight: 700,
+          '&:hover': {
+            background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+            transform: 'scale(1.1)'
+          }
+        }}
+        onClick={() => openSupplierDialog()}
+      >
+        <AddIcon />
+      </Fab>
+
+      {/* 📝 MENÚ DE ACCIONES */}
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
@@ -1072,171 +889,51 @@ export default function ProveedoresPage() {
           }
         }}
       >
+        <MenuItem onClick={() => openSupplierDialog(menuSupplier!)}>
+          <ListItemIcon>
+            <EditIcon sx={{ color: darkProTokens.primary }} />
+          </ListItemIcon>
+          <ListItemText>Editar Proveedor</ListItemText>
+        </MenuItem>
+        
         {menuSupplier?.is_active === false ? (
-          <MenuItem onClick={() => {
-            if (menuSupplier) handleRestoreSupplier(menuSupplier);
-            handleMenuClose();
-          }}>
+          <MenuItem onClick={() => handleRestore(menuSupplier.id)}>
             <ListItemIcon>
               <RestoreIcon sx={{ color: darkProTokens.success }} />
             </ListItemIcon>
             <ListItemText>Restaurar Proveedor</ListItemText>
           </MenuItem>
         ) : (
-          <MenuItem onClick={() => {
-            if (menuSupplier) {
-              setSelectedSupplier(menuSupplier);
-              setFormDialogOpen(true);
-            }
-            handleMenuClose();
-          }}>
+          <MenuItem onClick={() => handleDelete(menuSupplier?.id!)}>
             <ListItemIcon>
-              <EditIcon sx={{ color: darkProTokens.primary }} />
+              <DeleteIcon sx={{ color: darkProTokens.error }} />
             </ListItemIcon>
-            <ListItemText>Editar</ListItemText>
+            <ListItemText>Eliminar Proveedor</ListItemText>
           </MenuItem>
         )}
-        
+
         <MenuItem onClick={() => {
-          if (menuSupplier) {
-            // TODO: Ver detalles
-          }
+          // Navegar a productos del proveedor
+          router.push(`/dashboard/admin/catalogo/productos?supplier=${menuSupplier?.id}`);
           handleMenuClose();
         }}>
           <ListItemIcon>
-            <VisibilityIcon sx={{ color: darkProTokens.info }} />
-          </ListItemIcon>
-          <ListItemText>Ver Detalles</ListItemText>
-        </MenuItem>
-        
-        <MenuItem 
-          onClick={() => {
-            if (menuSupplier) {
-              setSupplierToDelete(menuSupplier);
-              setDeleteDialogOpen(true);
+            {menuSupplier?.is_active === false ? 
+              <VisibilityOffIcon sx={{ color: darkProTokens.warning }} /> : 
+              <VisibilityIcon sx={{ color: darkProTokens.info }} />
             }
-            handleMenuClose();
-          }}
-          sx={{ color: darkProTokens.error }}
-        >
-          <ListItemIcon>
-            <DeleteIcon sx={{ color: darkProTokens.error }} />
           </ListItemIcon>
-          <ListItemText>
-            {menuSupplier?.is_active === false ? 'Eliminar Permanente' : 'Eliminar'}
-          </ListItemText>
+          <ListItemText>Ver Productos</ListItemText>
         </MenuItem>
       </Menu>
 
-      {/* Dialog de formulario */}
+      {/* 📝 DIALOG DE FORMULARIO */}
       <SupplierFormDialog
-        open={formDialogOpen}
-        onClose={() => setFormDialogOpen(false)}
-        supplier={selectedSupplier}
-        onSave={() => {
-          setFormDialogOpen(false);
-          loadSuppliers();
-        }}
-      />
-
-      {/* ✅ DIALOG DE CONFIRMACIÓN CON DARK PRO SYSTEM */}
-      <Dialog 
-        open={deleteDialogOpen} 
-        onClose={() => setDeleteDialogOpen(false)}
-        PaperProps={{
-          sx: {
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.error}50`,
-            borderRadius: 4,
-            color: darkProTokens.textPrimary
-          }
-        }}
-      >
-        <DialogTitle sx={{ color: darkProTokens.error, fontWeight: 700 }}>
-          Confirmar Eliminación
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
-            ¿Estás seguro de que deseas eliminar el proveedor "{supplierToDelete?.company_name}"?
-          </Typography>
-          <Alert 
-            severity="warning" 
-            sx={{
-              backgroundColor: `${darkProTokens.warning}10`,
-              color: darkProTokens.textPrimary,
-              border: `1px solid ${darkProTokens.warning}30`,
-              '& .MuiAlert-icon': { color: darkProTokens.warning }
-            }}
-          >
-            {supplierToDelete?.is_active === false 
-              ? 'Esta acción eliminará permanentemente el proveedor de la base de datos.'
-              : 'Esta acción no se puede deshacer. El proveedor será eliminado o desactivado si tiene productos asociados.'
-            }
-          </Alert>
-        </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button 
-            onClick={() => setDeleteDialogOpen(false)}
-            sx={{ color: darkProTokens.textSecondary }}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleDeleteSupplier} 
-            variant="contained"
-            sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-              color: darkProTokens.textPrimary,
-              fontWeight: 700
-            }}
-          >
-            {supplierToDelete?.is_active === false ? 'Eliminar Permanente' : 'Eliminar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ✅ FAB CON DARK PRO SYSTEM */}
-      <Fab
-        aria-label="add"
-        sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-          color: darkProTokens.background,
-          '&:hover': {
-            background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-            transform: 'scale(1.1)'
-          }
-        }}
-        onClick={() => {
-          setSelectedSupplier(null);
-          setFormDialogOpen(true);
-        }}
-      >
-        <AddIcon />
-      </Fab>
-
-      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
-      <style jsx>{`
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: ${darkProTokens.surfaceLevel1};
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
-        }
-      `}</style>
+  open={supplierDialogOpen}
+  onClose={closeSupplierDialog}
+  supplier={selectedSupplier}
+  onSave={handleSupplierSave}
+/>
     </Box>
   );
 }

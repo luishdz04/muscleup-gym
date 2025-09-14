@@ -1,4 +1,3 @@
-// src/components/registro/steps/EmergencyContactStep.tsx
 'use client';
 
 import React from 'react';
@@ -25,14 +24,13 @@ export const EmergencyContactStep: React.FC<EmergencyContactStepProps> = ({
     <div className="animate-fadeIn">
       <h2 className="text-xl font-bold mb-4 text-yellow-400">Contacto de Emergencia</h2>
       
-      {/* SIN validaciones manuales - Zod se encarga */}
       <div className="mb-4">
         <label className="block mb-1">Nombre del contacto <span className="text-yellow-400">*</span></label>
         <input
           type="text"
           className={styles.input}
           placeholder="Nombre completo"
-          {...register('emergencyName')}
+          {...register('emergencyName', { required: 'Este campo es obligatorio' })}
         />
         {errors.emergencyName && <p className={styles.errorText}>{errors.emergencyName.message}</p>}
       </div>
@@ -43,6 +41,7 @@ export const EmergencyContactStep: React.FC<EmergencyContactStepProps> = ({
           <Controller
             control={control}
             name="emergencyPhone"
+            rules={{ required: 'Este campo es obligatorio' }}
             render={({ field: { value, onChange, name, ref } }) => (
               <PhoneInput
                 value={value}
@@ -71,7 +70,7 @@ export const EmergencyContactStep: React.FC<EmergencyContactStepProps> = ({
           className={styles.input}
           rows={3}
           placeholder="Describe cualquier condición médica, alergias o lesiones relevantes"
-          {...register('medicalCondition')}
+          {...register('medicalCondition', { required: 'Este campo es obligatorio' })}
         ></textarea>
         {errors.medicalCondition && <p className={styles.errorText}>{errors.medicalCondition.message}</p>}
       </div>
@@ -80,7 +79,7 @@ export const EmergencyContactStep: React.FC<EmergencyContactStepProps> = ({
         <label className="block mb-1">Tipo de sangre <span className="text-yellow-400">*</span></label>
         <select
           className={styles.input}
-          {...register('bloodType')}
+          {...register('bloodType', { required: 'Este campo es obligatorio' })}
         >
           <option value="">Selecciona</option>
           <option value="A+">A+</option>
