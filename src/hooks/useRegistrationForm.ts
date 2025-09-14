@@ -8,10 +8,10 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { toMexicoDate, toMexicoTimestamp } from '@/utils/dateHelpers';
 
-// ✅ IMPORTAR SOLO EL ESQUEMA BÁSICO
+// ✅ CORRECCIÓN 1: IMPORTAR EL TIPO CORRECTO
 import {
   fullRegistrationSchema,
-  type FullRegistrationData
+  type RegistrationFormData  // ✅ ESTE ES EL TIPO CORRECTO QUE EXPORTAS
 } from '@/schemas/registrationSchema';
 
 // ✅ CONFIGURAR DAYJS
@@ -22,8 +22,8 @@ const MEXICO_TZ = 'America/Mexico_City';
 const STORAGE_KEY = 'registration-form';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-// Usar el tipo básico de Zod
-type FormData = FullRegistrationData;
+// ✅ USAR EL TIPO CORRECTO
+type FormData = RegistrationFormData;
 
 interface SignatureCanvasRef {
   clear: () => void;
@@ -32,7 +32,7 @@ interface SignatureCanvasRef {
   getTrimmedCanvas?: () => HTMLCanvasElement;
 }
 
-// Campos por paso (tu lógica original)
+// Campos por paso (sin cambios)
 const fieldsPerStep: { [key: number]: (keyof FormData)[] } = {
   1: [
     'profilePhoto', 'firstName', 'lastName', 'email', 'password', 
@@ -80,7 +80,7 @@ const validateAge = (birthDateString: string): boolean | string => {
 };
 
 export const useRegistrationForm = () => {
-  // Estados principales (sin cambios)
+  // Estados principales
   const [step, setStep] = useState(1);
   const [formProgress, setFormProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,17 +89,15 @@ export const useRegistrationForm = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // Estados para archivos (sin cambios)
+  // ✅ ESTADOS PARA PREVIEW - mantener para UI pero simplificar lógica
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [tutorINEUrl, setTutorINEUrl] = useState<string | null>(null);
-  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
-  const [tutorINEFile, setTutorINEFile] = useState<File | null>(null);
   
   // Ref para firma
   const sigCanvas = useRef<SignatureCanvasRef | null>(null);
 
-  // ✅ CONFIGURACIÓN BÁSICA SIN VALIDACIONES EXTRAS
-  const formMethods = useForm<FullRegistrationData>({
+  // ✅ CONFIGURACIÓN DEL FORMULARIO CON EL TIPO CORRECTO
+  const formMethods = useForm<RegistrationFormData>({
     resolver: zodResolver(fullRegistrationSchema),
     mode: 'onChange',
     defaultValues: {
@@ -122,10 +120,7 @@ export const useRegistrationForm = () => {
 
   const formValues = watch();
 
-  // Resto de tus funciones SIN CAMBIOS...
-  // (toda la lógica de archivos, navegación, submit, etc.)
-
-  // Funciones para convertir a base64
+  // Funciones para convertir a base64 (sin cambios)
   const toBase64 = useCallback(async (file: File): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
       if (!isValidFile(file)) {
@@ -161,19 +156,18 @@ export const useRegistrationForm = () => {
     }
   }, [toBase64]);
 
-  // [RESTO DE TU LÓGICA ORIGINAL SIN CAMBIOS...]
-  // Copio aquí el resto de tus funciones exactamente como las tienes...
-  
+  // ✅ FUNCIONES SIMPLIFICADAS PARA MANEJO DE ARCHIVOS
   const handleProfilePhotoCapture = useCallback(async (file: File) => {
     try {
       if (!file || !isValidFile(file)) {
         throw new Error("No se ha proporcionado un archivo válido");
       }
       
-      setProfilePhotoFile(file);
+      // Crear preview para UI
       const safePreview = await createSafePreview(file);
       setPreviewUrl(safePreview);
       
+      // ✅ ACTUALIZAR REACT-HOOK-FORM DIRECTAMENTE
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
       const fileList = dataTransfer.files;
@@ -191,10 +185,11 @@ export const useRegistrationForm = () => {
         throw new Error("No se ha proporcionado un archivo válido");
       }
       
-      setTutorINEFile(file);
+      // Crear preview para UI
       const safePreview = await createSafePreview(file);
       setTutorINEUrl(safePreview);
       
+      // ✅ ACTUALIZAR REACT-HOOK-FORM DIRECTAMENTE
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
       const fileList = dataTransfer.files;
@@ -207,7 +202,6 @@ export const useRegistrationForm = () => {
   }, [setValue, createSafePreview]);
 
   const clearPhoto = useCallback(() => {
-    setProfilePhotoFile(null);
     setPreviewUrl(null);
     setValue('profilePhoto', undefined as any, {shouldDirty: true, shouldValidate: true});
     
@@ -216,7 +210,6 @@ export const useRegistrationForm = () => {
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         delete parsedData.profilePhotoPreview;
-        delete parsedData.hasProfilePhotoFile;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedData));
       }
     } catch (e) {
@@ -225,7 +218,6 @@ export const useRegistrationForm = () => {
   }, [setValue]);
 
   const clearTutorINE = useCallback(() => {
-    setTutorINEFile(null);
     setTutorINEUrl(null);
     setValue('tutorINE', undefined as any, {shouldDirty: true, shouldValidate: true});
     
@@ -234,7 +226,6 @@ export const useRegistrationForm = () => {
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         delete parsedData.tutorINEPreview;
-        delete parsedData.hasTutorINEFile;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedData));
       }
     } catch (e) {
@@ -252,7 +243,7 @@ export const useRegistrationForm = () => {
     }
   }, []);
 
-  // Navegación entre pasos
+  // Navegación entre pasos (sin cambios)
   const getFieldsForStep = useCallback((currentStep: number): (keyof FormData)[] => {
     const fields = fieldsPerStep[currentStep] || [];
     return fields as (keyof FormData)[];
@@ -294,15 +285,14 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // Función de envío [TU LÓGICA ORIGINAL]
+  // ✅ CORRECCIÓN 2: FUNCIÓN DE ENVÍO UNIFICADA
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
       setIsSubmitting(true);
       
-      console.log("🚀 [SUBMIT] Iniciando proceso con Zod básico");
+      console.log("🚀 [SUBMIT] Iniciando proceso con Zod 4.1.8 corregido");
       
-      // [RESTO DE TU LÓGICA DE SUBMIT ORIGINAL...]
-      // Verificar firma
+      // Verificar firma (sin cambios)
       let signatureDataUrl = '';
       if (sigCanvas.current) {
         try {
@@ -334,30 +324,44 @@ export const useRegistrationForm = () => {
         return;
       }
 
-      // Procesar imágenes
+      // ✅ PROCESAMIENTO DE IMÁGENES CORREGIDO - USANDO DATA VALIDADO POR ZOD
       let profilePhotoBase64 = '';
       let tutorINEBase64 = '';
       
       try {
-        if (profilePhotoFile && isValidFile(profilePhotoFile)) {
-          profilePhotoBase64 = await toBase64(profilePhotoFile);
-          
-          if (isBlobUrl(profilePhotoBase64)) {
-            throw new Error("Error crítico: foto de perfil generó blob URL");
-          }
-        } else {
-          throw new Error("No hay foto de perfil válida");
-        }
-        
-        if (showTutorField) {
-          if (tutorINEFile && isValidFile(tutorINEFile)) {
-            tutorINEBase64 = await toBase64(tutorINEFile);
+        // ✅ Confiar en el 'data' validado por Zod - ESTA ES LA CLAVE
+        const profilePhotoList = data.profilePhoto;
+        if (profilePhotoList && profilePhotoList.length > 0) {
+          const file = profilePhotoList[0]; // Extraer el primer archivo del FileList
+          if (isValidFile(file)) {
+            profilePhotoBase64 = await toBase64(file);
             
-            if (isBlobUrl(tutorINEBase64)) {
-              throw new Error("Error crítico: INE del tutor generó blob URL");
+            if (isBlobUrl(profilePhotoBase64)) {
+              throw new Error("Error crítico: foto de perfil generó blob URL");
             }
           } else {
-            throw new Error("No hay foto de INE válida para menor de edad");
+            throw new Error("Foto de perfil no válida");
+          }
+        } else {
+          throw new Error("No hay foto de perfil");
+        }
+        
+        // ✅ Para el INE del tutor - Zod ya validó que es requerido si es menor
+        if (showTutorField) {
+          const tutorINEList = data.tutorINE;
+          if (tutorINEList && tutorINEList.length > 0) {
+            const file = tutorINEList[0]; // Extraer el primer archivo del FileList
+            if (isValidFile(file)) {
+              tutorINEBase64 = await toBase64(file);
+              
+              if (isBlobUrl(tutorINEBase64)) {
+                throw new Error("Error crítico: INE del tutor generó blob URL");
+              }
+            } else {
+              throw new Error("INE del tutor no válido");
+            }
+          } else {
+            throw new Error("No hay foto de INE para menor de edad");
           }
         }
         
@@ -368,7 +372,7 @@ export const useRegistrationForm = () => {
         return;
       }
 
-      // Validación final
+      // Validación final (sin cambios)
       const urlsToCheck = [profilePhotoBase64, tutorINEBase64, signatureDataUrl].filter(Boolean);
       const hasBlobUrls = urlsToCheck.some(url => isBlobUrl(url));
       
@@ -379,7 +383,7 @@ export const useRegistrationForm = () => {
         return;
       }
 
-      // Construir payload
+      // Construir payload (sin cambios)
       const currentMexicoTime = new Date();
       const birthDateObj = new Date(data.birthDate);
       
@@ -422,15 +426,15 @@ export const useRegistrationForm = () => {
         tutorINE: tutorINEBase64,
         isMinor: showTutorField,
         metadata: {
-          version: '4.0-zod-stable',
+          version: '4.0-zod-corrected-final',
           processedAt: toMexicoTimestamp(currentMexicoTime),
-          processedBy: 'luishdz044',
+          processedBy: 'MuscleUpGYM',
           mexicoTimezone: MEXICO_TZ,
           currentMexicoDate: getCurrentMexicoDate()
         }
       };
 
-      // Llamada al API
+      // Llamada al API (sin cambios)
       try {
         const res = await fetch('/api/register', {
           method: 'POST',
@@ -469,7 +473,7 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // Efectos [TU LÓGICA ORIGINAL]
+  // Efectos (ajustar para FileList)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -488,7 +492,7 @@ export const useRegistrationForm = () => {
         
         if (parsedData.firstName || parsedData.email) {
           if (confirm("Encontramos un registro previo. ¿Deseas continuar donde lo dejaste?")) {
-            const { profilePhotoPreview, tutorINEPreview, hasProfilePhotoFile, hasTutorINEFile, ...formData } = parsedData;
+            const { profilePhotoPreview, tutorINEPreview, ...formData } = parsedData;
             reset(formData);
             
             const lastStep = getLastCompletedStep(formData);
@@ -525,12 +529,10 @@ export const useRegistrationForm = () => {
       
       if (previewUrl && !isBlobUrl(previewUrl)) {
         dataToSave.profilePhotoPreview = previewUrl;
-        dataToSave.hasProfilePhotoFile = !!profilePhotoFile;
       }
       
       if (tutorINEUrl && !isBlobUrl(tutorINEUrl)) {
         dataToSave.tutorINEPreview = tutorINEUrl;
-        dataToSave.hasTutorINEFile = !!tutorINEFile;
       }
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -571,9 +573,9 @@ export const useRegistrationForm = () => {
     } catch (error) {
       console.error("Error al guardar o calcular progreso:", error);
     }
-  }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl, profilePhotoFile, tutorINEFile]);
+  }, [formValues, isDirty, step, completedSteps, previewUrl, tutorINEUrl]);
 
-  // ✅ SOLO NECESITAS ESTE useEffect PARA MOSTRAR/OCULTAR EL CAMPO EN LA UI
+  // Mostrar campo de tutor
   useEffect(() => {
     const birthDate = formValues.birthDate;
     if (birthDate) {
@@ -624,7 +626,7 @@ export const useRegistrationForm = () => {
   return {
     // Estados
     step, formProgress, isSubmitting, showTutorField, completedSteps, showSuccessModal, userId,
-    previewUrl, tutorINEUrl, profilePhotoFile, tutorINEFile,
+    previewUrl, tutorINEUrl,
     
     // Refs
     sigCanvas,
