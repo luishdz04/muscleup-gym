@@ -210,8 +210,16 @@ const StyledInputBase = styled('input')(({ theme }) => ({
   }
 }));
 
-interface AdminLayoutProps {
+interface AdminLayoutClientProps {
   children: ReactNode;
+  user: {
+    id: string;
+    email?: string;
+    rol: string;
+    firstName?: string;
+    lastName?: string;
+    profilePictureUrl?: string;
+  };
 }
 
 // 🏗️ ESTRUCTURA DE MENÚ MEJORADA
@@ -228,24 +236,23 @@ interface MenuItem {
   description?: string;
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function AdminLayoutClient({ children, user }: AdminLayoutClientProps) {
   const pathname = usePathname();
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   
-  // 🔧 ESTADOS MEJORADOS - CORREGIDO PARA INCLUIR 'membresias'
+  // 🔧 ESTADOS MEJORADOS
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
-  const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>('');
   const [subMenuOpen, setSubMenuOpen] = useState<{[key: string]: boolean}>({
     membresias: false,
-    pos: false,        // ← AGREGADO
+    pos: false,
     pagos: false,
     catalogo: false,
-    egresos: false,    // ← AGREGADO
-    cortes: false,     // ← AGREGADO
+    egresos: false,
+    cortes: false,
     control_acceso: false,
     herramientas: false
   });
@@ -550,32 +557,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   ];
   
-  // ... RESTO DEL CÓDIGO PERMANECE IGUAL
-  // 📡 OBTENER DATOS DEL USUARIO MEJORADO
-  useEffect(() => {
-    async function getUserData() {
-      try {
-        setLoading(true);
-        const supabase = createBrowserSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          const response = await fetch(`/api/user-profile?userId=${session.user.id}`);
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-          }
-        }
-      } catch (error) {
-        console.error("Error al obtener datos del usuario:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    getUserData();
-  }, []);
-  
   // 🔄 ACTUALIZAR SECCIÓN ACTIVA
   useEffect(() => {
     if (pathname) {
@@ -593,7 +574,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         }
       });
     }
-  }, [pathname]);
+  }, [pathname, menuItems]);
   
   // 🚪 MANEJAR CIERRE DE SESIÓN
   const handleLogout = async () => {
@@ -601,7 +582,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       setLoading(true);
       const supabase = createBrowserSupabaseClient();
       await supabase.auth.signOut();
-      router.push('/login');
+      router.refresh(); // ⭐ IMPORTANTE: refresh para reevaluar server layout
+      router.push('/');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     } finally {
@@ -765,7 +747,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           position="fixed" 
           sx={{ 
             zIndex: theme.zIndex.drawer + 1,
-            // ✅ FONDO COMPLETAMENTE NEGRO
             background: '#000000',
             backdropFilter: 'none',
             boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
@@ -788,7 +769,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             />
           )}
           
-          {/* ✅ TOOLBAR MÁS ALTO - AUMENTADO DE 80px A 100px */}
           <Toolbar sx={{ minHeight: '100px !important', px: { xs: 2, sm: 3 } }}>
             <IconButton
               color="inherit"
@@ -806,12 +786,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <MenuIcon />
             </IconButton>
             
-            {/* ✅ ÁREA DEL LOGO MEJORADA - SIN TEXTO "MUSCLE UP" */}
+            {/* ÁREA DEL LOGO MEJORADA */}
             <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
               <Box 
                 component="img"
                 sx={{ 
-                  height: 65, // Aumentado para mejor visibilidad
+                  height: 65,
                   width: 'auto',
                   mr: 2,
                   filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
@@ -820,7 +800,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 alt="Muscle Up Gym"
               />
               
-              {/* ✅ SOLO "SISTEMA DE GESTIÓN INTEGRAL" CON ICONO SGI */}
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <IntegrationInstructionsIcon 
@@ -1081,7 +1060,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </Toolbar>
         </AppBar>
         
-        {/* 📂 MENÚ LATERAL MEJORADO - ACTUALIZAR ALTURA PARA COINCIDIR */}
+        {/* 📂 MENÚ LATERAL MEJORADO */}
         <Drawer
           sx={{
             width: drawerWidth,
@@ -1104,11 +1083,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
         >
-          {/* HEADER DEL DRAWER - ACTUALIZADO PARA COINCIDIR CON LA NUEVA ALTURA */}
+          {/* HEADER DEL DRAWER */}
           <DrawerHeader sx={{ 
             background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.9) 0%, rgba(25, 25, 25, 0.8) 100%)',
             borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
-            minHeight: '100px !important', // ✅ ACTUALIZADO DE 80px A 100px
+            minHeight: '100px !important',
             px: 2
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', pl: 1 }}>
@@ -1213,7 +1192,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             sx={{ 
               px: 1.5, 
               py: 2,
-              height: 'calc(100% - 240px)', // Ajustado por la nueva altura
+              height: 'calc(100% - 240px)',
               overflowY: 'auto',
               overflowX: 'hidden',
               '&::-webkit-scrollbar': {
@@ -1500,7 +1479,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </Main>
       </Box>
       
-      {/* 🚀 TOAST CONTAINER CON TEMA DARK PRO */}
+            {/* 🚀 TOAST CONTAINER CON TEMA DARK PRO */}
       <ToastContainer
         position="top-right"
         autoClose={4000}
@@ -1519,9 +1498,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           borderRadius: '12px',
           boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
         }}
-        progressStyle={{
-          background: 'linear-gradient(90deg, #FFCC00, #E6B800)'
-        }}
+        
       />
     </>
   );

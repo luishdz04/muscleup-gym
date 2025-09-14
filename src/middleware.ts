@@ -35,20 +35,18 @@ async function updateSession(request: NextRequest) {
   );
 
   await supabase.auth.getSession();
-  return response;
+  
+  // ⭐ NUEVAS CABECERAS ANTI-CACHE
+  response.headers.set('x-middleware-cache', 'no-cache');
+  response.headers.set('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+  
+  return { response, supabase };
 }
 
 export async function middleware(request: NextRequest) {
-  const response = await updateSession(request);
-  const supabase = createServerClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        get: (name: string) => request.cookies.get(name)?.value,
-      },
-    }
-  );
+  const { response, supabase } = await updateSession(request);
 
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -69,7 +67,6 @@ export async function middleware(request: NextRequest) {
   // 🚨 BLOQUEO CRÍTICO: Sin usuario en cualquier ruta protegida
   if (!user && (isProtectedRoute || isAdminRoute)) {
     console.log(`🚨 Middleware - ACCESO DENEGADO a ruta protegida (${pathname}) sin sesión.`);
-    // ✅ REDIRECCIÓN SEGURA: A página principal
     return NextResponse.redirect(new URL('/', request.url));
   }
 
@@ -77,17 +74,22 @@ export async function middleware(request: NextRequest) {
   if (user && isAdminRoute) {
     console.log('🔍 Middleware - Verificando acceso ADMIN...');
     
-    const { data: userData } = await supabase
-      .from('Users')
-      .select('rol')
-      .eq('id', user.id)
-      .single();
-    
-    const userRole = userData?.rol;
-    console.log('🔍 Middleware - Rol verificado:', userRole);
-    
-    if (userRole !== 'admin' && userRole !== 'empleado') {
-      console.log(`🚨 Middleware - ACCESO DENEGADO a ruta admin. Rol: ${userRole}`);
+    try {
+      const { data: userData } = await supabase
+        .from('Users')
+        .select('rol')
+        .eq('id', user.id)
+        .single();
+      
+      const userRole = userData?.rol;
+      console.log('🔍 Middleware - Rol verificado:', userRole);
+      
+      if (userRole !== 'admin' && userRole !== 'empleado') {
+        console.log(`🚨 Middleware - ACCESO DENEGADO a ruta admin. Rol: ${userRole}`);
+        return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
+      }
+    } catch (error) {
+      console.error('❌ Middleware - Error al verificar rol:', error);
       return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
     }
   }
@@ -103,22 +105,27 @@ export async function middleware(request: NextRequest) {
   
   // ✅ REDIRECCIÓN INTELIGENTE DESDE /dashboard
   if (user && pathname === '/dashboard') {
-    const { data: userData } = await supabase
-      .from('Users')
-      .select('rol')
-      .eq('id', user.id)
-      .single();
-    
-    const userRole = userData?.rol || 'cliente';
-    console.log('🎯 Middleware - Redirigiendo según rol:', userRole);
-    
-    switch (userRole) {
-      case 'admin':
-      case 'empleado':
-        return NextResponse.redirect(new URL('/dashboard/admin/usuarios', request.url));
-      case 'cliente':
-      default:
-        return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
+    try {
+      const { data: userData } = await supabase
+        .from('Users')
+        .select('rol')
+        .eq('id', user.id)
+        .single();
+      
+      const userRole = userData?.rol || 'cliente';
+      console.log('🎯 Middleware - Redirigiendo según rol:', userRole);
+      
+      switch (userRole) {
+        case 'admin':
+        case 'empleado':
+          return NextResponse.redirect(new URL('/dashboard/admin/usuarios', request.url));
+        case 'cliente':
+        default:
+          return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
+      }
+    } catch (error) {
+      console.error('❌ Middleware - Error al obtener rol para redirección:', error);
+      return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
     }
   }
 
@@ -127,8 +134,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // ✅ MATCHER SIMPLIFICADO Y SEGURO
-  // Lista explícitamente las rutas a proteger
   matcher: [
     '/',
     '/login',
