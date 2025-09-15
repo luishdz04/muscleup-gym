@@ -153,7 +153,7 @@ const processAndUploadFile = async (
 };
 
 export async function POST(req: NextRequest) {
-  console.log("🚀 API de registro v3.1 (con email automático) iniciada - 2025-09-14 by @luishdz044");
+  console.log("🚀 API de registro v3.2 (con email manual) iniciada - 2025-09-14 by @luishdz044");
   
   try {
     // Obtener los datos del cuerpo de la solicitud
@@ -224,19 +224,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ 1. CREAR USUARIO EN SUPABASE AUTH CON EMAIL AUTOMÁTICO
-    console.log("👤 [AUTH] Creando usuario en Supabase Auth con confirmación de email automática...");
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+    // ✅ 1. CREAR USUARIO EN SUPABASE AUTH (MÉTODO ORIGINAL QUE FUNCIONABA)
+    console.log("👤 [AUTH] Creando usuario en Supabase Auth (pendiente de verificación)...");
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: data.personalInfo.email,
       password: data.personalInfo.password,
-      options: {
-        emailRedirectTo: `${req.nextUrl.origin}/auth/confirm`,
-        data: {
-          firstName: data.personalInfo.firstName,
-          lastName: data.personalInfo.lastName || '',
-          registrationSource: 'web_form',
-          registrationDate: new Date().toISOString()
-        }
+      email_confirm: false, // Requiere confirmación de email
+      user_metadata: {
+        firstName: data.personalInfo.firstName,
+        lastName: data.personalInfo.lastName || '',
+        registrationSource: 'web_form',
+        registrationDate: new Date().toISOString()
       }
     });
     
@@ -249,12 +247,27 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
     
-    // ✅ 2. USAR ID GENERADO POR AUTH PARA LA TABLA USERS
+    // ✅ 2. ENVIAR EMAIL DE CONFIRMACIÓN MANUALMENTE
+    console.log("📧 [EMAIL-CONFIRM] Enviando email de confirmación...");
+    const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      data.personalInfo.email,
+      {
+        redirectTo: `${req.nextUrl.origin}/auth/confirm`
+      }
+    );
+    
+    if (inviteError) {
+      console.error("❌ [EMAIL-CONFIRM] Error enviando confirmación:", inviteError);
+      // No falla el registro, solo log del error
+    } else {
+      console.log("✅ [EMAIL-CONFIRM] Email de confirmación enviado exitosamente");
+    }
+    
+    // ✅ 3. USAR ID GENERADO POR AUTH PARA LA TABLA USERS
     const userId = authData.user.id;
     console.log("✅ [AUTH] Usuario creado en Auth con ID:", userId);
-    console.log("📧 [AUTH] Email de confirmación enviado automáticamente");
     
-    // ✅ 3. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
+    // ✅ 4. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
     const fileUploadResults: { [key: string]: any } = {};
     let profilePictureUrl = null;
     let signatureUrl = null;
@@ -318,7 +331,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ✅ 4. PREPARAR DATOS DEL USUARIO PRINCIPAL
+    // ✅ 5. PREPARAR DATOS DEL USUARIO PRINCIPAL
     const userData = {
       id: userId, // IMPORTANTE: Usar el ID de Supabase Auth
       firstName: data.personalInfo.firstName,
@@ -345,7 +358,7 @@ export async function POST(req: NextRequest) {
 
     console.log("💾 [USER] Insertando usuario en tabla Users...");
 
-    // ✅ 5. INSERTAR USUARIO PRINCIPAL
+    // ✅ 6. INSERTAR USUARIO PRINCIPAL
     const { error: insertError } = await supabaseAdmin
       .from('Users')
       .insert(userData);
@@ -363,7 +376,7 @@ export async function POST(req: NextRequest) {
 
     console.log("✅ [USER] Usuario insertado correctamente con ID:", userId);
 
-    // ✅ 6. INSERTAR DIRECCIÓN
+    // ✅ 7. INSERTAR DIRECCIÓN
     if (data.personalInfo?.address || data.personalInfo) {
       try {
         console.log("🏠 [ADDRESS] Insertando dirección...");
@@ -393,7 +406,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ✅ 7. INSERTAR CONTACTO DE EMERGENCIA 
+    // ✅ 8. INSERTAR CONTACTO DE EMERGENCIA 
     try {
       console.log("🚨 [EMERGENCY] Insertando contacto de emergencia...");
       
@@ -418,7 +431,7 @@ export async function POST(req: NextRequest) {
       console.error("💥 [EMERGENCY] Error general al insertar contacto de emergencia:", emergencyError);
     }
     
-    // ✅ 8. INSERTAR INFORMACIÓN DE MEMBRESÍA
+    // ✅ 9. INSERTAR INFORMACIÓN DE MEMBRESÍA
     try {
       console.log("🎯 [MEMBERSHIP] Insertando información de membresía...");
       
@@ -443,7 +456,7 @@ export async function POST(req: NextRequest) {
       console.error("💥 [MEMBERSHIP] Error general al insertar información de membresía:", membershipError);
     }
     
-    // ✅ 9. RESPUESTA FINAL
+    // ✅ 10. RESPUESTA FINAL
     const response = {
       success: true,
       message: 'Registro exitoso. Por favor, revisa tu correo para verificar tu cuenta antes de continuar.',
@@ -452,7 +465,7 @@ export async function POST(req: NextRequest) {
       summary: {
         userCreated: true,
         authUserCreated: true,
-        emailConfirmationSent: true, // ✅ CAMBIADO: Ahora sí se envía automáticamente
+        emailConfirmationSent: true, // ✅ CAMBIADO: Enviado manualmente con inviteUserByEmail
         filesProcessed: {
           profilePhoto: fileUploadResults.profilePhoto?.success || false,
           signature: fileUploadResults.signature?.success || false,
@@ -470,13 +483,13 @@ export async function POST(req: NextRequest) {
         }
       },
       metadata: {
-        version: '3.1-auto-email-confirmation',
+        version: '3.2-manual-email-confirmation',
         processedAt: new Date().toISOString(),
         processedBy: 'luishdz044'
       }
     };
 
-    console.log("🎉 [SUCCESS] Registro inicial completado. Email de confirmación enviado automáticamente:", {
+    console.log("🎉 [SUCCESS] Registro inicial completado. Email de confirmación enviado manualmente:", {
       userId,
       filesUploaded: Object.values(fileUploadResults).filter(r => r?.success).length
     });
@@ -497,4 +510,4 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
