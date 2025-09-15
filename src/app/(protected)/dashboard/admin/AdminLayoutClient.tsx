@@ -210,19 +210,7 @@ const StyledInputBase = styled('input')(({ theme }) => ({
   }
 }));
 
-interface AdminLayoutClientProps {
-  children: ReactNode;
-  user: {
-    id: string;
-    email?: string;
-    rol: string;
-    firstName?: string;
-    lastName?: string;
-    profilePictureUrl?: string;
-  };
-}
-
-// 🏗️ ESTRUCTURA DE MENÚ MEJORADA
+// 🏗️ ESTRUCTURA DE MENÚ MEJORADA - ✅ MOVIDA FUERA DEL COMPONENTE
 interface MenuItem {
   text: string;
   path?: string;
@@ -236,6 +224,316 @@ interface MenuItem {
   description?: string;
 }
 
+// ✅ DEFINICIÓN COMPLETA DEL MENÚ REESTRUCTURADO - FUERA DEL COMPONENTE
+const menuItems: MenuItem[] = [
+  { 
+    text: 'Dashboard', 
+    path: '/dashboard/admin/dashboard', 
+    icon: <DashboardIcon />,
+    section: 'dashboard',
+    description: 'Vista general del sistema'
+  },
+  
+  // 👥 GESTIÓN DE USUARIOS (Ya completado - MUP)
+  { 
+    text: 'Usuarios', 
+    path: '/dashboard/admin/usuarios', 
+    icon: <PeopleIcon />,
+    section: 'usuarios',
+    description: 'Gestión completa de clientes'
+  },
+  
+  // 💪 PLANES (CATÁLOGO DE MEMBRESÍAS) - SIN SUBMENU
+  { 
+    text: 'Planes', 
+    path: '/dashboard/admin/planes', 
+    icon: <FitnessCenterIcon />,
+    section: 'planes',
+    description: 'Catálogo de membresías disponibles'
+  },
+  
+  // 💰 MEMBRESÍAS & PAGOS (UNIFICADO) - REEMPLAZAR AMBAS SECCIONES
+  { 
+    text: 'Membresías & Pagos', 
+    icon: <PaymentIcon />,
+    submenu: true,
+    section: 'membresias',
+    description: 'Gestión completa de membresías y pagos',
+    badge: 15,
+    items: [
+      { 
+        text: 'Dashboard', 
+        path: '/dashboard/admin/membresias', 
+        icon: <DashboardIcon />,
+        parent: 'membresias',
+        section: 'membresias',
+        description: 'Vista general y estadísticas'
+      },
+      { 
+        text: 'Registrar Membresía', 
+        path: '/dashboard/admin/membresias/registrar', 
+        icon: <PersonAddAltIcon />,
+        parent: 'membresias',
+        section: 'registrar',
+        description: 'Proceso completo usuario + plan + pago'
+      },
+      { 
+        text: 'Historial de Pagos', 
+        path: '/dashboard/admin/membresias/historial', 
+        icon: <ReceiptLongIcon />,
+        parent: 'membresias',
+        section: 'historial',
+        description: 'Registro de transacciones'
+      },
+      { 
+        text: 'Cupones y Descuentos', 
+        path: '/dashboard/admin/membresias/cupones', 
+        icon: <LocalOfferIcon />,
+        parent: 'membresias',
+        section: 'cupones',
+        description: 'Gestión de promociones'
+      }
+    ]
+  },
+  
+  // 🛍️ POS MUP (PUNTO DE VENTA UNIFICADO) - CON SUBMENU
+  { 
+    text: 'POS MUP', 
+    icon: <StorefrontIcon />,
+    submenu: true,
+    section: 'pos',
+    description: 'Sistema de punto de venta completo',
+    badge: 8,
+    items: [
+      { 
+        text: 'Punto de Venta', 
+        path: '/dashboard/admin/pos', 
+        icon: <CashRegisterIcon />,
+        parent: 'pos',
+        section: 'venta',
+        description: 'Terminal de venta principal'
+      },
+      { 
+        text: 'Historial de Ventas', 
+        path: '/dashboard/admin/sales/history', 
+        icon: <HistoryIcon />,
+        parent: 'pos',
+        section: 'historial',
+        description: 'Registro completo de transacciones'
+      },
+      { 
+        text: 'Gestión de Apartados', 
+        path: '/dashboard/admin/layaways/management', 
+        icon: <ScheduleIcon />,
+        parent: 'pos',
+        section: 'apartados',
+        description: 'Administración de apartados'
+      }
+    ]
+  },
+  
+  // 📦 CATÁLOGO
+  { 
+    text: 'Catálogo', 
+    icon: <CategoryIcon />,
+    submenu: true,
+    section: 'catalogo',
+    description: 'Gestión de inventario y productos',
+    items: [
+      { 
+        text: 'Productos', 
+        path: '/dashboard/admin/catalogo/productos', 
+        icon: <InventoryIcon />,
+        parent: 'catalogo',
+        section: 'productos'
+      },
+      { 
+        text: 'Proveedores', 
+        path: '/dashboard/admin/catalogo/proveedores', 
+        icon: <LocalShippingIcon />,
+        parent: 'catalogo',
+        section: 'proveedores'
+      },
+      { 
+        text: 'Inventario', 
+        path: '/dashboard/admin/catalogo/inventario', 
+        icon: <StorageIcon />,
+        parent: 'catalogo',
+        section: 'inventario'
+      },
+      { 
+        text: 'Códigos QR', 
+        path: '/dashboard/admin/catalogo/qr', 
+        icon: <QrCodeIcon />,
+        parent: 'catalogo',
+        section: 'codigos-qr'
+      }
+    ]
+  },
+  
+  // 💳 EGRESOS - CONVERTIR A SUBMENU
+  { 
+    text: 'Egresos', 
+    icon: <ReceiptIcon />,
+    submenu: true,
+    section: 'egresos',
+    description: 'Control de gastos y egresos',
+    items: [
+      { 
+        text: 'Dashboard Egresos', 
+        path: '/dashboard/admin/egresos', 
+        icon: <MoneyOffIcon />,
+        parent: 'egresos',
+        section: 'dashboard',
+        description: 'Vista general de egresos'
+      },
+      { 
+        text: 'Nuevo Egreso', 
+        path: '/dashboard/admin/egresos/nuevo', 
+        icon: <ReceiptIcon />,
+        parent: 'egresos',
+        section: 'nuevo',
+        description: 'Registrar nuevo gasto'
+      },
+      { 
+        text: 'Historial de Egresos', 
+        path: '/dashboard/admin/egresos/historial', 
+        icon: <HistoryIcon />,
+        parent: 'egresos',
+        section: 'historial',
+        description: 'Registro completo de gastos'
+      }
+    ]
+  },
+  
+  // 📊 CORTES Y ANÁLISIS - CON SUBMENU
+  { 
+    text: 'Cortes', 
+    icon: <BarChartIcon />,
+    submenu: true,
+    section: 'cortes',
+    description: 'Cierre diario y mensual',
+    items: [
+      { 
+        text: 'Dashboard Cortes', 
+        path: '/dashboard/admin/cortes', 
+        icon: <AssessmentIcon />,
+        parent: 'cortes',
+        section: 'dashboard',
+        description: 'Vista general de cortes'
+      },
+      { 
+        text: 'Nuevo Corte', 
+        path: '/dashboard/admin/cortes/nuevo', 
+        icon: <ReceiptIcon />,
+        parent: 'cortes',
+        section: 'nuevo',
+        description: 'Crear nuevo corte'
+      },
+      { 
+        text: 'Historial de Cortes', 
+        path: '/dashboard/admin/cortes/historial', 
+        icon: <HistoryIcon />,
+        parent: 'cortes',
+        section: 'historial',
+        description: 'Registro completo de cortes'
+      }
+    ]
+  },
+  
+  // 🔐 CONTROL DE ACCESO
+  { 
+    text: 'Control de Acceso', 
+    icon: <SecurityIcon />,
+    submenu: true,
+    section: 'control_acceso',
+    description: 'Seguridad y control de accesos',
+    items: [
+      { 
+        text: 'Configuración', 
+        path: '/dashboard/admin/acceso/configuracion', 
+        icon: <SettingsIcon />,
+        parent: 'control_acceso',
+        section: 'config-acceso'
+      },
+      { 
+        text: 'Accesos en Tiempo Real', 
+        path: '/dashboard/admin/acceso/accesos', 
+        icon: <DoorFrontIcon />,
+        parent: 'control_acceso',
+        section: 'accesos-tiempo-real'
+      },
+      { 
+        text: 'Reportes de Acceso', 
+        path: '/dashboard/admin/acceso/reportes', 
+        icon: <FingerprintIcon />,
+        parent: 'control_acceso',
+        section: 'reportes-acceso'
+      }
+    ]
+  },
+  
+  // 📈 REPORTES
+  { 
+    text: 'Reportes', 
+    path: '/dashboard/admin/reportes', 
+    icon: <AssessmentIcon />,
+    section: 'reportes',
+    description: 'Analytics y reportes del negocio'
+  },
+  
+  // ⚙️ HERRAMIENTAS
+  { 
+    text: 'Herramientas', 
+    icon: <BuildIcon />,
+    submenu: true,
+    section: 'herramientas',
+    description: 'Configuración y mantenimiento',
+    items: [
+      { 
+        text: 'Configuración General', 
+        path: '/dashboard/admin/herramientas/configuracion', 
+        icon: <SettingsIcon />,
+        parent: 'herramientas',
+        section: 'configuracion-sistema'
+      },
+      { 
+        text: 'Historial del Sistema', 
+        path: '/dashboard/admin/herramientas/historial', 
+        icon: <HistoryIcon />,
+        parent: 'herramientas',
+        section: 'historial-sistema'
+      },
+      { 
+        text: 'Respaldo de Datos', 
+        path: '/dashboard/admin/herramientas/respaldo', 
+        icon: <BackupIcon />,
+        parent: 'herramientas',
+        section: 'respaldo-datos'
+      },
+      { 
+        text: 'Actualizaciones', 
+        path: '/dashboard/admin/herramientas/actualizaciones', 
+        icon: <SystemUpdateIcon />,
+        parent: 'herramientas',
+        section: 'actualizaciones'
+      }
+    ]
+  }
+];
+
+interface AdminLayoutClientProps {
+  children: ReactNode;
+  user: {
+    id: string;
+    email?: string;
+    rol: string;
+    firstName?: string;
+    lastName?: string;
+    profilePictureUrl?: string;
+  };
+}
+
 export default function AdminLayoutClient({ children, user }: AdminLayoutClientProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -246,335 +544,63 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [activeSection, setActiveSection] = useState<string>('');
-  const [subMenuOpen, setSubMenuOpen] = useState<{[key: string]: boolean}>({
-    membresias: false,
-    pos: false,
-    pagos: false,
-    catalogo: false,
-    egresos: false,
-    cortes: false,
-    control_acceso: false,
-    herramientas: false
-  });
+  
+  // ✅ ESTADO SIMPLIFICADO PARA SUBMENÚS (solo uno abierto a la vez)
+  const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   
-  // 📋 DEFINICIÓN COMPLETA DEL MENÚ REESTRUCTURADO
-  const menuItems: MenuItem[] = [
-    { 
-      text: 'Dashboard', 
-      path: '/dashboard/admin/dashboard', 
-      icon: <DashboardIcon />,
-      section: 'dashboard',
-      description: 'Vista general del sistema'
-    },
-    
-    // 👥 GESTIÓN DE USUARIOS (Ya completado - MUP)
-    { 
-      text: 'Usuarios', 
-      path: '/dashboard/admin/usuarios', 
-      icon: <PeopleIcon />,
-      section: 'usuarios',
-      description: 'Gestión completa de clientes'
-    },
-    
-    // 💪 PLANES (CATÁLOGO DE MEMBRESÍAS) - SIN SUBMENU
-    { 
-      text: 'Planes', 
-      path: '/dashboard/admin/planes', 
-      icon: <FitnessCenterIcon />,
-      section: 'planes',
-      description: 'Catálogo de membresías disponibles'
-    },
-    
-    // 💰 MEMBRESÍAS & PAGOS (UNIFICADO) - REEMPLAZAR AMBAS SECCIONES
-    { 
-      text: 'Membresías & Pagos', 
-      icon: <PaymentIcon />,
-      submenu: true,
-      section: 'membresias',
-      description: 'Gestión completa de membresías y pagos',
-      badge: 15,
-      items: [
-        { 
-          text: 'Dashboard', 
-          path: '/dashboard/admin/membresias', 
-          icon: <DashboardIcon />,
-          parent: 'membresias',
-          section: 'membresias',
-          description: 'Vista general y estadísticas'
-        },
-        { 
-          text: 'Registrar Membresía', 
-          path: '/dashboard/admin/membresias/registrar', 
-          icon: <PersonAddAltIcon />,
-          parent: 'membresias',
-          section: 'registrar',
-          description: 'Proceso completo usuario + plan + pago'
-        },
-        { 
-          text: 'Historial de Pagos', 
-          path: '/dashboard/admin/membresias/historial', 
-          icon: <ReceiptLongIcon />,
-          parent: 'membresias',
-          section: 'historial',
-          description: 'Registro de transacciones'
-        },
-        { 
-          text: 'Cupones y Descuentos', 
-          path: '/dashboard/admin/membresias/cupones', 
-          icon: <LocalOfferIcon />,
-          parent: 'membresias',
-          section: 'cupones',
-          description: 'Gestión de promociones'
-        }
-      ]
-    },
-    
-    // 🛍️ POS MUP (PUNTO DE VENTA UNIFICADO) - CON SUBMENU
-    { 
-      text: 'POS MUP', 
-      icon: <StorefrontIcon />,
-      submenu: true,
-      section: 'pos',
-      description: 'Sistema de punto de venta completo',
-      badge: 8,
-      items: [
-        { 
-          text: 'Punto de Venta', 
-          path: '/dashboard/admin/pos', 
-          icon: <CashRegisterIcon />,
-          parent: 'pos',
-          section: 'venta',
-          description: 'Terminal de venta principal'
-        },
-        { 
-          text: 'Historial de Ventas', 
-          path: '/dashboard/admin/sales/history', 
-          icon: <HistoryIcon />,
-          parent: 'pos',
-          section: 'historial',
-          description: 'Registro completo de transacciones'
-        },
-        { 
-          text: 'Gestión de Apartados', 
-          path: '/dashboard/admin/layaways/management', 
-          icon: <ScheduleIcon />,
-          parent: 'pos',
-          section: 'apartados',
-          description: 'Administración de apartados'
-        }
-      ]
-    },
-    
-    // 📦 CATÁLOGO
-    { 
-      text: 'Catálogo', 
-      icon: <CategoryIcon />,
-      submenu: true,
-      section: 'catalogo',
-      description: 'Gestión de inventario y productos',
-      items: [
-        { 
-          text: 'Productos', 
-          path: '/dashboard/admin/catalogo/productos', 
-          icon: <InventoryIcon />,
-          parent: 'catalogo',
-          section: 'productos'
-        },
-        { 
-          text: 'Proveedores', 
-          path: '/dashboard/admin/catalogo/proveedores', 
-          icon: <LocalShippingIcon />,
-          parent: 'catalogo',
-          section: 'proveedores'
-        },
-        { 
-          text: 'Inventario', 
-          path: '/dashboard/admin/catalogo/inventario', 
-          icon: <StorageIcon />,
-          parent: 'catalogo',
-          section: 'inventario'
-        },
-        { 
-          text: 'Códigos QR', 
-          path: '/dashboard/admin/catalogo/qr', 
-          icon: <QrCodeIcon />,
-          parent: 'catalogo',
-          section: 'codigos-qr'
-        }
-      ]
-    },
-    
-    // 💳 EGRESOS - CONVERTIR A SUBMENU
-    { 
-      text: 'Egresos', 
-      icon: <ReceiptIcon />,
-      submenu: true,
-      section: 'egresos',
-      description: 'Control de gastos y egresos',
-      items: [
-        { 
-          text: 'Dashboard Egresos', 
-          path: '/dashboard/admin/egresos', 
-          icon: <MoneyOffIcon />,
-          parent: 'egresos',
-          section: 'dashboard',
-          description: 'Vista general de egresos'
-        },
-        { 
-          text: 'Nuevo Egreso', 
-          path: '/dashboard/admin/egresos/nuevo', 
-          icon: <ReceiptIcon />,
-          parent: 'egresos',
-          section: 'nuevo',
-          description: 'Registrar nuevo gasto'
-        },
-        { 
-          text: 'Historial de Egresos', 
-          path: '/dashboard/admin/egresos/historial', 
-          icon: <HistoryIcon />,
-          parent: 'egresos',
-          section: 'historial',
-          description: 'Registro completo de gastos'
-        }
-      ]
-    },
-    
-    // 📊 CORTES Y ANÁLISIS - CON SUBMENU
-    { 
-      text: 'Cortes', 
-      icon: <BarChartIcon />,
-      submenu: true,
-      section: 'cortes',
-      description: 'Cierre diario y mensual',
-      items: [
-        { 
-          text: 'Dashboard Cortes', 
-          path: '/dashboard/admin/cortes', 
-          icon: <AssessmentIcon />,
-          parent: 'cortes',
-          section: 'dashboard',
-          description: 'Vista general de cortes'
-        },
-        { 
-          text: 'Nuevo Corte', 
-          path: '/dashboard/admin/cortes/nuevo', 
-          icon: <ReceiptIcon />,
-          parent: 'cortes',
-          section: 'nuevo',
-          description: 'Crear nuevo corte'
-        },
-        { 
-          text: 'Historial de Cortes', 
-          path: '/dashboard/admin/cortes/historial', 
-          icon: <HistoryIcon />,
-          parent: 'cortes',
-          section: 'historial',
-          description: 'Registro completo de cortes'
-        }
-      ]
-    },
-    
-    // 🔐 CONTROL DE ACCESO
-    { 
-      text: 'Control de Acceso', 
-      icon: <SecurityIcon />,
-      submenu: true,
-      section: 'control_acceso',
-      description: 'Seguridad y control de accesos',
-      items: [
-        { 
-          text: 'Configuración', 
-          path: '/dashboard/admin/acceso/configuracion', 
-          icon: <SettingsIcon />,
-          parent: 'control_acceso',
-          section: 'config-acceso'
-        },
-        { 
-          text: 'Accesos en Tiempo Real', 
-          path: '/dashboard/admin/acceso/accesos', 
-          icon: <DoorFrontIcon />,
-          parent: 'control_acceso',
-          section: 'accesos-tiempo-real'
-        },
-        { 
-          text: 'Reportes de Acceso', 
-          path: '/dashboard/admin/acceso/reportes', 
-          icon: <FingerprintIcon />,
-          parent: 'control_acceso',
-          section: 'reportes-acceso'
-        }
-      ]
-    },
-    
-    // 📈 REPORTES
-    { 
-      text: 'Reportes', 
-      path: '/dashboard/admin/reportes', 
-      icon: <AssessmentIcon />,
-      section: 'reportes',
-      description: 'Analytics y reportes del negocio'
-    },
-    
-    // ⚙️ HERRAMIENTAS
-    { 
-      text: 'Herramientas', 
-      icon: <BuildIcon />,
-      submenu: true,
-      section: 'herramientas',
-      description: 'Configuración y mantenimiento',
-      items: [
-        { 
-          text: 'Configuración General', 
-          path: '/dashboard/admin/herramientas/configuracion', 
-          icon: <SettingsIcon />,
-          parent: 'herramientas',
-          section: 'configuracion-sistema'
-        },
-        { 
-          text: 'Historial del Sistema', 
-          path: '/dashboard/admin/herramientas/historial', 
-          icon: <HistoryIcon />,
-          parent: 'herramientas',
-          section: 'historial-sistema'
-        },
-        { 
-          text: 'Respaldo de Datos', 
-          path: '/dashboard/admin/herramientas/respaldo', 
-          icon: <BackupIcon />,
-          parent: 'herramientas',
-          section: 'respaldo-datos'
-        },
-        { 
-          text: 'Actualizaciones', 
-          path: '/dashboard/admin/herramientas/actualizaciones', 
-          icon: <SystemUpdateIcon />,
-          parent: 'herramientas',
-          section: 'actualizaciones'
-        }
-      ]
-    }
-  ];
-  
-  // 🔄 ACTUALIZAR SECCIÓN ACTIVA
+  // ✅ useEffect OPTIMIZADO - SIN menuItems como dependencia
   useEffect(() => {
     if (pathname) {
-      const pathParts = pathname.split('/');
-      const section = pathParts[pathParts.length - 1] || '';
-      setActiveSection(section);
+      let currentSection = '';
+      let parentSection: string | null = null;
+
+      // Buscar coincidencia más específica
+      const allItems = menuItems.flatMap(item => 
+        item.items ? [item, ...item.items] : [item]
+      );
       
-      // Abrir el submenú correspondiente si estamos en una sección de un submenú
-      menuItems.forEach(item => {
-        if (item.submenu && item.items) {
-          const childSections = item.items.map(child => child.section);
-          if (childSections.includes(section)) {
-            setSubMenuOpen(prev => ({ ...prev, [item.section]: true }));
+      const bestMatch = allItems
+        .filter(item => item.path && pathname.startsWith(item.path))
+        .sort((a, b) => b.path!.length - a.path!.length)[0];
+
+      if (bestMatch) {
+        currentSection = bestMatch.section;
+        parentSection = bestMatch.parent || null;
+      } else {
+        // Fallback: usar último segmento de la ruta
+        const pathParts = pathname.split('/');
+        currentSection = pathParts[pathParts.length - 1] || '';
+        
+        // Buscar si es un item de submenú
+        for (const item of menuItems) {
+          if (item.submenu && item.items) {
+            const childSections = item.items.map(child => child.section);
+            if (childSections.includes(currentSection)) {
+              parentSection = item.section;
+              break;
+            }
           }
         }
-      });
+      }
+
+      setActiveSection(currentSection);
+      setOpenSubMenu(parentSection);
     }
-  }, [pathname, menuItems]);
+  }, [pathname]); // ✅ SOLO pathname como dependencia
+
+  // ✅ useEffect para refrescar sesión en navegación
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+    
+    const refreshSession = async () => {
+      await supabase.auth.getSession();
+    };
+    
+    refreshSession();
+  }, [pathname]);
   
   // 🚪 MANEJAR CIERRE DE SESIÓN
   const handleLogout = async () => {
@@ -582,7 +608,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
       setLoading(true);
       const supabase = createBrowserSupabaseClient();
       await supabase.auth.signOut();
-      router.refresh(); // ⭐ IMPORTANTE: refresh para reevaluar server layout
+      router.refresh();
       router.push('/');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
@@ -591,12 +617,25 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
     }
   };
   
-  // 🧭 FUNCIÓN PARA NAVEGAR
+  // ✅ FUNCIÓN PARA NAVEGAR OPTIMIZADA
   const navigateTo = (path: string) => {
+    console.log('🧭 Navegando a:', path);
+    
+    // Limpiar estados problemáticos
+    setLoading(true);
+    
+    // Navegar con refresh forzado
     router.push(path);
+    router.refresh();
+    
     if (isMobile) {
       setDrawerOpen(false);
     }
+    
+    // Reset después de navegación
+    setTimeout(() => {
+      setLoading(false);
+    }, 500);
   };
   
   // 👤 HANDLERS PARA MENÚ DE USUARIO
@@ -608,12 +647,9 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
     setUserMenuAnchor(null);
   };
   
-  // 📂 TOGGLE PARA SUBMENÚS
+  // ✅ TOGGLE PARA SUBMENÚS SIMPLIFICADO
   const toggleSubMenu = (section: string) => {
-    setSubMenuOpen(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    setOpenSubMenu(prev => prev === section ? null : section);
   };
   
   // 🍞 GENERAR BREADCRUMBS MEJORADOS
@@ -1224,10 +1260,10 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                           borderRadius: '12px',
                           px: 2.5,
                           py: 1.5,
-                          background: subMenuOpen[item.section] 
+                          background: openSubMenu === item.section 
                             ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.15) 0%, rgba(255, 204, 0, 0.05) 100%)'
                             : 'transparent',
-                          border: subMenuOpen[item.section] 
+                          border: openSubMenu === item.section 
                             ? '1px solid rgba(255, 204, 0, 0.2)' 
                             : '1px solid transparent',
                           '&:hover': {
@@ -1241,7 +1277,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                             minWidth: 0,
                             mr: 2.5,
                             justifyContent: 'center',
-                            color: subMenuOpen[item.section] ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
+                            color: openSubMenu === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
                           }}
                         >
                           {item.icon}
@@ -1250,8 +1286,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                           primary={item.text}
                           secondary={item.description}
                           primaryTypographyProps={{ 
-                            fontWeight: subMenuOpen[item.section] ? 700 : 500,
-                            color: subMenuOpen[item.section] ? '#ffcc00' : 'inherit',
+                            fontWeight: openSubMenu === item.section ? 700 : 500,
+                            color: openSubMenu === item.section ? '#ffcc00' : 'inherit',
                             fontSize: '0.95rem'
                           }}
                           secondaryTypographyProps={{
@@ -1274,7 +1310,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                               }}
                             />
                           )}
-                          {subMenuOpen[item.section] ? (
+                          {openSubMenu === item.section ? (
                             <ExpandLess sx={{ color: '#ffcc00' }} />
                           ) : (
                             <ExpandMore sx={{ color: 'rgba(255,255,255,0.7)' }} />
@@ -1283,7 +1319,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                       </ListItemButton>
                     </ListItem>
                     
-                    <Collapse in={subMenuOpen[item.section]} timeout="auto" unmountOnExit>
+                    <Collapse in={openSubMenu === item.section} timeout="auto" unmountOnExit>
                       <List component="div" disablePadding sx={{ pl: 1, pr: 0.5 }}>
                         {item.items.map((subItem) => (
                           <ListItem 
@@ -1479,7 +1515,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         </Main>
       </Box>
       
-            {/* 🚀 TOAST CONTAINER CON TEMA DARK PRO */}
+      {/* 🚀 TOAST CONTAINER CON TEMA DARK PRO */}
       <ToastContainer
         position="top-right"
         autoClose={4000}
@@ -1498,7 +1534,6 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
           borderRadius: '12px',
           boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
         }}
-        
       />
     </>
   );
