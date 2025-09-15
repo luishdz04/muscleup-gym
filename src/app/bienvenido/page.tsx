@@ -70,8 +70,7 @@ function BienvenidoContent() {
           hasRefreshToken: !!refresh_token,
           type 
         });
-
-        if (type === 'signup' && access_token) {
+if ((type === 'signup' && access_token) || (searchParams.get('confirmed') === 'true')) {
           // El usuario confirmó su email, ahora procesamos el paquete
           const response = await fetch('/api/welcome-package', {
             method: 'POST',

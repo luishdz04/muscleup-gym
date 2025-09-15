@@ -153,7 +153,7 @@ const processAndUploadFile = async (
 };
 
 export async function POST(req: NextRequest) {
-  console.log("🚀 API de registro v3.0 (con verificación de email) iniciada - 2025-09-14 by @luishdz044");
+  console.log("🚀 API de registro v3.1 (con email automático) iniciada - 2025-09-14 by @luishdz044");
   
   try {
     // Obtener los datos del cuerpo de la solicitud
@@ -224,32 +224,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ 1. CREAR USUARIO EN SUPABASE AUTH (SIN CONFIRMAR EMAIL)
-    console.log("👤 [AUTH] Creando usuario en Supabase Auth (pendiente de verificación)...");
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    // ✅ 1. CREAR USUARIO EN SUPABASE AUTH CON EMAIL AUTOMÁTICO
+    console.log("👤 [AUTH] Creando usuario en Supabase Auth con confirmación de email automática...");
+    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
       email: data.personalInfo.email,
       password: data.personalInfo.password,
-      email_confirm: false, // ✅ CAMBIO CLAVE! Requiere confirmación de email
-      user_metadata: {
-        firstName: data.personalInfo.firstName,
-        lastName: data.personalInfo.lastName || '',
-        registrationSource: 'web_form',
-        registrationDate: new Date().toISOString()
+      options: {
+        emailRedirectTo: `${req.nextUrl.origin}/auth/confirm`,
+        data: {
+          firstName: data.personalInfo.firstName,
+          lastName: data.personalInfo.lastName || '',
+          registrationSource: 'web_form',
+          registrationDate: new Date().toISOString()
+        }
       }
     });
     
-    if (authError) {
+    if (authError || !authData.user) {
       console.error("❌ [AUTH] Error al crear usuario en Auth:", authError);
       return NextResponse.json({ 
         success: false, 
         message: "Error al registrar usuario en el sistema de autenticación", 
-        error: authError.message 
+        error: authError?.message || 'Usuario no creado'
       }, { status: 400 });
     }
     
     // ✅ 2. USAR ID GENERADO POR AUTH PARA LA TABLA USERS
     const userId = authData.user.id;
     console.log("✅ [AUTH] Usuario creado en Auth con ID:", userId);
+    console.log("📧 [AUTH] Email de confirmación enviado automáticamente");
     
     // ✅ 3. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
     const fileUploadResults: { [key: string]: any } = {};
@@ -440,7 +443,7 @@ export async function POST(req: NextRequest) {
       console.error("💥 [MEMBERSHIP] Error general al insertar información de membresía:", membershipError);
     }
     
-    // ✅ 9. RESPUESTA FINAL - SIN PROCESOS AUTOMÁTICOS
+    // ✅ 9. RESPUESTA FINAL
     const response = {
       success: true,
       message: 'Registro exitoso. Por favor, revisa tu correo para verificar tu cuenta antes de continuar.',
@@ -449,7 +452,7 @@ export async function POST(req: NextRequest) {
       summary: {
         userCreated: true,
         authUserCreated: true,
-        emailConfirmationPending: true,
+        emailConfirmationSent: true, // ✅ CAMBIADO: Ahora sí se envía automáticamente
         filesProcessed: {
           profilePhoto: fileUploadResults.profilePhoto?.success || false,
           signature: fileUploadResults.signature?.success || false,
@@ -467,13 +470,13 @@ export async function POST(req: NextRequest) {
         }
       },
       metadata: {
-        version: '3.0-email-verification',
+        version: '3.1-auto-email-confirmation',
         processedAt: new Date().toISOString(),
         processedBy: 'luishdz044'
       }
     };
 
-    console.log("🎉 [SUCCESS] Registro inicial completado. Esperando confirmación del usuario:", {
+    console.log("🎉 [SUCCESS] Registro inicial completado. Email de confirmación enviado automáticamente:", {
       userId,
       filesUploaded: Object.values(fileUploadResults).filter(r => r?.success).length
     });
