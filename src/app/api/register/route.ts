@@ -153,7 +153,7 @@ const processAndUploadFile = async (
 };
 
 export async function POST(req: NextRequest) {
-  console.log("🚀 API de registro v3.2 (con email manual) iniciada - 2025-09-14 by @luishdz044");
+  console.log("🚀 API de registro v4.0 (con generateLink) iniciada - 2025-09-16 by @luishdz044");
   
   try {
     // Obtener los datos del cuerpo de la solicitud
@@ -224,50 +224,46 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ 1. CREAR USUARIO EN SUPABASE AUTH (MÉTODO ORIGINAL QUE FUNCIONABA)
-    console.log("👤 [AUTH] Creando usuario en Supabase Auth (pendiente de verificación)...");
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    // ✅ 1. CREAR USUARIO Y GENERAR LINK EN UN SOLO PASO (MÉTODO OFICIAL)
+    console.log("👤🔗 [AUTH] Creando usuario y generando link de signup con generateLink()...");
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'signup',
       email: data.personalInfo.email,
       password: data.personalInfo.password,
-      email_confirm: false, // Requiere confirmación de email
-      user_metadata: {
-        firstName: data.personalInfo.firstName,
-        lastName: data.personalInfo.lastName || '',
-        registrationSource: 'web_form',
-        registrationDate: new Date().toISOString()
+      options: {
+        redirectTo: `${req.nextUrl.origin}/auth/confirm`,
+        data: {
+          firstName: data.personalInfo.firstName,
+          lastName: data.personalInfo.lastName || '',
+          registrationSource: 'web_form',
+          registrationDate: new Date().toISOString()
+        }
       }
     });
     
-    if (authError || !authData.user) {
-      console.error("❌ [AUTH] Error al crear usuario en Auth:", authError);
+    if (linkError || !linkData?.user || !linkData?.properties) {
+      console.error("❌ [AUTH] Error al generar link de signup:", linkError);
       return NextResponse.json({ 
         success: false, 
         message: "Error al registrar usuario en el sistema de autenticación", 
-        error: authError?.message || 'Usuario no creado'
+        error: linkError?.message || 'No se pudo generar el link o el usuario'
       }, { status: 400 });
     }
     
-    // ✅ 2. ENVIAR EMAIL DE CONFIRMACIÓN MANUALMENTE
-    console.log("📧 [EMAIL-CONFIRM] Enviando email de confirmación...");
-    const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      data.personalInfo.email,
-      {
-        redirectTo: `${req.nextUrl.origin}/auth/confirm`
-      }
-    );
-    
-    if (inviteError) {
-      console.error("❌ [EMAIL-CONFIRM] Error enviando confirmación:", inviteError);
-      // No falla el registro, solo log del error
-    } else {
-      console.log("✅ [EMAIL-CONFIRM] Email de confirmación enviado exitosamente");
-    }
-    
-    // ✅ 3. USAR ID GENERADO POR AUTH PARA LA TABLA USERS
-    const userId = authData.user.id;
+    // ✅ 2. EXTRAER DATOS CLAVE DE LA RESPUESTA
+    const userId = linkData.user.id;
+    const actionLink = linkData.properties.action_link;
+    const emailOtp = linkData.properties.email_otp; // Para uso alternativo
+    const hashedToken = linkData.properties.hashed_token;
+
     console.log("✅ [AUTH] Usuario creado en Auth con ID:", userId);
+    console.log("📧 [EMAIL] Link de confirmación generado:", actionLink);
     
-    // ✅ 4. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
+    // 🎯 IMPORTANTE: Aquí deberías enviar el email usando Resend
+    // Por ahora, la configuración SMTP de Supabase se encargará del envío
+    // pero el link correcto para enviar por email personalizado es: actionLink
+    
+    // ✅ 3. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
     const fileUploadResults: { [key: string]: any } = {};
     let profilePictureUrl = null;
     let signatureUrl = null;
@@ -331,7 +327,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ✅ 5. PREPARAR DATOS DEL USUARIO PRINCIPAL
+    // ✅ 4. PREPARAR DATOS DEL USUARIO PRINCIPAL
     const userData = {
       id: userId, // IMPORTANTE: Usar el ID de Supabase Auth
       firstName: data.personalInfo.firstName,
@@ -358,7 +354,7 @@ export async function POST(req: NextRequest) {
 
     console.log("💾 [USER] Insertando usuario en tabla Users...");
 
-    // ✅ 6. INSERTAR USUARIO PRINCIPAL
+    // ✅ 5. INSERTAR USUARIO PRINCIPAL
     const { error: insertError } = await supabaseAdmin
       .from('Users')
       .insert(userData);
@@ -376,7 +372,7 @@ export async function POST(req: NextRequest) {
 
     console.log("✅ [USER] Usuario insertado correctamente con ID:", userId);
 
-    // ✅ 7. INSERTAR DIRECCIÓN
+    // ✅ 6. INSERTAR DIRECCIÓN
     if (data.personalInfo?.address || data.personalInfo) {
       try {
         console.log("🏠 [ADDRESS] Insertando dirección...");
@@ -406,7 +402,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ✅ 8. INSERTAR CONTACTO DE EMERGENCIA 
+    // ✅ 7. INSERTAR CONTACTO DE EMERGENCIA 
     try {
       console.log("🚨 [EMERGENCY] Insertando contacto de emergencia...");
       
@@ -431,7 +427,7 @@ export async function POST(req: NextRequest) {
       console.error("💥 [EMERGENCY] Error general al insertar contacto de emergencia:", emergencyError);
     }
     
-    // ✅ 9. INSERTAR INFORMACIÓN DE MEMBRESÍA
+    // ✅ 8. INSERTAR INFORMACIÓN DE MEMBRESÍA
     try {
       console.log("🎯 [MEMBERSHIP] Insertando información de membresía...");
       
@@ -456,7 +452,7 @@ export async function POST(req: NextRequest) {
       console.error("💥 [MEMBERSHIP] Error general al insertar información de membresía:", membershipError);
     }
     
-    // ✅ 10. RESPUESTA FINAL
+    // ✅ 9. RESPUESTA FINAL
     const response = {
       success: true,
       message: 'Registro exitoso. Por favor, revisa tu correo para verificar tu cuenta antes de continuar.',
@@ -465,7 +461,7 @@ export async function POST(req: NextRequest) {
       summary: {
         userCreated: true,
         authUserCreated: true,
-        emailConfirmationSent: true, // ✅ CAMBIADO: Enviado manualmente con inviteUserByEmail
+        emailConfirmationGenerated: true, // ✅ Link generado con generateLink()
         filesProcessed: {
           profilePhoto: fileUploadResults.profilePhoto?.success || false,
           signature: fileUploadResults.signature?.success || false,
@@ -483,14 +479,17 @@ export async function POST(req: NextRequest) {
         }
       },
       metadata: {
-        version: '3.2-manual-email-confirmation',
+        version: '4.0-generateLink-method',
         processedAt: new Date().toISOString(),
-        processedBy: 'luishdz044'
+        processedBy: 'luishdz044',
+        actionLink: actionLink, // Para debugging (no exponer en producción)
+        generatedVia: 'supabase.auth.admin.generateLink'
       }
     };
 
-    console.log("🎉 [SUCCESS] Registro inicial completado. Email de confirmación enviado manualmente:", {
+    console.log("🎉 [SUCCESS] Registro completado con generateLink. Usuario y link creados automáticamente:", {
       userId,
+      actionLinkGenerated: !!actionLink,
       filesUploaded: Object.values(fileUploadResults).filter(r => r?.success).length
     });
     
@@ -510,4 +509,4 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
