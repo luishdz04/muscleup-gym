@@ -1,69 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { supabaseAdmin } from '@/utils/supabase-admin';
 
-// Variables de entorno directas (configuradas en Vercel)
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
 export async function POST(req: NextRequest) {
-  console.log("🎬 [WELCOME-PACKAGE] API iniciada v2.1 (Sesión Segura) - 2025-09-16");
+  console.log("🎬 [WELCOME-PACKAGE] API iniciada v2.1 (Token Auth) - 2025-09-16");
 
   try {
-    // Crear cliente Supabase con las cookies de la request
-    const supabase = createServerClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          get(name: string) {
-            return req.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            // En route handlers de POST, no podemos set cookies, pero no es necesario
-          },
-          remove(name: string, options: CookieOptions) {
-            // En route handlers de POST, no podemos remove cookies, pero no es necesario
-          },
-        },
-      }
-    );
-
-    // Intentar obtener la sesión del usuario
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session?.user) {
-      console.error("❌ [WELCOME-PACKAGE] Intento de acceso sin sesión:", sessionError);
+    // 🔴 CAMBIO CLAVE: Obtener token del header Authorization
+    const authHeader = req.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error("❌ [WELCOME-PACKAGE] No se encontró token de autorización");
       return NextResponse.json({ 
         success: false, 
-        message: "Acceso no autorizado - sesión requerida" 
+        message: "Token de autorización requerido" 
       }, { status: 401 });
     }
 
-    const userId = session.user.id;
-    const userEmail = session.user.email;
-    console.log("🔍 [WELCOME-PACKAGE] Sesión válida para usuario:", userId);
+    const token = authHeader.replace('Bearer ', '');
+    console.log("🔐 [WELCOME-PACKAGE] Token recibido, verificando...");
+    
+    // Verificar token con Supabase Admin
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user) {
+      console.error("❌ [WELCOME-PACKAGE] Token inválido:", userError?.message);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Token inválido" 
+      }, { status: 401 });
+    }
+
+    const userId = user.id;
+    const userEmail = user.email;
+    console.log("✅ [WELCOME-PACKAGE] Token válido para usuario:", userId);
 
     // Buscar usuario en nuestra tabla
     console.log("🔍 [WELCOME-PACKAGE] Buscando usuario en tabla Users...");
-    const { data: user, error: userError } = await supabaseAdmin
+    const { data: userRecord, error: userRecordError } = await supabaseAdmin
       .from('Users')
       .select('*')
       .eq('id', userId)
       .single();
       
-    if (userError || !user) {
-      console.error("❌ [WELCOME-PACKAGE] Usuario no encontrado en tabla Users:", userError);
+    if (userRecordError || !userRecord) {
+      console.error("❌ [WELCOME-PACKAGE] Usuario no encontrado en tabla Users:", userRecordError);
       return NextResponse.json({ 
         success: false, 
         message: "Usuario no encontrado en base de datos" 
       }, { status: 404 });
     }
 
-    console.log("✅ [WELCOME-PACKAGE] Usuario encontrado:", user.email);
+    console.log("✅ [WELCOME-PACKAGE] Usuario encontrado:", userRecord.email);
 
     // Verificar si ya se procesó el paquete de bienvenida
-    if (user.registrationCompleted) {
+    if (userRecord.registrationCompleted) {
       console.log("⚠️ [WELCOME-PACKAGE] Ya procesado anteriormente");
       return NextResponse.json({
         success: true,
@@ -101,54 +91,63 @@ export async function POST(req: NextRequest) {
     try {
       // 1. Generar PDF
       console.log("📄 [WELCOME-PACKAGE] Generando PDF...");
-      const pdfRes = await fetch(`${baseUrl}/api/generate-pdf`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId })
-      });
-      
-      if (pdfRes.ok) {
-        console.log("✅ [WELCOME-PACKAGE] PDF generado exitosamente");
-        processResults.pdf = true;
-      } else {
-        const errorText = await pdfRes.text();
-        console.error("❌ [WELCOME-PACKAGE] Error generando PDF:", errorText);
-        // No lanzamos error, continuamos con email
-      }
-
-      // 2. Enviar Email de Bienvenida
-      console.log("📧 [WELCOME-PACKAGE] Enviando correo de bienvenida...");
-      const emailRes = await fetch(`${baseUrl}/api/send-welcome-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId })
-      });
-      
-      if (emailRes.ok) {
-        console.log("✅ [WELCOME-PACKAGE] Correo enviado exitosamente");
-        processResults.email = true;
-      } else {
-        const errorText = await emailRes.text();
-        console.error("❌ [WELCOME-PACKAGE] Error enviando correo:", errorText);
-        // No lanzamos error, continuamos con whatsapp
-      }
-
-      // 3. Enviar WhatsApp (solo si hay número)
-      if (user.whatsapp && user.whatsapp.trim() !== '') {
-        console.log("📱 [WELCOME-PACKAGE] Enviando mensaje de WhatsApp...");
-        const whatsappRes = await fetch(`${baseUrl}/api/send-welcome-whatsapp`, {
+      try {
+        const pdfRes = await fetch(`${baseUrl}/api/generate-pdf`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: userId })
         });
         
-        if (whatsappRes.ok) {
-          console.log("✅ [WELCOME-PACKAGE] WhatsApp enviado exitosamente");
-          processResults.whatsapp = true;
+        if (pdfRes.ok) {
+          console.log("✅ [WELCOME-PACKAGE] PDF generado exitosamente");
+          processResults.pdf = true;
         } else {
-          const errorText = await whatsappRes.text();
-          console.error("❌ [WELCOME-PACKAGE] Error enviando WhatsApp:", errorText);
-          // WhatsApp es opcional, no es error crítico
+          const errorText = await pdfRes.text();
+          console.error("❌ [WELCOME-PACKAGE] Error generando PDF:", errorText);
+        }
+      } catch (pdfError) {
+        console.error("💥 [WELCOME-PACKAGE] Error crítico en PDF:", pdfError);
+      }
+
+      // 2. Enviar Email de Bienvenida
+      console.log("📧 [WELCOME-PACKAGE] Enviando correo de bienvenida...");
+      try {
+        const emailRes = await fetch(`${baseUrl}/api/send-welcome-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: userId })
+        });
+        
+        if (emailRes.ok) {
+          console.log("✅ [WELCOME-PACKAGE] Correo enviado exitosamente");
+          processResults.email = true;
+        } else {
+          const errorText = await emailRes.text();
+          console.error("❌ [WELCOME-PACKAGE] Error enviando correo:", errorText);
+        }
+      } catch (emailError) {
+        console.error("💥 [WELCOME-PACKAGE] Error crítico en email:", emailError);
+      }
+
+      // 3. Enviar WhatsApp (solo si hay número)
+      if (userRecord.whatsapp && userRecord.whatsapp.trim() !== '') {
+        console.log("📱 [WELCOME-PACKAGE] Enviando mensaje de WhatsApp...");
+        try {
+          const whatsappRes = await fetch(`${baseUrl}/api/send-welcome-whatsapp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId })
+          });
+          
+          if (whatsappRes.ok) {
+            console.log("✅ [WELCOME-PACKAGE] WhatsApp enviado exitosamente");
+            processResults.whatsapp = true;
+          } else {
+            const errorText = await whatsappRes.text();
+            console.error("❌ [WELCOME-PACKAGE] Error enviando WhatsApp:", errorText);
+          }
+        } catch (whatsappError) {
+          console.error("💥 [WELCOME-PACKAGE] Error crítico en WhatsApp:", whatsappError);
         }
       } else {
         console.log("ℹ️ [WELCOME-PACKAGE] Usuario sin número de WhatsApp, omitiendo envío");
