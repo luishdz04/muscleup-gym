@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
       email: data.personalInfo.email,
       password: data.personalInfo.password,
       options: {
-        redirectTo: `${req.nextUrl.origin}/auth/confirm`,
+        redirectTo: `${req.nextUrl.origin}/bienvenido`,
         user_metadata: {
           firstName: data.personalInfo.firstName,
           lastName: data.personalInfo.lastName || '',

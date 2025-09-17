@@ -1,7 +1,6 @@
 'use client';
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Box, 
@@ -45,86 +44,70 @@ interface ProcessStatus {
   };
 }
 
-// 🔥 COMPONENTE QUE USA useSearchParams
+// 🔥 COMPONENTE QUE MANEJA LA LÓGICA
 function BienvenidoContent() {
   const [status, setStatus] = useState<ProcessStatus>({
     isProcessing: true,
     isCompleted: false,
     error: null
   });
-  
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     const processWelcomePackage = async () => {
       try {
-        console.log("🎬 [BIENVENIDA] Iniciando procesamiento del paquete de bienvenida...");
-        
-        // Obtener parámetros de la URL si existen
-        const access_token = searchParams.get('access_token');
-        const refresh_token = searchParams.get('refresh_token');
-        const type = searchParams.get('type');
-        
-        console.log("📋 [BIENVENIDA] Parámetros recibidos:", { 
-          hasAccessToken: !!access_token,
-          hasRefreshToken: !!refresh_token,
-          type 
+        console.log("🎬 [BIENVENIDA] Iniciando procesamiento...");
+
+        // 🔴 CAMBIO CLAVE: No necesitamos buscar tokens.
+        // La librería de Supabase ya habrá manejado el fragmento #
+        // y establecido la sesión en una cookie.
+        // Simplemente llamamos a la API. El backend identificará al usuario
+        // a través de la cookie de sesión.
+
+        const response = await fetch('/api/welcome-package', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+          },
+          // El body puede estar vacío, el servidor sabrá quién es el usuario.
+          body: JSON.stringify({}) 
         });
-if ((type === 'signup' && access_token) || (searchParams.get('confirmed') === 'true')) {
-          // El usuario confirmó su email, ahora procesamos el paquete
-          const response = await fetch('/api/welcome-package', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${access_token}`
-            },
-            body: JSON.stringify({ 
-              // Nota: El API usará el token para identificar al usuario
-              fromEmailConfirmation: true 
-            })
-          });
-          
-          const data = await response.json();
-          
-          if (data.success) {
-            console.log("✅ [BIENVENIDA] Paquete procesado exitosamente:", data);
-            setStatus({
-              isProcessing: false,
-              isCompleted: true,
-              error: null,
-              processResults: data.processResults
-            });
-          } else {
-            console.error("❌ [BIENVENIDA] Error procesando paquete:", data);
-            setStatus({
-              isProcessing: false,
-              isCompleted: false,
-              error: data.message || 'Error procesando paquete de bienvenida'
-            });
-          }
-        } else {
-          // Sin parámetros válidos, mostrar confirmación general
-          console.log("ℹ️ [BIENVENIDA] Confirmación sin procesamiento automático");
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log("✅ [BIENVENIDA] Paquete procesado:", data);
           setStatus({
             isProcessing: false,
             isCompleted: true,
             error: null,
-            processResults: { pdf: true, email: true, whatsapp: true }
+            processResults: data.processResults
+          });
+        } else {
+          console.error("❌ [BIENVENIDA] Error en API:", data);
+          setStatus({
+            isProcessing: false,
+            isCompleted: false,
+            error: data.message || 'Error procesando paquete de bienvenida'
           });
         }
-        
       } catch (error) {
         console.error("💥 [BIENVENIDA] Error crítico:", error);
         setStatus({
           isProcessing: false,
           isCompleted: false,
-          error: 'Error de conexión al procesar el paquete de bienvenida'
+          error: 'Error de conexión al procesar tu solicitud'
         });
       }
     };
 
-    processWelcomePackage();
-  }, [searchParams]);
+    // Damos un pequeño margen para que la librería de Supabase procese el fragmento
+    // y establezca la cookie de sesión antes de llamar a la API.
+    const timer = setTimeout(() => {
+      processWelcomePackage();
+    }, 500); // 500ms es usualmente suficiente
+
+    return () => clearTimeout(timer); // Limpieza
+  }, []);
 
   if (status.isProcessing) {
     return (
@@ -373,7 +356,7 @@ if ((type === 'signup' && access_token) || (searchParams.get('confirmed') === 't
             <Button
               variant="contained"
               component={Link}
-              href="/login"
+              href="/"
               startIcon={<HomeIcon />}
               sx={{
                 backgroundColor: darkProTokens.primary,
@@ -386,7 +369,7 @@ if ((type === 'signup' && access_token) || (searchParams.get('confirmed') === 't
                 }
               }}
             >
-              Iniciar Sesión
+              Ir al Inicio
             </Button>
           </Box>
           

@@ -1,35 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { supabaseAdmin } from '@/utils/supabase-admin';
 
-export async function POST(req: NextRequest) {
-  try {
-    console.log("🎬 [WELCOME-PACKAGE] API iniciada v1.0 - 2025-09-14 by @MuscleUpGYM");
-    
-    const body = await req.json();
-    const { userId, userEmail } = body;
+// Variables de entorno directas (configuradas en Vercel)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-    if (!userId && !userEmail) {
+export async function POST(req: NextRequest) {
+  console.log("🎬 [WELCOME-PACKAGE] API iniciada v2.1 (Sesión Segura) - 2025-09-16");
+
+  try {
+    // Crear cliente Supabase con las cookies de la request
+    const supabase = createServerClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          get(name: string) {
+            return req.cookies.get(name)?.value;
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            // En route handlers de POST, no podemos set cookies, pero no es necesario
+          },
+          remove(name: string, options: CookieOptions) {
+            // En route handlers de POST, no podemos remove cookies, pero no es necesario
+          },
+        },
+      }
+    );
+
+    // Intentar obtener la sesión del usuario
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.user) {
+      console.error("❌ [WELCOME-PACKAGE] Intento de acceso sin sesión:", sessionError);
       return NextResponse.json({ 
         success: false, 
-        message: "Se requiere userId o userEmail" 
-      }, { status: 400 });
+        message: "Acceso no autorizado - sesión requerida" 
+      }, { status: 401 });
     }
 
-    // Buscar usuario por ID o email
-    let whereClause = userId ? { id: userId } : { email: userEmail };
-    
-    console.log("🔍 [WELCOME-PACKAGE] Buscando usuario:", whereClause);
+    const userId = session.user.id;
+    const userEmail = session.user.email;
+    console.log("🔍 [WELCOME-PACKAGE] Sesión válida para usuario:", userId);
+
+    // Buscar usuario en nuestra tabla
+    console.log("🔍 [WELCOME-PACKAGE] Buscando usuario en tabla Users...");
     const { data: user, error: userError } = await supabaseAdmin
       .from('Users')
       .select('*')
-      .match(whereClause)
+      .eq('id', userId)
       .single();
       
     if (userError || !user) {
-      console.error("❌ [WELCOME-PACKAGE] Usuario no encontrado:", userError);
+      console.error("❌ [WELCOME-PACKAGE] Usuario no encontrado en tabla Users:", userError);
       return NextResponse.json({ 
         success: false, 
-        message: "Usuario no encontrado" 
+        message: "Usuario no encontrado en base de datos" 
       }, { status: 404 });
     }
 
@@ -41,11 +68,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Paquete de bienvenida ya fue procesado anteriormente",
-        alreadyProcessed: true
+        alreadyProcessed: true,
+        processResults: {
+          pdf: true,
+          email: true,
+          whatsapp: true
+        }
       });
     }
 
     // Marcar como en proceso
+    console.log("💾 [WELCOME-PACKAGE] Marcando como en proceso...");
     await supabaseAdmin
       .from('Users')
       .update({ 
@@ -53,7 +86,7 @@ export async function POST(req: NextRequest) {
         emailConfirmed: true,
         emailConfirmedAt: new Date().toISOString()
       })
-      .eq('id', user.id);
+      .eq('id', userId);
 
     // Obtener la URL base para las llamadas a las APIs
     const baseUrl = req.nextUrl.origin;
@@ -71,7 +104,7 @@ export async function POST(req: NextRequest) {
       const pdfRes = await fetch(`${baseUrl}/api/generate-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id })
+        body: JSON.stringify({ userId: userId })
       });
       
       if (pdfRes.ok) {
@@ -80,26 +113,24 @@ export async function POST(req: NextRequest) {
       } else {
         const errorText = await pdfRes.text();
         console.error("❌ [WELCOME-PACKAGE] Error generando PDF:", errorText);
-        throw new Error(`Error en PDF: ${errorText}`);
+        // No lanzamos error, continuamos con email
       }
 
-      // 2. Enviar Email de Bienvenida (solo si PDF exitoso)
-      if (processResults.pdf) {
-        console.log("📧 [WELCOME-PACKAGE] Enviando correo de bienvenida...");
-        const emailRes = await fetch(`${baseUrl}/api/send-welcome-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id })
-        });
-        
-        if (emailRes.ok) {
-          console.log("✅ [WELCOME-PACKAGE] Correo enviado exitosamente");
-          processResults.email = true;
-        } else {
-          const errorText = await emailRes.text();
-          console.error("❌ [WELCOME-PACKAGE] Error enviando correo:", errorText);
-          throw new Error(`Error en Email: ${errorText}`);
-        }
+      // 2. Enviar Email de Bienvenida
+      console.log("📧 [WELCOME-PACKAGE] Enviando correo de bienvenida...");
+      const emailRes = await fetch(`${baseUrl}/api/send-welcome-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId })
+      });
+      
+      if (emailRes.ok) {
+        console.log("✅ [WELCOME-PACKAGE] Correo enviado exitosamente");
+        processResults.email = true;
+      } else {
+        const errorText = await emailRes.text();
+        console.error("❌ [WELCOME-PACKAGE] Error enviando correo:", errorText);
+        // No lanzamos error, continuamos con whatsapp
       }
 
       // 3. Enviar WhatsApp (solo si hay número)
@@ -108,7 +139,7 @@ export async function POST(req: NextRequest) {
         const whatsappRes = await fetch(`${baseUrl}/api/send-welcome-whatsapp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id })
+          body: JSON.stringify({ userId: userId })
         });
         
         if (whatsappRes.ok) {
@@ -117,7 +148,7 @@ export async function POST(req: NextRequest) {
         } else {
           const errorText = await whatsappRes.text();
           console.error("❌ [WELCOME-PACKAGE] Error enviando WhatsApp:", errorText);
-          // No lanzamos error aquí, WhatsApp es opcional
+          // WhatsApp es opcional, no es error crítico
         }
       } else {
         console.log("ℹ️ [WELCOME-PACKAGE] Usuario sin número de WhatsApp, omitiendo envío");
@@ -125,6 +156,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 4. Marcar registro como completado
+      console.log("🎯 [WELCOME-PACKAGE] Actualizando estado final...");
       await supabaseAdmin
         .from('Users')
         .update({ 
@@ -132,7 +164,7 @@ export async function POST(req: NextRequest) {
           registrationCompletedAt: new Date().toISOString(),
           processingErrors: false
         })
-        .eq('id', user.id);
+        .eq('id', userId);
 
       console.log("🎉 [WELCOME-PACKAGE] Paquete de bienvenida completado exitosamente");
 
@@ -140,8 +172,8 @@ export async function POST(req: NextRequest) {
         success: true,
         message: "Paquete de bienvenida procesado exitosamente",
         processResults: processResults,
-        userId: user.id,
-        userEmail: user.email,
+        userId: userId,
+        userEmail: userEmail,
         completedAt: new Date().toISOString()
       });
 
@@ -155,14 +187,14 @@ export async function POST(req: NextRequest) {
           processingErrors: true,
           registrationCompleted: false
         })
-        .eq('id', user.id);
+        .eq('id', userId);
       
       return NextResponse.json({
         success: false,
         message: "Error procesando paquete de bienvenida",
         error: processError instanceof Error ? processError.message : 'Error desconocido',
         processResults: processResults,
-        userId: user.id
+        userId: userId
       }, { status: 500 });
     }
 
