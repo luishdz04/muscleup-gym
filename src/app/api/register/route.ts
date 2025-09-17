@@ -153,7 +153,7 @@ const processAndUploadFile = async (
 };
 
 export async function POST(req: NextRequest) {
-  console.log("🚀 API de registro v4.0 (con generateLink) iniciada - 2025-09-16 by @luishdz044");
+  console.log("🚀 API de registro v5.0 (generateLink + user_metadata + Resend) iniciada - 2025-09-16 by @luishdz044");
   
   try {
     // Obtener los datos del cuerpo de la solicitud
@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ 1. CREAR USUARIO Y GENERAR LINK EN UN SOLO PASO (MÉTODO OFICIAL)
+    // ✅ 1. CREAR USUARIO Y GENERAR LINK CON generateLink() + user_metadata CORRECTO
     console.log("👤🔗 [AUTH] Creando usuario y generando link de signup con generateLink()...");
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
       password: data.personalInfo.password,
       options: {
         redirectTo: `${req.nextUrl.origin}/auth/confirm`,
-        data: {
+        user_metadata: {
           firstName: data.personalInfo.firstName,
           lastName: data.personalInfo.lastName || '',
           registrationSource: 'web_form',
@@ -250,20 +250,123 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
     
-    // ✅ 2. EXTRAER DATOS CLAVE DE LA RESPUESTA
+    // ✅ 2. EXTRAER DATOS DE LA RESPUESTA
     const userId = linkData.user.id;
     const actionLink = linkData.properties.action_link;
-    const emailOtp = linkData.properties.email_otp; // Para uso alternativo
-    const hashedToken = linkData.properties.hashed_token;
 
     console.log("✅ [AUTH] Usuario creado en Auth con ID:", userId);
     console.log("📧 [EMAIL] Link de confirmación generado:", actionLink);
     
-    // 🎯 IMPORTANTE: Aquí deberías enviar el email usando Resend
-    // Por ahora, la configuración SMTP de Supabase se encargará del envío
-    // pero el link correcto para enviar por email personalizado es: actionLink
+    // ✅ 3. ENVIAR EMAIL DE CONFIRMACIÓN CON RESEND
+    console.log("📤 [RESEND] Enviando email de confirmación con Resend...");
+    let emailSentSuccessfully = false;
     
-    // ✅ 3. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
+    try {
+      const emailResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Muscle Up Gym <administracion@muscleupgym.fitness>',
+          to: [data.personalInfo.email],
+          subject: '¡Confirma tu cuenta en Muscle Up Gym! 💪',
+          html: `
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Confirma tu cuenta - Muscle Up Gym</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f4f4;">
+            
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f4f4;">
+                <tr>
+                    <td align="center" style="padding: 20px;">
+                        <table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px;">
+                            
+                            <tr>
+                                <td style="height: 6px; background-color: #ffcc00; border-radius: 8px 8px 0 0;"></td>
+                            </tr>
+            
+                            <tr>
+                                <td align="center" style="padding: 30px 20px 20px 20px;">
+                                    <img src="https://muscleupgym.fitness/logo.png" alt="Muscle Up Gym Logo" style="max-width: 180px; margin-bottom: 20px; display: block;">
+                                    <h2 style="margin: 0; color: #000000;">¡Bienvenido a Muscle Up Gym!</h2>
+                                </td>
+                            </tr>
+            
+                            <tr>
+                                <td style="padding: 0 30px;">
+                                    <p style="font-size: 18px; font-weight: bold; color: #000000; margin-bottom: 15px;">¡Hola ${data.personalInfo.firstName}!</p>
+                                    
+                                    <p>Estamos emocionados de tenerte como parte de nuestra comunidad fitness. Para finalizar tu registro y acceder a todos nuestros servicios, por favor confirma tu dirección de correo electrónico:</p>
+                                    
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td align="center" style="padding: 20px 0;">
+                                                <a href="${actionLink}" style="background-color: #ffcc00; color: #000000; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Confirmar mi cuenta</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <p>O copia y pega este enlace en tu navegador:</p>
+                                    <p style="word-break: break-all; font-size: 12px; color: #555555;">${actionLink}</p>
+                                    
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8f8f8; border-radius: 5px; margin: 20px 0;">
+                                        <tr>
+                                            <td style="padding: 20px;">
+                                                <p style="color: #000000; font-weight: bold; margin-top: 0; margin-bottom: 10px;">Como miembro de Muscle Up Gym disfrutarás de:</p>
+                                                <ul style="margin: 0; padding-left: 20px;">
+                                                    <li>Acceso a nuestras modernas instalaciones</li>
+                                                    <li>Equipos de alta calidad</li>
+                                                    <li>Una comunidad motivada que te apoya</li>
+                                                    <li>ESPERA SORPRESAS PROXIMAMENTE</li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos:</p>
+                                    <p>📞 Tel: 866-112-7905<br>
+                                       📧 Email: administracion@muscleupgym.fitness</p>
+                                    
+                                    <p style="margin-top: 25px;">Saludos,<br>El equipo de Muscle Up Gym</p>
+                                </td>
+                            </tr>
+            
+                            <tr>
+                                <td align="center" style="padding: 20px 30px; margin-top: 30px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #777777;">
+                                    <p style="margin: 0;">© 2025 Muscle Up Gym | Tel: 866-112-7905 | administracion@muscleupgym.com.mx</p>
+                                    <p style="margin: 10px 0 0 0;">"Tu salud y bienestar son nuestra misión"</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            
+            </body>
+            </html>
+          `
+        })
+      });
+
+      if (emailResponse.ok) {
+        const emailData = await emailResponse.json();
+        console.log("✅ [RESEND] Email enviado exitosamente:", emailData.id);
+        emailSentSuccessfully = true;
+      } else {
+        const errorData = await emailResponse.text();
+        console.error("❌ [RESEND] Error enviando email:", errorData);
+      }
+    } catch (emailError) {
+      console.error("💥 [RESEND] Error crítico enviando email:", emailError);
+    }
+    
+    // ✅ 4. PROCESAR Y SUBIR ARCHIVOS DE MANERA SEGURA
     const fileUploadResults: { [key: string]: any } = {};
     let profilePictureUrl = null;
     let signatureUrl = null;
@@ -327,7 +430,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ✅ 4. PREPARAR DATOS DEL USUARIO PRINCIPAL
+    // ✅ 5. PREPARAR DATOS DEL USUARIO PRINCIPAL
     const userData = {
       id: userId, // IMPORTANTE: Usar el ID de Supabase Auth
       firstName: data.personalInfo.firstName,
@@ -346,7 +449,7 @@ export async function POST(req: NextRequest) {
       emailConfirmed: false,
       pendingWelcomeEmail: true,
       registrationCompleted: false,
-      emailSent: false,
+      emailSent: emailSentSuccessfully,
       whatsappSent: false,
       fingerprint: false,
       createdAt: new Date().toISOString()
@@ -354,7 +457,7 @@ export async function POST(req: NextRequest) {
 
     console.log("💾 [USER] Insertando usuario en tabla Users...");
 
-    // ✅ 5. INSERTAR USUARIO PRINCIPAL
+    // ✅ 6. INSERTAR USUARIO PRINCIPAL
     const { error: insertError } = await supabaseAdmin
       .from('Users')
       .insert(userData);
@@ -372,7 +475,7 @@ export async function POST(req: NextRequest) {
 
     console.log("✅ [USER] Usuario insertado correctamente con ID:", userId);
 
-    // ✅ 6. INSERTAR DIRECCIÓN
+    // ✅ 7. INSERTAR DIRECCIÓN
     if (data.personalInfo?.address || data.personalInfo) {
       try {
         console.log("🏠 [ADDRESS] Insertando dirección...");
@@ -402,7 +505,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ✅ 7. INSERTAR CONTACTO DE EMERGENCIA 
+    // ✅ 8. INSERTAR CONTACTO DE EMERGENCIA 
     try {
       console.log("🚨 [EMERGENCY] Insertando contacto de emergencia...");
       
@@ -427,7 +530,7 @@ export async function POST(req: NextRequest) {
       console.error("💥 [EMERGENCY] Error general al insertar contacto de emergencia:", emergencyError);
     }
     
-    // ✅ 8. INSERTAR INFORMACIÓN DE MEMBRESÍA
+    // ✅ 9. INSERTAR INFORMACIÓN DE MEMBRESÍA
     try {
       console.log("🎯 [MEMBERSHIP] Insertando información de membresía...");
       
@@ -452,16 +555,19 @@ export async function POST(req: NextRequest) {
       console.error("💥 [MEMBERSHIP] Error general al insertar información de membresía:", membershipError);
     }
     
-    // ✅ 9. RESPUESTA FINAL
+    // ✅ 10. RESPUESTA FINAL
     const response = {
       success: true,
-      message: 'Registro exitoso. Por favor, revisa tu correo para verificar tu cuenta antes de continuar.',
+      message: emailSentSuccessfully ? 
+        'Registro exitoso. Por favor, revisa tu correo para verificar tu cuenta antes de continuar.' :
+        'Registro exitoso, pero hubo un problema enviando el email de confirmación. Contacta a soporte.',
       userId: userId,
       emailVerificationRequired: true,
       summary: {
         userCreated: true,
         authUserCreated: true,
-        emailConfirmationGenerated: true, // ✅ Link generado con generateLink()
+        emailConfirmationGenerated: true,
+        emailSentViaResend: emailSentSuccessfully,
         filesProcessed: {
           profilePhoto: fileUploadResults.profilePhoto?.success || false,
           signature: fileUploadResults.signature?.success || false,
@@ -474,22 +580,23 @@ export async function POST(req: NextRequest) {
         },
         automaticProcesses: {
           pdfGenerated: false, // Se generará después de confirmar email
-          emailSent: false,    // Se enviará después de confirmar email
+          welcomeEmailSent: false,    // Se enviará después de confirmar email
           whatsappSent: false  // Se enviará después de confirmar email
         }
       },
       metadata: {
-        version: '4.0-generateLink-method',
+        version: '5.0-generateLink-user_metadata-resend-integration',
         processedAt: new Date().toISOString(),
         processedBy: 'luishdz044',
-        actionLink: actionLink, // Para debugging (no exponer en producción)
-        generatedVia: 'supabase.auth.admin.generateLink'
+        emailProvider: 'resend',
+        authMethod: 'generateLink-with-user_metadata'
       }
     };
 
-    console.log("🎉 [SUCCESS] Registro completado con generateLink. Usuario y link creados automáticamente:", {
+    console.log("🎉 [SUCCESS] Registro completado con generateLink + user_metadata + Resend:", {
       userId,
       actionLinkGenerated: !!actionLink,
+      emailSent: emailSentSuccessfully,
       filesUploaded: Object.values(fileUploadResults).filter(r => r?.success).length
     });
     
