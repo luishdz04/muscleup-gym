@@ -1,7 +1,6 @@
 'use client';
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Link from 'next/link';
 import { 
   Box, 
@@ -21,7 +20,7 @@ import {
   Home as HomeIcon
 } from '@mui/icons-material';
 
-// 🎨 DARK PRO TOKENS
+// Tokens de diseño
 const darkProTokens = {
   background: '#000000',
   surfaceLevel1: '#121212',
@@ -45,70 +44,44 @@ interface ProcessStatus {
   };
 }
 
-// 🔥 COMPONENTE QUE MANEJA LA LÓGICA CORRECTAMENTE
 function BienvenidoContent() {
   const [status, setStatus] = useState<ProcessStatus>({
     isProcessing: true,
     isCompleted: false,
     error: null
   });
-  
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 10;
+    let attemptCount = 0;
+    const maxAttempts = 3;
 
     const processWelcomePackage = async () => {
       try {
-        console.log("🎬 [BIENVENIDA] Iniciando procesamiento... Intento:", retryCount + 1);
+        attemptCount++;
+        console.log(`🎬 [BIENVENIDA] Intento ${attemptCount}/${maxAttempts}...`);
 
-        // 🔴 CAMBIO CLAVE: Primero obtener la sesión del cliente
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error("❌ [BIENVENIDA] Error obteniendo sesión:", sessionError);
-          throw new Error(`Error de sesión: ${sessionError.message}`);
-        }
-
-        if (!session?.user) {
-          retryCount++;
-          if (retryCount < maxRetries) {
-            console.log(`⏳ [BIENVENIDA] Sin sesión aún. Reintentando en 1 segundo... (${retryCount}/${maxRetries})`);
-            setTimeout(processWelcomePackage, 1000);
-            return;
-          } else {
-            throw new Error("No se pudo establecer la sesión después de varios intentos");
-          }
-        }
-
-        console.log("✅ [BIENVENIDA] Sesión obtenida para usuario:", session.user.id);
-        setCurrentUser(session.user);
-
-        // Ahora sí, llamar a la API con el token de acceso
         const response = await fetch('/api/welcome-package', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
           },
-          body: JSON.stringify({
-            userId: session.user.id,
-            userEmail: session.user.email
-          })
+          body: JSON.stringify({})
         });
         
         const data = await response.json();
         
         if (data.success) {
-          console.log("✅ [BIENVENIDA] Paquete procesado:", data);
+          console.log("✅ [BIENVENIDA] Paquete procesado exitosamente:", data);
           setStatus({
             isProcessing: false,
             isCompleted: true,
             error: null,
             processResults: data.processResults
           });
+        } else if (response.status === 401 && attemptCount < maxAttempts) {
+          // Si no hay sesión aún, reintentar
+          console.log(`⏳ [BIENVENIDA] Sin sesión aún, reintentando en 3 segundos... (${attemptCount}/${maxAttempts})`);
+          setTimeout(processWelcomePackage, 3000);
         } else {
           console.error("❌ [BIENVENIDA] Error en API:", data);
           setStatus({
@@ -118,18 +91,26 @@ function BienvenidoContent() {
           });
         }
       } catch (error) {
-        console.error("💥 [BIENVENIDA] Error crítico:", error);
-        setStatus({
-          isProcessing: false,
-          isCompleted: false,
-          error: error instanceof Error ? error.message : 'Error de conexión'
-        });
+        console.error("💥 [BIENVENIDA] Error de conexión:", error);
+        
+        if (attemptCount < maxAttempts) {
+          console.log(`🔄 [BIENVENIDA] Error de conexión, reintentando en 3 segundos... (${attemptCount}/${maxAttempts})`);
+          setTimeout(processWelcomePackage, 3000);
+        } else {
+          setStatus({
+            isProcessing: false,
+            isCompleted: false,
+            error: 'Error de conexión. Intenta recargar la página.'
+          });
+        }
       }
     };
 
-    // Iniciar el proceso
-    processWelcomePackage();
-  }, [supabase]);
+    // Iniciar después de 2 segundos para dar tiempo a que se establezcan las cookies
+    const initialTimer = setTimeout(processWelcomePackage, 2000);
+    
+    return () => clearTimeout(initialTimer);
+  }, []);
 
   if (status.isProcessing) {
     return (
@@ -171,10 +152,7 @@ function BienvenidoContent() {
               color: darkProTokens.textSecondary,
               mb: 4
             }}>
-              {currentUser ? 
-                `Preparando paquete de bienvenida para ${currentUser.email}` :
-                'Estableciendo sesión segura...'
-              }
+              Estamos preparando tu paquete de bienvenida
             </Typography>
             
             <LinearProgress 
@@ -192,7 +170,7 @@ function BienvenidoContent() {
               color: darkProTokens.textDisabled,
               mt: 2
             }}>
-              Esto puede tomar unos momentos...
+              Generando PDF, enviando correo y WhatsApp...
             </Typography>
           </Paper>
         </Container>
@@ -245,7 +223,7 @@ function BienvenidoContent() {
               mb: 4
             }}>
               No te preocupes, tu cuenta ha sido creada exitosamente. 
-              Puedes contactarnos para completar el proceso manualmente.
+              Puedes recargar la página o contactarnos si el problema persiste.
             </Typography>
             
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -263,7 +241,7 @@ function BienvenidoContent() {
                   }
                 }}
               >
-                Reintentar
+                🔄 Recargar página
               </Button>
               
               <Button
@@ -331,16 +309,6 @@ function BienvenidoContent() {
           }}>
             Tu cuenta ha sido verificada exitosamente
           </Typography>
-          
-          {currentUser && (
-            <Typography variant="body1" sx={{ 
-              color: darkProTokens.textSecondary,
-              mb: 4,
-              fontWeight: 500
-            }}>
-              ¡Hola {currentUser.user_metadata?.firstName || currentUser.email}!
-            </Typography>
-          )}
           
           {/* Estado de procesos */}
           <Box sx={{ mb: 4 }}>
@@ -439,7 +407,6 @@ function BienvenidoContent() {
   );
 }
 
-// 🚀 COMPONENTE PRINCIPAL CON SUSPENSE BOUNDARY
 export default function BienvenidoPage() {
   return (
     <Suspense fallback={
