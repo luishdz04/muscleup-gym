@@ -1,74 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { supabaseAdmin } from '@/utils/supabase-admin';
 
-// Variables de entorno directas
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
 export async function POST(req: NextRequest) {
-  console.log("🎬 [WELCOME-PACKAGE] API v2.2 (Optimizada Simple) iniciada - 2025-09-16");
+  console.log("🎬 [WELCOME-PACKAGE] API v2.3 (Bearer Auth) iniciada - 2025-09-16");
 
   try {
-    // Crear cliente Supabase para leer cookies
-    const supabase = createServerClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          get(name: string) {
-            return req.cookies.get(name)?.value;
-          },
-          set() {}, // No necesitamos set en POST
-          remove() {}, // No necesitamos remove en POST
-        },
-      }
-    );
-
-    // Obtener sesión del usuario
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session?.user) {
-      console.error("❌ [WELCOME-PACKAGE] Sin sesión válida:", sessionError?.message);
+    // 🔴 CAMBIO CLAVE: Obtener token del header Authorization
+    const authHeader = req.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error("❌ [WELCOME-PACKAGE] No se encontró token de autorización");
       return NextResponse.json({ 
         success: false, 
-        message: "Sesión requerida. Intenta recargar la página." 
+        message: "Token de autorización requerido" 
       }, { status: 401 });
     }
 
-    const userId = session.user.id;
-    const userEmail = session.user.email;
-    console.log("✅ [WELCOME-PACKAGE] Sesión válida para usuario:", userId);
+    const token = authHeader.replace('Bearer ', '');
+    console.log("🔐 [WELCOME-PACKAGE] Token recibido, verificando...");
+    
+    // Verificar token con Supabase Admin
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
-    // Buscar usuario en base de datos
-    const { data: user, error: userError } = await supabaseAdmin
+    if (userError || !user) {
+      console.error("❌ [WELCOME-PACKAGE] Token inválido:", userError?.message);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Token inválido" 
+      }, { status: 401 });
+    }
+
+    const userId = user.id;
+    const userEmail = user.email;
+    console.log("✅ [WELCOME-PACKAGE] Token válido para usuario:", userId);
+
+    // Buscar usuario en nuestra tabla
+    console.log("🔍 [WELCOME-PACKAGE] Buscando usuario en tabla Users...");
+    const { data: userRecord, error: userRecordError } = await supabaseAdmin
       .from('Users')
       .select('*')
       .eq('id', userId)
       .single();
       
-    if (userError || !user) {
-      console.error("❌ [WELCOME-PACKAGE] Usuario no encontrado:", userError?.message);
+    if (userRecordError || !userRecord) {
+      console.error("❌ [WELCOME-PACKAGE] Usuario no encontrado en tabla Users:", userRecordError);
       return NextResponse.json({ 
         success: false, 
         message: "Usuario no encontrado en base de datos" 
       }, { status: 404 });
     }
 
-    console.log("✅ [WELCOME-PACKAGE] Usuario encontrado:", user.email);
+    console.log("✅ [WELCOME-PACKAGE] Usuario encontrado:", userRecord.email);
 
-    // Verificar si ya se procesó
-    if (user.registrationCompleted) {
+    // Verificar si ya se procesó el paquete de bienvenida
+    if (userRecord.registrationCompleted) {
       console.log("⚠️ [WELCOME-PACKAGE] Ya procesado anteriormente");
       return NextResponse.json({
         success: true,
-        message: "Paquete de bienvenida ya procesado",
+        message: "Paquete de bienvenida ya fue procesado anteriormente",
         alreadyProcessed: true,
-        processResults: { pdf: true, email: true, whatsapp: true }
+        processResults: {
+          pdf: true,
+          email: true,
+          whatsapp: true
+        }
       });
     }
 
     // Marcar como en proceso
+    console.log("💾 [WELCOME-PACKAGE] Marcando como en proceso...");
     await supabaseAdmin
       .from('Users')
       .update({ 
@@ -78,8 +78,15 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', userId);
 
+    // Obtener la URL base para las llamadas a las APIs
     const baseUrl = req.nextUrl.origin;
-    let processResults = { pdf: false, email: false, whatsapp: false };
+    console.log("🌐 [WELCOME-PACKAGE] URL base:", baseUrl);
+
+    let processResults = {
+      pdf: false,
+      email: false,
+      whatsapp: false
+    };
 
     // OPTIMIZACIÓN: Procesar en paralelo en lugar de secuencial
     console.log("⚡ [WELCOME-PACKAGE] Iniciando procesos en paralelo...");
@@ -90,26 +97,26 @@ export async function POST(req: NextRequest) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
-      }).then(res => ({ type: 'pdf', success: res.ok, response: res })),
+      }).then(res => ({ type: 'pdf', success: res.ok, response: res })).catch(err => ({ type: 'pdf', success: false, error: err })),
       
       // Email
       fetch(`${baseUrl}/api/send-welcome-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
-      }).then(res => ({ type: 'email', success: res.ok, response: res })),
+      }).then(res => ({ type: 'email', success: res.ok, response: res })).catch(err => ({ type: 'email', success: false, error: err })),
       
       // WhatsApp (solo si tiene número)
-      ...(user.whatsapp && user.whatsapp.trim() !== '' ? [
+      ...(userRecord.whatsapp && userRecord.whatsapp.trim() !== '' ? [
         fetch(`${baseUrl}/api/send-welcome-whatsapp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId })
-        }).then(res => ({ type: 'whatsapp', success: res.ok, response: res }))
+        }).then(res => ({ type: 'whatsapp', success: res.ok, response: res })).catch(err => ({ type: 'whatsapp', success: false, error: err }))
       ] : [])
     ];
 
-    // Esperar a que todos terminen (máximo 25 segundos)
+    // Esperar a que todos terminen (máximo 30 segundos por Promise.allSettled)
     const results = await Promise.allSettled(processes);
     
     // Procesar resultados
@@ -124,12 +131,13 @@ export async function POST(req: NextRequest) {
     });
 
     // WhatsApp como exitoso si no aplica
-    if (!user.whatsapp || user.whatsapp.trim() === '') {
+    if (!userRecord.whatsapp || userRecord.whatsapp.trim() === '') {
       processResults.whatsapp = true;
       console.log("ℹ️ [WHATSAPP] No aplica - marcado como exitoso");
     }
 
     // Actualizar estado final
+    console.log("🎯 [WELCOME-PACKAGE] Actualizando estado final...");
     await supabaseAdmin
       .from('Users')
       .update({ 
@@ -139,14 +147,14 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', userId);
 
-    console.log("🎉 [WELCOME-PACKAGE] Completado exitosamente");
+    console.log("🎉 [WELCOME-PACKAGE] Paquete de bienvenida completado exitosamente");
 
     return NextResponse.json({
       success: true,
       message: "Paquete de bienvenida procesado exitosamente",
-      processResults,
-      userId,
-      userEmail,
+      processResults: processResults,
+      userId: userId,
+      userEmail: userEmail,
       completedAt: new Date().toISOString()
     });
 
@@ -154,7 +162,7 @@ export async function POST(req: NextRequest) {
     console.error("💥 [WELCOME-PACKAGE] Error crítico:", error);
     return NextResponse.json({
       success: false,
-      message: `Error crítico: ${error instanceof Error ? error.message : 'Error desconocido'}`
+      message: `Error crítico en paquete de bienvenida: ${error instanceof Error ? error.message : 'Error desconocido'}`
     }, { status: 500 });
   }
 }

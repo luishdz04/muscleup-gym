@@ -44,6 +44,25 @@ interface ProcessStatus {
   };
 }
 
+// Función para extraer tokens del fragmento de la URL
+function extractTokensFromFragment(): { access_token?: string; refresh_token?: string } | null {
+  if (typeof window === 'undefined') return null;
+  
+  const fragment = window.location.hash.substring(1); // Quitar el #
+  if (!fragment) return null;
+  
+  const params = new URLSearchParams(fragment);
+  const access_token = params.get('access_token');
+  const refresh_token = params.get('refresh_token');
+  
+  console.log('🔍 [TOKENS] Extraídos del fragmento:', { 
+    hasAccessToken: !!access_token, 
+    hasRefreshToken: !!refresh_token 
+  });
+  
+  return access_token ? { access_token, refresh_token: refresh_token || undefined } : null;
+}
+
 function BienvenidoContent() {
   const [status, setStatus] = useState<ProcessStatus>({
     isProcessing: true,
@@ -60,18 +79,44 @@ function BienvenidoContent() {
         attemptCount++;
         console.log(`🎬 [BIENVENIDA] Intento ${attemptCount}/${maxAttempts}...`);
 
+        // 🔴 CAMBIO CLAVE: Extraer tokens del fragmento
+        const tokens = extractTokensFromFragment();
+        
+        if (!tokens?.access_token) {
+          if (attemptCount < maxAttempts) {
+            console.log(`⏳ [BIENVENIDA] Sin tokens aún, reintentando en 2 segundos... (${attemptCount}/${maxAttempts})`);
+            setTimeout(processWelcomePackage, 2000);
+            return;
+          } else {
+            throw new Error('No se pudieron obtener los tokens de autenticación');
+          }
+        }
+
+        console.log('✅ [BIENVENIDA] Tokens obtenidos, llamando a API...');
+
+        // Llamar a la API con el token en el header Authorization
         const response = await fetch('/api/welcome-package', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tokens.access_token}`
           },
-          body: JSON.stringify({})
+          body: JSON.stringify({
+            // Enviamos información adicional si es necesaria
+            fromFragment: true
+          })
         });
         
         const data = await response.json();
         
         if (data.success) {
           console.log("✅ [BIENVENIDA] Paquete procesado exitosamente:", data);
+          
+          // Limpiar el fragmento de la URL para que se vea más limpia
+          if (window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          
           setStatus({
             isProcessing: false,
             isCompleted: true,
@@ -79,9 +124,8 @@ function BienvenidoContent() {
             processResults: data.processResults
           });
         } else if (response.status === 401 && attemptCount < maxAttempts) {
-          // Si no hay sesión aún, reintentar
-          console.log(`⏳ [BIENVENIDA] Sin sesión aún, reintentando en 3 segundos... (${attemptCount}/${maxAttempts})`);
-          setTimeout(processWelcomePackage, 3000);
+          console.log(`⏳ [BIENVENIDA] Error 401, reintentando en 2 segundos... (${attemptCount}/${maxAttempts})`);
+          setTimeout(processWelcomePackage, 2000);
         } else {
           console.error("❌ [BIENVENIDA] Error en API:", data);
           setStatus({
@@ -94,22 +138,20 @@ function BienvenidoContent() {
         console.error("💥 [BIENVENIDA] Error de conexión:", error);
         
         if (attemptCount < maxAttempts) {
-          console.log(`🔄 [BIENVENIDA] Error de conexión, reintentando en 3 segundos... (${attemptCount}/${maxAttempts})`);
-          setTimeout(processWelcomePackage, 3000);
+          console.log(`🔄 [BIENVENIDA] Error de conexión, reintentando en 2 segundos... (${attemptCount}/${maxAttempts})`);
+          setTimeout(processWelcomePackage, 2000);
         } else {
           setStatus({
             isProcessing: false,
             isCompleted: false,
-            error: 'Error de conexión. Intenta recargar la página.'
+            error: error instanceof Error ? error.message : 'Error de conexión. Intenta recargar la página.'
           });
         }
       }
     };
 
-    // Iniciar después de 2 segundos para dar tiempo a que se establezcan las cookies
-    const initialTimer = setTimeout(processWelcomePackage, 2000);
-    
-    return () => clearTimeout(initialTimer);
+    // Iniciar inmediatamente (los tokens ya están en la URL)
+    processWelcomePackage();
   }, []);
 
   if (status.isProcessing) {
