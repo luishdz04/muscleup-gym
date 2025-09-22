@@ -30,8 +30,37 @@ import {
   AccessTime as AccessTimeIcon,
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
-import { darkProTokens } from '@/constants/tokens';
 import { BulkFreezeOperation, BulkPreview } from '@/types/membership';
+
+// ✅ PALETA DE COLORES UNIFICADA
+const colorTokens = {
+  // Colores base
+  brand: '#FFCC00',
+  black: '#000000',
+  white: '#FFFFFF',
+  
+  // Escala neutra (Dark Theme)
+  neutral0: '#0A0A0B',
+  neutral50: '#0F1012',
+  neutral100: '#14161A',
+  neutral200: '#1B1E24',
+  neutral300: '#23272F',
+  neutral400: '#2C313B',
+  neutral500: '#363C48',
+  neutral600: '#424959',
+  neutral700: '#535B6E',
+  neutral800: '#6A7389',
+  neutral900: '#8B94AA',
+  neutral1000: '#C9CFDB',
+  neutral1100: '#E8ECF5',
+  neutral1200: '#FFFFFF',
+  
+  // Semánticos
+  success: '#22C55E',
+  danger: '#EF4444',
+  info: '#38BDF8',
+  warning: '#FFCC00', // Mismo que brand
+};
 
 interface Props {
   open: boolean;
@@ -80,17 +109,17 @@ const BulkOperationModal = memo<Props>(({
       fullWidth
       PaperProps={{
         sx: {
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}50`,
+          background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+          border: `2px solid ${operation.action === 'freeze' ? colorTokens.info : colorTokens.success}50`,
           borderRadius: 4,
-          color: darkProTokens.textPrimary,
+          color: colorTokens.neutral1200,
           boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
           maxHeight: '90vh'
         }
       }}
     >
       <DialogTitle sx={{ 
-        color: operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success, 
+        color: operation.action === 'freeze' ? colorTokens.info : colorTokens.success, 
         fontWeight: 800,
         fontSize: '1.8rem',
         textAlign: 'center',
@@ -109,7 +138,7 @@ const BulkOperationModal = memo<Props>(({
         <IconButton 
           onClick={onClose}
           disabled={loading}
-          sx={{ color: darkProTokens.textSecondary }}
+          sx={{ color: colorTokens.neutral800 }}
         >
           <CloseIcon />
         </IconButton>
@@ -122,10 +151,10 @@ const BulkOperationModal = memo<Props>(({
             <Alert 
               severity="warning"
               sx={{
-                backgroundColor: `${darkProTokens.warning}10`,
-                color: darkProTokens.textPrimary,
-                border: `1px solid ${darkProTokens.warning}30`,
-                '& .MuiAlert-icon': { color: darkProTokens.warning },
+                backgroundColor: `${colorTokens.warning}10`,
+                color: colorTokens.neutral1200,
+                border: `1px solid ${colorTokens.warning}30`,
+                '& .MuiAlert-icon': { color: colorTokens.warning },
                 mb: 3
               }}
             >
@@ -151,14 +180,14 @@ const BulkOperationModal = memo<Props>(({
             {/* Configuración para congelamiento manual */}
             {operation.mode === 'manual' && operation.action === 'freeze' && (
               <Card sx={{
-                background: `${darkProTokens.info}10`,
-                border: `1px solid ${darkProTokens.info}30`,
+                background: `${colorTokens.info}10`,
+                border: `1px solid ${colorTokens.info}30`,
                 borderRadius: 3,
                 mb: 3
               }}>
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h6" sx={{ 
-                    color: darkProTokens.info,
+                    color: colorTokens.info,
                     fontWeight: 700,
                     mb: 3,
                     display: 'flex',
@@ -171,7 +200,7 @@ const BulkOperationModal = memo<Props>(({
 
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="body1" sx={{ 
-                      color: darkProTokens.textPrimary,
+                      color: colorTokens.neutral1200,
                       fontWeight: 600,
                       mb: 2
                     }}>
@@ -194,25 +223,25 @@ const BulkOperationModal = memo<Props>(({
                       ]}
                       valueLabelDisplay="auto"
                       sx={{
-                        color: darkProTokens.info,
+                        color: colorTokens.info,
                         '& .MuiSlider-thumb': {
-                          backgroundColor: darkProTokens.info,
-                          border: `2px solid ${darkProTokens.textPrimary}`,
+                          backgroundColor: colorTokens.info,
+                          border: `2px solid ${colorTokens.neutral1200}`,
                           '&:hover': {
-                            boxShadow: `0 0 0 8px ${darkProTokens.info}30`
+                            boxShadow: `0 0 0 8px ${colorTokens.info}30`
                           }
                         },
                         '& .MuiSlider-track': {
-                          backgroundColor: darkProTokens.info
+                          backgroundColor: colorTokens.info
                         },
                         '& .MuiSlider-rail': {
-                          backgroundColor: darkProTokens.grayDark
+                          backgroundColor: colorTokens.neutral400
                         },
                         '& .MuiSlider-mark': {
-                          backgroundColor: darkProTokens.textSecondary
+                          backgroundColor: colorTokens.neutral800
                         },
                         '& .MuiSlider-markLabel': {
-                          color: darkProTokens.textSecondary,
+                          color: colorTokens.neutral800,
                           fontSize: '0.75rem'
                         }
                       }}
@@ -222,10 +251,10 @@ const BulkOperationModal = memo<Props>(({
                   <Alert 
                     severity="info"
                     sx={{
-                      backgroundColor: `${darkProTokens.info}05`,
-                      color: darkProTokens.textPrimary,
-                      border: `1px solid ${darkProTokens.info}20`,
-                      '& .MuiAlert-icon': { color: darkProTokens.info }
+                      backgroundColor: `${colorTokens.info}05`,
+                      color: colorTokens.neutral1200,
+                      border: `1px solid ${colorTokens.info}20`,
+                      '& .MuiAlert-icon': { color: colorTokens.info }
                     }}
                   >
                     <Typography variant="body2">
@@ -242,14 +271,14 @@ const BulkOperationModal = memo<Props>(({
             {/* Vista previa de cambios */}
             {showPreview && preview.length > 0 && (
               <Card sx={{
-                background: `${darkProTokens.success}10`,
-                border: `1px solid ${darkProTokens.success}30`,
+                background: `${colorTokens.success}10`,
+                border: `1px solid ${colorTokens.success}30`,
                 borderRadius: 3,
                 mb: 3
               }}>
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h6" sx={{ 
-                    color: darkProTokens.success,
+                    color: colorTokens.success,
                     fontWeight: 700,
                     mb: 2,
                     display: 'flex',
@@ -261,7 +290,7 @@ const BulkOperationModal = memo<Props>(({
                   </Typography>
 
                   <Typography variant="body2" sx={{ 
-                    color: darkProTokens.textSecondary,
+                    color: colorTokens.neutral800,
                     mb: 2
                   }}>
                     Se procesarán {preview.length} membresías para {operation.action === 'freeze' ? 'congelamiento' : 'reactivación'}:
@@ -270,19 +299,19 @@ const BulkOperationModal = memo<Props>(({
                   <Box sx={{
                     maxHeight: 300,
                     overflow: 'auto',
-                    border: `1px solid ${darkProTokens.success}30`,
+                    border: `1px solid ${colorTokens.success}30`,
                     borderRadius: 2
                   }}>
                     <List dense>
                       {preview.slice(0, 5).map((previewItem, index) => (
                         <ListItem key={previewItem.membershipId} sx={{
                           borderBottom: index < Math.min(4, preview.length - 1) ? 
-                            `1px solid ${darkProTokens.grayDark}20` : 'none'
+                            `1px solid ${colorTokens.neutral400}20` : 'none'
                         }}>
                           <ListItemAvatar>
                             <Avatar sx={{ 
-                              background: darkProTokens.primary,
-                              color: darkProTokens.background,
+                              background: colorTokens.brand,
+                              color: colorTokens.neutral0,
                               width: 40,
                               height: 40
                             }}>
@@ -291,37 +320,37 @@ const BulkOperationModal = memo<Props>(({
                           </ListItemAvatar>
                           <Box sx={{ flex: 1 }}>
                             <Typography variant="body1" sx={{ 
-                              color: darkProTokens.textPrimary,
+                              color: colorTokens.neutral1200,
                               fontWeight: 600
                             }}>
                               {previewItem.userName}
                             </Typography>
                             <Typography variant="caption" sx={{ 
-                              color: darkProTokens.textSecondary
+                              color: colorTokens.neutral800
                             }}>
                               {previewItem.planName} • {previewItem.currentStatus.toUpperCase()}
                             </Typography>
                             <Box sx={{ mt: 1 }}>
                               <Typography variant="body2" sx={{ 
-                                color: darkProTokens.textSecondary
+                                color: colorTokens.neutral800
                               }}>
                                 📅 Actual: {previewItem.currentEndDate ? formatDisplayDate(previewItem.currentEndDate) : 'Sin fecha'}
                               </Typography>
                               {previewItem.newEndDate && previewItem.newEndDate !== previewItem.currentEndDate && (
                                 <Typography variant="body2" sx={{ 
-                                  color: darkProTokens.success,
+                                  color: colorTokens.success,
                                   fontWeight: 600
                                 }}>
                                   📅 Nueva: {formatDisplayDate(previewItem.newEndDate)}
                                   {previewItem.daysToAdd > 0 && (
-                                    <span style={{ color: darkProTokens.info }}>
+                                    <span style={{ color: colorTokens.info }}>
                                       {' '}(+{previewItem.daysToAdd} días)
                                     </span>
                                   )}
                                 </Typography>
                               )}
                               <Typography variant="caption" sx={{ 
-                                color: darkProTokens.info,
+                                color: colorTokens.info,
                                 fontStyle: 'italic',
                                 display: 'block',
                                 mt: 0.5
@@ -337,7 +366,7 @@ const BulkOperationModal = memo<Props>(({
                     {preview.length > 5 && (
                       <Box sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="caption" sx={{ 
-                          color: darkProTokens.textSecondary,
+                          color: colorTokens.neutral800,
                           fontStyle: 'italic'
                         }}>
                           ... y {preview.length - 5} membresías más
@@ -361,16 +390,16 @@ const BulkOperationModal = memo<Props>(({
               sx={{ mt: 3 }}
               InputProps={{
                 sx: {
-                  color: darkProTokens.textPrimary,
+                  color: colorTokens.neutral1200,
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}30`
+                    borderColor: `${operation.action === 'freeze' ? colorTokens.info : colorTokens.success}30`
                   }
                 }
               }}
               InputLabelProps={{
                 sx: { 
-                  color: darkProTokens.textSecondary,
-                  '&.Mui-focused': { color: operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success }
+                  color: colorTokens.neutral800,
+                  '&.Mui-focused': { color: operation.action === 'freeze' ? colorTokens.info : colorTokens.success }
                 }
               }}
             />
@@ -379,7 +408,7 @@ const BulkOperationModal = memo<Props>(({
           <Box>
             {/* Estado de loading */}
             <Typography variant="h6" sx={{ 
-              color: operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success,
+              color: operation.action === 'freeze' ? colorTokens.info : colorTokens.success,
               mb: 3,
               textAlign: 'center'
             }}>
@@ -392,15 +421,15 @@ const BulkOperationModal = memo<Props>(({
               sx={{
                 height: 10,
                 borderRadius: 5,
-                backgroundColor: `${operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success}20`,
+                backgroundColor: `${operation.action === 'freeze' ? colorTokens.info : colorTokens.success}20`,
                 '& .MuiLinearProgress-bar': {
-                  backgroundColor: operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                  backgroundColor: operation.action === 'freeze' ? colorTokens.info : colorTokens.success
                 }
               }}
             />
 
             <Typography variant="body2" sx={{ 
-              color: darkProTokens.textSecondary,
+              color: colorTokens.neutral800,
               textAlign: 'center',
               mt: 2
             }}>
@@ -410,38 +439,38 @@ const BulkOperationModal = memo<Props>(({
             {/* Resultados en tiempo real */}
             {(results.success > 0 || results.failed > 0) && (
               <Box sx={{ mt: 3 }}>
-                <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 1 }}>
+                <Typography variant="body1" sx={{ color: colorTokens.neutral1200, mb: 1 }}>
                   Resultados en tiempo real:
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid size={6}>
                     <Box sx={{
-                      background: `${darkProTokens.success}10`,
-                      border: `1px solid ${darkProTokens.success}30`,
+                      background: `${colorTokens.success}10`,
+                      border: `1px solid ${colorTokens.success}30`,
                       borderRadius: 2,
                       p: 2,
                       textAlign: 'center'
                     }}>
-                      <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 800 }}>
+                      <Typography variant="h4" sx={{ color: colorTokens.success, fontWeight: 800 }}>
                         {results.success}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
                         ✅ Exitosas
                       </Typography>
                     </Box>
                   </Grid>
                   <Grid size={6}>
                     <Box sx={{
-                      background: `${darkProTokens.error}10`,
-                      border: `1px solid ${darkProTokens.error}30`,
+                      background: `${colorTokens.danger}10`,
+                      border: `1px solid ${colorTokens.danger}30`,
                       borderRadius: 2,
                       p: 2,
                       textAlign: 'center'
                     }}>
-                      <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 800 }}>
+                      <Typography variant="h4" sx={{ color: colorTokens.danger, fontWeight: 800 }}>
                         {results.failed}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
                         ❌ Fallidas
                       </Typography>
                     </Box>
@@ -451,20 +480,20 @@ const BulkOperationModal = memo<Props>(({
                 {/* Errores */}
                 {results.errors.length > 0 && (
                   <Box sx={{ mt: 2 }}>
-                    <Typography variant="body2" sx={{ color: darkProTokens.error, mb: 1 }}>
+                    <Typography variant="body2" sx={{ color: colorTokens.danger, mb: 1 }}>
                       Errores detectados:
                     </Typography>
                     <Box sx={{
                       maxHeight: 150,
                       overflow: 'auto',
-                      border: `1px solid ${darkProTokens.error}30`,
+                      border: `1px solid ${colorTokens.danger}30`,
                       borderRadius: 1,
                       p: 1,
-                      background: `${darkProTokens.error}05`
+                      background: `${colorTokens.danger}05`
                     }}>
                       {results.errors.map((error, index) => (
                         <Typography key={index} variant="caption" sx={{ 
-                          color: darkProTokens.error,
+                          color: colorTokens.danger,
                           display: 'block',
                           fontSize: '0.75rem'
                         }}>
@@ -485,8 +514,8 @@ const BulkOperationModal = memo<Props>(({
           onClick={onClose}
           disabled={loading}
           sx={{ 
-            color: darkProTokens.textSecondary,
-            borderColor: darkProTokens.grayDark,
+            color: colorTokens.neutral800,
+            borderColor: colorTokens.neutral400,
             px: 3,
             py: 1
           }}
@@ -506,20 +535,20 @@ const BulkOperationModal = memo<Props>(({
             }
             sx={{
               background: `linear-gradient(135deg, ${
-                operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
+                operation.action === 'freeze' ? colorTokens.info : colorTokens.success
               }, ${
-                operation.action === 'freeze' ? darkProTokens.infoHover : darkProTokens.successHover
-              })`,
-              color: darkProTokens.textPrimary,
+                operation.action === 'freeze' ? colorTokens.info : colorTokens.success
+              }DD)`,
+              color: colorTokens.neutral1200,
               fontWeight: 700,
               px: 4,
               py: 1,
               '&:hover': {
                 background: `linear-gradient(135deg, ${
-                  operation.action === 'freeze' ? darkProTokens.infoHover : darkProTokens.successHover
-                }, ${
-                  operation.action === 'freeze' ? darkProTokens.info : darkProTokens.success
-                })`,
+                  operation.action === 'freeze' ? colorTokens.info : colorTokens.success
+                }DD, ${
+                  operation.action === 'freeze' ? colorTokens.info : colorTokens.success
+                }BB)`,
                 transform: 'translateY(-1px)'
               }
             }}
