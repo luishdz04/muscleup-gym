@@ -1,4 +1,4 @@
-// components/membership/MembershipTable.tsx
+// components/membership/MembershipTable.tsx - TABLA OPTIMIZADA
 'use client';
 
 import React, { memo, useCallback } from 'react';
@@ -23,37 +23,8 @@ import {
   Edit as EditIcon,
   MoreVert as MoreVertIcon
 } from '@mui/icons-material';
-import { MembershipHistory } from '@/types/membership';
-
-// ✅ PALETA DE COLORES UNIFICADA
-const colorTokens = {
-  // Colores base
-  brand: '#FFCC00',
-  black: '#000000',
-  white: '#FFFFFF',
-  
-  // Escala neutra (Dark Theme)
-  neutral0: '#0A0A0B',
-  neutral50: '#0F1012',
-  neutral100: '#14161A',
-  neutral200: '#1B1E24',
-  neutral300: '#23272F',
-  neutral400: '#2C313B',
-  neutral500: '#363C48',
-  neutral600: '#424959',
-  neutral700: '#535B6E',
-  neutral800: '#6A7389',
-  neutral900: '#8B94AA',
-  neutral1000: '#C9CFDB',
-  neutral1100: '#E8ECF5',
-  neutral1200: '#FFFFFF',
-  
-  // Semánticos
-  success: '#22C55E',
-  danger: '#EF4444',
-  info: '#38BDF8',
-  warning: '#FFCC00', // Mismo que brand
-};
+import { colorTokens } from '@/theme';
+import { MembershipHistory, StatusOption, PaymentMethodOption } from '@/types/membership';
 
 interface Props {
   memberships: MembershipHistory[];
@@ -70,8 +41,8 @@ interface Props {
   onToggleSelection: (id: string) => void;
   onSelectAll: () => void;
   // Opciones de configuración
-  statusOptions: Array<{ value: string; label: string; color: string; icon: string }>;
-  paymentMethodOptions: Array<{ value: string; label: string; icon: string }>;
+  statusOptions: StatusOption[];
+  paymentMethodOptions: PaymentMethodOption[];
   // Funciones de formato
   formatPrice: (price: number) => string;
   formatDisplayDate: (date: string | null) => string;
@@ -99,10 +70,10 @@ const MembershipTable = memo<Props>(({
   calculateDaysRemaining,
   getCurrentFrozenDays
 }) => {
-  // Funciones memoizadas para optimización
+  // ✅ FUNCIONES MEMOIZADAS PARA OPTIMIZACIÓN
   const getStatusColor = useCallback((status: string) => {
     const statusOption = statusOptions.find(s => s.value === status);
-    return statusOption?.color || colorTokens.neutral800;
+    return statusOption?.color || colorTokens.textSecondary;
   }, [statusOptions]);
 
   const getStatusIcon = useCallback((status: string) => {
@@ -115,7 +86,7 @@ const MembershipTable = memo<Props>(({
     return option?.icon || '💳';
   }, [paymentMethodOptions]);
 
-  // Estado de selección para checkbox principal
+  // ✅ ESTADO DE SELECCIÓN PARA CHECKBOX PRINCIPAL
   const allEligibleIds = memberships
     .filter(m => m.status === 'active' || m.status === 'frozen')
     .map(m => m.id);
@@ -127,6 +98,7 @@ const MembershipTable = memo<Props>(({
     onSelectAll();
   }, [onSelectAll]);
 
+  // ✅ PAGINACIÓN MEMOIZADA
   const paginatedMemberships = memberships.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -139,7 +111,7 @@ const MembershipTable = memo<Props>(({
           <TableHead>
             <TableRow sx={{ backgroundColor: `${colorTokens.neutral400}30` }}>
               {bulkMode && (
-                <TableCell sx={{ color: colorTokens.neutral1200, fontWeight: 700, width: 50 }}>
+                <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700, width: 50 }}>
                   <Checkbox
                     checked={isAllSelected}
                     indeterminate={isIndeterminate}
@@ -152,13 +124,13 @@ const MembershipTable = memo<Props>(({
                   />
                 </TableCell>
               )}
-              <TableCell sx={{ color: colorTokens.neutral1200, fontWeight: 700 }}>Cliente</TableCell>
-              <TableCell sx={{ color: colorTokens.neutral1200, fontWeight: 700 }}>Plan</TableCell>
-              <TableCell sx={{ color: colorTokens.neutral1200, fontWeight: 700 }}>Estado</TableCell>
-              <TableCell sx={{ color: colorTokens.neutral1200, fontWeight: 700 }}>Vigencia</TableCell>
-              <TableCell sx={{ color: colorTokens.neutral1200, fontWeight: 700 }}>Pago</TableCell>
-              <TableCell sx={{ color: colorTokens.neutral1200, fontWeight: 700 }}>Congelamiento</TableCell>
-              <TableCell sx={{ color: colorTokens.neutral1200, fontWeight: 700 }}>Acciones</TableCell>
+              <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Cliente</TableCell>
+              <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Plan</TableCell>
+              <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Estado</TableCell>
+              <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Vigencia</TableCell>
+              <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Pago</TableCell>
+              <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Congelamiento</TableCell>
+              <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -182,7 +154,7 @@ const MembershipTable = memo<Props>(({
                       sx={{
                         color: colorTokens.brand,
                         '&.Mui-checked': { color: colorTokens.brand },
-                        '&.Mui-disabled': { color: colorTokens.neutral600 }
+                        '&.Mui-disabled': { color: colorTokens.textDisabled }
                       }}
                     />
                   </TableCell>
@@ -191,13 +163,13 @@ const MembershipTable = memo<Props>(({
                 <TableCell>
                   <Box>
                     <Typography variant="body1" sx={{ 
-                      color: colorTokens.neutral1200,
+                      color: colorTokens.textPrimary,
                       fontWeight: 600
                     }}>
                       {membership.user_name}
                     </Typography>
                     <Typography variant="caption" sx={{ 
-                      color: colorTokens.neutral800
+                      color: colorTokens.textSecondary
                     }}>
                       {membership.user_email}
                     </Typography>
@@ -207,7 +179,7 @@ const MembershipTable = memo<Props>(({
                 <TableCell>
                   <Box>
                     <Typography variant="body2" sx={{ 
-                      color: colorTokens.neutral1200,
+                      color: colorTokens.textPrimary,
                       fontWeight: 500
                     }}>
                       {membership.plan_name}
@@ -244,7 +216,7 @@ const MembershipTable = memo<Props>(({
                     label={`${getStatusIcon(membership.status)} ${membership.status.toUpperCase()}`}
                     sx={{
                       backgroundColor: getStatusColor(membership.status),
-                      color: colorTokens.neutral1200,
+                      color: colorTokens.textPrimary,
                       fontWeight: 600,
                       minWidth: 100
                     }}
@@ -254,7 +226,7 @@ const MembershipTable = memo<Props>(({
                 <TableCell>
                   <Box>
                     <Typography variant="body2" sx={{ 
-                      color: colorTokens.neutral1200,
+                      color: colorTokens.textPrimary,
                       fontWeight: 500
                     }}>
                       📅 Inicio: {formatDisplayDate(membership.start_date)}
@@ -262,7 +234,7 @@ const MembershipTable = memo<Props>(({
                     {membership.end_date ? (
                       <>
                         <Typography variant="body2" sx={{ 
-                          color: colorTokens.neutral1200,
+                          color: colorTokens.textPrimary,
                           fontWeight: 600,
                           mb: 0.5
                         }}>
@@ -271,7 +243,7 @@ const MembershipTable = memo<Props>(({
                         <Typography variant="caption" sx={{ 
                           color: (() => {
                             const daysRemaining = calculateDaysRemaining(membership.end_date);
-                            if (daysRemaining === null) return colorTokens.neutral800;
+                            if (daysRemaining === null) return colorTokens.textSecondary;
                             if (daysRemaining < 0) return colorTokens.danger;
                             if (daysRemaining < 7) return colorTokens.warning;
                             return colorTokens.success;
@@ -305,7 +277,7 @@ const MembershipTable = memo<Props>(({
                       {formatPrice(membership.amount_paid)}
                     </Typography>
                     <Typography variant="caption" sx={{ 
-                      color: colorTokens.neutral800
+                      color: colorTokens.textSecondary
                     }}>
                       {getPaymentIcon(membership.payment_method)} {membership.payment_method}
                     </Typography>
@@ -327,7 +299,7 @@ const MembershipTable = memo<Props>(({
                           }}
                         />
                         <Typography variant="caption" sx={{ 
-                          color: colorTokens.neutral800,
+                          color: colorTokens.textSecondary,
                           display: 'block'
                         }}>
                           Total: {membership.total_frozen_days} días
@@ -345,7 +317,7 @@ const MembershipTable = memo<Props>(({
                       />
                     ) : (
                       <Typography variant="caption" sx={{ 
-                        color: colorTokens.neutral800
+                        color: colorTokens.textSecondary
                       }}>
                         Sin historial
                       </Typography>
@@ -387,9 +359,9 @@ const MembershipTable = memo<Props>(({
                       <IconButton
                         onClick={(event) => onMoreActions(event, membership)}
                         sx={{ 
-                          color: colorTokens.neutral800,
+                          color: colorTokens.textSecondary,
                           '&:hover': { 
-                            backgroundColor: `${colorTokens.neutral800}15` 
+                            backgroundColor: `${colorTokens.textSecondary}15` 
                           }
                         }}
                       >
@@ -413,13 +385,13 @@ const MembershipTable = memo<Props>(({
         onRowsPerPageChange={onRowsPerPageChange}
         rowsPerPageOptions={[5, 10, 25, 50, 100]}
         sx={{
-          color: colorTokens.neutral1200,
+          color: colorTokens.textPrimary,
           borderTop: `1px solid ${colorTokens.neutral400}`,
           '& .MuiTablePagination-actions button': {
             color: colorTokens.brand
           },
           '& .MuiTablePagination-select': {
-            color: colorTokens.neutral1200
+            color: colorTokens.textPrimary
           }
         }}
         labelRowsPerPage="Filas por página:"
