@@ -1,5 +1,6 @@
-// Actualizar la interfaz MembershipHistory
-interface MembershipHistory {
+
+// types/membership.ts - TIPOS FALTANTES
+export interface MembershipHistory {
   id: string;
   userid: string;
   planid: string;
@@ -20,19 +21,53 @@ interface MembershipHistory {
   payment_change: number;
   is_mixed_payment: boolean;
   is_renewal: boolean;
-  skip_inscription: boolean;
   custom_commission_rate: number | null;
+  skip_inscription: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;
-  
-  // 🆕 NUEVOS CAMPOS PARA CONGELAMIENTO INTELIGENTE
   freeze_date: string | null;
   unfreeze_date: string | null;
   total_frozen_days: number;
-  
-  // Datos relacionados
+  payment_details: any;
   user_name: string;
   user_email: string;
   plan_name: string;
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface Filters {
+  searchTerm: string;
+  status: string;
+  paymentMethod: string;
+  dateFrom: string;
+  dateTo: string;
+  planId: string;
+  isRenewal: string;
+}
+
+export interface BulkFreezeOperation {
+  type: 'freeze' | 'unfreeze' | 'manual_freeze' | 'manual_unfreeze';
+  membershipIds: string[];
+  reason?: string;
+  freezeDays?: number;
+  isManual?: boolean;
+  action: 'freeze' | 'unfreeze';
+  mode: 'auto' | 'manual';
+}
+
+export interface BulkPreview {
+  membershipId: string;
+  userName: string;
+  planName: string;
+  currentStatus: string;
+  currentEndDate: string | null;
+  newEndDate: string | null;
+  daysToAdd: number;
+  actionDescription: string;
 }
