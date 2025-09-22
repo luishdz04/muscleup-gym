@@ -21,7 +21,36 @@ import {
   AutoMode as AutoIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { darkProTokens } from '@/constants/tokens';
+
+// ✅ PALETA DE COLORES UNIFICADA
+const colorTokens = {
+  // Colores base
+  brand: '#FFCC00',
+  black: '#000000',
+  white: '#FFFFFF',
+  
+  // Escala neutra (Dark Theme)
+  neutral0: '#0A0A0B',
+  neutral50: '#0F1012',
+  neutral100: '#14161A',
+  neutral200: '#1B1E24',
+  neutral300: '#23272F',
+  neutral400: '#2C313B',
+  neutral500: '#363C48',
+  neutral600: '#424959',
+  neutral700: '#535B6E',
+  neutral800: '#6A7389',
+  neutral900: '#8B94AA',
+  neutral1000: '#C9CFDB',
+  neutral1100: '#E8ECF5',
+  neutral1200: '#FFFFFF',
+  
+  // Semánticos
+  success: '#22C55E',
+  danger: '#EF4444',
+  info: '#38BDF8',
+  warning: '#FFCC00', // Mismo que brand
+};
 
 interface Props {
   bulkMode: boolean;
@@ -56,22 +85,22 @@ const BulkOperationPanel = memo<Props>(({
       <Paper sx={{
         p: 3,
         mb: 3,
-        background: `linear-gradient(135deg, ${darkProTokens.info}20, ${darkProTokens.info}10)`,
-        border: `2px solid ${darkProTokens.info}40`,
+        background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
+        border: `2px solid ${colorTokens.info}40`,
         borderRadius: 4,
-        boxShadow: `0 8px 32px ${darkProTokens.info}20`
+        boxShadow: `0 8px 32px ${colorTokens.info}20`
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <BatchIcon sx={{ color: darkProTokens.info, fontSize: 30 }} />
+            <BatchIcon sx={{ color: colorTokens.info, fontSize: 30 }} />
             <Box>
               <Typography variant="h6" sx={{ 
-                color: darkProTokens.info, 
+                color: colorTokens.info, 
                 fontWeight: 700 
               }}>
                 🧊 Modo Congelamiento Masivo Avanzado
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+              <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
                 {selectedCount} membresías seleccionadas • Gestión inteligente simplificada
               </Typography>
             </Box>
@@ -80,11 +109,11 @@ const BulkOperationPanel = memo<Props>(({
           <IconButton
             onClick={onCloseBulkMode}
             sx={{ 
-              color: darkProTokens.error,
-              borderColor: `${darkProTokens.error}60`,
+              color: colorTokens.danger,
+              borderColor: `${colorTokens.danger}60`,
               '&:hover': {
-                borderColor: darkProTokens.error,
-                backgroundColor: `${darkProTokens.error}10`
+                borderColor: colorTokens.danger,
+                backgroundColor: `${colorTokens.danger}10`
               }
             }}
           >
@@ -101,12 +130,12 @@ const BulkOperationPanel = memo<Props>(({
                 onClick={onSelectAll}
                 fullWidth
                 sx={{ 
-                  color: darkProTokens.info,
-                  borderColor: `${darkProTokens.info}60`,
+                  color: colorTokens.info,
+                  borderColor: `${colorTokens.info}60`,
                   fontWeight: 600,
                   '&:hover': {
-                    borderColor: darkProTokens.info,
-                    backgroundColor: `${darkProTokens.info}10`
+                    borderColor: colorTokens.info,
+                    backgroundColor: `${colorTokens.info}10`
                   }
                 }}
                 variant="outlined"
@@ -120,12 +149,12 @@ const BulkOperationPanel = memo<Props>(({
                 onClick={onClearSelection}
                 fullWidth
                 sx={{ 
-                  color: darkProTokens.textSecondary,
-                  borderColor: `${darkProTokens.textSecondary}40`,
+                  color: colorTokens.neutral800,
+                  borderColor: `${colorTokens.neutral800}40`,
                   fontWeight: 600,
                   '&:hover': {
-                    borderColor: darkProTokens.textSecondary,
-                    backgroundColor: `${darkProTokens.textSecondary}10`
+                    borderColor: colorTokens.neutral800,
+                    backgroundColor: `${colorTokens.neutral800}10`
                   }
                 }}
                 variant="outlined"
@@ -145,16 +174,17 @@ const BulkOperationPanel = memo<Props>(({
                 disabled={!hasSelectedMemberships}
                 fullWidth
                 sx={{ 
-                  color: darkProTokens.textPrimary,
-                  backgroundColor: darkProTokens.info,
+                  color: colorTokens.neutral1200,
+                  backgroundColor: colorTokens.info,
                   fontWeight: 700,
                   '&:hover': {
-                    backgroundColor: darkProTokens.infoHover,
+                    backgroundColor: colorTokens.info,
+                    filter: 'brightness(1.1)',
                     transform: 'translateY(-1px)'
                   },
                   '&:disabled': {
-                    backgroundColor: `${darkProTokens.info}30`,
-                    color: `${darkProTokens.textPrimary}50`
+                    backgroundColor: `${colorTokens.info}30`,
+                    color: `${colorTokens.neutral1200}50`
                   }
                 }}
                 variant="contained"
@@ -169,16 +199,16 @@ const BulkOperationPanel = memo<Props>(({
                 disabled={!hasSelectedMemberships}
                 fullWidth
                 sx={{ 
-                  color: darkProTokens.info,
-                  borderColor: `${darkProTokens.info}60`,
+                  color: colorTokens.info,
+                  borderColor: `${colorTokens.info}60`,
                   fontWeight: 600,
                   '&:hover': {
-                    borderColor: darkProTokens.info,
-                    backgroundColor: `${darkProTokens.info}10`
+                    borderColor: colorTokens.info,
+                    backgroundColor: `${colorTokens.info}10`
                   },
                   '&:disabled': {
-                    borderColor: `${darkProTokens.info}30`,
-                    color: `${darkProTokens.info}50`
+                    borderColor: `${colorTokens.info}30`,
+                    color: `${colorTokens.info}50`
                   }
                 }}
                 variant="outlined"
@@ -198,16 +228,17 @@ const BulkOperationPanel = memo<Props>(({
                 disabled={!hasSelectedMemberships}
                 fullWidth
                 sx={{ 
-                  color: darkProTokens.textPrimary,
-                  backgroundColor: darkProTokens.success,
+                  color: colorTokens.neutral1200,
+                  backgroundColor: colorTokens.success,
                   fontWeight: 700,
                   '&:hover': {
-                    backgroundColor: darkProTokens.successHover,
+                    backgroundColor: colorTokens.success,
+                    filter: 'brightness(1.1)',
                     transform: 'translateY(-1px)'
                   },
                   '&:disabled': {
-                    backgroundColor: `${darkProTokens.success}30`,
-                    color: `${darkProTokens.textPrimary}50`
+                    backgroundColor: `${colorTokens.success}30`,
+                    color: `${colorTokens.neutral1200}50`
                   }
                 }}
                 variant="contained"
@@ -222,16 +253,16 @@ const BulkOperationPanel = memo<Props>(({
                 disabled={!hasSelectedMemberships}
                 fullWidth
                 sx={{ 
-                  color: darkProTokens.success,
-                  borderColor: `${darkProTokens.success}60`,
+                  color: colorTokens.success,
+                  borderColor: `${colorTokens.success}60`,
                   fontWeight: 600,
                   '&:hover': {
-                    borderColor: darkProTokens.success,
-                    backgroundColor: `${darkProTokens.success}10`
+                    borderColor: colorTokens.success,
+                    backgroundColor: `${colorTokens.success}10`
                   },
                   '&:disabled': {
-                    borderColor: `${darkProTokens.success}30`,
-                    color: `${darkProTokens.success}50`
+                    borderColor: `${colorTokens.success}30`,
+                    color: `${colorTokens.success}50`
                   }
                 }}
                 variant="outlined"
@@ -245,8 +276,8 @@ const BulkOperationPanel = memo<Props>(({
           {/* Contador de Seleccionadas */}
           <Grid size={{ xs: 12, md: 1 }}>
             <Box sx={{
-              background: `${darkProTokens.primary}10`,
-              border: `1px solid ${darkProTokens.primary}30`,
+              background: `${colorTokens.brand}10`,
+              border: `1px solid ${colorTokens.brand}30`,
               borderRadius: 2,
               p: 1,
               textAlign: 'center',
@@ -256,12 +287,12 @@ const BulkOperationPanel = memo<Props>(({
               justifyContent: 'center'
             }}>
               <Typography variant="h4" sx={{ 
-                color: darkProTokens.primary,
+                color: colorTokens.brand,
                 fontWeight: 800
               }}>
                 {selectedCount}
               </Typography>
-              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+              <Typography variant="caption" sx={{ color: colorTokens.neutral800 }}>
                 Seleccionadas
               </Typography>
             </Box>
@@ -274,10 +305,10 @@ const BulkOperationPanel = memo<Props>(({
             severity="info"
             sx={{
               mt: 2,
-              backgroundColor: `${darkProTokens.info}05`,
-              color: darkProTokens.textPrimary,
-              border: `1px solid ${darkProTokens.info}20`,
-              '& .MuiAlert-icon': { color: darkProTokens.info }
+              backgroundColor: `${colorTokens.info}05`,
+              color: colorTokens.neutral1200,
+              border: `1px solid ${colorTokens.info}20`,
+              '& .MuiAlert-icon': { color: colorTokens.info }
             }}
           >
             <Typography variant="body2">
@@ -294,10 +325,10 @@ const BulkOperationPanel = memo<Props>(({
             severity="warning"
             sx={{
               mt: 2,
-              backgroundColor: `${darkProTokens.warning}05`,
-              color: darkProTokens.textPrimary,
-              border: `1px solid ${darkProTokens.warning}20`,
-              '& .MuiAlert-icon': { color: darkProTokens.warning }
+              backgroundColor: `${colorTokens.warning}05`,
+              color: colorTokens.neutral1200,
+              border: `1px solid ${colorTokens.warning}20`,
+              '& .MuiAlert-icon': { color: colorTokens.warning }
             }}
           >
             <Typography variant="body2">
