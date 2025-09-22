@@ -26,7 +26,7 @@ import {
   AcUnit as AcUnitIcon,
   Timer as TimerIcon
 } from '@mui/icons-material';
-import { colorTokens } from '@/theme/colorTokens';
+import { colorTokens } from '@/theme';
 import { MembershipHistory } from '@/types/membership';
 
 interface Props {
