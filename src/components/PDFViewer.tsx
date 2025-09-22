@@ -1,4 +1,4 @@
-// components/PDFViewer.tsx (Versión con marca de agua JavaScript)
+// components/PDFViewer.tsx
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
@@ -6,8 +6,8 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.mjs`;
-
+// *** CONFIGURACIÓN CRÍTICA DEL WORKER - DIRECTA ***
+pdfjs.GlobalWorkerOptions.workerSrc = '/static/pdf.worker.js';
 
 
 interface PDFViewerProps {
