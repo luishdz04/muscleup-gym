@@ -1,4 +1,4 @@
-// pages/HistorialMembresiaPage.tsx - ACTUALIZADO CON PALETA UNIFICADA
+// pages/HistorialMembresiaPage.tsx - CÓDIGO COMPLETO INTEGRADO
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -9,75 +9,38 @@ import {
   CardContent,
   Button,
   Paper,
-  Alert,
-  Snackbar,
   CircularProgress,
   Stack,
   Menu,
   MenuItem as MenuItemComponent,
   MenuList,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Grid
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
 import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-// 🎯 HOOKS PERSONALIZADOS IMPORTADOS
+// HOOKS PERSONALIZADOS
 import { useMembershipFilters } from '@/hooks/useMembershipFilters';
 import { useBulkOperations } from '@/hooks/useBulkOperations';
 import { useMembershipCRUD } from '@/hooks/useMembershipCRUD';
 
-// 🧩 COMPONENTES SEPARADOS IMPORTADOS
+// COMPONENTES SEPARADOS
 import MembershipTable from '@/components/membership/MembershipTable';
 import FilterPanel from '@/components/membership/FilterPanel';
 import BulkOperationPanel from '@/components/membership/BulkOperationPanel';
 import BulkOperationModal from '@/components/membership/BulkOperationModal';
+import MembershipDetailsModal from '@/components/membership/MembershipDetailsModal';
+import MembershipEditModal from '@/components/membership/MembershipEditModal';
 
-// ✅ PALETA DE COLORES UNIFICADA - Igual que registrar membresía
-const colorTokens = {
-  // Colores base
-  brand: '#FFCC00',
-  black: '#000000',
-  white: '#FFFFFF',
-  
-  // Escala neutra (Dark Theme)
-  neutral0: '#0A0A0B',
-  neutral50: '#0F1012',
-  neutral100: '#14161A',
-  neutral200: '#1B1E24',
-  neutral300: '#23272F',
-  neutral400: '#2C313B',
-  neutral500: '#363C48',
-  neutral600: '#424959',
-  neutral700: '#535B6E',
-  neutral800: '#6A7389',
-  neutral900: '#8B94AA',
-  neutral1000: '#C9CFDB',
-  neutral1100: '#E8ECF5',
-  neutral1200: '#FFFFFF',
-  
-  // Semánticos
-  success: '#22C55E',
-  danger: '#EF4444',
-  info: '#38BDF8',
-  warning: '#FFCC00', // Mismo que brand
-  
-  // Escala de marca
-  brand50: '#FFF4CC',
-  brand100: '#FFE999',
-  brand200: '#FFDD66',
-  brand300: '#FFD333',
-  brand400: '#FFCC00',
-  brand500: '#E6B800',
-  brand600: '#CCA300',
-  brand700: '#A67F00',
-  brand800: '#806300',
-  brand900: '#594400'
-};
+// UTILIDADES Y TIPOS
+import { addDaysToDate, formatMexicoDateTime } from '@/utils/dateHelpers';
+import { colorTokens } from '@/theme';
+import type { MembershipHistory, StatusOption, PaymentMethodOption } from '@/types/membership';
 
-// 🔧 ICONOS
+// ICONOS
 import {
   History as HistoryIcon,
   Refresh as RefreshIcon,
@@ -85,7 +48,6 @@ import {
   TrendingUp as TrendingUpIcon,
   AttachMoney as AttachMoneyIcon,
   Group as GroupIcon,
-  CalendarToday as CalendarTodayIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   AcUnit as AcUnitIcon,
@@ -95,8 +57,8 @@ import {
   BatchPrediction as BatchIcon
 } from '@mui/icons-material';
 
-// ✅ OPCIONES VERIFICADAS (Actualizadas con nueva paleta)
-const statusOptions = [
+// OPCIONES DE CONFIGURACIÓN
+const statusOptions: StatusOption[] = [
   { value: '', label: 'Todos los estados', color: colorTokens.neutral800, icon: '📋' },
   { value: 'active', label: 'Activa', color: colorTokens.success, icon: '✅' },
   { value: 'expired', label: 'Vencida', color: colorTokens.danger, icon: '❌' },
@@ -104,7 +66,7 @@ const statusOptions = [
   { value: 'cancelled', label: 'Cancelada', color: colorTokens.neutral600, icon: '🚫' }
 ];
 
-const paymentMethodOptions = [
+const paymentMethodOptions: PaymentMethodOption[] = [
   { value: '', label: 'Todos los métodos', icon: '💳' },
   { value: 'efectivo', label: 'Efectivo', icon: '💵' },
   { value: 'debito', label: 'Débito', icon: '💳' },
@@ -116,7 +78,7 @@ const paymentMethodOptions = [
 export default function HistorialMembresiaPage() {
   const router = useRouter();
   
-  // 🎯 HOOKS PERSONALIZADOS - LÓGICA SEPARADA
+  // HOOKS PERSONALIZADOS - LÓGICA SEPARADA
   const {
     memberships,
     plans,
@@ -171,19 +133,18 @@ export default function HistorialMembresiaPage() {
     handleBulkFreeze,
     handleBulkUnfreeze,
     executeBulkOperation,
-    getBulkOperationTitle,
     formatDisplayDate,
     getCurrentFrozenDays
   } = useBulkOperations(memberships, forceReloadMemberships);
 
-  // 🔧 ESTADOS LOCALES SIMPLIFICADOS
+  // ESTADOS LOCALES
   const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [unfreezeLoading, setUnfreezeLoading] = useState(false);
 
-  // ✅ FUNCIONES UTILITARIAS MEMOIZADAS
+  // FUNCIONES UTILITARIAS MEMOIZADAS
   const calculateDaysRemaining = useCallback((endDate: string | null): number | null => {
     if (!endDate) return null;
     
@@ -205,8 +166,31 @@ export default function HistorialMembresiaPage() {
     }
   }, []);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO INDIVIDUAL (Con toast notifications)
-  const handleFreezeMembership = useCallback(async (membership: any) => {
+  // FUNCIONES HELPER PARA MODALES
+  const formatTimestampForDisplay = useCallback((timestamp: string): string => {
+    return formatMexicoDateTime(timestamp, {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  }, []);
+
+  const getStatusColor = useCallback((status: string) => {
+    const statusOption = statusOptions.find(s => s.value === status);
+    return statusOption?.color || colorTokens.neutral800;
+  }, []);
+
+  const getStatusIcon = useCallback((status: string) => {
+    const statusOption = statusOptions.find(s => s.value === status);
+    return statusOption?.icon || '📋';
+  }, []);
+
+  // FUNCIONES DE CONGELAMIENTO INDIVIDUAL
+  const handleFreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setFreezeLoading(true);
       const toastId = toast.loading('🧊 Congelando membresía...');
@@ -216,12 +200,9 @@ export default function HistorialMembresiaPage() {
         return;
       }
 
-      // Aquí iría la lógica de congelamiento individual
-      // Simulando delay de API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await handleStatusChange(membership, 'frozen');
       
       toast.success('✅ Membresía congelada exitosamente', { id: toastId });
-      await forceReloadMemberships();
       setActionMenuAnchor(null);
       
     } catch (err: any) {
@@ -229,9 +210,9 @@ export default function HistorialMembresiaPage() {
     } finally {
       setFreezeLoading(false);
     }
-  }, [forceReloadMemberships]);
+  }, [handleStatusChange]);
 
-  const handleUnfreezeMembership = useCallback(async (membership: any) => {
+  const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setUnfreezeLoading(true);
       const toastId = toast.loading('🔄 Reactivando membresía...');
@@ -241,11 +222,9 @@ export default function HistorialMembresiaPage() {
         return;
       }
 
-      // Aquí iría la lógica de reactivación individual
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await handleStatusChange(membership, 'active');
       
       toast.success('✅ Membresía reactivada exitosamente', { id: toastId });
-      await forceReloadMemberships();
       setActionMenuAnchor(null);
       
     } catch (err: any) {
@@ -253,21 +232,21 @@ export default function HistorialMembresiaPage() {
     } finally {
       setUnfreezeLoading(false);
     }
-  }, [forceReloadMemberships]);
+  }, [handleStatusChange]);
 
-  // ✅ HANDLERS MEMOIZADOS PARA COMPONENTES
-  const handleViewDetails = useCallback((membership: any) => {
+  // HANDLERS MEMOIZADOS PARA COMPONENTES
+  const handleViewDetails = useCallback((membership: MembershipHistory) => {
     setSelectedMembership(membership);
     setDetailsDialogOpen(true);
   }, [setSelectedMembership, setDetailsDialogOpen]);
 
-  const handleEdit = useCallback((membership: any) => {
+  const handleEdit = useCallback((membership: MembershipHistory) => {
     setSelectedMembership(membership);
     initializeEditData(membership);
     setEditDialogOpen(true);
   }, [setSelectedMembership, initializeEditData, setEditDialogOpen]);
 
-  const handleMoreActions = useCallback((event: React.MouseEvent<HTMLElement>, membership: any) => {
+  const handleMoreActions = useCallback((event: React.MouseEvent<HTMLElement>, membership: MembershipHistory) => {
     setSelectedMembership(membership);
     setActionMenuAnchor(event.currentTarget);
   }, [setSelectedMembership]);
@@ -281,7 +260,20 @@ export default function HistorialMembresiaPage() {
     setPage(0);
   }, []);
 
-  // ✅ HANDLERS PARA BULK OPERATIONS
+  // HANDLER PARA GUARDAR EDICIÓN
+  const handleSaveEdit = useCallback(async () => {
+    try {
+      const toastId = toast.loading('💾 Guardando cambios...');
+      
+      await handleUpdateMembership();
+      
+      toast.success('✅ Membresía actualizada exitosamente', { id: toastId });
+    } catch (error: any) {
+      toast.error(`❌ Error al actualizar: ${error.message}`);
+    }
+  }, [handleUpdateMembership]);
+
+  // HANDLERS PARA BULK OPERATIONS
   const handleBulkFreezeWrapper = useCallback((isManual: boolean) => {
     try {
       handleBulkFreeze(isManual, filteredMemberships);
@@ -302,7 +294,7 @@ export default function HistorialMembresiaPage() {
     handleSelectAllMemberships(filteredMemberships);
   }, [handleSelectAllMemberships, filteredMemberships]);
 
-  // ✅ EFFECTS
+  // EFFECTS
   useEffect(() => {
     loadMemberships();
     loadPlans();
@@ -315,7 +307,7 @@ export default function HistorialMembresiaPage() {
       minHeight: '100vh',
       color: colorTokens.neutral1200
     }}>
-      {/* ✅ HEADER PROFESIONAL CON NUEVA PALETA */}
+      {/* HEADER PROFESIONAL */}
       <Paper sx={{
         p: 4,
         mb: 4,
@@ -398,9 +390,9 @@ export default function HistorialMembresiaPage() {
           </Stack>
         </Box>
 
-        {/* ✅ ESTADÍSTICAS MEJORADAS CON NUEVA PALETA */}
+        {/* ESTADÍSTICAS */}
         <Grid container spacing={3}>
-          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <Grid xs={12} sm={6} md={2}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
               border: `1px solid ${colorTokens.info}30`,
@@ -425,7 +417,7 @@ export default function HistorialMembresiaPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <Grid xs={12} sm={6} md={2}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
               border: `1px solid ${colorTokens.success}30`,
@@ -450,7 +442,7 @@ export default function HistorialMembresiaPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <Grid xs={12} sm={6} md={2}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
               border: `1px solid ${colorTokens.info}30`,
@@ -475,7 +467,7 @@ export default function HistorialMembresiaPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <Grid xs={12} sm={6} md={2}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.danger}20, ${colorTokens.danger}10)`,
               border: `1px solid ${colorTokens.danger}30`,
@@ -500,7 +492,7 @@ export default function HistorialMembresiaPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <Grid xs={12} sm={6} md={2}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.brand}20, ${colorTokens.brand}10)`,
               border: `1px solid ${colorTokens.brand}30`,
@@ -525,7 +517,7 @@ export default function HistorialMembresiaPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <Grid xs={12} sm={6} md={2}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.warning}20, ${colorTokens.warning}10)`,
               border: `1px solid ${colorTokens.warning}30`,
@@ -552,7 +544,7 @@ export default function HistorialMembresiaPage() {
         </Grid>
       </Paper>
 
-      {/* 🧩 COMPONENTE DE OPERACIONES MASIVAS */}
+      {/* COMPONENTE DE OPERACIONES MASIVAS */}
       <AnimatePresence>
         {bulkMode && (
           <BulkOperationPanel
@@ -571,7 +563,7 @@ export default function HistorialMembresiaPage() {
         )}
       </AnimatePresence>
 
-      {/* 🧩 COMPONENTE DE FILTROS */}
+      {/* COMPONENTE DE FILTROS */}
       <FilterPanel
         filters={filters}
         onFilterChange={updateFilter}
@@ -584,7 +576,7 @@ export default function HistorialMembresiaPage() {
         paymentMethodOptions={paymentMethodOptions}
       />
 
-      {/* ✅ BOTÓN PARA ACTIVAR MODO MASIVO */}
+      {/* BOTÓN PARA ACTIVAR MODO MASIVO */}
       {!bulkMode && (
         <Box sx={{ mb: 3, textAlign: 'center' }}>
           <Button
@@ -612,7 +604,7 @@ export default function HistorialMembresiaPage() {
         </Box>
       )}
 
-      {/* 🧩 COMPONENTE DE TABLA PRINCIPAL */}
+      {/* COMPONENTE DE TABLA PRINCIPAL */}
       <Card sx={{
         background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
         border: `1px solid ${colorTokens.brand}20`,
@@ -667,7 +659,7 @@ export default function HistorialMembresiaPage() {
         </CardContent>
       </Card>
 
-      {/* ✅ MENU DE ACCIONES CON NUEVA PALETA */}
+      {/* MENU DE ACCIONES */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -746,7 +738,7 @@ export default function HistorialMembresiaPage() {
         </MenuList>
       </Menu>
 
-      {/* 🧩 MODAL DE OPERACIONES MASIVAS */}
+      {/* MODAL DE OPERACIONES MASIVAS */}
       <BulkOperationModal
         open={bulkDialogOpen}
         onClose={() => setBulkDialogOpen(false)}
@@ -761,7 +753,46 @@ export default function HistorialMembresiaPage() {
         formatDisplayDate={formatDisplayDate}
       />
 
-      {/* TODO: Añadir aquí los modales de Details y Edit cuando se extraigan */}
+      {/* MODAL DE DETALLES */}
+      <MembershipDetailsModal
+        open={detailsDialogOpen}
+        onClose={() => setDetailsDialogOpen(false)}
+        membership={selectedMembership}
+        onEdit={() => {
+          if (selectedMembership) {
+            initializeEditData(selectedMembership);
+            setDetailsDialogOpen(false);
+            setEditDialogOpen(true);
+          }
+        }}
+        formatDisplayDate={formatDisplayDate}
+        formatTimestampForDisplay={formatTimestampForDisplay}
+        formatPrice={formatPrice}
+        calculateDaysRemaining={calculateDaysRemaining}
+        getCurrentFrozenDays={getCurrentFrozenDays}
+        getStatusColor={getStatusColor}
+        getStatusIcon={getStatusIcon}
+        paymentMethodOptions={paymentMethodOptions}
+      />
+
+      {/* MODAL DE EDICIÓN */}
+      <MembershipEditModal
+        open={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setEditData({});
+        }}
+        membership={selectedMembership}
+        editData={editData}
+        onEditDataChange={setEditData}
+        onSave={handleSaveEdit}
+        loading={editLoading}
+        formatDisplayDate={formatDisplayDate}
+        formatPrice={formatPrice}
+        addDaysToDate={addDaysToDate}
+        statusOptions={statusOptions}
+        paymentMethodOptions={paymentMethodOptions}
+      />
     </Box>
   );
 }
