@@ -1,4 +1,4 @@
-// components/membership/BulkOperationModal.tsx
+// components/membership/BulkOperationModal.tsx - MODAL DE OPERACIONES MASIVAS
 'use client';
 
 import React, { memo } from 'react';
@@ -30,37 +30,8 @@ import {
   AccessTime as AccessTimeIcon,
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
+import { colorTokens } from '@/theme';
 import { BulkFreezeOperation, BulkPreview } from '@/types/membership';
-
-// ✅ PALETA DE COLORES UNIFICADA
-const colorTokens = {
-  // Colores base
-  brand: '#FFCC00',
-  black: '#000000',
-  white: '#FFFFFF',
-  
-  // Escala neutra (Dark Theme)
-  neutral0: '#0A0A0B',
-  neutral50: '#0F1012',
-  neutral100: '#14161A',
-  neutral200: '#1B1E24',
-  neutral300: '#23272F',
-  neutral400: '#2C313B',
-  neutral500: '#363C48',
-  neutral600: '#424959',
-  neutral700: '#535B6E',
-  neutral800: '#6A7389',
-  neutral900: '#8B94AA',
-  neutral1000: '#C9CFDB',
-  neutral1100: '#E8ECF5',
-  neutral1200: '#FFFFFF',
-  
-  // Semánticos
-  success: '#22C55E',
-  danger: '#EF4444',
-  info: '#38BDF8',
-  warning: '#FFCC00', // Mismo que brand
-};
 
 interface Props {
   open: boolean;
@@ -109,10 +80,10 @@ const BulkOperationModal = memo<Props>(({
       fullWidth
       PaperProps={{
         sx: {
-          background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
           border: `2px solid ${operation.action === 'freeze' ? colorTokens.info : colorTokens.success}50`,
           borderRadius: 4,
-          color: colorTokens.neutral1200,
+          color: colorTokens.textPrimary,
           boxShadow: `0 20px 60px rgba(0, 0, 0, 0.5)`,
           maxHeight: '90vh'
         }
@@ -138,7 +109,7 @@ const BulkOperationModal = memo<Props>(({
         <IconButton 
           onClick={onClose}
           disabled={loading}
-          sx={{ color: colorTokens.neutral800 }}
+          sx={{ color: colorTokens.textSecondary }}
         >
           <CloseIcon />
         </IconButton>
@@ -147,12 +118,12 @@ const BulkOperationModal = memo<Props>(({
       <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
         {!loading ? (
           <Box>
-            {/* Alerta de advertencia */}
+            {/* ✅ ALERTA DE ADVERTENCIA */}
             <Alert 
               severity="warning"
               sx={{
                 backgroundColor: `${colorTokens.warning}10`,
-                color: colorTokens.neutral1200,
+                color: colorTokens.textPrimary,
                 border: `1px solid ${colorTokens.warning}30`,
                 '& .MuiAlert-icon': { color: colorTokens.warning },
                 mb: 3
@@ -177,7 +148,7 @@ const BulkOperationModal = memo<Props>(({
               </Typography>
             </Alert>
 
-            {/* Configuración para congelamiento manual */}
+            {/* ✅ CONFIGURACIÓN PARA CONGELAMIENTO MANUAL */}
             {operation.mode === 'manual' && operation.action === 'freeze' && (
               <Card sx={{
                 background: `${colorTokens.info}10`,
@@ -200,7 +171,7 @@ const BulkOperationModal = memo<Props>(({
 
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="body1" sx={{ 
-                      color: colorTokens.neutral1200,
+                      color: colorTokens.textPrimary,
                       fontWeight: 600,
                       mb: 2
                     }}>
@@ -226,7 +197,7 @@ const BulkOperationModal = memo<Props>(({
                         color: colorTokens.info,
                         '& .MuiSlider-thumb': {
                           backgroundColor: colorTokens.info,
-                          border: `2px solid ${colorTokens.neutral1200}`,
+                          border: `2px solid ${colorTokens.textPrimary}`,
                           '&:hover': {
                             boxShadow: `0 0 0 8px ${colorTokens.info}30`
                           }
@@ -238,10 +209,10 @@ const BulkOperationModal = memo<Props>(({
                           backgroundColor: colorTokens.neutral400
                         },
                         '& .MuiSlider-mark': {
-                          backgroundColor: colorTokens.neutral800
+                          backgroundColor: colorTokens.textSecondary
                         },
                         '& .MuiSlider-markLabel': {
-                          color: colorTokens.neutral800,
+                          color: colorTokens.textSecondary,
                           fontSize: '0.75rem'
                         }
                       }}
@@ -252,7 +223,7 @@ const BulkOperationModal = memo<Props>(({
                     severity="info"
                     sx={{
                       backgroundColor: `${colorTokens.info}05`,
-                      color: colorTokens.neutral1200,
+                      color: colorTokens.textPrimary,
                       border: `1px solid ${colorTokens.info}20`,
                       '& .MuiAlert-icon': { color: colorTokens.info }
                     }}
@@ -268,7 +239,7 @@ const BulkOperationModal = memo<Props>(({
               </Card>
             )}
 
-            {/* Vista previa de cambios */}
+            {/* ✅ VISTA PREVIA DE CAMBIOS */}
             {showPreview && preview.length > 0 && (
               <Card sx={{
                 background: `${colorTokens.success}10`,
@@ -290,7 +261,7 @@ const BulkOperationModal = memo<Props>(({
                   </Typography>
 
                   <Typography variant="body2" sx={{ 
-                    color: colorTokens.neutral800,
+                    color: colorTokens.textSecondary,
                     mb: 2
                   }}>
                     Se procesarán {preview.length} membresías para {operation.action === 'freeze' ? 'congelamiento' : 'reactivación'}:
@@ -311,7 +282,7 @@ const BulkOperationModal = memo<Props>(({
                           <ListItemAvatar>
                             <Avatar sx={{ 
                               background: colorTokens.brand,
-                              color: colorTokens.neutral0,
+                              color: colorTokens.textOnBrand,
                               width: 40,
                               height: 40
                             }}>
@@ -320,19 +291,19 @@ const BulkOperationModal = memo<Props>(({
                           </ListItemAvatar>
                           <Box sx={{ flex: 1 }}>
                             <Typography variant="body1" sx={{ 
-                              color: colorTokens.neutral1200,
+                              color: colorTokens.textPrimary,
                               fontWeight: 600
                             }}>
                               {previewItem.userName}
                             </Typography>
                             <Typography variant="caption" sx={{ 
-                              color: colorTokens.neutral800
+                              color: colorTokens.textSecondary
                             }}>
                               {previewItem.planName} • {previewItem.currentStatus.toUpperCase()}
                             </Typography>
                             <Box sx={{ mt: 1 }}>
                               <Typography variant="body2" sx={{ 
-                                color: colorTokens.neutral800
+                                color: colorTokens.textSecondary
                               }}>
                                 📅 Actual: {previewItem.currentEndDate ? formatDisplayDate(previewItem.currentEndDate) : 'Sin fecha'}
                               </Typography>
@@ -366,7 +337,7 @@ const BulkOperationModal = memo<Props>(({
                     {preview.length > 5 && (
                       <Box sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="caption" sx={{ 
-                          color: colorTokens.neutral800,
+                          color: colorTokens.textSecondary,
                           fontStyle: 'italic'
                         }}>
                           ... y {preview.length - 5} membresías más
@@ -378,7 +349,7 @@ const BulkOperationModal = memo<Props>(({
               </Card>
             )}
 
-            {/* Campo de motivo */}
+            {/* ✅ CAMPO DE MOTIVO */}
             <TextField
               fullWidth
               label="Motivo (opcional)"
@@ -390,7 +361,7 @@ const BulkOperationModal = memo<Props>(({
               sx={{ mt: 3 }}
               InputProps={{
                 sx: {
-                  color: colorTokens.neutral1200,
+                  color: colorTokens.textPrimary,
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: `${operation.action === 'freeze' ? colorTokens.info : colorTokens.success}30`
                   }
@@ -398,7 +369,7 @@ const BulkOperationModal = memo<Props>(({
               }}
               InputLabelProps={{
                 sx: { 
-                  color: colorTokens.neutral800,
+                  color: colorTokens.textSecondary,
                   '&.Mui-focused': { color: operation.action === 'freeze' ? colorTokens.info : colorTokens.success }
                 }
               }}
@@ -406,7 +377,7 @@ const BulkOperationModal = memo<Props>(({
           </Box>
         ) : (
           <Box>
-            {/* Estado de loading */}
+            {/* ✅ ESTADO DE LOADING */}
             <Typography variant="h6" sx={{ 
               color: operation.action === 'freeze' ? colorTokens.info : colorTokens.success,
               mb: 3,
@@ -429,17 +400,17 @@ const BulkOperationModal = memo<Props>(({
             />
 
             <Typography variant="body2" sx={{ 
-              color: colorTokens.neutral800,
+              color: colorTokens.textSecondary,
               textAlign: 'center',
               mt: 2
             }}>
               {progress}% completado • Procesando {operation.membershipIds.length} membresías
             </Typography>
 
-            {/* Resultados en tiempo real */}
+            {/* ✅ RESULTADOS EN TIEMPO REAL */}
             {(results.success > 0 || results.failed > 0) && (
               <Box sx={{ mt: 3 }}>
-                <Typography variant="body1" sx={{ color: colorTokens.neutral1200, mb: 1 }}>
+                <Typography variant="body1" sx={{ color: colorTokens.textPrimary, mb: 1 }}>
                   Resultados en tiempo real:
                 </Typography>
                 <Grid container spacing={2}>
@@ -454,7 +425,7 @@ const BulkOperationModal = memo<Props>(({
                       <Typography variant="h4" sx={{ color: colorTokens.success, fontWeight: 800 }}>
                         {results.success}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                         ✅ Exitosas
                       </Typography>
                     </Box>
@@ -470,14 +441,14 @@ const BulkOperationModal = memo<Props>(({
                       <Typography variant="h4" sx={{ color: colorTokens.danger, fontWeight: 800 }}>
                         {results.failed}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                         ❌ Fallidas
                       </Typography>
                     </Box>
                   </Grid>
                 </Grid>
                 
-                {/* Errores */}
+                {/* ✅ ERRORES */}
                 {results.errors.length > 0 && (
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2" sx={{ color: colorTokens.danger, mb: 1 }}>
@@ -514,7 +485,7 @@ const BulkOperationModal = memo<Props>(({
           onClick={onClose}
           disabled={loading}
           sx={{ 
-            color: colorTokens.neutral800,
+            color: colorTokens.textSecondary,
             borderColor: colorTokens.neutral400,
             px: 3,
             py: 1
@@ -537,18 +508,18 @@ const BulkOperationModal = memo<Props>(({
               background: `linear-gradient(135deg, ${
                 operation.action === 'freeze' ? colorTokens.info : colorTokens.success
               }, ${
-                operation.action === 'freeze' ? colorTokens.info : colorTokens.success
-              }DD)`,
-              color: colorTokens.neutral1200,
+                operation.action === 'freeze' ? colorTokens.infoHover : colorTokens.successHover
+              })`,
+              color: colorTokens.textPrimary,
               fontWeight: 700,
               px: 4,
               py: 1,
               '&:hover': {
                 background: `linear-gradient(135deg, ${
+                  operation.action === 'freeze' ? colorTokens.infoHover : colorTokens.successHover
+                }, ${
                   operation.action === 'freeze' ? colorTokens.info : colorTokens.success
-                }DD, ${
-                  operation.action === 'freeze' ? colorTokens.info : colorTokens.success
-                }BB)`,
+                })`,
                 transform: 'translateY(-1px)'
               }
             }}
