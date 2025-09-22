@@ -23,8 +23,37 @@ import {
   ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { darkProTokens } from '@/constants/tokens';
 import { Filters, Plan } from '@/types/membership';
+
+// ✅ PALETA DE COLORES UNIFICADA
+const colorTokens = {
+  // Colores base
+  brand: '#FFCC00',
+  black: '#000000',
+  white: '#FFFFFF',
+  
+  // Escala neutra (Dark Theme)
+  neutral0: '#0A0A0B',
+  neutral50: '#0F1012',
+  neutral100: '#14161A',
+  neutral200: '#1B1E24',
+  neutral300: '#23272F',
+  neutral400: '#2C313B',
+  neutral500: '#363C48',
+  neutral600: '#424959',
+  neutral700: '#535B6E',
+  neutral800: '#6A7389',
+  neutral900: '#8B94AA',
+  neutral1000: '#C9CFDB',
+  neutral1100: '#E8ECF5',
+  neutral1200: '#FFFFFF',
+  
+  // Semánticos
+  success: '#22C55E',
+  danger: '#EF4444',
+  info: '#38BDF8',
+  warning: '#FFCC00', // Mismo que brand
+};
 
 interface Props {
   filters: Filters;
@@ -53,13 +82,13 @@ const FilterPanel = memo<Props>(({
     <Paper sx={{
       p: 3,
       mb: 3,
-      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}95, ${darkProTokens.surfaceLevel3}90)`,
-      border: `1px solid ${darkProTokens.primary}20`,
+      background: `linear-gradient(135deg, ${colorTokens.neutral200}95, ${colorTokens.neutral300}90)`,
+      border: `1px solid ${colorTokens.brand}20`,
       borderRadius: 4
     }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" sx={{ 
-          color: darkProTokens.primary, 
+          color: colorTokens.brand, 
           fontWeight: 700,
           display: 'flex',
           alignItems: 'center',
@@ -73,14 +102,14 @@ const FilterPanel = memo<Props>(({
           startIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           onClick={onToggleFilters}
           sx={{ 
-            color: darkProTokens.primary,
-            borderColor: `${darkProTokens.primary}60`,
+            color: colorTokens.brand,
+            borderColor: `${colorTokens.brand}60`,
             px: 3,
             py: 1,
             fontWeight: 600,
             '&:hover': {
-              borderColor: darkProTokens.primary,
-              backgroundColor: `${darkProTokens.primary}10`
+              borderColor: colorTokens.brand,
+              backgroundColor: `${colorTokens.brand}10`
             }
           }}
           variant="outlined"
@@ -98,22 +127,22 @@ const FilterPanel = memo<Props>(({
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon sx={{ color: darkProTokens.primary }} />
+              <SearchIcon sx={{ color: colorTokens.brand }} />
             </InputAdornment>
           ),
           sx: {
-            color: darkProTokens.textPrimary,
-            backgroundColor: `${darkProTokens.grayDark}20`,
+            color: colorTokens.neutral1200,
+            backgroundColor: `${colorTokens.neutral400}20`,
             fontSize: '1.1rem',
             '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: `${darkProTokens.primary}30`,
+              borderColor: `${colorTokens.brand}30`,
               borderWidth: 2
             },
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: darkProTokens.primary
+              borderColor: colorTokens.brand
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: darkProTokens.primary
+              borderColor: colorTokens.brand
             }
           }
         }}
@@ -134,8 +163,8 @@ const FilterPanel = memo<Props>(({
               <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
+                    color: colorTokens.neutral800,
+                    '&.Mui-focused': { color: colorTokens.brand }
                   }}>
                     Estado
                   </InputLabel>
@@ -143,15 +172,15 @@ const FilterPanel = memo<Props>(({
                     value={filters.status}
                     onChange={(e) => onFilterChange('status', e.target.value)}
                     sx={{
-                      color: darkProTokens.textPrimary,
+                      color: colorTokens.neutral1200,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
+                        borderColor: `${colorTokens.brand}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       }
                     }}
                   >
@@ -171,8 +200,8 @@ const FilterPanel = memo<Props>(({
               <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
+                    color: colorTokens.neutral800,
+                    '&.Mui-focused': { color: colorTokens.brand }
                   }}>
                     Método de Pago
                   </InputLabel>
@@ -180,15 +209,15 @@ const FilterPanel = memo<Props>(({
                     value={filters.paymentMethod}
                     onChange={(e) => onFilterChange('paymentMethod', e.target.value)}
                     sx={{
-                      color: darkProTokens.textPrimary,
+                      color: colorTokens.neutral1200,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
+                        borderColor: `${colorTokens.brand}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       }
                     }}
                   >
@@ -208,8 +237,8 @@ const FilterPanel = memo<Props>(({
               <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
+                    color: colorTokens.neutral800,
+                    '&.Mui-focused': { color: colorTokens.brand }
                   }}>
                     Plan
                   </InputLabel>
@@ -217,15 +246,15 @@ const FilterPanel = memo<Props>(({
                     value={filters.planId}
                     onChange={(e) => onFilterChange('planId', e.target.value)}
                     sx={{
-                      color: darkProTokens.textPrimary,
+                      color: colorTokens.neutral1200,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
+                        borderColor: `${colorTokens.brand}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       }
                     }}
                   >
@@ -243,8 +272,8 @@ const FilterPanel = memo<Props>(({
               <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
+                    color: colorTokens.neutral800,
+                    '&.Mui-focused': { color: colorTokens.brand }
                   }}>
                     Tipo de Venta
                   </InputLabel>
@@ -252,15 +281,15 @@ const FilterPanel = memo<Props>(({
                     value={filters.isRenewal}
                     onChange={(e) => onFilterChange('isRenewal', e.target.value)}
                     sx={{
-                      color: darkProTokens.textPrimary,
+                      color: colorTokens.neutral1200,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
+                        borderColor: `${colorTokens.brand}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       }
                     }}
                   >
@@ -282,21 +311,21 @@ const FilterPanel = memo<Props>(({
                   InputLabelProps={{ 
                     shrink: true,
                     sx: { 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
+                      color: colorTokens.neutral800,
+                      '&.Mui-focused': { color: colorTokens.brand }
                     }
                   }}
                   InputProps={{
                     sx: {
-                      color: darkProTokens.textPrimary,
+                      color: colorTokens.neutral1200,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
+                        borderColor: `${colorTokens.brand}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       }
                     }
                   }}
@@ -314,21 +343,21 @@ const FilterPanel = memo<Props>(({
                   InputLabelProps={{ 
                     shrink: true,
                     sx: { 
-                      color: darkProTokens.textSecondary,
-                      '&.Mui-focused': { color: darkProTokens.primary }
+                      color: colorTokens.neutral800,
+                      '&.Mui-focused': { color: colorTokens.brand }
                     }
                   }}
                   InputProps={{
                     sx: {
-                      color: darkProTokens.textPrimary,
+                      color: colorTokens.neutral1200,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: `${darkProTokens.primary}30`
+                        borderColor: `${colorTokens.brand}30`
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: darkProTokens.primary
+                        borderColor: colorTokens.brand
                       }
                     }
                   }}
@@ -339,7 +368,7 @@ const FilterPanel = memo<Props>(({
             {/* Botón limpiar filtros */}
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body2" sx={{ 
-                color: darkProTokens.textSecondary,
+                color: colorTokens.neutral800,
                 fontStyle: 'italic'
               }}>
                 {hasActiveFilters ? 'Filtros aplicados' : 'Sin filtros activos'}
@@ -349,12 +378,12 @@ const FilterPanel = memo<Props>(({
                 onClick={onClearFilters}
                 disabled={!hasActiveFilters}
                 sx={{ 
-                  color: darkProTokens.textSecondary,
+                  color: colorTokens.neutral800,
                   '&:hover': {
-                    backgroundColor: `${darkProTokens.textSecondary}10`
+                    backgroundColor: `${colorTokens.neutral800}10`
                   },
                   '&.Mui-disabled': {
-                    color: darkProTokens.textDisabled
+                    color: colorTokens.neutral600
                   }
                 }}
               >
