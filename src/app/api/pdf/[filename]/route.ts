@@ -1,3 +1,4 @@
+// app/api/pdf/[filename]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -41,6 +42,9 @@ export async function GET(
     const fileBuffer = await fs.readFile(filePath);
     console.log('Archivo leído correctamente, tamaño:', fileBuffer.length);
     
+    // SOLUCIÓN: Convertir Buffer a Uint8Array
+    const uint8Array = new Uint8Array(fileBuffer);
+    
     // Headers para seguridad y tipo de contenido
     const headers = new Headers();
     headers.set('Content-Type', 'application/pdf');
@@ -49,9 +53,10 @@ export async function GET(
     headers.set('Expires', '0');
     headers.set('Content-Disposition', `inline; filename="${filename}"`);
     
-    return new NextResponse(fileBuffer, { 
+    // Usar Uint8Array que es compatible con BodyInit
+    return new Response(uint8Array, {
       status: 200,
-      headers 
+      headers
     });
     
   } catch (error) {

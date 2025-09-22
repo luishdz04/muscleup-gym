@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/utils/supabase-admin';
 import jsPDF from 'jspdf';
+import { deleteAllUserPdfs } from '@/utils/deleteUsersPdfs';
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -61,12 +62,24 @@ export async function POST(req: NextRequest) {
     console.log("🚀 API generate-pdf ENTERPRISE iniciada");
     const body = await req.json();
     const userId = body.userId;
+    const isRegeneration = body.isRegeneration || false;
     
     console.log("📊 Generando PDF ENTERPRISE para usuario:", userId);
     
     if (!userId) {
       console.error("❌ Error: userId es requerido");
       return NextResponse.json({ success: false, message: "ID de usuario requerido" }, { status: 400 });
+    }
+    
+    if (isRegeneration) {
+      console.log("🔄 Modo regeneración detectado");
+    } else {
+      console.log("🏗️ Modo original - generación inicial");
+    }
+    
+    // 🗑️ LIMPIAR TODOS LOS PDFs SI ES REGENERACIÓN
+    if (isRegeneration) {
+      await deleteAllUserPdfs(userId);
     }
     
     // 📡 OBTENER DATOS DEL USUARIO Y TABLAS RELACIONADAS (ORIGINAL)
@@ -673,7 +686,8 @@ const { data: userData, error: userError } = await supabaseAdmin
     
     // ☁️ SUBIR EL PDF A SUPABASE STORAGE (ORIGINAL)
     console.log("☁️ Subiendo PDF a Supabase Storage...");
-    const pdfPath = `${userId}/contrato-${Date.now()}.pdf`;
+    const timestamp = Date.now();
+    const pdfPath = `${userId}/inscripcion-cliente-${timestamp}.pdf`;
     const { error: uploadError } = await supabaseAdmin
       .storage
       .from('user-files')
@@ -713,11 +727,17 @@ const { data: userData, error: userError } = await supabaseAdmin
       // Continuamos a pesar del error porque el PDF se generó correctamente
     }
     
-    console.log("🎉 Proceso de generación de PDF completado exitosamente");
+    const successMessage = isRegeneration 
+      ? "PDF INSCRIPCIÓN regenerado correctamente"
+      : "PDF INSCRIPCIÓN generado correctamente";
+    
+    console.log(`🎉 ${successMessage}`);
     return NextResponse.json({
       success: true,
       pdfUrl: publicUrlData.publicUrl,
-      message: "PDF generado correctamente"
+      message: successMessage,
+      isRegeneration: isRegeneration,
+      version: "INSCRIPCION_ENTERPRISE"
     });
     
   } catch (error) {

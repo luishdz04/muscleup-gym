@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/utils/supabase-admin';
 import jsPDF from 'jspdf';
+import { deleteAllUserPdfs } from '@/utils/deleteUsersPdfs';
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -60,78 +61,26 @@ function safeValue(value: any, defaultValue: string = 'No disponible'): string {
   return String(value).trim();
 }
 
-// 🗑️ FUNCIÓN PARA ELIMINAR CONTRATOS ANTERIORES
-const deleteOldContracts = async (userId: string): Promise<void> => {
-  try {
-    console.log('🗑️ Iniciando limpieza de contratos anteriores...');
-    
-    const { data: files, error: listError } = await supabaseAdmin.storage
-      .from('user-files')
-      .list(userId, { 
-        limit: 100,
-        sortBy: { column: 'updated_at', order: 'desc' }
-      });
-    
-    if (listError) {
-      console.error('❌ Error listando archivos:', listError);
-      return;
-    }
-    
-    const contractFiles = files?.filter(file => 
-      file.name.startsWith('contrato-') && file.name.endsWith('.pdf')
-    ) || [];
-    
-    if (contractFiles.length === 0) {
-      console.log('ℹ️ No hay contratos anteriores para eliminar');
-      return;
-    }
-    
-    const filesToDelete = contractFiles.map(file => `${userId}/${file.name}`);
-    
-    const { error: deleteError } = await supabaseAdmin.storage
-      .from('user-files')
-      .remove(filesToDelete);
-    
-    if (deleteError) {
-      console.error('❌ Error eliminando contratos antiguos:', deleteError);
-    } else {
-      console.log(`✅ Eliminados ${filesToDelete.length} contratos anteriores exitosamente`);
-    }
-    
-  } catch (error) {
-    console.error('💥 Error en deleteOldContracts:', error);
-  }
-};
-
 export async function POST(req: NextRequest) {
   try {
     console.log("🚀 API generate-contract ENTERPRISE COMPLETE iniciada");
     const body = await req.json();
     
     const isRegeneration = body.isRegeneration || false;
-    let userId: string;
+    const userId = body.userId;
     
     // 🔧 VALIDACIÓN DE ENTRADA
+    if (!userId) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "ID de usuario requerido" 
+      }, { status: 400 });
+    }
+    
     if (isRegeneration) {
       console.log("🔄 Modo regeneración detectado");
-      userId = body.userId;
-      
-      if (!userId) {
-        return NextResponse.json({ 
-          success: false, 
-          message: "ID de usuario requerido para regeneración" 
-        }, { status: 400 });
-      }
     } else {
       console.log("🏗️ Modo original - generación inicial");
-      userId = body.userId;
-      
-      if (!userId) {
-        return NextResponse.json({ 
-          success: false, 
-          message: "ID de usuario requerido" 
-        }, { status: 400 });
-      }
     }
     
     // 📡 OBTENER DATOS DEL USUARIO
@@ -157,9 +106,9 @@ export async function POST(req: NextRequest) {
     
     console.log("✅ Datos del usuario obtenidos correctamente");
     
-    // 🗑️ LIMPIAR CONTRATOS ANTERIORES SI ES REGENERACIÓN
+    // 🗑️ LIMPIAR TODOS LOS PDFs SI ES REGENERACIÓN
     if (isRegeneration) {
-      await deleteOldContracts(userId);
+      await deleteAllUserPdfs(userId);
     }
     
     // 🔍 OBTENER URLs DE ARCHIVOS

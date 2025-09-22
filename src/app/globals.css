@@ -39,3 +39,44 @@
     opacity: 1;
   }
 }
+
+
+/* SweetAlert2 Dark Pro Styles - Agregar al final */
+.swal-dark-popup {
+  border-radius: 16px !important;
+  border: 1px solid #2C313B !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+.swal-dark-confirm-button {
+  background: linear-gradient(135deg, #FFCC00, #E6B800) !important;
+  color: #000000 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  font-size: 0.95rem !important;
+  transition: all 0.3s ease !important;
+}
+
+.swal-dark-confirm-button:hover {
+  background: linear-gradient(135deg, #E6B800, #CCA300) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(255, 204, 0, 0.4) !important;
+}
+
+.swal-dark-cancel-button {
+  background: #424959 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #535B6E !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  font-size: 0.95rem !important;
+}
+
+.swal-dark-cancel-button:hover {
+  background: #535B6E !important;
+  transform: translateY(-1px) !important;
+}

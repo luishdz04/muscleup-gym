@@ -243,6 +243,41 @@ const menuItems: MenuItem[] = [
     description: 'Gestión completa de clientes'
   },
   
+// 👨‍💼 EMPLEADOS (Gestión de staff interno)
+{ 
+  text: 'Empleados', 
+  icon: <BadgeIcon />,
+  submenu: true,
+  section: 'empleados',
+  description: 'Gestión de personal interno',
+  items: [
+    { 
+      text: 'Dashboard Empleados', 
+      path: '/dashboard/admin/empleados', 
+      icon: <DashboardIcon />,
+      parent: 'empleados',
+      section: 'empleados-dashboard',
+      description: 'Vista general del personal'
+    },
+    { 
+      text: 'Registrar Empleado', 
+      path: '/dashboard/admin/empleados/registrar', 
+      icon: <PersonAddIcon />,
+      parent: 'empleados',
+      section: 'registrar-empleado',
+      description: 'Agregar nuevo empleado'
+    },
+    { 
+      text: 'Lista de Empleados', 
+      path: '/dashboard/admin/empleados/lista', 
+      icon: <PeopleIcon />,
+      parent: 'empleados',
+      section: 'lista-empleados',
+      description: 'Gestionar personal existente'
+    }
+  ]
+},
+
   // 💪 PLANES (CATÁLOGO DE MEMBRESÍAS) - SIN SUBMENU
   { 
     text: 'Planes', 
@@ -707,20 +742,20 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
       let sectionIcon = null;
       
       // Buscar nombre e icono bonito
-      menuItems.forEach(item => {
-        if (item.section === part) {
-          sectionName = item.text;
-          sectionIcon = item.icon;
-        } else if (item.submenu && item.items) {
-          item.items.forEach(subItem => {
-            if (subItem.section === part) {
-              sectionName = subItem.text;
-              sectionIcon = subItem.icon;
-            }
-          });
-        }
-      });
-      
+   menuItems.forEach(item => {
+  // Buscar por path completo primero
+  if (item.path && pathname.startsWith(item.path)) {
+    sectionName = item.text;
+    sectionIcon = item.icon;
+  } else if (item.submenu && item.items) {
+    item.items.forEach(subItem => {
+      if (subItem.path && pathname.startsWith(subItem.path)) {
+        sectionName = subItem.text;
+        sectionIcon = subItem.icon;
+      }
+    });
+  }
+});
       const isLast = i === pathParts.length - 1;
       
       breadcrumbs.push(

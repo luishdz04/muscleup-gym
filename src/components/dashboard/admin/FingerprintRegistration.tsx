@@ -53,40 +53,8 @@ import {
   Preview as PreviewIcon
 } from '@mui/icons-material';
 
-// 🎨 DARK PRO TOKENS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  iconDefault: '#FFFFFF',
-  iconMuted: '#AAAAAA',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  focusRing: 'rgba(255,204,0,0.4)',
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
+// ✅ IMPORTAR TOKENS CENTRALES DEL TEMA
+import { colorTokens } from '@/theme';
 
 // 🖐️ CONFIGURACIÓN DE DEDOS
 const FINGER_CONFIG = [
@@ -109,49 +77,49 @@ const PROCESS_STEPS = [
     label: 'Seleccionar Dedo', 
     description: 'Elija qué dedo desea registrar',
     icon: <TouchAppIcon />,
-    color: darkProTokens.info
+    color: colorTokens.info
   },
   { 
     id: 'preparation', 
     label: 'Preparación', 
     description: 'Preparando para captura múltiple',
     icon: <ProgressIcon />,
-    color: darkProTokens.warning
+    color: colorTokens.warning
   },
   { 
     id: 'capture1', 
     label: 'Captura 1/3', 
     description: 'Primera captura - Template principal',
     icon: <OneIcon />,
-    color: darkProTokens.primary
+    color: colorTokens.brand
   },
   { 
     id: 'capture2', 
     label: 'Captura 2/3', 
     description: 'Segunda captura - Verificación',
     icon: <TwoIcon />,
-    color: darkProTokens.info
+    color: colorTokens.info
   },
   { 
     id: 'capture3', 
     label: 'Captura 3/3', 
     description: 'Tercera captura - Respaldo',
     icon: <ThreeIcon />,
-    color: darkProTokens.warning
+    color: colorTokens.warning
   },
   { 
     id: 'processing', 
     label: 'Procesando', 
     description: 'Combinando templates biométricos',
     icon: <MergeIcon />,
-    color: darkProTokens.info
+    color: colorTokens.info
   },
   { 
     id: 'ready', 
     label: 'Datos Listos', 
     description: 'Huella preparada para guardar',
     icon: <PreviewIcon />,
-    color: darkProTokens.success
+    color: colorTokens.success
   }
 ];
 
@@ -165,6 +133,7 @@ interface FingerprintRegistrationProps {
     lastName: string;
     fingerprint: boolean;
   };
+  userType: 'empleado' | 'cliente';
   onFingerprintDataReady: (fingerprintData: any) => void;
   onError: (message: string) => void;
 }
@@ -197,6 +166,7 @@ export default function FingerprintRegistration({
   open,
   onClose,
   user,
+  userType,
   onFingerprintDataReady,
   onError
 }: FingerprintRegistrationProps) {
@@ -239,7 +209,7 @@ export default function FingerprintRegistration({
   const MAX_RECONNECT_ATTEMPTS = 5;
   const reconnectAttemptsRef = useRef(0);
 
-  // ⏱️ FUNCIONES DE TIMER
+  // ⏱️ FUNCIONES DE TIMER OPTIMIZADAS
   const startTotalTimer = useCallback(() => {
     if (totalTimerRef.current) {
       clearInterval(totalTimerRef.current);
@@ -303,76 +273,81 @@ export default function FingerprintRegistration({
     onClose();
   }, [resetProcess, onClose]);
 
-// Agregar esta función ANTES de confirmFingerprintData
-const getNextDeviceUserId = async (): Promise<number> => {
-  try {
-    const response = await fetch('/api/biometric/get-next-device-id');
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Siguiente ID secuencial:', data.nextId);
-      return data.nextId;
+  // ✅ FUNCIÓN PARA OBTENER SIGUIENTE ID SECUENCIAL
+  const getNextDeviceUserId = useCallback(async (): Promise<number> => {
+    try {
+      const response = await fetch(`/api/biometric/get-next-device-id?userType=${userType}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Siguiente ID secuencial:', data.nextId);
+        return data.nextId;
+      }
+    } catch (error) {
+      console.error('❌ Error obteniendo ID:', error);
     }
-  } catch (error) {
-    console.error('❌ Error obteniendo ID:', error);
-  }
-  
-  // Fallback si falla el API
-  return Math.floor(Math.random() * 1000) + 1;
-};
+    
+    // Fallback respetando rangos por tipo de usuario
+    const fallbackRanges = {
+      empleado: 7000,
+      cliente: 1,
+      administrador: 8000
+    };
+    return Math.floor(Math.random() * 20) + (fallbackRanges[userType] || 1);
+  }, [userType]);
 
-// Reemplazar confirmFingerprintData con esta versión
-const confirmFingerprintData = useCallback(async () => {
-  if (!combinedTemplate || !selectedFingerRef.current) {
-    setError('No hay datos de huella para confirmar');
-    return;
-  }
-
-  console.log('✅ Obteniendo ID secuencial...');
-  
-  // OBTENER ID SECUENCIAL DEL API
-  const deviceUserId = await getNextDeviceUserId();
-  
-  console.log('🔢 Device User ID secuencial asignado:', deviceUserId);
-  
-  const fingerprintData = {
-    user_id: user.id,
-    finger_index: selectedFingerRef.current,
-    finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
-    
-    template: combinedTemplate.primary.template,
-    primary_template: combinedTemplate.primary.template,
-    verification_template: combinedTemplate.verification.template,
-    backup_template: combinedTemplate.backup.template,
-    combined_template: combinedTemplate,
-    
-    average_quality: Math.round(combinedTemplate.averageQuality),
-    capture_count: 3,
-    capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
-    
-    device_user_id: deviceUserId, // ID SECUENCIAL (1, 2, 3, 4...)
-    
-    device_info: {
-      deviceType: 'ZKTeco',
-      captureMethod: 'multiple_capture',
-      totalCaptures: 3,
-      wsConnection: 'localhost:8085',
-      deviceUserId: deviceUserId,
-      qualities: [
-        combinedTemplate.primary.qualityScore,
-        combinedTemplate.verification.qualityScore,
-        combinedTemplate.backup.qualityScore
-      ],
-      capturedBy: 'luishdz044',
-      capturedAt: new Date().toISOString()
+  // ✅ CONFIRMAR DATOS DE HUELLA
+  const confirmFingerprintData = useCallback(async () => {
+    if (!combinedTemplate || !selectedFingerRef.current) {
+      setError('No hay datos de huella para confirmar');
+      return;
     }
-  };
-  
-  console.log('📤 Enviando datos con ID secuencial:', deviceUserId);
-  
-  onFingerprintDataReady(fingerprintData);
-  handleClose();
-  
-}, [combinedTemplate, user, onFingerprintDataReady, handleClose]);
+
+    console.log('✅ Obteniendo ID secuencial...');
+    
+    // OBTENER ID SECUENCIAL DEL API
+    const deviceUserId = await getNextDeviceUserId();
+    
+    console.log('🔢 Device User ID secuencial asignado:', deviceUserId);
+    
+    const fingerprintData = {
+      user_id: user.id,
+      finger_index: selectedFingerRef.current,
+      finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
+      
+      template: combinedTemplate.primary.template,
+      primary_template: combinedTemplate.primary.template,
+      verification_template: combinedTemplate.verification.template,
+      backup_template: combinedTemplate.backup.template,
+      combined_template: combinedTemplate,
+      
+      average_quality: Math.round(combinedTemplate.averageQuality),
+      capture_count: 3,
+      capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
+      
+      device_user_id: deviceUserId, // ID SECUENCIAL (1, 2, 3, 4...)
+      
+      device_info: {
+        deviceType: 'ZKTeco',
+        captureMethod: 'multiple_capture',
+        totalCaptures: 3,
+        wsConnection: 'localhost:8085',
+        deviceUserId: deviceUserId,
+        qualities: [
+          combinedTemplate.primary.qualityScore,
+          combinedTemplate.verification.qualityScore,
+          combinedTemplate.backup.qualityScore
+        ],
+        capturedBy: 'luishdz044',
+        capturedAt: new Date().toISOString()
+      }
+    };
+    
+    console.log('📤 Enviando datos con ID secuencial:', deviceUserId);
+    
+    onFingerprintDataReady(fingerprintData);
+    handleClose();
+    
+  }, [combinedTemplate, user, getNextDeviceUserId, onFingerprintDataReady, handleClose]);
 
   const processFinalTemplate = useCallback(() => {
     setCurrentStep('processing');
@@ -713,11 +688,11 @@ const confirmFingerprintData = useCallback(async () => {
       fullWidth
       PaperProps={{
         sx: {
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+          background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
           backdropFilter: 'blur(20px)',
-          border: `1px solid ${darkProTokens.primary}30`,
+          border: `1px solid ${colorTokens.brand}30`,
           borderRadius: 3,
-          color: darkProTokens.textPrimary,
+          color: colorTokens.neutral1200,
           minHeight: '60vh'
         }
       }}
@@ -726,24 +701,24 @@ const confirmFingerprintData = useCallback(async () => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderBottom: `1px solid ${darkProTokens.grayDark}`,
-        bgcolor: `${darkProTokens.primary}10`,
+        borderBottom: `1px solid ${colorTokens.neutral500}`,
+        bgcolor: `${colorTokens.brand}10`,
         p: 3
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{
-            bgcolor: darkProTokens.primary,
-            color: darkProTokens.background,
+            bgcolor: colorTokens.brand,
+            color: colorTokens.neutral0,
             width: 48,
             height: 48
           }}>
             <FingerprintIcon />
           </Avatar>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: darkProTokens.textPrimary }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.neutral1200 }}>
               Captura de Huella Dactilar
             </Typography>
-            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+            <Typography variant="body2" sx={{ color: colorTokens.neutral1000 }}>
               {user.firstName} {user.lastName} • Los datos se agregarán al formulario
             </Typography>
           </Box>
@@ -764,9 +739,9 @@ const confirmFingerprintData = useCallback(async () => {
               }
               size="small"
               sx={{
-                bgcolor: wsConnected && deviceConnected ? `${darkProTokens.success}20` : `${darkProTokens.error}20`,
-                color: wsConnected && deviceConnected ? darkProTokens.success : darkProTokens.error,
-                border: `1px solid ${wsConnected && deviceConnected ? darkProTokens.success : darkProTokens.error}40`
+                bgcolor: wsConnected && deviceConnected ? `${colorTokens.success}20` : `${colorTokens.danger}20`,
+                color: wsConnected && deviceConnected ? colorTokens.success : colorTokens.danger,
+                border: `1px solid ${wsConnected && deviceConnected ? colorTokens.success : colorTokens.danger}40`
               }}
             />
           </Tooltip>
@@ -774,10 +749,10 @@ const confirmFingerprintData = useCallback(async () => {
           <IconButton 
             onClick={handleClose}
             sx={{ 
-              color: darkProTokens.textSecondary,
+              color: colorTokens.neutral1000,
               '&:hover': { 
-                color: darkProTokens.textPrimary,
-                bgcolor: darkProTokens.hoverOverlay
+                color: colorTokens.neutral1200,
+                bgcolor: `${colorTokens.brand}20`
               }
             }}
           >
@@ -790,22 +765,22 @@ const confirmFingerprintData = useCallback(async () => {
         <Box sx={{
           p: 3,
           bgcolor: `${currentStepInfo.color}10`,
-          borderBottom: `1px solid ${darkProTokens.grayDark}`
+          borderBottom: `1px solid ${colorTokens.neutral500}`
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <Avatar sx={{
               bgcolor: currentStepInfo.color,
-              color: darkProTokens.textPrimary,
+              color: colorTokens.neutral1200,
               width: 40,
               height: 40
             }}>
               {currentStepInfo.icon}
             </Avatar>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+              <Typography variant="h6" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
                 {currentStepInfo.label}
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+              <Typography variant="body2" sx={{ color: colorTokens.neutral1000 }}>
                 {message || currentStepInfo.description}
               </Typography>
             </Box>
@@ -813,7 +788,7 @@ const confirmFingerprintData = useCallback(async () => {
             {isProcessing && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <CircularProgress size={24} sx={{ color: currentStepInfo.color }} />
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral1000 }}>
                   {Math.round(progress)}%
                 </Typography>
               </Box>
@@ -827,7 +802,7 @@ const confirmFingerprintData = useCallback(async () => {
               sx={{
                 height: 8,
                 borderRadius: 4,
-                bgcolor: darkProTokens.grayDark,
+                bgcolor: colorTokens.neutral500,
                 '& .MuiLinearProgress-bar': {
                   bgcolor: currentStepInfo.color,
                   borderRadius: 4,
@@ -850,15 +825,15 @@ const confirmFingerprintData = useCallback(async () => {
                   label={`Captura ${index + 1}`}
                   size="small"
                   sx={{
-                    bgcolor: captureResults[index] ? `${darkProTokens.success}20` : 
-                             currentCapture === index ? `${darkProTokens.primary}20` : 
-                             `${darkProTokens.grayDark}20`,
-                    color: captureResults[index] ? darkProTokens.success : 
-                           currentCapture === index ? darkProTokens.primary : 
-                           darkProTokens.textDisabled,
-                    border: `1px solid ${captureResults[index] ? darkProTokens.success : 
-                                        currentCapture === index ? darkProTokens.primary : 
-                                        darkProTokens.grayDark}40`
+                    bgcolor: captureResults[index] ? `${colorTokens.success}20` : 
+                             currentCapture === index ? `${colorTokens.brand}20` : 
+                             `${colorTokens.neutral500}20`,
+                    color: captureResults[index] ? colorTokens.success : 
+                           currentCapture === index ? colorTokens.brand : 
+                           colorTokens.neutral900,
+                    border: `1px solid ${captureResults[index] ? colorTokens.success : 
+                                        currentCapture === index ? colorTokens.brand : 
+                                        colorTokens.neutral500}40`
                   }}
                 />
               ))}
@@ -873,9 +848,9 @@ const confirmFingerprintData = useCallback(async () => {
                   label={`${totalTime}s total`}
                   size="small"
                   sx={{
-                    bgcolor: `${darkProTokens.info}20`,
-                    color: darkProTokens.info,
-                    border: `1px solid ${darkProTokens.info}40`
+                    bgcolor: `${colorTokens.info}20`,
+                    color: colorTokens.info,
+                    border: `1px solid ${colorTokens.info}40`
                   }}
                 />
               )}
@@ -885,15 +860,15 @@ const confirmFingerprintData = useCallback(async () => {
                   label={`Calidad: ${finalQuality}%`}
                   size="small"
                   sx={{
-                    bgcolor: finalQuality >= 90 ? `${darkProTokens.success}20` : 
-                             finalQuality >= 75 ? `${darkProTokens.warning}20` : 
-                             `${darkProTokens.error}20`,
-                    color: finalQuality >= 90 ? darkProTokens.success : 
-                           finalQuality >= 75 ? darkProTokens.warning : 
-                           darkProTokens.error,
-                    border: `1px solid ${finalQuality >= 90 ? darkProTokens.success : 
-                                        finalQuality >= 75 ? darkProTokens.warning : 
-                                        darkProTokens.error}40`
+                    bgcolor: finalQuality >= 90 ? `${colorTokens.success}20` : 
+                             finalQuality >= 75 ? `${colorTokens.warning}20` : 
+                             `${colorTokens.danger}20`,
+                    color: finalQuality >= 90 ? colorTokens.success : 
+                           finalQuality >= 75 ? colorTokens.warning : 
+                           colorTokens.danger,
+                    border: `1px solid ${finalQuality >= 90 ? colorTokens.success : 
+                                        finalQuality >= 75 ? colorTokens.warning : 
+                                        colorTokens.danger}40`
                   }}
                 />
               )}
@@ -903,9 +878,9 @@ const confirmFingerprintData = useCallback(async () => {
                   label={`${captureResults.length}/3 capturas`}
                   size="small"
                   sx={{
-                    bgcolor: `${darkProTokens.primary}20`,
-                    color: darkProTokens.primary,
-                    border: `1px solid ${darkProTokens.primary}40`
+                    bgcolor: `${colorTokens.brand}20`,
+                    color: colorTokens.brand,
+                    border: `1px solid ${colorTokens.brand}40`
                   }}
                 />
               )}
@@ -920,11 +895,11 @@ const confirmFingerprintData = useCallback(async () => {
                 severity="error" 
                 sx={{ 
                   mb: 3,
-                  bgcolor: `${darkProTokens.error}15`,
-                  border: `1px solid ${darkProTokens.error}30`,
-                  color: darkProTokens.textPrimary,
+                  bgcolor: `${colorTokens.danger}15`,
+                  border: `1px solid ${colorTokens.danger}30`,
+                  color: colorTokens.neutral1200,
                   '& .MuiAlert-icon': {
-                    color: darkProTokens.error
+                    color: colorTokens.danger
                   }
                 }}
                 action={
@@ -933,7 +908,7 @@ const confirmFingerprintData = useCallback(async () => {
                       size="small"
                       onClick={connectWebSocket}
                       disabled={wsReconnecting}
-                      sx={{ color: darkProTokens.error }}
+                      sx={{ color: colorTokens.danger }}
                     >
                       {wsReconnecting ? <CircularProgress size={16} /> : 'Reconectar'}
                     </Button>
@@ -948,10 +923,10 @@ const confirmFingerprintData = useCallback(async () => {
           {currentStep === 'selection' && (
             <Fade in>
               <Box>
-                <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 1, fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ color: colorTokens.neutral1200, mb: 1, fontWeight: 600 }}>
                   Seleccione el dedo a registrar:
                 </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral1000, mb: 3 }}>
                   Se realizarán 3 capturas para máxima precisión
                 </Typography>
                 
@@ -963,16 +938,16 @@ const confirmFingerprintData = useCallback(async () => {
                           cursor: 'pointer',
                           transition: 'all 0.3s ease',
                           bgcolor: selectedFinger === finger.id 
-                            ? `${darkProTokens.primary}20` 
-                            : darkProTokens.surfaceLevel1,
+                            ? `${colorTokens.brand}20` 
+                            : colorTokens.neutral100,
                           border: selectedFinger === finger.id 
-                            ? `2px solid ${darkProTokens.primary}` 
-                            : `1px solid ${darkProTokens.grayDark}`,
+                            ? `2px solid ${colorTokens.brand}` 
+                            : `1px solid ${colorTokens.neutral500}`,
                           borderRadius: 2,
                           '&:hover': {
                             transform: 'translateY(-2px)',
-                            boxShadow: `0 8px 25px ${darkProTokens.primary}30`,
-                            bgcolor: `${darkProTokens.primary}10`
+                            boxShadow: `0 8px 25px ${colorTokens.brand}30`,
+                            bgcolor: `${colorTokens.brand}10`
                           }
                         }}
                       >
@@ -990,8 +965,8 @@ const confirmFingerprintData = useCallback(async () => {
                             variant="caption" 
                             sx={{ 
                               color: selectedFinger === finger.id 
-                                ? darkProTokens.primary 
-                                : darkProTokens.textSecondary,
+                                ? colorTokens.brand 
+                                : colorTokens.neutral1000,
                               fontWeight: selectedFinger === finger.id ? 600 : 400,
                               fontSize: '0.75rem',
                               lineHeight: 1.2
@@ -1039,7 +1014,7 @@ const confirmFingerprintData = useCallback(async () => {
                   }}>
                     <Avatar sx={{
                       bgcolor: currentStepInfo.color,
-                      color: darkProTokens.textPrimary,
+                      color: colorTokens.neutral1200,
                       width: 60,
                       height: 60
                     }}>
@@ -1048,10 +1023,10 @@ const confirmFingerprintData = useCallback(async () => {
                   </Box>
                 </Box>
 
-                <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ color: colorTokens.neutral1200, mb: 2, fontWeight: 600 }}>
                   {currentStepInfo.label}
                 </Typography>
-                <Typography variant="body1" sx={{ color: darkProTokens.textSecondary, mb: 3 }}>
+                <Typography variant="body1" sx={{ color: colorTokens.neutral1000, mb: 3 }}>
                   {message || currentStepInfo.description}
                 </Typography>
 
@@ -1069,8 +1044,8 @@ const confirmFingerprintData = useCallback(async () => {
                 )}
 
                 {currentStep.startsWith('capture') && (
-                  <Box sx={{ mt: 2, p: 2, bgcolor: `${darkProTokens.primary}10`, borderRadius: 2, maxWidth: 400, mx: 'auto' }}>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontSize: '0.9rem' }}>
+                  <Box sx={{ mt: 2, p: 2, bgcolor: `${colorTokens.brand}10`, borderRadius: 2, maxWidth: 400, mx: 'auto' }}>
+                    <Typography variant="body2" sx={{ color: colorTokens.neutral1000, fontSize: '0.9rem' }}>
                       <strong>Instrucciones:</strong><br/>
                       • Coloque el dedo firmemente en el centro del sensor<br/>
                       • Mantenga la presión constante<br/>
@@ -1086,12 +1061,12 @@ const confirmFingerprintData = useCallback(async () => {
           {currentStep === 'ready' && (
             <Slide direction="up" in>
               <Box>
-                <Typography variant="h6" sx={{ color: darkProTokens.success, mb: 3, fontWeight: 600, textAlign: 'center' }}>
+                <Typography variant="h6" sx={{ color: colorTokens.success, mb: 3, fontWeight: 600, textAlign: 'center' }}>
                   🎯 ¡Datos de Huella Capturados Exitosamente!
                 </Typography>
                 
-                <Box sx={{ p: 3, bgcolor: `${darkProTokens.success}10`, borderRadius: 2, mb: 3 }}>
-                  <Typography variant="h6" sx={{ color: darkProTokens.success, mb: 2, fontWeight: 600 }}>
+                <Box sx={{ p: 3, bgcolor: `${colorTokens.success}10`, borderRadius: 2, mb: 3 }}>
+                  <Typography variant="h6" sx={{ color: colorTokens.success, mb: 2, fontWeight: 600 }}>
                     ✅ Capturas Completadas
                   </Typography>
                   
@@ -1101,9 +1076,9 @@ const confirmFingerprintData = useCallback(async () => {
                         icon={<QualityIcon />}
                         label={`Calidad: ${finalQuality}%`}
                         sx={{
-                          bgcolor: `${darkProTokens.success}20`,
-                          color: darkProTokens.success,
-                          border: `1px solid ${darkProTokens.success}40`,
+                          bgcolor: `${colorTokens.success}20`,
+                          color: colorTokens.success,
+                          border: `1px solid ${colorTokens.success}40`,
                           fontWeight: 600
                         }}
                       />
@@ -1112,9 +1087,9 @@ const confirmFingerprintData = useCallback(async () => {
                       icon={<TimerIcon />}
                       label={`Tiempo: ${totalTime}s`}
                       sx={{
-                        bgcolor: `${darkProTokens.info}20`,
-                        color: darkProTokens.info,
-                        border: `1px solid ${darkProTokens.info}40`,
+                        bgcolor: `${colorTokens.info}20`,
+                        color: colorTokens.info,
+                        border: `1px solid ${colorTokens.info}40`,
                         fontWeight: 600
                       }}
                     />
@@ -1122,9 +1097,9 @@ const confirmFingerprintData = useCallback(async () => {
                       icon={<FingerprintIcon />}
                       label={selectedFinger ? FINGER_CONFIG.find(f => f.id === selectedFinger)?.name : 'Dedo'}
                       sx={{
-                        bgcolor: `${darkProTokens.primary}20`,
-                        color: darkProTokens.primary,
-                        border: `1px solid ${darkProTokens.primary}40`,
+                        bgcolor: `${colorTokens.brand}20`,
+                        color: colorTokens.brand,
+                        border: `1px solid ${colorTokens.brand}40`,
                         fontWeight: 600
                       }}
                     />
@@ -1132,7 +1107,7 @@ const confirmFingerprintData = useCallback(async () => {
                   
                   {captureResults.length > 0 && (
                     <Box>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 2, fontWeight: 600 }}>
+                      <Typography variant="body1" sx={{ color: colorTokens.neutral1200, mb: 2, fontWeight: 600 }}>
                         📊 Resumen de Capturas:
                       </Typography>
                       {captureResults.map((result, index) => (
@@ -1142,10 +1117,10 @@ const confirmFingerprintData = useCallback(async () => {
                           alignItems: 'center', 
                           mb: 1,
                           p: 2,
-                          bgcolor: `${darkProTokens.surfaceLevel1}50`,
+                          bgcolor: `${colorTokens.neutral100}50`,
                           borderRadius: 1
                         }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                          <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
                             Captura {index + 1}:
                           </Typography>
                           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -1153,17 +1128,17 @@ const confirmFingerprintData = useCallback(async () => {
                               label={`${result.qualityScore}%`}
                               size="small"
                               sx={{
-                                bgcolor: result.qualityScore >= 90 ? `${darkProTokens.success}20` : 
-                                         result.qualityScore >= 75 ? `${darkProTokens.warning}20` : 
-                                         `${darkProTokens.error}20`,
-                                color: result.qualityScore >= 90 ? darkProTokens.success : 
-                                       result.qualityScore >= 75 ? darkProTokens.warning : 
-                                       darkProTokens.error,
+                                bgcolor: result.qualityScore >= 90 ? `${colorTokens.success}20` : 
+                                         result.qualityScore >= 75 ? `${colorTokens.warning}20` : 
+                                         `${colorTokens.danger}20`,
+                                color: result.qualityScore >= 90 ? colorTokens.success : 
+                                       result.qualityScore >= 75 ? colorTokens.warning : 
+                                       colorTokens.danger,
                                 fontSize: '0.75rem',
                                 fontWeight: 600
                               }}
                             />
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontSize: '0.8rem' }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.neutral1000, fontSize: '0.8rem' }}>
                               {(result.captureTime / 1000).toFixed(1)}s
                             </Typography>
                           </Box>
@@ -1177,11 +1152,11 @@ const confirmFingerprintData = useCallback(async () => {
                   severity="info" 
                   sx={{ 
                     mb: 3,
-                    bgcolor: `${darkProTokens.info}15`,
-                    border: `1px solid ${darkProTokens.info}30`,
-                    color: darkProTokens.textPrimary,
+                    bgcolor: `${colorTokens.info}15`,
+                    border: `1px solid ${colorTokens.info}30`,
+                    color: colorTokens.neutral1200,
                     '& .MuiAlert-icon': {
-                      color: darkProTokens.info
+                      color: colorTokens.info
                     }
                   }}
                 >
@@ -1198,18 +1173,18 @@ const confirmFingerprintData = useCallback(async () => {
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, gap: 2, borderTop: `1px solid ${darkProTokens.grayDark}` }}>
+      <DialogActions sx={{ p: 3, gap: 2, borderTop: `1px solid ${colorTokens.neutral500}` }}>
         {currentStep === 'selection' && (
           <>
             <Button
               onClick={handleClose}
               variant="outlined"
               sx={{
-                color: darkProTokens.textSecondary,
-                borderColor: darkProTokens.grayDark,
+                color: colorTokens.neutral1000,
+                borderColor: colorTokens.neutral500,
                 '&:hover': {
-                  borderColor: darkProTokens.textSecondary,
-                  bgcolor: darkProTokens.hoverOverlay
+                  borderColor: colorTokens.neutral1000,
+                  bgcolor: `${colorTokens.brand}10`
                 }
               }}
             >
@@ -1222,17 +1197,18 @@ const confirmFingerprintData = useCallback(async () => {
               onClick={startMultipleCaptureProcess}
               disabled={!selectedFinger || !wsConnected || !deviceConnected || isProcessing}
               sx={{
-                bgcolor: darkProTokens.primary,
-                color: darkProTokens.background,
+                bgcolor: colorTokens.brand,
+                color: colorTokens.neutral0,
                 fontWeight: 600,
                 '&:hover': {
-                  bgcolor: darkProTokens.primaryHover,
+                  bgcolor: colorTokens.brand,
+                  filter: 'brightness(1.1)',
                   transform: 'translateY(-2px)',
-                  boxShadow: `0 6px 20px ${darkProTokens.primary}50`
+                  boxShadow: `0 6px 20px ${colorTokens.brand}50`
                 },
                 '&:disabled': {
-                  bgcolor: darkProTokens.grayMedium,
-                  color: darkProTokens.textDisabled
+                  bgcolor: colorTokens.neutral600,
+                  color: colorTokens.neutral900
                 },
                 transition: 'all 0.3s ease'
               }}
@@ -1250,11 +1226,11 @@ const confirmFingerprintData = useCallback(async () => {
               startIcon={<ReplayIcon />}
               disabled={isProcessing}
               sx={{
-                color: darkProTokens.warning,
-                borderColor: darkProTokens.warning,
+                color: colorTokens.warning,
+                borderColor: colorTokens.warning,
                 '&:hover': {
-                  bgcolor: `${darkProTokens.warning}10`,
-                  borderColor: darkProTokens.warningHover
+                  bgcolor: `${colorTokens.warning}10`,
+                  borderColor: colorTokens.warning
                 }
               }}
             >
@@ -1265,11 +1241,11 @@ const confirmFingerprintData = useCallback(async () => {
               onClick={handleClose}
               variant="outlined"
               sx={{
-                color: darkProTokens.textSecondary,
-                borderColor: darkProTokens.grayDark,
+                color: colorTokens.neutral1000,
+                borderColor: colorTokens.neutral500,
                 '&:hover': {
-                  borderColor: darkProTokens.textSecondary,
-                  bgcolor: darkProTokens.hoverOverlay
+                  borderColor: colorTokens.neutral1000,
+                  bgcolor: `${colorTokens.brand}10`
                 }
               }}
             >
@@ -1285,11 +1261,11 @@ const confirmFingerprintData = useCallback(async () => {
               variant="outlined"
               startIcon={<ReplayIcon />}
               sx={{
-                color: darkProTokens.warning,
-                borderColor: darkProTokens.warning,
+                color: colorTokens.warning,
+                borderColor: colorTokens.warning,
                 '&:hover': {
-                  bgcolor: `${darkProTokens.warning}10`,
-                  borderColor: darkProTokens.warningHover
+                  bgcolor: `${colorTokens.warning}10`,
+                  borderColor: colorTokens.warning
                 }
               }}
             >
@@ -1300,11 +1276,11 @@ const confirmFingerprintData = useCallback(async () => {
               onClick={handleClose}
               variant="outlined"
               sx={{
-                color: darkProTokens.textSecondary,
-                borderColor: darkProTokens.grayDark,
+                color: colorTokens.neutral1000,
+                borderColor: colorTokens.neutral500,
                 '&:hover': {
-                  borderColor: darkProTokens.textSecondary,
-                  bgcolor: darkProTokens.hoverOverlay
+                  borderColor: colorTokens.neutral1000,
+                  bgcolor: `${colorTokens.brand}10`
                 }
               }}
             >
@@ -1317,18 +1293,19 @@ const confirmFingerprintData = useCallback(async () => {
               onClick={confirmFingerprintData}
               disabled={!combinedTemplate}
               sx={{
-                bgcolor: darkProTokens.success,
-                color: darkProTokens.textPrimary,
+                bgcolor: colorTokens.success,
+                color: colorTokens.neutral1200,
                 fontWeight: 600,
                 minWidth: '180px',
                 '&:hover': {
-                  bgcolor: darkProTokens.successHover,
+                  bgcolor: colorTokens.success,
+                  filter: 'brightness(1.1)',
                   transform: 'translateY(-2px)',
-                  boxShadow: `0 6px 20px ${darkProTokens.success}50`
+                  boxShadow: `0 6px 20px ${colorTokens.success}50`
                 },
                 '&:disabled': {
-                  bgcolor: darkProTokens.grayMedium,
-                  color: darkProTokens.textDisabled
+                  bgcolor: colorTokens.neutral600,
+                  color: colorTokens.neutral900
                 },
                 transition: 'all 0.3s ease'
               }}
@@ -1340,4 +1317,4 @@ const confirmFingerprintData = useCallback(async () => {
       </DialogActions>
     </Dialog>
   );
-} 
+}

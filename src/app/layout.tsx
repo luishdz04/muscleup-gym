@@ -1,6 +1,9 @@
+// app/layout.tsx
+
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import MUIThemeProvider from '@/components/providers/ThemeProvider';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
@@ -22,7 +25,11 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="es">
       <head>
@@ -35,9 +42,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className="flex flex-col min-h-screen bg-black text-white">
-        <Navbar />
-        <main className="flex-grow">{children}</main>
-        <Footer />
+        <MUIThemeProvider>
+          {/* 2. AÑADE EL COMPONENTE AQUÍ */}          
+          <Navbar />
+          <main className="flex-grow">{children}</main>
+          <Footer />
+        </MUIThemeProvider>
       </body>
     </html>
   );
