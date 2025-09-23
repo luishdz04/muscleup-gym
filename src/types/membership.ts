@@ -1,5 +1,4 @@
-
-// types/membership.ts - TIPOS FALTANTES
+// types/membership.ts - TIPOS COMPLETOS Y ACTUALIZADOS
 export interface MembershipHistory {
   id: string;
   userid: string;
@@ -35,22 +34,6 @@ export interface MembershipHistory {
   plan_name: string;
 }
 
-export interface Plan {
-  id: string;
-  name: string;
-  description: string;
-}
-
-export interface Filters {
-  searchTerm: string;
-  status: string;
-  paymentMethod: string;
-  dateFrom: string;
-  dateTo: string;
-  planId: string;
-  isRenewal: string;
-}
-
 export interface BulkFreezeOperation {
   type: 'freeze' | 'unfreeze' | 'manual_freeze' | 'manual_unfreeze';
   membershipIds: string[];
@@ -70,4 +53,74 @@ export interface BulkPreview {
   newEndDate: string | null;
   daysToAdd: number;
   actionDescription: string;
+}
+
+export interface StatusOption {
+  value: string;
+  label: string;
+  color: string;
+  icon: string;
+}
+
+export interface PaymentMethodOption {
+  value: string;
+  label: string;
+  icon: string;
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface Filters {
+  searchTerm: string;
+  status: string;
+  paymentMethod: string;
+  dateFrom: string;
+  dateTo: string;
+  planId: string;
+  isRenewal: string;
+}
+
+export interface EditFormData {
+  status: string;
+  paymentMethod: string;
+  paymentType: string;
+  start_date: string;
+  end_date: string;
+  amount_paid: number;
+  subtotal: number;
+  inscription_amount: number;
+  discount_amount: number;
+  commission_amount: number;
+  commission_rate: number;
+  isMixedPayment: boolean;
+  paymentDetails: PaymentDetail[];
+  paymentReceived: number;
+  paymentChange: number;
+  payment_reference: string;
+  couponCode: string;
+  notes: string;
+  extend_days: number;
+}
+
+export interface PaymentDetail {
+  id: string;
+  method: string;
+  amount: number;
+  commission_rate: number;
+  commission_amount: number;
+  reference: string;
+  sequence: number;
+}
+
+export interface PaymentMethod {
+  value: string;
+  label: string;
+  icon: string;
+  color: string;
+  description: string;
+  hasCommission: boolean;
 }

@@ -1,7 +1,7 @@
-// components/membership/BulkOperationModal.tsx - MODAL DE OPERACIONES MASIVAS
+// components/membership/BulkOperationModal.tsx - MODAL CON SLIDER CORREGIDO
 'use client';
 
-import React, { memo, useEffect } from 'react';
+import React, { memo, useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -45,7 +45,7 @@ interface Props {
   preview: BulkPreview[];
   showPreview: boolean;
   formatDisplayDate: (date: string) => string;
-  onPreviewUpdate?: () => void; // Nueva prop para triggerar actualización de preview
+  onPreviewUpdate?: () => void;
 }
 
 const BulkOperationModal = memo<Props>(({
@@ -62,18 +62,36 @@ const BulkOperationModal = memo<Props>(({
   formatDisplayDate,
   onPreviewUpdate
 }) => {
-  // ✅ EFECTO PARA ACTUALIZAR VISTA PREVIA DINÁMICAMENTE
+  // ✅ REF PARA DEBOUNCE
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ EFECTO PARA ACTUALIZAR VISTA PREVIA - MEJORADO
   useEffect(() => {
-    // Recalcular vista previa cuando cambien los días de congelamiento
     if (operation.action === 'freeze' && 
         operation.mode === 'manual' && 
         operation.freezeDays && 
+        operation.freezeDays > 0 && 
         showPreview &&
-        onPreviewUpdate) {
-      // Trigger recalculation of preview
-      onPreviewUpdate();
+        onPreviewUpdate &&
+        open) { // Solo cuando el modal está abierto
+      
+      // Limpiar timeout previo
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+
+      // Debounce de 200ms para evitar muchas llamadas
+      debounceRef.current = setTimeout(() => {
+        onPreviewUpdate();
+      }, 200);
     }
-  }, [operation.freezeDays, operation.action, operation.mode, showPreview, onPreviewUpdate]);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [operation.freezeDays, operation.action, operation.mode, showPreview, onPreviewUpdate, open]);
 
   const getBulkOperationTitle = () => {
     const actionText = operation.action === 'freeze' ? 'Congelamiento' : 'Reactivación';
@@ -82,22 +100,34 @@ const BulkOperationModal = memo<Props>(({
     return `${icon} ${actionText} Masivo ${modeText}`;
   };
 
-  const handleSliderChange = (value: number | number[]) => {
+  // ✅ HANDLER DEL SLIDER MEJORADO
+  const handleSliderChange = useCallback((event: Event, value: number | number[]) => {
     const days = Array.isArray(value) ? value[0] : value;
     
-    // ✅ ACTUALIZAR TANTO EL ESTADO COMO TRIGGERAR PREVIEW
+    // ✅ ACTUALIZAR ESTADO INMEDIATAMENTE
     onOperationChange({ freezeDays: days });
     
-    // Trigger preview recalculation inmediatamente
+    // ✅ LA VISTA PREVIA SE ACTUALIZA VÍA useEffect CON DEBOUNCE
+  }, [onOperationChange]);
+
+  // ✅ HANDLER PARA COMMIT FINAL (cuando se suelta el slider)
+  const handleSliderChangeCommitted = useCallback((event: Event | React.SyntheticEvent, value: number | number[]) => {
+    const days = Array.isArray(value) ? value[0] : value;
+    
+    // Limpiar cualquier debounce pendiente
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+
+    // Actualizar inmediatamente al soltar
     if (operation.action === 'freeze' && 
         operation.mode === 'manual' && 
-        onPreviewUpdate) {
-      // Pequeño delay para asegurar que el estado se actualice
-      setTimeout(() => {
-        onPreviewUpdate();
-      }, 100);
+        onPreviewUpdate && 
+        days > 0) {
+      onPreviewUpdate();
     }
-  };
+  }, [operation.action, operation.mode, onPreviewUpdate]);
 
   return (
     <Dialog
@@ -164,7 +194,7 @@ const BulkOperationModal = memo<Props>(({
                 }.
                 {operation.mode === 'manual' && operation.action === 'freeze' && (
                   <>
-                    <br/><strong>⚙️ Modo Manual:</strong> Se agregarán {operation.freezeDays} días a la fecha de vencimiento.
+                    <br/><strong>⚙️ Modo Manual:</strong> Se agregarán <strong>{operation.freezeDays || 1} días</strong> a la fecha de vencimiento.
                   </>
                 )}
                 {operation.action === 'unfreeze' && (
@@ -202,14 +232,23 @@ const BulkOperationModal = memo<Props>(({
                       fontWeight: 600,
                       mb: 2
                     }}>
-                      Días a congelar: <span style={{ color: colorTokens.info, fontSize: '1.2rem' }}>
-                        {operation.freezeDays} días
+                      Días a congelar: <span style={{ 
+                        color: colorTokens.info, 
+                        fontSize: '1.3rem',
+                        fontWeight: 800,
+                        padding: '4px 12px',
+                        background: `${colorTokens.info}20`,
+                        borderRadius: '8px',
+                        border: `2px solid ${colorTokens.info}40`
+                      }}>
+                        {operation.freezeDays || 1} día{(operation.freezeDays || 1) > 1 ? 's' : ''}
                       </span>
                     </Typography>
                     
                     <Slider
-                      value={operation.freezeDays || 7}
-                      onChange={(e, newValue) => handleSliderChange(newValue)}
+                      value={operation.freezeDays || 1}
+                      onChange={handleSliderChange}
+                      onChangeCommitted={handleSliderChangeCommitted}
                       min={1}
                       max={90}
                       step={1}
@@ -222,38 +261,56 @@ const BulkOperationModal = memo<Props>(({
                         { value: 90, label: '3 meses' }
                       ]}
                       valueLabelDisplay="auto"
+                      valueLabelFormat={(value) => `${value} día${value > 1 ? 's' : ''}`}
                       sx={{
                         color: colorTokens.info,
+                        height: 8,
                         '& .MuiSlider-thumb': {
                           backgroundColor: colorTokens.info,
-                          border: `2px solid ${colorTokens.textPrimary}`,
-                          width: 24,
-                          height: 24,
+                          border: `3px solid ${colorTokens.textPrimary}`,
+                          width: 28,
+                          height: 28,
+                          boxShadow: `0 4px 16px ${colorTokens.info}50`,
                           '&:hover': {
-                            boxShadow: `0 0 0 8px ${colorTokens.info}30`
+                            boxShadow: `0 0 0 12px ${colorTokens.info}20`
+                          },
+                          '&.Mui-focusVisible': {
+                            boxShadow: `0 0 0 12px ${colorTokens.info}30`
                           }
                         },
                         '& .MuiSlider-track': {
                           backgroundColor: colorTokens.info,
-                          height: 6
+                          height: 8,
+                          border: 'none'
                         },
                         '& .MuiSlider-rail': {
                           backgroundColor: colorTokens.neutral400,
-                          height: 6
+                          height: 8
                         },
                         '& .MuiSlider-mark': {
                           backgroundColor: colorTokens.textSecondary,
-                          width: 3,
-                          height: 3
+                          width: 4,
+                          height: 4,
+                          borderRadius: '50%'
+                        },
+                        '& .MuiSlider-markActive': {
+                          backgroundColor: colorTokens.info
                         },
                         '& .MuiSlider-markLabel': {
                           color: colorTokens.textSecondary,
-                          fontSize: '0.75rem'
+                          fontSize: '0.75rem',
+                          fontWeight: 600
                         },
                         '& .MuiSlider-valueLabel': {
                           backgroundColor: colorTokens.info,
                           color: colorTokens.textPrimary,
-                          fontWeight: 600
+                          fontWeight: 700,
+                          fontSize: '0.875rem',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          '&:before': {
+                            borderColor: `${colorTokens.info} transparent`
+                          }
                         }
                       }}
                     />
@@ -271,9 +328,9 @@ const BulkOperationModal = memo<Props>(({
                     <Typography variant="body2">
                       <strong>💡 ¿Cómo funciona?</strong><br/>
                       • Las membresías se marcarán como "congeladas"<br/>
-                      • Se agregarán <strong>{operation.freezeDays} días</strong> a la fecha de vencimiento<br/>
+                      • Se agregarán <strong>{operation.freezeDays || 1} día{(operation.freezeDays || 1) > 1 ? 's' : ''}</strong> a la fecha de vencimiento<br/>
                       • Los días se registrarán en el historial de congelamiento<br/>
-                      • La vista previa se actualiza automáticamente
+                      • <strong>Ejemplo:</strong> Si vence el 23 nov → nueva fecha: {operation.freezeDays ? `${23 + (operation.freezeDays)} nov` : '24 nov'}
                     </Typography>
                   </Alert>
                 </CardContent>
@@ -302,14 +359,15 @@ const BulkOperationModal = memo<Props>(({
                     {operation.mode === 'manual' && operation.action === 'freeze' && (
                       <Typography variant="caption" sx={{ 
                         color: colorTokens.info,
-                        background: `${colorTokens.info}10`,
+                        background: `${colorTokens.info}15`,
                         px: 2,
                         py: 0.5,
                         borderRadius: 2,
-                        border: `1px solid ${colorTokens.info}30`,
-                        fontWeight: 600
+                        border: `2px solid ${colorTokens.info}40`,
+                        fontWeight: 700,
+                        fontSize: '0.85rem'
                       }}>
-                        +{operation.freezeDays} días
+                        +{operation.freezeDays || 1} día{(operation.freezeDays || 1) > 1 ? 's' : ''}
                       </Typography>
                     )}
                   </Typography>
@@ -377,7 +435,7 @@ const BulkOperationModal = memo<Props>(({
                                       fontSize: '0.8rem',
                                       fontWeight: 700
                                     }}>
-                                      +{previewItem.daysToAdd} días
+                                      +{previewItem.daysToAdd} día{previewItem.daysToAdd > 1 ? 's' : ''}
                                     </span>
                                   )}
                                 </Typography>
@@ -592,7 +650,7 @@ const BulkOperationModal = memo<Props>(({
             }
             {operation.mode === 'manual' && operation.action === 'freeze' && operation.freezeDays && (
               <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-                {' '}({operation.freezeDays} días)
+                {' '}({operation.freezeDays} día{operation.freezeDays > 1 ? 's' : ''})
               </span>
             )}
           </Button>

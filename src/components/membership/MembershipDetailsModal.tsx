@@ -1,4 +1,4 @@
-// components/membership/MembershipDetailsModal.tsx - MODAL DE DETALLES COMPLETO
+// components/membership/MembershipDetailsModal.tsx - MODAL DE DETALLES CON CORRECCIONES
 'use client';
 
 import React, { memo } from 'react';
@@ -16,7 +16,8 @@ import {
   Chip,
   Stack,
   IconButton,
-  Divider
+  Divider,
+  Avatar
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -38,7 +39,7 @@ interface Props {
   membership: MembershipHistory | null;
   onEdit: () => void;
   formatDisplayDate: (date: string | null) => string;
-  formatTimestampForDisplay: (timestamp: string) => string;
+  formatTimestampForDisplay: (timestamp: string) => string; // ✅ AGREGADO
   formatPrice: (price: number) => string;
   calculateDaysRemaining: (endDate: string | null) => number | null;
   getCurrentFrozenDays: (freezeDate: string | null) => number;
@@ -53,7 +54,7 @@ const MembershipDetailsModal = memo<Props>(({
   membership,
   onEdit,
   formatDisplayDate,
-  formatTimestampForDisplay,
+  formatTimestampForDisplay, // ✅ USAR LA FUNCIÓN DE dateUtils
   formatPrice,
   calculateDaysRemaining,
   getCurrentFrozenDays,
@@ -66,6 +67,46 @@ const MembershipDetailsModal = memo<Props>(({
   const getPaymentIcon = (paymentMethod: string) => {
     const option = paymentMethodOptions.find(p => p.value === paymentMethod);
     return option?.icon || '💳';
+  };
+
+  // ✅ FUNCIÓN PARA AVATAR CON FOTO DE PERFIL
+  const renderUserAvatar = (userName: string, userEmail: string, profileImage?: string) => {
+    const initials = userName.split(' ').map((n: string) => n[0]).join('');
+    
+    // ✅ USAR SOLO EL PARÁMETRO profileImage (viene del hook)
+    if (profileImage) {
+      return (
+        <Avatar 
+          src={profileImage}
+          alt={userName}
+          sx={{ 
+            width: 100, 
+            height: 100, 
+            border: `4px solid ${colorTokens.brand}`,
+            boxShadow: `0 8px 32px ${colorTokens.brand}40`
+          }}
+        >
+          {initials}
+        </Avatar>
+      );
+    }
+
+    // Fallback con iniciales
+    return (
+      <Avatar sx={{ 
+        width: 100, 
+        height: 100, 
+        borderRadius: '50%', 
+        background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+        color: colorTokens.textOnBrand,
+        fontWeight: 800,
+        fontSize: '2.5rem',
+        border: `4px solid ${colorTokens.brand}`,
+        boxShadow: `0 8px 32px ${colorTokens.brand}40`
+      }}>
+        {initials}
+      </Avatar>
+    );
   };
 
   return (
@@ -109,7 +150,7 @@ const MembershipDetailsModal = memo<Props>(({
       
       <DialogContent sx={{ maxHeight: '80vh', overflow: 'auto' }}>
         <Box sx={{ mt: 2 }}>
-          {/* ✅ HEADER DEL CLIENTE DETALLADO */}
+          {/* ✅ HEADER DEL CLIENTE CON AVATAR MEJORADO */}
           <Card sx={{
             background: `${colorTokens.brand}15`,
             border: `2px solid ${colorTokens.brand}40`,
@@ -118,21 +159,13 @@ const MembershipDetailsModal = memo<Props>(({
           }}>
             <CardContent sx={{ p: 4 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Box sx={{ 
-                  width: 100, 
-                  height: 100, 
-                  borderRadius: '50%', 
-                  background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: colorTokens.textOnBrand,
-                  fontWeight: 800,
-                  fontSize: '2.5rem',
-                  boxShadow: `0 8px 32px ${colorTokens.brand}40`
-                }}>
-                  {membership.user_name.split(' ').map((n: string) => n[0]).join('')}
-                </Box>
+                {/* ✅ AVATAR CON SOPORTE PARA FOTOS */}
+                {renderUserAvatar(
+                  membership.user_name, 
+                  membership.user_email,
+                  (membership as any).user_profile_image || (membership as any).profile_image
+                )}
+                
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h4" sx={{ 
                     color: colorTokens.brand, 
@@ -361,7 +394,7 @@ const MembershipDetailsModal = memo<Props>(({
                         color: membership.status === 'frozen' ? colorTokens.info : colorTokens.success,
                         fontWeight: 700 
                       }}>
-                        {membership.status === 'frozen' ? '🧊 CONGELADA' : '🔥 ACTIVA'}
+                        {membership.status === 'frozen' ? '🧊 CONGELADA' : '🔥 SIN CONGELAR'}
                       </Typography>
                     </Box>
 
@@ -400,7 +433,7 @@ const MembershipDetailsModal = memo<Props>(({
               </Card>
             </Grid>
 
-            {/* ✅ FECHAS DEL SISTEMA */}
+            {/* ✅ FECHAS DEL SISTEMA CON ZONA HORARIA CORRECTA */}
             <Grid size={{ xs: 12, md: 6 }}>
               <Card sx={{
                 background: `${colorTokens.neutral400}10`,
@@ -426,7 +459,12 @@ const MembershipDetailsModal = memo<Props>(({
                       <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                         Fecha de Creación:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+                      <Typography variant="body1" sx={{ 
+                        color: colorTokens.textPrimary, 
+                        fontWeight: 600,
+                        fontSize: '0.95rem',
+                        lineHeight: 1.4
+                      }}>
                         {formatTimestampForDisplay(membership.created_at)}
                       </Typography>
                     </Box>
@@ -435,7 +473,12 @@ const MembershipDetailsModal = memo<Props>(({
                       <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                         Última Actualización:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+                      <Typography variant="body1" sx={{ 
+                        color: colorTokens.textPrimary, 
+                        fontWeight: 600,
+                        fontSize: '0.95rem',
+                        lineHeight: 1.4
+                      }}>
                         {formatTimestampForDisplay(membership.updated_at)}
                       </Typography>
                     </Box>
@@ -653,44 +696,6 @@ const MembershipDetailsModal = memo<Props>(({
                         </Typography>
                       </Box>
                     </Box>
-
-                    {/* Detalle de comisiones si existen */}
-                    {membership.payment_details.some((detail: any) => detail.commission_amount > 0) && (
-                      <Box sx={{ mt: 4 }}>
-                        <Typography variant="h6" sx={{ 
-                          color: colorTokens.warning,
-                          mb: 2,
-                          fontWeight: 700
-                        }}>
-                          📊 Detalle de Comisiones:
-                        </Typography>
-                        <Grid container spacing={2}>
-                          {membership.payment_details
-                            .filter((detail: any) => detail.commission_amount > 0)
-                            .map((detail: any, index: number) => (
-                            <Grid key={detail.id || index} size={{ xs: 12, md: 6 }}>
-                              <Box sx={{
-                                background: `${colorTokens.warning}10`,
-                                border: `1px solid ${colorTokens.warning}30`,
-                                borderRadius: 2,
-                                p: 2,
-                                textAlign: 'center'
-                              }}>
-                                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                                  {detail.method} ({detail.commission_rate}%)
-                                </Typography>
-                                <Typography variant="h6" sx={{ 
-                                  color: colorTokens.warning,
-                                  fontWeight: 700
-                                }}>
-                                  {formatPrice(detail.commission_amount)}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      </Box>
-                    )}
 
                     {/* Referencias de pago si existen */}
                     {membership.payment_reference && (

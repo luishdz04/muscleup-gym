@@ -1,4 +1,4 @@
-// components/membership/MembershipEditModal.tsx - CALCA LITERAL DEL REGISTRO
+// components/membership/MembershipEditModal.tsx - VERSIÓN COMPLETA CORREGIDA
 'use client';
 
 import React, { memo, useState, useCallback, useMemo, useEffect } from 'react';
@@ -44,15 +44,15 @@ import {
   AttachMoney as AttachMoneyIcon,
   CreditCard as CreditCardIcon,
   AccountBalance as AccountBalanceIcon,
-  AddIcon,
-  RemoveIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon,
   CheckCircle as CheckCircleIcon,
   ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
 import { colorTokens } from '@/theme';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { MembershipHistory, PaymentDetail, EditFormData } from '@/types/membership';
 
-// ✅ TIPOS EXACTOS DEL REGISTRO
 interface PaymentMethod {
   value: string;
   label: string;
@@ -62,55 +62,10 @@ interface PaymentMethod {
   hasCommission: boolean;
 }
 
-interface PaymentDetail {
-  id: string;
-  method: string;
-  amount: number;
-  commission_rate: number;
-  commission_amount: number;
-  reference: string;
-  sequence: number;
-}
-
-interface EditFormData {
-  // Estados principales
-  status: string;
-  paymentMethod: string;
-  paymentType: string;
-  
-  // Fechas
-  start_date: string;
-  end_date: string;
-  
-  // Montos
-  amount_paid: number;
-  subtotal: number;
-  inscription_amount: number;
-  discount_amount: number;
-  commission_amount: number;
-  commission_rate: number;
-  
-  // Pago mixto
-  isMixedPayment: boolean;
-  paymentDetails: PaymentDetail[];
-  
-  // Efectivo
-  paymentReceived: number;
-  paymentChange: number;
-  
-  // Otros
-  payment_reference: string;
-  couponCode: string;
-  notes: string;
-  
-  // Extensión manual
-  extend_days: number;
-}
-
 interface Props {
   open: boolean;
   onClose: () => void;
-  membership: any;
+  membership: MembershipHistory | null;
   onSave: (editData: EditFormData) => void;
   loading: boolean;
   formatDisplayDate: (date: string | null) => string;
@@ -118,7 +73,6 @@ interface Props {
   addDaysToDate: (dateString: string, days: number) => string;
 }
 
-// ✅ MÉTODOS DE PAGO IDÉNTICOS AL REGISTRO
 const PAYMENT_METHODS: PaymentMethod[] = [
   { 
     value: 'efectivo', 
@@ -162,7 +116,6 @@ const PAYMENT_METHODS: PaymentMethod[] = [
   }
 ];
 
-// ✅ COMPONENTE PaymentMethodCard IDÉNTICO
 const PaymentMethodCard = memo(({ 
   method, 
   selected, 
@@ -261,48 +214,27 @@ const MembershipEditModal = memo<Props>(({
   addDaysToDate
 }) => {
   const [activeStep, setActiveStep] = useState(0);
-  
-  // ✅ ESTADO INICIAL BASADO EN MEMBERSHIP
-  const [editData, setEditData] = useState<EditFormData>(() => {
-    if (!membership) return {} as EditFormData;
-    
-    // Parsear payment_details si es string JSON
-    let paymentDetails: PaymentDetail[] = [];
-    if (membership.payment_details) {
-      try {
-        const parsed = typeof membership.payment_details === 'string' 
-          ? JSON.parse(membership.payment_details)
-          : membership.payment_details;
-        paymentDetails = Array.isArray(parsed) ? parsed : [];
-      } catch (e) {
-        console.warn('Error parsing payment_details:', e);
-      }
-    }
-    
-    return {
-      status: membership.status || 'active',
-      paymentMethod: membership.payment_method || '',
-      paymentType: membership.payment_type || '',
-      start_date: membership.start_date || '',
-      end_date: membership.end_date || '',
-      amount_paid: membership.amount_paid || 0,
-      subtotal: membership.subtotal || 0,
-      inscription_amount: membership.inscription_amount || 0,
-      discount_amount: membership.discount_amount || 0,
-      commission_amount: membership.commission_amount || 0,
-      commission_rate: membership.commission_rate || 0,
-      isMixedPayment: membership.is_mixed_payment || false,
-      paymentDetails: paymentDetails,
-      paymentReceived: membership.payment_received || 0,
-      paymentChange: membership.payment_change || 0,
-      payment_reference: membership.payment_reference || '',
-      couponCode: membership.coupon_code || '',
-      notes: membership.notes || '',
-      extend_days: 0
-    };
+  const [editData, setEditData] = useState<EditFormData>({
+    status: '',
+    paymentMethod: '',
+    paymentType: '',
+    start_date: '',
+    end_date: '',
+    amount_paid: 0,
+    subtotal: 0,
+    inscription_amount: 0,
+    discount_amount: 0,
+    commission_amount: 0,
+    commission_rate: 0,
+    isMixedPayment: false,
+    paymentDetails: [],
+    paymentReceived: 0,
+    paymentChange: 0,
+    payment_reference: '',
+    couponCode: '',
+    notes: '',
+    extend_days: 0
   });
-
-  if (!membership) return null;
 
   const handlePaymentMethodSelect = useCallback((method: string) => {
     setEditData(prev => ({
@@ -313,21 +245,23 @@ const MembershipEditModal = memo<Props>(({
   }, []);
 
   const addMixedPaymentDetail = useCallback(() => {
-    const newDetail: PaymentDetail = {
-      id: Date.now().toString(),
-      method: 'efectivo',
-      amount: 0,
-      commission_rate: 0,
-      commission_amount: 0,
-      reference: '',
-      sequence: editData.paymentDetails.length + 1
-    };
+    setEditData(prev => {
+      const newDetail: PaymentDetail = {
+        id: Date.now().toString(),
+        method: 'efectivo',
+        amount: 0,
+        commission_rate: 0,
+        commission_amount: 0,
+        reference: '',
+        sequence: prev.paymentDetails.length + 1
+      };
 
-    setEditData(prev => ({
-      ...prev,
-      paymentDetails: [...prev.paymentDetails, newDetail]
-    }));
-  }, [editData.paymentDetails.length]);
+      return {
+        ...prev,
+        paymentDetails: [...prev.paymentDetails, newDetail]
+      };
+    });
+  }, []);
 
   const removeMixedPaymentDetail = useCallback((id: string) => {
     setEditData(prev => ({
@@ -347,9 +281,9 @@ const MembershipEditModal = memo<Props>(({
 
   const canProceedToNextStep = useCallback(() => {
     switch (activeStep) {
-      case 0: return true; // Información del cliente (no editable)
-      case 1: return true; // Plan (no editable)
-      case 2: return true; // Cupones opcionales
+      case 0: return true;
+      case 1: return true;
+      case 2: return true;
       case 3: 
         if (editData.isMixedPayment) {
           return editData.paymentDetails.length > 0 && 
@@ -361,12 +295,54 @@ const MembershipEditModal = memo<Props>(({
     }
   }, [activeStep, editData]);
 
-  const steps = [
+  useEffect(() => {
+    if (membership) {
+      let paymentDetails: PaymentDetail[] = [];
+      if (membership.payment_details) {
+        try {
+          const parsed = typeof membership.payment_details === 'string' 
+            ? JSON.parse(membership.payment_details)
+            : membership.payment_details;
+          paymentDetails = Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          console.warn('Error parsing payment_details:', e);
+        }
+      }
+      
+      setEditData({
+        status: membership.status || 'active',
+        paymentMethod: membership.payment_method || '',
+        paymentType: membership.payment_type || '',
+        start_date: membership.start_date || '',
+        end_date: membership.end_date || '',
+        amount_paid: membership.amount_paid || 0,
+        subtotal: membership.subtotal || 0,
+        inscription_amount: membership.inscription_amount || 0,
+        discount_amount: membership.discount_amount || 0,
+        commission_amount: membership.commission_amount || 0,
+        commission_rate: membership.commission_rate || 0,
+        isMixedPayment: membership.is_mixed_payment || false,
+        paymentDetails: paymentDetails,
+        paymentReceived: membership.payment_received || 0,
+        paymentChange: membership.payment_change || 0,
+        payment_reference: membership.payment_reference || '',
+        couponCode: membership.coupon_code || '',
+        notes: membership.notes || '',
+        extend_days: 0
+      });
+    }
+  }, [membership]);
+
+  const steps = useMemo(() => [
     { label: 'Cliente', description: 'Información del cliente', icon: <PersonAddAltIcon /> },
     { label: 'Plan', description: 'Detalles de la membresía', icon: <FitnessCenterIcon /> },
     { label: 'Descuentos', description: 'Cupones aplicados', icon: <LocalOfferIcon /> },
     { label: 'Pago', description: 'Método de pago', icon: <PaymentIcon /> }
-  ];
+  ], []);
+
+  if (!membership) {
+    return null;
+  }
 
   return (
     <Dialog 
@@ -410,7 +386,7 @@ const MembershipEditModal = memo<Props>(({
       
       <DialogContent sx={{ maxHeight: '80vh', overflow: 'auto' }}>
         <Box sx={{ mt: 2 }}>
-          {/* ✅ HEADER IGUAL AL REGISTRO */}
+          {/* HEADER */}
           <Paper sx={{
             p: { xs: 2, sm: 3 },
             mb: 3,
@@ -482,7 +458,7 @@ const MembershipEditModal = memo<Props>(({
             </Box>
           </Paper>
 
-          {/* ✅ STEPPER IDÉNTICO AL REGISTRO */}
+          {/* STEPPER */}
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, lg: 8 }}>
               <Paper sx={{
@@ -512,7 +488,7 @@ const MembershipEditModal = memo<Props>(({
                           {step.description}
                         </Typography>
 
-                        {/* PASO 1: Cliente (Solo Vista) */}
+                        {/* PASO 1: Cliente */}
                         {index === 0 && (
                           <Box sx={{ mb: 4 }}>
                             <Alert severity="info" sx={{
@@ -525,7 +501,7 @@ const MembershipEditModal = memo<Props>(({
                           </Box>
                         )}
 
-                        {/* PASO 2: Plan (Solo Vista + Estados) */}
+                        {/* PASO 2: Plan */}
                         {index === 1 && (
                           <Box sx={{ mb: 4 }}>
                             <Card sx={{
@@ -558,7 +534,9 @@ const MembershipEditModal = memo<Props>(({
                                   onChange={(e) => setEditData(prev => ({...prev, status: e.target.value}))}
                                   sx={{
                                     '& .MuiOutlinedInput-root': {
-                                      '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                                      '&.Mui-focused fieldset': {
+                                        borderColor: colorTokens.brand
+                                      }
                                     }
                                   }}
                                 >
@@ -579,7 +557,9 @@ const MembershipEditModal = memo<Props>(({
                                   InputLabelProps={{ shrink: true }}
                                   sx={{
                                     '& .MuiOutlinedInput-root': {
-                                      '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                                      '&.Mui-focused fieldset': {
+                                        borderColor: colorTokens.brand
+                                      }
                                     }
                                   }}
                                 />
@@ -595,7 +575,9 @@ const MembershipEditModal = memo<Props>(({
                                   InputLabelProps={{ shrink: true }}
                                   sx={{
                                     '& .MuiOutlinedInput-root': {
-                                      '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                                      '&.Mui-focused fieldset': {
+                                        borderColor: colorTokens.brand
+                                      }
                                     }
                                   }}
                                 />
@@ -611,7 +593,9 @@ const MembershipEditModal = memo<Props>(({
                                   helperText="Solo extiende la fecha de vencimiento"
                                   sx={{
                                     '& .MuiOutlinedInput-root': {
-                                      '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                                      '&.Mui-focused fieldset': {
+                                        borderColor: colorTokens.brand
+                                      }
                                     }
                                   }}
                                 />
@@ -657,13 +641,20 @@ const MembershipEditModal = memo<Props>(({
                                       </InputAdornment>
                                     )
                                   }}
+                                  sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                      '&.Mui-focused fieldset': {
+                                        borderColor: colorTokens.brand
+                                      }
+                                    }
+                                  }}
                                 />
                               </CardContent>
                             </Card>
                           </Box>
                         )}
 
-                        {/* PASO 4: Pago - IDÉNTICO AL REGISTRO */}
+                        {/* PASO 4: Pago */}
                         {index === 3 && (
                           <Box sx={{ mb: 4 }}>
                             {/* Toggle Pago Mixto */}
@@ -731,14 +722,20 @@ const MembershipEditModal = memo<Props>(({
                                     ))}
                                   </Grid>
 
-                                  {/* Referencias */}
                                   <TextField
                                     fullWidth
                                     label="Referencia de Pago"
                                     value={editData.payment_reference}
                                     onChange={(e) => setEditData(prev => ({...prev, payment_reference: e.target.value}))}
                                     placeholder="Número de autorización, SPEI, etc."
-                                    sx={{ mt: 3 }}
+                                    sx={{ 
+                                      mt: 3,
+                                      '& .MuiOutlinedInput-root': {
+                                        '&.Mui-focused fieldset': {
+                                          borderColor: colorTokens.brand
+                                        }
+                                      }
+                                    }}
                                   />
                                 </CardContent>
                               </Card>
@@ -836,6 +833,13 @@ const MembershipEditModal = memo<Props>(({
                                                 InputProps={{
                                                   startAdornment: <InputAdornment position="start">$</InputAdornment>
                                                 }}
+                                                sx={{
+                                                  '& .MuiOutlinedInput-root': {
+                                                    '&.Mui-focused fieldset': {
+                                                      borderColor: colorTokens.brand
+                                                    }
+                                                  }
+                                                }}
                                               />
                                             </Grid>
 
@@ -846,6 +850,13 @@ const MembershipEditModal = memo<Props>(({
                                                 value={detail.reference}
                                                 onChange={(e) => updateMixedPaymentDetail(detail.id, 'reference', e.target.value)}
                                                 placeholder="Opcional"
+                                                sx={{
+                                                  '& .MuiOutlinedInput-root': {
+                                                    '&.Mui-focused fieldset': {
+                                                      borderColor: colorTokens.brand
+                                                    }
+                                                  }
+                                                }}
                                               />
                                             </Grid>
                                           </Grid>
@@ -869,6 +880,13 @@ const MembershipEditModal = memo<Props>(({
                                   InputProps={{
                                     startAdornment: <InputAdornment position="start"><AttachMoneyIcon /></InputAdornment>
                                   }}
+                                  sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                      '&.Mui-focused fieldset': {
+                                        borderColor: colorTokens.brand
+                                      }
+                                    }
+                                  }}
                                 />
                               </Grid>
 
@@ -879,11 +897,17 @@ const MembershipEditModal = memo<Props>(({
                                   type="number"
                                   value={editData.commission_rate}
                                   onChange={(e) => setEditData(prev => ({...prev, commission_rate: parseFloat(e.target.value) || 0}))}
+                                  sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                      '&.Mui-focused fieldset': {
+                                        borderColor: colorTokens.brand
+                                      }
+                                    }
+                                  }}
                                 />
                               </Grid>
                             </Grid>
 
-                            {/* Notas */}
                             <TextField
                               fullWidth
                               label="Notas del Registro"
@@ -892,7 +916,14 @@ const MembershipEditModal = memo<Props>(({
                               value={editData.notes}
                               onChange={(e) => setEditData(prev => ({...prev, notes: e.target.value}))}
                               placeholder="Observaciones sobre esta venta..."
-                              sx={{ mt: 3 }}
+                              sx={{ 
+                                mt: 3,
+                                '& .MuiOutlinedInput-root': {
+                                  '&.Mui-focused fieldset': {
+                                    borderColor: colorTokens.brand
+                                  }
+                                }
+                              }}
                             />
                           </Box>
                         )}
@@ -941,7 +972,7 @@ const MembershipEditModal = memo<Props>(({
               </Paper>
             </Grid>
 
-            {/* Panel de Resumen - Igual al registro */}
+            {/* Panel de Resumen */}
             <Grid size={{ xs: 12, lg: 4 }}>
               <Paper sx={{
                 p: 3,

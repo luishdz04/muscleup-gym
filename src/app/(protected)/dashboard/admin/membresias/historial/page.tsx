@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 // HOOKS PERSONALIZADOS
+import { useHydrated } from '@/hooks/useHydrated';
 import { useMembershipFilters } from '@/hooks/useMembershipFilters';
 import { useBulkOperations } from '@/hooks/useBulkOperations';
 import { useMembershipCRUD } from '@/hooks/useMembershipCRUD';
@@ -36,9 +37,14 @@ import MembershipDetailsModal from '@/components/membership/MembershipDetailsMod
 import MembershipEditModal from '@/components/membership/MembershipEditModal';
 
 // UTILIDADES Y TIPOS
-import { addDaysToDate, formatDateForDisplay, formatDateLong, daysBetween, getTodayInMexico } from '@/utils/dateUtils';
+import { addDaysToDate, formatDateForDisplay, formatDateLong, daysBetween, getTodayInMexico, formatTimestampForDisplay } from '@/utils/dateUtils';
 import { colorTokens } from '@/theme';
-import type { MembershipHistory, StatusOption, PaymentMethodOption } from '@/types/membership';
+import type { 
+  MembershipHistory, 
+  StatusOption, 
+  PaymentMethodOption, 
+  EditFormData 
+} from '@/types/membership';
 
 // ICONOS
 import {
@@ -77,12 +83,14 @@ const paymentMethodOptions: PaymentMethodOption[] = [
 
 export default function HistorialMembresiaPage() {
   const router = useRouter();
+  const hydrated = useHydrated();
   
   // HOOKS PERSONALIZADOS - LÓGICA SEPARADA
   const {
     memberships,
     plans,
     loading,
+    initialLoad,
     selectedMembership,
     editDialogOpen,
     editData,
@@ -133,6 +141,7 @@ export default function HistorialMembresiaPage() {
     handleBulkFreeze,
     handleBulkUnfreeze,
     executeBulkOperation,
+    updatePreview,
     formatDisplayDate,
     getCurrentFrozenDays
   } = useBulkOperations(memberships, forceReloadMemberships);
@@ -146,25 +155,17 @@ export default function HistorialMembresiaPage() {
 
   // FUNCIONES UTILITARIAS MEMOIZADAS
   const calculateDaysRemaining = useCallback((endDate: string | null): number | null => {
-  if (!endDate) return null;
-  
-  try {
-    const today = getTodayInMexico();
-    return daysBetween(today, endDate);
-  } catch (error) {
-    return null;
-  }
-}, []);
-  // FUNCIONES HELPER PARA MODALES
-  const formatTimestampForDisplay = useCallback((timestamp: string): string => {
-  try {
-    // Extraer solo la fecha del timestamp
-    const dateOnly = timestamp.split('T')[0];
-    return formatDateLong(dateOnly);
-  } catch (error) {
-    return 'Fecha inválida';
-  }
-}, []);
+    if (!endDate) return null;
+    
+    try {
+      const today = getTodayInMexico();
+      return daysBetween(today, endDate);
+    } catch (error) {
+      return null;
+    }
+  }, []);
+
+
 
   const getStatusColor = useCallback((status: string) => {
     const statusOption = statusOptions.find(s => s.value === status);
@@ -247,12 +248,13 @@ export default function HistorialMembresiaPage() {
     setPage(0);
   }, []);
 
-  // HANDLER PARA GUARDAR EDICIÓN
-  const handleSaveEdit = useCallback(async () => {
+  // ✅ HANDLER CORREGIDO PARA GUARDAR EDICIÓN
+  const handleSaveEdit = useCallback(async (editDataFromModal: EditFormData) => {
     try {
       const toastId = toast.loading('💾 Guardando cambios...');
       
-      await handleUpdateMembership();
+      // ✅ PASAR DATOS DEL MODAL DIRECTAMENTE AL HOOK
+      await handleUpdateMembership(editDataFromModal);
       
       toast.success('✅ Membresía actualizada exitosamente', { id: toastId });
     } catch (error: any) {
@@ -283,9 +285,26 @@ export default function HistorialMembresiaPage() {
 
   // EFFECTS
   useEffect(() => {
-    loadMemberships();
-    loadPlans();
-  }, [loadMemberships, loadPlans]);
+    if (hydrated) {
+      loadMemberships();
+      loadPlans();
+    }
+  }, [loadMemberships, loadPlans, hydrated]);
+
+  // PANTALLA DE CARGA HASTA HIDRATACIÓN
+  if (!hydrated) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`
+      }}>
+        <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ 
@@ -333,7 +352,7 @@ export default function HistorialMembresiaPage() {
             <Button
               startIcon={<RefreshIcon />}
               onClick={forceReloadMemberships}
-              disabled={loading}
+              disabled={false}
               sx={{ 
                 color: colorTokens.info,
                 borderColor: `${colorTokens.info}60`,
@@ -350,12 +369,13 @@ export default function HistorialMembresiaPage() {
               variant="outlined"
               size="large"
             >
-              {loading ? 'Cargando...' : 'Actualizar'}
+              {loading || initialLoad ? 'Cargando...' : 'Actualizar'}
             </Button>
             
             <Button
               startIcon={<ArrowBackIcon />}
               onClick={() => router.push('/dashboard/admin/membresias')}
+              disabled={false}
               sx={{ 
                 color: colorTokens.brand,
                 borderColor: `${colorTokens.brand}60`,
@@ -377,163 +397,165 @@ export default function HistorialMembresiaPage() {
           </Stack>
         </Box>
 
-        {/* ESTADÍSTICAS */}
-        <Grid container spacing={3}>
-          <Grid xs={12} sm={6} md={2}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
-              border: `1px solid ${colorTokens.info}30`,
-              borderRadius: 3,
-              textAlign: 'center',
-              p: 2
-            }}>
-              <Typography variant="h4" sx={{ 
-                color: colorTokens.info, 
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1
+        {/* ESTADÍSTICAS - SOLO SI NO ES CARGA INICIAL */}
+        {!initialLoad && (
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Card sx={{
+                background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
+                border: `1px solid ${colorTokens.info}30`,
+                borderRadius: 3,
+                textAlign: 'center',
+                p: 2
               }}>
-                <GroupIcon />
-                {stats.total}
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
-                Total Membresías
-              </Typography>
-            </Card>
-          </Grid>
+                <Typography variant="h4" sx={{ 
+                  color: colorTokens.info, 
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1
+                }}>
+                  <GroupIcon />
+                  {stats.total}
+                </Typography>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                  Total Membresías
+                </Typography>
+              </Card>
+            </Grid>
 
-          <Grid xs={12} sm={6} md={2}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
-              border: `1px solid ${colorTokens.success}30`,
-              borderRadius: 3,
-              textAlign: 'center',
-              p: 2
-            }}>
-              <Typography variant="h4" sx={{ 
-                color: colorTokens.success, 
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Card sx={{
+                background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
+                border: `1px solid ${colorTokens.success}30`,
+                borderRadius: 3,
+                textAlign: 'center',
+                p: 2
               }}>
-                <CheckCircleIcon />
-                {stats.active}
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
-                Activas
-              </Typography>
-            </Card>
-          </Grid>
+                <Typography variant="h4" sx={{ 
+                  color: colorTokens.success, 
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1
+                }}>
+                  <CheckCircleIcon />
+                  {stats.active}
+                </Typography>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                  Activas
+                </Typography>
+              </Card>
+            </Grid>
 
-          <Grid xs={12} sm={6} md={2}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
-              border: `1px solid ${colorTokens.info}30`,
-              borderRadius: 3,
-              textAlign: 'center',
-              p: 2
-            }}>
-              <Typography variant="h4" sx={{ 
-                color: colorTokens.info, 
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Card sx={{
+                background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
+                border: `1px solid ${colorTokens.info}30`,
+                borderRadius: 3,
+                textAlign: 'center',
+                p: 2
               }}>
-                <AcUnitIcon />
-                {stats.frozen}
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
-                Congeladas
-              </Typography>
-            </Card>
-          </Grid>
+                <Typography variant="h4" sx={{ 
+                  color: colorTokens.info, 
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1
+                }}>
+                  <AcUnitIcon />
+                  {stats.frozen}
+                </Typography>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                  Congeladas
+                </Typography>
+              </Card>
+            </Grid>
 
-          <Grid xs={12} sm={6} md={2}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${colorTokens.danger}20, ${colorTokens.danger}10)`,
-              border: `1px solid ${colorTokens.danger}30`,
-              borderRadius: 3,
-              textAlign: 'center',
-              p: 2
-            }}>
-              <Typography variant="h4" sx={{ 
-                color: colorTokens.danger, 
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Card sx={{
+                background: `linear-gradient(135deg, ${colorTokens.danger}20, ${colorTokens.danger}10)`,
+                border: `1px solid ${colorTokens.danger}30`,
+                borderRadius: 3,
+                textAlign: 'center',
+                p: 2
               }}>
-                <CancelIcon />
-                {stats.expired}
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
-                Vencidas
-              </Typography>
-            </Card>
-          </Grid>
+                <Typography variant="h4" sx={{ 
+                  color: colorTokens.danger, 
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1
+                }}>
+                  <CancelIcon />
+                  {stats.expired}
+                </Typography>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                  Vencidas
+                </Typography>
+              </Card>
+            </Grid>
 
-          <Grid xs={12} sm={6} md={2}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${colorTokens.brand}20, ${colorTokens.brand}10)`,
-              border: `1px solid ${colorTokens.brand}30`,
-              borderRadius: 3,
-              textAlign: 'center',
-              p: 2
-            }}>
-              <Typography variant="h5" sx={{ 
-                color: colorTokens.brand, 
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Card sx={{
+                background: `linear-gradient(135deg, ${colorTokens.brand}20, ${colorTokens.brand}10)`,
+                border: `1px solid ${colorTokens.brand}30`,
+                borderRadius: 3,
+                textAlign: 'center',
+                p: 2
               }}>
-                <AttachMoneyIcon />
-                {formatPrice(stats.totalRevenue).replace('MX$', '$')}
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
-                Ingresos Totales
-              </Typography>
-            </Card>
-          </Grid>
+                <Typography variant="h5" sx={{ 
+                  color: colorTokens.brand, 
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1
+                }}>
+                  <AttachMoneyIcon />
+                  {formatPrice(stats.totalRevenue).replace('MX$', '$')}
+                </Typography>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                  Ingresos Totales
+                </Typography>
+              </Card>
+            </Grid>
 
-          <Grid xs={12} sm={6} md={2}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${colorTokens.warning}20, ${colorTokens.warning}10)`,
-              border: `1px solid ${colorTokens.warning}30`,
-              borderRadius: 3,
-              textAlign: 'center',
-              p: 2
-            }}>
-              <Typography variant="h6" sx={{ 
-                color: colorTokens.warning, 
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Card sx={{
+                background: `linear-gradient(135deg, ${colorTokens.warning}20, ${colorTokens.warning}10)`,
+                border: `1px solid ${colorTokens.warning}30`,
+                borderRadius: 3,
+                textAlign: 'center',
+                p: 2
               }}>
-                <TrendingUpIcon />
-                {formatPrice(stats.totalCommissions).replace('MX$', '$')}
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
-                Comisiones
-              </Typography>
-            </Card>
+                <Typography variant="h6" sx={{ 
+                  color: colorTokens.warning, 
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1
+                }}>
+                  <TrendingUpIcon />
+                  {formatPrice(stats.totalCommissions).replace('MX$', '$')}
+                </Typography>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                  Comisiones
+                </Typography>
+              </Card>
+            </Grid>
           </Grid>
-        </Grid>
+        )}
       </Paper>
 
       {/* COMPONENTE DE OPERACIONES MASIVAS */}
       <AnimatePresence>
-        {bulkMode && (
+        {bulkMode && !initialLoad && (
           <BulkOperationPanel
             bulkMode={bulkMode}
             selectedCount={selectedCount}
@@ -551,24 +573,27 @@ export default function HistorialMembresiaPage() {
       </AnimatePresence>
 
       {/* COMPONENTE DE FILTROS */}
-      <FilterPanel
-        filters={filters}
-        onFilterChange={updateFilter}
-        onClearFilters={clearFilters}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        plans={plans}
-        hasActiveFilters={hasActiveFilters}
-        statusOptions={statusOptions}
-        paymentMethodOptions={paymentMethodOptions}
-      />
+      {!initialLoad && (
+        <FilterPanel
+          filters={filters}
+          onFilterChange={updateFilter}
+          onClearFilters={clearFilters}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          plans={plans}
+          hasActiveFilters={hasActiveFilters}
+          statusOptions={statusOptions}
+          paymentMethodOptions={paymentMethodOptions}
+        />
+      )}
 
       {/* BOTÓN PARA ACTIVAR MODO MASIVO */}
-      {!bulkMode && (
+      {!bulkMode && !initialLoad && (
         <Box sx={{ mb: 3, textAlign: 'center' }}>
           <Button
             startIcon={<BatchIcon />}
             onClick={() => setBulkMode(true)}
+            disabled={false}
             sx={{ 
               color: colorTokens.info,
               backgroundColor: `${colorTokens.info}15`,
@@ -599,7 +624,7 @@ export default function HistorialMembresiaPage() {
         overflow: 'hidden'
       }}>
         <CardContent sx={{ p: 0 }}>
-          {loading ? (
+          {initialLoad || loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
               <CircularProgress 
                 size={60} 
@@ -725,7 +750,7 @@ export default function HistorialMembresiaPage() {
         </MenuList>
       </Menu>
 
-      {/* MODAL DE OPERACIONES MASIVAS */}
+      {/* ✅ MODAL DE OPERACIONES MASIVAS CON onPreviewUpdate */}
       <BulkOperationModal
         open={bulkDialogOpen}
         onClose={() => setBulkDialogOpen(false)}
@@ -738,6 +763,7 @@ export default function HistorialMembresiaPage() {
         preview={bulkPreview}
         showPreview={showPreview}
         formatDisplayDate={formatDisplayDate}
+        onPreviewUpdate={updatePreview}
       />
 
       {/* MODAL DE DETALLES */}
@@ -753,7 +779,7 @@ export default function HistorialMembresiaPage() {
           }
         }}
         formatDisplayDate={formatDisplayDate}
-        formatTimestampForDisplay={formatTimestampForDisplay}
+        formatTimestampForDisplay={formatTimestampForDisplay} // ✅ FUNCIÓN CENTRALIZADA
         formatPrice={formatPrice}
         calculateDaysRemaining={calculateDaysRemaining}
         getCurrentFrozenDays={getCurrentFrozenDays}
@@ -762,7 +788,7 @@ export default function HistorialMembresiaPage() {
         paymentMethodOptions={paymentMethodOptions}
       />
 
-      {/* MODAL DE EDICIÓN */}
+      {/* ✅ MODAL DE EDICIÓN CON PROPS CORREGIDAS */}
       <MembershipEditModal
         open={editDialogOpen}
         onClose={() => {
@@ -770,15 +796,11 @@ export default function HistorialMembresiaPage() {
           setEditData({});
         }}
         membership={selectedMembership}
-        editData={editData}
-        onEditDataChange={setEditData}
         onSave={handleSaveEdit}
         loading={editLoading}
         formatDisplayDate={formatDisplayDate}
         formatPrice={formatPrice}
         addDaysToDate={addDaysToDate}
-        statusOptions={statusOptions}
-        paymentMethodOptions={paymentMethodOptions}
       />
     </Box>
   );

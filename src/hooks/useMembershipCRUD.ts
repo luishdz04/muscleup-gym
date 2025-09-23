@@ -1,8 +1,7 @@
-// hooks/useMembershipCRUD.ts
+// hooks/useMembershipCRUD.ts - CON FOTO DE PERFIL
 import { useState, useCallback } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { getTodayInMexico, addDaysToDate } from '@/utils/dateUtils';
-
 
 interface MembershipHistory {
   id: string;
@@ -36,6 +35,7 @@ interface MembershipHistory {
   payment_details: any;
   user_name: string;
   user_email: string;
+  user_profile_image?: string; // ✅ CORREGIDO: opcional en lugar de null
   plan_name: string;
 }
 
@@ -48,11 +48,11 @@ interface Plan {
 interface EditData {
   status?: string;
   start_date?: string;
-  end_date?: string;
+  end_date?: string; // ✅ CORREGIDO: solo string opcional
   amount_paid?: number;
   payment_method?: string;
-  payment_reference?: string;
-  notes?: string;
+  payment_reference?: string; // ✅ CORREGIDO: solo string opcional
+  notes?: string; // ✅ CORREGIDO: solo string opcional
   commission_rate?: number;
   commission_amount?: number;
   is_mixed_payment?: boolean;
@@ -66,6 +66,7 @@ export const useMembershipCRUD = () => {
   const [memberships, setMemberships] = useState<MembershipHistory[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true); // ✅ AGREGADO
   const [selectedMembership, setSelectedMembership] = useState<MembershipHistory | null>(null);
   
   // Estados para edición
@@ -86,10 +87,10 @@ export const useMembershipCRUD = () => {
   }, []);
 
   const getMexicoDateString = useCallback(() => {
-  return getTodayInMexico();
-}, []);
+    return getTodayInMexico();
+  }, []);
 
-  // Función para cargar membresías
+  // ✅ FUNCIÓN PARA CARGAR MEMBRESÍAS CON FOTO DE PERFIL
   const loadMemberships = useCallback(async () => {
     setLoading(true);
     try {
@@ -97,7 +98,7 @@ export const useMembershipCRUD = () => {
         .from('user_memberships')
         .select(`
           *,
-          Users!userid (firstName, lastName, email),
+          Users!userid (firstName, lastName, email, profilePictureUrl),
           membership_plans!planid (name, description)
         `)
         .order('created_at', { ascending: false });
@@ -112,6 +113,7 @@ export const useMembershipCRUD = () => {
         payment_details: item.payment_details || {},
         user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
         user_email: item.Users?.email || '',
+        user_profile_image: item.Users?.profilePictureUrl || undefined, // ✅ CORREGIDO
         plan_name: item.membership_plans?.name || 'Plan Desconocido'
       }));
 
@@ -120,6 +122,7 @@ export const useMembershipCRUD = () => {
       throw new Error(`Error al cargar membresías: ${err.message}`);
     } finally {
       setLoading(false);
+      setInitialLoad(false); // ✅ AGREGADO
     }
   }, [supabase]);
 
@@ -163,29 +166,32 @@ export const useMembershipCRUD = () => {
     }
   }, [supabase, forceReloadMemberships]);
 
-  // Función para actualizar membresía
-  const handleUpdateMembership = useCallback(async () => {
-    if (!selectedMembership || !editData) return;
+  // ✅ FUNCIÓN PARA ACTUALIZAR MEMBRESÍA QUE RECIBE DATOS DEL MODAL
+  const handleUpdateMembership = useCallback(async (editDataFromModal?: any) => {
+    if (!selectedMembership) return;
+    
+    // Usar datos del modal si se proporcionan, sino usar editData del estado
+    const dataToUpdate = editDataFromModal || editData;
     
     setEditLoading(true);
     try {
       // Validaciones
-      if (editData.end_date && editData.start_date && editData.end_date <= editData.start_date) {
+      if (dataToUpdate.end_date && dataToUpdate.start_date && dataToUpdate.end_date <= dataToUpdate.start_date) {
         throw new Error('La fecha de fin debe ser posterior a la fecha de inicio');
       }
 
-      if (editData.amount_paid && editData.amount_paid < 0) {
+      if (dataToUpdate.amount_paid && dataToUpdate.amount_paid < 0) {
         throw new Error('El monto no puede ser negativo');
       }
 
       // Manejar extensión manual de días
-      if (editData.extend_days && editData.extend_days > 0 && selectedMembership?.end_date) {
-        const newEndDate = addDaysToDate(selectedMembership.end_date, editData.extend_days);
-        editData.end_date = newEndDate;
+      if (dataToUpdate.extend_days && dataToUpdate.extend_days > 0 && selectedMembership?.end_date) {
+        const newEndDate = addDaysToDate(selectedMembership.end_date, dataToUpdate.extend_days);
+        dataToUpdate.end_date = newEndDate;
         
         const today = getMexicoDateString();
-        const extensionNote = `Fecha extendida ${editData.extend_days} día${editData.extend_days > 1 ? 's' : ''} manualmente el ${today}.`;
-        editData.notes = editData.notes ? `${editData.notes}\n${extensionNote}` : extensionNote;
+        const extensionNote = `Fecha extendida ${dataToUpdate.extend_days} día${dataToUpdate.extend_days > 1 ? 's' : ''} manualmente el ${today}.`;
+        dataToUpdate.notes = dataToUpdate.notes ? `${dataToUpdate.notes}\n${extensionNote}` : extensionNote;
       }
 
       const updateData: any = {};
@@ -205,21 +211,21 @@ export const useMembershipCRUD = () => {
       ];
 
       allowedFields.forEach(field => {
-        if (editData[field as keyof EditData] !== undefined && editData[field as keyof EditData] !== null) {
-          updateData[field] = editData[field as keyof EditData];
+        if (dataToUpdate[field] !== undefined && dataToUpdate[field] !== null) {
+          updateData[field] = dataToUpdate[field];
         }
       });
 
       // Manejar pago mixto
-      if (editData.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') {
+      if (dataToUpdate.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') {
         updateData.is_mixed_payment = true;
         
-        if (editData.cash_amount || editData.card_amount || editData.transfer_amount) {
+        if (dataToUpdate.cash_amount || dataToUpdate.card_amount || dataToUpdate.transfer_amount) {
           const paymentDetails = {
-            cash_amount: editData.cash_amount || 0,
-            card_amount: editData.card_amount || 0,
-            transfer_amount: editData.transfer_amount || 0,
-            total_amount: (editData.cash_amount || 0) + (editData.card_amount || 0) + (editData.transfer_amount || 0)
+            cash_amount: dataToUpdate.cash_amount || 0,
+            card_amount: dataToUpdate.card_amount || 0,
+            transfer_amount: dataToUpdate.transfer_amount || 0,
+            total_amount: (dataToUpdate.cash_amount || 0) + (dataToUpdate.card_amount || 0) + (dataToUpdate.transfer_amount || 0)
           };
           updateData.payment_details = paymentDetails;
         }
@@ -254,11 +260,11 @@ export const useMembershipCRUD = () => {
     setEditData({
       status: membership.status,
       start_date: membership.start_date,
-      end_date: membership.end_date,
+      end_date: membership.end_date || undefined, // ✅ CORREGIDO: null → undefined
       amount_paid: membership.amount_paid,
       payment_method: membership.payment_method,
-      payment_reference: membership.payment_reference,
-      notes: membership.notes,
+      payment_reference: membership.payment_reference || undefined, // ✅ CORREGIDO: null → undefined
+      notes: membership.notes || undefined, // ✅ CORREGIDO: null → undefined
       commission_rate: membership.commission_rate,
       commission_amount: membership.commission_amount,
       is_mixed_payment: membership.is_mixed_payment,
@@ -274,6 +280,7 @@ export const useMembershipCRUD = () => {
     memberships,
     plans,
     loading,
+    initialLoad, // ✅ AGREGADO
     selectedMembership,
     editDialogOpen,
     editData,

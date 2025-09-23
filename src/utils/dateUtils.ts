@@ -1,39 +1,28 @@
-// utils/dateUtils.ts
-
 export const MEXICO_TIMEZONE = 'America/Mexico_City';
 
 /**
  * Obtiene la fecha actual en México en formato YYYY-MM-DD.
- * Usa la zona horaria de México para determinar el "día actual".
- * ESTA FUNCIÓN ESTÁ BIEN Y NO NECESITA CAMBIOS.
  */
 export const getTodayInMexico = (): string => {
   const now = new Date();
-  const mexDate = new Intl.DateTimeFormat('en-CA', {
+  return new Intl.DateTimeFormat('en-CA', {
     timeZone: MEXICO_TIMEZONE,
   }).format(now);
-  
-  return mexDate; // Formato YYYY-MM-DD
 };
 
 /**
  * Formatea una fecha DATE de la BD para mostrar al usuario.
- * Input: "2025-10-12" (string de la BD)
- * Output: "12 oct 2025" (formato legible)
  */
 export const formatDateForDisplay = (dateString: string): string => {
   if (!dateString) return 'Sin fecha';
-  
   try {
     const [year, month, day] = dateString.split('-').map(Number);
-    // Se crea la fecha en UTC para evitar desfases por zona horaria del servidor
-    const date = new Date(Date.UTC(year, month - 1, day)); // <-- CORREGIDO
-
+    const date = new Date(Date.UTC(year, month - 1, day));
     return date.toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-      timeZone: 'UTC', // <-- CORREGIDO: Interpretar la fecha como UTC
+      timeZone: 'UTC',
     });
   } catch {
     return 'Fecha inválida';
@@ -42,23 +31,18 @@ export const formatDateForDisplay = (dateString: string): string => {
 
 /**
  * Formatea una fecha en formato largo para display.
- * Input: "2025-10-12"
- * Output: "sábado, 12 de octubre de 2025"
  */
 export const formatDateLong = (dateString: string): string => {
   if (!dateString) return 'Sin fecha';
-  
   try {
     const [year, month, day] = dateString.split('-').map(Number);
-    // Se crea la fecha en UTC para evitar desfases
-    const date = new Date(Date.UTC(year, month - 1, day)); // <-- CORREGIDO
-    
+    const date = new Date(Date.UTC(year, month - 1, day));
     return date.toLocaleDateString('es-MX', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      timeZone: 'UTC', // <-- CORREGIDO: Interpretar la fecha como UTC
+      timeZone: 'UTC',
     });
   } catch {
     return 'Fecha inválida';
@@ -67,90 +51,65 @@ export const formatDateLong = (dateString: string): string => {
 
 /**
  * Suma días a una fecha.
- * Input: "2025-10-12", 30
- * Output: "2025-11-11"
  */
 export const addDaysToDate = (dateString: string, days: number): string => {
   const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day)); // <-- CORREGIDO
-  
-  date.setUTCDate(date.getUTCDate() + days); // <-- CORREGIDO
-  
-  const newYear = date.getUTCFullYear(); // <-- CORREGIDO
-  const newMonth = String(date.getUTCMonth() + 1).padStart(2, '0'); // <-- CORREGIDO
-  const newDay = String(date.getUTCDate()).padStart(2, '0'); // <-- CORREGIDO
-  
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  const newYear = date.getUTCFullYear();
+  const newMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const newDay = String(date.getUTCDate()).padStart(2, '0');
   return `${newYear}-${newMonth}-${newDay}`;
 };
 
 /**
  * Suma meses a una fecha, maneja correctamente fin de mes.
- * Input: "2025-01-31", 1
- * Output: "2025-02-28" (último día de febrero)
  */
 export const addMonthsToDate = (dateString: string, months: number): string => {
   const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day)); // <-- CORREGIDO
+  const date = new Date(Date.UTC(year, month - 1, day));
   const originalDay = day;
-  
-  date.setUTCMonth(date.getUTCMonth() + months); // <-- CORREGIDO
-  
-  if (date.getUTCDate() !== originalDay) { // <-- CORREGIDO
-    date.setUTCDate(0); // Último día del mes anterior
+  date.setUTCMonth(date.getUTCMonth() + months);
+  if (date.getUTCDate() !== originalDay) {
+    date.setUTCDate(0);
   }
-  
-  const newYear = date.getUTCFullYear(); // <-- CORREGIDO
-  const newMonth = String(date.getUTCMonth() + 1).padStart(2, '0'); // <-- CORREGIDO
-  const newDay = String(date.getUTCDate()).padStart(2, '0'); // <-- CORREGIDO
-  
+  const newYear = date.getUTCFullYear();
+  const newMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const newDay = String(date.getUTCDate()).padStart(2, '0');
   return `${newYear}-${newMonth}-${newDay}`;
 };
 
 /**
  * Suma años a una fecha, maneja años bisiestos.
- * Input: "2024-02-29", 1
- * Output: "2025-02-28" (no es año bisiesto)
  */
 export const addYearsToDate = (dateString: string, years: number): string => {
   const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day)); // <-- CORREGIDO
-  
-  date.setUTCFullYear(date.getUTCFullYear() + years); // <-- CORREGIDO
-  
-  const newYear = date.getUTCFullYear(); // <-- CORREGIDO
-  const newMonth = String(date.getUTCMonth() + 1).padStart(2, '0'); // <-- CORREGIDO
-  const newDay = String(date.getUTCDate()).padStart(2, '0'); // <-- CORREGIDO
-  
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCFullYear(date.getUTCFullYear() + years);
+  const newYear = date.getUTCFullYear();
+  const newMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const newDay = String(date.getUTCDate()).padStart(2, '0');
   return `${newYear}-${newMonth}-${newDay}`;
 };
 
 /**
  * Calcula fecha de inicio para renovaciones según lógica de gimnasio.
- * NO REQUIERE CAMBIOS, ya que depende de las otras funciones que ya corregimos.
  */
 export const calculateRenewalStartDate = (currentEndDate: string): string => {
   const today = getTodayInMexico();
-
-  // Se usa '<' en lugar de '<=' para ser más estricto.
-  // Si la fecha de hoy es anterior a la de vencimiento, la renovación empieza
-  // justo cuando la otra termina.
   if (today < currentEndDate) {
-    // La nueva empieza EXACTAMENTE el día que termina la anterior.
-    // NO se suma un día extra.
-    return currentEndDate; // <-- ESTA ES LA CORRECCIÓN CLAVE
+    return currentEndDate;
   } else {
-    // La membresía ya venció o vence hoy, la nueva empieza HOY.
     return today;
   }
 };
 
 /**
  * Calcula fecha final según el tipo de membresía.
- * NO REQUIERE CAMBIOS, ya que depende de las otras funciones que ya corregimos.
  */
 export const calculateMembershipEndDate = (
-  startDate: string, 
-  periodType: string, 
+  startDate: string,
+  periodType: string,
   plan: any
 ): string => {
   switch (periodType) {
@@ -177,7 +136,6 @@ export const calculateMembershipEndDate = (
 
 /**
  * Compara dos fechas en formato YYYY-MM-DD.
- * NO REQUIERE CAMBIOS, ya que compara strings directamente.
  */
 export const compareDates = (date1: string, date2: string): number => {
   if (date1 === date2) return 0;
@@ -186,7 +144,6 @@ export const compareDates = (date1: string, date2: string): number => {
 
 /**
  * Verifica si una fecha está en el futuro.
- * NO REQUIERE CAMBIOS.
  */
 export const isFutureDate = (dateString: string): boolean => {
   const today = getTodayInMexico();
@@ -195,7 +152,6 @@ export const isFutureDate = (dateString: string): boolean => {
 
 /**
  * Verifica si una fecha ya venció.
- * NO REQUIERE CAMBIOS.
  */
 export const isExpiredDate = (dateString: string): boolean => {
   const today = getTodayInMexico();
@@ -208,10 +164,94 @@ export const isExpiredDate = (dateString: string): boolean => {
 export const daysBetween = (startDate: string, endDate: string): number => {
   const [year1, month1, day1] = startDate.split('-').map(Number);
   const [year2, month2, day2] = endDate.split('-').map(Number);
-  
-  const date1 = new Date(Date.UTC(year1, month1 - 1, day1)); // <-- CORREGIDO
-  const date2 = new Date(Date.UTC(year2, month2 - 1, day2)); // <-- CORREGIDO
-  
+  const date1 = new Date(Date.UTC(year1, month1 - 1, day1));
+  const date2 = new Date(Date.UTC(year2, month2 - 1, day2));
   const diffTime = date2.getTime() - date1.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+// --- SECCIÓN DE FORMATEO DE TIMESTAMPS (SOLUCIÓN DEFINITIVA) ---
+
+/**
+ * Función auxiliar para crear una fecha UTC de forma segura a partir de
+ * los diferentes formatos de timestamp de la base de datos.
+ */
+function createUtcDate(timestamp: string | null): Date | null {
+  // 1. Maneja casos nulos, vacíos o fechas inválidas de la BD
+  if (!timestamp || timestamp.trim() === '' || timestamp.startsWith('0000-00-00')) {
+    return null;
+  }
+
+  let dateString = timestamp.trim();
+
+  // 2. Detecta si el timestamp ya tiene info de zona horaria (Z, + o - después de la fecha)
+  // El `indexOf('-', 10)` se asegura de no confundir los guiones de la fecha.
+  const hasTimezone = dateString.includes('Z') || dateString.indexOf('+') > 10 || dateString.indexOf('-', 10) > 10;
+  
+  // 3. Si NO tiene zona horaria (es "ingenuo"), lo convertimos a un formato ISO que JS interpreta como UTC.
+  if (!hasTimezone) {
+    dateString = dateString.replace(' ', 'T') + 'Z';
+  }
+  
+  const date = new Date(dateString);
+
+  // 4. Verificación final para cualquier formato que JS no pueda interpretar
+  if (isNaN(date.getTime())) {
+    console.error('Timestamp con formato inválido procesado:', timestamp);
+    return null;
+  }
+  
+  return date;
+}
+
+/**
+ * Formatea un timestamp UTC completo para mostrar en zona horaria México.
+ */
+export const formatTimestampForDisplay = (timestamp: string | null): string => {
+  const utcDate = createUtcDate(timestamp);
+  if (!utcDate) return 'Sin fecha';
+
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: MEXICO_TIMEZONE,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(utcDate);
+};
+
+/**
+ * Formatea un timestamp UTC solo con la fecha en zona horaria México.
+ */
+export const formatTimestampDateOnly = (timestamp: string | null): string => {
+  const utcDate = createUtcDate(timestamp);
+  if (!utcDate) return 'Sin fecha';
+
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: MEXICO_TIMEZONE,
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(utcDate);
+};
+
+/**
+ * Formatea un timestamp UTC en formato corto para tablas.
+ */
+export const formatTimestampShort = (timestamp: string | null): string => {
+  const utcDate = createUtcDate(timestamp);
+  if (!utcDate) return 'Sin fecha';
+
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: MEXICO_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(utcDate);
 };

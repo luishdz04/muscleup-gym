@@ -1,8 +1,7 @@
-// hooks/useBulkOperations.ts
+// hooks/useBulkOperations.ts - VERSIÓN COMPLETA FUNCIONAL
 import { useState, useCallback, useMemo } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { getTodayInMexico, addDaysToDate, formatDateForDisplay, daysBetween } from '@/utils/dateUtils';
-
 
 interface MembershipHistory {
   id: string;
@@ -84,25 +83,25 @@ export const useBulkOperations = (memberships: MembershipHistory[], onReload: ()
   
   const supabase = createBrowserSupabaseClient();
 
-const getMexicoDateString = useCallback(() => {
-  return getTodayInMexico();
-}, []);
+  const getMexicoDateString = useCallback(() => {
+    return getTodayInMexico();
+  }, []);
 
   const formatDisplayDate = useCallback((dateString: string | null): string => {
-  if (!dateString) return 'Sin fecha';
-  return formatDateForDisplay(dateString);
-}, []);
+    if (!dateString) return 'Sin fecha';
+    return formatDateForDisplay(dateString);
+  }, []);
 
   const getCurrentFrozenDays = useCallback((freezeDate: string | null): number => {
-  if (!freezeDate) return 0;
-  
-  try {
-    const today = getTodayInMexico();
-    return Math.max(0, daysBetween(freezeDate, today));
-  } catch (error) {
-    return 0;
-  }
-}, []);
+    if (!freezeDate) return 0;
+    
+    try {
+      const today = getTodayInMexico();
+      return Math.max(0, daysBetween(freezeDate, today));
+    } catch (error) {
+      return 0;
+    }
+  }, []);
 
   // Funciones de selección
   const handleSelectAllMemberships = useCallback((filteredMemberships: MembershipHistory[]) => {
@@ -144,16 +143,21 @@ const getMexicoDateString = useCallback(() => {
     return { canUnfreeze: true, reason: '' };
   }, []);
 
-  // Función para generar preview
-  const generateBulkPreview = useCallback((eligibleMemberships: MembershipHistory[], operationType: string) => {
-    const preview: BulkPreview[] = eligibleMemberships.map(membership => {
+  // Función para generar preview con actualización dinámica
+  const generateBulkPreview = useCallback((eligibleMemberships?: MembershipHistory[], operationType?: string) => {
+    const membershipsToUse = eligibleMemberships || memberships.filter(m => 
+      selectedMembershipIds.includes(m.id)
+    );
+    const opType = operationType || (bulkOperation.mode === 'manual' ? `manual_${bulkOperation.action}` : bulkOperation.action);
+
+    const preview: BulkPreview[] = membershipsToUse.map(membership => {
       let newEndDate = membership.end_date;
       let daysToAdd = 0;
       let actionDescription = '';
 
-      if (operationType === 'freeze') {
+      if (opType === 'freeze') {
         actionDescription = 'Se congelará automáticamente (se agregarán días al reactivar)';
-      } else if (operationType === 'manual_freeze') {
+      } else if (opType === 'manual_freeze') {
         if (bulkOperation.freezeDays && membership.end_date) {
           daysToAdd = bulkOperation.freezeDays;
           newEndDate = addDaysToDate(membership.end_date, daysToAdd);
@@ -161,7 +165,7 @@ const getMexicoDateString = useCallback(() => {
         } else {
           actionDescription = 'Se congelará manualmente (sin modificar fecha de vencimiento)';
         }
-      } else if (operationType === 'unfreeze') {
+      } else if (opType === 'unfreeze') {
         if (membership.freeze_date && membership.end_date) {
           daysToAdd = getCurrentFrozenDays(membership.freeze_date);
           newEndDate = addDaysToDate(membership.end_date, daysToAdd);
@@ -169,7 +173,7 @@ const getMexicoDateString = useCallback(() => {
         } else {
           actionDescription = 'Se reactivará automáticamente (sin modificar fecha de vencimiento)';
         }
-      } else if (operationType === 'manual_unfreeze') {
+      } else if (opType === 'manual_unfreeze') {
         actionDescription = 'Se reactivará manualmente (NO se agregarán días adicionales)';
       }
 
@@ -187,7 +191,16 @@ const getMexicoDateString = useCallback(() => {
 
     setBulkPreview(preview);
     setShowPreview(true);
-  }, [bulkOperation.freezeDays, getCurrentFrozenDays]);
+  }, [bulkOperation.freezeDays, bulkOperation.action, bulkOperation.mode, getCurrentFrozenDays, memberships, selectedMembershipIds]);
+
+  // Función específica para update de preview (para el modal)
+  const updatePreview = useCallback(() => {
+    if (selectedMembershipIds.length > 0) {
+      const eligibleMemberships = memberships.filter(m => selectedMembershipIds.includes(m.id));
+      const operationType = bulkOperation.mode === 'manual' ? `manual_${bulkOperation.action}` : bulkOperation.action;
+      generateBulkPreview(eligibleMemberships, operationType);
+    }
+  }, [generateBulkPreview, memberships, selectedMembershipIds, bulkOperation.action, bulkOperation.mode]);
 
   // Funciones principales de congelamiento masivo
   const handleBulkFreeze = useCallback((isManual: boolean = false, filteredMemberships: MembershipHistory[]) => {
@@ -282,7 +295,8 @@ const getMexicoDateString = useCallback(() => {
                 total_frozen_days: (membership.total_frozen_days || 0) + bulkOperation.freezeDays,
                 notes: membership.notes ? 
                   `${membership.notes}\nCongelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}` :
-                  `Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`
+                  `Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`,
+                updated_at: new Date().toISOString()
               })
               .eq('id', membershipId);
 
@@ -292,7 +306,8 @@ const getMexicoDateString = useCallback(() => {
               .from('user_memberships')
               .update({
                 status: 'frozen',
-                freeze_date: currentDate
+                freeze_date: currentDate,
+                updated_at: new Date().toISOString()
               })
               .eq('id', membershipId);
 
@@ -308,7 +323,8 @@ const getMexicoDateString = useCallback(() => {
                 unfreeze_date: currentDate,
                 notes: membership.notes ? 
                   `${membership.notes}\nReactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}` :
-                  `Reactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`
+                  `Reactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`,
+                updated_at: new Date().toISOString()
               })
               .eq('id', membershipId);
 
@@ -329,7 +345,8 @@ const getMexicoDateString = useCallback(() => {
                 freeze_date: null,
                 unfreeze_date: currentDate,
                 end_date: newEndDate,
-                total_frozen_days: newTotalFrozenDays
+                total_frozen_days: newTotalFrozenDays,
+                updated_at: new Date().toISOString()
               })
               .eq('id', membershipId);
 
@@ -344,10 +361,10 @@ const getMexicoDateString = useCallback(() => {
       }
 
       setBulkProgress(Math.round(((i + 1) / bulkOperation.membershipIds.length) * 100));
+      setBulkResults({ success: successCount, failed: failedCount, errors });
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    setBulkResults({ success: successCount, failed: failedCount, errors });
     setBulkLoading(false);
     
     await onReload();
@@ -360,7 +377,7 @@ const getMexicoDateString = useCallback(() => {
       setShowPreview(false);
       setBulkResults({ success: 0, failed: 0, errors: [] });
       setBulkProgress(0);
-    }, 2000);
+    }, 3000);
 
     return { successCount, failedCount, errors };
   }, [bulkOperation, memberships, supabase, formatDisplayDate, onReload, getCurrentFrozenDays, getMexicoDateString]);
@@ -407,6 +424,7 @@ const getMexicoDateString = useCallback(() => {
     handleBulkUnfreeze,
     executeBulkOperation,
     generateBulkPreview,
+    updatePreview,
     getBulkOperationTitle,
     formatDisplayDate,
     getCurrentFrozenDays
