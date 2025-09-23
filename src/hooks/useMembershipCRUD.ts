@@ -1,7 +1,8 @@
 // hooks/useMembershipCRUD.ts
 import { useState, useCallback } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { toMexicoDate, addDaysToDate } from '@/utils/dateHelpers';
+import { getTodayInMexico, addDaysToDate } from '@/utils/dateUtils';
+
 
 interface MembershipHistory {
   id: string;
@@ -85,8 +86,8 @@ export const useMembershipCRUD = () => {
   }, []);
 
   const getMexicoDateString = useCallback(() => {
-    return toMexicoDate(new Date());
-  }, []);
+  return getTodayInMexico();
+}, []);
 
   // Función para cargar membresías
   const loadMemberships = useCallback(async () => {
