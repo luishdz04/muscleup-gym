@@ -1,7 +1,7 @@
 // components/membership/BulkOperationModal.tsx - MODAL DE OPERACIONES MASIVAS
 'use client';
 
-import React, { memo } from 'react';
+import React, { memo, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -45,6 +45,7 @@ interface Props {
   preview: BulkPreview[];
   showPreview: boolean;
   formatDisplayDate: (date: string) => string;
+  onPreviewUpdate?: () => void; // Nueva prop para triggerar actualización de preview
 }
 
 const BulkOperationModal = memo<Props>(({
@@ -58,8 +59,22 @@ const BulkOperationModal = memo<Props>(({
   results,
   preview,
   showPreview,
-  formatDisplayDate
+  formatDisplayDate,
+  onPreviewUpdate
 }) => {
+  // ✅ EFECTO PARA ACTUALIZAR VISTA PREVIA DINÁMICAMENTE
+  useEffect(() => {
+    // Recalcular vista previa cuando cambien los días de congelamiento
+    if (operation.action === 'freeze' && 
+        operation.mode === 'manual' && 
+        operation.freezeDays && 
+        showPreview &&
+        onPreviewUpdate) {
+      // Trigger recalculation of preview
+      onPreviewUpdate();
+    }
+  }, [operation.freezeDays, operation.action, operation.mode, showPreview, onPreviewUpdate]);
+
   const getBulkOperationTitle = () => {
     const actionText = operation.action === 'freeze' ? 'Congelamiento' : 'Reactivación';
     const modeText = operation.mode === 'manual' ? 'Manual' : 'Automático';
@@ -69,7 +84,19 @@ const BulkOperationModal = memo<Props>(({
 
   const handleSliderChange = (value: number | number[]) => {
     const days = Array.isArray(value) ? value[0] : value;
+    
+    // ✅ ACTUALIZAR TANTO EL ESTADO COMO TRIGGERAR PREVIEW
     onOperationChange({ freezeDays: days });
+    
+    // Trigger preview recalculation inmediatamente
+    if (operation.action === 'freeze' && 
+        operation.mode === 'manual' && 
+        onPreviewUpdate) {
+      // Pequeño delay para asegurar que el estado se actualice
+      setTimeout(() => {
+        onPreviewUpdate();
+      }, 100);
+    }
   };
 
   return (
@@ -175,7 +202,9 @@ const BulkOperationModal = memo<Props>(({
                       fontWeight: 600,
                       mb: 2
                     }}>
-                      Días a congelar: {operation.freezeDays} días
+                      Días a congelar: <span style={{ color: colorTokens.info, fontSize: '1.2rem' }}>
+                        {operation.freezeDays} días
+                      </span>
                     </Typography>
                     
                     <Slider
@@ -198,22 +227,33 @@ const BulkOperationModal = memo<Props>(({
                         '& .MuiSlider-thumb': {
                           backgroundColor: colorTokens.info,
                           border: `2px solid ${colorTokens.textPrimary}`,
+                          width: 24,
+                          height: 24,
                           '&:hover': {
                             boxShadow: `0 0 0 8px ${colorTokens.info}30`
                           }
                         },
                         '& .MuiSlider-track': {
-                          backgroundColor: colorTokens.info
+                          backgroundColor: colorTokens.info,
+                          height: 6
                         },
                         '& .MuiSlider-rail': {
-                          backgroundColor: colorTokens.neutral400
+                          backgroundColor: colorTokens.neutral400,
+                          height: 6
                         },
                         '& .MuiSlider-mark': {
-                          backgroundColor: colorTokens.textSecondary
+                          backgroundColor: colorTokens.textSecondary,
+                          width: 3,
+                          height: 3
                         },
                         '& .MuiSlider-markLabel': {
                           color: colorTokens.textSecondary,
                           fontSize: '0.75rem'
+                        },
+                        '& .MuiSlider-valueLabel': {
+                          backgroundColor: colorTokens.info,
+                          color: colorTokens.textPrimary,
+                          fontWeight: 600
                         }
                       }}
                     />
@@ -232,14 +272,15 @@ const BulkOperationModal = memo<Props>(({
                       <strong>💡 ¿Cómo funciona?</strong><br/>
                       • Las membresías se marcarán como "congeladas"<br/>
                       • Se agregarán <strong>{operation.freezeDays} días</strong> a la fecha de vencimiento<br/>
-                      • Los días se registrarán en el historial de congelamiento
+                      • Los días se registrarán en el historial de congelamiento<br/>
+                      • La vista previa se actualiza automáticamente
                     </Typography>
                   </Alert>
                 </CardContent>
               </Card>
             )}
 
-            {/* ✅ VISTA PREVIA DE CAMBIOS */}
+            {/* ✅ VISTA PREVIA DE CAMBIOS MEJORADA */}
             {showPreview && preview.length > 0 && (
               <Card sx={{
                 background: `${colorTokens.success}10`,
@@ -258,6 +299,19 @@ const BulkOperationModal = memo<Props>(({
                   }}>
                     <VisibilityIcon />
                     👁️ Vista Previa de Cambios
+                    {operation.mode === 'manual' && operation.action === 'freeze' && (
+                      <Typography variant="caption" sx={{ 
+                        color: colorTokens.info,
+                        background: `${colorTokens.info}10`,
+                        px: 2,
+                        py: 0.5,
+                        borderRadius: 2,
+                        border: `1px solid ${colorTokens.info}30`,
+                        fontWeight: 600
+                      }}>
+                        +{operation.freezeDays} días
+                      </Typography>
+                    )}
                   </Typography>
 
                   <Typography variant="body2" sx={{ 
@@ -314,8 +368,16 @@ const BulkOperationModal = memo<Props>(({
                                 }}>
                                   📅 Nueva: {formatDisplayDate(previewItem.newEndDate)}
                                   {previewItem.daysToAdd > 0 && (
-                                    <span style={{ color: colorTokens.info }}>
-                                      {' '}(+{previewItem.daysToAdd} días)
+                                    <span style={{ 
+                                      color: colorTokens.info,
+                                      background: `${colorTokens.info}10`,
+                                      padding: '2px 6px',
+                                      borderRadius: '4px',
+                                      marginLeft: '8px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 700
+                                    }}>
+                                      +{previewItem.daysToAdd} días
                                     </span>
                                   )}
                                 </Typography>
