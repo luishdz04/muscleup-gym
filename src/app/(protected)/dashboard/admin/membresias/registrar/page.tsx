@@ -1,6 +1,15 @@
 'use client';
 
-import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { 
+  memo, 
+  useCallback, 
+  useEffect, 
+  useMemo, 
+  useRef,
+  ChangeEvent,
+  FocusEvent,
+  KeyboardEvent
+} from 'react';
 import {
   Box,
   Typography,
@@ -384,8 +393,9 @@ const PaymentMethodCard = memo(({
         sx={cardStyles}
         role="button"
         tabIndex={disabled ? -1 : 0}
-        onKeyPress={(e) => {
+        onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
           if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
             handleClick();
           }
         }}
@@ -578,7 +588,7 @@ function RegistrarMembresiaPage() {
     return true;
   }, []);
 
-  // ✅ HANDLERS OPTIMIZADOS CON useCallback
+  // ✅ HANDLERS OPTIMIZADOS CON useCallback Y TIPOS CORREGIDOS
   const handleBack = useCallback(() => {
     notify.promise(
       Promise.resolve(),
@@ -636,6 +646,90 @@ function RegistrarMembresiaPage() {
     dispatch({
       type: 'SET_PAYMENT_METHOD',
       payload: method
+    });
+  }, [dispatch]);
+
+  // ✅ HANDLERS DE EVENTOS CORREGIDOS CON TIPOS
+  const handleRenewalToggle = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const isRenewal = event.target.checked;
+    dispatch({
+      type: 'SET_RENEWAL_DATA',
+      payload: {
+        isRenewal,
+        skipInscription: isRenewal,
+        latestEndDate: formData.latestEndDate
+      }
+    });
+  }, [dispatch, formData.latestEndDate]);
+
+  const handleSkipInscriptionToggle = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    dispatch({
+      type: 'UPDATE_PAYMENT',
+      payload: {
+        skipInscription: event.target.checked
+      }
+    });
+  }, [dispatch]);
+
+  const handleMixedPaymentToggle = useCallback(() => {
+    dispatch({ type: 'TOGGLE_MIXED_PAYMENT' });
+  }, [dispatch]);
+
+  const handleCouponChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    dispatch({
+      type: 'UPDATE_PAYMENT',
+      payload: { couponCode: event.target.value.toUpperCase() }
+    });
+  }, [dispatch]);
+
+  const handleCouponBlur = useCallback((event: FocusEvent<HTMLInputElement>) => {
+    const trimmedCode = event.target.value.trim();
+    if (!trimmedCode) return;
+    
+    if (trimmedCode !== formData.couponCode) {
+      validateCoupon(trimmedCode);
+    }
+  }, [formData.couponCode, validateCoupon]);
+
+  const handleCouponKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement | HTMLDivElement>) => {
+    if (event.key === 'Enter') {
+      const target = event.target as HTMLInputElement;
+      const trimmedCode = target.value.trim();
+      if (trimmedCode) {
+        validateCoupon(trimmedCode);
+      }
+    }
+  }, [validateCoupon]);
+
+  const handlePaymentReceivedChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const received = parseFloat(event.target.value) || 0;
+    dispatch({
+      type: 'UPDATE_PAYMENT',
+      payload: {
+        paymentReceived: received,
+        paymentChange: Math.max(0, received - finalAmount)
+      }
+    });
+  }, [dispatch, finalAmount]);
+
+  const handlePaymentReferenceChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    dispatch({
+      type: 'UPDATE_PAYMENT',
+      payload: { paymentReference: event.target.value }
+    });
+  }, [dispatch]);
+
+  const handleNotesChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    dispatch({
+      type: 'UPDATE_PAYMENT',
+      payload: { notes: event.target.value }
+    });
+  }, [dispatch]);
+
+  const handlePaymentTypeChange = useCallback((event: SelectChangeEvent<string>) => {
+    dispatch({
+      type: 'SET_PAYMENT_TYPE',
+      payload: event.target.value
     });
   }, [dispatch]);
 
@@ -753,16 +847,6 @@ function RegistrarMembresiaPage() {
     window.addEventListener('keydown', handleKeyboardNavigation);
     return () => window.removeEventListener('keydown', handleKeyboardNavigation);
   }, [canProceedToNextStep, activeStep, steps.length, setActiveStep, confirmDialogOpen, handleBack]);
-
-  // ✅ VALIDACIÓN DE CUPÓN MEJORADA CON useCallback
-  const handleCouponValidation = useCallback(async (code: string) => {
-    const trimmedCode = code.trim();
-    if (!trimmedCode) return;
-    
-    if (trimmedCode !== formData.couponCode) {
-      await validateCoupon(trimmedCode);
-    }
-  }, [formData.couponCode, validateCoupon]);
 
   // ✅ CÁLCULO DE FECHA MEMOIZADO con dateUtils
   const endDate = useMemo(() => {
@@ -1272,17 +1356,7 @@ function RegistrarMembresiaPage() {
                                             control={
                                               <Switch
                                                 checked={formData.isRenewal}
-                                                onChange={(event) => {
-                                                  const isRenewal = event.target.checked;
-                                                  dispatch({
-                                                    type: 'SET_RENEWAL_DATA',
-                                                    payload: {
-                                                      isRenewal,
-                                                      skipInscription: isRenewal,
-                                                      latestEndDate: formData.latestEndDate
-                                                    }
-                                                  });
-                                                }}
+                                                onChange={handleRenewalToggle}
                                                 sx={{
                                                   '& .MuiSwitch-switchBase.Mui-checked': {
                                                     color: colorTokens.brand,
@@ -1350,12 +1424,15 @@ function RegistrarMembresiaPage() {
                               <CircularProgress sx={{ color: colorTokens.brand }} size={50} />
                             </Box>
                           ) : plans.length === 0 ? (
-                            <Alert severity="warning" sx={{
-                              backgroundColor: `${colorTokens.warning}10`,
-                              color: colorTokens.textPrimary,
-                              border: `1px solid ${colorTokens.warning}30`,
-                              '& .MuiAlert-icon': { color: colorTokens.warning }
-                            }}>
+                            <Alert 
+                              severity="warning"
+                              sx={{
+                                backgroundColor: `${colorTokens.warning}10`,
+                                color: colorTokens.textPrimary,
+                                border: `1px solid ${colorTokens.warning}30`,
+                                '& .MuiAlert-icon': { color: colorTokens.warning }
+                              }}
+                            >
                               No hay planes de membresía activos disponibles.
                             </Alert>
                           ) : (
@@ -1390,8 +1467,9 @@ function RegistrarMembresiaPage() {
                                       onClick={() => handlePlanSelect(plan)}
                                       role="button"
                                       tabIndex={0}
-                                      onKeyPress={(e) => {
+                                      onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
                                         if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault();
                                           handlePlanSelect(plan);
                                         }
                                       }}
@@ -1503,14 +1581,7 @@ function RegistrarMembresiaPage() {
                                             control={
                                               <Switch
                                                 checked={formData.skipInscription}
-                                                onChange={(event) => {
-                                                  dispatch({
-                                                    type: 'UPDATE_PAYMENT',
-                                                    payload: {
-                                                      skipInscription: event.target.checked
-                                                    }
-                                                  });
-                                                }}
+                                                onChange={handleSkipInscriptionToggle}
                                                 sx={{
                                                   '& .MuiSwitch-switchBase.Mui-checked': {
                                                     color: colorTokens.warning,
@@ -1584,10 +1655,7 @@ function RegistrarMembresiaPage() {
                                       </InputLabel>
                                       <Select
                                         value={formData.paymentType}
-                                        onChange={(event: SelectChangeEvent<string>) => dispatch({
-                                          type: 'SET_PAYMENT_TYPE',
-                                          payload: event.target.value
-                                        })}
+                                        onChange={handlePaymentTypeChange}
                                         IconComponent={ExpandMoreIcon}
                                         sx={{
                                           color: colorTokens.textPrimary,
@@ -1701,17 +1769,8 @@ function RegistrarMembresiaPage() {
                                 fullWidth
                                 label="Código de Cupón"
                                 value={formData.couponCode}
-                                onChange={(event) => dispatch({
-                                  type: 'UPDATE_PAYMENT',
-                                  payload: { couponCode: event.target.value.toUpperCase() }
-                                })}
-                                onBlur={(event) => handleCouponValidation(event.target.value)}
-                                onKeyPress={(event) => {
-                                  if (event.key === 'Enter') {
-                                    const target = event.target as HTMLInputElement;
-                                    handleCouponValidation(target.value);
-                                  }
-                                }}
+                                onChange={handleCouponChange}
+                                onBlur={handleCouponBlur}
                                 placeholder="Ej: DESC20, PROMO50..."
                                 InputProps={{
                                   startAdornment: (
@@ -1724,6 +1783,7 @@ function RegistrarMembresiaPage() {
                                       <CheckCircleIcon sx={{ color: colorTokens.brand }} />
                                     </InputAdornment>
                                   ),
+                                  onKeyDown: handleCouponKeyDown,
                                   sx: {
                                     color: colorTokens.textPrimary,
                                     fontSize: '1.1rem',
@@ -1859,7 +1919,7 @@ function RegistrarMembresiaPage() {
                                 control={
                                   <Switch
                                     checked={formData.isMixedPayment}
-                                    onChange={() => dispatch({ type: 'TOGGLE_MIXED_PAYMENT' })}
+                                    onChange={handleMixedPaymentToggle}
                                     sx={{
                                       '& .MuiSwitch-switchBase.Mui-checked': {
                                         color: colorTokens.brand,
@@ -1986,16 +2046,7 @@ function RegistrarMembresiaPage() {
                                                     label="Dinero Recibido"
                                                     type="number"
                                                     value={formData.paymentReceived || ''}
-                                                    onChange={(event) => {
-                                                      const received = parseFloat(event.target.value) || 0;
-                                                      dispatch({
-                                                        type: 'UPDATE_PAYMENT',
-                                                        payload: {
-                                                          paymentReceived: received,
-                                                          paymentChange: Math.max(0, received - finalAmount)
-                                                        }
-                                                      });
-                                                    }}
+                                                    onChange={handlePaymentReceivedChange}
                                                     placeholder="0.00"
                                                     error={formData.paymentReceived > 0 && formData.paymentReceived < finalAmount}
                                                     helperText={
@@ -2100,10 +2151,7 @@ function RegistrarMembresiaPage() {
                                                     : 'Número de Autorización'
                                                 }
                                                 value={formData.paymentReference}
-                                                onChange={(event) => dispatch({
-                                                  type: 'UPDATE_PAYMENT',
-                                                  payload: { paymentReference: event.target.value }
-                                                })}
+                                                onChange={handlePaymentReferenceChange}
                                                 placeholder="Ej: 123456, AUTH789..."
                                                 InputProps={{
                                                   startAdornment: (
@@ -2306,7 +2354,7 @@ function RegistrarMembresiaPage() {
                                                     label="Monto"
                                                     type="number"
                                                     value={detail.amount || ''}
-                                                    onChange={(event) => 
+                                                    onChange={(event: ChangeEvent<HTMLInputElement>) => 
                                                       updateMixedPaymentDetail(detail.id, 'amount', parseFloat(event.target.value) || 0)
                                                     }
                                                     error={detail.amount <= 0}
@@ -2344,7 +2392,7 @@ function RegistrarMembresiaPage() {
                                                     fullWidth
                                                     label="Referencia"
                                                     value={detail.reference}
-                                                    onChange={(event) => 
+                                                    onChange={(event: ChangeEvent<HTMLInputElement>) => 
                                                       updateMixedPaymentDetail(detail.id, 'reference', event.target.value)
                                                     }
                                                     placeholder="Opcional"
@@ -2364,12 +2412,15 @@ function RegistrarMembresiaPage() {
 
                                                 {detail.commission_amount > 0 && (
                                                   <Grid size={12}>
-                                                    <Alert severity="warning" sx={{
-                                                      backgroundColor: `${colorTokens.warning}10`,
-                                                      color: colorTokens.textPrimary,
-                                                      border: `1px solid ${colorTokens.warning}30`,
-                                                      '& .MuiAlert-icon': { color: colorTokens.warning }
-                                                    }}>
+                                                    <Alert 
+                                                      severity="warning"
+                                                      sx={{
+                                                        backgroundColor: `${colorTokens.warning}10`,
+                                                        color: colorTokens.textPrimary,
+                                                        border: `1px solid ${colorTokens.warning}30`,
+                                                        '& .MuiAlert-icon': { color: colorTokens.warning }
+                                                      }}
+                                                    >
                                                       <Typography variant="body2">
                                                         <strong>Comisión:</strong> {detail.commission_rate}% = {formatPrice(detail.commission_amount)}
                                                       </Typography>
@@ -2400,10 +2451,7 @@ function RegistrarMembresiaPage() {
                                 fullWidth
                                 label="Notas Adicionales"
                                 value={formData.notes}
-                                onChange={(event) => dispatch({
-                                  type: 'UPDATE_PAYMENT',
-                                  payload: { notes: event.target.value }
-                                })}
+                                onChange={handleNotesChange}
                                 multiline
                                 rows={3}
                                 placeholder="Observaciones especiales..."
