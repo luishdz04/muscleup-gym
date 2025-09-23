@@ -1,7 +1,8 @@
 // hooks/useBulkOperations.ts
 import { useState, useCallback, useMemo } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { toMexicoDate, addDaysToDate, formatMexicoDateTime } from '@/utils/dateHelpers';
+import { getTodayInMexico, addDaysToDate, formatDateForDisplay, daysBetween } from '@/utils/dateUtils';
+
 
 interface MembershipHistory {
   id: string;
@@ -83,45 +84,25 @@ export const useBulkOperations = (memberships: MembershipHistory[], onReload: ()
   
   const supabase = createBrowserSupabaseClient();
 
-  const getMexicoDateString = useCallback(() => {
-    return toMexicoDate(new Date());
-  }, []);
+const getMexicoDateString = useCallback(() => {
+  return getTodayInMexico();
+}, []);
 
   const formatDisplayDate = useCallback((dateString: string | null): string => {
-    if (!dateString) return 'Sin fecha';
-    
-    try {
-      return formatMexicoDateTime(dateString, {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch (error) {
-      return 'Error de fecha';
-    }
-  }, []);
+  if (!dateString) return 'Sin fecha';
+  return formatDateForDisplay(dateString);
+}, []);
 
   const getCurrentFrozenDays = useCallback((freezeDate: string | null): number => {
-    if (!freezeDate) return 0;
-    
-    try {
-      const today = getMexicoDateString();
-      const freeze = new Date(freezeDate + 'T00:00:00');
-      const todayDate = new Date(today + 'T00:00:00');
-      
-      if (isNaN(freeze.getTime()) || isNaN(todayDate.getTime())) {
-        return 0;
-      }
-      
-      const diffTime = todayDate.getTime() - freeze.getTime();
-      const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-      
-      return diffDays;
-    } catch (error) {
-      return 0;
-    }
-  }, [getMexicoDateString]);
+  if (!freezeDate) return 0;
+  
+  try {
+    const today = getTodayInMexico();
+    return Math.max(0, daysBetween(freezeDate, today));
+  } catch (error) {
+    return 0;
+  }
+}, []);
 
   // Funciones de selección
   const handleSelectAllMemberships = useCallback((filteredMemberships: MembershipHistory[]) => {
