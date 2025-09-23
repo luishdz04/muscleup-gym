@@ -15,7 +15,8 @@ import {
   Grid,
   Chip,
   Stack,
-  IconButton
+  IconButton,
+  Divider
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -24,7 +25,9 @@ import {
   FitnessCenter as FitnessCenterIcon,
   CalendarToday as CalendarTodayIcon,
   AcUnit as AcUnitIcon,
-  Timer as TimerIcon
+  Timer as TimerIcon,
+  AttachMoney as AttachMoneyIcon,
+  Receipt as ReceiptIcon
 } from '@mui/icons-material';
 import { colorTokens } from '@/theme';
 import { MembershipHistory } from '@/types/membership';
@@ -441,68 +444,285 @@ const MembershipDetailsModal = memo<Props>(({
               </Card>
             </Grid>
 
-            {/* ✅ DETALLES DE PAGO MIXTO */}
+            {/* ✅ DETALLES DE PAGO MIXTO MEJORADO */}
             {membership.is_mixed_payment && membership.payment_details && (
               <Grid size={12}>
                 <Card sx={{
-                  background: `${colorTokens.warning}10`,
-                  border: `1px solid ${colorTokens.warning}30`,
-                  borderRadius: 3
+                  background: `${colorTokens.warning}15`,
+                  border: `2px solid ${colorTokens.warning}40`,
+                  borderRadius: 4,
+                  boxShadow: `0 8px 32px ${colorTokens.warning}20`
                 }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ 
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography variant="h5" sx={{ 
                       color: colorTokens.warning,
-                      fontWeight: 700,
-                      mb: 3,
+                      fontWeight: 800,
+                      mb: 4,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 2
+                      gap: 2,
+                      textAlign: 'center',
+                      justifyContent: 'center'
                     }}>
-                      💳 Detalles de Pago Mixto
+                      <ReceiptIcon sx={{ fontSize: 40 }} />
+                      💳 Desglose de Pago Mixto
                     </Typography>
 
-                    <Grid container spacing={3}>
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                            Efectivo
-                          </Typography>
-                          <Typography variant="h6" sx={{ color: colorTokens.success, fontWeight: 700 }}>
-                            {formatPrice(membership.payment_details.cash_amount || 0)}
+                    {/* ✅ DESGLOSE VISUAL TIPO CALCULADORA */}
+                    <Box sx={{
+                      background: `${colorTokens.neutral200}05`,
+                      border: `1px solid ${colorTokens.neutral400}`,
+                      borderRadius: 3,
+                      p: 4,
+                      mb: 4
+                    }}>
+                      <Grid container spacing={3}>
+                        {/* Efectivo */}
+                        {membership.payment_details.cash_amount > 0 && (
+                          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Box sx={{
+                              background: `${colorTokens.success}15`,
+                              border: `2px solid ${colorTokens.success}`,
+                              borderRadius: 3,
+                              p: 3,
+                              textAlign: 'center',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                transform: 'translateY(-4px)',
+                                boxShadow: `0 8px 32px ${colorTokens.success}30`
+                              }
+                            }}>
+                              <Typography variant="h2" sx={{ mb: 2 }}>💵</Typography>
+                              <Typography variant="h6" sx={{ 
+                                color: colorTokens.textSecondary,
+                                mb: 2,
+                                fontWeight: 600
+                              }}>
+                                Efectivo
+                              </Typography>
+                              <Typography variant="h4" sx={{ 
+                                color: colorTokens.success, 
+                                fontWeight: 800
+                              }}>
+                                {formatPrice(membership.payment_details.cash_amount)}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        )}
+
+                        {/* Tarjeta */}
+                        {membership.payment_details.card_amount > 0 && (
+                          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Box sx={{
+                              background: `${colorTokens.info}15`,
+                              border: `2px solid ${colorTokens.info}`,
+                              borderRadius: 3,
+                              p: 3,
+                              textAlign: 'center',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                transform: 'translateY(-4px)',
+                                boxShadow: `0 8px 32px ${colorTokens.info}30`
+                              }
+                            }}>
+                              <Typography variant="h2" sx={{ mb: 2 }}>💳</Typography>
+                              <Typography variant="h6" sx={{ 
+                                color: colorTokens.textSecondary,
+                                mb: 2,
+                                fontWeight: 600
+                              }}>
+                                Tarjeta
+                              </Typography>
+                              <Typography variant="h4" sx={{ 
+                                color: colorTokens.info, 
+                                fontWeight: 800
+                              }}>
+                                {formatPrice(membership.payment_details.card_amount)}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        )}
+
+                        {/* Transferencia */}
+                        {membership.payment_details.transfer_amount > 0 && (
+                          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Box sx={{
+                              background: `${colorTokens.warning}15`,
+                              border: `2px solid ${colorTokens.warning}`,
+                              borderRadius: 3,
+                              p: 3,
+                              textAlign: 'center',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                transform: 'translateY(-4px)',
+                                boxShadow: `0 8px 32px ${colorTokens.warning}30`
+                              }
+                            }}>
+                              <Typography variant="h2" sx={{ mb: 2 }}>🏦</Typography>
+                              <Typography variant="h6" sx={{ 
+                                color: colorTokens.textSecondary,
+                                mb: 2,
+                                fontWeight: 600
+                              }}>
+                                Transferencia
+                              </Typography>
+                              <Typography variant="h4" sx={{ 
+                                color: colorTokens.warning, 
+                                fontWeight: 800
+                              }}>
+                                {formatPrice(membership.payment_details.transfer_amount)}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        )}
+
+                        {/* Total */}
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                          <Box sx={{
+                            background: `${colorTokens.brand}20`,
+                            border: `3px solid ${colorTokens.brand}`,
+                            borderRadius: 3,
+                            p: 3,
+                            textAlign: 'center',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              background: `linear-gradient(135deg, ${colorTokens.brand}10, ${colorTokens.brand}05)`,
+                              zIndex: -1
+                            }
+                          }}>
+                            <Typography variant="h2" sx={{ mb: 2, color: colorTokens.brand }}>🧮</Typography>
+                            <Typography variant="h6" sx={{ 
+                              color: colorTokens.textSecondary,
+                              mb: 2,
+                              fontWeight: 600
+                            }}>
+                              Total Final
+                            </Typography>
+                            <Typography variant="h3" sx={{ 
+                              color: colorTokens.brand, 
+                              fontWeight: 900
+                            }}>
+                              {formatPrice(membership.amount_paid)}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </Box>
+
+                    <Divider sx={{ 
+                      borderColor: `${colorTokens.warning}30`, 
+                      my: 4,
+                      borderWidth: 2
+                    }} />
+
+                    {/* ✅ FÓRMULA VISUAL TIPO "200 + 300 + 100 = 600" */}
+                    <Box sx={{
+                      background: `linear-gradient(135deg, ${colorTokens.brand}10, ${colorTokens.brand}05)`,
+                      border: `2px solid ${colorTokens.brand}30`,
+                      borderRadius: 4,
+                      p: 4,
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="h5" sx={{ 
+                        color: colorTokens.textPrimary,
+                        fontWeight: 700,
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 2
+                      }}>
+                        <AttachMoneyIcon sx={{ fontSize: 32, color: colorTokens.brand }} />
+                        📊 Fórmula de Pago
+                      </Typography>
+                      
+                      <Typography variant="h4" sx={{ 
+                        color: colorTokens.textPrimary,
+                        fontWeight: 800,
+                        fontFamily: 'monospace',
+                        letterSpacing: '3px',
+                        lineHeight: 1.5,
+                        textShadow: `2px 2px 4px rgba(0,0,0,0.3)`
+                      }}>
+                        {/* Construir fórmula dinámicamente */}
+                        {(() => {
+                          const parts = [];
+                          if (membership.payment_details.cash_amount > 0) {
+                            parts.push(`💵 ${formatPrice(membership.payment_details.cash_amount)}`);
+                          }
+                          if (membership.payment_details.card_amount > 0) {
+                            parts.push(`💳 ${formatPrice(membership.payment_details.card_amount)}`);
+                          }
+                          if (membership.payment_details.transfer_amount > 0) {
+                            parts.push(`🏦 ${formatPrice(membership.payment_details.transfer_amount)}`);
+                          }
+                          
+                          return parts.join(' + ') + ` = 🧮 ${formatPrice(membership.amount_paid)}`;
+                        })()}
+                      </Typography>
+
+                      {/* Verificación del total */}
+                      <Box sx={{
+                        mt: 3,
+                        p: 2,
+                        background: `${colorTokens.success}10`,
+                        border: `1px solid ${colorTokens.success}30`,
+                        borderRadius: 2
+                      }}>
+                        <Typography variant="body1" sx={{ 
+                          color: colorTokens.success,
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 1
+                        }}>
+                          ✅ Total Verificado: {(() => {
+                            const calculatedTotal = (membership.payment_details.cash_amount || 0) + 
+                                                   (membership.payment_details.card_amount || 0) + 
+                                                   (membership.payment_details.transfer_amount || 0);
+                            return calculatedTotal === membership.amount_paid ? 
+                              'Coincide perfectamente' : 
+                              `Diferencia: ${formatPrice(Math.abs(calculatedTotal - membership.amount_paid))}`;
+                          })()}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {/* Referencias de pago si existen */}
+                    {membership.payment_reference && (
+                      <Box sx={{ mt: 4 }}>
+                        <Typography variant="h6" sx={{ 
+                          color: colorTokens.textSecondary,
+                          mb: 2,
+                          fontWeight: 700
+                        }}>
+                          📄 Referencias de Pago:
+                        </Typography>
+                        <Box sx={{
+                          background: `${colorTokens.neutral200}05`,
+                          border: `1px solid ${colorTokens.neutral400}`,
+                          borderRadius: 3,
+                          p: 3
+                        }}>
+                          <Typography variant="h6" sx={{ 
+                            color: colorTokens.textPrimary,
+                            fontFamily: 'monospace',
+                            fontWeight: 600,
+                            textAlign: 'center'
+                          }}>
+                            {membership.payment_reference}
                           </Typography>
                         </Box>
-                      </Grid>
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                            Tarjeta
-                          </Typography>
-                          <Typography variant="h6" sx={{ color: colorTokens.info, fontWeight: 700 }}>
-                            {formatPrice(membership.payment_details.card_amount || 0)}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                            Transferencia
-                          </Typography>
-                          <Typography variant="h6" sx={{ color: colorTokens.warning, fontWeight: 700 }}>
-                            {formatPrice(membership.payment_details.transfer_amount || 0)}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                            Total
-                          </Typography>
-                          <Typography variant="h6" sx={{ color: colorTokens.brand, fontWeight: 800 }}>
-                            {formatPrice(membership.payment_details.total_amount || membership.amount_paid)}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
