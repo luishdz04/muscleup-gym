@@ -304,14 +304,6 @@ const MembershipEditModal = memo<Props>(({
 
   if (!membership) return null;
 
-  // ✅ FUNCIONES IDÉNTICAS AL REGISTRO
-  const formatPrice = useCallback((price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  }, []);
-
   const handlePaymentMethodSelect = useCallback((method: string) => {
     setEditData(prev => ({
       ...prev,
