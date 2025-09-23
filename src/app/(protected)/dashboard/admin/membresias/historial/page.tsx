@@ -36,7 +36,7 @@ import MembershipDetailsModal from '@/components/membership/MembershipDetailsMod
 import MembershipEditModal from '@/components/membership/MembershipEditModal';
 
 // UTILIDADES Y TIPOS
-import { addDaysToDate, formatMexicoDateTime } from '@/utils/dateHelpers';
+import { addDaysToDate, formatDateForDisplay, formatDateLong, daysBetween, getTodayInMexico } from '@/utils/dateUtils';
 import { colorTokens } from '@/theme';
 import type { MembershipHistory, StatusOption, PaymentMethodOption } from '@/types/membership';
 
@@ -146,38 +146,25 @@ export default function HistorialMembresiaPage() {
 
   // FUNCIONES UTILITARIAS MEMOIZADAS
   const calculateDaysRemaining = useCallback((endDate: string | null): number | null => {
-    if (!endDate) return null;
-    
-    try {
-      const today = new Date();
-      const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endDateObj = new Date(endDate + 'T00:00:00');
-      
-      if (isNaN(todayDate.getTime()) || isNaN(endDateObj.getTime())) {
-        return null;
-      }
-      
-      const diffTime = endDateObj.getTime() - todayDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      return diffDays;
-    } catch (error) {
-      return null;
-    }
-  }, []);
-
+  if (!endDate) return null;
+  
+  try {
+    const today = getTodayInMexico();
+    return daysBetween(today, endDate);
+  } catch (error) {
+    return null;
+  }
+}, []);
   // FUNCIONES HELPER PARA MODALES
   const formatTimestampForDisplay = useCallback((timestamp: string): string => {
-    return formatMexicoDateTime(timestamp, {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  }, []);
+  try {
+    // Extraer solo la fecha del timestamp
+    const dateOnly = timestamp.split('T')[0];
+    return formatDateLong(dateOnly);
+  } catch (error) {
+    return 'Fecha inválida';
+  }
+}, []);
 
   const getStatusColor = useCallback((status: string) => {
     const statusOption = statusOptions.find(s => s.value === status);
