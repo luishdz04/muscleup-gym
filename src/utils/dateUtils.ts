@@ -255,3 +255,15 @@ export const formatTimestampShort = (timestamp: string | null): string => {
     hour12: false
   }).format(utcDate);
 };
+
+// --- SECCIÓN DE TIMESTAMPS UTC PARA BASE DE DATOS ---
+
+/**
+ * Obtiene el timestamp actual en UTC para insertar en la base de datos.
+ * Siempre retorna formato ISO 8601 en UTC.
+ * 
+ * @returns {string} Timestamp UTC en formato "2025-09-23T15:30:45.123Z"
+ */
+export const getCurrentTimestamp = (): string => {
+  return new Date().toISOString(); // Siempre UTC para BD
+};

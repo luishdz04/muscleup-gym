@@ -2,16 +2,17 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
-import { toMexicoDate, toMexicoTimestamp } from '@/utils/dateHelpers';
 
-// ✅ CONFIGURAR DAYJS PARA ZONA HORARIA DE MÉXICO
-dayjs.extend(utc);
-dayjs.extend(timezone);
+// ✅ IMPORTACIONES ENTERPRISE ESTÁNDAR
+import { 
+  getTodayInMexico, 
+  formatTimestampForDisplay,
+  getCurrentTimestamp,
+  daysBetween
+} from '@/utils/dateUtils';
+import { useUserTracking } from '@/hooks/useUserTracking';
 
-const MEXICO_TZ = 'America/Mexico_City';
+// CONSTANTES
 const STORAGE_KEY = 'registration-form';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -50,7 +51,7 @@ type FormData = {
   tutorINE?: FileList;
 };
 
-// ✅ NUEVO: Tipo extendido para datos guardados en localStorage
+// ✅ Tipo extendido para datos guardados en localStorage
 type SavedFormData = FormData & {
   profilePhotoPreview?: string;
   tutorINEPreview?: string;
@@ -78,7 +79,7 @@ const fieldsPerStep: { [key: number]: (keyof FormData)[] } = {
   4: ['acceptedRules'] as (keyof FormData)[]
 };
 
-// Funciones utilitarias (extraídas de tu código)
+// ✅ FUNCIONES UTILITARIAS ENTERPRISE
 const isValidFile = (file: unknown): file is File => {
   return file instanceof File && 
          file.size <= MAX_FILE_SIZE &&
@@ -89,14 +90,19 @@ const isBlobUrl = (url: string): boolean => {
   return url.startsWith('blob:');
 };
 
+// ✅ FUNCIONES DE FECHA ENTERPRISE (usando dateUtils)
 const getCurrentMexicoDate = (): string => {
-  return dayjs().tz(MEXICO_TZ).format('YYYY-MM-DD');
+  return getTodayInMexico();
 };
 
 const calculateAge = (birthDateString: string): number => {
-  const birthDate = dayjs.tz(birthDateString, MEXICO_TZ);
-  const now = dayjs().tz(MEXICO_TZ);
-  return now.diff(birthDate, 'year');
+  try {
+    const today = getTodayInMexico();
+    const days = daysBetween(birthDateString, today);
+    return Math.floor(days / 365.25);
+  } catch (error) {
+    return 0;
+  }
 };
 
 const validateAge = (birthDateString: string): boolean | string => {
@@ -109,6 +115,9 @@ const validateAge = (birthDateString: string): boolean | string => {
 };
 
 export const useRegistrationForm = () => {
+  // ✅ HOOK DE AUDITORÍA ENTERPRISE
+  const { addAuditFields, getUTCTimestamp } = useUserTracking();
+
   // Estados principales
   const [step, setStep] = useState(1);
   const [formProgress, setFormProgress] = useState(0);
@@ -150,7 +159,7 @@ export const useRegistrationForm = () => {
 
   const formValues = watch();
 
-  // ✅ FUNCIÓN PARA CONVERTIR A BASE64 (de tu código original)
+  // ✅ FUNCIÓN PARA CONVERTIR A BASE64 (mantener original)
   const toBase64 = useCallback(async (file: File): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
       if (!isValidFile(file)) {
@@ -176,7 +185,7 @@ export const useRegistrationForm = () => {
     });
   }, []);
 
-  // ✅ FUNCIÓN PARA CREAR PREVIEW SEGURO (de tu código)
+  // ✅ FUNCIÓN PARA CREAR PREVIEW SEGURO (mantener original)
   const createSafePreview = useCallback(async (file: File): Promise<string> => {
     try {
       const base64 = await toBase64(file);
@@ -187,7 +196,7 @@ export const useRegistrationForm = () => {
     }
   }, [toBase64]);
 
-  // Funciones para manejo de fotos (adaptadas de tu código)
+  // Funciones para manejo de fotos (mantener originales)
   const handleProfilePhotoCapture = useCallback(async (file: File) => {
     try {
       if (!file || !isValidFile(file)) {
@@ -310,7 +319,7 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // ✅ FUNCIÓN DE ENVÍO (copiada y adaptada de tu código original)
+  // ✅ FUNCIÓN DE ENVÍO ENTERPRISE COMPLETA
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
       setIsSubmitting(true);
@@ -392,63 +401,80 @@ export const useRegistrationForm = () => {
         return;
       }
 
-      // Construir payload
-      const currentMexicoTime = new Date();
-      const birthDateObj = new Date(data.birthDate);
-      
-      const payload = {
-        personalInfo: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          password: data.password,
-          whatsapp: data.whatsapp,
-          birthDate: toMexicoDate(birthDateObj),
-          address: {
-            street: data.street,
-            number: data.number,
-            neighborhood: data.neighborhood,
-            state: data.state,
-            city: data.city,
-            postalCode: data.postalCode,
-            country: data.country || 'México',
-          },
-          gender: data.gender,
-          maritalStatus: data.maritalStatus,
-        },
-        emergencyContact: {
-          name: data.emergencyName,
-          phone: data.emergencyPhone,
-          medicalCondition: data.medicalCondition,
-          bloodType: data.bloodType,
-        },
-        membershipData: {
-          referredBy: data.referredBy,
-          mainMotivation: data.mainMotivation,
-          receivePlans: data.receivePlans,
-          trainingLevel: data.trainingLevel,
-        },
+      // ✅ CONSTRUIR DATOS ENTERPRISE
+      const baseUserData = {
+        // Información personal
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: data.password,
+        whatsapp: data.whatsapp,
+        birthDate: data.birthDate, // Ya en formato YYYY-MM-DD correcto
+        
+        // Dirección
+        street: data.street,
+        number: data.number,
+        neighborhood: data.neighborhood,
+        state: data.state,
+        city: data.city,
+        postalCode: data.postalCode,
+        country: data.country || 'México',
+        gender: data.gender,
+        maritalStatus: data.maritalStatus,
+        
+        // Información de emergencia
+        emergencyName: data.emergencyName,
+        emergencyPhone: data.emergencyPhone,
+        medicalCondition: data.medicalCondition,
+        bloodType: data.bloodType,
+        
+        // Información de membresía
+        referredBy: data.referredBy,
+        mainMotivation: data.mainMotivation,
+        receivePlans: data.receivePlans,
+        trainingLevel: data.trainingLevel,
+        
+        // Estados y configuración
         acceptedRules: data.acceptedRules,
-        signature: signatureDataUrl,
-        registrationDate: toMexicoTimestamp(currentMexicoTime),
-        profilePhoto: profilePhotoBase64,
-        tutorINE: tutorINEBase64,
         isMinor: showTutorField,
-        metadata: {
-          version: '2.1-mx-timezone-corrected',
-          processedAt: toMexicoTimestamp(currentMexicoTime),
-          processedBy: 'luishdz044',
-          mexicoTimezone: MEXICO_TZ,
-          currentMexicoDate: getCurrentMexicoDate()
-        }
+        
+        // URLs de archivos procesados
+        profilePictureUrl: profilePhotoBase64,
+        signatureUrl: signatureDataUrl,
+        ...(tutorINEBase64 && { tutorINEUrl: tutorINEBase64 }),
+        
+        // Estados de proceso
+        registrationCompleted: true,
+        registrationCompletedAt: getUTCTimestamp(), // ✅ UTC timestamp
+        pendingWelcomeEmail: true,
+        emailConfirmed: false,
+        fingerprint: false,
+        emailSent: false,
+        whatsappSent: false,
+        processingErrors: false,
+        
+        // Sistema de puntos (valores iniciales)
+        points_balance: 0,
+        total_purchases: 0,
+        rol: 'cliente'
       };
 
-      // Llamada al API
+      // ✅ APLICAR AUDITORÍA ENTERPRISE AUTOMÁTICA
+      const userDataWithAudit = await addAuditFields(baseUserData, false);
+
+      console.log('Datos con auditoría:', {
+        ...userDataWithAudit,
+        profilePictureUrl: '[BASE64_DATA]', // No logear base64 completo
+        signatureUrl: '[BASE64_DATA]',
+        ...(tutorINEBase64 && { tutorINEUrl: '[BASE64_DATA]' })
+      });
+
+      // Llamada al API con datos enterprise
       try {
         const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(userDataWithAudit), // ✅ Datos con auditoría
           cache: 'no-store'
         });
 
@@ -482,7 +508,7 @@ export const useRegistrationForm = () => {
     }
   };
 
-  // Efectos (adaptados de tu código original)
+  // ✅ EFECTOS (mantener originales pero con callbacks actualizados)
   
   // Cargar datos guardados
   useEffect(() => {
@@ -529,32 +555,31 @@ export const useRegistrationForm = () => {
 
   // Calcular progreso y guardar datos
   useEffect(() => {
-  if (!isDirty) return;
-  
-  try {
-    const dataToSave: SavedFormData = { ...formValues };
+    if (!isDirty) return;
     
-    // ✅ CORREGIDO: Verificación de tipo más específica para FileList
-    (Object.keys(dataToSave) as Array<keyof SavedFormData>).forEach((key) => {
-      const value = dataToSave[key];
-      // ✅ Cambiar esta línea:
-      if ((value as any) instanceof FileList || value instanceof File) {
-        delete dataToSave[key];
-      }
-    });
-    
-    if (previewUrl && !isBlobUrl(previewUrl)) {
-      dataToSave.profilePhotoPreview = previewUrl;
-      dataToSave.hasProfilePhotoFile = !!profilePhotoFile;
-    }
-    
-    if (tutorINEUrl && !isBlobUrl(tutorINEUrl)) {
-      dataToSave.tutorINEPreview = tutorINEUrl;
-      dataToSave.hasTutorINEFile = !!tutorINEFile;
-    }
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    try {
+      const dataToSave: SavedFormData = { ...formValues };
       
+      // ✅ Verificación de tipo más específica para FileList
+      (Object.keys(dataToSave) as Array<keyof SavedFormData>).forEach((key) => {
+        const value = dataToSave[key];
+        if ((value as any) instanceof FileList || value instanceof File) {
+          delete dataToSave[key];
+        }
+      });
+      
+      if (previewUrl && !isBlobUrl(previewUrl)) {
+        dataToSave.profilePhotoPreview = previewUrl;
+        dataToSave.hasProfilePhotoFile = !!profilePhotoFile;
+      }
+      
+      if (tutorINEUrl && !isBlobUrl(tutorINEUrl)) {
+        dataToSave.tutorINEPreview = tutorINEUrl;
+        dataToSave.hasTutorINEFile = !!tutorINEFile;
+      }
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        
       // Calcular progreso
       let completedFields = 0;
       let requiredFields = 0;
@@ -633,7 +658,7 @@ export const useRegistrationForm = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty, isSubmitting]);
 
-  // Función auxiliar para determinar último paso completado
+  // ✅ FUNCIÓN AUXILIAR PARA DETERMINAR ÚLTIMO PASO COMPLETADO
   const getLastCompletedStep = useCallback((data: Partial<FormData>): number => {
     if (data.acceptedRules) return 4;
     if (data.referredBy && data.mainMotivation && data.trainingLevel) return 3;
@@ -643,11 +668,20 @@ export const useRegistrationForm = () => {
   }, []);
 
   const handleCloseSuccessModal = () => {
-  setShowSuccessModal(false);
-  
-  // ✅ NUEVO FLUJO: Redirigir a página de confirmación de email
-  window.location.href = '/registro-pendiente';
-};
+    setShowSuccessModal(false);
+    
+    // ✅ REDIRIGIR A PÁGINA DE CONFIRMACIÓN DE EMAIL
+    window.location.href = '/registro-pendiente';
+  };
+
+  // ✅ CALLBACKS PARA FUNCIONES EXPORTADAS
+  const getCurrentMexicoDateCallback = useCallback((): string => {
+    return getCurrentMexicoDate();
+  }, []);
+
+  const validateAgeCallback = useCallback((birthDateString: string): boolean | string => {
+    return validateAge(birthDateString);
+  }, []);
 
   return {
     // Estados
@@ -697,8 +731,8 @@ export const useRegistrationForm = () => {
     // Función de cierre modal
     handleCloseSuccessModal,
     
-    // Utilidades
-    getCurrentMexicoDate,
-    validateAge
+    // ✅ UTILIDADES ENTERPRISE
+    getCurrentMexicoDate: getCurrentMexicoDateCallback,
+    validateAge: validateAgeCallback
   };
 };

@@ -8,7 +8,9 @@ import {
   formatDateForDisplay,
   getTodayInMexico,
   daysBetween,
-  addDaysToDate 
+  addDaysToDate,
+  calculateRenewalStartDate,    // ✅ AGREGAR ESTA LÍNEA
+  calculateMembershipEndDate    // ✅ AGREGAR ESTA LÍNEA
 } from '@/utils/dateUtils';
 
 import toast from 'react-hot-toast';

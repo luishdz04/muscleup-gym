@@ -1,4 +1,4 @@
-// hooks/useUserTracking.ts (si no existe)
+// hooks/useUserTracking.ts - VERSIÓN CORREGIDA
 'use client';
 
 import { useCallback } from 'react';
@@ -11,32 +11,49 @@ export const useUserTracking = () => {
     return user?.id || null;
   }, []);
 
-  const getMonterreyTimestamp = useCallback((): string => {
-    return new Date().toISOString();
+  // ✅ CAMBIO 1: Función más específica para timestamps UTC
+  const getUTCTimestamp = useCallback((): string => {
+    return new Date().toISOString(); // Siempre UTC para BD
   }, []);
 
   const addAuditFields = useCallback(async (data: any, isUpdate = false) => {
     const userId = await getCurrentUser();
-    const timestamp = getMonterreyTimestamp();
     
     if (isUpdate) {
       return {
         ...data,
-        updated_by: userId,
-        updated_at: timestamp
+        // ✅ CAMBIO 2: Usar camelCase como tu tabla actual
+        updatedBy: userId,        // Era: updated_by
+        // updatedAt se maneja automáticamente por el trigger
       };
     } else {
       return {
         ...data,
-        created_by: userId,
-        created_at: timestamp,
-        updated_by: userId,
-        updated_at: timestamp
+        // ✅ CAMBIO 3: Usar camelCase como tu tabla actual  
+        createdBy: userId,        // Era: created_by
+        updatedBy: userId,        // Era: updated_by
+        // createdAt y updatedAt se manejan por defaults/trigger
       };
     }
-  }, [getCurrentUser, getMonterreyTimestamp]);
+  }, [getCurrentUser]);
 
-  return { getCurrentUser, addAuditFields };
+  return { 
+    getCurrentUser, 
+    addAuditFields,
+    getUTCTimestamp  // ✅ Exportar para otros usos
+  };
 };
 
-// Export types
+// ✅ CAMBIO 4: Agregar tipos para TypeScript
+export interface AuditFields {
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UserTrackingHook {
+  getCurrentUser: () => Promise<string | null>;
+  addAuditFields: (data: any, isUpdate?: boolean) => Promise<any>;
+  getUTCTimestamp: () => string;
+}

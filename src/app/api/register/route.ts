@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/utils/supabase-admin';
+// ✅ IMPORTACIONES OBLIGATORIAS DE DATEUTILS
+import { getCurrentTimestamp, formatTimestampForDisplay } from '@/utils/dateUtils';
 
 // ✅ FUNCIÓN HELPER PARA DETECTAR Y SANITIZAR URLs
 const isBlobUrl = (url: string): boolean => {
@@ -107,7 +109,7 @@ const processAndUploadFile = async (
       console.warn(`⚠️ [CLEANUP] Error limpiando archivos antiguos de ${fileType}:`, cleanupError);
     }
     
-    // ✅ SUBIR ARCHIVO NUEVO
+    // ✅ SUBIR ARCHIVO NUEVO CON TIMESTAMP UTC
     const timestamp = Date.now();
     const fileName = `${fileType}-${timestamp}.${extension}`;
     const filePath = `${userId}/${fileName}`;
@@ -153,7 +155,7 @@ const processAndUploadFile = async (
 };
 
 export async function POST(req: NextRequest) {
-  console.log("🚀 API de registro v5.0 (generateLink + user_metadata + Resend) iniciada - 2025-09-16 by @luishdz044");
+  console.log("🚀 API de registro v6.0 ENTERPRISE (dateUtils + auditoría) iniciada - 2025-09-23 by @luishdz044");
   
   try {
     // Obtener los datos del cuerpo de la solicitud
@@ -236,7 +238,7 @@ export async function POST(req: NextRequest) {
           firstName: data.personalInfo.firstName,
           lastName: data.personalInfo.lastName || '',
           registrationSource: 'web_form',
-          registrationDate: new Date().toISOString()
+          registrationDate: getCurrentTimestamp() // ✅ USO DE dateUtils
         }
       }
     });
@@ -260,6 +262,7 @@ export async function POST(req: NextRequest) {
     // ✅ 3. ENVIAR EMAIL DE CONFIRMACIÓN CON RESEND
     console.log("📤 [RESEND] Enviando email de confirmación con Resend...");
     let emailSentSuccessfully = false;
+    let emailSentTimestamp = null;
     
     try {
       const emailResponse = await fetch('https://api.resend.com/emails', {
@@ -358,6 +361,7 @@ export async function POST(req: NextRequest) {
         const emailData = await emailResponse.json();
         console.log("✅ [RESEND] Email enviado exitosamente:", emailData.id);
         emailSentSuccessfully = true;
+        emailSentTimestamp = getCurrentTimestamp(); // ✅ USO DE dateUtils
       } else {
         const errorData = await emailResponse.text();
         console.error("❌ [RESEND] Error enviando email:", errorData);
@@ -430,7 +434,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ✅ 5. PREPARAR DATOS DEL USUARIO PRINCIPAL
+    // ✅ 5. PREPARAR DATOS DEL USUARIO PRINCIPAL CON AUDITORÍA ENTERPRISE
     const userData = {
       id: userId, // IMPORTANTE: Usar el ID de Supabase Auth
       firstName: data.personalInfo.firstName,
@@ -445,14 +449,20 @@ export async function POST(req: NextRequest) {
       profilePictureUrl: profilePictureUrl,
       signatureUrl: signatureUrl,
       contractPdfUrl: null,
-      // ✅ NUEVOS CAMPOS PARA CONTROL DE CONFIRMACIÓN
+      
+      // ✅ CAMPOS DE CONTROL DE CONFIRMACIÓN
       emailConfirmed: false,
       pendingWelcomeEmail: true,
       registrationCompleted: false,
       emailSent: emailSentSuccessfully,
+      emailSentAt: emailSentTimestamp, // ✅ USO DE dateUtils
       whatsappSent: false,
       fingerprint: false,
-      createdAt: new Date().toISOString()
+      
+      // ✅ CAMPOS DE AUDITORÍA ENTERPRISE
+      createdBy: userId,     // ✅ El usuario se crea a sí mismo
+      updatedBy: userId,     // ✅ Campo de auditoría
+      // createdAt y updatedAt se manejan automáticamente por la BD (default: now())
     };
 
     console.log("💾 [USER] Insertando usuario en tabla Users...");
@@ -475,7 +485,7 @@ export async function POST(req: NextRequest) {
 
     console.log("✅ [USER] Usuario insertado correctamente con ID:", userId);
 
-    // ✅ 7. INSERTAR DIRECCIÓN
+    // ✅ 7. INSERTAR DIRECCIÓN (SIN AUDITORÍA - TABLA NO LA TIENE)
     if (data.personalInfo?.address || data.personalInfo) {
       try {
         console.log("🏠 [ADDRESS] Insertando dirección...");
@@ -505,7 +515,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ✅ 8. INSERTAR CONTACTO DE EMERGENCIA 
+    // ✅ 8. INSERTAR CONTACTO DE EMERGENCIA (SIN AUDITORÍA - TABLA NO LA TIENE)
     try {
       console.log("🚨 [EMERGENCY] Insertando contacto de emergencia...");
       
@@ -530,7 +540,7 @@ export async function POST(req: NextRequest) {
       console.error("💥 [EMERGENCY] Error general al insertar contacto de emergencia:", emergencyError);
     }
     
-    // ✅ 9. INSERTAR INFORMACIÓN DE MEMBRESÍA
+    // ✅ 9. INSERTAR INFORMACIÓN DE MEMBRESÍA (SIN AUDITORÍA - TABLA NO LA TIENE)
     try {
       console.log("🎯 [MEMBERSHIP] Insertando información de membresía...");
       
@@ -555,7 +565,7 @@ export async function POST(req: NextRequest) {
       console.error("💥 [MEMBERSHIP] Error general al insertar información de membresía:", membershipError);
     }
     
-    // ✅ 10. RESPUESTA FINAL
+    // ✅ 10. RESPUESTA FINAL CON TIMESTAMP ENTERPRISE
     const response = {
       success: true,
       message: emailSentSuccessfully ? 
@@ -585,19 +595,23 @@ export async function POST(req: NextRequest) {
         }
       },
       metadata: {
-        version: '5.0-generateLink-user_metadata-resend-integration',
-        processedAt: new Date().toISOString(),
+        version: '6.0-enterprise-dateUtils-audit-patterns',
+        processedAt: getCurrentTimestamp(), // ✅ USO DE dateUtils
         processedBy: 'luishdz044',
         emailProvider: 'resend',
-        authMethod: 'generateLink-with-user_metadata'
+        authMethod: 'generateLink-with-user_metadata',
+        patternsApplied: ['dateUtils', 'enterpriseAudit', 'properFieldMapping']
       }
     };
 
-    console.log("🎉 [SUCCESS] Registro completado con generateLink + user_metadata + Resend:", {
+    console.log("🎉 [SUCCESS] Registro completado con patrones enterprise:", {
       userId,
       actionLinkGenerated: !!actionLink,
       emailSent: emailSentSuccessfully,
-      filesUploaded: Object.values(fileUploadResults).filter(r => r?.success).length
+      emailSentAt: emailSentTimestamp,
+      filesUploaded: Object.values(fileUploadResults).filter(r => r?.success).length,
+      auditFieldsUsed: true,
+      dateUtilsApplied: true
     });
     
     return NextResponse.json(response, { status: 201 });
@@ -609,7 +623,7 @@ export async function POST(req: NextRequest) {
       { 
         success: false, 
         message: `Error al procesar el registro: ${error instanceof Error ? error.message : 'Error desconocido'}`,
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentTimestamp() // ✅ USO DE dateUtils
       }, 
       { status: 500 }
     );

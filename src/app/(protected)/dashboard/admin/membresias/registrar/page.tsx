@@ -8,7 +8,7 @@ import React, {
   useRef,
   ChangeEvent,
   FocusEvent,
-  KeyboardEvent
+  KeyboardEvent as ReactKeyboardEvent
 } from 'react';
 import {
   Box,
@@ -88,6 +88,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
+import CloseIcon from '@mui/icons-material/Close'; // ← AGREGAR ESTA LÍNEA
 
 // Tipos para métodos de pago
 interface PaymentMethod {
@@ -393,7 +394,7 @@ const PaymentMethodCard = memo(({
         sx={cardStyles}
         role="button"
         tabIndex={disabled ? -1 : 0}
-        onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+        onKeyDown={(e: ReactKeyboardEvent<HTMLDivElement>) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             handleClick();
@@ -497,15 +498,15 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-// ✅ COMPONENTE PRINCIPAL COMPLETO Y OPTIMIZADO
+// ✅ COMPONENTE PRINCIPAL CON ORDEN CORRECTO DE HOOKS
 function RegistrarMembresiaPage() {
   const router = useRouter();
-  const hydrated = useHydrated(); // ✅ SSR SAFETY según guía
+  const hydrated = useHydrated(); // ✅ HOOK 1
   
   // Ref para SweetAlert dinámico
-  const MySwalRef = useRef<any>(null);
+  const MySwalRef = useRef<any>(null); // ✅ HOOK 2
   
-  // Hook personalizado para toda la lógica
+  // ✅ HOOK 3 - Hook personalizado para toda la lógica - DEBE IR ANTES DEL EARLY RETURN
   const {
     // Estados principales
     formData,
@@ -555,30 +556,15 @@ function RegistrarMembresiaPage() {
     paymentTypes
   } = useRegistrarMembresia();
 
-  // ✅ PANTALLA DE CARGA HASTA HIDRATACIÓN según guía
-  if (!hydrated) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        minHeight: '100vh',
-        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`
-      }}>
-        <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
-      </Box>
-    );
-  }
-
-  // Steps configuration (memoizado)
+  // ✅ HOOK 4 - Steps configuration (memoizado) - ANTES DEL EARLY RETURN
   const steps = useMemo(() => [
     { label: 'Cliente', description: 'Seleccionar cliente', icon: <PersonAddAltIcon /> },
     { label: 'Plan', description: 'Elegir membresía', icon: <FitnessCenterIcon /> },
     { label: 'Descuentos', description: 'Aplicar cupones', icon: <LocalOfferIcon /> },
     { label: 'Pago', description: 'Método de pago', icon: <PaymentIcon /> }
-  ], []);
+  ], []); // ✅ SIN DEPENDENCIAS - SON ESTÁTICOS
 
-  // Validación de datos del usuario
+  // ✅ HOOK 5 - Validación de datos del usuario
   const validateUser = useCallback((user: any): boolean => {
     if (!user) return false;
     if (!user.email) {
@@ -588,7 +574,7 @@ function RegistrarMembresiaPage() {
     return true;
   }, []);
 
-  // ✅ HANDLERS OPTIMIZADOS CON useCallback Y TIPOS CORREGIDOS
+  // ✅ HOOK 6-20 - HANDLERS OPTIMIZADOS CON useCallback
   const handleBack = useCallback(() => {
     notify.promise(
       Promise.resolve(),
@@ -649,7 +635,6 @@ function RegistrarMembresiaPage() {
     });
   }, [dispatch]);
 
-  // ✅ HANDLERS DE EVENTOS CORREGIDOS CON TIPOS
   const handleRenewalToggle = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const isRenewal = event.target.checked;
     dispatch({
@@ -691,7 +676,7 @@ function RegistrarMembresiaPage() {
     }
   }, [formData.couponCode, validateCoupon]);
 
-  const handleCouponKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement | HTMLDivElement>) => {
+  const handleCouponKeyDown = useCallback((event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       const target = event.target as HTMLInputElement;
       const trimmedCode = target.value.trim();
@@ -733,13 +718,11 @@ function RegistrarMembresiaPage() {
     });
   }, [dispatch]);
 
-  // ✅ CONFIRMACIÓN CON notify.promise
   const showConfirmationDialog = useCallback(async () => {
     try {
       await notify.promise(
         new Promise((resolve, reject) => {
           setConfirmDialogOpen(true);
-          // La promesa se resolverá en handleProcessSale
           (window as any).__confirmSaleResolve = resolve;
           (window as any).__confirmSaleReject = reject;
         }),
@@ -760,7 +743,6 @@ function RegistrarMembresiaPage() {
       if (success) {
         notify.success('¡Venta procesada exitosamente!');
         
-        // Resolver la promesa del showConfirmationDialog
         if ((window as any).__confirmSaleResolve) {
           (window as any).__confirmSaleResolve();
         }
@@ -782,7 +764,6 @@ function RegistrarMembresiaPage() {
     }
   }, [handleSubmit, router]);
 
-  // ✅ VALIDACIÓN FINAL MEJORADA
   const isFormValid = useCallback(() => {
     if (!selectedUser) {
       notify.error('Seleccione un cliente válido');
@@ -797,7 +778,6 @@ function RegistrarMembresiaPage() {
       return false;
     }
     
-    // LÓGICA DE PAGO
     if (formData.isMixedPayment) {
       if (formData.paymentDetails.length === 0) {
         notify.error('Agregue al menos un método de pago para pago mixto');
@@ -825,8 +805,10 @@ function RegistrarMembresiaPage() {
     return true;
   }, [selectedUser, selectedPlan, formData]);
 
-  // Navegación con teclado optimizada
+  // ✅ HOOK 21 - useEffect para navegación con teclado - ANTES DEL EARLY RETURN
   useEffect(() => {
+    if (!hydrated) return; // ✅ CONDICIONAL DENTRO DEL EFFECT
+    
     const handleKeyboardNavigation = (e: KeyboardEvent) => {
       if (confirmDialogOpen) return;
 
@@ -846,9 +828,9 @@ function RegistrarMembresiaPage() {
 
     window.addEventListener('keydown', handleKeyboardNavigation);
     return () => window.removeEventListener('keydown', handleKeyboardNavigation);
-  }, [canProceedToNextStep, activeStep, steps.length, setActiveStep, confirmDialogOpen, handleBack]);
+  }, [canProceedToNextStep, activeStep, steps.length, setActiveStep, confirmDialogOpen, handleBack, hydrated]);
 
-  // ✅ CÁLCULO DE FECHA MEMOIZADO con dateUtils
+  // ✅ HOOK 22 - useMemo para cálculo de fecha - ANTES DEL EARLY RETURN
   const endDate = useMemo(() => {
     try {
       const date = calculateEndDate();
@@ -859,6 +841,21 @@ function RegistrarMembresiaPage() {
     }
   }, [calculateEndDate]);
 
+  // ✅ AHORA SÍ - EARLY RETURN DESPUÉS DE TODOS LOS HOOKS
+  if (!hydrated) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`
+      }}>
+        <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
+      </Box>
+    );
+  }
+
   // ✅ RENDER PRINCIPAL COMPLETO
   return (
     <ErrorBoundary>
@@ -868,7 +865,7 @@ function RegistrarMembresiaPage() {
         minHeight: '100vh',
         color: colorTokens.textPrimary
       }}>
-        {/* ✅ HEADER OPTIMIZADO */}
+        {/* HEADER OPTIMIZADO */}
         <Paper sx={{
           p: { xs: 2, sm: 3 },
           mb: 3,
@@ -978,7 +975,7 @@ function RegistrarMembresiaPage() {
           </Box>
         </Paper>
 
-        {/* ✅ CONTENIDO PRINCIPAL COMPLETO */}
+        {/* CONTENIDO PRINCIPAL COMPLETO */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, lg: 8 }}>
             <Paper sx={{
@@ -1023,7 +1020,7 @@ function RegistrarMembresiaPage() {
                         {step.description}
                       </Typography>
 
-                      {/* ✅ PASO 1: Seleccionar Usuario */}
+                      {/* PASO 1: Seleccionar Usuario */}
                       {index === 0 && (
                         <Box sx={{ mb: 4 }}>
                           <Card sx={{
@@ -1404,7 +1401,7 @@ function RegistrarMembresiaPage() {
                         </Box>
                       )}
 
-                      {/* ✅ PASO 2: Seleccionar Plan */}
+                      {/* PASO 2: Seleccionar Plan */}
                       {index === 1 && (
                         <Box sx={{ mb: 4 }}>
                           <Typography variant="h6" sx={{ 
@@ -1467,7 +1464,7 @@ function RegistrarMembresiaPage() {
                                       onClick={() => handlePlanSelect(plan)}
                                       role="button"
                                       tabIndex={0}
-                                      onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+                                      onKeyDown={(e: ReactKeyboardEvent<HTMLDivElement>) => {
                                         if (e.key === 'Enter' || e.key === ' ') {
                                           e.preventDefault();
                                           handlePlanSelect(plan);
@@ -1744,155 +1741,226 @@ function RegistrarMembresiaPage() {
                         </Box>
                       )}
 
-                      {/* ✅ PASO 3: Cupones */}
-                      {index === 2 && (
-                        <Box sx={{ mb: 4 }}>
-                          <Card sx={{
-                            background: `${colorTokens.brand}05`,
-                            border: `1px solid ${colorTokens.brand}20`,
-                            borderRadius: 3
-                          }}>
-                            <CardContent sx={{ p: 4 }}>
-                              <Typography variant="h6" sx={{ 
-                                color: colorTokens.brand, 
-                                mb: 3,
-                                fontWeight: 700,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 2
-                              }}>
-                                <LocalOfferIcon />
-                                Sistema de Descuentos
-                              </Typography>
-                              
-                              <TextField
-                                fullWidth
-                                label="Código de Cupón"
-                                value={formData.couponCode}
-                                onChange={handleCouponChange}
-                                onBlur={handleCouponBlur}
-                                placeholder="Ej: DESC20, PROMO50..."
-                                InputProps={{
-                                  startAdornment: (
-                                    <InputAdornment position="start">
-                                      <LocalOfferIcon sx={{ color: colorTokens.brand }} />
-                                    </InputAdornment>
-                                  ),
-                                  endAdornment: appliedCoupon && (
-                                    <InputAdornment position="end">
-                                      <CheckCircleIcon sx={{ color: colorTokens.brand }} />
-                                    </InputAdornment>
-                                  ),
-                                  onKeyDown: handleCouponKeyDown,
-                                  sx: {
-                                    color: colorTokens.textPrimary,
-                                    fontSize: '1.1rem',
-                                    '& .MuiOutlinedInput-notchedOutline': {
-                                      borderColor: `${colorTokens.brand}40`,
-                                      borderWidth: 2
-                                    },
-                                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                                      borderColor: colorTokens.brand
-                                    },
-                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                      borderColor: colorTokens.brand
-                                    }
-                                  }
-                                }}
-                                InputLabelProps={{
-                                  sx: { 
-                                    color: colorTokens.textSecondary,
-                                    fontSize: '1.1rem',
-                                    '&.Mui-focused': { color: colorTokens.brand }
-                                  }
-                                }}
-                              />
+                      {/* PASO 3: Cupones */}
+{index === 2 && (
+  <Box sx={{ mb: 4 }}>
+    <Card sx={{
+      background: `${colorTokens.brand}05`,
+      border: `1px solid ${colorTokens.brand}20`,
+      borderRadius: 3
+    }}>
+      <CardContent sx={{ p: 4 }}>
+        <Typography variant="h6" sx={{ 
+          color: colorTokens.brand, 
+          mb: 3,
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <LocalOfferIcon />
+          Sistema de Descuentos
+        </Typography>
+        
+        {/* CAMPO DE CUPÓN CON BOTÓN APLICAR */}
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 2 }}>
+          <TextField
+            fullWidth
+            label="Código de Cupón"
+            value={formData.couponCode}
+            onChange={handleCouponChange}
+            onBlur={handleCouponBlur}
+            placeholder="Ej: DESC20, PROMO50..."
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LocalOfferIcon sx={{ color: colorTokens.brand }} />
+                </InputAdornment>
+              ),
+              endAdornment: appliedCoupon && (
+                <InputAdornment position="end">
+                  <CheckCircleIcon sx={{ color: colorTokens.brand }} />
+                </InputAdornment>
+              ),
+              onKeyDown: handleCouponKeyDown,
+              sx: {
+                color: colorTokens.textPrimary,
+                fontSize: '1.1rem',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: `${colorTokens.brand}40`,
+                  borderWidth: 2
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: colorTokens.brand
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: colorTokens.brand
+                }
+              }
+            }}
+            InputLabelProps={{
+              sx: { 
+                color: colorTokens.textSecondary,
+                fontSize: '1.1rem',
+                '&.Mui-focused': { color: colorTokens.brand }
+              }
+            }}
+          />
+          
+          {/* BOTÓN APLICAR CUPÓN */}
+          <Button
+            variant="contained"
+            onClick={() => {
+              const trimmedCode = formData.couponCode.trim();
+              if (trimmedCode) {
+                validateCoupon(trimmedCode);
+              } else {
+                notify.error('Ingrese un código de cupón');
+              }
+            }}
+            disabled={!formData.couponCode.trim() || loading}
+            sx={{
+              background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+              color: colorTokens.textOnBrand,
+              fontWeight: 700,
+              px: 3,
+              py: 1.75,
+              borderRadius: 2,
+              minWidth: 120,
+              whiteSpace: 'nowrap',
+              height: '56px', // Igual altura que el TextField
+              '&:hover': {
+                background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brandActive})`,
+                transform: 'translateY(-1px)',
+                boxShadow: `0 4px 15px ${colorTokens.brand}30`
+              },
+              '&:disabled': {
+                background: colorTokens.neutral600,
+                color: colorTokens.textSecondary
+              }
+            }}
+            startIcon={loading ? 
+              <CircularProgress size={18} sx={{ color: colorTokens.textOnBrand }} /> : 
+              <LocalOfferIcon />
+            }
+          >
+            {loading ? 'Validando...' : 'Aplicar'}
+          </Button>
+          
+          {/* BOTÓN LIMPIAR */}
+          {(formData.couponCode || appliedCoupon) && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                dispatch({ type: 'CLEAR_COUPON' });
+                setAppliedCoupon(null);
+                notify.success('Cupón eliminado');
+              }}
+              sx={{
+                color: colorTokens.danger,
+                borderColor: colorTokens.danger,
+                px: 2,
+                py: 1.75,
+                borderRadius: 2,
+                height: '56px',
+                minWidth: '56px',
+                '&:hover': {
+                  borderColor: colorTokens.dangerHover,
+                  backgroundColor: `${colorTokens.danger}10`,
+                  transform: 'translateY(-1px)'
+                }
+              }}
+              title="Limpiar cupón"
+            >
+              <CloseIcon />
+            </Button>
+          )}
+        </Box>
 
-                              <Typography variant="body2" sx={{ 
-                                color: colorTokens.textSecondary,
-                                mt: 1,
-                                fontStyle: 'italic'
-                              }}>
-                                Si tiene un cupón de descuento, ingréselo aquí
-                              </Typography>
+        <Typography variant="body2" sx={{ 
+          color: colorTokens.textSecondary,
+          fontStyle: 'italic'
+        }}>
+          Ingrese un código de cupón y presione "Aplicar" o Enter para validarlo
+        </Typography>
 
-                              {appliedCoupon && (
-                                <AnimatePresence>
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    transition={{ duration: 0.3 }}
-                                  >
-                                    <Box sx={{ mt: 3 }}>
-                                      <Card sx={{
-                                        background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
-                                        border: `2px solid ${colorTokens.success}50`,
-                                        borderRadius: 3
-                                      }}>
-                                        <CardContent sx={{ p: 3 }}>
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                                            <CheckCircleIcon sx={{ color: colorTokens.success, fontSize: 30 }} />
-                                            <Typography variant="h6" sx={{ 
-                                              color: colorTokens.success, 
-                                              fontWeight: 700
-                                            }}>
-                                              Cupón Aplicado!
-                                            </Typography>
-                                            <Box sx={{ flex: 1 }} />
-                                            
-                                            <IconButton
-                                              size="small"
-                                              onClick={() => {
-                                                dispatch({ type: 'CLEAR_COUPON' });
-                                                setAppliedCoupon(null);
-                                                notify.success('Cupón eliminado');
-                                              }}
-                                              sx={{ color: colorTokens.danger }}
-                                              aria-label="Eliminar cupón"
-                                            >
-                                              <RemoveIcon />
-                                            </IconButton>
-                                          </Box>
-                                          
-                                          <Typography variant="body1" sx={{ 
-                                            color: colorTokens.textPrimary, 
-                                            mb: 1,
-                                            fontWeight: 600
-                                          }}>
-                                            {appliedCoupon.description || 'Descuento aplicado'}
-                                          </Typography>
-                                          
-                                          <Typography variant="h6" sx={{ 
-                                            color: colorTokens.success,
-                                            fontWeight: 700
-                                          }}>
-                                            Descuento: {appliedCoupon.discount_type === 'percentage' 
-                                              ? `${appliedCoupon.discount_value}%` 
-                                              : formatPrice(appliedCoupon.discount_value)}
-                                          </Typography>
-                                          
-                                          {appliedCoupon.min_amount > 0 && (
-                                            <Typography variant="caption" sx={{ 
-                                              color: colorTokens.textSecondary,
-                                              display: 'block',
-                                              mt: 1
-                                            }}>
-                                              Monto mínimo: {formatPrice(appliedCoupon.min_amount)}
-                                            </Typography>
-                                          )}
-                                        </CardContent>
-                                      </Card>
-                                    </Box>
-                                  </motion.div>
-                                </AnimatePresence>
-                              )}
-                            </CardContent>
-                          </Card>
-                        </Box>
-                      )}
+        {appliedCoupon && (
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Box sx={{ mt: 3 }}>
+                <Card sx={{
+                  background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
+                  border: `2px solid ${colorTokens.success}50`,
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <CheckCircleIcon sx={{ color: colorTokens.success, fontSize: 30 }} />
+                      <Typography variant="h6" sx={{ 
+                        color: colorTokens.success, 
+                        fontWeight: 700
+                      }}>
+                        Cupón Aplicado!
+                      </Typography>
+                      <Box sx={{ flex: 1 }} />
+                      
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          dispatch({ type: 'CLEAR_COUPON' });
+                          setAppliedCoupon(null);
+                          notify.success('Cupón eliminado');
+                        }}
+                        sx={{ color: colorTokens.danger }}
+                        aria-label="Eliminar cupón"
+                      >
+                        <RemoveIcon />
+                      </IconButton>
+                    </Box>
+                    
+                    <Typography variant="body1" sx={{ 
+                      color: colorTokens.textPrimary, 
+                      mb: 1,
+                      fontWeight: 600
+                    }}>
+                      {appliedCoupon.description || 'Descuento aplicado'}
+                    </Typography>
+                    
+                    <Typography variant="h6" sx={{ 
+                      color: colorTokens.success,
+                      fontWeight: 700
+                    }}>
+                      Descuento: {appliedCoupon.discount_type === 'percentage' 
+                        ? `${appliedCoupon.discount_value}%` 
+                        : formatPrice(appliedCoupon.discount_value)}
+                    </Typography>
+                    
+                    {appliedCoupon.min_amount > 0 && (
+                      <Typography variant="caption" sx={{ 
+                        color: colorTokens.textSecondary,
+                        display: 'block',
+                        mt: 1
+                      }}>
+                        Monto mínimo: {formatPrice(appliedCoupon.min_amount)}
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </Box>
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </CardContent>
+    </Card>
+  </Box>
+)}
 
-                      {/* ✅ PASO 4: Sistema de Pago */}
+                      {/* PASO 4: Sistema de Pago */}
                       {index === 3 && (
                         <Box sx={{ mb: 4 }}>
                           <Typography variant="h6" sx={{ 
@@ -2481,7 +2549,7 @@ function RegistrarMembresiaPage() {
                         </Box>
                       )}
 
-                      {/* ✅ BOTONES DE NAVEGACIÓN */}
+                      {/* BOTONES DE NAVEGACIÓN */}
                       <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
                         <Button
                           disabled={activeStep === 0}
@@ -2567,7 +2635,7 @@ function RegistrarMembresiaPage() {
             </Paper>
           </Grid>
 
-          {/* ✅ PANEL DE RESUMEN - SIDEBAR COMPLETO */}
+          {/* PANEL DE RESUMEN - SIDEBAR COMPLETO */}
           <Grid size={{ xs: 12, lg: 4 }}>
             <Paper sx={{
               p: 3,
@@ -2706,7 +2774,7 @@ function RegistrarMembresiaPage() {
 
                       <Divider sx={{ borderColor: `${colorTokens.brand}30`, my: 3 }} />
 
-                      {/* ✅ DESGLOSE DE PRECIOS COMPLETO */}
+                      {/* DESGLOSE DE PRECIOS COMPLETO */}
                       <Stack spacing={2}>
                         <PriceLine label="Subtotal Plan:" value={subtotal} />
                         
@@ -2790,7 +2858,7 @@ function RegistrarMembresiaPage() {
                           </Typography>
                         </Box>
 
-                        {/* ✅ INFORMACIÓN DEL MÉTODO DE PAGO */}
+                        {/* INFORMACIÓN DEL MÉTODO DE PAGO */}
                         {(formData.paymentMethod || formData.isMixedPayment) && (
                           <Box sx={{ mt: 3 }}>
                             <Typography variant="subtitle1" sx={{ 
@@ -2894,7 +2962,7 @@ function RegistrarMembresiaPage() {
           </Grid>
         </Grid>
 
-        {/* ✅ DIALOG DE CONFIRMACIÓN COMPLETO */}
+        {/* DIALOG DE CONFIRMACIÓN COMPLETO */}
         <Dialog 
           open={confirmDialogOpen} 
           onClose={() => !loading && setConfirmDialogOpen(false)}
@@ -3043,7 +3111,6 @@ function RegistrarMembresiaPage() {
                           {formatPrice(finalAmount)}
                         </Typography>
                         
-                        {/* Mostrar descuento aplicado */}
                         {discountAmount > 0 && (
                           <Typography variant="body2" sx={{ 
                             color: colorTokens.success,
