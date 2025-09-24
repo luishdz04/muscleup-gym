@@ -1,10 +1,12 @@
-// hooks/useFingerprintManagement.ts
+// hooks/useFingerprintManagement.ts - VERSIÓN ENTERPRISE CORREGIDA
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+// ✅ IMPORT ENTERPRISE OBLIGATORIO
+import { getCurrentTimestamp } from '@/utils/dateUtils';
 
-// Interfaces
+// Interfaces (sin cambios)
 interface FingerprintState {
   status: 'none' | 'captured' | 'saving' | 'saved' | 'error';
   deviceUserId: string | null;
@@ -52,7 +54,7 @@ interface UseFingerprintManagementProps {
   onSuccess?: (message: string) => void;
 }
 
-// Constantes
+// Constantes (sin cambios)
 const WS_TIMEOUT = 15000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000;
@@ -65,7 +67,7 @@ export const useFingerprintManagement = ({
   onSuccess
 }: UseFingerprintManagementProps) => {
 
-  // Estado principal de huella
+  // Estados (sin cambios)
   const [fingerprintState, setFingerprintState] = useState<FingerprintState>({
     status: 'none',
     deviceUserId: null,
@@ -77,14 +79,14 @@ export const useFingerprintManagement = ({
     pendingData: null
   });
 
-  // Estados de control
   const [isDeletingFingerprint, setIsDeletingFingerprint] = useState(false);
   const [fingerprintDialogOpen, setFingerprintDialogOpen] = useState(false);
 
-  // Referencias
   const mountedRef = useRef(true);
 
-  // Función para crear mapping en device_user_mappings
+  // ✅ ORDEN CORRECTO: FUNCIONES BASE PRIMERO (SIN DEPENDENCIAS)
+
+  // Función para crear mapping (corregida)
   const createDeviceUserMapping = useCallback(async (
     userId: string, 
     deviceUserId: number,
@@ -99,7 +101,6 @@ export const useFingerprintManagement = ({
       
       const supabase = createBrowserSupabaseClient();
       
-      // Verificar si ya existe un mapping
       const { data: existing, error: checkError } = await supabase
         .from('device_user_mappings')
         .select('*')
@@ -118,7 +119,7 @@ export const useFingerprintManagement = ({
           .update({
             device_user_id: deviceUserId,
             is_active: true,
-            updated_at: new Date().toISOString()
+            updated_at: getCurrentTimestamp()
           })
           .eq('id', existing.id);
         
@@ -127,6 +128,9 @@ export const useFingerprintManagement = ({
         console.log('✅ [MAPPING] Mapping actualizado exitosamente');
       } else {
         console.log('🆕 [MAPPING] Creando nuevo mapping...');
+        
+        const currentTime = getCurrentTimestamp();
+        
         const { error: insertError } = await supabase
           .from('device_user_mappings')
           .insert({
@@ -134,8 +138,8 @@ export const useFingerprintManagement = ({
             device_id: deviceId,
             device_user_id: deviceUserId,
             is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: currentTime,
+            updated_at: currentTime
           });
         
         if (insertError) throw insertError;
@@ -151,7 +155,7 @@ export const useFingerprintManagement = ({
     }
   }, []);
 
-  // Función para guardar huella en base de datos
+  // Función para guardar huella (corregida)
   const saveFingerprintToDatabase = useCallback(async (fingerprintData: FingerprintData): Promise<{ success: boolean; error?: string; data?: any }> => {
     let retryCount = 0;
 
@@ -171,7 +175,7 @@ export const useFingerprintManagement = ({
           },
           body: JSON.stringify({
             ...fingerprintData,
-            created_at: new Date().toISOString(),
+            created_at: getCurrentTimestamp(),
             updated_by: 'luishdz04'
           })
         });
@@ -337,7 +341,6 @@ export const useFingerprintManagement = ({
         ws.onopen = () => {
           console.log('✅ [F22-SYNC] WebSocket conectado');
           
-          // Enviar comando de conexión al dispositivo
           ws!.send(JSON.stringify({
             type: 'device',
             action: 'connect',
@@ -353,7 +356,6 @@ export const useFingerprintManagement = ({
             const response = JSON.parse(event.data);
             console.log('📨 [F22-SYNC] Respuesta:', response.type, response.action);
             
-            // Manejar respuesta de conexión
             if (response.type === 'device' && response.action === 'connect') {
               if (response.data?.isSuccess) {
                 console.log('🔒 [F22-SYNC] F22 conectado, enviando template...');
@@ -368,7 +370,6 @@ export const useFingerprintManagement = ({
                 console.log('📝 [F22-SYNC] Enviando con nombre:', fullName);
                 console.log('🔢 [F22-SYNC] Device User ID:', deviceUserId);
                 
-                // Enviar template con toda la información
                 ws!.send(JSON.stringify({
                   type: 'device',
                   action: 'sync_fingerprint',
@@ -395,7 +396,6 @@ export const useFingerprintManagement = ({
               }
             }
             
-            // Manejar respuesta de sincronización
             else if (response.type === 'sync_result' || 
                      response.type === 'fingerprint_sync_result' ||
                      (response.type === 'device' && response.action === 'sync_fingerprint')) {
@@ -595,6 +595,8 @@ export const useFingerprintManagement = ({
     });
   }, []);
 
+  // ✅ FUNCIONES DE NIVEL MEDIO (DEPENDEN DE LAS ANTERIORES)
+
   // Función para manejar error en huella
   const handleFingerprintError = useCallback((message: string) => {
     setFingerprintState(prev => ({
@@ -607,7 +609,6 @@ export const useFingerprintManagement = ({
     
     onError?.(message);
     
-    // Auto-limpiar después de 5 segundos
     setTimeout(() => {
       if (mountedRef.current) {
         setFingerprintState(prev => ({
@@ -618,20 +619,6 @@ export const useFingerprintManagement = ({
     }, 5000);
   }, [onError]);
 
-  // Función para abrir diálogo de huella
-  const handleFingerprintDialogOpen = useCallback(() => {
-    if (!userId) {
-      handleFingerprintError('Se requiere un usuario válido para registrar huella');
-      return;
-    }
-    setFingerprintDialogOpen(true);
-  }, [userId, handleFingerprintError]);
-
-  // Función para cerrar diálogo de huella
-  const handleFingerprintDialogClose = useCallback(() => {
-    setFingerprintDialogOpen(false);
-  }, []);
-
   // Función para manejar datos de huella capturada
   const handleFingerprintDataReady = useCallback(async (fingerprintData: any) => {
     try {
@@ -641,7 +628,6 @@ export const useFingerprintManagement = ({
         finger_name: fingerprintData.finger_name
       });
       
-      // Validar datos
       if (!fingerprintData.template) {
         throw new Error('Template de huella vacío');
       }
@@ -656,7 +642,6 @@ export const useFingerprintManagement = ({
         throw new Error('finger_index inválido');
       }
       
-      // Actualizar estado
       setFingerprintState({
         status: 'captured',
         deviceUserId: fingerprintData.device_user_id,
@@ -667,7 +652,7 @@ export const useFingerprintManagement = ({
         syncStatus: 'idle',
         pendingData: {
           ...fingerprintData,
-          captured_at: new Date().toISOString()
+          captured_at: getCurrentTimestamp()
         }
       });
       
@@ -678,7 +663,7 @@ export const useFingerprintManagement = ({
       console.error('❌ [FINGERPRINT] Error:', error);
       handleFingerprintError(`Error: ${error.message}`);
     }
-  }, [handleFingerprintError, onSuccess]);
+  }, [onSuccess, handleFingerprintError]);
 
   // Función para procesar huella pendiente
   const processPendingFingerprint = useCallback(async (userName: string) => {
@@ -695,7 +680,6 @@ export const useFingerprintManagement = ({
       
       const fullName = userName || `${fingerprintState.pendingData.firstName || ''} ${fingerprintState.pendingData.lastName || ''}`.trim();
       
-      // Preparar datos para BD
       const templateDataForDB: FingerprintData = {
         user_id: userId,
         template: fingerprintState.pendingData.template,
@@ -711,17 +695,15 @@ export const useFingerprintManagement = ({
         capture_time_ms: fingerprintState.pendingData.capture_time_ms,
         device_info: fingerprintState.pendingData.device_info || {},
         sdk_version: 'official_zkteco',
-        enrolled_at: new Date().toISOString(),
+        enrolled_at: getCurrentTimestamp(),
       };
 
-      // Guardar en BD
       console.log('💾 [PROCESS] Guardando huella en BD...');
       const dbResult = await saveFingerprintToDatabase(templateDataForDB);
 
       if (dbResult.success) {
         console.log('✅ [PROCESS] Huella guardada en BD');
         
-        // Crear mapping en device_user_mappings
         const mappingResult = await createDeviceUserMapping(
           userId,
           fingerprintState.pendingData.device_user_id,
@@ -734,7 +716,6 @@ export const useFingerprintManagement = ({
           console.warn('⚠️ [PROCESS] Error creando mapping:', mappingResult.error);
         }
         
-        // Preparar datos para F22 con nombre completo
         const f22SyncData = {
           ...templateDataForDB,
           userName: fullName,
@@ -779,7 +760,7 @@ export const useFingerprintManagement = ({
             pendingData: null
           }));
           
-          onFingerprintChange?.(true); // BD actualizada
+          onFingerprintChange?.(true);
           return { success: true, warning: f22Error.message };
         }
         
@@ -810,7 +791,20 @@ export const useFingerprintManagement = ({
     onError
   ]);
 
-  // Función para eliminar huella
+  // ✅ FUNCIONES DE UI (DEPENDEN DE TODAS LAS ANTERIORES)
+
+  const handleFingerprintDialogOpen = useCallback(() => {
+    if (!userId) {
+      handleFingerprintError('Se requiere un usuario válido para registrar huella');
+      return;
+    }
+    setFingerprintDialogOpen(true);
+  }, [userId, handleFingerprintError]);
+
+  const handleFingerprintDialogClose = useCallback(() => {
+    setFingerprintDialogOpen(false);
+  }, []);
+
   const handleDeleteFingerprint = useCallback(async () => {
     if (!userId) {
       handleFingerprintError('Se requiere un usuario válido');
@@ -833,7 +827,6 @@ export const useFingerprintManagement = ({
 
       console.log('🗑️ [DELETE] Iniciando eliminación para usuario:', userId);
 
-      // Obtener device_user_id y finger_index de BD
       let deviceUserId = null;
       let fingerIndex = null;
       
@@ -864,7 +857,6 @@ export const useFingerprintManagement = ({
         }
       }
 
-      // Eliminar de BD
       console.log('💾 [DELETE] Eliminando de base de datos...');
       
       const dbResult = await deleteFingerprintFromDatabase(userId, fingerIndex || undefined);
@@ -872,7 +864,6 @@ export const useFingerprintManagement = ({
       if (dbResult.success) {
         console.log('✅ [DELETE] Eliminado de BD exitosamente');
         
-        // Eliminar del F22 si tenemos device_user_id
         if (deviceUserId) {
           try {
             console.log('🔄 [DELETE] Eliminando del F22...', {
@@ -945,7 +936,6 @@ export const useFingerprintManagement = ({
     } finally {
       setIsDeletingFingerprint(false);
       
-      // Limpiar mensajes después de 8 segundos
       setTimeout(() => {
         if (mountedRef.current) {
           setFingerprintState(prev => ({
@@ -967,7 +957,6 @@ export const useFingerprintManagement = ({
     onFingerprintChange
   ]);
 
-  // Función para eliminar todas las huellas
   const handleDeleteAllFingerprints = useCallback(async () => {
     if (!userId) {
       handleFingerprintError('Se requiere un usuario válido');
@@ -994,7 +983,6 @@ export const useFingerprintManagement = ({
 
       console.log('🗑️ [DELETE-ALL] Iniciando eliminación completa para:', userId);
 
-      // Obtener device_user_id
       let deviceUserId = fingerprintState.deviceUserId;
       
       if (!deviceUserId) {
@@ -1013,21 +1001,18 @@ export const useFingerprintManagement = ({
         }
       }
 
-      // Eliminar TODAS de BD
       console.log('💾 [DELETE-ALL] Eliminando todas las huellas de BD...');
       
-      const dbResult = await deleteFingerprintFromDatabase(userId); // Sin fingerIndex
+      const dbResult = await deleteFingerprintFromDatabase(userId);
 
       if (dbResult.success) {
         console.log('✅ [DELETE-ALL] BD limpia');
         
-        // Eliminar del F22
         if (deviceUserId) {
           try {
             const f22Result = await deleteFingerprintFromF22Service(
               deviceUserId.toString(),
               userId
-              // Sin fingerIndex = eliminar todas
             );
             
             if (f22Result.success) {
@@ -1106,7 +1091,6 @@ export const useFingerprintManagement = ({
     onFingerprintChange
   ]);
 
-  // Función para resetear estado de huella
   const resetFingerprintState = useCallback(() => {
     setFingerprintState({
       status: 'none',
@@ -1123,7 +1107,6 @@ export const useFingerprintManagement = ({
     setFingerprintDialogOpen(false);
   }, []);
 
-  // Función para actualizar estado con usuario existente
   const initializeWithFingerprint = useCallback((hasFingerprint: boolean) => {
     if (hasFingerprint) {
       setFingerprintState(prev => ({

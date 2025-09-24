@@ -1,7 +1,7 @@
-// app/admin/users/page.tsx - VERSIÓN CORREGIDA COMPLETA
+// app/admin/users/page.tsx - VERSIÓN ENTERPRISE COMPLETA
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import {
   Box,
   Paper,
@@ -20,8 +20,16 @@ import {
   Verified as VerifiedIcon,
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { 
+  formatTimestampForDisplay,
+  getCurrentTimestamp 
+} from '@/utils/dateUtils';
+import { colorTokens } from '@/theme';
+import { notify } from '@/utils/notifications';
 
 // Hooks optimizados
 import { useUsers } from '@/hooks/useUsers';
@@ -35,11 +43,16 @@ import UserTable from '@/components/dashboard/admin/UserTable';
 import UserFormDialog from '@/components/dashboard/admin/UserFormDialog';
 import UserDetailsDialog from '@/components/dashboard/admin/UserDetailsDialog';
 
-// Tema y tipos
-import { colorTokens } from '@/theme';
+// Tipos
 import { User } from '@/types/user';
 
-const UsersPage = () => {
+const UsersPage = memo(() => {
+  // ✅ SSR SAFETY OBLIGATORIO
+  const hydrated = useHydrated();
+  
+  // ✅ AUDITORÍA AUTOMÁTICA
+  const { addAuditFields } = useUserTracking();
+
   // HOOKS DE DATOS Y LÓGICA DE NEGOCIO
   const {
     users,
@@ -77,7 +90,7 @@ const UsersPage = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [userForDetails, setUserForDetails] = useState<User | null>(null);
 
-  // HANDLERS DE FORMULARIO
+  // ✅ HANDLERS OPTIMIZADOS CON useCallback
   const handleOpenFormDialog = useCallback((user?: User) => {
     setSelectedUser(user || null);
     setFormDialogOpen(true);
@@ -91,17 +104,20 @@ const UsersPage = () => {
   const handleSaveUser = useCallback(async (userData: Partial<User>) => {
     try {
       if (selectedUser?.id) {
-        await updateUser(selectedUser.id, userData);
+        // ✅ APLICAR CAMPOS DE AUDITORÍA AUTOMÁTICAMENTE
+        const dataWithAudit = await addAuditFields(userData, true);
+        await updateUser(selectedUser.id, dataWithAudit);
       } else {
-        await createUser(userData);
+        // ✅ APLICAR CAMPOS DE AUDITORÍA PARA CREACIÓN
+        const dataWithAudit = await addAuditFields(userData, false);
+        await createUser(dataWithAudit);
       }
       handleCloseFormDialog();
     } catch (error) {
       console.error('Error saving user:', error);
     }
-  }, [selectedUser, updateUser, createUser, handleCloseFormDialog]);
+  }, [selectedUser, updateUser, createUser, handleCloseFormDialog, addAuditFields]);
 
-  // HANDLERS DE MODAL DE DETALLES
   const handleViewUser = useCallback((user: User) => {
     setUserForDetails(user);
     setDetailsDialogOpen(true);
@@ -119,7 +135,6 @@ const UsersPage = () => {
     setFormDialogOpen(true);
   }, []);
 
-  // HANDLERS DE ACCIONES DE TABLA
   const handleEditUser = useCallback((user: User) => {
     handleOpenFormDialog(user);
   }, [handleOpenFormDialog]);
@@ -128,22 +143,20 @@ const UsersPage = () => {
     await deleteUser(user);
   }, [deleteUser]);
 
-  // FUNCIÓN DE ACTUALIZACIÓN MANUAL DEFINIDA
   const handleManualRefresh = useCallback(async () => {
     try {
       await fetchUsers();
-      toast.success('Lista de usuarios actualizada exitosamente');
+      notify.success('Lista de usuarios actualizada exitosamente');
     } catch (error) {
-      toast.error('Error al actualizar la lista de usuarios');
+      notify.error('Error al actualizar la lista de usuarios');
     }
-  }, [fetchUsers, toast]);
+  }, [fetchUsers]);
 
-  // HANDLERS DE CONTROLES
   const handleSortOrderToggle = useCallback(() => {
     setSortOrder(current => current === 'asc' ? 'desc' : 'asc');
   }, [setSortOrder]);
 
-  // FUNCIÓN CORREGIDA PARA LIMPIAR CACHÉ CON toast.promise()
+  // ✅ FUNCIÓN CORREGIDA PARA LIMPIAR CACHÉ CON notify.promise()
   const cleanupCache = useCallback(async () => {
     const cacheCleanupPromise = async () => {
       // Limpiar localStorage relacionado con usuarios
@@ -205,8 +218,8 @@ const UsersPage = () => {
       return 'Limpieza completada exitosamente';
     };
 
-    // Usar toast.promise para manejar automáticamente el ciclo de vida
-    toast.promise(
+    // ✅ USAR notify.promise CENTRALIZADO
+    notify.promise(
       cacheCleanupPromise(),
       {
         loading: 'Limpiando caché del sistema...',
@@ -214,7 +227,22 @@ const UsersPage = () => {
         error: 'Error al limpiar el caché. Algunos elementos pueden no haberse limpiado.'
       }
     );
-  }, [fetchUsers, toast]);
+  }, [fetchUsers]);
+
+  // ✅ PANTALLA DE CARGA HASTA HIDRATACIÓN COMPLETA
+  if (!hydrated) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`
+      }}>
+        <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ 
@@ -266,7 +294,7 @@ const UsersPage = () => {
               label={
                 syncStatus === 'syncing' ? 'Sincronizando...' :
                 syncStatus === 'error' ? 'Error de sincronización' :
-                lastSyncTime ? `Actualizado ${formatDistanceToNow(lastSyncTime, { locale: es, addSuffix: true })}` : 'Sistema listo'
+                lastSyncTime ? `Actualizado ${formatTimestampForDisplay(getCurrentTimestamp())}` : 'Sistema listo'
               }
               size="small"
               variant="outlined"
@@ -546,6 +574,8 @@ const UsersPage = () => {
       />
     </Box>
   );
-};
+});
+
+UsersPage.displayName = 'UsersPage';
 
 export default UsersPage;

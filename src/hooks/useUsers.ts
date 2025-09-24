@@ -1,13 +1,22 @@
-// hooks/useUsers.ts - CORRECCIÓN DEL CÁLCULO DE ESTADÍSTICAS
+// hooks/useUsers.ts - VERSIÓN ENTERPRISE COMPLETA
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, UserStats } from '@/types/user';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { getCurrentTimestamp } from '@/utils/dateUtils';
 import { userService } from '@/services/userService';
 
 export const useUsers = () => {
-  // Estados existentes...
+  // ✅ SSR SAFETY OBLIGATORIO
+  const hydrated = useHydrated();
+  
+  // ✅ AUDITORÍA AUTOMÁTICA
+  const { addAuditFields } = useUserTracking();
+
+  // Estados principales
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingImages, setLoadingImages] = useState(false);
@@ -16,6 +25,7 @@ export const useUsers = () => {
 
   const { toast, alert } = useNotifications();
   
+  // ✅ REFS ESTABLES PARA NOTIFICACIONES
   const toastRef = useRef(toast);
   const alertRef = useRef(alert);
   
@@ -24,17 +34,17 @@ export const useUsers = () => {
     alertRef.current = alert;
   });
 
-  // FUNCIÓN AUXILIAR PARA CALCULAR COMPLETITUD INDIVIDUAL
+  // ✅ FUNCIÓN PARA CALCULAR COMPLETITUD INDIVIDUAL MEMOIZADA
   const calculateUserCompleteness = useCallback((user: User): number => {
     const requiredFields = [
-      user.profilePictureUrl,     // Foto de perfil
-      user.signatureUrl,          // Firma digital
-      user.contractPdfUrl,        // Contrato firmado
-      user.fingerprint,           // Huella dactilar registrada
-      user.emailSent,             // Email de bienvenida enviado
-      user.whatsappSent,          // WhatsApp de confirmación enviado
-      user.birthDate,             // Fecha de nacimiento
-      user.whatsapp,              // Número de WhatsApp
+      user.profilePictureUrl,
+      user.signatureUrl,
+      user.contractPdfUrl,
+      user.fingerprint,
+      user.emailSent,
+      user.whatsappSent,
+      user.birthDate,
+      user.whatsapp,
     ];
 
     const completedFields = requiredFields.filter(field => 
@@ -44,7 +54,7 @@ export const useUsers = () => {
     return Math.round((completedFields / requiredFields.length) * 100);
   }, []);
 
-  // FUNCIÓN AUXILIAR PARA VERIFICAR PERFIL COMPLETAMENTE LISTO
+  // ✅ FUNCIÓN PARA VERIFICAR PERFIL COMPLETO MEMOIZADA
   const isProfileComplete = useCallback((user: User): boolean => {
     return Boolean(
       user.profilePictureUrl &&
@@ -58,7 +68,7 @@ export const useUsers = () => {
     );
   }, []);
 
-  // ESTADÍSTICAS CORREGIDAS Y PRECISAS
+  // ✅ ESTADÍSTICAS OPTIMIZADAS Y PRECISAS
   const userStats = useMemo((): UserStats => {
     if (users.length === 0) {
       return {
@@ -101,7 +111,6 @@ export const useUsers = () => {
     const usersWithProfilePicture = users.filter(u => u.profilePictureUrl).length;
     const usersWithSignature = users.filter(u => u.signatureUrl).length;
     const usersWithContract = users.filter(u => u.contractPdfUrl).length;
-    const usersWithFingerprint = users.filter(u => u.fingerprint).length;
     const completeProfiles = users.filter(user => isProfileComplete(user)).length;
 
     return {
@@ -115,19 +124,19 @@ export const useUsers = () => {
         profilePicture: Math.round((usersWithProfilePicture / totalUsers) * 100),
         signature: Math.round((usersWithSignature / totalUsers) * 100),
         contract: Math.round((usersWithContract / totalUsers) * 100),
-        allComplete: Math.round((completeProfiles / totalUsers) * 100) // CORREGIDO: solo perfiles 100% completos
+        allComplete: Math.round((completeProfiles / totalUsers) * 100)
       }
     };
   }, [users, isProfileComplete]);
 
-  // CONTEOS CORREGIDOS
+  // ✅ CONTEOS MEMOIZADOS
   const counts = useMemo(() => ({
     total: users.length,
     withPhotos: users.filter(u => u.profilePictureUrl).length,
-    verified: users.filter(u => u.fingerprint).length, // Solo usuarios con huella dactilar
+    verified: users.filter(u => u.fingerprint).length,
     emailsSent: users.filter(u => u.emailSent).length,
     whatsappSent: users.filter(u => u.whatsappSent).length,
-    completeProfiles: users.filter(user => isProfileComplete(user)).length, // NUEVO: perfiles completos
+    completeProfiles: users.filter(user => isProfileComplete(user)).length,
     byRole: {
       admin: users.filter(u => u.rol === 'admin').length,
       empleado: users.filter(u => u.rol === 'empleado').length,
@@ -135,10 +144,10 @@ export const useUsers = () => {
     }
   }), [users, isProfileComplete]);
 
-  // RESTO DE FUNCIONES (fetchUsers, createUser, updateUser, deleteUser) - mantener como estaban
-
-  // Funciones existentes sin cambios...
+  // ✅ FETCH USERS CON SSR SAFETY
   const fetchUsers = useCallback(async () => {
+    if (!hydrated) return;
+
     setLoading(true);
     setLoadingImages(true);
     setSyncStatus('syncing');
@@ -158,13 +167,17 @@ export const useUsers = () => {
       setLoading(false);
       setLoadingImages(false);
     }
-  }, []);
+  }, [hydrated]);
 
-  // Resto de funciones CRUD...
+  // ✅ CREATE USER CON AUDITORÍA AUTOMÁTICA
   const createUser = useCallback(async (userData: Partial<User>) => {
     try {
       setLoading(true);
-      const newUser = await userService.createUser(userData);
+      
+      // ✅ APLICAR CAMPOS DE AUDITORÍA AUTOMÁTICAMENTE
+      const dataWithAudit = await addAuditFields(userData, false);
+      
+      const newUser = await userService.createUser(dataWithAudit);
       setUsers(prev => [newUser, ...prev]);
       toastRef.current.success(`Usuario ${newUser.firstName} ${newUser.lastName} creado exitosamente`);
       return newUser;
@@ -174,12 +187,17 @@ export const useUsers = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addAuditFields]);
 
+  // ✅ UPDATE USER CON AUDITORÍA AUTOMÁTICA
   const updateUser = useCallback(async (userId: string, userData: Partial<User>) => {
     try {
       setLoading(true);
-      const updatedUser = await userService.updateUser(userId, userData);
+      
+      // ✅ APLICAR CAMPOS DE AUDITORÍA AUTOMÁTICAMENTE
+      const dataWithAudit = await addAuditFields(userData, true);
+      
+      const updatedUser = await userService.updateUser(userId, dataWithAudit);
       
       setUsers(prev => prev.map(user => 
         user.id === userId ? updatedUser : user
@@ -193,8 +211,9 @@ export const useUsers = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addAuditFields]);
 
+  // ✅ DELETE USER CON CONFIRMACIÓN
   const deleteUser = useCallback(async (user: User) => {
     try {
       const result = await alertRef.current.deleteConfirm(`${user.firstName} ${user.lastName}`);
@@ -215,13 +234,14 @@ export const useUsers = () => {
     }
   }, []);
 
+  // ✅ CARGA INICIAL CON SSR SAFETY
   const hasLoadedRef = useRef(false);
   useEffect(() => {
-    if (!hasLoadedRef.current) {
+    if (hydrated && !hasLoadedRef.current) {
       hasLoadedRef.current = true;
       fetchUsers();
     }
-  }, []);
+  }, [hydrated, fetchUsers]);
 
   return {
     users,
@@ -235,6 +255,8 @@ export const useUsers = () => {
     createUser,
     updateUser,
     deleteUser,
-    calculateUserCompleteness, // NUEVA FUNCIÓN EXPORTADA
+    calculateUserCompleteness,
+    // ✅ ESTADO DE HIDRATACIÓN PARA VERIFICACIONES
+    hydrated,
   };
 };

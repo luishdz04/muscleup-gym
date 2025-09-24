@@ -1,7 +1,7 @@
-// components/dashboard/admin/UserDetailsDialog.tsx - INTERFAZ CORREGIDA
+// components/dashboard/admin/UserDetailsDialog.tsx - VERSIÓN ENTERPRISE
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -30,18 +30,20 @@ import {
   Work as EmployeeIcon,
   FitnessCenter as ClientIcon,
   CalendarToday as CalendarIcon,
-  ContactEmergency as EmergencyIcon,
   Description as DocumentIcon,
   Fingerprint as FingerprintIcon,
-  LocationOn as LocationIcon,
 } from '@mui/icons-material';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
+import { useHydrated } from '@/hooks/useHydrated';
+import { 
+  formatTimestampForDisplay, 
+  formatTimestampDateOnly,
+  formatDateForDisplay 
+} from '@/utils/dateUtils';
 import { colorTokens } from '@/theme';
 import { User } from '@/types/user';
 
-// INTERFAZ DE PROPIEDADES CORRECTAMENTE DEFINIDA
 interface UserDetailsDialogProps {
   open: boolean;
   onClose: () => void;
@@ -49,35 +51,36 @@ interface UserDetailsDialogProps {
   onEdit?: (user: User) => void;
 }
 
-const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({ 
+const UserDetailsDialog = memo<UserDetailsDialogProps>(({ 
   open, 
   onClose, 
   user,
   onEdit 
 }) => {
-  if (!user) {
+  // ✅ SSR SAFETY OBLIGATORIO
+  const hydrated = useHydrated();
+
+  if (!user || !hydrated) {
     return null;
   }
 
-  // FUNCIÓN CORREGIDA PARA CALCULAR COMPLETITUD (SINCRONIZADA CON useUsers)
+  // ✅ FUNCIÓN PARA CALCULAR COMPLETITUD (SINCRONIZADA CON useUsers)
   const calculateCompleteness = () => {
-    // Usar la misma lógica que en el hook useUsers
     const requiredFields = [
-      Boolean(user.profilePictureUrl),     // Foto de perfil
-      Boolean(user.signatureUrl),          // Firma digital
-      Boolean(user.contractPdfUrl),        // Contrato firmado
-      Boolean(user.fingerprint),           // Huella dactilar registrada
-      Boolean(user.emailSent),             // Email de bienvenida enviado
-      Boolean(user.whatsappSent),          // WhatsApp de confirmación enviado
-      Boolean(user.birthDate),             // Fecha de nacimiento
-      Boolean(user.whatsapp),              // Número de WhatsApp
+      Boolean(user.profilePictureUrl),
+      Boolean(user.signatureUrl),
+      Boolean(user.contractPdfUrl),
+      Boolean(user.fingerprint),
+      Boolean(user.emailSent),
+      Boolean(user.whatsappSent),
+      Boolean(user.birthDate),
+      Boolean(user.whatsapp),
     ];
 
     const completedFields = requiredFields.filter(field => field === true).length;
     return Math.round((completedFields / requiredFields.length) * 100);
   };
 
-  // FUNCIÓN PARA VERIFICAR SI EL PERFIL ESTÁ COMPLETAMENTE LISTO
   const isProfileComplete = () => {
     return Boolean(
       user.profilePictureUrl &&
@@ -91,7 +94,6 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
     );
   };
 
-  // Funciones auxiliares existentes...
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'admin': return <AdminIcon sx={{ color: colorTokens.brand }} />;
@@ -119,15 +121,7 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'No disponible';
-    try {
-      return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
-    } catch {
-      return 'Fecha inválida';
-    }
-  };
-
+  // ✅ CALCULAR EDAD USANDO dateUtils
   const calculateAge = (birthDate: string) => {
     if (!birthDate) return 'No disponible';
     try {
@@ -223,7 +217,6 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
                 />
               )}
 
-              {/* BADGE DE PERFIL COMPLETO */}
               {profileComplete && (
                 <Chip
                   icon={<CheckCircleIcon />}
@@ -238,7 +231,7 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
               )}
             </Box>
 
-            {/* PROGRESO DE COMPLETITUD CORREGIDO */}
+            {/* PROGRESO DE COMPLETITUD */}
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                 <Typography variant="body2" sx={{ color: colorTokens.neutral1000 }}>
@@ -267,7 +260,6 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
                 }}
               />
               
-              {/* INDICADOR DETALLADO DE COMPLETITUD */}
               <Typography variant="caption" sx={{ 
                 color: colorTokens.neutral900, 
                 mt: 1, 
@@ -363,7 +355,8 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <CalendarIcon sx={{ fontSize: 16, color: colorTokens.neutral800 }} />
                     <Typography variant="body2" sx={{ color: colorTokens.neutral1200 }}>
-                      {formatDate(user.birthDate)} ({calculateAge(user.birthDate)})
+                      {/* ✅ USAR dateUtils EN LUGAR DE date-fns */}
+                      {formatDateForDisplay(user.birthDate)} ({calculateAge(user.birthDate)})
                     </Typography>
                     {!user.birthDate && (
                       <Chip 
@@ -401,7 +394,7 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
             </Paper>
           </Grid>
 
-          {/* ESTADO DE DOCUMENTOS Y VERIFICACIÓN MEJORADO */}
+          {/* ESTADO DE DOCUMENTOS Y VERIFICACIÓN */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Paper sx={{
               p: 3,
@@ -469,7 +462,7 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
             </Paper>
           </Grid>
 
-          {/* RESTO DEL CONTENIDO PERMANECE IGUAL... */}
+          {/* INFORMACIÓN DEL SISTEMA */}
           <Grid size={{ xs: 12 }}>
             <Paper sx={{
               p: 3,
@@ -494,7 +487,8 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
                     Fecha de Registro
                   </Typography>
                   <Typography variant="body2" sx={{ color: colorTokens.neutral1200 }}>
-                    {formatDate(user.createdAt || '')}
+                    {/* ✅ USAR dateUtils CENTRALIZADOS */}
+                    {formatTimestampDateOnly(user.createdAt || null)}
                   </Typography>
                 </Grid>
                 
@@ -503,7 +497,8 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
                     Última Actualización
                   </Typography>
                   <Typography variant="body2" sx={{ color: colorTokens.neutral1200 }}>
-                    {formatDate(user.updatedAt || '')}
+                    {/* ✅ USAR dateUtils CENTRALIZADOS */}
+                    {formatTimestampForDisplay(user.updatedAt || null)}
                   </Typography>
                 </Grid>
                 
@@ -553,7 +548,7 @@ const UserDetailsDialog: React.FC<UserDetailsDialogProps> = React.memo(({
             startIcon={<EditIcon />}
             sx={{
               bgcolor: colorTokens.brand,
-              '&:hover': { bgcolor: colorTokens.brand }
+              '&:hover': { bgcolor: colorTokens.brandHover }
             }}
           >
             Editar Usuario

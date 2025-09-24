@@ -1,7 +1,7 @@
-// components/dashboard/admin/UserTableRow.tsx
+// components/dashboard/admin/UserTableRow.tsx - VERSIÓN ENTERPRISE
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, memo, useMemo } from 'react';
 import {
   TableRow,
   TableCell,
@@ -23,10 +23,11 @@ import {
   Person as PersonIcon,
   Fingerprint as FingerprintIcon,
 } from '@mui/icons-material';
+
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
 import { colorTokens } from '@/theme';
+import { formatTimestampForDisplay } from '@/utils/dateUtils';
 import { User } from '@/types/user';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 interface UserTableRowProps {
   user: User;
@@ -35,7 +36,7 @@ interface UserTableRowProps {
   onView: (user: User) => void;
 }
 
-// FUNCIONES AUXILIARES MEMOIZADAS (fuera del componente para mejor performance)
+// ✅ FUNCIONES AUXILIARES MEMOIZADAS (fuera del componente para mejor performance)
 const getRoleIcon = (role: string) => {
   switch (role) {
     case 'admin': return <AdminIcon sx={{ color: colorTokens.brand, fontSize: '1rem' }} />;
@@ -63,17 +64,21 @@ const getRoleLabel = (role: string) => {
   }
 };
 
+// ✅ FUNCIÓN MEJORADA PARA CALCULAR COMPLETITUD (sincronizada con useUsers)
 const getCompletionPercentage = (user: User) => {
-  let completed = 0;
-  const total = 5;
+  const requiredFields = [
+    Boolean(user.profilePictureUrl),
+    Boolean(user.signatureUrl),
+    Boolean(user.contractPdfUrl),
+    Boolean(user.fingerprint),
+    Boolean(user.emailSent),
+    Boolean(user.whatsappSent),
+    Boolean(user.birthDate),
+    Boolean(user.whatsapp),
+  ];
   
-  if (user.profilePictureUrl) completed++;
-  if (user.signatureUrl) completed++;
-  if (user.contractPdfUrl) completed++;
-  if (user.fingerprint) completed++;
-  if (user.emailSent && user.whatsappSent) completed++;
-  
-  return Math.round((completed / total) * 100);
+  const completed = requiredFields.filter(field => field === true).length;
+  return Math.round((completed / requiredFields.length) * 100);
 };
 
 const getCompletionColor = (percentage: number) => {
@@ -82,13 +87,38 @@ const getCompletionColor = (percentage: number) => {
   return colorTokens.danger;
 };
 
-const UserTableRow = React.memo(({ 
+// ✅ FUNCIÓN PARA FORMATEAR FECHA RELATIVA CON dateUtils
+const getRelativeTimeDisplay = (timestamp: string | null | undefined) => {
+  if (!timestamp) return 'Sin fecha';
+  
+  try {
+    // Usar formatTimestampForDisplay y extraer solo la parte relativa
+    const fullFormat = formatTimestampForDisplay(timestamp);
+    
+    // Para tabla, mostrar formato más corto
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Hoy';
+    if (diffInDays === 1) return 'Ayer';
+    if (diffInDays < 7) return `Hace ${diffInDays} días`;
+    if (diffInDays < 30) return `Hace ${Math.floor(diffInDays / 7)} sem.`;
+    if (diffInDays < 365) return `Hace ${Math.floor(diffInDays / 30)} meses`;
+    
+    return `Hace ${Math.floor(diffInDays / 365)} años`;
+  } catch {
+    return 'Fecha inválida';
+  }
+};
+
+const UserTableRow = memo<UserTableRowProps>(({ 
   user, 
   onEdit, 
   onDelete, 
   onView 
-}: UserTableRowProps) => {
-  // HANDLERS MEMOIZADOS
+}) => {
+  // ✅ HANDLERS MEMOIZADOS
   const handleEdit = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onEdit(user);
@@ -103,11 +133,15 @@ const UserTableRow = React.memo(({
     onView(user);
   }, [user, onView]);
 
-  // VALORES COMPUTADOS MEMOIZADOS
-  const completionPercentage = getCompletionPercentage(user);
-  const completionColor = getCompletionColor(completionPercentage);
-  const roleColor = getRoleColor(user.rol);
-  const roleLabel = getRoleLabel(user.rol);
+  // ✅ VALORES COMPUTADOS MEMOIZADOS
+  const memoizedValues = useMemo(() => ({
+    completionPercentage: getCompletionPercentage(user),
+    roleColor: getRoleColor(user.rol),
+    roleLabel: getRoleLabel(user.rol),
+    relativeTime: getRelativeTimeDisplay(user.createdAt)
+  }), [user]);
+
+  const completionColor = getCompletionColor(memoizedValues.completionPercentage);
 
   return (
     <TableRow
@@ -138,14 +172,14 @@ const UserTableRow = React.memo(({
               sx={{
                 width: 48,
                 height: 48,
-                bgcolor: roleColor,
+                bgcolor: memoizedValues.roleColor,
                 color: colorTokens.neutral1200,
-                border: `2px solid ${roleColor}`,
-                boxShadow: `0 4px 15px ${roleColor}30`,
+                border: `2px solid ${memoizedValues.roleColor}`,
+                boxShadow: `0 4px 15px ${memoizedValues.roleColor}30`,
                 transition: 'all 0.3s ease',
                 '&:hover': {
                   transform: 'scale(1.1)',
-                  boxShadow: `0 6px 25px ${roleColor}50`,
+                  boxShadow: `0 6px 25px ${memoizedValues.roleColor}50`,
                 }
               }}
             >
@@ -194,13 +228,13 @@ const UserTableRow = React.memo(({
               <Typography 
                 variant="caption" 
                 sx={{ 
-                  color: roleColor,
+                  color: memoizedValues.roleColor,
                   fontWeight: 600,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}
               >
-                {roleLabel}
+                {memoizedValues.roleLabel}
               </Typography>
               
               {user.isMinor && (
@@ -227,10 +261,8 @@ const UserTableRow = React.memo(({
                 gap: 0.5
               }}
             >
-              {user.createdAt ? 
-                formatDistanceToNow(new Date(user.createdAt), { addSuffix: true, locale: es }) : 
-                'Sin fecha'
-              }
+              {/* ✅ USAR dateUtils CENTRALIZADOS */}
+              {memoizedValues.relativeTime}
             </Typography>
           </Box>
         </Box>
@@ -293,14 +325,14 @@ const UserTableRow = React.memo(({
       <TableCell>
         <Chip
           icon={getRoleIcon(user.rol)}
-          label={roleLabel}
+          label={memoizedValues.roleLabel}
           sx={{
-            bgcolor: `${roleColor}20`,
-            color: roleColor,
-            border: `1px solid ${roleColor}40`,
+            bgcolor: `${memoizedValues.roleColor}20`,
+            color: memoizedValues.roleColor,
+            border: `1px solid ${memoizedValues.roleColor}40`,
             fontWeight: 600,
             '& .MuiChip-icon': {
-              color: roleColor
+              color: memoizedValues.roleColor
             }
           }}
         />
@@ -321,7 +353,7 @@ const UserTableRow = React.memo(({
                 fontSize: '0.8rem'
               }}
             >
-              {completionPercentage}%
+              {memoizedValues.completionPercentage}%
             </Typography>
           </Box>
           
@@ -337,7 +369,7 @@ const UserTableRow = React.memo(({
           >
             <Box
               sx={{
-                width: `${completionPercentage}%`,
+                width: `${memoizedValues.completionPercentage}%`,
                 height: '100%',
                 bgcolor: completionColor,
                 borderRadius: 4,
