@@ -1,7 +1,7 @@
-// app/admin/users/page.tsx - VERSIÓN ENTERPRISE COMPLETA
+// app/admin/users/page.tsx - VERSIÓN ENTERPRISE v6.0 CORREGIDA
 'use client';
 
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -10,6 +10,12 @@ import {
   Chip,
   CircularProgress,
   Grid,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -19,76 +25,163 @@ import {
   PhotoCamera as PhotoCameraIcon,
   Verified as VerifiedIcon,
   CheckCircle as CheckCircleIcon,
+  Search as SearchIcon,
+  FilterList as FilterListIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 
-// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
+import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 import { 
   formatTimestampForDisplay,
   getCurrentTimestamp 
 } from '@/utils/dateUtils';
 import { colorTokens } from '@/theme';
 import { notify } from '@/utils/notifications';
-
-// Hooks optimizados
-import { useUsers } from '@/hooks/useUsers';
-import { useUserSearch } from '@/hooks/useUserSearch';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // Componentes especializados
 import UserStatsCards from '@/components/dashboard/admin/UserStatsCards';
-import UserFilters from '@/components/dashboard/admin/UserFilters';
 import UserTable from '@/components/dashboard/admin/UserTable';
 import UserFormDialog from '@/components/dashboard/admin/UserFormDialog';
 import UserDetailsDialog from '@/components/dashboard/admin/UserDetailsDialog';
 
 // Tipos
-import { User } from '@/types/user';
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  rol: string;
+  profilePictureUrl?: string;
+  signatureUrl?: string;
+  contractPdfUrl?: string;
+  fingerprint: boolean;
+  whatsapp: string;
+  birthDate: string;
+  gender: string;
+  maritalStatus: string;
+  isMinor: boolean;
+  emailSent: boolean;
+  emailSentAt?: string;
+  whatsappSent: boolean;
+  whatsappSentAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
 
 const UsersPage = memo(() => {
   // ✅ SSR SAFETY OBLIGATORIO
   const hydrated = useHydrated();
   
-  // ✅ AUDITORÍA AUTOMÁTICA
-  const { addAuditFields } = useUserTracking();
+  // ✅ AUDITORÍA INTELIGENTE v6.0
+  const { addAuditFieldsFor } = useUserTracking();
 
-  // HOOKS DE DATOS Y LÓGICA DE NEGOCIO
+  // ✅ CRUD ENTERPRISE v6.0 CON AUDITORÍA AUTOMÁTICA
   const {
-    users,
+    data: users,
     loading,
-    loadingImages,
-    syncStatus,
-    lastSyncTime,
-    userStats,
-    counts,
-    fetchUsers,
-    createUser,
-    updateUser,
-    deleteUser,
-  } = useUsers();
+    initialLoad,
+    error,
+    auditInfo,
+    createItem,
+    updateItem,
+    deleteItem,
+    searchItems,
+    refreshData,
+    stats
+  } = useEntityCRUD<User>({
+    tableName: 'Users', // Auditoría camelCase automática
+    selectQuery: `
+      id,
+      firstName,
+      lastName,
+      email,
+      rol,
+      profilePictureUrl,
+      signatureUrl,
+      contractPdfUrl,
+      fingerprint,
+      whatsapp,
+      birthDate,
+      gender,
+      maritalStatus,
+      isMinor,
+      emailSent,
+      emailSentAt,
+      whatsappSent,
+      whatsappSentAt,
+      createdAt,
+      updatedAt,
+      createdBy,
+      updatedBy
+    `
+  });
 
-  const {
-    searchTerm,
-    filterRole,
-    sortBy,
-    sortOrder,
-    filteredUsers,
-    searchStats,
-    setSearchTerm,
-    setFilterRole,
-    setSortBy,
-    setSortOrder,
-    clearFilters,
-  } = useUserSearch({ users });
-
-  const { toast } = useNotifications();
+  const { toast, alert } = useNotifications();
 
   // ESTADOS LOCALES DE UI
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [userForDetails, setUserForDetails] = useState<User | null>(null);
+  
+  // Estados de filtros y búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [syncing, setSyncing] = useState(false);
+
+  // ✅ USUARIOS FILTRADOS CON useMemo OPTIMIZADO
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const matchesSearch = !searchTerm || 
+        user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase());
+        
+      const matchesRole = !filterRole || user.rol === filterRole;
+      
+      return matchesSearch && matchesRole;
+    }).sort((a, b) => {
+      const aValue = a[sortBy as keyof User] as string;
+      const bValue = b[sortBy as keyof User] as string;
+      
+      if (sortOrder === 'asc') {
+        return aValue.localeCompare(bValue);
+      } else {
+        return bValue.localeCompare(aValue);
+      }
+    });
+  }, [users, searchTerm, filterRole, sortBy, sortOrder]);
+
+  // ✅ ESTADÍSTICAS CALCULADAS
+  const userStats = useMemo(() => {
+    const total = users.length;
+    const withPhotos = users.filter(u => u.profilePictureUrl).length;
+    const verified = users.filter(u => u.emailSent).length;
+    const emailsSent = users.filter(u => u.emailSent).length;
+    const byRole = {
+      admin: users.filter(u => u.rol === 'admin').length,
+      empleado: users.filter(u => u.rol === 'empleado').length,
+      cliente: users.filter(u => u.rol === 'cliente').length,
+    };
+    
+    return {
+      total,
+      withPhotos,
+      verified,
+      emailsSent,
+      byRole,
+      isFiltered: searchTerm || filterRole,
+      totalFiltered: filteredUsers.length
+    };
+  }, [users, filteredUsers.length, searchTerm, filterRole]);
 
   // ✅ HANDLERS OPTIMIZADOS CON useCallback
   const handleOpenFormDialog = useCallback((user?: User) => {
@@ -101,22 +194,24 @@ const UsersPage = memo(() => {
     setSelectedUser(null);
   }, []);
 
+  // ✅ GUARDADO CON AUDITORÍA INTELIGENTE AUTOMÁTICA
   const handleSaveUser = useCallback(async (userData: Partial<User>) => {
     try {
       if (selectedUser?.id) {
-        // ✅ APLICAR CAMPOS DE AUDITORÍA AUTOMÁTICAMENTE
-        const dataWithAudit = await addAuditFields(userData, true);
-        await updateUser(selectedUser.id, dataWithAudit);
+        // ✅ AUDITORÍA INTELIGENTE Users (camelCase)
+        const updatedUser = await updateItem(selectedUser.id, userData);
+        toast.success(`Usuario ${updatedUser.firstName} actualizado exitosamente`);
       } else {
-        // ✅ APLICAR CAMPOS DE AUDITORÍA PARA CREACIÓN
-        const dataWithAudit = await addAuditFields(userData, false);
-        await createUser(dataWithAudit);
+        // ✅ AUDITORÍA INTELIGENTE Users (camelCase)
+        const newUser = await createItem(userData);
+        toast.success(`Usuario ${newUser.firstName} creado exitosamente`);
       }
       handleCloseFormDialog();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving user:', error);
+      toast.error('Error al guardar usuario: ' + error.message);
     }
-  }, [selectedUser, updateUser, createUser, handleCloseFormDialog, addAuditFields]);
+  }, [selectedUser, updateItem, createItem, handleCloseFormDialog, toast]);
 
   const handleViewUser = useCallback((user: User) => {
     setUserForDetails(user);
@@ -140,23 +235,70 @@ const UsersPage = memo(() => {
   }, [handleOpenFormDialog]);
 
   const handleDeleteUser = useCallback(async (user: User) => {
-    await deleteUser(user);
-  }, [deleteUser]);
+    const confirmed = await alert.deleteConfirm(
+      `${user.firstName} ${user.lastName}`,
+      'Esta acción eliminará todos los datos relacionados'
+    );
+    
+    if (confirmed) {
+      try {
+        await deleteItem(user.id);
+        toast.success(`Usuario ${user.firstName} eliminado exitosamente`);
+      } catch (error: any) {
+        console.error('Error deleting user:', error);
+        toast.error('Error al eliminar usuario: ' + error.message);
+      }
+    }
+  }, [deleteItem, alert, toast]);
 
   const handleManualRefresh = useCallback(async () => {
+    setSyncing(true);
     try {
-      await fetchUsers();
-      notify.success('Lista de usuarios actualizada exitosamente');
-    } catch (error) {
-      notify.error('Error al actualizar la lista de usuarios');
+      await refreshData();
+      toast.success('Lista de usuarios actualizada exitosamente');
+    } catch (error: any) {
+      toast.error('Error al actualizar la lista de usuarios');
+    } finally {
+      setSyncing(false);
     }
-  }, [fetchUsers]);
+  }, [refreshData, toast]);
 
   const handleSortOrderToggle = useCallback(() => {
     setSortOrder(current => current === 'asc' ? 'desc' : 'asc');
-  }, [setSortOrder]);
+  }, []);
 
-  // ✅ FUNCIÓN CORREGIDA PARA LIMPIAR CACHÉ CON notify.promise()
+  // ✅ BÚSQUEDA AVANZADA MEJORADA
+  const handleAdvancedSearch = useCallback(async () => {
+    if (!searchTerm && !filterRole) {
+      await refreshData();
+      return;
+    }
+
+    try {
+      const filters: Record<string, any> = {};
+      if (filterRole) filters.rol = filterRole;
+      
+      await searchItems(filters);
+      
+      if (searchTerm) {
+        // Filtrar localmente por término de búsqueda después de la búsqueda por BD
+        // Esto se maneja en filteredUsers
+      }
+    } catch (error) {
+      console.error('Error en búsqueda:', error);
+      toast.error('Error en la búsqueda');
+    }
+  }, [searchTerm, filterRole, refreshData, searchItems, toast]);
+
+  const handleClearFilters = useCallback(() => {
+    setSearchTerm('');
+    setFilterRole('');
+    setSortBy('createdAt');
+    setSortOrder('desc');
+    refreshData();
+  }, [refreshData]);
+
+  // ✅ FUNCIÓN CORREGIDA PARA LIMPIAR CACHÉ
   const cleanupCache = useCallback(async () => {
     const cacheCleanupPromise = async () => {
       // Limpiar localStorage relacionado con usuarios
@@ -193,26 +335,9 @@ const UsersPage = memo(() => {
         }
       });
 
-      // Limpiar caché de imágenes si existe
-      if ('caches' in window) {
-        try {
-          const cacheNames = await caches.keys();
-          const userRelatedCaches = cacheNames.filter(name => 
-            name.includes('user') || name.includes('profile') || name.includes('image')
-          );
-          
-          await Promise.all(
-            userRelatedCaches.map(cacheName => caches.delete(cacheName))
-          );
-        } catch (error) {
-          console.warn('No se pudo limpiar el caché del navegador:', error);
-        }
-      }
-
       // Forzar revalidación de datos desde el servidor
-      await fetchUsers();
+      await refreshData();
       
-      // Simular tiempo de procesamiento para feedback visual
       await new Promise(resolve => setTimeout(resolve, 800));
       
       return 'Limpieza completada exitosamente';
@@ -227,7 +352,7 @@ const UsersPage = memo(() => {
         error: 'Error al limpiar el caché. Algunos elementos pueden no haberse limpiado.'
       }
     );
-  }, [fetchUsers]);
+  }, [refreshData]);
 
   // ✅ PANTALLA DE CARGA HASTA HIDRATACIÓN COMPLETA
   if (!hydrated) {
@@ -237,9 +362,38 @@ const UsersPage = memo(() => {
         justifyContent: 'center', 
         alignItems: 'center',
         minHeight: '100vh',
-        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+        flexDirection: 'column',
+        gap: 2
       }}>
         <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
+        <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+          Cargando MuscleUp Gym...
+        </Typography>
+        <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
+          Inicializando sistema empresarial
+        </Typography>
+      </Box>
+    );
+  }
+
+  // ✅ ERROR HANDLING MEJORADO
+  if (error) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="h6" sx={{ color: colorTokens.danger, mb: 2 }}>
+          Error al cargar usuarios
+        </Typography>
+        <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 3 }}>
+          {error}
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={refreshData}
+          sx={{ bgcolor: colorTokens.brand }}
+        >
+          Reintentar
+        </Button>
       </Box>
     );
   }
@@ -283,25 +437,48 @@ const UsersPage = memo(() => {
             <Typography variant="body1" sx={{ color: colorTokens.neutral1000, mt: 1 }}>
               Panel de administración con búsqueda avanzada y estadísticas en tiempo real
             </Typography>
+            
+            {/* ✅ INFO DE AUDITORÍA */}
+            <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
+              <Chip
+                label={`Auditoría: ${auditInfo.description}`}
+                size="small"
+                variant="outlined"
+                sx={{ 
+                  color: colorTokens.info,
+                  borderColor: colorTokens.info,
+                  fontSize: '0.75rem'
+                }}
+              />
+              <Chip
+                label={`Total: ${stats.total}`}
+                size="small"
+                variant="filled"
+                sx={{ 
+                  bgcolor: colorTokens.brand,
+                  color: colorTokens.textOnBrand
+                }}
+              />
+            </Box>
           </Box>
           
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <Chip
-              icon={syncStatus === 'syncing' ? 
+              icon={syncing || loading ? 
                 <CircularProgress size={16} sx={{ color: colorTokens.neutral1200 }} /> : 
                 <CloudSyncIcon />
               }
               label={
-                syncStatus === 'syncing' ? 'Sincronizando...' :
-                syncStatus === 'error' ? 'Error de sincronización' :
-                lastSyncTime ? `Actualizado ${formatTimestampForDisplay(getCurrentTimestamp())}` : 'Sistema listo'
+                syncing || loading ? 'Sincronizando...' :
+                error ? 'Error de sincronización' :
+                'Sistema listo'
               }
               size="small"
               variant="outlined"
               sx={{ 
-                color: syncStatus === 'error' ? colorTokens.danger : colorTokens.success,
-                borderColor: syncStatus === 'error' ? colorTokens.danger : colorTokens.success,
-                bgcolor: syncStatus === 'error' ? `${colorTokens.danger}10` : `${colorTokens.success}10`,
+                color: error ? colorTokens.danger : colorTokens.success,
+                borderColor: error ? colorTokens.danger : colorTokens.success,
+                bgcolor: error ? `${colorTokens.danger}10` : `${colorTokens.success}10`,
               }}
             />
             
@@ -317,9 +494,6 @@ const UsersPage = memo(() => {
                 '&:hover': {
                   borderColor: colorTokens.brand,
                   bgcolor: `${colorTokens.brand}10`
-                },
-                '&:disabled': {
-                  opacity: 0.6
                 }
               }}
             >
@@ -341,10 +515,6 @@ const UsersPage = memo(() => {
                   background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success})`,
                   transform: 'translateY(-2px)',
                 },
-                '&:disabled': {
-                  opacity: 0.6,
-                  transform: 'none'
-                },
                 transition: 'all 0.3s ease'
               }}
             >
@@ -353,26 +523,152 @@ const UsersPage = memo(() => {
           </Box>
         </Box>
         
-        {/* CONTROLES DE BÚSQUEDA Y FILTROS */}
-        <UserFilters
-          searchTerm={searchTerm}
-          filterRole={filterRole}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          loading={loading}
-          onSearchChange={setSearchTerm}
-          onRoleFilterChange={setFilterRole}
-          onSortByChange={setSortBy}
-          onSortOrderToggle={handleSortOrderToggle}
-          onRefresh={handleManualRefresh}
-        />
+        {/* ✅ CONTROLES DE BÚSQUEDA Y FILTROS MEJORADOS */}
+        <Box sx={{ mb: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                placeholder="Buscar por nombre, apellido o email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: colorTokens.neutral800 }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: colorTokens.neutral100,
+                    color: colorTokens.neutral1200,
+                    '& fieldset': { borderColor: colorTokens.neutral400 },
+                    '&:hover fieldset': { borderColor: colorTokens.brand },
+                    '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                  }
+                }}
+              />
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Rol</InputLabel>
+                <Select
+                  value={filterRole}
+                  onChange={(e) => setFilterRole(e.target.value)}
+                  label="Rol"
+                  sx={{
+                    bgcolor: colorTokens.neutral100,
+                    color: colorTokens.neutral1200,
+                    '& .MuiOutlinedInput-notchedOutline': { 
+                      borderColor: colorTokens.neutral400 
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { 
+                      borderColor: colorTokens.brand 
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
+                      borderColor: colorTokens.brand 
+                    }
+                  }}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  <MenuItem value="admin">Administrador</MenuItem>
+                  <MenuItem value="empleado">Empleado</MenuItem>
+                  <MenuItem value="cliente">Cliente</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Ordenar por</InputLabel>
+                <Select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  label="Ordenar por"
+                  sx={{
+                    bgcolor: colorTokens.neutral100,
+                    color: colorTokens.neutral1200,
+                    '& .MuiOutlinedInput-notchedOutline': { 
+                      borderColor: colorTokens.neutral400 
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { 
+                      borderColor: colorTokens.brand 
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
+                      borderColor: colorTokens.brand 
+                    }
+                  }}
+                >
+                  <MenuItem value="createdAt">Fecha de creación</MenuItem>
+                  <MenuItem value="firstName">Nombre</MenuItem>
+                  <MenuItem value="email">Email</MenuItem>
+                  <MenuItem value="rol">Rol</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterListIcon />}
+                  onClick={handleAdvancedSearch}
+                  disabled={loading}
+                  sx={{
+                    color: colorTokens.brand,
+                    borderColor: colorTokens.brand,
+                    '&:hover': {
+                      bgcolor: `${colorTokens.brand}10`
+                    }
+                  }}
+                >
+                  Buscar
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={handleManualRefresh}
+                  disabled={loading}
+                  sx={{
+                    color: colorTokens.info,
+                    borderColor: colorTokens.info,
+                    '&:hover': {
+                      bgcolor: `${colorTokens.info}10`
+                    }
+                  }}
+                >
+                  Actualizar
+                </Button>
+                
+                {(searchTerm || filterRole) && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<ClearAllIcon />}
+                    onClick={handleClearFilters}
+                    sx={{
+                      color: colorTokens.warning,
+                      borderColor: colorTokens.warning,
+                      '&:hover': {
+                        bgcolor: `${colorTokens.warning}10`
+                      }
+                    }}
+                  >
+                    Limpiar
+                  </Button>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+        </Box>
         
         {/* INFORMACIÓN DE RESULTADOS Y ESTADÍSTICAS */}
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          mt: 2,
           p: 3,
           bgcolor: `${colorTokens.success}10`,
           borderRadius: 2,
@@ -381,17 +677,17 @@ const UsersPage = memo(() => {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-              Total: {searchStats.isFiltered ? (
-                <>{searchStats.totalFiltered} de {searchStats.totalOriginal}</>
+              Total: {userStats.isFiltered ? (
+                <>{userStats.totalFiltered} de {userStats.total}</>
               ) : (
-                <>{searchStats.totalOriginal}</>
+                <>{userStats.total}</>
               )} usuarios
             </Typography>
-            {searchStats.isFiltered && (
+            {userStats.isFiltered && (
               <Button
                 size="small"
                 startIcon={<ClearAllIcon />}
-                onClick={clearFilters}
+                onClick={handleClearFilters}
                 variant="outlined"
                 sx={{
                   color: colorTokens.warning,
@@ -409,7 +705,7 @@ const UsersPage = memo(() => {
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Chip
               icon={<PhotoCameraIcon />}
-              label={`${counts.withPhotos} con fotos`}
+              label={`${userStats.withPhotos} con fotos`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.success}20`,
@@ -419,7 +715,7 @@ const UsersPage = memo(() => {
             />
             <Chip
               icon={<VerifiedIcon />}
-              label={`${counts.verified} verificados`}
+              label={`${userStats.verified} verificados`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.info}20`,
@@ -429,7 +725,7 @@ const UsersPage = memo(() => {
             />
             <Chip
               icon={<CheckCircleIcon />}
-              label={`${counts.emailsSent} emails enviados`}
+              label={`${userStats.emailsSent} emails enviados`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.brand}20`,
@@ -443,9 +739,14 @@ const UsersPage = memo(() => {
 
       {/* ESTADÍSTICAS CON CARDS */}
       <UserStatsCards
-        userStats={userStats}
-        totalUsers={counts.total}
-        verifiedCount={counts.verified}
+        userStats={{
+          total: userStats.total,
+          active: userStats.byRole.cliente + userStats.byRole.admin + userStats.byRole.empleado,
+          verified: userStats.verified,
+          withPhotos: userStats.withPhotos
+        }}
+        totalUsers={userStats.total}
+        verifiedCount={userStats.verified}
       />
 
       {/* DISTRIBUCIÓN POR ROLES */}
@@ -483,13 +784,13 @@ const UsersPage = memo(() => {
               }
             }}>
               <Typography variant="h4" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
-                {counts.byRole.admin}
+                {userStats.byRole.admin}
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
                 Administradores
               </Typography>
               <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {counts.total > 0 ? Math.round((counts.byRole.admin / counts.total) * 100) : 0}% del total
+                {userStats.total > 0 ? Math.round((userStats.byRole.admin / userStats.total) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>
@@ -508,13 +809,13 @@ const UsersPage = memo(() => {
               }
             }}>
               <Typography variant="h4" sx={{ color: colorTokens.info, fontWeight: 700 }}>
-                {counts.byRole.empleado}
+                {userStats.byRole.empleado}
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
                 Empleados
               </Typography>
               <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {counts.total > 0 ? Math.round((counts.byRole.empleado / counts.total) * 100) : 0}% del total
+                {userStats.total > 0 ? Math.round((userStats.byRole.empleado / userStats.total) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>
@@ -533,13 +834,13 @@ const UsersPage = memo(() => {
               }
             }}>
               <Typography variant="h4" sx={{ color: colorTokens.success, fontWeight: 700 }}>
-                {counts.byRole.cliente}
+                {userStats.byRole.cliente}
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
                 Clientes
               </Typography>
               <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {counts.total > 0 ? Math.round((counts.byRole.cliente / counts.total) * 100) : 0}% del total
+                {userStats.total > 0 ? Math.round((userStats.byRole.cliente / userStats.total) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>
@@ -549,12 +850,12 @@ const UsersPage = memo(() => {
       {/* TABLA DE USUARIOS */}
       <UserTable
         users={filteredUsers}
-        loading={loading}
+        loading={loading || initialLoad}
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
         onView={handleViewUser}
-        onClearFilters={clearFilters}
-        hasFilters={searchStats.isFiltered}
+        onClearFilters={handleClearFilters}
+        hasFilters={userStats.isFiltered}
       />
 
       {/* MODAL DE FORMULARIO */}

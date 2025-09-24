@@ -2,7 +2,7 @@
 export interface MembershipHistory {
   id: string;
   userid: string;
-  planid: string;
+plan_id: string;
   payment_type: string;
   amount_paid: number;
   inscription_amount: number;

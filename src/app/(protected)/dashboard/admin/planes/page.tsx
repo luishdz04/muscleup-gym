@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import {
   Box,
   Typography,
@@ -27,9 +27,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-// Importaciones corregidas según la estructura real
-import { useNotifications } from '@/hooks/useNotifications';
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
 import { colorTokens } from '@/theme';
+import { notify } from '@/utils/notifications';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { useNotifications } from '@/hooks/useNotifications';
+import { 
+  getCurrentTimestamp,
+  formatTimestampForDisplay,
+  formatDateForDisplay 
+} from '@/utils/dateUtils';
 
 // Icons
 import EditIcon from '@mui/icons-material/Edit';
@@ -49,7 +57,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 
-// Interfaces optimizadas
+// Interfaces optimizadas según BD real
 interface DaySchedule {
   enabled: boolean;
   start_time: string;
@@ -72,6 +80,11 @@ interface PlanAccessRestriction {
   access_control_enabled: boolean;
   max_daily_entries: number;
   daily_schedules: DailySchedules;
+  // ✅ CAMPOS BD REALES (snake_case)
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
 }
 
 interface MembershipPlan {
@@ -109,6 +122,13 @@ interface MembershipPlan {
   classes_included: boolean;
   guest_passes: number;
   equipment_access: string[];
+  
+  // Nuevos campos de BD
+  has_time_restrictions: boolean;
+  allowed_days: string[];
+  time_slots: any[];
+  
+  // ✅ CAMPOS BD REALES (snake_case)
   created_at: string;
   created_by: string | null;
   updated_at: string;
@@ -127,37 +147,18 @@ const WEEKDAY_CONFIG = [
   { key: 'sunday', label: 'Domingo', short: 'D' }
 ] as const;
 
-// Utilidad para formatear fechas en zona horaria de Monterrey
-const formatDateForMonterrey = (dateString: string): string => {
-  try {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('es-MX', {
-      timeZone: 'America/Monterrey',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).format(date);
-  } catch {
-    return 'Fecha inválida';
-  }
-};
-
-// Utilidad para obtener timestamp en zona horaria de Monterrey
-const getMonterreyTimestamp = (): string => {
-  return new Date().toISOString();
-};
-
-// Hook personalizado para la gestión de planes
+// ✅ Hook personalizado para la gestión de planes (ENTERPRISE)
 const usePlansManagement = () => {
+  const hydrated = useHydrated();
+  const { addAuditFields } = useUserTracking();
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useNotifications();
 
   const loadPlans = useCallback(async () => {
+    if (!hydrated) return;
+
     try {
       setLoading(true);
       setError(null);
@@ -183,34 +184,33 @@ const usePlansManagement = () => {
       setPlans(mappedPlans);
       
       if (mappedPlans.length > 0) {
-        toast.success(`${mappedPlans.length} planes cargados correctamente`);
+        notify.success(`${mappedPlans.length} planes cargados correctamente`);
       } else {
-        toast.error('No hay planes configurados');
+        notify.error('No hay planes configurados');
       }
       
     } catch (err: any) {
       const errorMessage = `Error cargando planes: ${err.message}`;
       setError(errorMessage);
-      toast.error(errorMessage);
+      notify.error(errorMessage);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
-  }, [toast]);
+  }, [hydrated]);
 
   const togglePlanStatus = useCallback(async (planId: string, currentStatus: boolean) => {
     try {
       const supabase = createBrowserSupabaseClient();
       
-      // Obtener usuario actual logueado
-      const { data: { user } } = await supabase.auth.getUser();
+      // ✅ USAR AUDIT FIELDS ENTERPRISE
+      const updateData = await addAuditFields({ 
+        is_active: !currentStatus 
+      }, true);
       
       const { error } = await supabase
         .from('membership_plans')
-        .update({ 
-          is_active: !currentStatus,
-          updated_by: user?.id || null,
-          updated_at: getMonterreyTimestamp()
-        })
+        .update(updateData)
         .eq('id', planId);
 
       if (error) throw error;
@@ -221,20 +221,20 @@ const usePlansManagement = () => {
             ? { 
                 ...plan, 
                 is_active: !currentStatus,
-                updated_by: user?.id || null,
-                updated_at: getMonterreyTimestamp()
+                updated_at: getCurrentTimestamp(),
+                updated_by: updateData.updated_by
               } 
             : plan
         )
       );
       
       const planName = plans.find(p => p.id === planId)?.name || 'Plan';
-      toast.success(`Plan "${planName}" ${!currentStatus ? 'activado' : 'desactivado'}`);
+      notify.success(`Plan "${planName}" ${!currentStatus ? 'activado' : 'desactivado'}`);
       
     } catch (err: any) {
-      toast.error(`Error actualizando estado: ${err.message}`);
+      notify.error(`Error actualizando estado: ${err.message}`);
     }
-  }, [plans, toast]);
+  }, [plans, addAuditFields]);
 
   const deletePlan = useCallback(async (planId: string) => {
     try {
@@ -257,9 +257,17 @@ const usePlansManagement = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (hydrated) {
+      loadPlans();
+    }
+  }, [hydrated, loadPlans]);
+
   return {
     plans,
     loading,
+    initialLoad,
+    hydrated,
     error,
     loadPlans,
     togglePlanStatus,
@@ -268,7 +276,7 @@ const usePlansManagement = () => {
   };
 };
 
-// Hook para utilidades de precios
+// ✅ Hook para utilidades de precios (MEMOIZADO)
 const usePriceUtils = () => {
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -317,20 +325,14 @@ const usePriceUtils = () => {
   };
 };
 
-// Componente memoizado para las estadísticas
-const StatsCard = React.memo(({ 
-  title, 
-  value, 
-  icon: Icon, 
-  color,
-  gradient 
-}: {
+// ✅ Componente memoizado para las estadísticas
+const StatsCard = memo<{
   title: string;
   value: number;
   icon: React.ElementType;
   color: string;
   gradient?: string;
-}) => (
+}>(({ title, value, icon: Icon, color, gradient }) => (
   <Paper sx={{
     p: 3,
     background: gradient || `linear-gradient(135deg, ${color}, ${color}CC)`,
@@ -357,14 +359,14 @@ const StatsCard = React.memo(({
   </Paper>
 ));
 
-// Componente principal optimizado
+// ✅ COMPONENTE PRINCIPAL OPTIMIZADO ENTERPRISE
 export default function PlanesPage() {
   const router = useRouter();
-  const { toast, alert } = useNotifications();
-  const { plans, loading, loadPlans, togglePlanStatus, deletePlan, hasPlans } = usePlansManagement();
+  const { alert } = useNotifications();
+  const { plans, loading, initialLoad, hydrated, loadPlans, togglePlanStatus, deletePlan, hasPlans } = usePlansManagement();
   const { formatPrice, getBestPrice, getBestPriceLabel, getPlanColor } = usePriceUtils();
 
-  // Estados memoizados para estadísticas
+  // ✅ Estados memoizados para estadísticas
   const stats = useMemo(() => ({
     total: plans.length,
     active: plans.filter(p => p.is_active).length,
@@ -372,27 +374,21 @@ export default function PlanesPage() {
     withClasses: plans.filter(p => p.classes_included).length
   }), [plans]);
 
-  // Efecto para cargar planes
-  useEffect(() => {
-    loadPlans();
-  }, [loadPlans]);
-
-  // Funciones de manejo memoizadas
+  // ✅ Funciones de manejo memoizadas
   const handleDeleteClick = useCallback(async (plan: MembershipPlan) => {
     const result = await alert.deleteConfirm(`"${plan.name}"`);
     
     if (result.isConfirmed) {
       const deleteResult = await deletePlan(plan.id);
       if (deleteResult.success) {
-        toast.success(`Plan "${plan.name}" eliminado exitosamente`);
+        notify.success(`Plan "${plan.name}" eliminado exitosamente`);
       } else {
-        toast.error(deleteResult.error || 'Error eliminando plan');
+        notify.error(deleteResult.error || 'Error eliminando plan');
       }
     }
-  }, [deletePlan, alert, toast]);
+  }, [deletePlan, alert]);
 
   const viewPlanDetails = useCallback((plan: MembershipPlan) => {
-    // Redirigir directamente a la página de detalles
     router.push(`/dashboard/admin/planes/${plan.id}`);
   }, [router]);
 
@@ -421,13 +417,14 @@ export default function PlanesPage() {
     }
   }, []);
 
-  if (loading) {
+  // ✅ PANTALLA DE CARGA HASTA HIDRATACIÓN (SSR SAFETY)
+  if (!hydrated || initialLoad) {
     return (
       <Box 
         display="flex" 
         justifyContent="center" 
         alignItems="center" 
-        minHeight="60vh"
+        minHeight="100vh"
         sx={{
           background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
           color: colorTokens.neutral1200

@@ -1,7 +1,7 @@
 // app/dashboard/admin/planes/[id]/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -15,21 +15,21 @@ import {
   CircularProgress,
   IconButton,
   Breadcrumbs,
-  Link,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow
+  Link
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter, useParams } from 'next/navigation';
 
-// Importaciones corregidas
-import { useNotifications } from '@/hooks/useNotifications';
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
 import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { useNotifications } from '@/hooks/useNotifications';
+import { 
+  formatTimestampForDisplay,
+  formatDateForDisplay
+} from '@/utils/dateUtils';
 
 // Icons
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -38,7 +38,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import GroupIcon from '@mui/icons-material/Group';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import StarIcon from '@mui/icons-material/Star';
 import LockIcon from '@mui/icons-material/Lock';
@@ -126,25 +125,7 @@ const WEEKDAY_CONFIG = [
   { key: 'sunday', label: 'Domingo', short: 'D' }
 ] as const;
 
-// Utilidad para formatear fechas en zona horaria de Monterrey
-const formatDateForMonterrey = (dateString: string): string => {
-  try {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('es-MX', {
-      timeZone: 'America/Monterrey',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).format(date);
-  } catch {
-    return 'Fecha inválida';
-  }
-};
-
-// Utilidad para formatear precios
+// ✅ UTILIDAD CENTRALIZADA PARA FORMATEAR PRECIOS
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -152,18 +133,13 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
-// Componente para mostrar precios
-const PriceCard = React.memo(({ 
-  label, 
-  price, 
-  duration,
-  isPrimary = false 
-}: {
-  label: string;
-  price: number;
-  duration?: number;
-  isPrimary?: boolean;
-}) => (
+// ✅ COMPONENTE OPTIMIZADO CON MEMO
+const PriceCard = React.memo<{ 
+  label: string; 
+  price: number; 
+  duration?: number; 
+  isPrimary?: boolean 
+}>(({ label, price, duration, isPrimary = false }) => (
   <Card sx={{
     background: isPrimary 
       ? `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})`
@@ -203,55 +179,61 @@ const PriceCard = React.memo(({
   </Card>
 ));
 
-// Componente principal
+PriceCard.displayName = 'PriceCard';
+
+// ✅ COMPONENTE PRINCIPAL CON PATRONES ENTERPRISE
 export default function PlanDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const hydrated = useHydrated();
   const { toast, alert } = useNotifications();
+  const { addAuditFields } = useUserTracking();
+  
   const [plan, setPlan] = useState<MembershipPlan | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Cargar datos del plan
-  useEffect(() => {
-    const fetchPlan = async () => {
-      try {
-        setLoading(true);
-        const supabase = createBrowserSupabaseClient();
-        
-        const { data, error } = await supabase
-          .from('membership_plans')
-          .select(`
-            *,
-            access_restrictions:plan_access_restrictions(*)
-          `)
-          .eq('id', params.id)
-          .single();
+  // ✅ CALLBACK OPTIMIZADO PARA CARGAR DATOS
+  const fetchPlan = useCallback(async () => {
+    if (!hydrated || !params.id) return;
+    
+    try {
+      setLoading(true);
+      const supabase = createBrowserSupabaseClient();
+      
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select(`
+          *,
+          access_restrictions:plan_access_restrictions(*)
+        `)
+        .eq('id', params.id)
+        .single();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // Mapear datos de restricciones
-        const mappedPlan = {
-          ...data,
-          access_restrictions: Array.isArray(data.access_restrictions) 
-            ? data.access_restrictions[0] 
-            : data.access_restrictions
-        };
+      // Mapear datos de restricciones
+      const mappedPlan = {
+        ...data,
+        access_restrictions: Array.isArray(data.access_restrictions) 
+          ? data.access_restrictions[0] 
+          : data.access_restrictions
+      };
 
-        setPlan(mappedPlan);
-      } catch (err: any) {
-        toast.error(`Error cargando plan: ${err.message}`);
-        router.push('/dashboard/admin/planes');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (params.id) {
-      fetchPlan();
+      setPlan(mappedPlan);
+    } catch (err: any) {
+      toast.error(`Error cargando plan: ${err.message}`);
+      router.push('/dashboard/admin/planes');
+    } finally {
+      setLoading(false);
     }
-  }, [params.id, toast, router]);
+  }, [hydrated, params.id, toast, router]);
 
-  // Función para eliminar plan
+  // ✅ EFECTO CON DEPENDENCIAS OPTIMIZADAS
+  useEffect(() => {
+    fetchPlan();
+  }, [fetchPlan]);
+
+  // ✅ CALLBACK OPTIMIZADO PARA ELIMINAR
   const handleDelete = useCallback(async () => {
     if (!plan) return;
 
@@ -260,6 +242,9 @@ export default function PlanDetailsPage() {
     if (result.isConfirmed) {
       try {
         const supabase = createBrowserSupabaseClient();
+        
+        // ✅ AGREGAR AUDITORÍA PARA ELIMINACIÓN
+        const dataWithAudit = await addAuditFields({ deleted: true }, true);
         
         const { error } = await supabase
           .from('membership_plans')
@@ -274,10 +259,15 @@ export default function PlanDetailsPage() {
         toast.error(`Error eliminando plan: ${err.message}`);
       }
     }
-  }, [plan, alert, toast, router]);
+  }, [plan, alert, toast, router, addAuditFields]);
 
-  // Calcular estadísticas del plan
-  const planStats = React.useMemo(() => {
+  // ✅ CALLBACK OPTIMIZADO PARA NAVEGACIÓN
+  const handleNavigation = useCallback((path: string) => {
+    router.push(path);
+  }, [router]);
+
+  // ✅ MEMO PARA ESTADÍSTICAS DEL PLAN
+  const planStats = useMemo(() => {
     if (!plan) return null;
 
     const prices = [
@@ -311,6 +301,21 @@ export default function PlanDetailsPage() {
       hasRestrictions: plan.access_restrictions?.access_control_enabled || false
     };
   }, [plan]);
+
+  // ✅ SSR SAFETY - PANTALLA DE CARGA HASTA HIDRATACIÓN
+  if (!hydrated) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`
+      }}>
+        <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
+      </Box>
+    );
+  }
 
   if (loading) {
     return (
@@ -351,7 +356,7 @@ export default function PlanDetailsPage() {
       <Breadcrumbs sx={{ mb: 3, color: colorTokens.neutral900 }}>
         <Link 
           component="button" 
-          onClick={() => router.push('/dashboard')}
+          onClick={() => handleNavigation('/dashboard')}
           sx={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -366,7 +371,7 @@ export default function PlanDetailsPage() {
         </Link>
         <Link 
           component="button" 
-          onClick={() => router.push('/dashboard/admin/planes')}
+          onClick={() => handleNavigation('/dashboard/admin/planes')}
           sx={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -464,7 +469,7 @@ export default function PlanDetailsPage() {
           <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <Button
               startIcon={<ArrowBackIcon />}
-              onClick={() => router.push('/dashboard/admin/planes')}
+              onClick={() => handleNavigation('/dashboard/admin/planes')}
               variant="outlined"
               sx={{
                 color: colorTokens.neutral900,
@@ -480,7 +485,7 @@ export default function PlanDetailsPage() {
             
             <Button
               startIcon={<EditIcon />}
-              onClick={() => router.push(`/dashboard/admin/planes/${plan.id}/editar`)}
+              onClick={() => handleNavigation(`/dashboard/admin/planes/${plan.id}/editar`)}
               variant="outlined"
               sx={{
                 color: colorTokens.warning,
@@ -778,7 +783,7 @@ export default function PlanDetailsPage() {
                   Creado el:
                 </Typography>
                 <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-                  {formatDateForMonterrey(plan.created_at)}
+                  {formatTimestampForDisplay(plan.created_at)}
                 </Typography>
               </Box>
 
@@ -787,7 +792,7 @@ export default function PlanDetailsPage() {
                   Última actualización:
                 </Typography>
                 <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-                  {formatDateForMonterrey(plan.updated_at)}
+                  {formatTimestampForDisplay(plan.updated_at)}
                 </Typography>
               </Box>
 
@@ -808,7 +813,7 @@ export default function PlanDetailsPage() {
                     Vigencia desde:
                   </Typography>
                   <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-                    {formatDateForMonterrey(plan.validity_start_date)}
+                    {formatDateForDisplay(plan.validity_start_date)}
                   </Typography>
                 </Box>
               )}
@@ -819,7 +824,7 @@ export default function PlanDetailsPage() {
                     Vigencia hasta:
                   </Typography>
                   <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-                    {formatDateForMonterrey(plan.validity_end_date)}
+                    {formatDateForDisplay(plan.validity_end_date)}
                   </Typography>
                 </Box>
               )}

@@ -1,10 +1,14 @@
-// hooks/usePlanForm.ts - CON MODO EDICIÓN
+// hooks/usePlanForm.ts - ENTERPRISE v4.1 CON SSR SAFETY
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
+import { useHydrated } from '@/hooks/useHydrated';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useUserTracking } from '@/hooks/useUserTracking';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { getCurrentTimestamp } from '@/utils/dateUtils';
 
 // Types
 export interface DaySchedule {
@@ -108,6 +112,7 @@ interface UsePlanFormOptions {
 
 export const usePlanForm = (options: UsePlanFormOptions = {}) => {
   const { isEditMode = false, planId } = options;
+  const hydrated = useHydrated();
   const { toast, alert } = useNotifications();
   const { addAuditFields } = useUserTracking();
   
@@ -120,7 +125,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
   const [accessRestrictionId, setAccessRestrictionId] = useState<string | null>(null);
 
-  // Estados derivados memoizados
+  // ✅ ESTADOS DERIVADOS MEMOIZADOS
   const hasFormChanges = useMemo(() => {
     return JSON.stringify(formData) !== JSON.stringify(originalFormData);
   }, [formData, originalFormData]);
@@ -141,9 +146,18 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     return (completedFields / totalFields) * 100;
   }, [formData]);
 
-  // Cargar plan en modo edición
+  const isFormValid = useMemo(() => {
+    return (
+      Object.keys(errors).length === 0 && 
+      formData.name.trim() !== '' && 
+      formData.description.trim() !== '' &&
+      (formData.monthly_price > 0 || formData.visit_price > 0)
+    );
+  }, [errors, formData.name, formData.description, formData.monthly_price, formData.visit_price]);
+
+  // ✅ CARGAR PLAN EN MODO EDICIÓN CON SSR SAFETY
   useEffect(() => {
-    if (!isEditMode || !planId) {
+    if (!hydrated || !isEditMode || !planId) {
       setLoadingPlan(false);
       return;
     }
@@ -182,7 +196,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
 
         console.log('🔐 Restricciones cargadas:', accessRestrictions);
 
-        // Preparar datos del formulario
+        // ✅ PREPARAR DATOS CON MANEJO CORRECTO DE TIMESTAMPS
         const planData: PlanFormData = {
           id: plan.id,
           name: plan.name || '',
@@ -238,9 +252,9 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     };
     
     loadPlan();
-  }, [isEditMode, planId, toast]);
+  }, [hydrated, isEditMode, planId, toast]);
 
-  // Validación de un campo específico
+  // ✅ VALIDACIÓN DE CAMPO OPTIMIZADA
   const validateField = useCallback((field: keyof PlanFormData): string | null => {
     switch (field) {
       case 'name':
@@ -279,7 +293,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     }
   }, [formData]);
 
-  // Manejador de input optimizado
+  // ✅ MANEJADOR DE INPUT OPTIMIZADO
   const handleInputChange = useCallback((field: keyof PlanFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -296,7 +310,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     }
   }, [errors]);
 
-  // Manejador para validar cuando sale del campo (onBlur)
+  // ✅ MANEJADOR PARA VALIDAR CUANDO SALE DEL CAMPO (onBlur)
   const handleFieldBlur = useCallback((field: keyof PlanFormData) => {
     setTouchedFields(prev => new Set([...prev, field]));
     
@@ -324,7 +338,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     }
   }, [formData, validateField, toast]);
 
-  // Manejador para horarios de días específicos
+  // ✅ MANEJADOR PARA HORARIOS DE DÍAS ESPECÍFICOS
   const updateDaySchedule = useCallback((day: keyof DailySchedules, field: keyof DaySchedule, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -338,7 +352,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     }));
   }, []);
 
-  // Validación completa del formulario
+  // ✅ VALIDACIÓN COMPLETA DEL FORMULARIO
   const validateForm = useCallback(async (): Promise<boolean> => {
     const newErrors: {[key: string]: string} = {};
 
@@ -397,7 +411,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     return true;
   }, [formData, validateField, alert]);
 
-  // Función para crear plan
+  // ✅ FUNCIÓN PARA CREAR PLAN CON TIMESTAMPS CENTRALIZADOS
   const createPlan = useCallback(async (): Promise<{ success: boolean; data?: any; error?: string }> => {
     console.log('🆕 Creando plan nuevo...');
     
@@ -446,6 +460,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
       }
 
       if (formData.access_control_enabled && createdPlan) {
+        // ✅ USAR getCurrentTimestamp() PARA RESTRICCIONES
         const accessRestrictionData = await addAuditFields({
           plan_id: createdPlan.id,
           access_control_enabled: true,
@@ -473,7 +488,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     }
   }, [formData, addAuditFields, toast]);
 
-  // Función para actualizar plan
+  // ✅ FUNCIÓN PARA ACTUALIZAR PLAN CON TIMESTAMPS CENTRALIZADOS
   const updatePlan = useCallback(async (): Promise<{ success: boolean; data?: any; error?: string }> => {
     console.log('🔄 Actualizando plan existente...');
     
@@ -522,7 +537,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
         throw new Error(updateError.message || 'Error al actualizar el plan');
       }
 
-      // Manejar restricciones de acceso
+      // ✅ MANEJAR RESTRICCIONES DE ACCESO CON TIMESTAMPS CORRECTOS
       if (formData.access_control_enabled) {
         const accessRestrictionData = {
           plan_id: planId!,
@@ -584,7 +599,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     }
   }, [formData, planId, accessRestrictionId, addAuditFields, toast]);
 
-  // Función unificada de guardado
+  // ✅ FUNCIÓN UNIFICADA DE GUARDADO
   const savePlan = useCallback(async () => {
     if (isEditMode) {
       return await updatePlan();
@@ -593,7 +608,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     }
   }, [isEditMode, createPlan, updatePlan]);
 
-  // Reset del formulario
+  // ✅ RESET DEL FORMULARIO
   const resetForm = useCallback(() => {
     setFormData(INITIAL_FORM_DATA);
     setOriginalFormData(INITIAL_FORM_DATA);
@@ -606,16 +621,6 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     }
   }, [isEditMode, toast]);
 
-  // Validación derivada
-  const isFormValid = useMemo(() => {
-    return (
-      Object.keys(errors).length === 0 && 
-      formData.name.trim() !== '' && 
-      formData.description.trim() !== '' &&
-      (formData.monthly_price > 0 || formData.visit_price > 0)
-    );
-  }, [errors, formData.name, formData.description, formData.monthly_price, formData.visit_price]);
-
   return {
     // Estados
     formData,
@@ -625,6 +630,7 @@ export const usePlanForm = (options: UsePlanFormOptions = {}) => {
     hasFormChanges,
     formProgress,
     touchedFields,
+    hydrated, // ✅ Exponer estado de hidratación
     
     // Acciones
     handleInputChange,

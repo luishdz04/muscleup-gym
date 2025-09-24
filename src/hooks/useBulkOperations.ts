@@ -1,12 +1,23 @@
-// hooks/useBulkOperations.ts - VERSIÓN COMPLETA FUNCIONAL
+// hooks/useBulkOperations.ts - ENTERPRISE v4.2 CORREGIDO
+'use client';
+
 import { useState, useCallback, useMemo } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { getTodayInMexico, addDaysToDate, formatDateForDisplay, daysBetween } from '@/utils/dateUtils';
+
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
+import { 
+  getCurrentTimestamp,
+  getTodayInMexico, 
+  addDaysToDate, 
+  formatDateForDisplay, 
+  daysBetween 
+} from '@/utils/dateUtils';
+import { useUserTracking } from '@/hooks/useUserTracking';
 
 interface MembershipHistory {
   id: string;
   userid: string;
-  planid: string;
+  plan_id: string;
   payment_type: string;
   amount_paid: number;
   inscription_amount: number;
@@ -82,6 +93,9 @@ export const useBulkOperations = (memberships: MembershipHistory[], onReload: ()
   const [showPreview, setShowPreview] = useState(false);
   
   const supabase = createBrowserSupabaseClient();
+  
+  // ✅ AUDITORÍA AUTOMÁTICA ENTERPRISE
+  const { addAuditFields } = useUserTracking();
 
   const getMexicoDateString = useCallback(() => {
     return getTodayInMexico();
@@ -255,7 +269,7 @@ export const useBulkOperations = (memberships: MembershipHistory[], onReload: ()
     setBulkDialogOpen(true);
   }, [selectedMembershipIds, generateBulkPreview]);
 
-  // Función de ejecución masiva
+  // ✅ FUNCIÓN DE EJECUCIÓN MASIVA CON AUDITORÍA AUTOMÁTICA
   const executeBulkOperation = useCallback(async () => {
     setBulkLoading(true);
     setBulkProgress(0);
@@ -286,46 +300,52 @@ export const useBulkOperations = (memberships: MembershipHistory[], onReload: ()
               newEndDate = addDaysToDate(membership.end_date, bulkOperation.freezeDays);
             }
 
+            // ✅ DATOS CON AUDITORÍA AUTOMÁTICA
+            const updateData = await addAuditFields({
+              status: 'frozen',
+              freeze_date: currentDate,
+              end_date: newEndDate,
+              total_frozen_days: (membership.total_frozen_days || 0) + bulkOperation.freezeDays,
+              notes: membership.notes ? 
+                `${membership.notes}\nCongelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}` :
+                `Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`,
+            }, true);
+
             const { error } = await supabase
               .from('user_memberships')
-              .update({
-                status: 'frozen',
-                freeze_date: currentDate,
-                end_date: newEndDate,
-                total_frozen_days: (membership.total_frozen_days || 0) + bulkOperation.freezeDays,
-                notes: membership.notes ? 
-                  `${membership.notes}\nCongelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}` :
-                  `Congelado manualmente por ${bulkOperation.freezeDays} días el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`,
-                updated_at: new Date().toISOString()
-              })
+              .update(updateData)
               .eq('id', membershipId);
 
             if (error) throw error;
           } else {
+            // ✅ DATOS CON AUDITORÍA AUTOMÁTICA
+            const updateData = await addAuditFields({
+              status: 'frozen',
+              freeze_date: currentDate
+            }, true);
+
             const { error } = await supabase
               .from('user_memberships')
-              .update({
-                status: 'frozen',
-                freeze_date: currentDate,
-                updated_at: new Date().toISOString()
-              })
+              .update(updateData)
               .eq('id', membershipId);
 
             if (error) throw error;
           }
         } else {
           if (bulkOperation.mode === 'manual') {
+            // ✅ DATOS CON AUDITORÍA AUTOMÁTICA
+            const updateData = await addAuditFields({
+              status: 'active',
+              freeze_date: null,
+              unfreeze_date: currentDate,
+              notes: membership.notes ? 
+                `${membership.notes}\nReactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}` :
+                `Reactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`,
+            }, true);
+
             const { error } = await supabase
               .from('user_memberships')
-              .update({
-                status: 'active',
-                freeze_date: null,
-                unfreeze_date: currentDate,
-                notes: membership.notes ? 
-                  `${membership.notes}\nReactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}` :
-                  `Reactivado manualmente el ${formatDisplayDate(currentDate)}. ${bulkOperation.reason || ''}`,
-                updated_at: new Date().toISOString()
-              })
+              .update(updateData)
               .eq('id', membershipId);
 
             if (error) throw error;
@@ -338,16 +358,18 @@ export const useBulkOperations = (memberships: MembershipHistory[], onReload: ()
               newEndDate = addDaysToDate(membership.end_date, daysToAdd);
             }
 
+            // ✅ DATOS CON AUDITORÍA AUTOMÁTICA
+            const updateData = await addAuditFields({
+              status: 'active',
+              freeze_date: null,
+              unfreeze_date: currentDate,
+              end_date: newEndDate,
+              total_frozen_days: newTotalFrozenDays,
+            }, true);
+
             const { error } = await supabase
               .from('user_memberships')
-              .update({
-                status: 'active',
-                freeze_date: null,
-                unfreeze_date: currentDate,
-                end_date: newEndDate,
-                total_frozen_days: newTotalFrozenDays,
-                updated_at: new Date().toISOString()
-              })
+              .update(updateData)
               .eq('id', membershipId);
 
             if (error) throw error;
@@ -380,7 +402,7 @@ export const useBulkOperations = (memberships: MembershipHistory[], onReload: ()
     }, 3000);
 
     return { successCount, failedCount, errors };
-  }, [bulkOperation, memberships, supabase, formatDisplayDate, onReload, getCurrentFrozenDays, getMexicoDateString]);
+  }, [bulkOperation, memberships, supabase, formatDisplayDate, onReload, getCurrentFrozenDays, getMexicoDateString, addAuditFields]);
 
   const getBulkOperationTitle = useCallback(() => {
     const actionText = bulkOperation.action === 'freeze' ? 'Congelamiento' : 'Reactivación';

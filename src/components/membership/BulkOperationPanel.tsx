@@ -1,4 +1,4 @@
-// components/membership/BulkOperationPanel.tsx
+// components/membership/BulkOperationPanel.tsx - ENTERPRISE v4.2 CORREGIDO
 'use client';
 
 import React, { memo } from 'react';
@@ -22,35 +22,8 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
-// ✅ PALETA DE COLORES UNIFICADA
-const colorTokens = {
-  // Colores base
-  brand: '#FFCC00',
-  black: '#000000',
-  white: '#FFFFFF',
-  
-  // Escala neutra (Dark Theme)
-  neutral0: '#0A0A0B',
-  neutral50: '#0F1012',
-  neutral100: '#14161A',
-  neutral200: '#1B1E24',
-  neutral300: '#23272F',
-  neutral400: '#2C313B',
-  neutral500: '#363C48',
-  neutral600: '#424959',
-  neutral700: '#535B6E',
-  neutral800: '#6A7389',
-  neutral900: '#8B94AA',
-  neutral1000: '#C9CFDB',
-  neutral1100: '#E8ECF5',
-  neutral1200: '#FFFFFF',
-  
-  // Semánticos
-  success: '#22C55E',
-  danger: '#EF4444',
-  info: '#38BDF8',
-  warning: '#FFCC00', // Mismo que brand
-};
+// ✅ IMPORT ENTERPRISE OBLIGATORIO - ELIMINAR DEFINICIÓN LOCAL
+import { colorTokens } from '@/theme';
 
 interface Props {
   bulkMode: boolean;
@@ -174,17 +147,16 @@ const BulkOperationPanel = memo<Props>(({
                 disabled={!hasSelectedMemberships}
                 fullWidth
                 sx={{ 
-                  color: colorTokens.neutral1200,
+                  color: colorTokens.textOnBrand,
                   backgroundColor: colorTokens.info,
                   fontWeight: 700,
                   '&:hover': {
-                    backgroundColor: colorTokens.info,
-                    filter: 'brightness(1.1)',
+                    backgroundColor: colorTokens.infoHover,
                     transform: 'translateY(-1px)'
                   },
                   '&:disabled': {
                     backgroundColor: `${colorTokens.info}30`,
-                    color: `${colorTokens.neutral1200}50`
+                    color: `${colorTokens.textDisabled}`
                   }
                 }}
                 variant="contained"
@@ -228,17 +200,16 @@ const BulkOperationPanel = memo<Props>(({
                 disabled={!hasSelectedMemberships}
                 fullWidth
                 sx={{ 
-                  color: colorTokens.neutral1200,
+                  color: colorTokens.textOnBrand,
                   backgroundColor: colorTokens.success,
                   fontWeight: 700,
                   '&:hover': {
-                    backgroundColor: colorTokens.success,
-                    filter: 'brightness(1.1)',
+                    backgroundColor: colorTokens.successHover,
                     transform: 'translateY(-1px)'
                   },
                   '&:disabled': {
                     backgroundColor: `${colorTokens.success}30`,
-                    color: `${colorTokens.neutral1200}50`
+                    color: `${colorTokens.textDisabled}`
                   }
                 }}
                 variant="contained"
@@ -306,7 +277,7 @@ const BulkOperationPanel = memo<Props>(({
             sx={{
               mt: 2,
               backgroundColor: `${colorTokens.info}05`,
-              color: colorTokens.neutral1200,
+              color: colorTokens.textPrimary,
               border: `1px solid ${colorTokens.info}20`,
               '& .MuiAlert-icon': { color: colorTokens.info }
             }}
@@ -326,7 +297,7 @@ const BulkOperationPanel = memo<Props>(({
             sx={{
               mt: 2,
               backgroundColor: `${colorTokens.warning}05`,
-              color: colorTokens.neutral1200,
+              color: colorTokens.textPrimary,
               border: `1px solid ${colorTokens.warning}20`,
               '& .MuiAlert-icon': { color: colorTokens.warning }
             }}

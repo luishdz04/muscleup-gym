@@ -1,4 +1,4 @@
-// components/PlanForm/PricingSection.tsx - CON VALIDACIÓN onBlur
+// components/PlanForm/PricingSection.tsx - ENTERPRISE v4.0
 'use client';
 
 import React, { useMemo } from 'react';
@@ -20,15 +20,17 @@ import { motion } from 'framer-motion';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
 import { colorTokens } from '@/theme';
+import { notify } from '@/utils/notifications';
 import { PlanFormData } from '@/hooks/usePlanForm';
-import { useNotifications } from '@/hooks/useNotifications';
 
 interface PricingSectionProps {
   formData: PlanFormData;
   errors: {[key: string]: string};
   onInputChange: (field: keyof PlanFormData, value: any) => void;
-  onFieldBlur: (field: keyof PlanFormData) => void; // ✅ Nueva prop
+  onFieldBlur: (field: keyof PlanFormData) => void;
   expanded: boolean;
   onToggle: () => void;
 }
@@ -37,12 +39,10 @@ export const PricingSection = React.memo<PricingSectionProps>(({
   formData,
   errors,
   onInputChange,
-  onFieldBlur, // ✅ Nueva prop
+  onFieldBlur,
   expanded,
   onToggle
 }) => {
-  const { toast } = useNotifications();
-  
   const fieldStyles = useMemo(() => ({
     '& .MuiOutlinedInput-root': {
       backgroundColor: colorTokens.neutral100,
@@ -82,10 +82,11 @@ export const PricingSection = React.memo<PricingSectionProps>(({
     [formData.monthly_price, formData.visit_price]
   );
 
+  // ✅ USAR SISTEMA NOTIFY CENTRALIZADO
   const handlePriceChange = (field: keyof PlanFormData, value: string, label: string) => {
     const numValue = parseFloat(value) || 0;
     onInputChange(field, numValue);
-    // NO mostrar toast aquí, solo cuando hace blur y es válido
+    // NO mostrar notify aquí, solo cuando hace blur y es válido
   };
 
   const pricingPeriods = useMemo(() => [
@@ -200,7 +201,7 @@ export const PricingSection = React.memo<PricingSectionProps>(({
               type="number"
               value={formData.inscription_price}
               onChange={(e) => handlePriceChange('inscription_price', e.target.value, 'Precio de inscripción')}
-              onBlur={() => onFieldBlur('inscription_price')} // ✅ Nueva funcionalidad
+              onBlur={() => onFieldBlur('inscription_price')}
               error={!!errors.inscription_price}
               helperText={errors.inscription_price}
               sx={fieldStyles}
@@ -217,7 +218,7 @@ export const PricingSection = React.memo<PricingSectionProps>(({
               type="number"
               value={formData.visit_price}
               onChange={(e) => handlePriceChange('visit_price', e.target.value, 'Precio por visita')}
-              onBlur={() => onFieldBlur('visit_price')} // ✅ Nueva funcionalidad
+              onBlur={() => onFieldBlur('visit_price')}
               error={!!errors.visit_price}
               helperText={errors.visit_price}
               sx={fieldStyles}
@@ -273,7 +274,7 @@ export const PricingSection = React.memo<PricingSectionProps>(({
                           type="number"
                           value={formData[period.key as keyof PlanFormData] as number}
                           onChange={(e) => handlePriceChange(period.key as keyof PlanFormData, e.target.value, period.label)}
-                          onBlur={() => onFieldBlur(period.key as keyof PlanFormData)} // ✅ Nueva funcionalidad
+                          onBlur={() => onFieldBlur(period.key as keyof PlanFormData)}
                           error={!!errors[period.key]}
                           helperText={errors[period.key]}
                           sx={{

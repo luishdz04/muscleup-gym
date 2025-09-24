@@ -1,12 +1,22 @@
-// hooks/useMembershipCRUD.ts - CON FOTO DE PERFIL
+// hooks/useMembershipCRUD.ts - ENTERPRISE v4.2 ESQUEMA REAL CORREGIDO
+'use client';
+
 import { useState, useCallback } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { getTodayInMexico, addDaysToDate } from '@/utils/dateUtils';
+
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
+import { 
+  getCurrentTimestamp,
+  getTodayInMexico, 
+  addDaysToDate,
+  formatDateForDisplay 
+} from '@/utils/dateUtils';
+import { useUserTracking } from '@/hooks/useUserTracking';
 
 interface MembershipHistory {
   id: string;
   userid: string;
-  planid: string;
+  plan_id: string; // ✅ Corregido según esquema real
   payment_type: string;
   amount_paid: number;
   inscription_amount: number;
@@ -35,7 +45,7 @@ interface MembershipHistory {
   payment_details: any;
   user_name: string;
   user_email: string;
-  user_profile_image?: string; // ✅ CORREGIDO: opcional en lugar de null
+  user_profile_image?: string;
   plan_name: string;
 }
 
@@ -48,11 +58,11 @@ interface Plan {
 interface EditData {
   status?: string;
   start_date?: string;
-  end_date?: string; // ✅ CORREGIDO: solo string opcional
+  end_date?: string;
   amount_paid?: number;
   payment_method?: string;
-  payment_reference?: string; // ✅ CORREGIDO: solo string opcional
-  notes?: string; // ✅ CORREGIDO: solo string opcional
+  payment_reference?: string;
+  notes?: string;
   commission_rate?: number;
   commission_amount?: number;
   is_mixed_payment?: boolean;
@@ -66,7 +76,7 @@ export const useMembershipCRUD = () => {
   const [memberships, setMemberships] = useState<MembershipHistory[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true); // ✅ AGREGADO
+  const [initialLoad, setInitialLoad] = useState(true);
   const [selectedMembership, setSelectedMembership] = useState<MembershipHistory | null>(null);
   
   // Estados para edición
@@ -78,6 +88,9 @@ export const useMembershipCRUD = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   const supabase = createBrowserSupabaseClient();
+  
+  // ✅ AUDITORÍA AUTOMÁTICA ENTERPRISE
+  const { addAuditFields } = useUserTracking();
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -90,20 +103,26 @@ export const useMembershipCRUD = () => {
     return getTodayInMexico();
   }, []);
 
-  // ✅ FUNCIÓN PARA CARGAR MEMBRESÍAS CON FOTO DE PERFIL
+  // ✅ FUNCIÓN CORREGIDA CON TU ESQUEMA REAL
   const loadMemberships = useCallback(async () => {
     setLoading(true);
     try {
+      console.log('Cargando membresías con esquema real...');
+      
+      // ✅ QUERY CORRECTO: Users (mayúscula) y plan_id (no planid)
       const { data, error } = await supabase
         .from('user_memberships')
         .select(`
           *,
-          Users!userid (firstName, lastName, email, profilePictureUrl),
-          membership_plans!planid (name, description)
+          Users!userid (id, firstName, lastName, email, profilePictureUrl),
+          membership_plans!plan_id (id, name, description)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error en query principal:', error);
+        throw error;
+      }
 
       const formattedData: MembershipHistory[] = (data || []).map(item => ({
         ...item,
@@ -111,22 +130,26 @@ export const useMembershipCRUD = () => {
         unfreeze_date: item.unfreeze_date || null,
         total_frozen_days: item.total_frozen_days || 0,
         payment_details: item.payment_details || {},
+        // ✅ USANDO ESQUEMA REAL: Users.firstName, Users.lastName, etc.
         user_name: `${item.Users?.firstName || ''} ${item.Users?.lastName || ''}`.trim(),
         user_email: item.Users?.email || '',
-        user_profile_image: item.Users?.profilePictureUrl || undefined, // ✅ CORREGIDO
+        user_profile_image: item.Users?.profilePictureUrl || undefined,
         plan_name: item.membership_plans?.name || 'Plan Desconocido'
       }));
 
       setMemberships(formattedData);
+      console.log(`Membresías cargadas exitosamente: ${formattedData.length} registros`);
+      
     } catch (err: any) {
+      console.error('Error completo:', err);
       throw new Error(`Error al cargar membresías: ${err.message}`);
     } finally {
       setLoading(false);
-      setInitialLoad(false); // ✅ AGREGADO
+      setInitialLoad(false);
     }
   }, [supabase]);
 
-  // Función para cargar planes
+  // ✅ FUNCIÓN PARA CARGAR PLANES
   const loadPlans = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -138,6 +161,7 @@ export const useMembershipCRUD = () => {
       if (error) throw error;
       setPlans(data || []);
     } catch (err: any) {
+      console.error('Error al cargar planes:', err);
       throw new Error(`Error al cargar planes: ${err.message}`);
     }
   }, [supabase]);
@@ -149,12 +173,17 @@ export const useMembershipCRUD = () => {
     await loadMemberships();
   }, [loadMemberships]);
 
-  // Función para cambiar estado
+  // ✅ FUNCIÓN PARA CAMBIAR ESTADO CON AUDITORÍA AUTOMÁTICA
   const handleStatusChange = useCallback(async (membership: MembershipHistory, newStatus: string) => {
     try {
+      // ✅ APLICAR AUDITORÍA AUTOMÁTICA
+      const updateData = await addAuditFields({
+        status: newStatus
+      }, true);
+
       const { error } = await supabase
         .from('user_memberships')
-        .update({ status: newStatus })
+        .update(updateData)
         .eq('id', membership.id);
 
       if (error) throw error;
@@ -164,9 +193,9 @@ export const useMembershipCRUD = () => {
     } catch (err: any) {
       throw new Error(`Error al cambiar estado: ${err.message}`);
     }
-  }, [supabase, forceReloadMemberships]);
+  }, [supabase, forceReloadMemberships, addAuditFields]);
 
-  // ✅ FUNCIÓN PARA ACTUALIZAR MEMBRESÍA QUE RECIBE DATOS DEL MODAL
+  // ✅ FUNCIÓN PARA ACTUALIZAR MEMBRESÍA CON AUDITORÍA AUTOMÁTICA
   const handleUpdateMembership = useCallback(async (editDataFromModal?: any) => {
     if (!selectedMembership) return;
     
@@ -190,11 +219,11 @@ export const useMembershipCRUD = () => {
         dataToUpdate.end_date = newEndDate;
         
         const today = getMexicoDateString();
-        const extensionNote = `Fecha extendida ${dataToUpdate.extend_days} día${dataToUpdate.extend_days > 1 ? 's' : ''} manualmente el ${today}.`;
+        const extensionNote = `Fecha extendida ${dataToUpdate.extend_days} día${dataToUpdate.extend_days > 1 ? 's' : ''} manualmente el ${formatDateForDisplay(today)}.`;
         dataToUpdate.notes = dataToUpdate.notes ? `${dataToUpdate.notes}\n${extensionNote}` : extensionNote;
       }
 
-      const updateData: any = {};
+      const updateDataForDB: any = {};
 
       // Campos permitidos para actualizar
       const allowedFields = [
@@ -212,13 +241,13 @@ export const useMembershipCRUD = () => {
 
       allowedFields.forEach(field => {
         if (dataToUpdate[field] !== undefined && dataToUpdate[field] !== null) {
-          updateData[field] = dataToUpdate[field];
+          updateDataForDB[field] = dataToUpdate[field];
         }
       });
 
       // Manejar pago mixto
       if (dataToUpdate.payment_method === 'mixto' || selectedMembership.payment_method === 'mixto') {
-        updateData.is_mixed_payment = true;
+        updateDataForDB.is_mixed_payment = true;
         
         if (dataToUpdate.cash_amount || dataToUpdate.card_amount || dataToUpdate.transfer_amount) {
           const paymentDetails = {
@@ -227,16 +256,19 @@ export const useMembershipCRUD = () => {
             transfer_amount: dataToUpdate.transfer_amount || 0,
             total_amount: (dataToUpdate.cash_amount || 0) + (dataToUpdate.card_amount || 0) + (dataToUpdate.transfer_amount || 0)
           };
-          updateData.payment_details = paymentDetails;
+          updateDataForDB.payment_details = paymentDetails;
         }
       } else {
-        updateData.is_mixed_payment = false;
-        updateData.payment_details = {};
+        updateDataForDB.is_mixed_payment = false;
+        updateDataForDB.payment_details = {};
       }
+
+      // ✅ APLICAR AUDITORÍA AUTOMÁTICA A TODOS LOS DATOS
+      const finalUpdateData = await addAuditFields(updateDataForDB, true);
 
       const { error } = await supabase
         .from('user_memberships')
-        .update(updateData)
+        .update(finalUpdateData)
         .eq('id', selectedMembership.id);
 
       if (error) throw error;
@@ -251,7 +283,7 @@ export const useMembershipCRUD = () => {
     } finally {
       setEditLoading(false);
     }
-  }, [selectedMembership, editData, supabase, forceReloadMemberships, getMexicoDateString]);
+  }, [selectedMembership, editData, supabase, forceReloadMemberships, getMexicoDateString, addAuditFields]);
 
   // Función para inicializar datos de edición
   const initializeEditData = useCallback((membership: MembershipHistory) => {
@@ -260,11 +292,11 @@ export const useMembershipCRUD = () => {
     setEditData({
       status: membership.status,
       start_date: membership.start_date,
-      end_date: membership.end_date || undefined, // ✅ CORREGIDO: null → undefined
+      end_date: membership.end_date || undefined,
       amount_paid: membership.amount_paid,
       payment_method: membership.payment_method,
-      payment_reference: membership.payment_reference || undefined, // ✅ CORREGIDO: null → undefined
-      notes: membership.notes || undefined, // ✅ CORREGIDO: null → undefined
+      payment_reference: membership.payment_reference || undefined,
+      notes: membership.notes || undefined,
       commission_rate: membership.commission_rate,
       commission_amount: membership.commission_amount,
       is_mixed_payment: membership.is_mixed_payment,
@@ -280,7 +312,7 @@ export const useMembershipCRUD = () => {
     memberships,
     plans,
     loading,
-    initialLoad, // ✅ AGREGADO
+    initialLoad,
     selectedMembership,
     editDialogOpen,
     editData,

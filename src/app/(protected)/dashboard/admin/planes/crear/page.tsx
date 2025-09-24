@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -8,12 +8,19 @@ import {
   Container,
   LinearProgress,
   IconButton,
-  Tooltip
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS
 import { colorTokens } from '@/theme';
+import { notify } from '@/utils/notifications';
+import { useHydrated } from '@/hooks/useHydrated';
+import { getCurrentTimestamp } from '@/utils/dateUtils';
+
 import { usePlanForm } from '@/hooks/usePlanForm';
 import { useNotifications } from '@/hooks/useNotifications';
 import { BasicInfoSection } from '@/components/PlanForm/BasicInfoSection';
@@ -24,8 +31,9 @@ import { PreviewAndSaveSection } from '@/components/PlanForm/PreviewAndSaveSecti
 
 export default function CrearPlanPage() {
   const router = useRouter();
+  const hydrated = useHydrated();
   const mountedRef = useRef(true);
-  const { toast, alert } = useNotifications();
+  const { alert } = useNotifications();
   
   // Hook principal del formulario
   const {
@@ -35,26 +43,26 @@ export default function CrearPlanPage() {
     hasFormChanges,
     formProgress,
     handleInputChange,
-    handleFieldBlur, // ✅ Nueva función para onBlur
+    handleFieldBlur,
     updateDaySchedule,
     validateForm,
     savePlan,
     resetForm,
-    isFormValid // ✅ Ahora siempre boolean
+    isFormValid
   } = usePlanForm();
 
   // Estado local para acordeones
   const [expandedAccordion, setExpandedAccordion] = useState<string | false>('basic');
 
-  // Cleanup
+  // ✅ CLEANUP MEMOIZADO
   useEffect(() => {
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  // Confirmación antes de salir con cambios no guardados
-  const confirmExit = async () => {
+  // ✅ CONFIRMACIÓN ANTES DE SALIR (MEMOIZADA)
+  const confirmExit = useCallback(async () => {
     if (!hasFormChanges) {
       router.push('/dashboard/admin/planes');
       return;
@@ -62,121 +70,139 @@ export default function CrearPlanPage() {
 
     const result = await alert.confirm(
       'Cambios sin guardar',
-      `Tienes cambios sin guardar. ¿Qué deseas hacer?`
+      'Tienes cambios sin guardar. ¿Qué deseas hacer?'
     );
 
     if (result.isConfirmed) {
-      toast.success('Guardando plan antes de salir...');
+      notify.success('Guardando plan antes de salir...');
       await handleSave(true);
     } else if (result.isDenied) {
-      toast.success('Saliendo sin guardar cambios');
+      notify.success('Saliendo sin guardar cambios');
       router.push('/dashboard/admin/planes');
     }
-  };
+  }, [hasFormChanges, alert, router]);
 
-  // Manejador de guardado principal
-// FUNCIÓN handleSave CORREGIDA en CrearPlanPage.tsx
-
-// FUNCIÓN handleSave CORREGIDA en CrearPlanPage.tsx
-
-// FUNCIÓN handleSave CORREGIDA en CrearPlanPage.tsx
-
-const handleSave = async (exitAfterSave = false) => {
-  console.log('🚀 Iniciando guardado del plan...'); // Debug
-  
-  const isValid = await validateForm();
-  if (!isValid) {
-    console.log('❌ Validación fallida'); // Debug
-    return;
-  }
-
-  try {
-    console.log('💾 Llamando a savePlan()...'); // Debug
-    const result = await savePlan();
-    console.log('📊 Resultado de savePlan:', result); // Debug
+  // ✅ MANEJADOR DE GUARDADO MEMOIZADO Y SIMPLIFICADO
+  const handleSave = useCallback(async (exitAfterSave = false) => {
+    console.log('🚀 Iniciando guardado del plan...', getCurrentTimestamp());
     
-    if (result.success) {
-      console.log('✅ Plan guardado exitosamente'); // Debug
-      
-      // MÉTODO MÁS SIMPLE Y CONFIABLE
-      toast.success(`Plan "${formData.name}" creado exitosamente! 🎉`);
-      
-      try {
-        // Modal con texto MÁS CLARO sobre qué hace cada botón
-        const actionResult = await alert.confirm(
-          '¡Plan Creado Exitosamente!',
-          `El plan "${formData.name}" se ha guardado correctamente.\n\n` +
-          `• ACEPTAR = Ir a lista de planes\n` +
-          `• CANCELAR = Crear otro plan\n\n` +
-          `¿Deseas ir a la lista de planes?`
-        );
+    const isValid = await validateForm();
+    if (!isValid) {
+      console.log('❌ Validación fallida');
+      return;
+    }
 
-        console.log('🔍 ActionResult:', actionResult);
+    try {
+      console.log('💾 Llamando a savePlan()...');
+      const result = await savePlan();
+      console.log('📊 Resultado de savePlan:', result);
+      
+      if (result.success) {
+        console.log('✅ Plan guardado exitosamente');
+        
+        // ✅ USAR SISTEMA NOTIFY CENTRALIZADO
+        notify.success(`Plan "${formData.name}" creado exitosamente!`);
+        
+        try {
+          const actionResult = await alert.confirm(
+            'Plan Creado Exitosamente',
+            `El plan "${formData.name}" se ha guardado correctamente.\n\n` +
+            `• ACEPTAR = Ir a lista de planes\n` +
+            `• CANCELAR = Crear otro plan\n\n` +
+            `¿Deseas ir a la lista de planes?`
+          );
 
-        if (actionResult.isConfirmed || exitAfterSave) {
-          // ACEPTAR = Ir a lista de planes
-          console.log('✅ Usuario eligió: Ir a lista de planes');
-          toast.success('Redirigiendo a lista de planes...');
-          router.push('/dashboard/admin/planes');
-        } else {
-          // CANCELAR o cerrar = Crear otro plan (resetear formulario)
-          console.log('🆕 Usuario eligió: Crear otro plan');
-          toast.success('¡Formulario listo para crear otro plan!');
-          resetForm();
-          setExpandedAccordion('basic');
+          console.log('🔍 ActionResult:', actionResult);
+
+          if (actionResult.isConfirmed || exitAfterSave) {
+            console.log('✅ Usuario eligió: Ir a lista de planes');
+            notify.success('Redirigiendo a lista de planes...');
+            router.push('/dashboard/admin/planes');
+          } else {
+            console.log('🆕 Usuario eligió: Crear otro plan');
+            notify.success('Formulario listo para crear otro plan!');
+            resetForm();
+            setExpandedAccordion('basic');
+          }
+        } catch (modalError) {
+          console.error('⚠️ Error en modal de confirmación:', modalError);
+          notify.success(`Plan "${formData.name}" creado exitosamente!`);
+          
+          const shouldRedirect = window.confirm(
+            `Plan "${formData.name}" creado exitosamente!\n\n¿Ir a la lista de planes? (OK = Sí, Cancelar = Crear otro)`
+          );
+          
+          if (shouldRedirect || exitAfterSave) {
+            router.push('/dashboard/admin/planes');
+          } else {
+            resetForm();
+            setExpandedAccordion('basic');
+          }
         }
-      } catch (modalError) {
-        console.error('⚠️ Error en modal de confirmación:', modalError);
-        // Si falla el modal, al menos mostrar toast y preguntar qué hacer
-        toast.success(`Plan "${formData.name}" creado exitosamente!`);
         
-        // Backup: preguntar con toast simple
-        const shouldRedirect = window.confirm(
-          `Plan "${formData.name}" creado exitosamente!\n\n¿Ir a la lista de planes? (OK = Sí, Cancelar = Crear otro)`
-        );
+      } else {
+        console.error('❌ Error al guardar:', result.error);
         
-        if (shouldRedirect || exitAfterSave) {
-          router.push('/dashboard/admin/planes');
-        } else {
-          resetForm();
-          setExpandedAccordion('basic');
+        // ✅ USAR SISTEMA NOTIFY CENTRALIZADO
+        notify.error(`Error: ${result.error || 'No se pudo guardar el plan'}`);
+        
+        try {
+          await alert.error(
+            'Error al Crear Plan',
+            result.error || 'Ocurrió un problema inesperado. Por favor, intenta nuevamente.'
+          );
+        } catch (errorModalError) {
+          console.error('⚠️ Error en modal de error:', errorModalError);
         }
       }
       
-    } else {
-      console.error('❌ Error al guardar:', result.error); // Debug
-      
-      // ERROR MÁS SIMPLE
-      toast.error(`Error: ${result.error || 'No se pudo guardar el plan'}`);
+    } catch (unexpectedError) {
+      console.error('💥 Error inesperado en handleSave:', unexpectedError);
+      notify.error('Error inesperado. Revisa la consola para más detalles.');
       
       try {
         await alert.error(
-          'Error al Crear Plan',
-          result.error || 'Ocurrió un problema inesperado. Por favor, intenta nuevamente.'
+          'Error Inesperado',
+          'Ocurrió un problema inesperado. Por favor, intenta nuevamente.'
         );
       } catch (errorModalError) {
-        console.error('⚠️ Error en modal de error:', errorModalError);
-        // Al menos mostrar el toast de error
+        console.error('⚠️ Error en modal de error inesperado:', errorModalError);
       }
     }
-    
-  } catch (unexpectedError) {
-    console.error('💥 Error inesperado en handleSave:', unexpectedError); // Debug
-    toast.error('Error inesperado. Revisa la consola para más detalles.');
-    
-    try {
-      await alert.error(
-        'Error Inesperado',
-        'Ocurrió un problema inesperado. Por favor, intenta nuevamente.'
-      );
-    } catch (errorModalError) {
-      console.error('⚠️ Error en modal de error inesperado:', errorModalError);
-    }
-  }
-};
-  const toggleAccordion = (section: string) => {
+  }, [validateForm, savePlan, formData.name, alert, router, resetForm]);
+
+  // ✅ TOGGLE ACORDEÓN MEMOIZADO
+  const toggleAccordion = useCallback((section: string) => {
     setExpandedAccordion(expandedAccordion === section ? false : section);
-  };
+  }, [expandedAccordion]);
+
+  // ✅ SSR SAFETY - PANTALLA DE CARGA HASTA HIDRATACIÓN
+  if (!hydrated) {
+    return (
+      <Box sx={{ 
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: colorTokens.neutral1200
+      }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress 
+            size={60} 
+            sx={{ 
+              color: colorTokens.brand,
+              mb: 2,
+              filter: `drop-shadow(0 0 10px ${colorTokens.brand}60)`
+            }} 
+          />
+          <Typography sx={{ color: colorTokens.neutral900 }}>
+            Cargando formulario de planes...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ 
@@ -223,7 +249,7 @@ const handleSave = async (exitAfterSave = false) => {
                     fontWeight: 700,
                     mb: 1
                   }}>
-                    🚀 Crear plan
+                    Crear Plan
                   </Typography>
                   <Typography variant="h6" sx={{ 
                     color: colorTokens.neutral900,
@@ -281,7 +307,7 @@ const handleSave = async (exitAfterSave = false) => {
               formData={formData}
               errors={errors}
               onInputChange={handleInputChange}
-              onFieldBlur={handleFieldBlur} // ✅ Nueva prop
+              onFieldBlur={handleFieldBlur}
               expanded={expandedAccordion === 'basic'}
               onToggle={() => toggleAccordion('basic')}
             />
@@ -291,7 +317,7 @@ const handleSave = async (exitAfterSave = false) => {
               formData={formData}
               errors={errors}
               onInputChange={handleInputChange}
-              onFieldBlur={handleFieldBlur} // ✅ Nueva prop
+              onFieldBlur={handleFieldBlur}
               expanded={expandedAccordion === 'pricing'}
               onToggle={() => toggleAccordion('pricing')}
             />
@@ -301,7 +327,7 @@ const handleSave = async (exitAfterSave = false) => {
               formData={formData}
               errors={errors}
               onInputChange={handleInputChange}
-              onFieldBlur={handleFieldBlur} // ✅ Nueva prop
+              onFieldBlur={handleFieldBlur}
               expanded={expandedAccordion === 'features'}
               onToggle={() => toggleAccordion('features')}
             />
@@ -311,7 +337,7 @@ const handleSave = async (exitAfterSave = false) => {
               formData={formData}
               errors={errors}
               onInputChange={handleInputChange}
-              onFieldBlur={handleFieldBlur} // ✅ Nueva prop
+              onFieldBlur={handleFieldBlur}
               updateDaySchedule={updateDaySchedule}
               expanded={expandedAccordion === 'access_control'}
               onToggle={() => toggleAccordion('access_control')}
@@ -322,7 +348,7 @@ const handleSave = async (exitAfterSave = false) => {
               formData={formData}
               loading={loading}
               hasFormChanges={hasFormChanges}
-              isFormValid={isFormValid} // ✅ Ya es boolean
+              isFormValid={isFormValid}
               expanded={expandedAccordion === 'preview'}
               onToggle={() => toggleAccordion('preview')}
               onSave={handleSave}

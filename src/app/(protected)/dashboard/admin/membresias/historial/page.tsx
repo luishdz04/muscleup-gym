@@ -1,4 +1,4 @@
-// pages/HistorialMembresiaPage.tsx - CÓDIGO COMPLETO INTEGRADO
+// pages/HistorialMembresiaPage.tsx - CÓDIGO ENTERPRISE v4.2 CORREGIDO
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -20,10 +20,23 @@ import {
 } from '@mui/material';
 import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
+
+// ✅ HOOKS ENTERPRISE OBLIGATORIOS
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { notify } from '@/utils/notifications';
+import { 
+  getCurrentTimestamp,
+  formatTimestampForDisplay,
+  formatDateForDisplay,
+  formatDateLong,
+  daysBetween,
+  getTodayInMexico,
+  addDaysToDate
+} from '@/utils/dateUtils';
 
 // HOOKS PERSONALIZADOS
-import { useHydrated } from '@/hooks/useHydrated';
 import { useMembershipFilters } from '@/hooks/useMembershipFilters';
 import { useBulkOperations } from '@/hooks/useBulkOperations';
 import { useMembershipCRUD } from '@/hooks/useMembershipCRUD';
@@ -37,8 +50,6 @@ import MembershipDetailsModal from '@/components/membership/MembershipDetailsMod
 import MembershipEditModal from '@/components/membership/MembershipEditModal';
 
 // UTILIDADES Y TIPOS
-import { addDaysToDate, formatDateForDisplay, formatDateLong, daysBetween, getTodayInMexico, formatTimestampForDisplay } from '@/utils/dateUtils';
-import { colorTokens } from '@/theme';
 import type { 
   MembershipHistory, 
   StatusOption, 
@@ -84,6 +95,9 @@ const paymentMethodOptions: PaymentMethodOption[] = [
 export default function HistorialMembresiaPage() {
   const router = useRouter();
   const hydrated = useHydrated();
+  
+  // ✅ AUDITORÍA AUTOMÁTICA ENTERPRISE
+  const { addAuditFields } = useUserTracking();
   
   // HOOKS PERSONALIZADOS - LÓGICA SEPARADA
   const {
@@ -165,8 +179,6 @@ export default function HistorialMembresiaPage() {
     }
   }, []);
 
-
-
   const getStatusColor = useCallback((status: string) => {
     const statusOption = statusOptions.find(s => s.value === status);
     return statusOption?.color || colorTokens.neutral800;
@@ -177,50 +189,52 @@ export default function HistorialMembresiaPage() {
     return statusOption?.icon || '📋';
   }, []);
 
-  // FUNCIONES DE CONGELAMIENTO INDIVIDUAL
+  // ✅ FUNCIONES DE CONGELAMIENTO CON NOTIFY UNIFICADO
   const handleFreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setFreezeLoading(true);
-      const toastId = toast.loading('🧊 Congelando membresía...');
       
       if (membership.status !== 'active') {
-        toast.error('Solo se pueden congelar membresías activas', { id: toastId });
+        notify.error('Solo se pueden congelar membresías activas');
         return;
       }
 
+      // ✅ APLICAR AUDITORÍA AUTOMÁTICA
+      const auditedData = await addAuditFields({ status: 'frozen' }, true);
       await handleStatusChange(membership, 'frozen');
       
-      toast.success('✅ Membresía congelada exitosamente', { id: toastId });
+      notify.success('✅ Membresía congelada exitosamente');
       setActionMenuAnchor(null);
       
     } catch (err: any) {
-      toast.error(`Error al congelar membresía: ${err.message}`);
+      notify.error(`❌ Error al congelar membresía: ${err.message}`);
     } finally {
       setFreezeLoading(false);
     }
-  }, [handleStatusChange]);
+  }, [handleStatusChange, addAuditFields]);
 
   const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setUnfreezeLoading(true);
-      const toastId = toast.loading('🔄 Reactivando membresía...');
       
       if (membership.status !== 'frozen') {
-        toast.error('Solo se pueden reactivar membresías congeladas', { id: toastId });
+        notify.error('Solo se pueden reactivar membresías congeladas');
         return;
       }
 
+      // ✅ APLICAR AUDITORÍA AUTOMÁTICA
+      const auditedData = await addAuditFields({ status: 'active' }, true);
       await handleStatusChange(membership, 'active');
       
-      toast.success('✅ Membresía reactivada exitosamente', { id: toastId });
+      notify.success('✅ Membresía reactivada exitosamente');
       setActionMenuAnchor(null);
       
     } catch (err: any) {
-      toast.error(`Error al reactivar membresía: ${err.message}`);
+      notify.error(`❌ Error al reactivar membresía: ${err.message}`);
     } finally {
       setUnfreezeLoading(false);
     }
-  }, [handleStatusChange]);
+  }, [handleStatusChange, addAuditFields]);
 
   // HANDLERS MEMOIZADOS PARA COMPONENTES
   const handleViewDetails = useCallback((membership: MembershipHistory) => {
@@ -248,26 +262,26 @@ export default function HistorialMembresiaPage() {
     setPage(0);
   }, []);
 
-  // ✅ HANDLER CORREGIDO PARA GUARDAR EDICIÓN
+  // ✅ HANDLER CORREGIDO PARA GUARDAR EDICIÓN CON AUDITORÍA
   const handleSaveEdit = useCallback(async (editDataFromModal: EditFormData) => {
     try {
-      const toastId = toast.loading('💾 Guardando cambios...');
+      // ✅ APLICAR AUDITORÍA AUTOMÁTICA A LOS DATOS DEL MODAL
+      const auditedData = await addAuditFields(editDataFromModal, true);
       
-      // ✅ PASAR DATOS DEL MODAL DIRECTAMENTE AL HOOK
-      await handleUpdateMembership(editDataFromModal);
+      await handleUpdateMembership(auditedData);
       
-      toast.success('✅ Membresía actualizada exitosamente', { id: toastId });
+      notify.success('✅ Membresía actualizada exitosamente');
     } catch (error: any) {
-      toast.error(`❌ Error al actualizar: ${error.message}`);
+      notify.error(`❌ Error al actualizar: ${error.message}`);
     }
-  }, [handleUpdateMembership]);
+  }, [handleUpdateMembership, addAuditFields]);
 
   // HANDLERS PARA BULK OPERATIONS
   const handleBulkFreezeWrapper = useCallback((isManual: boolean) => {
     try {
       handleBulkFreeze(isManual, filteredMemberships);
     } catch (error: any) {
-      toast.error(error.message);
+      notify.error(error.message);
     }
   }, [handleBulkFreeze, filteredMemberships]);
 
@@ -275,7 +289,7 @@ export default function HistorialMembresiaPage() {
     try {
       handleBulkUnfreeze(isManual, filteredMemberships);
     } catch (error: any) {
-      toast.error(error.message);
+      notify.error(error.message);
     }
   }, [handleBulkUnfreeze, filteredMemberships]);
 
@@ -291,7 +305,7 @@ export default function HistorialMembresiaPage() {
     }
   }, [loadMemberships, loadPlans, hydrated]);
 
-  // PANTALLA DE CARGA HASTA HIDRATACIÓN
+  // ✅ PANTALLA DE CARGA ENTERPRISE CON useHydrated
   if (!hydrated) {
     return (
       <Box sx={{ 
@@ -779,7 +793,7 @@ export default function HistorialMembresiaPage() {
           }
         }}
         formatDisplayDate={formatDisplayDate}
-        formatTimestampForDisplay={formatTimestampForDisplay} // ✅ FUNCIÓN CENTRALIZADA
+        formatTimestampForDisplay={formatTimestampForDisplay}
         formatPrice={formatPrice}
         calculateDaysRemaining={calculateDaysRemaining}
         getCurrentFrozenDays={getCurrentFrozenDays}
@@ -788,7 +802,7 @@ export default function HistorialMembresiaPage() {
         paymentMethodOptions={paymentMethodOptions}
       />
 
-      {/* ✅ MODAL DE EDICIÓN CON PROPS CORREGIDAS */}
+      {/* ✅ MODAL DE EDICIÓN CON AUDITORÍA AUTOMÁTICA */}
       <MembershipEditModal
         open={editDialogOpen}
         onClose={() => {

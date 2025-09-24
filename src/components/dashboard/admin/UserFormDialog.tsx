@@ -1,7 +1,7 @@
-// components/UserFormDialog.tsx - Versión Optimizada CORREGIDA
+// components/UserFormDialog.tsx - VERSIÓN ENTERPRISE v6.0 CORREGIDA
 'use client';
 
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -19,12 +19,10 @@ import {
   InputAdornment,
   Switch,
   FormControlLabel,
-  Divider,
   useMediaQuery,
   useTheme,
   FormHelperText,
   CircularProgress,
-  SelectChangeEvent,
   Stepper,
   Step,
   StepLabel,
@@ -32,12 +30,15 @@ import {
   Alert,
   Chip,
   Snackbar,
-  Slide
+  Slide,
+  Avatar,
+  Card,
+  CardContent
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid'; // ✅ GRID v2 MUI v5
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import {
   Close as CloseIcon,
   Phone as PhoneIcon,
@@ -55,29 +56,29 @@ import {
   Public as PublicIcon,
   MarkunreadMailbox as MarkunreadMailboxIcon,
   Bloodtype as BloodtypeIcon,
-  Favorite as FavoriteIcon,
   Save as SaveIcon,
   RocketLaunch as RocketLaunchIcon,
   Security as SecurityIcon,
-  Update as UpdateIcon
+  Update as UpdateIcon,
+  CloudUpload as CloudUploadIcon,
+  PhotoCamera as PhotoCameraIcon,
+  Description as DescriptionIcon,
+  Fingerprint as FingerprintIcon
 } from '@mui/icons-material';
 
-// Hooks personalizados
-import { useUserForm } from '@/hooks/useUserForm';
-import { useFileManagement } from '@/hooks/useFileManagment';
-import { useFingerprintManagement } from '@/hooks/useFingerprintManagement';
-import { useUserDataInitialization } from '@/hooks/userUserDataInitialization';
-import { useStepperNavigation } from '@/hooks/useStepperNavigation';
-
-// Componentes optimizados
-import ProfileAvatar from '@/components/user/ProfileAvatar';
-import SignatureDisplay from '@/components/user/SignatureDisplay';
-import FingerprintControl from '@/components/user/FingerprintControl';
-import ContractPdfDisplay from '@/components/user/ContractPdfDisplay';
-import FingerprintRegistration from './FingerprintRegistration';
-
-// Tokens de color
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { 
+  formatTimestampForDisplay,
+  getCurrentTimestamp,
+  getTodayInMexico
+} from '@/utils/dateUtils';
 import { colorTokens } from '@/theme';
+import { notify } from '@/utils/notifications';
+import { useNotifications } from '@/hooks/useNotifications';
+import { validateFile } from '@/utils/fileValidation';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 // Interfaces
 interface User {
@@ -87,6 +88,8 @@ interface User {
   email: string;
   rol: string;
   profilePictureUrl?: string;
+  signatureUrl?: string;
+  contractPdfUrl?: string;
   whatsapp: string;
   birthDate: string;
   gender: string;
@@ -96,9 +99,35 @@ interface User {
   emailSentAt?: string;
   whatsappSent: boolean;
   whatsappSentAt?: string;
-  signatureUrl?: string;
-  contractPdfUrl?: string;
   fingerprint: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+interface Address {
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+interface EmergencyContact {
+  name: string;
+  phone: string;
+  medicalCondition: string;
+  bloodType: string;
+}
+
+interface MembershipInfo {
+  referredBy: string;
+  mainMotivation: string;
+  receivePlans: boolean;
+  trainingLevel: string;
 }
 
 interface UserFormDialogProps {
@@ -116,175 +145,423 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  // ✅ SSR SAFETY OBLIGATORIO
+  const hydrated = useHydrated();
+  
+  // ✅ AUDITORÍA INTELIGENTE v6.0
+  const { addAuditFieldsFor } = useUserTracking();
+  
+  const { toast, alert } = useNotifications();
+  const supabase = createBrowserSupabaseClient();
 
-  // Hook de formulario principal
-  const {
-    formData,
-    addressData,
-    emergencyData,
-    membershipData,
-    errors,
-    birthDate,
-    hasFormChanges,
-    handleInputChange,
-    handleSelectChange,
-    handleAddressChange,
-    handleEmergencyChange,
-    handleEmergencySelectChange,
-    handleMembershipChange,
-    handleMembershipSelectChange,
-    handleSwitchChange,
-    handleMembershipSwitchChange,
-    handleBirthDateChange,
-    validateStep,
-    initializeWithUser,
-    initializeRelatedData, 
-    resetForm,
-    getProcessedFormData
-  } = useUserForm({ 
-    initialUser: user,
-    onFormChange: () => {} 
+  // ESTADOS PRINCIPALES
+  const [loading, setLoading] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  // FORMULARIO PRINCIPAL
+  const [formData, setFormData] = useState<User>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    rol: 'cliente',
+    whatsapp: '',
+    birthDate: '',
+    gender: '',
+    maritalStatus: '',
+    isMinor: false,
+    emailSent: false,
+    whatsappSent: false,
+    fingerprint: false
   });
 
-  // Hook de gestión de archivos
-  const {
-    profileImage,
-    signatureImage,
-    profilePicture,
-    profilePicturePreview,
-    signature,
-    signaturePreview,
-    contract,
-    fileUploading,
-    filesLoaded,
-    contractLastUpdated,
-    handleFileChange,
-    loadExistingFiles,
-    uploadPendingFiles,
-    retryImageLoad,
-    clearPendingFiles,
-    resetFileStates,
-    hasPendingFiles
-  } = useFileManagement({
-    userId: user?.id,
-    onFileUploadComplete: (fileType, url) => {
-      console.log(`Archivo ${fileType} subido: ${url}`);
-    },
-    onFileError: (fileType, error) => {
-      console.error(`Error en archivo ${fileType}: ${error}`);
+  // DATOS RELACIONADOS
+  const [addressData, setAddressData] = useState<Address>({
+    street: '',
+    number: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'México'
+  });
+
+  const [emergencyData, setEmergencyData] = useState<EmergencyContact>({
+    name: '',
+    phone: '',
+    medicalCondition: '',
+    bloodType: ''
+  });
+
+  const [membershipData, setMembershipData] = useState<MembershipInfo>({
+    referredBy: '',
+    mainMotivation: '',
+    receivePlans: false,
+    trainingLevel: 'principiante'
+  });
+
+  // ARCHIVOS
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const [signature, setSignature] = useState<File | null>(null);
+  const [profilePreview, setProfilePreview] = useState<string>('');
+  const [signaturePreview, setSignaturePreview] = useState<string>('');
+  const [fileUploading, setFileUploading] = useState(false);
+
+  // ERRORES Y VALIDACIÓN
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [birthDate, setBirthDate] = useState<Dayjs | null>(null);
+
+  // ✅ PASOS DEL STEPPER SEGÚN ROL
+  const steps = useMemo(() => {
+    const baseSteps = ['Información Personal'];
+    if (formData.rol === 'cliente') {
+      return [
+        ...baseSteps,
+        'Dirección',
+        'Contacto de Emergencia', 
+        'Info. Membresía',
+        'Archivos y Documentos'
+      ];
     }
-  });
+    return [...baseSteps, 'Archivos'];
+  }, [formData.rol]);
 
-  // Hook de gestión de huellas
-  const {
-    fingerprintState,
-    isDeletingFingerprint,
-    fingerprintDialogOpen,
-    handleFingerprintDialogOpen,
-    handleFingerprintDialogClose,
-    handleFingerprintDataReady,
-    handleDeleteFingerprint,
-    handleDeleteAllFingerprints,
-    processPendingFingerprint,
-    resetFingerprintState,
-    initializeWithFingerprint,
-    hasPendingFingerprint,
-    isSyncing
-  } = useFingerprintManagement({
-    userId: user?.id,
-    onFingerprintChange: (hasFingerprint) => {
-      console.log(`Estado de huella cambiado: ${hasFingerprint}`);
-    },
-    onError: (message) => {
-      console.error(`Error en huella: ${message}`);
-    },
-    onSuccess: (message) => {
-      console.log(`Éxito en huella: ${message}`);
-    }
-  });
+  const isLastStep = activeStep === steps.length - 1;
+  const isFirstStep = activeStep === 0;
 
-  // Hook de inicialización
-  const {
-    isInitializing,
-    isInitializationComplete,
-    initializationError,
-    retryInitialization,
-    resetInitialization,
-    isInitializationReady,
-    getCurrentUserRole,
-    isCurrentUserClient,
-    canProceed,
-    isReadyForInteraction
-  } = useUserDataInitialization({
-    user,
-    isOpen: open,
-    onDataLoaded: (data) => {
-      // Actualizar datos cargados en los hooks de formulario
-if (data && Object.keys(data).length > 0) {
-  console.log('🔄 [DIALOG] Aplicando datos relacionados al formulario:', data);
-  initializeRelatedData(data);
-} else {
-  console.log('ℹ️ [DIALOG] No hay datos relacionados para cargar');
-}    },
-    onError: (error) => {
-      console.error('Error en inicialización:', error);
-    }
-  });
-
-  // Hook de navegación del stepper
-  const {
-    activeStep,
-    steps,
-    isLastStep,
-    isFirstStep,
-    handleNext,
-    handleBack,
-    setActiveStep,
-    shouldShowStep,
-    mapStepIndex
-  } = useStepperNavigation({
-    userRole: getCurrentUserRole(),
-    validateStep
-  });
-
-  // Estados adicionales para el diálogo
-  const [loading, setLoading] = React.useState(false);
-  const [isRegeneratingContract, setIsRegeneratingContract] = React.useState(false);
-  const [contractRegenerationSuccess, setContractRegenerationSuccess] = React.useState(false);
-  const [contractRegenerationError, setContractRegenerationError] = React.useState<string | null>(null);
-
-  // Función para regenerar contrato
-  const regenerateContract = useCallback(async (userId: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      console.log('🔄 [CONTRACT] Iniciando regeneración para usuario:', userId);
+  // ✅ CARGAR DATOS DEL USUARIO
+  useEffect(() => {
+    if (open && user?.id) {
+      setFormData(prev => ({ ...prev, ...user }));
+      setBirthDate(user.birthDate ? dayjs(user.birthDate) : null);
       
-      const response = await fetch('/api/generate-contract', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-  userId,
-  isRegeneration: true,   // ✅ Nombre unificado
-}),
-      });
+      // Cargar datos relacionados
+      loadRelatedData(user.id);
+    } else if (open && !user) {
+      resetForm();
+    }
+  }, [open, user]);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || 'Error al regenerar contrato');
+  // ✅ FUNCIÓN PARA CARGAR DATOS RELACIONADOS
+  const loadRelatedData = useCallback(async (userId: string) => {
+    try {
+      // Cargar dirección
+      const { data: address } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+      
+      if (address) {
+        setAddressData(address);
       }
 
-      const result = await response.json();
-      console.log('✅ [CONTRACT] Contrato regenerado exitosamente:', result);
+      // Cargar contacto emergencia
+      const { data: emergency } = await supabase
+        .from('emergency_contacts')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+        
+      if (emergency) {
+        setEmergencyData(emergency);
+      }
+
+      // Cargar info membresía
+      const { data: membership } = await supabase
+        .from('membership_info')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+        
+      if (membership) {
+        setMembershipData(membership);
+      }
       
-      return { success: true };
-    } catch (error: any) {
-      console.error('❌ [CONTRACT] Error en regeneración:', error);
-      return { success: false, error: error.message };
+    } catch (error) {
+      console.error('Error cargando datos relacionados:', error);
     }
+  }, [supabase]);
+
+  // ✅ RESET FORM
+  const resetForm = useCallback(() => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      rol: 'cliente',
+      whatsapp: '',
+      birthDate: '',
+      gender: '',
+      maritalStatus: '',
+      isMinor: false,
+      emailSent: false,
+      whatsappSent: false,
+      fingerprint: false
+    });
+    
+    setAddressData({
+      street: '',
+      number: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'México'
+    });
+    
+    setEmergencyData({
+      name: '',
+      phone: '',
+      medicalCondition: '',
+      bloodType: ''
+    });
+    
+    setMembershipData({
+      referredBy: '',
+      mainMotivation: '',
+      receivePlans: false,
+      trainingLevel: 'principiante'
+    });
+    
+    setBirthDate(null);
+    setActiveStep(0);
+    setErrors({});
+    setHasChanges(false);
+    setProfilePicture(null);
+    setSignature(null);
+    setProfilePreview('');
+    setSignaturePreview('');
   }, []);
 
-  // Función principal de guardado
+  // ✅ HANDLERS DE FORMULARIO
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setHasChanges(true);
+    
+    // Limpiar error si existe
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  }, [errors]);
+
+  const handleSelectChange = useCallback((e: any) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setHasChanges(true);
+  }, []);
+
+  const handleSwitchChange = useCallback((name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [name]: e.target.checked }));
+    setHasChanges(true);
+  }, []);
+
+  const handleBirthDateChange = useCallback((date: Dayjs | null) => {
+    setBirthDate(date);
+    const dateString = date ? date.format('YYYY-MM-DD') : '';
+    setFormData(prev => ({ 
+      ...prev, 
+      birthDate: dateString,
+      isMinor: date ? dayjs().diff(date, 'year') < 18 : false
+    }));
+    setHasChanges(true);
+  }, []);
+
+  // ✅ HANDLERS DE ARCHIVOS CON VALIDACIÓN
+  const handleFileChange = useCallback((type: 'profilePicture' | 'signature') => 
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const validation = await validateFile(file, 'image');
+        if (!validation.isValid) {
+          toast.error(validation.error || 'Archivo inválido');
+          return;
+        }
+
+        if (validation.warnings && validation.warnings.length > 0) {
+          validation.warnings.forEach(warning => toast.warning(warning));
+        }
+
+        if (type === 'profilePicture') {
+          setProfilePicture(file);
+          const preview = URL.createObjectURL(file);
+          setProfilePreview(preview);
+        } else {
+          setSignature(file);
+          const preview = URL.createObjectURL(file);
+          setSignaturePreview(preview);
+        }
+        
+        setHasChanges(true);
+        
+      } catch (error: any) {
+        toast.error('Error al procesar archivo: ' + error.message);
+      }
+    }, [toast]);
+
+  // ✅ UPLOAD DE ARCHIVOS A SUPABASE
+  const uploadFiles = useCallback(async (userId: string) => {
+    const uploadedUrls: { profilePicture?: string; signature?: string } = {};
+    
+    try {
+      setFileUploading(true);
+
+      if (profilePicture) {
+        const fileExt = profilePicture.name.split('.').pop();
+        const fileName = `profile-${userId}-${Date.now()}.${fileExt}`;
+        const filePath = `profiles/${fileName}`;
+        
+        const { error } = await supabase.storage
+          .from('user-files')
+          .upload(filePath, profilePicture, {
+            cacheControl: '3600',
+            upsert: true
+          });
+        
+        if (error) throw error;
+        
+        const { data: urlData } = supabase.storage
+          .from('user-files')
+          .getPublicUrl(filePath);
+        
+        uploadedUrls.profilePicture = urlData.publicUrl;
+      }
+
+      if (signature) {
+        const fileExt = signature.name.split('.').pop();
+        const fileName = `signature-${userId}-${Date.now()}.${fileExt}`;
+        const filePath = `signatures/${fileName}`;
+        
+        const { error } = await supabase.storage
+          .from('user-files')
+          .upload(filePath, signature, {
+            cacheControl: '3600',
+            upsert: true
+          });
+        
+        if (error) throw error;
+        
+        const { data: urlData } = supabase.storage
+          .from('user-files')
+          .getPublicUrl(filePath);
+        
+        uploadedUrls.signature = urlData.publicUrl;
+      }
+
+      return uploadedUrls;
+      
+    } catch (error: any) {
+      console.error('Error subiendo archivos:', error);
+      throw error;
+    } finally {
+      setFileUploading(false);
+    }
+  }, [profilePicture, signature, supabase]);
+
+  // ✅ VALIDAR PASO ACTUAL
+  const validateStep = useCallback((step: number) => {
+    const newErrors: Record<string, string> = {};
+    
+    switch (step) {
+      case 0: // Información Personal
+        if (!formData.firstName.trim()) {
+          newErrors.firstName = 'Nombre es requerido';
+        }
+        if (!formData.email.trim()) {
+          newErrors.email = 'Email es requerido';
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+          newErrors.email = 'Email inválido';
+        }
+        if (!formData.rol) {
+          newErrors.rol = 'Rol es requerido';
+        }
+        break;
+        
+      case 1: // Dirección (solo clientes)
+        if (formData.rol === 'cliente') {
+          if (!addressData.street.trim()) {
+            newErrors.address_street = 'Calle es requerida';
+          }
+          if (!addressData.city.trim()) {
+            newErrors.address_city = 'Ciudad es requerida';
+          }
+        }
+        break;
+        
+      case 2: // Contacto de Emergencia (solo clientes)  
+        if (formData.rol === 'cliente') {
+          if (!emergencyData.name.trim()) {
+            newErrors.emergency_name = 'Nombre de contacto es requerido';
+          }
+          if (!emergencyData.phone.trim()) {
+            newErrors.emergency_phone = 'Teléfono es requerido';
+          }
+        }
+        break;
+        
+      case 3: // Info Membresía (solo clientes)
+        if (formData.rol === 'cliente') {
+          if (!membershipData.mainMotivation.trim()) {
+            newErrors.membership_mainMotivation = 'Motivación principal es requerida';
+          }
+        }
+        break;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [formData, addressData, emergencyData, membershipData]);
+
+  // ✅ NAVEGACIÓN DEL STEPPER
+  const handleNext = useCallback(() => {
+    if (validateStep(activeStep)) {
+      setActiveStep(prev => prev + 1);
+    }
+  }, [activeStep, validateStep]);
+
+  const handleBack = useCallback(() => {
+    setActiveStep(prev => prev - 1);
+  }, []);
+
+  // ✅ GUARDAR DATOS RELACIONADOS
+  const saveRelatedData = useCallback(async (userId: string) => {
+    try {
+      if (formData.rol === 'cliente') {
+        // Guardar dirección
+        await supabase
+          .from('addresses')
+          .upsert({
+            userId,
+            ...addressData
+          });
+
+        // Guardar contacto emergencia
+        await supabase
+          .from('emergency_contacts')
+          .upsert({
+            userId,
+            ...emergencyData
+          });
+
+        // Guardar info membresía
+        await supabase
+          .from('membership_info')
+          .upsert({
+            userId,
+            ...membershipData
+          });
+      }
+    } catch (error) {
+      console.error('Error guardando datos relacionados:', error);
+      throw error;
+    }
+  }, [formData.rol, addressData, emergencyData, membershipData, supabase]);
+
+  // ✅ SUBMIT PRINCIPAL CON AUDITORÍA INTELIGENTE
   const handleSubmit = useCallback(async () => {
     if (loading) return;
     
@@ -292,160 +569,115 @@ if (data && Object.keys(data).length > 0) {
       setLoading(true);
       
       // Validar paso actual
-      const currentMappedStep = mapStepIndex(activeStep);
-      if (!validateStep(currentMappedStep)) {
+      if (!validateStep(activeStep)) {
         setLoading(false);
         return;
       }
       
       const userId = formData.id || user?.id || crypto.randomUUID();
       
-      // 1. Subir archivos pendientes
-      const uploadedFiles = await uploadPendingFiles(userId);
+      // 1. Subir archivos si existen
+      const uploadedUrls = await uploadFiles(userId);
       
-      // 2. Actualizar formData con URLs de archivos
-      let updatedFormData = { ...formData, id: userId };
-      if (uploadedFiles.profilePicture) {
-        updatedFormData.profilePictureUrl = uploadedFiles.profilePicture;
+      // 2. Preparar datos del usuario con URLs de archivos
+      let userData = { 
+        ...formData, 
+        id: userId,
+        birthDate: birthDate ? birthDate.format('YYYY-MM-DD') : null
+      };
+      
+      if (uploadedUrls.profilePicture) {
+        userData.profilePictureUrl = uploadedUrls.profilePicture;
       }
-      if (uploadedFiles.signature) {
-        updatedFormData.signatureUrl = uploadedFiles.signature;
+      if (uploadedUrls.signature) {
+        userData.signatureUrl = uploadedUrls.signature;
       }
       
-      // 3. Obtener datos procesados del formulario
-      const processedData = getProcessedFormData();
-      const finalUserData = { ...processedData, ...updatedFormData };
+      // 3. ✅ AUDITORÍA INTELIGENTE Users (camelCase)
+      const userDataWithAudit = await addAuditFieldsFor('Users', userData, !!user?.id);
       
-      // 4. Guardar usuario en BD
-      console.log('💾 [SUBMIT] Guardando usuario en BD...');
-      await onSave(finalUserData);
-      console.log('✅ [SUBMIT] Usuario guardado en BD');
+      // 4. Guardar usuario principal
+      await onSave(userDataWithAudit);
       
-      // 5. Procesar huella pendiente si existe
-      if (hasPendingFingerprint) {
-        console.log('🖐️ [SUBMIT] Procesando huella pendiente...');
-        const fullName = `${finalUserData.firstName} ${finalUserData.lastName}`.trim();
-        const fingerprintResult = await processPendingFingerprint(fullName);
-        
-        if (fingerprintResult.success) {
-          updatedFormData.fingerprint = true;
-        }
-      }
-
-      if (!userId) {
-  console.error('❌ [SUBMIT] No se puede regenerar contrato sin userId');
-  setLoading(false);
-  return;
-}
-
+      // 5. Guardar datos relacionados
+      await saveRelatedData(userId);
       
-      // 6. Regenerar contrato si es cliente
-   if (isCurrentUserClient() && (hasFormChanges || hasPendingFingerprint)) {
-  console.log('🔄 [SUBMIT] Regenerando contrato...', {
-    userId,
-    hasFormChanges,
-    hasPendingFingerprint,
-    isRegeneration: true  // ✅ Confirmar que se envía
-  });
-  setIsRegeneratingContract(true);
-        
-        
+      // 6. Regenerar contrato si es cliente y hay cambios
+      if (formData.rol === 'cliente' && hasChanges) {
         try {
-const contractResult = await regenerateContract(userId);
-if (!contractResult.success) {
-  throw new Error(contractResult.error || 'Error al regenerar contrato');
-}          
-          if (contractResult.success) {
-            console.log('✅ [SUBMIT] Contrato regenerado');
-            setContractRegenerationSuccess(true);
-            
-            // Recargar archivos después de un momento
-            setTimeout(() => {
-              loadExistingFiles(userId);
-            }, 1000);
+          const response = await fetch('/api/generate-contract', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              userId,
+              isRegeneration: true
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.warn('Error regenerando contrato:', errorData);
+          } else {
+            toast.success('Contrato regenerado exitosamente');
           }
-        } catch (error: any) {
-          console.error('❌ [SUBMIT] Error regenerando contrato:', error);
-          setContractRegenerationError(error.message);
-        } finally {
-          setIsRegeneratingContract(false);
+        } catch (error) {
+          console.warn('Error regenerando contrato:', error);
         }
       }
       
-      // 7. Limpiar estados
-      clearPendingFiles();
-      resetFingerprintState();
-      
-      console.log('🎉 [SUBMIT] Proceso completado exitosamente');
-      
-      // Mostrar mensaje de éxito si no es cliente (no hay regeneración de contrato)
-      if (!isCurrentUserClient()) {
-        setContractRegenerationSuccess(true);
-      }
+      toast.success(`Usuario ${user ? 'actualizado' : 'creado'} exitosamente`);
+      onClose();
       
     } catch (error: any) {
-      console.error('💥 [SUBMIT] Error crítico:', error);
+      console.error('Error guardando usuario:', error);
+      toast.error('Error al guardar usuario: ' + error.message);
     } finally {
       setLoading(false);
     }
   }, [
     loading,
-    activeStep,
-    mapStepIndex,
     validateStep,
+    activeStep,
     formData,
     user?.id,
-    uploadPendingFiles,
-    getProcessedFormData,
+    uploadFiles,
+    birthDate,
+    addAuditFieldsFor,
     onSave,
-    hasPendingFingerprint,
-    processPendingFingerprint,
-    isCurrentUserClient,
-    hasFormChanges,
-    regenerateContract,
-    loadExistingFiles,
-    clearPendingFiles,
-    resetFingerprintState
+    saveRelatedData,
+    hasChanges,
+    toast,
+    onClose
   ]);
 
-  // Efecto para inicialización
-  useEffect(() => {
-    if (open && user?.id) {
-      initializeWithUser(user);
-      initializeWithFingerprint(user.fingerprint || false);
-      loadExistingFiles(user.id);
-    } else if (open && !user) {
-      resetForm();
-      resetFileStates();
-      resetFingerprintState();
-    }
-  }, [open, user, initializeWithUser, initializeWithFingerprint, loadExistingFiles, resetForm, resetFileStates, resetFingerprintState]);
-
-  // Efecto para cierre automático después del éxito
-  useEffect(() => {
-    if (contractRegenerationSuccess) {
-      const timer = setTimeout(() => {
-        onClose();
-        setContractRegenerationSuccess(false);
-      }, 3500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [contractRegenerationSuccess, onClose]);
-
-  // Manejar cierre del diálogo
+  // ✅ MANEJAR CIERRE DEL DIÁLOGO
   const handleClose = useCallback(() => {
-    if (hasFormChanges || hasPendingFiles || hasPendingFingerprint) {
+    if (hasChanges) {
       if (window.confirm('¿Estás seguro? Se perderán los cambios no guardados.')) {
         onClose();
       }
     } else {
       onClose();
     }
-  }, [hasFormChanges, hasPendingFiles, hasPendingFingerprint, onClose]);
+  }, [hasChanges, onClose]);
 
-  // Estilos para inputs con tema oscuro
-  const darkProInputStyles = useMemo(() => ({
+  // ✅ LIMPIAR PREVIEWS AL CERRAR
+  useEffect(() => {
+    return () => {
+      if (profilePreview) URL.revokeObjectURL(profilePreview);
+      if (signaturePreview) URL.revokeObjectURL(signaturePreview);
+    };
+  }, [profilePreview, signaturePreview]);
+
+  // ✅ SSR SAFETY
+  if (!hydrated) {
+    return null;
+  }
+
+  // ✅ ESTILOS PARA INPUTS
+  const inputStyles = useMemo(() => ({
     '& .MuiOutlinedInput-root': {
       bgcolor: colorTokens.neutral100,
       color: colorTokens.neutral1200,
@@ -462,8 +694,7 @@ if (!contractResult.success) {
       },
       '&.Mui-error fieldset': {
         borderColor: colorTokens.danger
-      },
-      transition: 'all 0.2s ease'
+      }
     },
     '& .MuiInputLabel-root': { 
       color: colorTokens.neutral900,
@@ -477,13 +708,10 @@ if (!contractResult.success) {
     '& .MuiFormHelperText-root': { 
       color: colorTokens.danger,
       fontWeight: 500
-    },
-    '& .MuiInputAdornment-root .MuiSvgIcon-root': {
-      color: colorTokens.neutral800
     }
   }), []);
 
-  const darkProSelectStyles = useMemo(() => ({
+  const selectStyles = useMemo(() => ({
     bgcolor: colorTokens.neutral100,
     color: colorTokens.neutral1200,
     '& .MuiOutlinedInput-notchedOutline': { 
@@ -496,58 +724,54 @@ if (!contractResult.success) {
     '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
       borderColor: colorTokens.brand,
       boxShadow: `0 0 0 3px ${colorTokens.brand}40`
-    },
-    '&.Mui-error .MuiOutlinedInput-notchedOutline': {
-      borderColor: colorTokens.danger
-    },
-    '& .MuiSvgIcon-root': { 
-      color: colorTokens.neutral800 
-    },
-    transition: 'all 0.2s ease'
-  }), []);
-
-  const darkProMenuProps = useMemo(() => ({
-    PaperProps: {
-      sx: {
-        bgcolor: colorTokens.neutral300,
-        border: `1px solid ${colorTokens.neutral500}`,
-        borderRadius: 2,
-        backdropFilter: 'blur(10px)',
-        boxShadow: `0 8px 32px ${colorTokens.neutral0}80`,
-        '& .MuiMenuItem-root': {
-          color: colorTokens.neutral1200,
-          '&:hover': { 
-            bgcolor: `${colorTokens.brand}20` 
-          },
-          '&.Mui-selected': {
-            bgcolor: `${colorTokens.brand}20`,
-            '&:hover': { 
-              bgcolor: `${colorTokens.brand}30` 
-            }
-          }
-        }
-      }
     }
   }), []);
 
-  // Función para renderizar contenido por paso
-  const renderStepContent = useCallback((step: number) => {
-    const mappedStep = mapStepIndex(step);
-    
-    switch (mappedStep) {
+  // ✅ RENDERIZAR CONTENIDO POR PASO
+  const renderStepContent = (step: number) => {
+    switch (step) {
       case 0:
         return (
           <Box sx={{ mt: 2 }}>
-            <ProfileAvatar
-              firstName={formData.firstName}
-              profileImage={profileImage}
-              profilePicture={profilePicture}
-              profilePicturePreview={profilePicturePreview}
-              fileUploading={fileUploading.profilePicture}
-              initializationComplete={isInitializationComplete}
-              onFileChange={handleFileChange('profilePicture')}
-              onRetryImageLoad={() => retryImageLoad('profile')}
-            />
+            {/* AVATAR DE PERFIL */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <Box sx={{ position: 'relative' }}>
+                <Avatar
+                  src={profilePreview || formData.profilePictureUrl}
+                  sx={{
+                    width: 120,
+                    height: 120,
+                    bgcolor: colorTokens.brand,
+                    fontSize: '2rem',
+                    fontWeight: 700,
+                    border: `4px solid ${colorTokens.brand}40`
+                  }}
+                >
+                  {formData.firstName.charAt(0)}{formData.lastName.charAt(0)}
+                </Avatar>
+                <IconButton
+                  component="label"
+                  sx={{
+                    position: 'absolute',
+                    bottom: -8,
+                    right: -8,
+                    bgcolor: colorTokens.brand,
+                    color: colorTokens.textOnBrand,
+                    '&:hover': {
+                      bgcolor: colorTokens.brandHover,
+                    }
+                  }}
+                >
+                  <PhotoCameraIcon />
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={handleFileChange('profilePicture')}
+                  />
+                </IconButton>
+              </Box>
+            </Box>
             
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 6 }}>
@@ -559,7 +783,14 @@ if (!contractResult.success) {
                   onChange={handleInputChange}
                   error={!!errors.firstName}
                   helperText={errors.firstName}
-                  sx={darkProInputStyles}
+                  sx={inputStyles}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonIcon />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
               
@@ -572,7 +803,7 @@ if (!contractResult.success) {
                   onChange={handleInputChange}
                   error={!!errors.lastName}
                   helperText={errors.lastName}
-                  sx={darkProInputStyles}
+                  sx={inputStyles}
                 />
               </Grid>
               
@@ -586,6 +817,7 @@ if (!contractResult.success) {
                   onChange={handleInputChange}
                   error={!!errors.email}
                   helperText={errors.email}
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -593,7 +825,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -607,6 +838,7 @@ if (!contractResult.success) {
                   error={!!errors.whatsapp}
                   helperText={errors.whatsapp}
                   placeholder="+52 999 999 9999"
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -614,7 +846,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -623,7 +854,7 @@ if (!contractResult.success) {
                   <DatePicker
                     label="Fecha de Nacimiento"
                     value={birthDate}
-                onChange={(value) => handleBirthDateChange(value ? dayjs(value) : null)}
+                    onChange={handleBirthDateChange}
                     format="DD/MM/YYYY"
                     maxDate={dayjs()}
                     minDate={dayjs().subtract(120, 'year')}
@@ -631,7 +862,7 @@ if (!contractResult.success) {
                       textField: {
                         error: !!errors.birthDate,
                         helperText: errors.birthDate,
-                        sx: darkProInputStyles
+                        sx: inputStyles
                       }
                     }}
                     sx={{ width: '100%' }}
@@ -647,8 +878,7 @@ if (!contractResult.success) {
                     value={formData.gender}
                     onChange={handleSelectChange}
                     label="Género"
-                    sx={darkProSelectStyles}
-                    MenuProps={darkProMenuProps}
+                    sx={selectStyles}
                   >
                     <MenuItem value="masculino">Masculino</MenuItem>
                     <MenuItem value="femenino">Femenino</MenuItem>
@@ -666,8 +896,7 @@ if (!contractResult.success) {
                     value={formData.maritalStatus}
                     onChange={handleSelectChange}
                     label="Estado Civil"
-                    sx={darkProSelectStyles}
-                    MenuProps={darkProMenuProps}
+                    sx={selectStyles}
                   >
                     <MenuItem value="soltero">Soltero/a</MenuItem>
                     <MenuItem value="casado">Casado/a</MenuItem>
@@ -686,8 +915,7 @@ if (!contractResult.success) {
                     value={formData.rol}
                     onChange={handleSelectChange}
                     label="Rol"
-                    sx={darkProSelectStyles}
-                    MenuProps={darkProMenuProps}
+                    sx={selectStyles}
                   >
                     <MenuItem value="cliente">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -703,7 +931,7 @@ if (!contractResult.success) {
                     </MenuItem>
                     <MenuItem value="admin">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <SecurityIcon fontSize="small" sx={{ color: colorTokens.danger }} />
+                        <Security fontSize="small" sx={{ color: colorTokens.danger }} />
                         Administrador
                       </Box>
                     </MenuItem>
@@ -712,29 +940,115 @@ if (!contractResult.success) {
               </Grid>
               
               {formData.isMinor && (
-                <Grid size={12}>
+                <Grid size={{ xs: 12 }}>
                   <Alert 
                     severity="warning" 
                     sx={{ 
                       bgcolor: colorTokens.warning,
                       color: colorTokens.neutral0,
                       border: `2px solid ${colorTokens.warning}`,
-                      '& .MuiAlert-icon': { 
-                        color: colorTokens.neutral0 
-                      },
                       fontWeight: 600
                     }}
                   >
-                    ⚠️ Este usuario es menor de edad. Se requiere autorización del tutor legal.
+                    Este usuario es menor de edad. Se requiere autorización del tutor legal.
                   </Alert>
                 </Grid>
               )}
+              
+              {/* OPCIONES ADICIONALES */}
+              <Grid size={{ xs: 12 }}>
+                <Box sx={{ 
+                  p: 2, 
+                  borderRadius: 2, 
+                  bgcolor: `${colorTokens.info}10`,
+                  border: `1px solid ${colorTokens.info}40`
+                }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    color: colorTokens.info, 
+                    fontWeight: 600, 
+                    mb: 2 
+                  }}>
+                    Opciones Adicionales
+                  </Typography>
+                  
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.emailSent}
+                          onChange={handleSwitchChange('emailSent')}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': {
+                              color: colorTokens.success,
+                            },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: colorTokens.success,
+                            },
+                          }}
+                        />
+                      }
+                      label={
+                        <Typography sx={{ color: colorTokens.neutral1200 }}>
+                          Email de bienvenida enviado
+                        </Typography>
+                      }
+                    />
+                    
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.whatsappSent}
+                          onChange={handleSwitchChange('whatsappSent')}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': {
+                              color: '#25d366',
+                            },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: '#25d366',
+                            },
+                          }}
+                        />
+                      }
+                      label={
+                        <Typography sx={{ color: colorTokens.neutral1200 }}>
+                          WhatsApp de bienvenida enviado
+                        </Typography>
+                      }
+                    />
+                    
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.fingerprint}
+                          onChange={handleSwitchChange('fingerprint')}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': {
+                              color: colorTokens.brand,
+                            },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: colorTokens.brand,
+                            },
+                          }}
+                        />
+                      }
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <FingerprintIcon sx={{ color: colorTokens.brand }} />
+                          <Typography sx={{ color: colorTokens.neutral1200 }}>
+                            Huella dactilar registrada
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </Box>
+                </Box>
+              </Grid>
             </Grid>
           </Box>
         );
 
       case 1:
-        if (!isCurrentUserClient()) {
+        if (formData.rol !== 'cliente') {
           return renderStepContent(steps.length - 1);
         }
         return (
@@ -758,9 +1072,10 @@ if (!contractResult.success) {
                   label="Calle"
                   name="street"
                   value={addressData.street}
-                  onChange={handleAddressChange}
+                  onChange={(e) => setAddressData(prev => ({ ...prev, street: e.target.value }))}
                   error={!!errors.address_street}
                   helperText={errors.address_street}
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -768,7 +1083,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -778,10 +1092,10 @@ if (!contractResult.success) {
                   label="Número"
                   name="number"
                   value={addressData.number}
-                  onChange={handleAddressChange}
+                  onChange={(e) => setAddressData(prev => ({ ...prev, number: e.target.value }))}
                   error={!!errors.address_number}
                   helperText={errors.address_number}
-                  sx={darkProInputStyles}
+                  sx={inputStyles}
                 />
               </Grid>
               
@@ -791,9 +1105,10 @@ if (!contractResult.success) {
                   label="Colonia"
                   name="neighborhood"
                   value={addressData.neighborhood}
-                  onChange={handleAddressChange}
+                  onChange={(e) => setAddressData(prev => ({ ...prev, neighborhood: e.target.value }))}
                   error={!!errors.address_neighborhood}
                   helperText={errors.address_neighborhood}
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -801,7 +1116,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
 
@@ -811,9 +1125,10 @@ if (!contractResult.success) {
                   label="Ciudad"
                   name="city"
                   value={addressData.city}
-                  onChange={handleAddressChange}
+                  onChange={(e) => setAddressData(prev => ({ ...prev, city: e.target.value }))}
                   error={!!errors.address_city}
                   helperText={errors.address_city}
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -821,7 +1136,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -831,9 +1145,10 @@ if (!contractResult.success) {
                   label="Estado"
                   name="state"
                   value={addressData.state}
-                  onChange={handleAddressChange}
+                  onChange={(e) => setAddressData(prev => ({ ...prev, state: e.target.value }))}
                   error={!!errors.address_state}
                   helperText={errors.address_state}
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -841,7 +1156,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -851,10 +1165,11 @@ if (!contractResult.success) {
                   label="Código Postal"
                   name="postalCode"
                   value={addressData.postalCode}
-                  onChange={handleAddressChange}
+                  onChange={(e) => setAddressData(prev => ({ ...prev, postalCode: e.target.value }))}
                   error={!!errors.address_postalCode}
                   helperText={errors.address_postalCode}
                   placeholder="12345"
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -862,7 +1177,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
             </Grid>
@@ -870,7 +1184,7 @@ if (!contractResult.success) {
         );
 
       case 2:
-        if (!isCurrentUserClient()) {
+        if (formData.rol !== 'cliente') {
           return renderStepContent(steps.length - 1);
         }
         return (
@@ -894,9 +1208,10 @@ if (!contractResult.success) {
                   label="Nombre completo"
                   name="name"
                   value={emergencyData.name}
-                  onChange={handleEmergencyChange}
+                  onChange={(e) => setEmergencyData(prev => ({ ...prev, name: e.target.value }))}
                   error={!!errors.emergency_name}
                   helperText={errors.emergency_name}
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -904,7 +1219,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -914,10 +1228,11 @@ if (!contractResult.success) {
                   label="Teléfono"
                   name="phone"
                   value={emergencyData.phone}
-                  onChange={handleEmergencyChange}
+                  onChange={(e) => setEmergencyData(prev => ({ ...prev, phone: e.target.value }))}
                   error={!!errors.emergency_phone}
                   helperText={errors.emergency_phone}
                   placeholder="+52 999 999 9999"
+                  sx={inputStyles}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -925,7 +1240,6 @@ if (!contractResult.success) {
                       </InputAdornment>
                     ),
                   }}
-                  sx={darkProInputStyles}
                 />
               </Grid>
               
@@ -935,15 +1249,14 @@ if (!contractResult.success) {
                   <Select
                     name="bloodType"
                     value={emergencyData.bloodType}
-                    onChange={handleEmergencySelectChange}
+                    onChange={(e) => setEmergencyData(prev => ({ ...prev, bloodType: e.target.value }))}
                     label="Tipo de Sangre"
                     startAdornment={
                       <InputAdornment position="start">
                         <BloodtypeIcon />
                       </InputAdornment>
                     }
-                    sx={darkProSelectStyles}
-                    MenuProps={darkProMenuProps}
+                    sx={selectStyles}
                   >
                     <MenuItem value="A+">A+</MenuItem>
                     <MenuItem value="A-">A-</MenuItem>
@@ -958,7 +1271,7 @@ if (!contractResult.success) {
                 </FormControl>
               </Grid>
 
-              <Grid size={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   label="Condición médica (opcional)"
@@ -966,16 +1279,9 @@ if (!contractResult.success) {
                   multiline
                   rows={4}
                   value={emergencyData.medicalCondition}
-                  onChange={handleEmergencyChange}
+                  onChange={(e) => setEmergencyData(prev => ({ ...prev, medicalCondition: e.target.value }))}
                   placeholder="Describe cualquier condición médica relevante, alergias, medicamentos, etc."
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
-                        <FavoriteIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={darkProInputStyles}
+                  sx={inputStyles}
                 />
               </Grid>
             </Grid>
@@ -983,7 +1289,7 @@ if (!contractResult.success) {
         );
 
       case 3:
-        if (!isCurrentUserClient()) {
+        if (formData.rol !== 'cliente') {
           return renderStepContent(steps.length - 1);
         }
         return (
@@ -1007,9 +1313,9 @@ if (!contractResult.success) {
                   label="Referido por (opcional)"
                   name="referredBy"
                   value={membershipData.referredBy}
-                  onChange={handleMembershipChange}
+                  onChange={(e) => setMembershipData(prev => ({ ...prev, referredBy: e.target.value }))}
                   placeholder="Nombre de quien te recomendó"
-                  sx={darkProInputStyles}
+                  sx={inputStyles}
                 />
               </Grid>
               
@@ -1019,24 +1325,23 @@ if (!contractResult.success) {
                   <Select
                     name="trainingLevel"
                     value={membershipData.trainingLevel}
-                    onChange={handleMembershipSelectChange}
+                    onChange={(e) => setMembershipData(prev => ({ ...prev, trainingLevel: e.target.value }))}
                     label="Nivel de Entrenamiento"
-                    sx={darkProSelectStyles}
-                    MenuProps={darkProMenuProps}
+                    sx={selectStyles}
                   >
-                    <MenuItem value="principiante">🥉 Principiante</MenuItem>
-                    <MenuItem value="intermedio">🥈 Intermedio</MenuItem>
-                    <MenuItem value="avanzado">🥇 Avanzado</MenuItem>
+                    <MenuItem value="principiante">Principiante</MenuItem>
+                    <MenuItem value="intermedio">Intermedio</MenuItem>
+                    <MenuItem value="avanzado">Avanzado</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
               
-              <Grid size={12}>
+              <Grid size={{ xs: 12 }}>
                 <FormControlLabel
                   control={
                     <Switch
                       checked={membershipData.receivePlans}
-                      onChange={handleMembershipSwitchChange('receivePlans')}
+                      onChange={(e) => setMembershipData(prev => ({ ...prev, receivePlans: e.target.checked }))}
                       sx={{
                         '& .MuiSwitch-switchBase.Mui-checked': {
                           color: '#9C27B0',
@@ -1049,13 +1354,13 @@ if (!contractResult.success) {
                   }
                   label={
                     <Typography sx={{ color: colorTokens.neutral1200 }}>
-                      📧 Recibir planes de entrenamiento por email
+                      Recibir planes de entrenamiento por email
                     </Typography>
                   }
                 />
               </Grid>
               
-              <Grid size={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   label="Motivación principal"
@@ -1063,11 +1368,11 @@ if (!contractResult.success) {
                   multiline
                   rows={4}
                   value={membershipData.mainMotivation}
-                  onChange={handleMembershipChange}
+                  onChange={(e) => setMembershipData(prev => ({ ...prev, mainMotivation: e.target.value }))}
                   error={!!errors.membership_mainMotivation}
                   helperText={errors.membership_mainMotivation}
                   placeholder="¿Cuál es tu objetivo principal? (ej: perder peso, ganar músculo, mejorar resistencia...)"
-                  sx={darkProInputStyles}
+                  sx={inputStyles}
                 />
               </Grid>
             </Grid>
@@ -1075,7 +1380,7 @@ if (!contractResult.success) {
         );
 
       default:
-        // PASO DE ARCHIVOS Y HUELLA
+        // PASO DE ARCHIVOS
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
@@ -1093,622 +1398,370 @@ if (!contractResult.success) {
             <Grid container spacing={3}>
               {/* FIRMA DIGITAL */}
               <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{
-                  p: 3,
-                  borderRadius: 2,
+                <Card sx={{
+                  background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
                   border: `2px solid #9C27B040`,
-                  bgcolor: `#9C27B010`
                 }}>
-                  <Typography variant="subtitle1" sx={{ 
-                    color: '#9C27B0', 
-                    fontWeight: 600, 
-                    mb: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <AssignmentIcon />
-                    Firma Digital
-                  </Typography>
-                  
-                  <SignatureDisplay
-                    signatureImage={signatureImage}
-                    signature={signature}
-                    signaturePreview={signaturePreview}
-                    fileUploading={fileUploading.signature}
-                    initializationComplete={isInitializationComplete}
-                    onFileChange={handleFileChange('signature')}
-                    onRetryImageLoad={() => retryImageLoad('signature')}
-                  />
-                </Box>
+                  <CardContent>
+                    <Typography variant="subtitle1" sx={{ 
+                      color: '#9C27B0', 
+                      fontWeight: 600, 
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1
+                    }}>
+                      <AssignmentIcon />
+                      Firma Digital
+                    </Typography>
+                    
+                    {signaturePreview || formData.signatureUrl ? (
+                      <Box sx={{ textAlign: 'center', mb: 2 }}>
+                        <img
+                          src={signaturePreview || formData.signatureUrl}
+                          alt="Firma"
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: 150,
+                            border: `1px solid ${colorTokens.neutral400}`,
+                            borderRadius: 8
+                          }}
+                        />
+                      </Box>
+                    ) : (
+                      <Box sx={{ 
+                        border: `2px dashed ${colorTokens.neutral400}`,
+                        borderRadius: 2,
+                        p: 3,
+                        textAlign: 'center',
+                        mb: 2
+                      }}>
+                        <DescriptionIcon sx={{ fontSize: 48, color: colorTokens.neutral600, mb: 1 }} />
+                        <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                          No hay firma registrada
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<CloudUploadIcon />}
+                      fullWidth
+                      sx={{
+                        color: '#9C27B0',
+                        borderColor: '#9C27B0',
+                        '&:hover': {
+                          bgcolor: '#9C27B010'
+                        }
+                      }}
+                    >
+                      Subir Firma
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={handleFileChange('signature')}
+                      />
+                    </Button>
+                  </CardContent>
+                </Card>
               </Grid>
               
               {/* CONTRATO PDF */}
               <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{
-                  p: 3,
-                  borderRadius: 2,
+                <Card sx={{
+                  background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
                   border: `2px solid ${colorTokens.info}40`,
-                  bgcolor: `${colorTokens.info}10`
                 }}>
-                  <Typography variant="subtitle1" sx={{ 
-                    color: colorTokens.info, 
-                    fontWeight: 600, 
-                    mb: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <AssignmentIcon />
-                    Contrato PDF
-                  </Typography>
-                  
-                  <ContractPdfDisplay
-                    contractPdfUrl={formData.contractPdfUrl}
-                    contractLastUpdated={contractLastUpdated}
-                    initializationComplete={isInitializationComplete}
-                    firstName={formData.firstName}
-                    lastName={formData.lastName}
-                  />
-                </Box>
-              </Grid>
-
-              {/* REGISTRO DE HUELLA DACTILAR */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{
-                  p: 3,
-                  borderRadius: 2,
-                  border: `2px solid ${colorTokens.brand}40`,
-                  bgcolor: `${colorTokens.brand}10`
-                }}>
-                  <Typography variant="subtitle1" sx={{ 
-                    color: colorTokens.brand, 
-                    fontWeight: 600, 
-                    mb: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <AssignmentIcon />
-                    Huella Dactilar + F22
-                  </Typography>
-                  
-                  <FingerprintControl
-                    fingerprintState={fingerprintState}
-                    hasFingerprint={formData.fingerprint}
-                    isDeletingFingerprint={isDeletingFingerprint}
-                    onFingerprintDialogOpen={handleFingerprintDialogOpen}
-                    onDeleteFingerprint={handleDeleteFingerprint}
-                    onDeleteAllFingerprints={handleDeleteAllFingerprints}
-                    userId={user?.id}
-                  />
-                </Box>
-              </Grid>
-              
-              {/* OPCIONES ADICIONALES */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{
-                  p: 3,
-                  borderRadius: 2,
-                  border: `2px solid ${colorTokens.success}40`,
-                  bgcolor: `${colorTokens.success}10`
-                }}>
-                  <Typography variant="subtitle1" sx={{ 
-                    color: colorTokens.success, 
-                    fontWeight: 600, 
-                    mb: 3,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <SecurityIcon />
-                    Opciones Adicionales
-                  </Typography>
-                  
-                  <Grid container spacing={2}>
-                    <Grid size={12}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.emailSent}
-                            onChange={handleSwitchChange('emailSent')}
-                            sx={{
-                              '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: colorTokens.success,
-                              },
-                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: colorTokens.success,
-                              },
-                            }}
-                          />
-                        }
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AlternateEmailIcon sx={{ color: colorTokens.success }} />
-                            <Typography sx={{ color: colorTokens.neutral1200 }}>
-                              Email de bienvenida enviado
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </Grid>
+                  <CardContent>
+                    <Typography variant="subtitle1" sx={{ 
+                      color: colorTokens.info, 
+                      fontWeight: 600, 
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1
+                    }}>
+                      <DescriptionIcon />
+                      Contrato PDF
+                    </Typography>
                     
-                    <Grid size={12}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.whatsappSent}
-                            onChange={handleSwitchChange('whatsappSent')}
-                            sx={{
-                              '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: '#25d366',
-                              },
-                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: '#25d366',
-                              },
-                            }}
-                          />
-                        }
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <PhoneIcon sx={{ color: '#25d366' }} />
-                            <Typography sx={{ color: colorTokens.neutral1200 }}>
-                              WhatsApp de bienvenida enviado
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </Grid>
-                  </Grid>
-                </Box>
+                    {formData.contractPdfUrl ? (
+                      <Box sx={{ textAlign: 'center', mb: 2 }}>
+                        <DescriptionIcon sx={{ fontSize: 64, color: colorTokens.info, mb: 1 }} />
+                        <Typography variant="body2" sx={{ color: colorTokens.neutral1000 }}>
+                          Contrato generado
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: colorTokens.neutral800 }}>
+                          {formData.firstName} {formData.lastName}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ 
+                        border: `2px dashed ${colorTokens.neutral400}`,
+                        borderRadius: 2,
+                        p: 3,
+                        textAlign: 'center',
+                        mb: 2
+                      }}>
+                        <DescriptionIcon sx={{ fontSize: 48, color: colorTokens.neutral600, mb: 1 }} />
+                        <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                          No hay contrato generado
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    {formData.contractPdfUrl && (
+                      <Button
+                        variant="contained"
+                        startIcon={<DescriptionIcon />}
+                        fullWidth
+                        onClick={() => window.open(formData.contractPdfUrl, '_blank')}
+                        sx={{
+                          bgcolor: colorTokens.info,
+                          '&:hover': {
+                            bgcolor: colorTokens.infoHover
+                          }
+                        }}
+                      >
+                        Ver Contrato
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
               </Grid>
             </Grid>
           </Box>
         );
     }
-  }, [
-    mapStepIndex,
-    formData,
-    profileImage,
-    profilePicture,
-    profilePicturePreview,
-    fileUploading,
-    isInitializationComplete,
-    handleFileChange,
-    retryImageLoad,
-    errors,
-    handleInputChange,
-    handleSelectChange,
-    darkProInputStyles,
-    darkProSelectStyles,
-    darkProMenuProps,
-    birthDate,
-    handleBirthDateChange,
-    isCurrentUserClient,
-    steps.length,
-    addressData,
-    handleAddressChange,
-    emergencyData,
-    handleEmergencyChange,
-    handleEmergencySelectChange,
-    membershipData,
-    handleMembershipChange,
-    handleMembershipSelectChange,
-    handleMembershipSwitchChange,
-    signatureImage,
-    signature,
-    signaturePreview,
-    contractLastUpdated,
-    fingerprintState,
-    isDeletingFingerprint,
-    handleFingerprintDialogOpen,
-    handleDeleteFingerprint,
-    handleDeleteAllFingerprints,
-    user?.id,
-    handleSwitchChange
-  ]);
-
-  // Calcular si se pueden hacer cambios
-  const canMakeChanges = hasFormChanges || hasPendingFiles || hasPendingFingerprint;
+  };
 
   return (
-    <>
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
-            backdropFilter: 'blur(20px)',
-            border: `1px solid ${colorTokens.neutral500}`,
-            borderRadius: 3,
-            color: colorTokens.neutral1200,
-            maxHeight: '95vh'
-          }
-        }}
-      >
-        {/* HEADER */}
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: `1px solid ${colorTokens.neutral500}`,
-          bgcolor: `${colorTokens.brand}15`,
-          p: 3
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <RocketLaunchIcon sx={{ color: colorTokens.brand, fontSize: 32 }} />
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.neutral1200 }}>
-                {user ? 'Editar Usuario' : 'Nuevo Usuario'}
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
-                {user ? `Modificando: ${user.firstName} ${user.lastName}` : 'Creando nuevo perfil de usuario'}
-              </Typography>
-            </Box>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        sx: {
+          background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+          backdropFilter: 'blur(20px)',
+          border: `1px solid ${colorTokens.neutral500}`,
+          borderRadius: 3,
+          color: colorTokens.neutral1200,
+          maxHeight: '95vh'
+        }
+      }}
+    >
+      {/* HEADER */}
+      <DialogTitle sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottom: `1px solid ${colorTokens.neutral500}`,
+        bgcolor: `${colorTokens.brand}15`,
+        p: 3
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <RocketLaunchIcon sx={{ color: colorTokens.brand, fontSize: 32 }} />
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.neutral1200 }}>
+              {user ? 'Editar Usuario' : 'Nuevo Usuario'}
+            </Typography>
+            <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
+              {user ? `Modificando: ${user.firstName} ${user.lastName}` : 'Creando nuevo perfil de usuario'}
+            </Typography>
           </Box>
+        </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {/* CHIP DE CAMBIOS PENDIENTES */}
-            {canMakeChanges && (
-              <Chip
-                icon={<UpdateIcon />}
-                label={
-                  hasPendingFingerprint ? 
-                  'Cambios + Huella pendiente' : 
-                  'Cambios pendientes'
-                }
-                size="small"
-                sx={{
-                  bgcolor: `${colorTokens.warning}20`,
-                  color: colorTokens.warning,
-                  border: `1px solid ${colorTokens.warning}40`,
-                  fontWeight: 600,
-                  '@keyframes pulse': {
-                    '0%, 100%': { opacity: 1, transform: 'scale(1)' },
-                    '50%': { opacity: 0.8, transform: 'scale(1.05)' }
-                  },
-                  animation: 'pulse 2s infinite'
-                }}
-              />
-            )}
-            
-            <IconButton 
-              onClick={handleClose}
-              sx={{ 
-                color: colorTokens.neutral900,
-                '&:hover': { 
-                  color: colorTokens.neutral1200,
-                  bgcolor: `${colorTokens.brand}20`
-                }
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-
-        {/* CONTENIDO */}
-        <DialogContent sx={{ p: 0 }}>
-          {/* MENSAJES DE ERROR */}
-          {initializationError && (
-            <Alert 
-              severity="error" 
-              sx={{ 
-                m: 3, 
-                mb: 0,
-                bgcolor: colorTokens.danger,
-                color: colorTokens.neutral1200,
-                border: `2px solid ${colorTokens.danger}`,
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {hasChanges && (
+            <Chip
+              icon={<UpdateIcon />}
+              label="Cambios pendientes"
+              size="small"
+              sx={{
+                bgcolor: `${colorTokens.warning}20`,
+                color: colorTokens.warning,
+                border: `1px solid ${colorTokens.warning}40`,
                 fontWeight: 600
               }}
-            >
-              {initializationError}
-            </Alert>
+            />
           )}
+          
+          <IconButton 
+            onClick={handleClose}
+            sx={{ 
+              color: colorTokens.neutral900,
+              '&:hover': { 
+                color: colorTokens.neutral1200,
+                bgcolor: `${colorTokens.brand}20`
+              }
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
 
-          {/* STEPPER */}
-          <Box sx={{ p: 3 }}>
-            <Stepper 
-              activeStep={activeStep} 
-              orientation={isMobile ? "vertical" : "horizontal"}
-              sx={{
-                '& .MuiStepLabel-label': { 
-                  color: colorTokens.neutral900,
-                  '&.Mui-active': { 
-                    color: colorTokens.brand,
-                    fontWeight: 600 
-                  },
-                  '&.Mui-completed': { 
-                    color: colorTokens.success,
-                    fontWeight: 600 
-                  }
+      {/* CONTENIDO */}
+      <DialogContent sx={{ p: 0 }}>
+        {/* STEPPER */}
+        <Box sx={{ p: 3 }}>
+          <Stepper 
+            activeStep={activeStep} 
+            orientation={isMobile ? "vertical" : "horizontal"}
+            sx={{
+              '& .MuiStepLabel-label': { 
+                color: colorTokens.neutral900,
+                '&.Mui-active': { 
+                  color: colorTokens.brand,
+                  fontWeight: 600 
                 },
-                '& .MuiStepIcon-root': {
-                  color: colorTokens.neutral400,
-                  '&.Mui-active': { 
-                    color: colorTokens.brand,
-                    filter: `drop-shadow(0 0 8px ${colorTokens.brand}60)`
-                  },
-                  '&.Mui-completed': { 
-                    color: colorTokens.success,
-                    filter: `drop-shadow(0 0 8px ${colorTokens.success}60)`
-                  }
-                },
-                '& .MuiStepConnector-line': {
-                  borderColor: colorTokens.neutral500
-                },
-                '& .Mui-completed .MuiStepConnector-line': {
-                  borderColor: colorTokens.success
-                },
-                '& .Mui-active .MuiStepConnector-line': {
-                  borderColor: colorTokens.brand
+                '&.Mui-completed': { 
+                  color: colorTokens.success,
+                  fontWeight: 600 
                 }
-              }}
-            >
-              {steps.map((label, index) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                  {isMobile && (
-                    <StepContent>
-                      {renderStepContent(index)}
-                    </StepContent>
-                  )}
-                </Step>
-              ))}
-            </Stepper>
+              },
+              '& .MuiStepIcon-root': {
+                color: colorTokens.neutral400,
+                '&.Mui-active': { 
+                  color: colorTokens.brand,
+                  filter: `drop-shadow(0 0 8px ${colorTokens.brand}60)`
+                },
+                '&.Mui-completed': { 
+                  color: colorTokens.success,
+                  filter: `drop-shadow(0 0 8px ${colorTokens.success}60)`
+                }
+              }
+            }}
+          >
+            {steps.map((label, index) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+                {isMobile && (
+                  <StepContent>
+                    {renderStepContent(index)}
+                  </StepContent>
+                )}
+              </Step>
+            ))}
+          </Stepper>
 
-            {!isMobile && (
-              <Box sx={{ mt: 4 }}>
-                {renderStepContent(activeStep)}
-              </Box>
-            )}
-          </Box>
-        </DialogContent>
+          {!isMobile && (
+            <Box sx={{ mt: 4 }}>
+              {renderStepContent(activeStep)}
+            </Box>
+          )}
+        </Box>
+      </DialogContent>
 
-        {/* ACCIONES */}
-        <DialogActions sx={{ 
-          p: 3, 
-          borderTop: `1px solid ${colorTokens.neutral500}`,
-          bgcolor: colorTokens.neutral100,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Box>
-            {!isMobile && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
+      {/* ACCIONES */}
+      <DialogActions sx={{ 
+        p: 3, 
+        borderTop: `1px solid ${colorTokens.neutral500}`,
+        bgcolor: colorTokens.neutral100,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Box>
+          {!isMobile && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                disabled={isFirstStep}
+                onClick={handleBack}
+                startIcon={<ArrowBackIcon />}
+                sx={{ 
+                  color: colorTokens.neutral900,
+                  '&:hover': {
+                    color: colorTokens.neutral1200,
+                    bgcolor: `${colorTokens.brand}20`
+                  }
+                }}
+              >
+                Anterior
+              </Button>
+              
+              {!isLastStep && (
                 <Button
-                  disabled={isFirstStep}
-                  onClick={handleBack}
-                  startIcon={<ArrowBackIcon />}
-                  sx={{ 
-                    color: colorTokens.neutral900,
+                  variant="outlined"
+                  onClick={handleNext}
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{
+                    borderColor: `${colorTokens.brand}60`,
+                    color: colorTokens.brand,
                     '&:hover': {
-                      color: colorTokens.neutral1200,
-                      bgcolor: `${colorTokens.brand}20`
-                    },
-                    '&:disabled': {
-                      color: colorTokens.neutral700
+                      borderColor: colorTokens.brand,
+                      bgcolor: `${colorTokens.brand}10`
                     }
                   }}
                 >
-                  Anterior
+                  Siguiente
                 </Button>
-                
-                {!isLastStep && (
-                  <Button
-                    variant="outlined"
-                    onClick={handleNext}
-                    endIcon={<ArrowForwardIcon />}
-                    sx={{
-                      borderColor: `${colorTokens.brand}60`,
-                      color: colorTokens.brand,
-                      '&:hover': {
-                        borderColor: colorTokens.brand,
-                        bgcolor: `${colorTokens.brand}10`,
-                        transform: 'translateY(-1px)',
-                        boxShadow: `0 4px 15px ${colorTokens.brand}30`
-                      },
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
-                    Siguiente
-                  </Button>
-                )}
-              </Box>
-            )}
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Button
-              onClick={handleClose}
-              disabled={loading}
-              sx={{ 
-                color: colorTokens.neutral900,
-                '&:hover': { 
-                  color: colorTokens.neutral1200, 
-                  bgcolor: `${colorTokens.brand}20` 
-                },
-                '&:disabled': {
-                  color: colorTokens.neutral700
-                }
-              }}
-            >
-              Cancelar
-            </Button>
-            
-            <Button
-              variant="contained"
-              onClick={handleSubmit}
-              disabled={
-                loading || 
-                !canMakeChanges || 
-                isSyncing ||
-                !isReadyForInteraction
-              }
-              startIcon={
-                loading ? (
-                  <CircularProgress size={20} sx={{ color: colorTokens.neutral1200 }} />
-                ) : (
-                  <SaveIcon />
-                )
-              }
-              sx={{
-                background: `linear-gradient(135deg, ${colorTokens.success}, #2E7D32)`,
-                color: colorTokens.neutral1200,
-                fontWeight: 600,
-                px: 3,
-                borderRadius: 2,
-                boxShadow: `0 4px 20px ${colorTokens.success}40`,
-                minWidth: '180px',
-                '&:hover': {
-                  background: `linear-gradient(135deg, #2E7D32, ${colorTokens.success})`,
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 6px 25px ${colorTokens.success}50`
-                },
-                '&:disabled': {
-                  bgcolor: colorTokens.neutral400,
-                  color: colorTokens.neutral700,
-                  boxShadow: 'none',
-                  transform: 'none'
-                },
-                transition: 'all 0.3s ease'
-              }}
-            >
-              {loading 
-                ? 'Guardando...'
-                : user 
-                  ? 'Actualizar Usuario'
-                  : 'Crear Usuario'
-              }
-            </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
-
-      {/* MODAL DE REGISTRO DE HUELLA */}
-      {user && (
-        <FingerprintRegistration
-          open={fingerprintDialogOpen}
-          onClose={handleFingerprintDialogClose}
-          user={{
-            id: user.id || '',
-            firstName: user.firstName,
-            lastName: user.lastName,
-            fingerprint: formData.fingerprint
-          }}
-          userType="cliente"
-          onFingerprintDataReady={handleFingerprintDataReady}
-          onError={(message) => console.error('Error en huella:', message)}
-        />
-      )}
-
-      {/* SNACKBAR DE ÉXITO */}
-      <Snackbar
-        open={contractRegenerationSuccess}
-        autoHideDuration={3000}
-        onClose={() => setContractRegenerationSuccess(false)}
-        TransitionComponent={Slide}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity="success" 
-          sx={{ 
-            width: '100%',
-            bgcolor: colorTokens.success,
-            color: colorTokens.neutral1200,
-            border: `2px solid ${colorTokens.success}`,
-            boxShadow: `0 8px 32px ${colorTokens.success}40`,
-            fontWeight: 600
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <RocketLaunchIcon />
-            <Typography sx={{ fontWeight: 600 }}>
-              ¡Usuario guardado exitosamente!
-              {isCurrentUserClient() && ' Contrato regenerado.'}
-            </Typography>
-          </Box>
-        </Alert>
-      </Snackbar>
-
-      {/* OVERLAY DE REGENERACIÓN DE CONTRATO */}
-      {isRegeneratingContract && (
-        <Box sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: `${colorTokens.neutral0}DD`,
-          zIndex: 9999,
-          backdropFilter: 'blur(20px)'
-        }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 3,
-            p: 4,
-            borderRadius: 3,
-            background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
-            border: `1px solid ${colorTokens.neutral500}`,
-            minWidth: 320,
-            boxShadow: `0 20px 60px ${colorTokens.neutral0}80`
-          }}>
-            <CircularProgress 
-              size={64} 
-              sx={{ 
-                color: colorTokens.brand,
-                '& .MuiCircularProgress-circle': {
-                  strokeLinecap: 'round',
-                }
-              }} 
-            />
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ 
-                color: colorTokens.neutral1200, 
-                fontWeight: 600, 
-                mb: 1 
-              }}>
-                🔄 Regenerando Contrato
-              </Typography>
-              <Typography variant="body2" sx={{ 
-                color: colorTokens.neutral900 
-              }}>
-                Generando documentación actualizada...
-              </Typography>
+              )}
             </Box>
-            
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 1,
-              p: 2,
-              borderRadius: 2,
-              bgcolor: `${colorTokens.brand}15`,
-              border: `1px solid ${colorTokens.brand}40`
-            }}>
-              <AssignmentIcon sx={{ 
-                color: colorTokens.brand, 
-                fontSize: 20 
-              }} />
-              <Typography variant="caption" sx={{ 
-                color: colorTokens.neutral900 
-              }}>
-                Este proceso puede tomar unos segundos
-              </Typography>
-            </Box>
-          </Box>
+          )}
         </Box>
-      )}
-    </>
+
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            onClick={handleClose}
+            disabled={loading}
+            sx={{ 
+              color: colorTokens.neutral900,
+              '&:hover': { 
+                color: colorTokens.neutral1200, 
+                bgcolor: `${colorTokens.brand}20` 
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={loading || fileUploading}
+            startIcon={
+              loading || fileUploading ? (
+                <CircularProgress size={20} sx={{ color: colorTokens.neutral1200 }} />
+              ) : (
+                <SaveIcon />
+              )
+            }
+            sx={{
+              background: `linear-gradient(135deg, ${colorTokens.success}, #2E7D32)`,
+              color: colorTokens.neutral1200,
+              fontWeight: 600,
+              px: 3,
+              borderRadius: 2,
+              boxShadow: `0 4px 20px ${colorTokens.success}40`,
+              minWidth: '180px',
+              '&:hover': {
+                background: `linear-gradient(135deg, #2E7D32, ${colorTokens.success})`,
+                transform: 'translateY(-2px)',
+                boxShadow: `0 6px 25px ${colorTokens.success}50`
+              },
+              '&:disabled': {
+                bgcolor: colorTokens.neutral400,
+                color: colorTokens.neutral700,
+                boxShadow: 'none',
+                transform: 'none'
+              }
+            }}
+          >
+            {loading || fileUploading
+              ? 'Guardando...'
+              : user 
+                ? 'Actualizar Usuario'
+                : 'Crear Usuario'
+            }
+          </Button>
+        </Box>
+      </DialogActions>
+    </Dialog>
   );
 };
 

@@ -1,16 +1,18 @@
-// hooks/useRegistrarMembresia.ts - CORRECCIONES CRÍTICAS APLICADAS
+// hooks/useRegistrarMembresia.ts - ENTERPRISE v4.1 CORREGIDO
 import { useState, useEffect, useCallback, useMemo, useReducer } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ IMPORTAR FUNCIONES DE dateUtils SEGÚN GUÍA V3.1
+// ✅ IMPORTACIONES ENTERPRISE OBLIGATORIAS
+import { useUserTracking } from '@/hooks/useUserTracking';
 import { 
   formatTimestampForDisplay, 
   formatDateForDisplay,
   getTodayInMexico,
   daysBetween,
   addDaysToDate,
-  calculateRenewalStartDate,    // ✅ AGREGAR ESTA LÍNEA
-  calculateMembershipEndDate    // ✅ AGREGAR ESTA LÍNEA
+  calculateRenewalStartDate,
+  calculateMembershipEndDate,
+  getCurrentTimestamp  // ✅ AGREGAR PARA TIMESTAMPS UTC
 } from '@/utils/dateUtils';
 
 import toast from 'react-hot-toast';
@@ -260,6 +262,9 @@ const formReducer = (state: FormData, action: any): FormData => {
 export const useRegistrarMembresia = () => {
   const supabase = createBrowserSupabaseClient();
   
+  // ✅ HOOK ENTERPRISE OBLIGATORIO PARA AUDITORÍA
+  const { addAuditFields, getCurrentUser } = useUserTracking();
+  
   // 🔧 ESTADOS CON REDUCER
   const [formData, dispatch] = useReducer(formReducer, initialFormData);
   
@@ -357,7 +362,7 @@ export const useRegistrarMembresia = () => {
     try {
       const { data: memberships, error: membershipsError } = await supabase
         .from('user_memberships')
-        .select('id, created_at, status, planid, start_date, end_date')
+        .select('id, created_at, status, plan_id, start_date, end_date')
         .eq('userid', userId)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -370,7 +375,7 @@ export const useRegistrarMembresia = () => {
       let formattedHistory: UserMembershipHistory[] = [];
       
       if (memberships && memberships.length > 0) {
-        const planIds = [...new Set(memberships.map(m => m.planid).filter(Boolean))];
+        const planIds = [...new Set(memberships.map(m => m.plan_id).filter(Boolean))];
         
         if (planIds.length > 0) {
           const { data: plans, error: plansError } = await supabase
@@ -383,7 +388,7 @@ export const useRegistrarMembresia = () => {
               id: membership.id,
               created_at: membership.created_at,
               status: membership.status || 'unknown',
-              plan_name: `Plan ${membership.planid?.substring(0, 8) || 'Desconocido'}`,
+              plan_name: `Plan ${membership.plan_id?.substring(0, 8) || 'Desconocido'}`,
               end_date: membership.end_date,
               start_date: membership.start_date
             }));
@@ -394,7 +399,7 @@ export const useRegistrarMembresia = () => {
               id: membership.id,
               created_at: membership.created_at,
               status: membership.status || 'unknown',
-              plan_name: planMap.get(membership.planid) || `Plan ${membership.planid?.substring(0, 8) || 'Desconocido'}`,
+              plan_name: planMap.get(membership.plan_id) || `Plan ${membership.plan_id?.substring(0, 8) || 'Desconocido'}`,
               end_date: membership.end_date,
               start_date: membership.start_date
             }));
@@ -841,7 +846,7 @@ export const useRegistrarMembresia = () => {
     return true;
   }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formData.paymentMethod, formData.paymentReceived, formatPrice]);
 
-  // ✅ PROCESAR VENTA - CON TIMESTAMPS CORRECTOS
+  // ✅ PROCESAR VENTA - CON AUDITORÍA AUTOMÁTICA ENTERPRISE
   const handleSubmit = useCallback(async () => {
     try {
       setLoading(true);
@@ -868,7 +873,8 @@ export const useRegistrarMembresia = () => {
       });
       
       const today = getTodayInMexico();
-      const currentTimestamp = new Date().toISOString(); // ✅ Crear timestamp UTC directamente
+      // ✅ USAR FUNCIÓN CENTRALIZADA PARA TIMESTAMP UTC
+      const currentTimestamp = getCurrentTimestamp();
       let startDate: string;
       
       if (formData.isRenewal && formData.latestEndDate) {
@@ -909,13 +915,10 @@ export const useRegistrarMembresia = () => {
         throw new Error('Error en el cálculo de fechas de la membresía');
       }
       
-      const membershipData = {
+      // ✅ CREAR DATOS BASE DE MEMBRESÍA
+      const baseMembershipData = {
         userid: selectedUser.id,
-        planid: selectedPlan.id,
-        created_by: session.user.id,
-        updated_by: session.user.id,
-        created_at: currentTimestamp, // ✅ USAR TIMESTAMP DIRECTO
-        updated_at: currentTimestamp, // ✅ USAR TIMESTAMP DIRECTO
+        plan_id: selectedPlan.id,
         
         start_date: startDate,
         end_date: endDate,
@@ -941,7 +944,7 @@ export const useRegistrarMembresia = () => {
         payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
         
         coupon_code: appliedCoupon?.code || null,
-        coupon_id: appliedCoupon?.id || null, // ✅ AGREGAR ID DEL CUPÓN
+    
         
         is_renewal: formData.isRenewal,
         skip_inscription: formData.skipInscription,
@@ -951,16 +954,21 @@ export const useRegistrarMembresia = () => {
         notes: formData.notes || null
       };
       
-      // ✅ PROCESAR RENOVACIÓN
+      // ✅ APLICAR AUDITORÍA AUTOMÁTICA ENTERPRISE
+      const membershipDataWithAudit = await addAuditFields(baseMembershipData, false);
+      
+      // ✅ PROCESAR RENOVACIÓN CON AUDITORÍA
       if (formData.isRenewal) {
+        const renewalUpdateData = { 
+          status: 'expired',
+          notes: `Expirada por renovación el ${today}`
+        };
+        
+        const renewalDataWithAudit = await addAuditFields(renewalUpdateData, true);
+        
         const { error: updateError } = await supabase
           .from('user_memberships')
-          .update({ 
-            status: 'expired',
-            notes: `Expirada por renovación el ${today}`,
-            updated_by: session.user.id,
-            updated_at: currentTimestamp
-          })
+          .update(renewalDataWithAudit)
           .eq('userid', selectedUser.id)
           .eq('status', 'active');
           
@@ -969,10 +977,10 @@ export const useRegistrarMembresia = () => {
         }
       }
       
-      // ✅ INSERTAR NUEVA MEMBRESÍA
+      // ✅ INSERTAR NUEVA MEMBRESÍA CON AUDITORÍA
       const { data: membership, error: membershipError } = await supabase
         .from('user_memberships')
-        .insert([membershipData])
+        .insert([membershipDataWithAudit])
         .select()
         .single();
         
@@ -980,15 +988,17 @@ export const useRegistrarMembresia = () => {
         throw membershipError;
       }
       
-      // ✅ ACTUALIZAR CUPÓN SI SE USÓ
+      // ✅ ACTUALIZAR CUPÓN CON AUDITORÍA
       if (appliedCoupon) {
+        const couponUpdateData = { 
+          current_uses: appliedCoupon.current_uses + 1
+        };
+        
+        const couponDataWithAudit = await addAuditFields(couponUpdateData, true);
+        
         const { error: couponError } = await supabase
           .from('coupons')
-          .update({ 
-            current_uses: appliedCoupon.current_uses + 1,
-            updated_by: session.user.id,
-            updated_at: currentTimestamp
-          })
+          .update(couponDataWithAudit)
           .eq('id', appliedCoupon.id);
           
         if (couponError) {
@@ -1031,6 +1041,7 @@ export const useRegistrarMembresia = () => {
     }
   }, [
     supabase,
+    addAuditFields, // ✅ USAR AUDITORÍA ENTERPRISE
     selectedUser,
     selectedPlan,
     formData,

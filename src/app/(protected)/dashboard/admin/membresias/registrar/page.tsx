@@ -49,13 +49,15 @@ import { SelectChangeEvent } from '@mui/material/Select';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
-// ✅ IMPORTACIONES SEGÚN GUÍA V3.1
+// ✅ IMPORTACIONES ENTERPRISE v4.1 COMPLETAS
 import { colorTokens } from '@/theme';
 import { notify } from '@/utils/notifications';
 import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
 import { 
   formatTimestampForDisplay, 
   formatDateForDisplay,
+  formatTimestampDateOnly,  // ✅ AGREGAR PARA FECHAS LARGAS
   getTodayInMexico,
   daysBetween,
   addDaysToDate 
@@ -88,7 +90,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
-import CloseIcon from '@mui/icons-material/Close'; // ← AGREGAR ESTA LÍNEA
+import CloseIcon from '@mui/icons-material/Close';
 
 // Tipos para métodos de pago
 interface PaymentMethod {
@@ -173,6 +175,7 @@ const SafeDate = memo<{ dateString: string; fallback?: string }>(({
 
 SafeDate.displayName = 'SafeDate';
 
+// ✅ COMPONENTE CORREGIDO - SafeDateLong usando dateUtils centralizados
 const SafeDateLong = memo<{ dateString: string; fallback?: string }>(({ 
   dateString, 
   fallback = 'Calculando...' 
@@ -180,13 +183,8 @@ const SafeDateLong = memo<{ dateString: string; fallback?: string }>(({
   const displayDate = useMemo(() => {
     if (!dateString) return fallback;
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('es-MX', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+      // ✅ USAR FUNCIÓN CENTRALIZADA EN LUGAR DE LÓGICA LOCAL
+      return formatTimestampDateOnly(dateString + 'T00:00:00Z');
     } catch (error) {
       return fallback;
     }
@@ -501,12 +499,15 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 // ✅ COMPONENTE PRINCIPAL CON ORDEN CORRECTO DE HOOKS
 function RegistrarMembresiaPage() {
   const router = useRouter();
-  const hydrated = useHydrated(); // ✅ HOOK 1
+  const hydrated = useHydrated(); // ✅ HOOK 1 - SSR SAFETY
+  
+  // ✅ HOOK 2 - AUDITORÍA (aunque no se use directamente en componente)
+  const { addAuditFields } = useUserTracking();
   
   // Ref para SweetAlert dinámico
-  const MySwalRef = useRef<any>(null); // ✅ HOOK 2
+  const MySwalRef = useRef<any>(null); // ✅ HOOK 3
   
-  // ✅ HOOK 3 - Hook personalizado para toda la lógica - DEBE IR ANTES DEL EARLY RETURN
+  // ✅ HOOK 4 - Hook personalizado para toda la lógica - DEBE IR ANTES DEL EARLY RETURN
   const {
     // Estados principales
     formData,
@@ -556,7 +557,7 @@ function RegistrarMembresiaPage() {
     paymentTypes
   } = useRegistrarMembresia();
 
-  // ✅ HOOK 4 - Steps configuration (memoizado) - ANTES DEL EARLY RETURN
+  // ✅ HOOK 5 - Steps configuration (memoizado) - ANTES DEL EARLY RETURN
   const steps = useMemo(() => [
     { label: 'Cliente', description: 'Seleccionar cliente', icon: <PersonAddAltIcon /> },
     { label: 'Plan', description: 'Elegir membresía', icon: <FitnessCenterIcon /> },
@@ -564,7 +565,7 @@ function RegistrarMembresiaPage() {
     { label: 'Pago', description: 'Método de pago', icon: <PaymentIcon /> }
   ], []); // ✅ SIN DEPENDENCIAS - SON ESTÁTICOS
 
-  // ✅ HOOK 5 - Validación de datos del usuario
+  // ✅ HOOK 6 - Validación de datos del usuario
   const validateUser = useCallback((user: any): boolean => {
     if (!user) return false;
     if (!user.email) {
@@ -574,7 +575,7 @@ function RegistrarMembresiaPage() {
     return true;
   }, []);
 
-  // ✅ HOOK 6-20 - HANDLERS OPTIMIZADOS CON useCallback
+  // ✅ HOOK 7-21 - HANDLERS OPTIMIZADOS CON useCallback
   const handleBack = useCallback(() => {
     notify.promise(
       Promise.resolve(),
@@ -805,7 +806,7 @@ function RegistrarMembresiaPage() {
     return true;
   }, [selectedUser, selectedPlan, formData]);
 
-  // ✅ HOOK 21 - useEffect para navegación con teclado - ANTES DEL EARLY RETURN
+  // ✅ HOOK 22 - useEffect para navegación con teclado - ANTES DEL EARLY RETURN
   useEffect(() => {
     if (!hydrated) return; // ✅ CONDICIONAL DENTRO DEL EFFECT
     
@@ -830,7 +831,7 @@ function RegistrarMembresiaPage() {
     return () => window.removeEventListener('keydown', handleKeyboardNavigation);
   }, [canProceedToNextStep, activeStep, steps.length, setActiveStep, confirmDialogOpen, handleBack, hydrated]);
 
-  // ✅ HOOK 22 - useMemo para cálculo de fecha - ANTES DEL EARLY RETURN
+  // ✅ HOOK 23 - useMemo para cálculo de fecha - ANTES DEL EARLY RETURN
   const endDate = useMemo(() => {
     try {
       const date = calculateEndDate();
@@ -856,7 +857,7 @@ function RegistrarMembresiaPage() {
     );
   }
 
-  // ✅ RENDER PRINCIPAL COMPLETO
+  // ✅ RENDER PRINCIPAL COMPLETO - RESTO DEL COMPONENTE IGUAL
   return (
     <ErrorBoundary>
       <Box sx={{ 
@@ -1742,223 +1743,223 @@ function RegistrarMembresiaPage() {
                       )}
 
                       {/* PASO 3: Cupones */}
-{index === 2 && (
-  <Box sx={{ mb: 4 }}>
-    <Card sx={{
-      background: `${colorTokens.brand}05`,
-      border: `1px solid ${colorTokens.brand}20`,
-      borderRadius: 3
-    }}>
-      <CardContent sx={{ p: 4 }}>
-        <Typography variant="h6" sx={{ 
-          color: colorTokens.brand, 
-          mb: 3,
-          fontWeight: 700,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2
-        }}>
-          <LocalOfferIcon />
-          Sistema de Descuentos
-        </Typography>
-        
-        {/* CAMPO DE CUPÓN CON BOTÓN APLICAR */}
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 2 }}>
-          <TextField
-            fullWidth
-            label="Código de Cupón"
-            value={formData.couponCode}
-            onChange={handleCouponChange}
-            onBlur={handleCouponBlur}
-            placeholder="Ej: DESC20, PROMO50..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <LocalOfferIcon sx={{ color: colorTokens.brand }} />
-                </InputAdornment>
-              ),
-              endAdornment: appliedCoupon && (
-                <InputAdornment position="end">
-                  <CheckCircleIcon sx={{ color: colorTokens.brand }} />
-                </InputAdornment>
-              ),
-              onKeyDown: handleCouponKeyDown,
-              sx: {
-                color: colorTokens.textPrimary,
-                fontSize: '1.1rem',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: `${colorTokens.brand}40`,
-                  borderWidth: 2
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: colorTokens.brand
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: colorTokens.brand
-                }
-              }
-            }}
-            InputLabelProps={{
-              sx: { 
-                color: colorTokens.textSecondary,
-                fontSize: '1.1rem',
-                '&.Mui-focused': { color: colorTokens.brand }
-              }
-            }}
-          />
-          
-          {/* BOTÓN APLICAR CUPÓN */}
-          <Button
-            variant="contained"
-            onClick={() => {
-              const trimmedCode = formData.couponCode.trim();
-              if (trimmedCode) {
-                validateCoupon(trimmedCode);
-              } else {
-                notify.error('Ingrese un código de cupón');
-              }
-            }}
-            disabled={!formData.couponCode.trim() || loading}
-            sx={{
-              background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
-              color: colorTokens.textOnBrand,
-              fontWeight: 700,
-              px: 3,
-              py: 1.75,
-              borderRadius: 2,
-              minWidth: 120,
-              whiteSpace: 'nowrap',
-              height: '56px', // Igual altura que el TextField
-              '&:hover': {
-                background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brandActive})`,
-                transform: 'translateY(-1px)',
-                boxShadow: `0 4px 15px ${colorTokens.brand}30`
-              },
-              '&:disabled': {
-                background: colorTokens.neutral600,
-                color: colorTokens.textSecondary
-              }
-            }}
-            startIcon={loading ? 
-              <CircularProgress size={18} sx={{ color: colorTokens.textOnBrand }} /> : 
-              <LocalOfferIcon />
-            }
-          >
-            {loading ? 'Validando...' : 'Aplicar'}
-          </Button>
-          
-          {/* BOTÓN LIMPIAR */}
-          {(formData.couponCode || appliedCoupon) && (
-            <Button
-              variant="outlined"
-              onClick={() => {
-                dispatch({ type: 'CLEAR_COUPON' });
-                setAppliedCoupon(null);
-                notify.success('Cupón eliminado');
-              }}
-              sx={{
-                color: colorTokens.danger,
-                borderColor: colorTokens.danger,
-                px: 2,
-                py: 1.75,
-                borderRadius: 2,
-                height: '56px',
-                minWidth: '56px',
-                '&:hover': {
-                  borderColor: colorTokens.dangerHover,
-                  backgroundColor: `${colorTokens.danger}10`,
-                  transform: 'translateY(-1px)'
-                }
-              }}
-              title="Limpiar cupón"
-            >
-              <CloseIcon />
-            </Button>
-          )}
-        </Box>
+                      {index === 2 && (
+                        <Box sx={{ mb: 4 }}>
+                          <Card sx={{
+                            background: `${colorTokens.brand}05`,
+                            border: `1px solid ${colorTokens.brand}20`,
+                            borderRadius: 3
+                          }}>
+                            <CardContent sx={{ p: 4 }}>
+                              <Typography variant="h6" sx={{ 
+                                color: colorTokens.brand, 
+                                mb: 3,
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2
+                              }}>
+                                <LocalOfferIcon />
+                                Sistema de Descuentos
+                              </Typography>
+                              
+                              {/* CAMPO DE CUPÓN CON BOTÓN APLICAR */}
+                              <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 2 }}>
+                                <TextField
+                                  fullWidth
+                                  label="Código de Cupón"
+                                  value={formData.couponCode}
+                                  onChange={handleCouponChange}
+                                  onBlur={handleCouponBlur}
+                                  placeholder="Ej: DESC20, PROMO50..."
+                                  InputProps={{
+                                    startAdornment: (
+                                      <InputAdornment position="start">
+                                        <LocalOfferIcon sx={{ color: colorTokens.brand }} />
+                                      </InputAdornment>
+                                    ),
+                                    endAdornment: appliedCoupon && (
+                                      <InputAdornment position="end">
+                                        <CheckCircleIcon sx={{ color: colorTokens.brand }} />
+                                      </InputAdornment>
+                                    ),
+                                    onKeyDown: handleCouponKeyDown,
+                                    sx: {
+                                      color: colorTokens.textPrimary,
+                                      fontSize: '1.1rem',
+                                      '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: `${colorTokens.brand}40`,
+                                        borderWidth: 2
+                                      },
+                                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: colorTokens.brand
+                                      },
+                                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: colorTokens.brand
+                                      }
+                                    }
+                                  }}
+                                  InputLabelProps={{
+                                    sx: { 
+                                      color: colorTokens.textSecondary,
+                                      fontSize: '1.1rem',
+                                      '&.Mui-focused': { color: colorTokens.brand }
+                                    }
+                                  }}
+                                />
+                                
+                                {/* BOTÓN APLICAR CUPÓN */}
+                                <Button
+                                  variant="contained"
+                                  onClick={() => {
+                                    const trimmedCode = formData.couponCode.trim();
+                                    if (trimmedCode) {
+                                      validateCoupon(trimmedCode);
+                                    } else {
+                                      notify.error('Ingrese un código de cupón');
+                                    }
+                                  }}
+                                  disabled={!formData.couponCode.trim() || loading}
+                                  sx={{
+                                    background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                                    color: colorTokens.textOnBrand,
+                                    fontWeight: 700,
+                                    px: 3,
+                                    py: 1.75,
+                                    borderRadius: 2,
+                                    minWidth: 120,
+                                    whiteSpace: 'nowrap',
+                                    height: '56px', // Igual altura que el TextField
+                                    '&:hover': {
+                                      background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brandActive})`,
+                                      transform: 'translateY(-1px)',
+                                      boxShadow: `0 4px 15px ${colorTokens.brand}30`
+                                    },
+                                    '&:disabled': {
+                                      background: colorTokens.neutral600,
+                                      color: colorTokens.textSecondary
+                                    }
+                                  }}
+                                  startIcon={loading ? 
+                                    <CircularProgress size={18} sx={{ color: colorTokens.textOnBrand }} /> : 
+                                    <LocalOfferIcon />
+                                  }
+                                >
+                                  {loading ? 'Validando...' : 'Aplicar'}
+                                </Button>
+                                
+                                {/* BOTÓN LIMPIAR */}
+                                {(formData.couponCode || appliedCoupon) && (
+                                  <Button
+                                    variant="outlined"
+                                    onClick={() => {
+                                      dispatch({ type: 'CLEAR_COUPON' });
+                                      setAppliedCoupon(null);
+                                      notify.success('Cupón eliminado');
+                                    }}
+                                    sx={{
+                                      color: colorTokens.danger,
+                                      borderColor: colorTokens.danger,
+                                      px: 2,
+                                      py: 1.75,
+                                      borderRadius: 2,
+                                      height: '56px',
+                                      minWidth: '56px',
+                                      '&:hover': {
+                                        borderColor: colorTokens.dangerHover,
+                                        backgroundColor: `${colorTokens.danger}10`,
+                                        transform: 'translateY(-1px)'
+                                      }
+                                    }}
+                                    title="Limpiar cupón"
+                                  >
+                                    <CloseIcon />
+                                  </Button>
+                                )}
+                              </Box>
 
-        <Typography variant="body2" sx={{ 
-          color: colorTokens.textSecondary,
-          fontStyle: 'italic'
-        }}>
-          Ingrese un código de cupón y presione "Aplicar" o Enter para validarlo
-        </Typography>
+                              <Typography variant="body2" sx={{ 
+                                color: colorTokens.textSecondary,
+                                fontStyle: 'italic'
+                              }}>
+                                Ingrese un código de cupón y presione "Aplicar" o Enter para validarlo
+                              </Typography>
 
-        {appliedCoupon && (
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Box sx={{ mt: 3 }}>
-                <Card sx={{
-                  background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
-                  border: `2px solid ${colorTokens.success}50`,
-                  borderRadius: 3
-                }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <CheckCircleIcon sx={{ color: colorTokens.success, fontSize: 30 }} />
-                      <Typography variant="h6" sx={{ 
-                        color: colorTokens.success, 
-                        fontWeight: 700
-                      }}>
-                        Cupón Aplicado!
-                      </Typography>
-                      <Box sx={{ flex: 1 }} />
-                      
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          dispatch({ type: 'CLEAR_COUPON' });
-                          setAppliedCoupon(null);
-                          notify.success('Cupón eliminado');
-                        }}
-                        sx={{ color: colorTokens.danger }}
-                        aria-label="Eliminar cupón"
-                      >
-                        <RemoveIcon />
-                      </IconButton>
-                    </Box>
-                    
-                    <Typography variant="body1" sx={{ 
-                      color: colorTokens.textPrimary, 
-                      mb: 1,
-                      fontWeight: 600
-                    }}>
-                      {appliedCoupon.description || 'Descuento aplicado'}
-                    </Typography>
-                    
-                    <Typography variant="h6" sx={{ 
-                      color: colorTokens.success,
-                      fontWeight: 700
-                    }}>
-                      Descuento: {appliedCoupon.discount_type === 'percentage' 
-                        ? `${appliedCoupon.discount_value}%` 
-                        : formatPrice(appliedCoupon.discount_value)}
-                    </Typography>
-                    
-                    {appliedCoupon.min_amount > 0 && (
-                      <Typography variant="caption" sx={{ 
-                        color: colorTokens.textSecondary,
-                        display: 'block',
-                        mt: 1
-                      }}>
-                        Monto mínimo: {formatPrice(appliedCoupon.min_amount)}
-                      </Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              </Box>
-            </motion.div>
-          </AnimatePresence>
-        )}
-      </CardContent>
-    </Card>
-  </Box>
-)}
+                              {appliedCoupon && (
+                                <AnimatePresence>
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.3 }}
+                                  >
+                                    <Box sx={{ mt: 3 }}>
+                                      <Card sx={{
+                                        background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
+                                        border: `2px solid ${colorTokens.success}50`,
+                                        borderRadius: 3
+                                      }}>
+                                        <CardContent sx={{ p: 3 }}>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                            <CheckCircleIcon sx={{ color: colorTokens.success, fontSize: 30 }} />
+                                            <Typography variant="h6" sx={{ 
+                                              color: colorTokens.success, 
+                                              fontWeight: 700
+                                            }}>
+                                              Cupón Aplicado!
+                                            </Typography>
+                                            <Box sx={{ flex: 1 }} />
+                                            
+                                            <IconButton
+                                              size="small"
+                                              onClick={() => {
+                                                dispatch({ type: 'CLEAR_COUPON' });
+                                                setAppliedCoupon(null);
+                                                notify.success('Cupón eliminado');
+                                              }}
+                                              sx={{ color: colorTokens.danger }}
+                                              aria-label="Eliminar cupón"
+                                            >
+                                              <RemoveIcon />
+                                            </IconButton>
+                                          </Box>
+                                          
+                                          <Typography variant="body1" sx={{ 
+                                            color: colorTokens.textPrimary, 
+                                            mb: 1,
+                                            fontWeight: 600
+                                          }}>
+                                            {appliedCoupon.description || 'Descuento aplicado'}
+                                          </Typography>
+                                          
+                                          <Typography variant="h6" sx={{ 
+                                            color: colorTokens.success,
+                                            fontWeight: 700
+                                          }}>
+                                            Descuento: {appliedCoupon.discount_type === 'percentage' 
+                                              ? `${appliedCoupon.discount_value}%` 
+                                              : formatPrice(appliedCoupon.discount_value)}
+                                          </Typography>
+                                          
+                                          {appliedCoupon.min_amount > 0 && (
+                                            <Typography variant="caption" sx={{ 
+                                              color: colorTokens.textSecondary,
+                                              display: 'block',
+                                              mt: 1
+                                            }}>
+                                              Monto mínimo: {formatPrice(appliedCoupon.min_amount)}
+                                            </Typography>
+                                          )}
+                                        </CardContent>
+                                      </Card>
+                                    </Box>
+                                  </motion.div>
+                                </AnimatePresence>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </Box>
+                      )}
 
                       {/* PASO 4: Sistema de Pago */}
                       {index === 3 && (
@@ -2857,94 +2858,6 @@ function RegistrarMembresiaPage() {
                             {formatPrice(finalAmount)}
                           </Typography>
                         </Box>
-
-                        {/* INFORMACIÓN DEL MÉTODO DE PAGO */}
-                        {(formData.paymentMethod || formData.isMixedPayment) && (
-                          <Box sx={{ mt: 3 }}>
-                            <Typography variant="subtitle1" sx={{ 
-                              color: colorTokens.textSecondary,
-                              mb: 2
-                            }}>
-                              Método de Pago:
-                            </Typography>
-                            
-                            {formData.isMixedPayment ? (
-                              <Box sx={{
-                                background: `${colorTokens.warning}10`,
-                                border: `1px solid ${colorTokens.warning}30`,
-                                borderRadius: 3,
-                                p: 2
-                              }}>
-                                <Typography variant="body1" sx={{ 
-                                  color: colorTokens.warning,
-                                  fontWeight: 600,
-                                  mb: 1
-                                }}>
-                                  Pago Mixto
-                                </Typography>
-                                <Typography variant="body2" sx={{ 
-                                  color: colorTokens.textSecondary
-                                }}>
-                                  {formData.paymentDetails.length} método{formData.paymentDetails.length !== 1 ? 's' : ''} configurado{formData.paymentDetails.length !== 1 ? 's' : ''}
-                                </Typography>
-                                {formData.paymentDetails.length > 0 && (
-                                  <Box sx={{ mt: 2 }}>
-                                    {formData.paymentDetails.map((detail, index) => (
-                                      <Typography key={detail.id} variant="caption" sx={{ 
-                                        display: 'block',
-                                        color: colorTokens.textSecondary
-                                      }}>
-                                        • {PAYMENT_METHODS.find(m => m.value === detail.method)?.label}: {formatPrice(detail.amount)}
-                                      </Typography>
-                                    ))}
-                                  </Box>
-                                )}
-                              </Box>
-                            ) : (
-                              <Box sx={{
-                                background: `${colorTokens.surfaceLevel3}05`,
-                                border: `1px solid ${colorTokens.neutral400}`,
-                                borderRadius: 3,
-                                p: 2
-                              }}>
-                                <Typography variant="body1" sx={{ 
-                                  color: colorTokens.textPrimary,
-                                  fontWeight: 600,
-                                  mb: 1
-                                }}>
-                                  {PAYMENT_METHODS.find(pm => pm.value === formData.paymentMethod)?.icon} {PAYMENT_METHODS.find(pm => pm.value === formData.paymentMethod)?.label}
-                                </Typography>
-
-                                <Typography variant="caption" sx={{ 
-                                  color: (formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
-                                    colorTokens.warning : colorTokens.success,
-                                  fontWeight: 600,
-                                  display: 'block',
-                                  mb: 1
-                                }}>
-                                  {(formData.paymentMethod === 'debito' || formData.paymentMethod === 'credito') ? 
-                                    'Con comisión' : 'Sin comisión'}
-                                </Typography>
-                                
-                                {formData.paymentMethod === 'efectivo' && formData.paymentReceived > 0 && (
-                                  <Box sx={{ mt: 2 }}>
-                                    <Typography variant="body2" sx={{ 
-                                      color: colorTokens.textSecondary
-                                    }}>
-                                      Recibido: {formatPrice(formData.paymentReceived)}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ 
-                                      color: formData.paymentChange > 0 ? colorTokens.brand : colorTokens.textSecondary,
-                                      fontWeight: formData.paymentChange > 0 ? 600 : 400
-                                    }}>
-                                      Cambio: {formatPrice(formData.paymentChange)}
-                                    </Typography>
-                                  </Box>
-                                )}
-                              </Box>
-                            )}
-                          </Box>
-                        )}
                       </Stack>
                     </Box>
                   </motion.div>

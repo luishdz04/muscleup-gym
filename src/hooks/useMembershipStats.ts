@@ -1,8 +1,21 @@
-// hooks/useMembershipStats.ts
+// hooks/useMembershipStats.ts - VERSIÓN FINAL POST-CORRECCIONES BD
+'use client';
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
-import toast from 'react-hot-toast';
+
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS MUP v4.1
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { notify } from '@/utils/notifications';
+import { 
+  getCurrentTimestamp,
+  formatTimestampForDisplay,
+  formatDateForDisplay,
+  getTodayInMexico,
+  addDaysToDate,
+  MEXICO_TIMEZONE
+} from '@/utils/dateUtils';
 
 interface MembershipStats {
   total: number;
@@ -25,19 +38,17 @@ const INITIAL_STATS: MembershipStats = {
 };
 
 export const useMembershipStats = () => {
+  // ✅ SSR SAFETY OBLIGATORIO
+  const hydrated = useHydrated();
+  
+  // ✅ AUDITORÍA AUTOMÁTICA
+  const { addAuditFields } = useUserTracking();
+  
   const [stats, setStats] = useState<MembershipStats>(INITIAL_STATS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // ✅ FUNCIONES UTILITARIAS MEMOIZADAS
-  const getMexicoDate = useCallback(() => {
-    return new Date();
-  }, []);
-
-  const getMexicoDateString = useCallback(() => {
-    return toMexicoDate(new Date());
-  }, []);
-
+  // ✅ FUNCIÓN DE FORMATEO DE PRECIO
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -45,8 +56,41 @@ export const useMembershipStats = () => {
     }).format(price || 0);
   }, []);
 
-  // ✅ FUNCIÓN PRINCIPAL DE CARGA DE DATOS OPTIMIZADA
+  // ✅ FUNCIONES DE FECHA CENTRALIZADAS
+  const getMexicoToday = useCallback(() => {
+    return getTodayInMexico();
+  }, []);
+
+  const getFirstDayOfMonth = useCallback(() => {
+    const today = getTodayInMexico();
+    const [year, month] = today.split('-');
+    return `${year}-${month.padStart(2, '0')}-01`;
+  }, []);
+
+  const getIn7DaysDate = useCallback(() => {
+    const today = getTodayInMexico();
+    return addDaysToDate(today, 7);
+  }, []);
+
+  // ✅ CONVERSIÓN UTC TIMESTAMP A FECHA MÉXICO (POST-CORRECCIÓN BD)
+  const convertUtcTimestampToMexicoDate = useCallback((utcTimestamp: string): string => {
+    if (!utcTimestamp) return '';
+    
+    try {
+      const utcDate = new Date(utcTimestamp);
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: MEXICO_TIMEZONE,
+      }).format(utcDate);
+    } catch (error) {
+      console.warn('Error convirtiendo timestamp UTC a México:', utcTimestamp);
+      return '';
+    }
+  }, []);
+
+  // ✅ FUNCIÓN PRINCIPAL DE CARGA - POST CORRECCIONES BD
   const loadData = useCallback(async (isRefresh = false) => {
+    if (!hydrated) return;
+
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -56,72 +100,86 @@ export const useMembershipStats = () => {
 
       const supabase = createBrowserSupabaseClient();
       
-      // ✅ OBTENER TODAS LAS MEMBRESÍAS
+      // ✅ SELECT OPTIMIZADO POST-LIMPIEZA BD
       const { data: allMemberships, error: statsError } = await supabase
         .from('user_memberships')
-        .select('*');
+        .select(`
+          id,
+          status,
+          created_at,
+          updated_at,
+          start_date,
+          end_date,
+          amount_paid,
+          freeze_start_date,
+          unfreeze_date,
+          userid,
+          plan_id
+        `);
 
-      if (statsError) throw statsError;
+      if (statsError) {
+        console.error('Error BD user_memberships:', statsError);
+        throw new Error(`Error BD: ${statsError.message}`);
+      }
 
-      // ✅ OBTENER FECHAS MÉXICO CORREGIDAS
-      const mexicoToday = getMexicoDate();
-      const mexicoTodayString = getMexicoDateString();
+      // ✅ FECHAS MÉXICO CON DATEUTILS
+      const mexicoToday = getMexicoToday();
+      const firstDayOfMonth = getFirstDayOfMonth();
+      const in7Days = getIn7DaysDate();
       
-      // Primer día del mes actual en México
-      const firstDayOfMonth = `${mexicoToday.getFullYear()}-${(mexicoToday.getMonth() + 1).toString().padStart(2, '0')}-01`;
-      
-      // Fecha en 7 días en México
-      const in7Days = new Date(mexicoToday);
-      in7Days.setDate(mexicoToday.getDate() + 7);
-      const in7DaysString = toMexicoDate(in7Days);
-      
-      console.log(`📅 Fechas México calculadas para estadísticas:`);
-      console.log(`   📅 Hoy: ${mexicoTodayString}`);
+      console.log(`📅 Fechas México (post-correcciones BD):`);
+      console.log(`   📅 Hoy: ${mexicoToday}`);
       console.log(`   📅 Primer día del mes: ${firstDayOfMonth}`);
-      console.log(`   📅 En 7 días: ${in7DaysString}`);
+      console.log(`   📅 En 7 días: ${in7Days}`);
 
-      // ✅ CALCULAR ESTADÍSTICAS CON FECHAS MÉXICO CORREGIDAS
+      // ✅ ESTADÍSTICAS CON LÓGICA CORREGIDA
       const calculatedStats: MembershipStats = {
         total: allMemberships?.length || 0,
         active: allMemberships?.filter(m => m.status === 'active').length || 0,
         expired: allMemberships?.filter(m => m.status === 'expired').length || 0,
-        frozen: allMemberships?.filter(m => m.status === 'frozen').length || 0,
         
-        // ✅ INGRESOS DEL MES - Filtrar por created_at >= primer día del mes
+        // ✅ FROZEN: Lógica enterprise post-correcciones BD
+        frozen: allMemberships?.filter(m => 
+          m.status === 'frozen' || 
+          (m.freeze_start_date && (!m.unfreeze_date || m.unfreeze_date > mexicoToday))
+        ).length || 0,
+        
+        // ✅ INGRESOS: created_at con timezone UTC consistente
         revenue_this_month: allMemberships
           ?.filter(m => {
             if (!m.created_at) return false;
-            // Convertir timestamp BD a fecha México para comparar
-            const createdDate = toMexicoDate(new Date(m.created_at));
-            return createdDate >= firstDayOfMonth;
+            const createdDateMexico = convertUtcTimestampToMexicoDate(m.created_at);
+            return createdDateMexico >= firstDayOfMonth;
           })
           .reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0,
         
-        // ✅ NUEVAS DEL MES - Filtrar por created_at >= primer día del mes  
+        // ✅ NUEVAS: created_at con timezone UTC consistente  
         new_this_month: allMemberships
           ?.filter(m => {
             if (!m.created_at) return false;
-            // Convertir timestamp BD a fecha México para comparar
-            const createdDate = toMexicoDate(new Date(m.created_at));
-            return createdDate >= firstDayOfMonth;
+            const createdDateMexico = convertUtcTimestampToMexicoDate(m.created_at);
+            return createdDateMexico >= firstDayOfMonth;
           }).length || 0,
         
-        // ✅ POR VENCER EN 7 DÍAS - Filtrar activas con end_date entre hoy y 7 días
+        // ✅ POR VENCER: end_date (DATE) comparación directa
         expiring_soon: allMemberships
           ?.filter(m => {
             if (!m.end_date || m.status !== 'active') return false;
-            // Convertir timestamp BD a fecha México para comparar
-            const endDate = toMexicoDate(new Date(m.end_date));
-            return endDate <= in7DaysString && endDate >= mexicoTodayString;
+            return m.end_date <= in7Days && m.end_date >= mexicoToday;
           }).length || 0
       };
 
-      console.log('📊 Estadísticas calculadas:', calculatedStats);
+      console.log('📊 Estadísticas finales (BD corregida):', calculatedStats);
       
       setStats(calculatedStats);
       
     } catch (err: any) {
-      console.error('💥 Error cargando datos de membresías:', err);
+      console.error('💥 Error cargando datos:', err);
+      
+      if (isRefresh) {
+        notify.error(`Error actualizando: ${err.message}`);
+      }
+      
       throw new Error(err.message || 'Error cargando datos');
     } finally {
       if (isRefresh) {
@@ -130,27 +188,35 @@ export const useMembershipStats = () => {
         setLoading(false);
       }
     }
-  }, [getMexicoDate, getMexicoDateString]);
+  }, [
+    hydrated, 
+    getMexicoToday, 
+    getFirstDayOfMonth, 
+    getIn7DaysDate, 
+    convertUtcTimestampToMexicoDate
+  ]);
 
-  // ✅ FUNCIÓN DE REFRESH CONTROLADA
+  // ✅ REFRESH FUNCTION
   const refreshData = useCallback(async () => {
+    if (!hydrated) return Promise.resolve();
     return loadData(true);
-  }, [loadData]);
+  }, [hydrated, loadData]);
 
-  // ✅ CARGAR DATOS AL INICIALIZAR (SOLO UNA VEZ)
+  // ✅ INICIALIZACIÓN SSR SAFE
   useEffect(() => {
+    if (!hydrated) return;
+
     let isMounted = true;
 
     const initializeData = async () => {
       try {
         await loadData(false);
         if (isMounted) {
-          // Solo mostrar notificación de éxito en la carga inicial si no hay errores
-          toast.success('📊 Datos cargados correctamente');
+          notify.success('📊 Datos cargados correctamente');
         }
       } catch (error: any) {
         if (isMounted) {
-          toast.error(`❌ Error cargando datos: ${error.message}`);
+          notify.error(`❌ Error cargando datos: ${error.message}`);
         }
       }
     };
@@ -160,14 +226,57 @@ export const useMembershipStats = () => {
     return () => {
       isMounted = false;
     };
-  }, []); // ✅ Dependencias vacías para ejecutar solo una vez
+  }, [hydrated, loadData]);
 
-  // ✅ RETORNAR ESTADO Y FUNCIONES MEMOIZADAS
+  // ✅ RETURN CON FUNCIONES DATEUTILS
   return useMemo(() => ({
     stats,
-    loading,
+    loading: loading || !hydrated,
     refreshing,
     refreshData,
+    formatPrice,
+    hydrated,
+    formatTimestampForDisplay,
+    formatDateForDisplay,
+    getTodayInMexico
+  }), [
+    stats, 
+    loading, 
+    hydrated,
+    refreshing, 
+    refreshData, 
     formatPrice
-  }), [stats, loading, refreshing, refreshData, formatPrice]);
+  ]);
 };
+
+// ✅ INTERFACE FINAL POST-CORRECCIONES BD
+interface UserMembership {
+  // Identificadores
+  id: string;
+  userid?: string;
+  plan_id: string; // ✅ Unificado (planid eliminado)
+  
+  // Estado y fechas
+  status: 'active' | 'expired' | 'frozen' | string;
+  start_date: string; // DATE 'YYYY-MM-DD'
+  end_date?: string; // DATE 'YYYY-MM-DD'
+  
+  // Congelamiento (lógica unificada)
+  freeze_start_date?: string; // DATE
+  unfreeze_date?: string; // DATE (freeze_end_date eliminado)
+  freeze_reason?: string;
+  total_frozen_days?: number;
+  
+  // Pagos
+  payment_type: string;
+  payment_method?: string;
+  amount_paid: number;
+  inscription_amount?: number;
+  discount_amount?: number;
+  
+  // Auditoría (ambos con timezone ahora)
+  created_at: string; // ✅ timestamp with time zone (UTC)
+  updated_at: string; // ✅ timestamp with time zone (UTC) - CORREGIDO
+  created_by?: string;
+  updated_by?: string;
+}
