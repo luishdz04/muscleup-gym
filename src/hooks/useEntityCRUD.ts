@@ -1,4 +1,4 @@
-// hooks/useEntityCRUD.ts - v6.0 CORREGIDO - NAMING INTELIGENTE PARA ORDER BY
+// hooks/useEntityCRUD.ts - v7.0 CON AUDITORÍA INTELIGENTE Y NAMING AWARENESS
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -365,7 +365,7 @@ export interface UseEntityCRUDReturn<T> {
   };
 }
 
-// ✅ HOOK ESPECÍFICO PARA USERS CON TIPADO CORREGIDO
+// ✅ HOOK ESPECÍFICO PARA USERS CON TIPADO CORRECTO
 export const useUsers = () => {
   return useEntityCRUD<{
     id: string;
