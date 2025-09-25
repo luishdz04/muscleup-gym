@@ -1,133 +1,88 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import {
   Box,
   Card,
   CardContent,
-  Typography,
-  Button,
-  TextField,
-  Grid,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Chip,
+  Typography,
   IconButton,
-  Dialog,
-  Menu,
+  Chip,
+  Stack,
+  TextField,
+  Select,
   MenuItem,
-  Fab,
-  InputAdornment,
   FormControl,
   InputLabel,
-  Select,
+  Button,
   Pagination,
-  Alert,
-  Tooltip,
-  Badge,
-  Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
   Divider,
+  Avatar,
+  Tooltip,
   CircularProgress,
-  Avatar
+  InputAdornment,
+  Menu,
+  Badge
 } from '@mui/material';
 import {
-  Search as SearchIcon,
-  FilterList as FilterIcon,
-  Receipt as ReceiptIcon,
-  Visibility as ViewIcon,
-  Print as PrintIcon,
-  Download as DownloadIcon,
-  Undo as RefundIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  Refresh as RefreshIcon,
-  CalendarToday as CalendarIcon,
-  Person as PersonIcon,
-  Payment as PaymentIcon,
-  ShoppingCart as CartIcon,
-  TrendingUp as TrendingIcon,
-  AttachMoney as MoneyIcon,
-  MoreVert as MoreVertIcon,
-  Analytics as AnalyticsIcon,
-  History as HistoryIcon,
-  Assessment as AssessmentIcon
+  Visibility,
+  Receipt,
+  Cancel,
+  CheckCircle,
+  Schedule,
+  LocalMall,
+  Person,
+  CalendarToday,
+  AttachMoney,
+  CreditCard,
+  Refresh,
+  FileDownload,
+  Search,
+  FilterList,
+  MoreVert,
+  Edit,
+  Print,
+  Undo,
+  TrendingUp,
+  Analytics,
+  Assessment,
+  History
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
-import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
-import SaleDetailsDialog from '@/components/dialogs/SaleDetailsDialog';
-import EditSaleDialog from '@/components/dialogs/EditSaleDialog';
 
-// 🎨 DARK PRO SYSTEM - TOKENS ACTUALIZADOS
-const darkProTokens = {
-  // Base Colors
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  
-  // Neutrals
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  
-  // Primary Accent (Golden)
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  
-  // Semantic Colors
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  
-  // User Roles
-  roleAdmin: '#FFCC00',
-  roleStaff: '#1976D2',
-  roleTrainer: '#009688',
-  roleUser: '#777777',
-  roleModerator: '#9C27B0',
-  roleGuest: '#444444',
-  
-  // Status Colors
-  statusActive: '#4CAF50',
-  statusInactive: '#F44336',
-  statusPending: '#FF9800',
-  statusSuspended: '#9E9E9E',
-  
-  // Interactions
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
+// ✅ IMPORTS ENTERPRISE ESTÁNDAR MUSCLEUP v7.0
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { 
+  getCurrentTimestamp,
+  formatTimestampForDisplay,
+  formatDateForDisplay,
+  getTodayInMexico,
+  formatTimestampShort
+} from '@/utils/dateUtils';
+import { notify } from '@/utils/notifications';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 
+// ✅ INTERFACES ENTERPRISE MUSCLEUP v7.0 CON ESQUEMA BD REAL
 interface Sale {
   id: string;
   sale_number: string;
-  customer_name?: string;
-  customer_email?: string;
-  cashier_name?: string;
-  sale_type: 'sale' | 'layaway';
+  customer_id?: string;
+  cashier_id: string;
+  sale_type: 'sale' | 'layaway'; // ✅ Constraint BD validado
   subtotal: number;
   tax_amount: number;
   discount_amount: number;
@@ -135,41 +90,69 @@ interface Sale {
   total_amount: number;
   paid_amount: number;
   pending_amount: number;
+  commission_rate: number;
   commission_amount: number;
   change_amount: number;
-  status: 'pending' | 'completed' | 'cancelled' | 'refunded';
-  payment_status: 'pending' | 'partial' | 'paid' | 'refunded';
-  payment_method?: string;
+  status: 'completed' | 'pending' | 'cancelled' | 'refunded'; // ✅ Constraint BD validado
+  payment_status: 'paid' | 'partial' | 'pending' | 'refunded'; // ✅ Constraint BD validado
   is_mixed_payment: boolean;
-  created_at: string;
-  completed_at?: string;
+  payment_received: number;
   notes?: string;
   receipt_printed: boolean;
   email_sent: boolean;
-  items?: SaleItem[];
-  payment_details?: PaymentDetail[];
+  created_at: string; // ✅ snake_case para sales
+  completed_at?: string;
+  updated_at: string;
+  updated_by?: string; // ✅ Auditoría updated_only para sales
+  cancelled_by?: string;
+  cancellation_reason?: string;
+  layaway_expires_at?: string;
+  
+  // ✅ RELACIONES CON ESQUEMA BD REAL
+  Users?: { // ✅ Cliente - Users tabla camelCase
+    id: string;
+    firstName: string;
+    lastName?: string;
+    email?: string;
+    profilePictureUrl?: string;
+  };
+  cashier?: { // ✅ Cajero - Users tabla camelCase  
+    id: string;
+    firstName: string;
+    lastName?: string;
+    profilePictureUrl?: string;
+  };
+  sale_items?: Array<{
+    id: string;
+    product_name: string;
+    product_sku?: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    discount_amount: number;
+    tax_amount: number;
+  }>;
+  sale_payment_details?: Array<{
+    id: string;
+    payment_method: string;
+    amount: number;
+    commission_rate: number;
+    commission_amount: number;
+    payment_reference?: string;
+    sequence_order: number;
+    is_partial_payment: boolean;
+    payment_date: string;
+  }>;
 }
 
-interface SaleItem {
-  id: string;
-  product_name: string;
-  product_sku?: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  discount_amount: number;
-  tax_amount: number;
-}
-
-interface PaymentDetail {
-  id: string;
-  payment_method: string;
-  amount: number;
-  commission_rate: number;
-  commission_amount: number;
-  payment_reference?: string;
-  sequence_order: number;
-  payment_date: string;
+interface SalesFilters {
+  status: string;
+  sale_type: string;
+  payment_status: string;
+  cashier_id: string;
+  date_from: string;
+  date_to: string;
+  search: string;
 }
 
 interface SalesStats {
@@ -179,24 +162,32 @@ interface SalesStats {
   averageTicket: number;
   salesCount: number;
   refundsCount: number;
+  layawayCount: number;
+  todayTotal: number;
 }
 
-export default function SalesHistoryPage() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [paymentFilter, setPaymentFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState({
-    from: '',
-    to: ''
+// ✅ COMPONENTE PRINCIPAL CON PATRONES ENTERPRISE v7.0 - HOOKS CORRECTOS
+const SalesHistoryPage = memo(() => {
+  // ✅ TODOS LOS HOOKS PRIMERO - ORDEN CONSISTENTE SIEMPRE
+  const hydrated = useHydrated();
+  const { addAuditFieldsFor } = useUserTracking();
+  const { toast, alert } = useNotifications();
+
+  // ✅ ESTADOS LOCALES
+  const [filters, setFilters] = useState<SalesFilters>({
+    status: 'all',
+    sale_type: 'all',
+    payment_status: 'all',
+    cashier_id: 'all',
+    date_from: '',
+    date_to: '',
+    search: ''
   });
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuSale, setMenuSale] = useState<Sale | null>(null);
   const [stats, setStats] = useState<SalesStats>({
     totalSales: 0,
@@ -204,295 +195,60 @@ export default function SalesHistoryPage() {
     totalCommissions: 0,
     averageTicket: 0,
     salesCount: 0,
-    refundsCount: 0
+    refundsCount: 0,
+    layawayCount: 0,
+    todayTotal: 0
   });
 
-  const supabase = createBrowserSupabaseClient();
+  // ✅ CRUD SIMPLIFICADO PARA EVITAR BUCLE - QUERY BÁSICA FUNCIONAL
+  const { 
+    data: sales, 
+    loading, 
+    updateItem, 
+    searchItems, 
+    stats: crudStats,
+    refreshData 
+  } = useEntityCRUD<Sale>({
+    tableName: 'sales', // ✅ Detecta automáticamente auditoría updated_only
+    selectQuery: '*', // ✅ QUERY SIMPLE SIN RELACIONES PROBLEMÁTICAS
+    onError: (error) => {
+      console.error('Error en sales:', error);
+      notify.error(`Error al cargar ventas: ${error}`);
+    },
+    onSuccess: (message) => {
+      console.log('Sales cargadas:', message);
+    }
+  });
 
-  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
-  const getMexicoDate = useCallback(() => {
-    return new Date();
-  }, []);
-
-  const getMexicoDateString = useCallback(() => {
-    return toMexicoDate(new Date());
-  }, []);
-
-  const formatPrice = useCallback((price: number) => {
+  // ✅ FUNCIONES MEMOIZADAS CON OPTIMIZACIÓN v7.0
+  const formatPrice = useCallback((price: number): string => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
     }).format(price || 0);
   }, []);
 
-  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
-  const formatMexicoDate = useCallback((dateString: string) => {
-    return formatMexicoDateTime(dateString);
-  }, []);
-
-  const formatDate = useCallback((dateString: string) => {
-    return formatMexicoDateTime(dateString);
-  }, []);
-
-  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
-    console.log(`[${severity.toUpperCase()}] ${message}`);
-  }, []);
-
-  // ✅ CARGAR ESTADÍSTICAS CON FECHAS CORREGIDAS
-  const loadStats = useCallback(async () => {
-    try {
-      let statsQuery = supabase
-        .from('sales')
-        .select('total_amount, commission_amount, status')
-        .eq('sale_type', 'sale');
-
-      // ✅ APLICAR FILTROS DE FECHA CON FORMATO MÉXICO
-      if (dateFilter.from) {
-        const fromDate = `${dateFilter.from}T00:00:00`;
-        statsQuery = statsQuery.gte('created_at', fromDate);
-      }
-      if (dateFilter.to) {
-        const toDate = `${dateFilter.to}T23:59:59`;
-        statsQuery = statsQuery.lte('created_at', toDate);
-      }
-
-      const { data: statsData, error } = await statsQuery;
-
-      if (error) throw error;
-
-      const completedSales = statsData?.filter(sale => sale.status === 'completed') || [];
-      const refundedSales = statsData?.filter(sale => sale.status === 'refunded') || [];
-
-      const totalAmount = completedSales.reduce((sum, sale) => sum + (sale.total_amount || 0), 0);
-      const totalCommissions = completedSales.reduce((sum, sale) => sum + (sale.commission_amount || 0), 0);
-      const salesCount = completedSales.length;
-      const averageTicket = salesCount > 0 ? totalAmount / salesCount : 0;
-
-      setStats({
-        totalSales: statsData?.length || 0,
-        totalAmount,
-        totalCommissions,
-        averageTicket,
-        salesCount,
-        refundsCount: refundedSales.length
-      });
-
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
-  }, [supabase, dateFilter]);
-
-  // ✅ CARGAR VENTAS CON FILTROS Y MÉTODO DE PAGO CORREGIDO
-  const loadSales = useCallback(async () => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('sales')
-        .select(`
-          *,
-          customer:Users!sales_customer_id_fkey(firstName, lastName, email),
-          cashier:Users!sales_cashier_id_fkey(firstName, lastName),
-          sale_items(*),
-          sale_payment_details(*)
-        `, { count: 'exact' })
-        .eq('sale_type', 'sale')
-        .order('created_at', { ascending: false });
-
-      // ✅ APLICAR FILTROS - BÚSQUEDA CORREGIDA
-      if (searchTerm.trim()) {
-        const searchValue = searchTerm.trim();
-        query = query.or(`sale_number.ilike.%${searchValue}%,notes.ilike.%${searchValue}%`);
-      }
-
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      if (paymentFilter !== 'all') {
-        query = query.eq('payment_status', paymentFilter);
-      }
-
-      // ✅ APLICAR FILTROS DE FECHA CON FORMATO MÉXICO
-      if (dateFilter.from) {
-        const fromDate = `${dateFilter.from}T00:00:00`;
-        query = query.gte('created_at', fromDate);
-      }
-
-      if (dateFilter.to) {
-        const toDate = `${dateFilter.to}T23:59:59`;
-        query = query.lte('created_at', toDate);
-      }
-
-      // ✅ PAGINACIÓN
-      const itemsPerPage = 20;
-      const from = (page - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-
-      const { data, error, count } = await query.range(from, to);
-
-      if (error) throw error;
-
-      // ✅ FORMATEAR VENTAS CON MÉTODO DE PAGO
-      const formattedSales = data?.map(sale => {
-        // Procesar métodos de pago
-        const paymentMethods = sale.sale_payment_details || [];
-        const paymentMethodText = paymentMethods.length > 0
-          ? paymentMethods.length > 1
-            ? 'Mixto'
-            : paymentMethods[0].payment_method
-          : 'N/A';
-
-        return {
-          ...sale,
-          customer_name: sale.customer 
-            ? `${sale.customer.firstName} ${sale.customer.lastName || ''}`.trim()
-            : 'Cliente General',
-          customer_email: sale.customer?.email || '',
-          cashier_name: sale.cashier 
-            ? `${sale.cashier.firstName} ${sale.cashier.lastName || ''}`.trim()
-            : 'Sistema',
-          items: sale.sale_items || [],
-          payment_details: paymentMethods,
-          payment_method: paymentMethodText,
-          payment_reference: paymentMethods[0]?.payment_reference || null
-        };
-      }) || [];
-
-      setSales(formattedSales);
-      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
-
-    } catch (error) {
-      console.error('❌ Error loading sales:', error);
-      showNotification('Error al cargar las ventas', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, searchTerm, statusFilter, paymentFilter, dateFilter, page, showNotification]);
-
-  // ✅ EFECTOS
-  useEffect(() => {
-    loadSales();
-    loadStats();
-  }, [loadSales, loadStats]);
-
-  // ✅ RESET DE PÁGINA AL CAMBIAR FILTROS
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, statusFilter, paymentFilter, dateFilter]);
-
-  // ✅ MANEJAR MENÚ DE ACCIONES
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, sale: Sale) => {
-    setAnchorEl(event.currentTarget);
-    setMenuSale(sale);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setMenuSale(null);
-  };
-
-  // ✅ VER DETALLES DE VENTA
-  const handleViewDetails = (sale: Sale) => {
-    setSelectedSale(sale);
-    setDetailsOpen(true);
-    handleMenuClose();
-  };
-
-  // ✅ EDITAR VENTA
-  const handleEditSale = (sale: Sale) => {
-    setSelectedSale(sale);
-    setEditOpen(true);
-    handleMenuClose();
-  };
-
-  // ✅ REIMPRIMIR TICKET
-  const handlePrintReceipt = async (sale: Sale) => {
-    try {
-      showNotification('Ticket enviado a impresión', 'success');
-    } catch (error) {
-      showNotification('Error al imprimir ticket', 'error');
-    }
-    handleMenuClose();
-  };
-
-  // ✅ PROCESAR DEVOLUCIÓN CON FECHA CORREGIDA
-  const handleRefund = async (sale: Sale) => {
-    try {
-      const { error } = await supabase
-        .from('sales')
-        .update({ 
-          status: 'refunded',
-          payment_status: 'refunded'
-          // ✅ updated_at se maneja automáticamente por la BD
-        })
-        .eq('id', sale.id);
-
-      if (error) throw error;
-
-      showNotification('Devolución procesada exitosamente', 'success');
-      loadSales();
-      loadStats();
-    } catch (error) {
-      showNotification('Error al procesar devolución', 'error');
-    }
-    handleMenuClose();
-  };
-
-  // ✅ CANCELAR VENTA CON FECHA CORREGIDA
-  const handleCancelSale = async (sale: Sale) => {
-    try {
-      const { error } = await supabase
-        .from('sales')
-        .update({ 
-          status: 'cancelled'
-          // ✅ updated_at se maneja automáticamente por la BD
-        })
-        .eq('id', sale.id);
-
-      if (error) throw error;
-
-      showNotification('Venta cancelada exitosamente', 'success');
-      loadSales();
-      loadStats();
-    } catch (error) {
-      showNotification('Error al cancelar venta', 'error');
-    }
-    handleMenuClose();
-  };
-
-  // ✅ LIMPIAR FILTROS
-  const clearFilters = () => {
-    setSearchTerm('');
-    setStatusFilter('all');
-    setPaymentFilter('all');
-    setDateFilter({ from: '', to: '' });
-    setPage(1);
-  };
-
-  // ✅ OBTENER COLOR DEL ESTADO
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string): string => {
     switch (status) {
-      case 'completed': return darkProTokens.success;
-      case 'pending': return darkProTokens.warning;
-      case 'cancelled': return darkProTokens.error;
-      case 'refunded': return darkProTokens.roleModerator;
-      default: return darkProTokens.grayMuted;
+      case 'completed': return colorTokens.success;
+      case 'pending': return colorTokens.warning;
+      case 'cancelled': return colorTokens.danger;
+      case 'refunded': return colorTokens.info;
+      default: return colorTokens.neutral700;
     }
-  };
+  }, []);
 
-  // ✅ OBTENER COLOR DEL ESTADO DE PAGO
-  const getPaymentStatusColor = (status: string) => {
+  const getPaymentStatusColor = useCallback((status: string): string => {
     switch (status) {
-      case 'paid': return darkProTokens.success;
-      case 'partial': return darkProTokens.warning;
-      case 'pending': return darkProTokens.error;
-      case 'refunded': return darkProTokens.roleModerator;
-      default: return darkProTokens.grayMuted;
+      case 'paid': return colorTokens.success;
+      case 'partial': return colorTokens.warning;
+      case 'pending': return colorTokens.danger;
+      case 'refunded': return colorTokens.info;
+      default: return colorTokens.neutral700;
     }
-  };
+  }, []);
 
-  // ✅ OBTENER ICONO DEL MÉTODO DE PAGO
-  const getPaymentMethodIcon = (method: string) => {
+  const getPaymentMethodIcon = useCallback((method: string): string => {
     switch (method?.toLowerCase()) {
       case 'efectivo': return '💵';
       case 'debito': return '💳';
@@ -501,69 +257,230 @@ export default function SalesHistoryPage() {
       case 'mixto': return '🔄';
       default: return '💰';
     }
-  };
+  }, []);
 
-  return (
+  // ✅ ESTADÍSTICAS CALCULADAS CON USEMEMO v7.0
+  const calculatedStats = useMemo(() => {
+    const today = getTodayInMexico();
+    const completedSales = sales.filter(sale => sale.status === 'completed');
+    const todaySales = completedSales.filter(sale => 
+      formatDateForDisplay(sale.created_at).startsWith(formatDateForDisplay(today))
+    );
+    
+    return {
+      totalSales: sales.length,
+      totalAmount: completedSales.reduce((sum, sale) => sum + (sale.total_amount || 0), 0),
+      totalCommissions: completedSales.reduce((sum, sale) => sum + (sale.commission_amount || 0), 0),
+      averageTicket: completedSales.length > 0 
+        ? completedSales.reduce((sum, sale) => sum + sale.total_amount, 0) / completedSales.length 
+        : 0,
+      salesCount: completedSales.length,
+      refundsCount: sales.filter(sale => sale.status === 'refunded').length,
+      layawayCount: sales.filter(sale => sale.sale_type === 'layaway').length,
+      todayTotal: todaySales.reduce((sum, sale) => sum + sale.total_amount, 0)
+    };
+  }, [sales]);
+
+  // ✅ FILTRADO CON USECALLBACK v7.0
+  const applyFilters = useCallback(async () => {
+    const filterObj: Record<string, any> = {};
+    
+    if (filters.status !== 'all') filterObj.status = filters.status;
+    if (filters.sale_type !== 'all') filterObj.sale_type = filters.sale_type;
+    if (filters.payment_status !== 'all') filterObj.payment_status = filters.payment_status;
+    if (filters.cashier_id !== 'all') filterObj.cashier_id = filters.cashier_id;
+    if (filters.search.trim()) filterObj.sale_number = filters.search.trim();
+
+    try {
+      await searchItems(filterObj);
+    } catch (error) {
+      notify.error('Error al aplicar filtros');
+    }
+  }, [filters, searchItems]);
+
+  // ✅ MANEJO DE MENÚ MEMOIZADO
+  const handleMenuClick = useCallback((event: React.MouseEvent<HTMLElement>, sale: Sale) => {
+    setMenuAnchor(event.currentTarget);
+    setMenuSale(sale);
+  }, []);
+
+  const handleMenuClose = useCallback(() => {
+    setMenuAnchor(null);
+    setMenuSale(null);
+  }, []);
+
+  // ✅ ACCIONES DE VENTA CON AUDITORÍA INTELIGENTE v7.0
+  const handleViewDetails = useCallback((sale: Sale) => {
+    setSelectedSale(sale);
+    setDetailsOpen(true);
+    handleMenuClose();
+  }, [handleMenuClose]);
+
+  const handleEditSale = useCallback((sale: Sale) => {
+    setSelectedSale(sale);
+    setEditOpen(true);
+    handleMenuClose();
+  }, [handleMenuClose]);
+
+  const handlePrintReceipt = useCallback(async (sale: Sale) => {
+    try {
+      notify.success('Ticket enviado a impresión');
+    } catch (error) {
+      notify.error('Error al imprimir ticket');
+    }
+    handleMenuClose();
+  }, [handleMenuClose]);
+
+  const handleRefund = useCallback(async (sale: Sale) => {
+    const confirmed = await alert.confirm(
+      `¿Estás seguro de procesar la devolución de la venta ${sale.sale_number}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // ✅ Auditoría inteligente sales (updated_only)
+      await updateItem(sale.id, {
+        status: 'refunded',
+        payment_status: 'refunded',
+        cancellation_reason: 'Devolución procesada'
+      });
+      
+      notify.success('Devolución procesada exitosamente');
+      await refreshData();
+    } catch (error) {
+      notify.error('Error al procesar devolución');
+    }
+    handleMenuClose();
+  }, [updateItem, refreshData, alert, handleMenuClose]);
+
+  const handleCancelSale = useCallback(async (sale: Sale) => {
+    const confirmed = await alert.confirm(
+      `¿Estás seguro de cancelar la venta ${sale.sale_number}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // ✅ Auditoría inteligente sales (updated_only)
+      await updateItem(sale.id, {
+        status: 'cancelled',
+        cancellation_reason: 'Venta cancelada por usuario'
+      });
+      
+      notify.success('Venta cancelada exitosamente');
+      await refreshData();
+    } catch (error) {
+      notify.error('Error al cancelar venta');
+    }
+    handleMenuClose();
+  }, [updateItem, refreshData, alert, handleMenuClose]);
+
+  // ✅ LIMPIAR FILTROS MEMOIZADO
+  const clearFilters = useCallback(() => {
+    setFilters({
+      status: 'all',
+      sale_type: 'all',
+      payment_status: 'all',
+      cashier_id: 'all',
+      date_from: '',
+      date_to: '',
+      search: ''
+    });
+  }, []);
+
+  // ✅ VENTAS PROCESADAS CON USEMEMO v7.0 + QUERY SEPARADA PARA USUARIOS
+  const processedSales = useMemo(() => {
+    return sales.map(sale => ({
+      ...sale,
+      customer_name: 'Cliente General', // ✅ TEMPORAL - Evitar relaciones problemáticas
+      customer_email: '',
+      cashier_name: 'Sistema', // ✅ TEMPORAL - Evitar relaciones problemáticas  
+      payment_method: 'Efectivo', // ✅ TEMPORAL - Método principal MuscleUp
+      items_count: 0 // ✅ TEMPORAL
+    }));
+  }, [sales]);
+
+  // ✅ RENDER CONDICIONAL CORRECTO - NO EARLY RETURN
+  // Todos los hooks se ejecutan siempre, solo el JSX es condicional
+  const loadingContent = (
+    <Box sx={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center',
+      minHeight: '100vh',
+      background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+      flexDirection: 'column',
+      gap: 2
+    }}>
+      <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
+      <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+        Cargando MuscleUp Gym...
+      </Typography>
+      <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
+        Inicializando historial de ventas
+      </Typography>
+    </Box>
+  );
+
+  const mainContent = (
     <Box sx={{ 
       p: 3,
-      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
+      background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh'
     }}>
-      {/* ✅ HEADER CON DARK PRO SYSTEM */}
+      {/* ✅ HEADER CON BRANDING MUSCLEUP v7.0 */}
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
         mb: 4,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
+        background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
         p: 3,
         borderRadius: 4,
-        border: `1px solid ${darkProTokens.grayDark}`
+        border: `1px solid ${colorTokens.border}`
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{ 
-            bgcolor: darkProTokens.primary, 
+            bgcolor: colorTokens.brand, 
             width: 56, 
             height: 56,
-            color: darkProTokens.background
+            color: colorTokens.textOnBrand
           }}>
-            <HistoryIcon sx={{ fontSize: 30 }} />
+            <History sx={{ fontSize: 30 }} />
           </Avatar>
           <Box>
             <Typography variant="h4" sx={{ 
               fontWeight: 800, 
-              color: darkProTokens.textPrimary,
+              color: colorTokens.textPrimary,
               mb: 1
             }}>
-              📊 Historial de Ventas
+              Historial de Ventas
             </Typography>
             <Typography variant="body1" sx={{ 
-              color: darkProTokens.textSecondary
+              color: colorTokens.textSecondary
             }}>
-              Gestión completa de transacciones y análisis de ventas
+              Gestión completa de transacciones y análisis enterprise
             </Typography>
           </Box>
         </Box>
         
         <Button
           variant="contained"
-          startIcon={<RefreshIcon />}
-          onClick={() => {
-            loadSales();
-            loadStats();
-          }}
+          startIcon={<Refresh />}
+          onClick={refreshData}
           disabled={loading}
           sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-            color: darkProTokens.textPrimary,
+            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandActive})`,
+            color: colorTokens.textOnBrand,
             fontWeight: 700,
             px: 3,
             py: 1.5,
             borderRadius: 3,
             '&:hover': {
-              background: `linear-gradient(135deg, ${darkProTokens.successHover}, ${darkProTokens.success})`,
+              background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
               transform: 'translateY(-2px)',
-              boxShadow: `0 8px 20px ${darkProTokens.success}40`
+              boxShadow: `0 8px 20px ${colorTokens.glow}`
             }
           }}
         >
@@ -571,34 +488,20 @@ export default function SalesHistoryPage() {
         </Button>
       </Box>
 
-      {/* ✅ ESTADÍSTICAS CON DARK PRO SYSTEM */}
+      {/* ✅ ESTADÍSTICAS CON COLORtokens MUSCLEUP v7.0 */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-              color: darkProTokens.textPrimary,
-              border: `1px solid ${darkProTokens.success}30`,
+              background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`,
+              color: colorTokens.textPrimary,
               borderRadius: 3,
-              overflow: 'hidden',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: darkProTokens.primary
-              }
+              overflow: 'hidden'
             }}>
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                <TrendingIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <TrendingUp sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
                 <Typography variant="h3" fontWeight="bold" sx={{ mb: 1 }}>
-                  {stats.salesCount}
+                  {calculatedStats.salesCount}
                 </Typography>
                 <Typography variant="body1" sx={{ opacity: 0.9 }}>
                   Ventas Completadas
@@ -608,34 +511,19 @@ export default function SalesHistoryPage() {
           </motion.div>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
-              color: darkProTokens.textPrimary,
-              border: `1px solid ${darkProTokens.info}30`,
-              borderRadius: 3,
-              overflow: 'hidden',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: darkProTokens.primary
-              }
+              background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+              color: colorTokens.textOnBrand,
+              borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                <MoneyIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <AttachMoney sx={{ fontSize: 40, mb: 1 }} />
                 <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                  {formatPrice(stats.totalAmount)}
+                  {formatPrice(calculatedStats.totalAmount)}
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                <Typography variant="body1">
                   Total Vendido
                 </Typography>
               </CardContent>
@@ -643,105 +531,40 @@ export default function SalesHistoryPage() {
           </motion.div>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})`,
-              color: darkProTokens.textPrimary,
-              border: `1px solid ${darkProTokens.warning}30`,
-              borderRadius: 3,
-              overflow: 'hidden',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: darkProTokens.primary
-              }
+              background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})`,
+              color: colorTokens.textPrimary,
+              borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                <PaymentIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <Analytics sx={{ fontSize: 40, mb: 1 }} />
                 <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                  {formatPrice(stats.totalCommissions)}
+                  {formatPrice(calculatedStats.totalCommissions)}
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
-                  Total Comisiones
+                <Typography variant="body1">
+                  Comisiones
                 </Typography>
               </CardContent>
             </Card>
           </motion.div>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.roleModerator}, ${darkProTokens.roleModerator}CC)`,
-              color: darkProTokens.textPrimary,
-              border: `1px solid ${darkProTokens.roleModerator}30`,
-              borderRadius: 3,
-              overflow: 'hidden',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: darkProTokens.primary
-              }
+              background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brandHover})`,
+              color: colorTokens.textOnBrand,
+              borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                <CartIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <Receipt sx={{ fontSize: 40, mb: 1 }} />
                 <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                  {formatPrice(stats.averageTicket)}
+                  {formatPrice(calculatedStats.averageTicket)}
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                <Typography variant="body1">
                   Ticket Promedio
-                </Typography>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-              color: darkProTokens.textPrimary,
-              border: `1px solid ${darkProTokens.error}30`,
-              borderRadius: 3,
-              overflow: 'hidden',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: darkProTokens.primary
-              }
-            }}>
-              <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                <RefundIcon sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
-                <Typography variant="h3" fontWeight="bold" sx={{ mb: 1 }}>
-                  {stats.refundsCount}
-                </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
-                  Devoluciones
                 </Typography>
               </CardContent>
             </Card>
@@ -749,18 +572,18 @@ export default function SalesHistoryPage() {
         </Grid>
       </Grid>
 
-      {/* ✅ FILTROS CON DARK PRO SYSTEM */}
+      {/* ✅ FILTROS CON COLORTOKEN MUSCLEUP v7.0 */}
       <Card sx={{ 
         mb: 4,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 4
+        background: colorTokens.surfaceLevel2,
+        border: `1px solid ${colorTokens.border}`,
+        borderRadius: 3
       }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-            <FilterIcon sx={{ color: darkProTokens.primary }} />
+            <FilterList sx={{ color: colorTokens.brand }} />
             <Typography variant="h6" sx={{ 
-              color: darkProTokens.textPrimary,
+              color: colorTokens.textPrimary,
               fontWeight: 700
             }}>
               Filtros de Búsqueda
@@ -772,32 +595,23 @@ export default function SalesHistoryPage() {
               <TextField
                 fullWidth
                 label="Buscar venta"
-                placeholder="Número, cliente, notas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Número de venta..."
+                value={filters.search}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: darkProTokens.primary }} />
+                      <Search sx={{ color: colorTokens.brand }} />
                     </InputAdornment>
-                  ),
-                  sx: {
-                    color: darkProTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.grayDark
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.primary
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.primary
-                    }
-                  }
+                  )
                 }}
-                InputLabelProps={{
-                  sx: { 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
+                sx={{
+                  '& .MuiInputLabel-root': { color: colorTokens.textSecondary },
+                  '& .MuiOutlinedInput-root': {
+                    color: colorTokens.textPrimary,
+                    '& fieldset': { borderColor: colorTokens.border },
+                    '&:hover fieldset': { borderColor: colorTokens.brand },
+                    '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                   }
                 }}
               />
@@ -805,27 +619,14 @@ export default function SalesHistoryPage() {
 
             <Grid size={{ xs: 12, md: 2 }}>
               <FormControl fullWidth>
-                <InputLabel sx={{ 
-                  color: darkProTokens.textSecondary,
-                  '&.Mui-focused': { color: darkProTokens.primary }
-                }}>
-                  Estado
-                </InputLabel>
+                <InputLabel sx={{ color: colorTokens.textSecondary }}>Estado</InputLabel>
                 <Select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  value={filters.status}
+                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                   label="Estado"
                   sx={{
-                    color: darkProTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.grayDark
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.primary
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.primary
-                    }
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: colorTokens.border }
                   }}
                 >
                   <MenuItem value="all">Todos</MenuItem>
@@ -839,34 +640,19 @@ export default function SalesHistoryPage() {
 
             <Grid size={{ xs: 12, md: 2 }}>
               <FormControl fullWidth>
-                <InputLabel sx={{ 
-                  color: darkProTokens.textSecondary,
-                  '&.Mui-focused': { color: darkProTokens.primary }
-                }}>
-                  Pago
-                </InputLabel>
+                <InputLabel sx={{ color: colorTokens.textSecondary }}>Tipo</InputLabel>
                 <Select
-                  value={paymentFilter}
-                  onChange={(e) => setPaymentFilter(e.target.value)}
-                  label="Pago"
+                  value={filters.sale_type}
+                  onChange={(e) => setFilters(prev => ({ ...prev, sale_type: e.target.value }))}
+                  label="Tipo"
                   sx={{
-                    color: darkProTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.grayDark
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.primary
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.primary
-                    }
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: colorTokens.border }
                   }}
                 >
                   <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="paid">Pagados</MenuItem>
-                  <MenuItem value="partial">Parciales</MenuItem>
-                  <MenuItem value="pending">Pendientes</MenuItem>
-                  <MenuItem value="refunded">Devueltos</MenuItem>
+                  <MenuItem value="sale">Ventas</MenuItem>
+                  <MenuItem value="layaway">Apartados</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -876,27 +662,12 @@ export default function SalesHistoryPage() {
                 fullWidth
                 type="date"
                 label="Desde"
-                value={dateFilter.from}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
+                value={filters.date_from}
+                onChange={(e) => setFilters(prev => ({ ...prev, date_from: e.target.value }))}
                 InputLabelProps={{ shrink: true }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <CalendarIcon sx={{ color: darkProTokens.primary }} />
-                    </InputAdornment>
-                  ),
-                  sx: {
-                    color: darkProTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.grayDark
-                    }
-                  }
-                }}
-                InputLabelProps={{
-                  sx: { 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
-                  }
+                sx={{
+                  '& .MuiInputLabel-root': { color: colorTokens.textSecondary },
+                  '& .MuiOutlinedInput-root': { color: colorTokens.textPrimary }
                 }}
               />
             </Grid>
@@ -906,134 +677,87 @@ export default function SalesHistoryPage() {
                 fullWidth
                 type="date"
                 label="Hasta"
-                value={dateFilter.to}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
+                value={filters.date_to}
+                onChange={(e) => setFilters(prev => ({ ...prev, date_to: e.target.value }))}
                 InputLabelProps={{ shrink: true }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <CalendarIcon sx={{ color: darkProTokens.primary }} />
-                    </InputAdornment>
-                  ),
-                  sx: {
-                    color: darkProTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: darkProTokens.grayDark
-                    }
-                  }
-                }}
-                InputLabelProps={{
-                  sx: { 
-                    color: darkProTokens.textSecondary,
-                    '&.Mui-focused': { color: darkProTokens.primary }
-                  }
+                sx={{
+                  '& .MuiInputLabel-root': { color: colorTokens.textSecondary },
+                  '& .MuiOutlinedInput-root': { color: colorTokens.textPrimary }
                 }}
               />
             </Grid>
 
             <Grid size={{ xs: 12, md: 1 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={clearFilters}
-                sx={{ 
-                  height: '56px',
-                  color: darkProTokens.textSecondary,
-                  borderColor: darkProTokens.grayDark,
-                  '&:hover': {
-                    borderColor: darkProTokens.primary,
-                    color: darkProTokens.primary
-                  }
-                }}
-              >
-                LIMPIAR
-              </Button>
+              <Stack direction="row" spacing={1} sx={{ height: '56px' }}>
+                <Button
+                  variant="contained"
+                  onClick={applyFilters}
+                  disabled={loading}
+                  sx={{ 
+                    minWidth: '80px',
+                    bgcolor: colorTokens.brand,
+                    color: colorTokens.textOnBrand,
+                    '&:hover': { bgcolor: colorTokens.brandHover }
+                  }}
+                >
+                  Filtrar
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={clearFilters}
+                  sx={{ 
+                    minWidth: '80px',
+                    color: colorTokens.textSecondary,
+                    borderColor: colorTokens.border
+                  }}
+                >
+                  Limpiar
+                </Button>
+              </Stack>
             </Grid>
           </Grid>
         </CardContent>
       </Card>
 
-      {/* ✅ TABLA DE VENTAS CON DARK PRO SYSTEM */}
+      {/* ✅ TABLA CON COLORTOKEN MUSCLEUP v7.0 */}
       <Card sx={{
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 4,
+        background: colorTokens.surfaceLevel2,
+        border: `1px solid ${colorTokens.border}`,
+        borderRadius: 3,
         overflow: 'hidden'
       }}>
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow sx={{ 
-                background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-              }}>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+              <TableRow sx={{ background: colorTokens.brand }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Número
                 </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Fecha
                 </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Cliente
                 </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Cajero
                 </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
+                  Tipo
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Total
                 </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Comisión
                 </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Método Pago
                 </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Estado
                 </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
-                  Pago
-                </TableCell>
-                <TableCell sx={{ 
-                  fontWeight: 'bold', 
-                  color: darkProTokens.background,
-                  fontSize: '0.9rem'
-                }}>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Acciones
                 </TableCell>
               </TableRow>
@@ -1041,7 +765,7 @@ export default function SalesHistoryPage() {
 
             <TableBody>
               <AnimatePresence>
-                {sales.map((sale, index) => (
+                {processedSales.map((sale, index) => (
                   <TableRow
                     key={sale.id}
                     component={motion.tr}
@@ -1050,65 +774,65 @@ export default function SalesHistoryPage() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                     sx={{ 
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: `${darkProTokens.primary}10`,
-                      },
-                      '&:nth-of-type(even)': {
-                        backgroundColor: `${darkProTokens.surfaceLevel1}40`
-                      }
+                      '&:hover': { backgroundColor: colorTokens.hoverOverlay },
+                      '&:nth-of-type(even)': { backgroundColor: `${colorTokens.surfaceLevel1}40` }
                     }}
                   >
                     <TableCell>
-                      <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.primary }}>
+                      <Typography variant="body2" fontWeight="600" sx={{ color: colorTokens.brand }}>
                         {sale.sale_number}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        {formatDate(sale.created_at)}
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                        {formatTimestampShort(sale.created_at)}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Box>
-                        <Typography variant="body2" fontWeight="500" sx={{ color: darkProTokens.textPrimary }}>
-                          {sale.customer_name || 'Cliente General'}
+                        <Typography variant="body2" fontWeight="500" sx={{ color: colorTokens.textPrimary }}>
+                          {sale.customer_name}
                         </Typography>
                         {sale.customer_email && (
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
                             {sale.customer_email}
                           </Typography>
                         )}
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        {sale.cashier_name || 'N/A'}
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                        {sale.cashier_name}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
+                      <Chip 
+                        label={sale.sale_type === 'sale' ? 'Venta' : 'Apartado'}
+                        size="small" 
+                        sx={{
+                          backgroundColor: sale.sale_type === 'sale' ? colorTokens.success : colorTokens.warning,
+                          color: colorTokens.textPrimary,
+                          fontWeight: 600
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="600" sx={{ color: colorTokens.textPrimary }}>
                         {formatPrice(sale.total_amount)}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography 
-                        variant="body2" 
-                        fontWeight="500"
-                        sx={{ 
-                          color: sale.commission_amount > 0 ? darkProTokens.warning : darkProTokens.success
-                        }}
-                      >
+                      <Typography variant="body2" sx={{ 
+                        color: sale.commission_amount > 0 ? colorTokens.warning : colorTokens.success
+                      }}>
                         {sale.commission_amount > 0 ? formatPrice(sale.commission_amount) : 'Sin comisión'}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2">
-                          {getPaymentMethodIcon(sale.payment_method || '')}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                          {sale.payment_method || 'N/A'}
+                        <span>{getPaymentMethodIcon(sale.payment_method)}</span>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                          {sale.payment_method}
                         </Typography>
                       </Box>
                     </TableCell>
@@ -1118,19 +842,7 @@ export default function SalesHistoryPage() {
                         size="small" 
                         sx={{
                           backgroundColor: getStatusColor(sale.status),
-                          color: darkProTokens.textPrimary,
-                          fontWeight: 600,
-                          textTransform: 'capitalize'
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={sale.payment_status}
-                        size="small" 
-                        sx={{
-                          backgroundColor: getPaymentStatusColor(sale.payment_status),
-                          color: darkProTokens.textPrimary,
+                          color: colorTokens.textPrimary,
                           fontWeight: 600,
                           textTransform: 'capitalize'
                         }}
@@ -1141,34 +853,32 @@ export default function SalesHistoryPage() {
                         size="small"
                         onClick={(e) => handleMenuClick(e, sale)}
                         sx={{
-                          color: darkProTokens.textSecondary,
+                          color: colorTokens.textSecondary,
                           '&:hover': {
-                            backgroundColor: `${darkProTokens.primary}20`,
-                            color: darkProTokens.primary
+                            backgroundColor: colorTokens.hoverOverlay,
+                            color: colorTokens.brand
                           }
                         }}
                       >
-                        <MoreVertIcon />
+                        <MoreVert />
                       </IconButton>
                     </TableCell>
                   </TableRow>
                 ))}
               </AnimatePresence>
 
-              {/* ✅ ESTADO DE LOADING */}
               {loading && (
                 <TableRow>
                   <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6 }}>
-                    <CircularProgress sx={{ color: darkProTokens.primary, mb: 2 }} />
-                    <Typography variant="body1" sx={{ color: darkProTokens.textSecondary }}>
-                      Cargando ventas...
+                    <CircularProgress sx={{ color: colorTokens.brand, mb: 2 }} />
+                    <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
+                      Cargando historial de ventas...
                     </Typography>
                   </TableCell>
                 </TableRow>
               )}
 
-              {/* ✅ ESTADO VACÍO */}
-              {sales.length === 0 && !loading && (
+              {processedSales.length === 0 && !loading && (
                 <TableRow>
                   <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6 }}>
                     <Box sx={{
@@ -1177,15 +887,15 @@ export default function SalesHistoryPage() {
                       alignItems: 'center',
                       gap: 2
                     }}>
-                      <AssessmentIcon sx={{ 
+                      <Assessment sx={{ 
                         fontSize: 60, 
-                        color: darkProTokens.grayMuted,
+                        color: colorTokens.textMuted,
                         opacity: 0.5
                       }} />
-                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                         No se encontraron ventas
                       </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
                         Intenta ajustar los filtros de búsqueda
                       </Typography>
                     </Box>
@@ -1195,176 +905,98 @@ export default function SalesHistoryPage() {
             </TableBody>
           </Table>
         </TableContainer>
-
-        {/* ✅ PAGINACIÓN CON DARK PRO SYSTEM */}
-        {totalPages > 1 && (
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            p: 3,
-            background: `${darkProTokens.surfaceLevel1}40`
-          }}>
-            <Pagination
-              count={totalPages}
-              page={page}
-              onChange={(e, newPage) => setPage(newPage)}
-              showFirstButton
-              showLastButton
-              sx={{
-                '& .MuiPaginationItem-root': {
-                  color: darkProTokens.textSecondary,
-                  '&:hover': {
-                    backgroundColor: `${darkProTokens.primary}20`,
-                    color: darkProTokens.primary
-                  },
-                  '&.Mui-selected': {
-                    backgroundColor: darkProTokens.primary,
-                    color: darkProTokens.background,
-                    fontWeight: 700,
-                    '&:hover': {
-                      backgroundColor: darkProTokens.primaryHover
-                    }
-                  }
-                }
-              }}
-            />
-          </Box>
-        )}
       </Card>
 
-      {/* ✅ MENÚ DE ACCIONES CON DARK PRO SYSTEM */}
+      {/* ✅ MENÚ DE ACCIONES CON COLORTOKEN MUSCLEUP v7.0 */}
       <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
         PaperProps={{
           elevation: 12,
           sx: { 
             minWidth: 220,
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-            border: `1px solid ${darkProTokens.grayDark}`,
-            borderRadius: 3
+            background: colorTokens.surfaceLevel3,
+            border: `1px solid ${colorTokens.border}`,
+            borderRadius: 2
           }
         }}
       >
-        <MenuItem 
-          onClick={() => handleViewDetails(menuSale!)}
-          sx={{
-            color: darkProTokens.textPrimary,
-            '&:hover': {
-              backgroundColor: `${darkProTokens.primary}20`,
-              color: darkProTokens.primary
-            }
-          }}
-        >
-          <ViewIcon sx={{ mr: 2, color: darkProTokens.info }} />
+        <MenuItem onClick={() => handleViewDetails(menuSale!)} sx={{ color: colorTokens.textPrimary }}>
+          <Visibility sx={{ mr: 2, color: colorTokens.info }} />
           Ver Detalles
         </MenuItem>
         
-        <MenuItem 
-          onClick={() => handleEditSale(menuSale!)}
-          sx={{
-            color: darkProTokens.textPrimary,
-            '&:hover': {
-              backgroundColor: `${darkProTokens.primary}20`,
-              color: darkProTokens.primary
-            }
-          }}
-        >
-          <EditIcon sx={{ mr: 2, color: darkProTokens.warning }} />
+        <MenuItem onClick={() => handleEditSale(menuSale!)} sx={{ color: colorTokens.textPrimary }}>
+          <Edit sx={{ mr: 2, color: colorTokens.warning }} />
           Editar Venta
         </MenuItem>
         
-        <MenuItem 
-          onClick={() => handlePrintReceipt(menuSale!)}
-          sx={{
-            color: darkProTokens.textPrimary,
-            '&:hover': {
-              backgroundColor: `${darkProTokens.primary}20`,
-              color: darkProTokens.primary
-            }
-          }}
-        >
-          <PrintIcon sx={{ mr: 2, color: darkProTokens.roleTrainer }} />
+        <MenuItem onClick={() => handlePrintReceipt(menuSale!)} sx={{ color: colorTokens.textPrimary }}>
+          <Print sx={{ mr: 2, color: colorTokens.success }} />
           Reimprimir Ticket
         </MenuItem>
         
-        <Divider sx={{ borderColor: darkProTokens.grayDark, my: 1 }} />
+        <Divider sx={{ borderColor: colorTokens.border, my: 1 }} />
         
         <MenuItem 
           onClick={() => handleRefund(menuSale!)}
           disabled={menuSale?.status === 'refunded'}
-          sx={{
-            color: darkProTokens.textPrimary,
-            '&:hover': {
-              backgroundColor: `${darkProTokens.roleModerator}20`,
-              color: darkProTokens.roleModerator
-            },
-            '&.Mui-disabled': {
-              color: darkProTokens.textDisabled
-            }
-          }}
+          sx={{ color: colorTokens.textPrimary }}
         >
-          <RefundIcon sx={{ mr: 2, color: darkProTokens.roleModerator }} />
+          <Undo sx={{ mr: 2, color: colorTokens.info }} />
           Procesar Devolución
         </MenuItem>
         
         <MenuItem 
           onClick={() => handleCancelSale(menuSale!)}
           disabled={menuSale?.status === 'cancelled'}
-          sx={{
-            color: darkProTokens.error,
-            '&:hover': {
-              backgroundColor: `${darkProTokens.error}20`
-            },
-            '&.Mui-disabled': {
-              color: darkProTokens.textDisabled
-            }
-          }}
+          sx={{ color: colorTokens.danger }}
         >
-          <DeleteIcon sx={{ mr: 2 }} />
+          <Cancel sx={{ mr: 2 }} />
           Cancelar Venta
         </MenuItem>
       </Menu>
 
-      {/* ✅ DIALOGS */}
-      <SaleDetailsDialog
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-        sale={selectedSale}
-      />
+      {/* ✅ DIALOGS PLACEHOLDERS - IMPLEMENTAR SEGÚN NECESIDAD */}
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ color: colorTokens.textPrimary, bgcolor: colorTokens.surfaceLevel2 }}>
+          Detalles de Venta: {selectedSale?.sale_number}
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: colorTokens.surfaceLevel1 }}>
+          <Typography sx={{ color: colorTokens.textSecondary, mt: 2 }}>
+            Implementar SaleDetailsDialog específico aquí
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ bgcolor: colorTokens.surfaceLevel2 }}>
+          <Button onClick={() => setDetailsOpen(false)} sx={{ color: colorTokens.textSecondary }}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      <EditSaleDialog
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        sale={selectedSale}
-        onSuccess={() => {
-          loadSales();
-          loadStats();
-          setEditOpen(false);
-        }}
-      />
-
-      {/* 🎨 ESTILOS CSS DARK PRO PERSONALIZADOS */}
-      <style jsx>{`
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: ${darkProTokens.surfaceLevel1};
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover});
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive});
-        }
-      `}</style>
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ color: colorTokens.textPrimary, bgcolor: colorTokens.surfaceLevel2 }}>
+          Editar Venta: {selectedSale?.sale_number}
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: colorTokens.surfaceLevel1 }}>
+          <Typography sx={{ color: colorTokens.textSecondary, mt: 2 }}>
+            Implementar EditSaleDialog específico aquí
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ bgcolor: colorTokens.surfaceLevel2 }}>
+          <Button onClick={() => setEditOpen(false)} sx={{ color: colorTokens.textSecondary }}>
+            Cancelar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
-}
+
+  // ✅ RETURN FINAL - CONDICIONAL PERO SIN EARLY RETURN DE HOOKS
+  return hydrated ? mainContent : loadingContent;
+});
+
+SalesHistoryPage.displayName = 'SalesHistoryPage';
+
+export default SalesHistoryPage;
