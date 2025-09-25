@@ -1,4 +1,4 @@
-// components/UserFormDialog.tsx - VERSIÓN ENTERPRISE v6.0 CORREGIDA
+// components/UserFormDialog.tsx - v6.0 COMPLETO HOOKS RULES CORREGIDO + GRID MUI v6
 'use client';
 
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
@@ -29,13 +29,11 @@ import {
   StepContent,
   Alert,
   Chip,
-  Snackbar,
-  Slide,
   Avatar,
   Card,
   CardContent
 } from '@mui/material';
-import Grid from '@mui/material/Grid'; // ✅ GRID v2 MUI v5
+import Grid from '@mui/material/Grid';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs, { Dayjs } from 'dayjs';
@@ -63,7 +61,9 @@ import {
   CloudUpload as CloudUploadIcon,
   PhotoCamera as PhotoCameraIcon,
   Description as DescriptionIcon,
-  Fingerprint as FingerprintIcon
+  Fingerprint as FingerprintIcon,
+  Visibility as VisibilityIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 
 // ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
@@ -77,58 +77,9 @@ import {
 import { colorTokens } from '@/theme';
 import { notify } from '@/utils/notifications';
 import { useNotifications } from '@/hooks/useNotifications';
-import { validateFile } from '@/utils/fileValidation';
+import { validateFileSimple } from '@/utils/fileValidation';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-
-// Interfaces
-interface User {
-  id?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  rol: string;
-  profilePictureUrl?: string;
-  signatureUrl?: string;
-  contractPdfUrl?: string;
-  whatsapp: string;
-  birthDate: string;
-  gender: string;
-  maritalStatus: string;
-  isMinor: boolean;
-  emailSent: boolean;
-  emailSentAt?: string;
-  whatsappSent: boolean;
-  whatsappSentAt?: string;
-  fingerprint: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  createdBy?: string;
-  updatedBy?: string;
-}
-
-interface Address {
-  street: string;
-  number: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-}
-
-interface EmergencyContact {
-  name: string;
-  phone: string;
-  medicalCondition: string;
-  bloodType: string;
-}
-
-interface MembershipInfo {
-  referredBy: string;
-  mainMotivation: string;
-  receivePlans: boolean;
-  trainingLevel: string;
-}
+import { User, Address, EmergencyContact, MembershipInfo } from '@/types/user';
 
 interface UserFormDialogProps {
   open: boolean;
@@ -143,25 +94,20 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
   user, 
   onSave 
 }) => {
+  // ✅ TODOS LOS HOOKS AL PRINCIPIO - ORDEN FIJO SIEMPRE
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
-  // ✅ SSR SAFETY OBLIGATORIO
   const hydrated = useHydrated();
-  
-  // ✅ AUDITORÍA INTELIGENTE v6.0
   const { addAuditFieldsFor } = useUserTracking();
-  
   const { toast, alert } = useNotifications();
   const supabase = createBrowserSupabaseClient();
 
-  // ESTADOS PRINCIPALES
+  // ✅ TODOS LOS ESTADOS - ORDEN FIJO
   const [loading, setLoading] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
-  
-  // FORMULARIO PRINCIPAL
   const [formData, setFormData] = useState<User>({
+    id: '',
     firstName: '',
     lastName: '',
     email: '',
@@ -175,8 +121,6 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     whatsappSent: false,
     fingerprint: false
   });
-
-  // DATOS RELACIONADOS
   const [addressData, setAddressData] = useState<Address>({
     street: '',
     number: '',
@@ -186,33 +130,28 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     postalCode: '',
     country: 'México'
   });
-
   const [emergencyData, setEmergencyData] = useState<EmergencyContact>({
     name: '',
     phone: '',
     medicalCondition: '',
     bloodType: ''
   });
-
   const [membershipData, setMembershipData] = useState<MembershipInfo>({
     referredBy: '',
     mainMotivation: '',
     receivePlans: false,
     trainingLevel: 'principiante'
   });
-
-  // ARCHIVOS
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [signature, setSignature] = useState<File | null>(null);
-  const [profilePreview, setProfilePreview] = useState<string>('');
-  const [signaturePreview, setSignaturePreview] = useState<string>('');
   const [fileUploading, setFileUploading] = useState(false);
-
-  // ERRORES Y VALIDACIÓN
+  const [hasExistingProfilePicture, setHasExistingProfilePicture] = useState(false);
+  const [hasExistingSignature, setHasExistingSignature] = useState(false);
+  const [hasExistingContract, setHasExistingContract] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [birthDate, setBirthDate] = useState<Dayjs | null>(null);
 
-  // ✅ PASOS DEL STEPPER SEGÚN ROL
+  // ✅ TODOS LOS useMemo - ORDEN FIJO, NO CONDICIONALES
   const steps = useMemo(() => {
     const baseSteps = ['Información Personal'];
     if (formData.rol === 'cliente') {
@@ -227,456 +166,17 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     return [...baseSteps, 'Archivos'];
   }, [formData.rol]);
 
-  const isLastStep = activeStep === steps.length - 1;
-  const isFirstStep = activeStep === 0;
+  const isLastStep = useMemo(() => activeStep === steps.length - 1, [activeStep, steps.length]);
+  const isFirstStep = useMemo(() => activeStep === 0, [activeStep]);
 
-  // ✅ CARGAR DATOS DEL USUARIO
-  useEffect(() => {
-    if (open && user?.id) {
-      setFormData(prev => ({ ...prev, ...user }));
-      setBirthDate(user.birthDate ? dayjs(user.birthDate) : null);
-      
-      // Cargar datos relacionados
-      loadRelatedData(user.id);
-    } else if (open && !user) {
-      resetForm();
-    }
-  }, [open, user]);
+  const profilePreview = useMemo(() => {
+    return profilePicture ? URL.createObjectURL(profilePicture) : '';
+  }, [profilePicture]);
 
-  // ✅ FUNCIÓN PARA CARGAR DATOS RELACIONADOS
-  const loadRelatedData = useCallback(async (userId: string) => {
-    try {
-      // Cargar dirección
-      const { data: address } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('userId', userId)
-        .single();
-      
-      if (address) {
-        setAddressData(address);
-      }
+  const signaturePreview = useMemo(() => {
+    return signature ? URL.createObjectURL(signature) : '';
+  }, [signature]);
 
-      // Cargar contacto emergencia
-      const { data: emergency } = await supabase
-        .from('emergency_contacts')
-        .select('*')
-        .eq('userId', userId)
-        .single();
-        
-      if (emergency) {
-        setEmergencyData(emergency);
-      }
-
-      // Cargar info membresía
-      const { data: membership } = await supabase
-        .from('membership_info')
-        .select('*')
-        .eq('userId', userId)
-        .single();
-        
-      if (membership) {
-        setMembershipData(membership);
-      }
-      
-    } catch (error) {
-      console.error('Error cargando datos relacionados:', error);
-    }
-  }, [supabase]);
-
-  // ✅ RESET FORM
-  const resetForm = useCallback(() => {
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      rol: 'cliente',
-      whatsapp: '',
-      birthDate: '',
-      gender: '',
-      maritalStatus: '',
-      isMinor: false,
-      emailSent: false,
-      whatsappSent: false,
-      fingerprint: false
-    });
-    
-    setAddressData({
-      street: '',
-      number: '',
-      neighborhood: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'México'
-    });
-    
-    setEmergencyData({
-      name: '',
-      phone: '',
-      medicalCondition: '',
-      bloodType: ''
-    });
-    
-    setMembershipData({
-      referredBy: '',
-      mainMotivation: '',
-      receivePlans: false,
-      trainingLevel: 'principiante'
-    });
-    
-    setBirthDate(null);
-    setActiveStep(0);
-    setErrors({});
-    setHasChanges(false);
-    setProfilePicture(null);
-    setSignature(null);
-    setProfilePreview('');
-    setSignaturePreview('');
-  }, []);
-
-  // ✅ HANDLERS DE FORMULARIO
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setHasChanges(true);
-    
-    // Limpiar error si existe
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  }, [errors]);
-
-  const handleSelectChange = useCallback((e: any) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setHasChanges(true);
-  }, []);
-
-  const handleSwitchChange = useCallback((name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [name]: e.target.checked }));
-    setHasChanges(true);
-  }, []);
-
-  const handleBirthDateChange = useCallback((date: Dayjs | null) => {
-    setBirthDate(date);
-    const dateString = date ? date.format('YYYY-MM-DD') : '';
-    setFormData(prev => ({ 
-      ...prev, 
-      birthDate: dateString,
-      isMinor: date ? dayjs().diff(date, 'year') < 18 : false
-    }));
-    setHasChanges(true);
-  }, []);
-
-  // ✅ HANDLERS DE ARCHIVOS CON VALIDACIÓN
-  const handleFileChange = useCallback((type: 'profilePicture' | 'signature') => 
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      try {
-        const validation = await validateFile(file, 'image');
-        if (!validation.isValid) {
-          toast.error(validation.error || 'Archivo inválido');
-          return;
-        }
-
-        if (validation.warnings && validation.warnings.length > 0) {
-          validation.warnings.forEach(warning => toast.warning(warning));
-        }
-
-        if (type === 'profilePicture') {
-          setProfilePicture(file);
-          const preview = URL.createObjectURL(file);
-          setProfilePreview(preview);
-        } else {
-          setSignature(file);
-          const preview = URL.createObjectURL(file);
-          setSignaturePreview(preview);
-        }
-        
-        setHasChanges(true);
-        
-      } catch (error: any) {
-        toast.error('Error al procesar archivo: ' + error.message);
-      }
-    }, [toast]);
-
-  // ✅ UPLOAD DE ARCHIVOS A SUPABASE
-  const uploadFiles = useCallback(async (userId: string) => {
-    const uploadedUrls: { profilePicture?: string; signature?: string } = {};
-    
-    try {
-      setFileUploading(true);
-
-      if (profilePicture) {
-        const fileExt = profilePicture.name.split('.').pop();
-        const fileName = `profile-${userId}-${Date.now()}.${fileExt}`;
-        const filePath = `profiles/${fileName}`;
-        
-        const { error } = await supabase.storage
-          .from('user-files')
-          .upload(filePath, profilePicture, {
-            cacheControl: '3600',
-            upsert: true
-          });
-        
-        if (error) throw error;
-        
-        const { data: urlData } = supabase.storage
-          .from('user-files')
-          .getPublicUrl(filePath);
-        
-        uploadedUrls.profilePicture = urlData.publicUrl;
-      }
-
-      if (signature) {
-        const fileExt = signature.name.split('.').pop();
-        const fileName = `signature-${userId}-${Date.now()}.${fileExt}`;
-        const filePath = `signatures/${fileName}`;
-        
-        const { error } = await supabase.storage
-          .from('user-files')
-          .upload(filePath, signature, {
-            cacheControl: '3600',
-            upsert: true
-          });
-        
-        if (error) throw error;
-        
-        const { data: urlData } = supabase.storage
-          .from('user-files')
-          .getPublicUrl(filePath);
-        
-        uploadedUrls.signature = urlData.publicUrl;
-      }
-
-      return uploadedUrls;
-      
-    } catch (error: any) {
-      console.error('Error subiendo archivos:', error);
-      throw error;
-    } finally {
-      setFileUploading(false);
-    }
-  }, [profilePicture, signature, supabase]);
-
-  // ✅ VALIDAR PASO ACTUAL
-  const validateStep = useCallback((step: number) => {
-    const newErrors: Record<string, string> = {};
-    
-    switch (step) {
-      case 0: // Información Personal
-        if (!formData.firstName.trim()) {
-          newErrors.firstName = 'Nombre es requerido';
-        }
-        if (!formData.email.trim()) {
-          newErrors.email = 'Email es requerido';
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-          newErrors.email = 'Email inválido';
-        }
-        if (!formData.rol) {
-          newErrors.rol = 'Rol es requerido';
-        }
-        break;
-        
-      case 1: // Dirección (solo clientes)
-        if (formData.rol === 'cliente') {
-          if (!addressData.street.trim()) {
-            newErrors.address_street = 'Calle es requerida';
-          }
-          if (!addressData.city.trim()) {
-            newErrors.address_city = 'Ciudad es requerida';
-          }
-        }
-        break;
-        
-      case 2: // Contacto de Emergencia (solo clientes)  
-        if (formData.rol === 'cliente') {
-          if (!emergencyData.name.trim()) {
-            newErrors.emergency_name = 'Nombre de contacto es requerido';
-          }
-          if (!emergencyData.phone.trim()) {
-            newErrors.emergency_phone = 'Teléfono es requerido';
-          }
-        }
-        break;
-        
-      case 3: // Info Membresía (solo clientes)
-        if (formData.rol === 'cliente') {
-          if (!membershipData.mainMotivation.trim()) {
-            newErrors.membership_mainMotivation = 'Motivación principal es requerida';
-          }
-        }
-        break;
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData, addressData, emergencyData, membershipData]);
-
-  // ✅ NAVEGACIÓN DEL STEPPER
-  const handleNext = useCallback(() => {
-    if (validateStep(activeStep)) {
-      setActiveStep(prev => prev + 1);
-    }
-  }, [activeStep, validateStep]);
-
-  const handleBack = useCallback(() => {
-    setActiveStep(prev => prev - 1);
-  }, []);
-
-  // ✅ GUARDAR DATOS RELACIONADOS
-  const saveRelatedData = useCallback(async (userId: string) => {
-    try {
-      if (formData.rol === 'cliente') {
-        // Guardar dirección
-        await supabase
-          .from('addresses')
-          .upsert({
-            userId,
-            ...addressData
-          });
-
-        // Guardar contacto emergencia
-        await supabase
-          .from('emergency_contacts')
-          .upsert({
-            userId,
-            ...emergencyData
-          });
-
-        // Guardar info membresía
-        await supabase
-          .from('membership_info')
-          .upsert({
-            userId,
-            ...membershipData
-          });
-      }
-    } catch (error) {
-      console.error('Error guardando datos relacionados:', error);
-      throw error;
-    }
-  }, [formData.rol, addressData, emergencyData, membershipData, supabase]);
-
-  // ✅ SUBMIT PRINCIPAL CON AUDITORÍA INTELIGENTE
-  const handleSubmit = useCallback(async () => {
-    if (loading) return;
-    
-    try {
-      setLoading(true);
-      
-      // Validar paso actual
-      if (!validateStep(activeStep)) {
-        setLoading(false);
-        return;
-      }
-      
-      const userId = formData.id || user?.id || crypto.randomUUID();
-      
-      // 1. Subir archivos si existen
-      const uploadedUrls = await uploadFiles(userId);
-      
-      // 2. Preparar datos del usuario con URLs de archivos
-      let userData = { 
-        ...formData, 
-        id: userId,
-        birthDate: birthDate ? birthDate.format('YYYY-MM-DD') : null
-      };
-      
-      if (uploadedUrls.profilePicture) {
-        userData.profilePictureUrl = uploadedUrls.profilePicture;
-      }
-      if (uploadedUrls.signature) {
-        userData.signatureUrl = uploadedUrls.signature;
-      }
-      
-      // 3. ✅ AUDITORÍA INTELIGENTE Users (camelCase)
-      const userDataWithAudit = await addAuditFieldsFor('Users', userData, !!user?.id);
-      
-      // 4. Guardar usuario principal
-      await onSave(userDataWithAudit);
-      
-      // 5. Guardar datos relacionados
-      await saveRelatedData(userId);
-      
-      // 6. Regenerar contrato si es cliente y hay cambios
-      if (formData.rol === 'cliente' && hasChanges) {
-        try {
-          const response = await fetch('/api/generate-contract', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-              userId,
-              isRegeneration: true
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.warn('Error regenerando contrato:', errorData);
-          } else {
-            toast.success('Contrato regenerado exitosamente');
-          }
-        } catch (error) {
-          console.warn('Error regenerando contrato:', error);
-        }
-      }
-      
-      toast.success(`Usuario ${user ? 'actualizado' : 'creado'} exitosamente`);
-      onClose();
-      
-    } catch (error: any) {
-      console.error('Error guardando usuario:', error);
-      toast.error('Error al guardar usuario: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    loading,
-    validateStep,
-    activeStep,
-    formData,
-    user?.id,
-    uploadFiles,
-    birthDate,
-    addAuditFieldsFor,
-    onSave,
-    saveRelatedData,
-    hasChanges,
-    toast,
-    onClose
-  ]);
-
-  // ✅ MANEJAR CIERRE DEL DIÁLOGO
-  const handleClose = useCallback(() => {
-    if (hasChanges) {
-      if (window.confirm('¿Estás seguro? Se perderán los cambios no guardados.')) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
-  }, [hasChanges, onClose]);
-
-  // ✅ LIMPIAR PREVIEWS AL CERRAR
-  useEffect(() => {
-    return () => {
-      if (profilePreview) URL.revokeObjectURL(profilePreview);
-      if (signaturePreview) URL.revokeObjectURL(signaturePreview);
-    };
-  }, [profilePreview, signaturePreview]);
-
-  // ✅ SSR SAFETY
-  if (!hydrated) {
-    return null;
-  }
-
-  // ✅ ESTILOS PARA INPUTS
   const inputStyles = useMemo(() => ({
     '& .MuiOutlinedInput-root': {
       bgcolor: colorTokens.neutral100,
@@ -727,17 +227,505 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     }
   }), []);
 
-  // ✅ RENDERIZAR CONTENIDO POR PASO
+  // ✅ TODOS LOS useCallback - ORDEN FIJO
+  const loadRelatedData = useCallback(async (userId: string) => {
+    try {
+      const { data: address } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+      
+      if (address) {
+        setAddressData(address);
+      }
+
+      const { data: emergency } = await supabase
+        .from('emergency_contacts')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+        
+      if (emergency) {
+        setEmergencyData(emergency);
+      }
+
+      const { data: membership } = await supabase
+        .from('membership_info')
+        .select('*')
+        .eq('userId', userId)
+        .single();
+        
+      if (membership) {
+        setMembershipData(membership);
+      }
+    } catch (error) {
+      console.error('Error cargando datos relacionados:', error);
+    }
+  }, [supabase]);
+
+  const resetForm = useCallback(() => {
+    setFormData({
+      id: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      rol: 'cliente',
+      whatsapp: '',
+      birthDate: '',
+      gender: '',
+      maritalStatus: '',
+      isMinor: false,
+      emailSent: false,
+      whatsappSent: false,
+      fingerprint: false
+    });
+    
+    setAddressData({
+      street: '',
+      number: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'México'
+    });
+    
+    setEmergencyData({
+      name: '',
+      phone: '',
+      medicalCondition: '',
+      bloodType: ''
+    });
+    
+    setMembershipData({
+      referredBy: '',
+      mainMotivation: '',
+      receivePlans: false,
+      trainingLevel: 'principiante'
+    });
+    
+    setBirthDate(null);
+    setActiveStep(0);
+    setErrors({});
+    setHasChanges(false);
+    setProfilePicture(null);
+    setSignature(null);
+    setHasExistingProfilePicture(false);
+    setHasExistingSignature(false);
+    setHasExistingContract(false);
+  }, []);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setHasChanges(true);
+    
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  }, [errors]);
+
+  const handleSelectChange = useCallback((e: any) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setHasChanges(true);
+  }, []);
+
+  const handleSwitchChange = useCallback((name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [name]: e.target.checked }));
+    setHasChanges(true);
+  }, []);
+
+  const handleBirthDateChange = useCallback((value: any) => {
+    const date = value as Dayjs | null;
+    setBirthDate(date);
+    const dateString = date ? date.format('YYYY-MM-DD') : '';
+    setFormData(prev => ({ 
+      ...prev, 
+      birthDate: dateString,
+      isMinor: date ? dayjs().diff(date, 'year') < 18 : false
+    }));
+    setHasChanges(true);
+  }, []);
+
+  const handleFileChange = useCallback((type: 'profilePicture' | 'signature') => 
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const validation = validateFileSimple(file, 'image');
+        if (!validation.isValid) {
+          toast.error(validation.error || 'Archivo inválido');
+          return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+          toast.loading('Archivo grande - puede tardar en subir...');
+          setTimeout(() => toast.dismiss(), 2000);
+        }
+
+        if (type === 'profilePicture') {
+          setProfilePicture(file);
+          setHasExistingProfilePicture(false);
+        } else {
+          setSignature(file);
+          setHasExistingSignature(false);
+        }
+        
+        setHasChanges(true);
+        
+      } catch (error: any) {
+        toast.error('Error al procesar archivo: ' + error.message);
+      }
+    }, [toast]);
+
+  const handleDeleteExistingFile = useCallback(async (type: 'profilePicture' | 'signature' | 'contract') => {
+    const fileNames = {
+      profilePicture: 'foto de perfil',
+      signature: 'firma digital', 
+      contract: 'contrato PDF'
+    };
+    
+    const confirmed = await alert.deleteConfirm(
+      `¿Eliminar ${fileNames[type]}? Esta acción no se puede deshacer.`
+    );
+    
+    if (confirmed) {
+      try {
+        let filePath = '';
+        
+        if (type === 'profilePicture' && formData.profilePictureUrl) {
+          filePath = formData.profilePictureUrl.split('/').slice(-2).join('/');
+        } else if (type === 'signature' && formData.signatureUrl) {
+          filePath = formData.signatureUrl.split('/').slice(-2).join('/');
+        } else if (type === 'contract' && formData.contractPdfUrl) {
+          filePath = formData.contractPdfUrl.split('/').slice(-2).join('/');
+        }
+        
+        if (filePath) {
+          const { error } = await supabase.storage
+            .from('user-files')
+            .remove([filePath]);
+          
+          if (error) throw error;
+        }
+        
+        if (type === 'profilePicture') {
+          setHasExistingProfilePicture(false);
+          setFormData(prev => ({ ...prev, profilePictureUrl: '' }));
+        } else if (type === 'signature') {
+          setHasExistingSignature(false);
+          setFormData(prev => ({ ...prev, signatureUrl: '' }));
+        } else {
+          setHasExistingContract(false);
+          setFormData(prev => ({ ...prev, contractPdfUrl: '' }));
+        }
+        
+        setHasChanges(true);
+        toast.success('Archivo eliminado exitosamente');
+        
+      } catch (error: any) {
+        console.error('Error eliminando archivo:', error);
+        toast.error('Error al eliminar archivo: ' + error.message);
+      }
+    }
+  }, [alert, toast, supabase, formData]);
+
+  const uploadFiles = useCallback(async (userId: string) => {
+    const uploadedUrls: { profilePictureUrl?: string; signatureUrl?: string } = {};
+    
+    try {
+      setFileUploading(true);
+
+      if (profilePicture) {
+        const fileExt = profilePicture.name.split('.').pop();
+        const fileName = `profile-${userId}-${Date.now()}.${fileExt}`;
+        const filePath = `profiles/${fileName}`;
+        
+        const { error } = await supabase.storage
+          .from('user-files')
+          .upload(filePath, profilePicture, {
+            cacheControl: '3600',
+            upsert: true
+          });
+        
+        if (error) throw error;
+        
+        const { data: urlData } = supabase.storage
+          .from('user-files')
+          .getPublicUrl(filePath);
+        
+        uploadedUrls.profilePictureUrl = urlData.publicUrl;
+      }
+
+      if (signature) {
+        const fileExt = signature.name.split('.').pop();
+        const fileName = `signature-${userId}-${Date.now()}.${fileExt}`;
+        const filePath = `signatures/${fileName}`;
+        
+        const { error } = await supabase.storage
+          .from('user-files')
+          .upload(filePath, signature, {
+            cacheControl: '3600',
+            upsert: true
+          });
+        
+        if (error) throw error;
+        
+        const { data: urlData } = supabase.storage
+          .from('user-files')
+          .getPublicUrl(filePath);
+        
+        uploadedUrls.signatureUrl = urlData.publicUrl;
+      }
+
+      return uploadedUrls;
+      
+    } catch (error: any) {
+      console.error('Error subiendo archivos:', error);
+      throw error;
+    } finally {
+      setFileUploading(false);
+    }
+  }, [profilePicture, signature, supabase]);
+
+  const validateStep = useCallback((step: number) => {
+    const newErrors: Record<string, string> = {};
+    
+    switch (step) {
+      case 0:
+        if (!formData.firstName?.trim()) {
+          newErrors.firstName = 'Nombre es requerido';
+        }
+        if (!formData.email?.trim()) {
+          newErrors.email = 'Email es requerido';
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+          newErrors.email = 'Email inválido';
+        }
+        if (!formData.rol) {
+          newErrors.rol = 'Rol es requerido';
+        }
+        break;
+        
+      case 1:
+        if (formData.rol === 'cliente') {
+          if (!addressData.street.trim()) {
+            newErrors.address_street = 'Calle es requerida';
+          }
+          if (!addressData.city.trim()) {
+            newErrors.address_city = 'Ciudad es requerida';
+          }
+        }
+        break;
+        
+      case 2:
+        if (formData.rol === 'cliente') {
+          if (!emergencyData.name.trim()) {
+            newErrors.emergency_name = 'Nombre de contacto es requerido';
+          }
+          if (!emergencyData.phone.trim()) {
+            newErrors.emergency_phone = 'Teléfono es requerido';
+          }
+        }
+        break;
+        
+      case 3:
+        if (formData.rol === 'cliente') {
+          if (!membershipData.mainMotivation.trim()) {
+            newErrors.membership_mainMotivation = 'Motivación principal es requerida';
+          }
+        }
+        break;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [formData, addressData, emergencyData, membershipData]);
+
+  const handleNext = useCallback(() => {
+    if (validateStep(activeStep)) {
+      setActiveStep(prev => prev + 1);
+    }
+  }, [activeStep, validateStep]);
+
+  const handleBack = useCallback(() => {
+    setActiveStep(prev => prev - 1);
+  }, []);
+
+  const saveRelatedData = useCallback(async (userId: string) => {
+    try {
+      if (formData.rol === 'cliente') {
+        await supabase
+          .from('addresses')
+          .upsert({
+            userId,
+            ...addressData
+          });
+
+        await supabase
+          .from('emergency_contacts')
+          .upsert({
+            userId,
+            ...emergencyData
+          });
+
+        await supabase
+          .from('membership_info')
+          .upsert({
+            userId,
+            ...membershipData
+          });
+      }
+    } catch (error) {
+      console.error('Error guardando datos relacionados:', error);
+      throw error;
+    }
+  }, [formData.rol, addressData, emergencyData, membershipData, supabase]);
+
+  const handleSubmit = useCallback(async () => {
+    if (loading) return;
+    
+    try {
+      setLoading(true);
+      
+      if (!validateStep(activeStep)) {
+        setLoading(false);
+        return;
+      }
+      
+      const userId = formData.id || user?.id || crypto.randomUUID();
+      const uploadedUrls = await uploadFiles(userId);
+      
+      let userData = { 
+        ...formData, 
+        id: userId,
+        birthDate: birthDate ? birthDate.format('YYYY-MM-DD') : null
+      };
+      
+      if (uploadedUrls.profilePictureUrl) {
+        userData.profilePictureUrl = uploadedUrls.profilePictureUrl;
+      } else if (!hasExistingProfilePicture) {
+        userData.profilePictureUrl = '';
+      }
+      
+      if (uploadedUrls.signatureUrl) {
+        userData.signatureUrl = uploadedUrls.signatureUrl;
+      } else if (!hasExistingSignature) {
+        userData.signatureUrl = '';
+      }
+      
+      const userDataWithAudit = await addAuditFieldsFor('Users', userData, !!user?.id);
+      await onSave(userDataWithAudit);
+      await saveRelatedData(userId);
+      
+      if (formData.rol === 'cliente' && hasChanges) {
+        try {
+          const response = await fetch('/api/generate-contract', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              userId,
+              isRegeneration: true
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.warn('Error regenerando contrato:', errorData);
+          } else {
+            toast.success('Contrato regenerado exitosamente');
+          }
+        } catch (error) {
+          console.warn('Error regenerando contrato:', error);
+        }
+      }
+      
+      toast.success(`Usuario ${user ? 'actualizado' : 'creado'} exitosamente`);
+      onClose();
+      
+    } catch (error: any) {
+      console.error('Error guardando usuario:', error);
+      toast.error('Error al guardar usuario: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    loading,
+    validateStep,
+    activeStep,
+    formData,
+    user?.id,
+    uploadFiles,
+    birthDate,
+    addAuditFieldsFor,
+    onSave,
+    saveRelatedData,
+    hasChanges,
+    toast,
+    onClose,
+    hasExistingProfilePicture,
+    hasExistingSignature
+  ]);
+
+  const handleClose = useCallback(() => {
+    if (hasChanges) {
+      if (window.confirm('¿Estás seguro? Se perderán los cambios no guardados.')) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  }, [hasChanges, onClose]);
+
+  // ✅ CLEANUP EFFECT
+  useEffect(() => {
+    return () => {
+      if (profilePreview) URL.revokeObjectURL(profilePreview);
+      if (signaturePreview) URL.revokeObjectURL(signaturePreview);
+    };
+  }, [profilePreview, signaturePreview]);
+
+  // ✅ LOAD DATA EFFECT  
+  useEffect(() => {
+    if (open && user?.id) {
+      setFormData(prev => ({ ...prev, ...user }));
+      setBirthDate(user.birthDate ? dayjs(user.birthDate) : null);
+      
+      setHasExistingProfilePicture(!!user.profilePictureUrl);
+      setHasExistingSignature(!!user.signatureUrl);
+      setHasExistingContract(!!user.contractPdfUrl);
+      
+      loadRelatedData(user.id);
+    } else if (open && !user) {
+      resetForm();
+    }
+  }, [open, user, loadRelatedData, resetForm]);
+
+  // ✅ SSR SAFETY - MOVER DESPUÉS DE TODOS LOS HOOKS
+  if (!hydrated) {
+    return null;
+  }
+
+  // ✅ RENDERIZADO DE CONTENIDO POR PASO - COMPLETO CON GRID v6
   const renderStepContent = (step: number) => {
     switch (step) {
       case 0:
         return (
           <Box sx={{ mt: 2 }}>
-            {/* AVATAR DE PERFIL */}
             <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
               <Box sx={{ position: 'relative' }}>
                 <Avatar
-                  src={profilePreview || formData.profilePictureUrl}
+                  src={
+                    profilePicture 
+                      ? URL.createObjectURL(profilePicture) 
+                      : hasExistingProfilePicture && formData.profilePictureUrl 
+                        ? formData.profilePictureUrl 
+                        : undefined
+                  }
                   sx={{
                     width: 120,
                     height: 120,
@@ -747,14 +735,15 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     border: `4px solid ${colorTokens.brand}40`
                   }}
                 >
-                  {formData.firstName.charAt(0)}{formData.lastName.charAt(0)}
+                  {formData.firstName?.charAt(0)}{formData.lastName?.charAt(0)}
                 </Avatar>
+                
                 <IconButton
                   component="label"
                   sx={{
                     position: 'absolute',
                     bottom: -8,
-                    right: -8,
+                    right: 8,
                     bgcolor: colorTokens.brand,
                     color: colorTokens.textOnBrand,
                     '&:hover': {
@@ -770,6 +759,24 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     onChange={handleFileChange('profilePicture')}
                   />
                 </IconButton>
+                
+                {hasExistingProfilePicture && !profilePicture && (
+                  <IconButton
+                    onClick={() => handleDeleteExistingFile('profilePicture')}
+                    sx={{
+                      position: 'absolute',
+                      bottom: -8,
+                      left: 8,
+                      bgcolor: colorTokens.danger,
+                      color: colorTokens.neutral1200,
+                      '&:hover': {
+                        bgcolor: colorTokens.dangerHover,
+                      }
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                )}
               </Box>
             </Box>
             
@@ -779,7 +786,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                   fullWidth
                   label="Nombre"
                   name="firstName"
-                  value={formData.firstName}
+                  value={formData.firstName || ''}
                   onChange={handleInputChange}
                   error={!!errors.firstName}
                   helperText={errors.firstName}
@@ -799,7 +806,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                   fullWidth
                   label="Apellido"
                   name="lastName"
-                  value={formData.lastName}
+                  value={formData.lastName || ''}
                   onChange={handleInputChange}
                   error={!!errors.lastName}
                   helperText={errors.lastName}
@@ -813,7 +820,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                   label="Email"
                   name="email"
                   type="email"
-                  value={formData.email}
+                  value={formData.email || ''}
                   onChange={handleInputChange}
                   error={!!errors.email}
                   helperText={errors.email}
@@ -833,7 +840,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                   fullWidth
                   label="WhatsApp"
                   name="whatsapp"
-                  value={formData.whatsapp}
+                  value={formData.whatsapp || ''}
                   onChange={handleInputChange}
                   error={!!errors.whatsapp}
                   helperText={errors.whatsapp}
@@ -875,7 +882,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                   <InputLabel>Género</InputLabel>
                   <Select
                     name="gender"
-                    value={formData.gender}
+                    value={formData.gender || ''}
                     onChange={handleSelectChange}
                     label="Género"
                     sx={selectStyles}
@@ -893,7 +900,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                   <InputLabel>Estado Civil</InputLabel>
                   <Select
                     name="maritalStatus"
-                    value={formData.maritalStatus}
+                    value={formData.maritalStatus || ''}
                     onChange={handleSelectChange}
                     label="Estado Civil"
                     sx={selectStyles}
@@ -931,7 +938,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     </MenuItem>
                     <MenuItem value="admin">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Security fontSize="small" sx={{ color: colorTokens.danger }} />
+                        <SecurityIcon fontSize="small" sx={{ color: colorTokens.danger }} />
                         Administrador
                       </Box>
                     </MenuItem>
@@ -955,7 +962,6 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                 </Grid>
               )}
               
-              {/* OPCIONES ADICIONALES */}
               <Grid size={{ xs: 12 }}>
                 <Box sx={{ 
                   p: 2, 
@@ -975,7 +981,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.emailSent}
+                          checked={formData.emailSent || false}
                           onChange={handleSwitchChange('emailSent')}
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': {
@@ -997,7 +1003,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.whatsappSent}
+                          checked={formData.whatsappSent || false}
                           onChange={handleSwitchChange('whatsappSent')}
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': {
@@ -1019,7 +1025,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.fingerprint}
+                          checked={formData.fingerprint || false}
                           onChange={handleSwitchChange('fingerprint')}
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': {
@@ -1380,7 +1386,6 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
         );
 
       default:
-        // PASO DE ARCHIVOS
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ 
@@ -1396,7 +1401,6 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
             </Typography>
             
             <Grid container spacing={3}>
-              {/* FIRMA DIGITAL */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Card sx={{
                   background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
@@ -1413,13 +1417,56 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     }}>
                       <AssignmentIcon />
                       Firma Digital
+                      {hasExistingSignature && (
+                        <Chip 
+                          label="Existente" 
+                          size="small" 
+                          sx={{ 
+                            bgcolor: `${colorTokens.success}20`,
+                            color: colorTokens.success,
+                            ml: 1
+                          }} 
+                        />
+                      )}
+                      {signature && (
+                        <Chip 
+                          label="Nueva" 
+                          size="small" 
+                          sx={{ 
+                            bgcolor: `${colorTokens.warning}20`,
+                            color: colorTokens.warning,
+                            ml: 1
+                          }} 
+                        />
+                      )}
                     </Typography>
                     
-                    {signaturePreview || formData.signatureUrl ? (
+                    {signature ? (
                       <Box sx={{ textAlign: 'center', mb: 2 }}>
                         <img
-                          src={signaturePreview || formData.signatureUrl}
-                          alt="Firma"
+                          src={URL.createObjectURL(signature)}
+                          alt="Nueva firma"
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: 150,
+                            border: `2px solid ${colorTokens.warning}`,
+                            borderRadius: 8
+                          }}
+                        />
+                        <Typography variant="caption" sx={{ 
+                          display: 'block', 
+                          mt: 1, 
+                          color: colorTokens.warning,
+                          fontWeight: 600
+                        }}>
+                          Nueva firma seleccionada
+                        </Typography>
+                      </Box>
+                    ) : hasExistingSignature && formData.signatureUrl ? (
+                      <Box sx={{ textAlign: 'center', mb: 2 }}>
+                        <img
+                          src={formData.signatureUrl}
+                          alt="Firma actual"
                           style={{
                             maxWidth: '100%',
                             maxHeight: 150,
@@ -1427,6 +1474,14 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                             borderRadius: 8
                           }}
                         />
+                        <Typography variant="caption" sx={{ 
+                          display: 'block', 
+                          mt: 1, 
+                          color: colorTokens.success,
+                          fontWeight: 600
+                        }}>
+                          Firma actual
+                        </Typography>
                       </Box>
                     ) : (
                       <Box sx={{ 
@@ -1443,32 +1498,69 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                       </Box>
                     )}
                     
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      startIcon={<CloudUploadIcon />}
-                      fullWidth
-                      sx={{
-                        color: '#9C27B0',
-                        borderColor: '#9C27B0',
-                        '&:hover': {
-                          bgcolor: '#9C27B010'
-                        }
-                      }}
-                    >
-                      Subir Firma
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        onChange={handleFileChange('signature')}
-                      />
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CloudUploadIcon />}
+                        fullWidth
+                        sx={{
+                          color: '#9C27B0',
+                          borderColor: '#9C27B0',
+                          '&:hover': {
+                            bgcolor: '#9C27B010'
+                          }
+                        }}
+                      >
+                        {hasExistingSignature ? 'Cambiar Firma' : 'Subir Firma'}
+                        <input
+                          type="file"
+                          hidden
+                          accept="image/*"
+                          onChange={handleFileChange('signature')}
+                        />
+                      </Button>
+                      
+                      {hasExistingSignature && !signature && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            startIcon={<VisibilityIcon />}
+                            onClick={() => window.open(formData.signatureUrl, '_blank')}
+                            fullWidth
+                            sx={{
+                              color: colorTokens.info,
+                              borderColor: colorTokens.info,
+                              '&:hover': {
+                                bgcolor: `${colorTokens.info}10`
+                              }
+                            }}
+                          >
+                            Ver Firma Actual
+                          </Button>
+                          
+                          <Button
+                            variant="outlined"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteExistingFile('signature')}
+                            fullWidth
+                            sx={{
+                              color: colorTokens.danger,
+                              borderColor: colorTokens.danger,
+                              '&:hover': {
+                                bgcolor: `${colorTokens.danger}10`
+                              }
+                            }}
+                          >
+                            Eliminar Firma
+                          </Button>
+                        </>
+                      )}
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
               
-              {/* CONTRATO PDF */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Card sx={{
                   background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
@@ -1485,9 +1577,20 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     }}>
                       <DescriptionIcon />
                       Contrato PDF
+                      {hasExistingContract && (
+                        <Chip 
+                          label="Generado" 
+                          size="small" 
+                          sx={{ 
+                            bgcolor: `${colorTokens.success}20`,
+                            color: colorTokens.success,
+                            ml: 1
+                          }} 
+                        />
+                      )}
                     </Typography>
                     
-                    {formData.contractPdfUrl ? (
+                    {hasExistingContract && formData.contractPdfUrl ? (
                       <Box sx={{ textAlign: 'center', mb: 2 }}>
                         <DescriptionIcon sx={{ fontSize: 64, color: colorTokens.info, mb: 1 }} />
                         <Typography variant="body2" sx={{ color: colorTokens.neutral1000 }}>
@@ -1495,6 +1598,14 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                         </Typography>
                         <Typography variant="caption" sx={{ color: colorTokens.neutral800 }}>
                           {formData.firstName} {formData.lastName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ 
+                          display: 'block',
+                          color: colorTokens.success,
+                          fontWeight: 600,
+                          mt: 1
+                        }}>
+                          Disponible para descarga
                         </Typography>
                       </Box>
                     ) : (
@@ -1509,25 +1620,52 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                         <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
                           No hay contrato generado
                         </Typography>
+                        <Typography variant="caption" sx={{ color: colorTokens.neutral800 }}>
+                          Se generará automáticamente al guardar
+                        </Typography>
                       </Box>
                     )}
                     
-                    {formData.contractPdfUrl && (
-                      <Button
-                        variant="contained"
-                        startIcon={<DescriptionIcon />}
-                        fullWidth
-                        onClick={() => window.open(formData.contractPdfUrl, '_blank')}
-                        sx={{
-                          bgcolor: colorTokens.info,
-                          '&:hover': {
-                            bgcolor: colorTokens.infoHover
-                          }
-                        }}
-                      >
-                        Ver Contrato
-                      </Button>
-                    )}
+                    <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                      {hasExistingContract && formData.contractPdfUrl ? (
+                        <>
+                          <Button
+                            variant="contained"
+                            startIcon={<DescriptionIcon />}
+                            onClick={() => window.open(formData.contractPdfUrl, '_blank')}
+                            fullWidth
+                            sx={{
+                              bgcolor: colorTokens.info,
+                              '&:hover': {
+                                bgcolor: colorTokens.infoHover
+                              }
+                            }}
+                          >
+                            Ver Contrato
+                          </Button>
+                          
+                          <Button
+                            variant="outlined"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteExistingFile('contract')}
+                            fullWidth
+                            sx={{
+                              color: colorTokens.danger,
+                              borderColor: colorTokens.danger,
+                              '&:hover': {
+                                bgcolor: `${colorTokens.danger}10`
+                              }
+                            }}
+                          >
+                            Eliminar Contrato
+                          </Button>
+                        </>
+                      ) : (
+                        <Alert severity="info" sx={{ mt: 1 }}>
+                          El contrato se generará automáticamente al guardar el usuario.
+                        </Alert>
+                      )}
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
@@ -1554,7 +1692,6 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
         }
       }}
     >
-      {/* HEADER */}
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -1590,6 +1727,45 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
             />
           )}
           
+          {hasExistingProfilePicture && (
+            <Chip
+              icon={<PhotoCameraIcon />}
+              label="Foto"
+              size="small"
+              sx={{
+                bgcolor: `${colorTokens.success}20`,
+                color: colorTokens.success,
+                border: `1px solid ${colorTokens.success}40`
+              }}
+            />
+          )}
+          
+          {hasExistingSignature && (
+            <Chip
+              icon={<AssignmentIcon />}
+              label="Firma"
+              size="small"
+              sx={{
+                bgcolor: `${colorTokens.success}20`,
+                color: colorTokens.success,
+                border: `1px solid ${colorTokens.success}40`
+              }}
+            />
+          )}
+          
+          {hasExistingContract && (
+            <Chip
+              icon={<DescriptionIcon />}
+              label="PDF"
+              size="small"
+              sx={{
+                bgcolor: `${colorTokens.success}20`,
+                color: colorTokens.success,
+                border: `1px solid ${colorTokens.success}40`
+              }}
+            />
+          )}
+          
           <IconButton 
             onClick={handleClose}
             sx={{ 
@@ -1605,9 +1781,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
         </Box>
       </DialogTitle>
 
-      {/* CONTENIDO */}
       <DialogContent sx={{ p: 0 }}>
-        {/* STEPPER */}
         <Box sx={{ p: 3 }}>
           <Stepper 
             activeStep={activeStep} 
@@ -1657,7 +1831,6 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
         </Box>
       </DialogContent>
 
-      {/* ACCIONES */}
       <DialogActions sx={{ 
         p: 3, 
         borderTop: `1px solid ${colorTokens.neutral500}`,

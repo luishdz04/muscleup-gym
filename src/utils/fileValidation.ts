@@ -1,3 +1,4 @@
+// utils/fileValidation.ts - v6.0 CON VALIDACIONES AVANZADAS MUSCLEUP
 export const FILE_VALIDATIONS = {
   image: {
     maxSize: 5 * 1024 * 1024, // 5MB
@@ -32,6 +33,17 @@ export interface FileValidationResult {
   warnings?: string[];
 }
 
+export interface ImageDimensions {
+  width: number;
+  height: number;
+}
+
+export interface MultipleFileValidationResult {
+  validFiles: File[];
+  invalidFiles: { file: File; error: string }[];
+  warnings: string[];
+}
+
 export const validateFile = async (
   file: File, 
   type: FileType
@@ -47,8 +59,9 @@ export const validateFile = async (
     };
   }
   
-  // ✅ VALIDACIÓN DE TIPO
-  if (!config.allowedTypes.includes(file.type)) {
+  // ✅ VALIDACIÓN DE TIPO - CASTING SEGURO CON UNKNOWN
+  const allowedTypes = config.allowedTypes as unknown as string[];
+  if (!allowedTypes.includes(file.type)) {
     return { 
       isValid: false, 
       error: `Tipo no permitido. Solo: ${config.allowedExtensions.join(', ')}` 
@@ -60,28 +73,42 @@ export const validateFile = async (
     try {
       const dimensions = await getImageDimensions(file);
       
-      if (dimensions.width < config.minWidth! || dimensions.height < config.minHeight!) {
-        return {
-          isValid: false,
-          error: `Imagen muy pequeña. Mínimo ${config.minWidth}x${config.minHeight}px`
-        };
-      }
-      
-      if (dimensions.width > config.maxWidth! || dimensions.height > config.maxHeight!) {
-        return {
-          isValid: false,
-          error: `Imagen muy grande. Máximo ${config.maxWidth}x${config.maxHeight}px`
-        };
-      }
-
-      // ✅ WARNINGS PARA DIMENSIONES SUBÓPTIMAS
+      // ✅ VERIFICACIÓN ESPECÍFICA POR TIPO DE ARCHIVO
       if (type === 'image') {
+        const imageConfig = FILE_VALIDATIONS.image;
+        if (dimensions.width < imageConfig.minWidth || dimensions.height < imageConfig.minHeight) {
+          return {
+            isValid: false,
+            error: `Imagen muy pequeña. Mínimo ${imageConfig.minWidth}x${imageConfig.minHeight}px`
+          };
+        }
+        if (dimensions.width > imageConfig.maxWidth || dimensions.height > imageConfig.maxHeight) {
+          return {
+            isValid: false,
+            error: `Imagen muy grande. Máximo ${imageConfig.maxWidth}x${imageConfig.maxHeight}px`
+          };
+        }
+        // Warnings para imágenes
         if (dimensions.width < 300 || dimensions.height < 300) {
           warnings.push('Imagen de baja resolución, considera usar una imagen más grande');
         }
       }
       
       if (type === 'signature') {
+        const signatureConfig = FILE_VALIDATIONS.signature;
+        if (dimensions.width < signatureConfig.minWidth || dimensions.height < signatureConfig.minHeight) {
+          return {
+            isValid: false,
+            error: `Imagen muy pequeña. Mínimo ${signatureConfig.minWidth}x${signatureConfig.minHeight}px`
+          };
+        }
+        if (dimensions.width > signatureConfig.maxWidth || dimensions.height > signatureConfig.maxHeight) {
+          return {
+            isValid: false,
+            error: `Imagen muy grande. Máximo ${signatureConfig.maxWidth}x${signatureConfig.maxHeight}px`
+          };
+        }
+        // Warnings para signatures
         if (dimensions.width < 400 || dimensions.height < 200) {
           warnings.push('Firma pequeña, considera una imagen más grande para mejor calidad');
         }
@@ -115,7 +142,7 @@ export const validateFile = async (
 };
 
 // ✅ FUNCIÓN AUXILIAR PARA OBTENER DIMENSIONES
-const getImageDimensions = (file: File): Promise<{width: number, height: number}> => {
+const getImageDimensions = (file: File): Promise<ImageDimensions> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -142,11 +169,7 @@ export const validateMultipleFiles = async (
   files: FileList | File[],
   type: FileType,
   maxFiles: number = 10
-): Promise<{
-  validFiles: File[];
-  invalidFiles: { file: File; error: string }[];
-  warnings: string[];
-}> => {
+): Promise<MultipleFileValidationResult> => {
   const fileArray = Array.from(files);
   const validFiles: File[] = [];
   const invalidFiles: { file: File; error: string }[] = [];
@@ -181,4 +204,38 @@ export const validateMultipleFiles = async (
     invalidFiles,
     warnings: [...new Set(allWarnings)] // Eliminar duplicados
   };
+};
+
+// ✅ FUNCIÓN DE VALIDACIÓN SIMPLE PARA useFileManagement
+export const validateFileSimple = (file: File, type: 'image' | 'document'): { isValid: boolean; error?: string } => {
+  const validations = {
+    image: {
+      maxSize: 5 * 1024 * 1024, // 5MB
+      allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+      allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp']
+    },
+    document: {
+      maxSize: 10 * 1024 * 1024, // 10MB
+      allowedTypes: ['application/pdf'],
+      allowedExtensions: ['.pdf']
+    }
+  };
+
+  const config = validations[type];
+  
+  if (file.size > config.maxSize) {
+    return { 
+      isValid: false, 
+      error: `Archivo muy grande. Máximo ${config.maxSize / 1024 / 1024}MB` 
+    };
+  }
+  
+  if (!config.allowedTypes.includes(file.type)) {
+    return { 
+      isValid: false, 
+      error: `Tipo no permitido. Solo: ${config.allowedExtensions.join(', ')}` 
+    };
+  }
+  
+  return { isValid: true };
 };

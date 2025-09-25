@@ -1,4 +1,4 @@
-// app/admin/users/page.tsx - VERSIÓN ENTERPRISE v6.0 CORREGIDA
+// app/admin/users/page.tsx - VERSIÓN ENTERPRISE v6.0 CORREGIDA - ERRORES TYPESCRIPT SOLUCIONADOS
 'use client';
 
 import React, { useState, useCallback, memo, useMemo } from 'react';
@@ -42,37 +42,14 @@ import { colorTokens } from '@/theme';
 import { notify } from '@/utils/notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 
+// ✅ INTERFACES CENTRALIZADAS - USAR SOLO types/user.ts
+import { User, UserStats } from '@/types/user';
+
 // Componentes especializados
 import UserStatsCards from '@/components/dashboard/admin/UserStatsCards';
 import UserTable from '@/components/dashboard/admin/UserTable';
 import UserFormDialog from '@/components/dashboard/admin/UserFormDialog';
 import UserDetailsDialog from '@/components/dashboard/admin/UserDetailsDialog';
-
-// Tipos
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  rol: string;
-  profilePictureUrl?: string;
-  signatureUrl?: string;
-  contractPdfUrl?: string;
-  fingerprint: boolean;
-  whatsapp: string;
-  birthDate: string;
-  gender: string;
-  maritalStatus: string;
-  isMinor: boolean;
-  emailSent: boolean;
-  emailSentAt?: string;
-  whatsappSent: boolean;
-  whatsappSentAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: string;
-  updatedBy?: string;
-}
 
 const UsersPage = memo(() => {
   // ✅ SSR SAFETY OBLIGATORIO
@@ -81,7 +58,7 @@ const UsersPage = memo(() => {
   // ✅ AUDITORÍA INTELIGENTE v6.0
   const { addAuditFieldsFor } = useUserTracking();
 
-  // ✅ CRUD ENTERPRISE v6.0 CON AUDITORÍA AUTOMÁTICA
+  // ✅ CRUD ENTERPRISE v6.0 CON AUDITORÍA AUTOMÁTICA - INTERFACE UNIFICADA
   const {
     data: users,
     loading,
@@ -116,9 +93,7 @@ const UsersPage = memo(() => {
       whatsappSent,
       whatsappSentAt,
       createdAt,
-      updatedAt,
-      createdBy,
-      updatedBy
+      updatedAt
     `
   });
 
@@ -149,8 +124,8 @@ const UsersPage = memo(() => {
       
       return matchesSearch && matchesRole;
     }).sort((a, b) => {
-      const aValue = a[sortBy as keyof User] as string;
-      const bValue = b[sortBy as keyof User] as string;
+      const aValue = (a[sortBy as keyof User] as string) || '';
+      const bValue = (b[sortBy as keyof User] as string) || '';
       
       if (sortOrder === 'asc') {
         return aValue.localeCompare(bValue);
@@ -160,25 +135,70 @@ const UsersPage = memo(() => {
     });
   }, [users, searchTerm, filterRole, sortBy, sortOrder]);
 
-  // ✅ ESTADÍSTICAS CALCULADAS
-  const userStats = useMemo(() => {
+  // ✅ ESTADÍSTICAS CALCULADAS - CORREGIDAS SEGÚN UserStats INTERFACE
+  const userStats = useMemo((): UserStats & { isFiltered: boolean; totalFiltered: number } => {
     const total = users.length;
     const withPhotos = users.filter(u => u.profilePictureUrl).length;
     const verified = users.filter(u => u.emailSent).length;
     const emailsSent = users.filter(u => u.emailSent).length;
-    const byRole = {
-      admin: users.filter(u => u.rol === 'admin').length,
-      empleado: users.filter(u => u.rol === 'empleado').length,
-      cliente: users.filter(u => u.rol === 'cliente').length,
-    };
     
+    // Calcular distribución por género
+    const genderDistribution = {
+      masculino: users.filter(u => u.gender === 'masculino').length,
+      femenino: users.filter(u => u.gender === 'femenino').length,
+      otro: users.filter(u => u.gender === 'otro' || !u.gender).length,
+    };
+
+    // Calcular niveles de membresía (requiere datos de membership_info si están disponibles)
+    const membershipLevels = {
+      principiante: users.filter(u => u.membership?.trainingLevel === 'principiante').length,
+      intermedio: users.filter(u => u.membership?.trainingLevel === 'intermedio').length,
+      avanzado: users.filter(u => u.membership?.trainingLevel === 'avanzado').length,
+    };
+
+    // Calcular completitud
+    const profilePictureCount = users.filter(u => u.profilePictureUrl).length;
+    const signatureCount = users.filter(u => u.signatureUrl).length;
+    const contractCount = users.filter(u => u.contractPdfUrl).length;
+    const allCompleteCount = users.filter(u => 
+      u.profilePictureUrl && u.signatureUrl && u.contractPdfUrl && 
+      u.fingerprint && u.emailSent && u.whatsappSent
+    ).length;
+
+    const completionRate = {
+      profilePicture: total > 0 ? Math.round((profilePictureCount / total) * 100) : 0,
+      signature: total > 0 ? Math.round((signatureCount / total) * 100) : 0,
+      contract: total > 0 ? Math.round((contractCount / total) * 100) : 0,
+      allComplete: total > 0 ? Math.round((allCompleteCount / total) * 100) : 0,
+    };
+
+    // Calcular edad promedio
+    const usersWithBirthDate = users.filter(u => u.birthDate);
+    const averageAge = usersWithBirthDate.length > 0 
+      ? Math.round(usersWithBirthDate.reduce((sum, user) => {
+          const age = new Date().getFullYear() - new Date(user.birthDate).getFullYear();
+          return sum + age;
+        }, 0) / usersWithBirthDate.length)
+      : 0;
+
+    // Calcular usuarios nuevos este mes
+    const thisMonth = new Date();
+    const newUsersThisMonth = users.filter(user => {
+      if (!user.createdAt) return false;
+      const userDate = new Date(user.createdAt);
+      return userDate.getMonth() === thisMonth.getMonth() && 
+             userDate.getFullYear() === thisMonth.getFullYear();
+    }).length;
+
     return {
-      total,
-      withPhotos,
-      verified,
-      emailsSent,
-      byRole,
-      isFiltered: searchTerm || filterRole,
+      totalUsers: total,
+      newUsersThisMonth,
+      activeUsers: users.filter(u => u.rol === 'cliente').length,
+      averageAge,
+      genderDistribution,
+      membershipLevels,
+      completionRate,
+      isFiltered: Boolean(searchTerm || filterRole),
       totalFiltered: filteredUsers.length
     };
   }, [users, filteredUsers.length, searchTerm, filterRole]);
@@ -198,12 +218,44 @@ const UsersPage = memo(() => {
   const handleSaveUser = useCallback(async (userData: Partial<User>) => {
     try {
       if (selectedUser?.id) {
-        // ✅ AUDITORÍA INTELIGENTE Users (camelCase)
+        // ✅ AUDITORÍA INTELIGENTE Users (camelCase) - UPDATE
         const updatedUser = await updateItem(selectedUser.id, userData);
         toast.success(`Usuario ${updatedUser.firstName} actualizado exitosamente`);
       } else {
-        // ✅ AUDITORÍA INTELIGENTE Users (camelCase)
-        const newUser = await createItem(userData);
+        // ✅ VALIDAR CAMPOS REQUERIDOS ANTES DE CREATE
+        if (!userData.firstName || !userData.email || !userData.rol) {
+          toast.error('Faltan campos requeridos: nombre, email y rol');
+          return;
+        }
+        
+        // ✅ CREAR CON CAMPOS REQUERIDOS COMPLETOS
+        const completeUserData: Omit<User, 'id'> = {
+          firstName: userData.firstName,
+          lastName: userData.lastName || '',
+          email: userData.email,
+          rol: userData.rol,
+          whatsapp: userData.whatsapp || '',
+          birthDate: userData.birthDate || '',
+          gender: userData.gender || '',
+          maritalStatus: userData.maritalStatus || '',
+          isMinor: userData.isMinor || false,
+          emailSent: userData.emailSent || false,
+          whatsappSent: userData.whatsappSent || false,
+          fingerprint: userData.fingerprint || false,
+          // Campos opcionales
+          profilePictureUrl: userData.profilePictureUrl,
+          signatureUrl: userData.signatureUrl,
+          contractPdfUrl: userData.contractPdfUrl,
+          emailSentAt: userData.emailSentAt,
+          whatsappSentAt: userData.whatsappSentAt,
+          createdAt: userData.createdAt,
+          updatedAt: userData.updatedAt,
+          address: userData.address,
+          emergency: userData.emergency,
+          membership: userData.membership
+        };
+        
+        const newUser = await createItem(completeUserData);
         toast.success(`Usuario ${newUser.firstName} creado exitosamente`);
       }
       handleCloseFormDialog();
@@ -235,9 +287,9 @@ const UsersPage = memo(() => {
   }, [handleOpenFormDialog]);
 
   const handleDeleteUser = useCallback(async (user: User) => {
+    // ✅ CORREGIDO: alert.deleteConfirm usa 1 parámetro según API useNotifications
     const confirmed = await alert.deleteConfirm(
-      `${user.firstName} ${user.lastName}`,
-      'Esta acción eliminará todos los datos relacionados'
+      `¿Eliminar usuario ${user.firstName} ${user.lastName}? Esta acción eliminará todos los datos relacionados y no se puede deshacer.`
     );
     
     if (confirmed) {
@@ -678,9 +730,9 @@ const UsersPage = memo(() => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
               Total: {userStats.isFiltered ? (
-                <>{userStats.totalFiltered} de {userStats.total}</>
+                <>{userStats.totalFiltered} de {userStats.totalUsers}</>
               ) : (
-                <>{userStats.total}</>
+                <>{userStats.totalUsers}</>
               )} usuarios
             </Typography>
             {userStats.isFiltered && (
@@ -705,7 +757,7 @@ const UsersPage = memo(() => {
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Chip
               icon={<PhotoCameraIcon />}
-              label={`${userStats.withPhotos} con fotos`}
+              label={`${userStats.completionRate.profilePicture}% con fotos`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.success}20`,
@@ -715,7 +767,7 @@ const UsersPage = memo(() => {
             />
             <Chip
               icon={<VerifiedIcon />}
-              label={`${userStats.verified} verificados`}
+              label={`${users.filter(u => u.emailSent).length} verificados`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.info}20`,
@@ -725,7 +777,7 @@ const UsersPage = memo(() => {
             />
             <Chip
               icon={<CheckCircleIcon />}
-              label={`${userStats.emailsSent} emails enviados`}
+              label={`${users.filter(u => u.emailSent).length} emails enviados`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.brand}20`,
@@ -737,16 +789,11 @@ const UsersPage = memo(() => {
         </Box>
       </Paper>
 
-      {/* ESTADÍSTICAS CON CARDS */}
+      {/* ✅ ESTADÍSTICAS CON CARDS - PROPS CORREGIDAS SEGÚN UserStats */}
       <UserStatsCards
-        userStats={{
-          total: userStats.total,
-          active: userStats.byRole.cliente + userStats.byRole.admin + userStats.byRole.empleado,
-          verified: userStats.verified,
-          withPhotos: userStats.withPhotos
-        }}
-        totalUsers={userStats.total}
-        verifiedCount={userStats.verified}
+        userStats={userStats}
+        totalUsers={userStats.totalUsers}
+        verifiedCount={users.filter(u => u.emailSent).length}
       />
 
       {/* DISTRIBUCIÓN POR ROLES */}
@@ -784,13 +831,13 @@ const UsersPage = memo(() => {
               }
             }}>
               <Typography variant="h4" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
-                {userStats.byRole.admin}
+                {users.filter(u => u.rol === 'admin').length}
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
                 Administradores
               </Typography>
               <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {userStats.total > 0 ? Math.round((userStats.byRole.admin / userStats.total) * 100) : 0}% del total
+                {userStats.totalUsers > 0 ? Math.round((users.filter(u => u.rol === 'admin').length / userStats.totalUsers) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>
@@ -809,13 +856,13 @@ const UsersPage = memo(() => {
               }
             }}>
               <Typography variant="h4" sx={{ color: colorTokens.info, fontWeight: 700 }}>
-                {userStats.byRole.empleado}
+                {users.filter(u => u.rol === 'empleado').length}
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
                 Empleados
               </Typography>
               <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {userStats.total > 0 ? Math.round((userStats.byRole.empleado / userStats.total) * 100) : 0}% del total
+                {userStats.totalUsers > 0 ? Math.round((users.filter(u => u.rol === 'empleado').length / userStats.totalUsers) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>
@@ -834,20 +881,20 @@ const UsersPage = memo(() => {
               }
             }}>
               <Typography variant="h4" sx={{ color: colorTokens.success, fontWeight: 700 }}>
-                {userStats.byRole.cliente}
+                {users.filter(u => u.rol === 'cliente').length}
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
                 Clientes
               </Typography>
               <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {userStats.total > 0 ? Math.round((userStats.byRole.cliente / userStats.total) * 100) : 0}% del total
+                {userStats.totalUsers > 0 ? Math.round((users.filter(u => u.rol === 'cliente').length / userStats.totalUsers) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>
         </Grid>
       </Paper>
 
-      {/* TABLA DE USUARIOS */}
+      {/* ✅ TABLA DE USUARIOS - PROPS CORREGIDAS */}
       <UserTable
         users={filteredUsers}
         loading={loading || initialLoad}
@@ -855,7 +902,7 @@ const UsersPage = memo(() => {
         onDelete={handleDeleteUser}
         onView={handleViewUser}
         onClearFilters={handleClearFilters}
-        hasFilters={userStats.isFiltered}
+        hasFilters={userStats.isFiltered} // ✅ CORREGIDO: boolean en lugar de string
       />
 
       {/* MODAL DE FORMULARIO */}
@@ -880,3 +927,4 @@ const UsersPage = memo(() => {
 UsersPage.displayName = 'UsersPage';
 
 export default UsersPage;
+

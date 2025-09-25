@@ -1,4 +1,4 @@
-// hooks/useEntityCRUD.ts - v6.0 CON AUDITORÍA INTELIGENTE MUSCLEUP
+// hooks/useEntityCRUD.ts - v6.0 CORREGIDO - NAMING INTELIGENTE PARA ORDER BY
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -33,15 +33,36 @@ export const useEntityCRUD = <T extends { id: string }>({
   // ✅ INFORMACIÓN DE AUDITORÍA DE LA TABLA
   const auditInfo = useMemo(() => getTableAuditInfo(tableName), [tableName, getTableAuditInfo]);
 
+  // ✅ FUNCIÓN PARA OBTENER EL CAMPO CORRECTO DE ORDEN SEGÚN NAMING CONVENTION
+  const getOrderByField = useCallback((tableName: string) => {
+    const auditInfo = getTableAuditInfo(tableName);
+    
+    // Usar naming convention correcto según tipo de auditoría
+    switch (auditInfo.naming) {
+      case 'camelCase':
+        return 'createdAt'; // Users y otras tablas camelCase
+      case 'snake_case':
+        return 'created_at'; // user_memberships y otras tablas snake_case
+      default:
+        // Para tablas sin auditoría, intentar created_at primero, luego createdAt
+        return tableName === 'Users' ? 'createdAt' : 'created_at';
+    }
+  }, [getTableAuditInfo]);
+
   const fetchData = useCallback(async () => {
     if (!hydrated) return;
 
     try {
       setLoading(true);
+      
+      // ✅ USAR CAMPO DE ORDEN CORRECTO SEGÚN TABLA
+      const orderByField = getOrderByField(tableName);
+      console.log(`🔄 Ordenando por: ${orderByField} para tabla: ${tableName}`);
+      
       const { data: result, error } = await supabase
         .from(tableName)
         .select(selectQuery)
-        .order('created_at', { ascending: false });
+        .order(orderByField, { ascending: false });
         
       if (error) throw error;
       
@@ -56,11 +77,12 @@ export const useEntityCRUD = <T extends { id: string }>({
       setError(errorMsg);
       onError?.(errorMsg);
       setData([]); // ✅ RESET DATA EN CASO DE ERROR
+      console.error(`❌ Error en fetchData para ${tableName}:`, err);
     } finally {
       setLoading(false);
       setInitialLoad(false);
     }
-  }, [tableName, selectQuery, onError, hydrated, supabase]);
+  }, [tableName, selectQuery, onError, hydrated, supabase, getOrderByField]);
 
   useEffect(() => {
     if (hydrated) {
@@ -89,6 +111,7 @@ export const useEntityCRUD = <T extends { id: string }>({
       const errorMsg = `Error al crear ${tableName}: ${err.message}`;
       setError(errorMsg);
       onError?.(errorMsg);
+      console.error(`❌ Error en createItem para ${tableName}:`, err);
       throw err;
     }
   }, [addAuditFieldsFor, tableName, supabase, onSuccess, onError]);
@@ -117,6 +140,7 @@ export const useEntityCRUD = <T extends { id: string }>({
       const errorMsg = `Error al actualizar ${tableName}: ${err.message}`;
       setError(errorMsg);
       onError?.(errorMsg);
+      console.error(`❌ Error en updateItem para ${tableName}:`, err);
       throw err;
     }
   }, [addAuditFieldsFor, tableName, supabase, onSuccess, onError]);
@@ -137,6 +161,7 @@ export const useEntityCRUD = <T extends { id: string }>({
       const errorMsg = `Error al eliminar ${tableName}: ${err.message}`;
       setError(errorMsg);
       onError?.(errorMsg);
+      console.error(`❌ Error en deleteItem para ${tableName}:`, err);
       throw err;
     }
   }, [tableName, supabase, onSuccess, onError]);
@@ -174,11 +199,12 @@ export const useEntityCRUD = <T extends { id: string }>({
       const errorMsg = `Error en actualización masiva: ${err.message}`;
       setError(errorMsg);
       onError?.(errorMsg);
+      console.error(`❌ Error en bulkUpdate para ${tableName}:`, err);
       throw err;
     }
   }, [addAuditFieldsFor, tableName, supabase, onSuccess, onError]);
 
-  // ✅ FUNCIÓN PARA BÚSQUEDA AVANZADA
+  // ✅ FUNCIÓN PARA BÚSQUEDA AVANZADA CON ORDEN CORRECTO
   const searchItems = useCallback(async (filters: Record<string, any>) => {
     try {
       setLoading(true);
@@ -195,7 +221,9 @@ export const useEntityCRUD = <T extends { id: string }>({
         }
       });
       
-      const { data: result, error } = await query.order('created_at', { ascending: false });
+      // ✅ USAR CAMPO DE ORDEN CORRECTO
+      const orderByField = getOrderByField(tableName);
+      const { data: result, error } = await query.order(orderByField, { ascending: false });
       
       if (error) throw error;
       
@@ -212,23 +240,27 @@ export const useEntityCRUD = <T extends { id: string }>({
       setError(errorMsg);
       onError?.(errorMsg);
       setData([]); // ✅ RESET DATA EN CASO DE ERROR
+      console.error(`❌ Error en searchItems para ${tableName}:`, err);
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [tableName, selectQuery, supabase, onError]);
+  }, [tableName, selectQuery, supabase, onError, getOrderByField]);
 
-  // ✅ FUNCIÓN PARA PAGINACIÓN
+  // ✅ FUNCIÓN PARA PAGINACIÓN CON ORDEN CORRECTO
   const loadMore = useCallback(async (page: number, pageSize: number = 20) => {
     try {
       setLoading(true);
       const from = page * pageSize;
       const to = from + pageSize - 1;
       
+      // ✅ USAR CAMPO DE ORDEN CORRECTO
+      const orderByField = getOrderByField(tableName);
+      
       const { data: result, error } = await supabase
         .from(tableName)
         .select(selectQuery)
-        .order('created_at', { ascending: false })
+        .order(orderByField, { ascending: false })
         .range(from, to);
         
       if (error) throw error;
@@ -255,11 +287,12 @@ export const useEntityCRUD = <T extends { id: string }>({
       if (page === 0) {
         setData([]); // ✅ RESET DATA EN CASO DE ERROR
       }
+      console.error(`❌ Error en loadMore para ${tableName}:`, err);
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [tableName, selectQuery, supabase, onError]);
+  }, [tableName, selectQuery, supabase, onError, getOrderByField]);
 
   return {
     // ✅ DATOS Y ESTADOS
@@ -332,7 +365,7 @@ export interface UseEntityCRUDReturn<T> {
   };
 }
 
-// ✅ HOOK ESPECÍFICO PARA USERS CON TIPADO
+// ✅ HOOK ESPECÍFICO PARA USERS CON TIPADO CORREGIDO
 export const useUsers = () => {
   return useEntityCRUD<{
     id: string;
@@ -340,12 +373,12 @@ export const useUsers = () => {
     lastName?: string;
     email?: string;
     profilePictureUrl?: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: string;  // ✅ CAMELCASE PARA USERS
+    updatedAt: string;  // ✅ CAMELCASE PARA USERS
     createdBy?: string;
     updatedBy?: string;
   }>({
-    tableName: 'Users',
+    tableName: 'Users', // ✅ DETECTARÁ AUTOMÁTICAMENTE CAMELCASE
     selectQuery: `
       id,
       firstName,
@@ -361,10 +394,10 @@ export const useUsers = () => {
   });
 };
 
-// ✅ HOOK ESPECÍFICO PARA MEMBERSHIPS CON JOINS
+// ✅ HOOK ESPECÍFICO PARA MEMBERSHIPS CON SNAKE_CASE
 export const useMemberships = () => {
   return useEntityCRUD<any>({
-    tableName: 'user_memberships',
+    tableName: 'user_memberships', // ✅ DETECTARÁ AUTOMÁTICAMENTE SNAKE_CASE
     selectQuery: `
       *,
       Users!userid (
@@ -385,10 +418,10 @@ export const useMemberships = () => {
   });
 };
 
-// ✅ HOOK ESPECÍFICO PARA PRODUCTS CON SUPPLIER
+// ✅ HOOK ESPECÍFICO PARA PRODUCTS CON SNAKE_CASE
 export const useProducts = () => {
   return useEntityCRUD<any>({
-    tableName: 'products',
+    tableName: 'products', // ✅ DETECTARÁ AUTOMÁTICAMENTE SNAKE_CASE
     selectQuery: `
       *,
       suppliers!supplier_id (
