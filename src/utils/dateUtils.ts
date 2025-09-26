@@ -267,3 +267,29 @@ export const formatTimestampShort = (timestamp: string | null): string => {
 export const getCurrentTimestamp = (): string => {
   return new Date().toISOString(); // Siempre UTC para BD
 };
+
+
+// utils/dateUtils.ts - FUNCIÓN ADICIONAL PARA EXTRAER FECHA DE TIMESTAMP UTC
+
+/**
+ * Extrae solo la fecha (YYYY-MM-DD) de un timestamp UTC convertida a timezone México.
+ * CRÍTICO: Para comparaciones de "hoy" precisas.
+ */
+export const extractDateInMexico = (timestamp: string): string => {
+  try {
+    const utcDate = new Date(timestamp);
+    if (isNaN(utcDate.getTime())) {
+      console.error('Timestamp inválido para extractDateInMexico:', timestamp);
+      return '';
+    }
+
+    // Convertir UTC a México y extraer solo fecha
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: MEXICO_TIMEZONE,
+    }).format(utcDate);
+    
+  } catch (error) {
+    console.error('Error en extractDateInMexico:', error);
+    return '';
+  }
+};

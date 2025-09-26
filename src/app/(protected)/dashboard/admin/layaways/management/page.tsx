@@ -163,7 +163,17 @@ const LayawayManagementPage = memo(() => {
   
   const [customers, setCustomers] = useState<CustomerFilter[]>([]); // ✅ TIPO CORRECTO CUSTOMERFILTER[]
 
-  // ✅ CONFIGURACIÓN CRUD ESPECÍFICA PARA APARTADOS - MEMOIZADA
+  // ✅ CALLBACKS ESTABLES FUERA DEL USEMEMO - CORRIGE REGLAS DE HOOKS
+  const handleLayawayCrudError = useCallback((error: string) => {
+    console.error('Error cargando apartados:', error);
+    notify.error(`Error al cargar apartados: ${error}`);
+  }, []);
+
+  const handleLayawayCrudSuccess = useCallback(() => {
+    console.log('Apartados cargados exitosamente');
+  }, []);
+
+  // ✅ CONFIGURACIÓN CRUD ESPECÍFICA PARA APARTADOS - SIN HOOKS DENTRO
   const layawayCrudConfig = useMemo(() => ({
     tableName: 'sales' as const, // ✅ Detecta updated_only automáticamente
     selectQuery: `
@@ -204,14 +214,9 @@ const LayawayManagementPage = memo(() => {
         payment_date
       )
     `,
-    onError: useCallback((error: string) => {
-      console.error('Error cargando apartados:', error);
-      notify.error(`Error al cargar apartados: ${error}`);
-    }, []),
-    onSuccess: useCallback(() => {
-      console.log('Apartados cargados exitosamente');
-    }, [])
-  }), []);
+    onError: handleLayawayCrudError,
+    onSuccess: handleLayawayCrudSuccess
+  }), [handleLayawayCrudError, handleLayawayCrudSuccess]);
 
   // ✅ CRUD CON FILTRO AUTOMÁTICO A LAYAWAYS
   const { 
@@ -265,27 +270,46 @@ const LayawayManagementPage = memo(() => {
     return getTodayInMexico();
   }, []);
 
-  // ✅ CALCULAR DÍAS HASTA VENCIMIENTO CON DATEUTILS
+  // ✅ CALCULAR DÍAS HASTA VENCIMIENTO CORREGIDO
   const getDaysUntilExpiration = useCallback((layawayExpiresAt: string): number => {
     if (!layawayExpiresAt) return 0;
     
-    const today = getTodayInMexico();
-    const expirationDate = formatDateForDisplay(layawayExpiresAt);
-    
-    return daysBetween(today, expirationDate);
+    try {
+      const today = new Date();
+      const expiration = new Date(layawayExpiresAt);
+      
+      // Resetear horas para comparación exacta de días
+      today.setHours(0, 0, 0, 0);
+      expiration.setHours(0, 0, 0, 0);
+      
+      const diffTime = expiration.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return diffDays;
+    } catch (error) {
+      console.error('Error calculando días hasta vencimiento:', error);
+      return 0;
+    }
   }, []);
 
-  // ✅ PROCESAR LAYAWAYS CON CÁLCULOS ENTERPRISE
+  // ✅ PROCESAR LAYAWAYS CON CÁLCULOS ENTERPRISE CORREGIDOS
   const processedLayaways = useMemo(() => {
     return layaways.map((layaway): LayawayWithDetails => {
       const customer = layaway.customer;
       const totalAmount = layaway.total_amount || 0;
       const paidAmount = layaway.paid_amount || 0;
+      
+      // ✅ CALCULAR PENDIENTE REAL CONSIDERANDO COMISIONES
+      // Si el cliente ya pagó el monto requerido (incluso con comisiones), pendiente = 0
+      const realPendingAmount = Math.max(0, totalAmount - paidAmount);
+      
       const progressPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
       const daysUntilExpiration = getDaysUntilExpiration(layaway.layaway_expires_at || '');
       
       return {
         ...layaway,
+        // ✅ CORREGIR PENDING AMOUNT
+        pending_amount: realPendingAmount,
         customer_name: customer 
           ? `${customer.firstName} ${customer.lastName || ''}`.trim()
           : 'Cliente General',
@@ -1050,6 +1074,19 @@ const LayawayManagementPage = memo(() => {
                       <Typography variant="body2" fontWeight="600" sx={{ color: colorTokens.warning }}>
                         {formatPrice(layaway.pending_amount || 0)}
                       </Typography>
+                      {(layaway.pending_amount || 0) === 0 && (
+                        <Chip 
+                          label="Completado"
+                          size="small"
+                          sx={{
+                            mt: 0.5,
+                            fontSize: '0.7rem',
+                            backgroundColor: colorTokens.success,
+                            color: colorTokens.textPrimary,
+                            fontWeight: 600
+                          }}
+                        />
+                      )}
                     </TableCell>
 
                     <TableCell>
@@ -1081,11 +1118,13 @@ const LayawayManagementPage = memo(() => {
                         {layaway.layaway_expires_at && (
                           <Chip 
                             label={
-                              (layaway.days_until_expiration || 0) > 0 
-                                ? `${layaway.days_until_expiration} días` 
-                                : (layaway.days_until_expiration || 0) === 0 
-                                  ? 'Hoy' 
-                                  : `Vencido ${Math.abs(layaway.days_until_expiration || 0)} días`
+                              (layaway.days_until_expiration || 0) > 1 
+                                ? `${layaway.days_until_expiration} días restantes` 
+                                : (layaway.days_until_expiration || 0) === 1 
+                                  ? 'Vence mañana'
+                                  : (layaway.days_until_expiration || 0) === 0
+                                    ? 'Vence hoy'
+                                    : `Vencido hace ${Math.abs(layaway.days_until_expiration || 0)} días`
                             }
                             size="small"
                             sx={{
