@@ -1,4 +1,4 @@
-// src/components/pos/PaymentDialog.tsx - VERSIÓN CORREGIDA v7.0 CON CONSTRAINTS BD VÁLIDOS
+// components/pos/PaymentDialog.tsx - VERSIÓN COMPLETA v7.0 CON TIPOS INTEGRADOS
 
 'use client';
 
@@ -53,8 +53,20 @@ import { notify } from '@/utils/notifications';
 import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ TIPOS CENTRALIZADOS v7.0
-import { Product, CartItem, Customer, Coupon, Totals, PaymentMethod } from '@/types/pos';
+// ✅ TIPOS CENTRALIZADOS COMPLETOS v7.0
+import { 
+  Product, 
+  CartItem, 
+  Customer, 
+  Coupon, 
+  Totals, 
+  PaymentMethod,
+  PAYMENT_METHODS,
+  SaleItem,
+  SalePaymentDetail,
+  InventoryMovement,
+  PaymentCommission
+} from '@/types/pos';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -66,6 +78,12 @@ interface PaymentDialogProps {
   onSuccess: () => void;
 }
 
+interface PaymentMethodForm {
+  method: string;
+  amount: number;
+  reference?: string;
+}
+
 // ✅ CONSTANTES ENTERPRISE v7.0 CON VALORES CORRECTOS BD
 const PAYMENT_METHODS_FALLBACK = [
   { value: 'efectivo', label: 'Efectivo', icon: MoneyIcon },
@@ -73,19 +91,6 @@ const PAYMENT_METHODS_FALLBACK = [
   { value: 'debito', label: 'Tarjeta Débito', icon: CardIcon },
   { value: 'credito', label: 'Tarjeta Crédito', icon: CardIcon }
 ] as const;
-
-// ✅ VALORES VÁLIDOS SEGÚN CONSTRAINT BD MUSCLEUP v7.0
-const VALID_MOVEMENT_TYPES = {
-  SALE: 'salida',        // ✅ CORRECTO: para ventas usar 'salida'
-  PURCHASE: 'entrada',   // ✅ CORRECTO: para compras usar 'entrada' 
-  ADJUSTMENT: 'ajuste',  // ✅ CORRECTO: para ajustes de inventario
-  TRANSFER: 'transferencia' // ✅ CORRECTO: para transferencias
-} as const;
-
-const VALID_SALE_TYPES = {
-  SALE: 'sale',          // ✅ CORRECTO: venta normal según constraint BD
-  LAYAWAY: 'layaway'     // ✅ CORRECTO: venta apartado según constraint BD
-} as const;
 
 const EPSILON = 0.001; // Para comparaciones de punto flotante
 
@@ -108,13 +113,13 @@ export default function PaymentDialog({
     data: paymentCommissions,
     loading: commissionsLoading,
     error: commissionsError
-  } = useEntityCRUD<any>({
+  } = useEntityCRUD<PaymentCommission>({
     tableName: 'payment_commissions',
     selectQuery: '*'
   });
   
   // ✅ ESTADOS REACTIVOS
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodForm[]>([
     { method: 'efectivo', amount: 0 }
   ]);
   const [processing, setProcessing] = useState(false);
@@ -133,7 +138,7 @@ export default function PaymentDialog({
   const getCommissionRate = useCallback((paymentMethod: string): number => {
     if (commissionsLoading || !paymentCommissions || commissionsError) return 0;
     const commission = paymentCommissions.find(
-      (c: any) => c.payment_method === paymentMethod && c.is_active === true
+      (c: PaymentCommission) => c.payment_method === paymentMethod && c.is_active === true
     );
     if (!commission) return 0;
     return commission.commission_type === 'percentage' ? commission.commission_value : 0;
@@ -145,8 +150,8 @@ export default function PaymentDialog({
       return PAYMENT_METHODS_FALLBACK;
     }
     return paymentCommissions
-      .filter((c: any) => c.is_active === true)
-      .map((c: any) => {
+      .filter((c: PaymentCommission) => c.is_active === true)
+      .map((c: PaymentCommission) => {
         const fallbackMethod = PAYMENT_METHODS_FALLBACK.find(pm => pm.value === c.payment_method);
         return {
           value: c.payment_method,
@@ -196,7 +201,7 @@ export default function PaymentDialog({
 
   // 🎯 CEREBRO DE LA OPERACIÓN: LÓGICA DE CANDADOS SIMPLIFICADA
   const updatePaymentMethod = useCallback(
-    (index: number, field: keyof PaymentMethod, value: any) => {
+    (index: number, field: keyof PaymentMethodForm, value: any) => {
       if (!mixedPayment) {
         // MODO INDIVIDUAL: Monto siempre bloqueado, se auto-calcula al cambiar método
         if (field === 'method') {
@@ -267,7 +272,7 @@ export default function PaymentDialog({
     onClose();
   }, [onClose, processing]);
 
-  // ✅ PROCESAR PAGO - CORREGIDO CON VALORES BD VÁLIDOS v7.0
+  // ✅ PROCESAR PAGO - LÓGICA BD COMPLETA v7.0
   const processPayment = useCallback(async () => {
     if (!canProcessPayment) return;
     
@@ -282,12 +287,12 @@ export default function PaymentDialog({
 
       const saleNumber = `POS-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       
-      // ✅ DATOS DE VENTA SIN AUDITORÍA DE USUARIO (SALES ES UPDATED_ONLY)
+      // ✅ DATOS DE VENTA - sales table (updated_only según useUserTracking)
       const saleData = {
         sale_number: saleNumber,
         customer_id: customer?.id || null,
         cashier_id: currentCashier,
-        sale_type: VALID_SALE_TYPES.SALE, // ✅ CORRECTO: 'sale' según constraint BD
+        sale_type: 'sale', // ✅ CORRECTO: venta directa POS
         subtotal: Math.round(totals.subtotal * 100) / 100,
         tax_amount: Math.round(totals.taxAmount * 100) / 100,
         discount_amount: Math.round(totals.discountAmount * 100) / 100,
@@ -296,7 +301,7 @@ export default function PaymentDialog({
         total_amount: finalTotal,
         paid_amount: totalPayments,
         change_amount: changeAmount,
-        status: 'completed',
+        status: 'completed', // ✅ INMEDIATAMENTE COMPLETADA
         payment_status: 'paid',
         is_mixed_payment: mixedPayment,
         payment_received: totalPayments,
@@ -306,6 +311,7 @@ export default function PaymentDialog({
         completed_at: getCurrentTimestamp()
       };
 
+      // ✅ INSERTAR VENTA (NO AUDITORÍA - ES updated_only)
       const { data: sale, error: saleError } = await supabase
         .from('sales')
         .insert([saleData])
@@ -314,12 +320,12 @@ export default function PaymentDialog({
 
       if (saleError) throw saleError;
 
-      // ✅ INSERTAR ITEMS DE VENTA
+      // ✅ INSERTAR ITEMS DE VENTA (NO AUDITORÍA)
       const saleItemsData = cart.map(item => ({
         sale_id: sale.id,
         product_id: item.product.id,
         product_name: item.product.name,
-        product_sku: item.product.sku || null,
+        product_sku: item.product.sku, // ✅ CORREGIDO: undefined en lugar de null
         quantity: item.quantity,
         unit_price: Math.round(item.unit_price * 100) / 100,
         total_price: Math.round(item.total_price * 100) / 100,
@@ -334,24 +340,30 @@ export default function PaymentDialog({
 
       if (itemsError) throw itemsError;
 
-      // ✅ INSERTAR DETALLES DE PAGO CON AUDITORÍA
-      const paymentDetailsData = paymentMethods.map((pm, index) => {
-        const commissionRate = getCommissionRate(pm.method);
-        const commissionAmount = (pm.amount || 0) * commissionRate / 100;
-        
-        return {
-          sale_id: sale.id,
-          payment_method: pm.method,
-          amount: Math.round((pm.amount || 0) * 100) / 100,
-          payment_reference: pm.reference || null,
-          commission_rate: commissionRate,
-          commission_amount: Math.round(commissionAmount * 100) / 100,
-          sequence_order: index + 1,
-          payment_date: getCurrentTimestamp(),
-          created_at: getCurrentTimestamp(),
-          created_by: currentCashier
-        };
-      });
+      // ✅ INSERTAR DETALLES DE PAGO CON AUDITORÍA (created_by)
+      const paymentDetailsData = await Promise.all(
+        paymentMethods.map(async (pm, index) => {
+          const commissionRate = getCommissionRate(pm.method);
+          const commissionAmount = (pm.amount || 0) * commissionRate / 100;
+          
+          const baseData = {
+            sale_id: sale.id,
+            payment_method: pm.method,
+            amount: Math.round((pm.amount || 0) * 100) / 100,
+            payment_reference: pm.reference || null,
+            commission_rate: commissionRate,
+            commission_amount: Math.round(commissionAmount * 100) / 100,
+            sequence_order: index + 1,
+            payment_date: getCurrentTimestamp(),
+            is_partial_payment: false,
+            payment_sequence: index + 1,
+            notes: null
+          };
+
+          // Aplicar auditoría created_by para sale_payment_details
+          return await addAuditFieldsFor('sale_payment_details', baseData, false);
+        })
+      );
 
       const { error: paymentsError } = await supabase
         .from('sale_payment_details')
@@ -359,7 +371,7 @@ export default function PaymentDialog({
 
       if (paymentsError) throw paymentsError;
 
-      // ✅ ACTUALIZAR INVENTARIO CON CONSTRAINT VÁLIDO Y AUDITORÍA
+      // ✅ ACTUALIZAR INVENTARIO CON AUDITORÍA (products usa snake_case)
       for (const item of cart) {
         const newStock = Math.max(0, item.product.current_stock - item.quantity);
         
@@ -374,12 +386,12 @@ export default function PaymentDialog({
 
         if (stockError) throw stockError;
 
-        // ✅ MOVIMIENTO DE INVENTARIO CON VALOR CORRECTO SEGÚN CONSTRAINT BD
+        // ✅ MOVIMIENTO DE INVENTARIO (NO AUDITORÍA)
         const { error: movementError } = await supabase
           .from('inventory_movements')
           .insert({
             product_id: item.product.id,
-            movement_type: VALID_MOVEMENT_TYPES.SALE, // ✅ CORREGIDO: 'salida' en lugar de 'sale'
+            movement_type: 'salida', // ✅ CORRECTO: 'salida' para ventas según constraint BD
             quantity: -item.quantity, // ✅ NEGATIVO para salidas
             previous_stock: item.product.current_stock,
             new_stock: newStock,
@@ -398,7 +410,7 @@ export default function PaymentDialog({
         }
       }
 
-      // ✅ ACTUALIZAR CUPÓN SI APLICA
+      // ✅ ACTUALIZAR CUPÓN SI APLICA (created_only según useUserTracking)
       if (coupon) {
         const { error: couponError } = await supabase
           .from('coupons')

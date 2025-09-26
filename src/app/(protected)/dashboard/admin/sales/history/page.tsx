@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -75,152 +75,234 @@ import {
 import { notify } from '@/utils/notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useEntityCRUD } from '@/hooks/useEntityCRUD';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ INTERFACES ENTERPRISE MUSCLEUP v7.0 CON ESQUEMA BD REAL
-interface Sale {
-  id: string;
-  sale_number: string;
-  customer_id?: string;
-  cashier_id: string;
-  sale_type: 'sale' | 'layaway'; // ✅ Constraint BD validado
-  subtotal: number;
-  tax_amount: number;
-  discount_amount: number;
-  coupon_discount: number;
-  total_amount: number;
-  paid_amount: number;
-  pending_amount: number;
-  commission_rate: number;
-  commission_amount: number;
-  change_amount: number;
-  status: 'completed' | 'pending' | 'cancelled' | 'refunded'; // ✅ Constraint BD validado
-  payment_status: 'paid' | 'partial' | 'pending' | 'refunded'; // ✅ Constraint BD validado
-  is_mixed_payment: boolean;
-  payment_received: number;
-  notes?: string;
-  receipt_printed: boolean;
-  email_sent: boolean;
-  created_at: string; // ✅ snake_case para sales
-  completed_at?: string;
-  updated_at: string;
-  updated_by?: string; // ✅ Auditoría updated_only para sales
-  cancelled_by?: string;
-  cancellation_reason?: string;
-  layaway_expires_at?: string;
-  
-  // ✅ RELACIONES CON ESQUEMA BD REAL
-  Users?: { // ✅ Cliente - Users tabla camelCase
-    id: string;
-    firstName: string;
-    lastName?: string;
-    email?: string;
-    profilePictureUrl?: string;
-  };
-  cashier?: { // ✅ Cajero - Users tabla camelCase  
-    id: string;
-    firstName: string;
-    lastName?: string;
-    profilePictureUrl?: string;
-  };
-  sale_items?: Array<{
-    id: string;
-    product_name: string;
-    product_sku?: string;
-    quantity: number;
-    unit_price: number;
-    total_price: number;
-    discount_amount: number;
-    tax_amount: number;
-  }>;
-  sale_payment_details?: Array<{
-    id: string;
-    payment_method: string;
-    amount: number;
-    commission_rate: number;
-    commission_amount: number;
-    payment_reference?: string;
-    sequence_order: number;
-    is_partial_payment: boolean;
-    payment_date: string;
-  }>;
-}
+// ✅ TIPOS EXISTENTES IMPORTADOS
+import { 
+  Sale, 
+  SaleItem, 
+  SalePaymentDetail, 
+  InventoryMovement,
+  Product,
+  Customer,
+  SaleStatus,
+  PaymentStatus,
+  SaleType
+} from '@/types/pos';
 
-interface SalesFilters {
-  status: string;
-  sale_type: string;
-  payment_status: string;
+// ✅ FILTROS ESPECÍFICOS PARA HISTORIAL (sin status - siempre completed)
+interface HistoryFilters {
+  sale_type: string; // 'all' | 'sale' | 'layaway'
+  payment_status: string; // 'all' | 'paid' | 'partial' | 'refunded'  
   cashier_id: string;
   date_from: string;
   date_to: string;
   search: string;
 }
 
-interface SalesStats {
-  totalSales: number;
+interface HistoryStats {
+  totalCompleted: number;
   totalAmount: number;
   totalCommissions: number;
   averageTicket: number;
-  salesCount: number;
+  directSalesCount: number; // sale_type='sale' completed
+  completedLayawayCount: number; // sale_type='layaway' completed  
   refundsCount: number;
-  layawayCount: number;
   todayTotal: number;
+  paymentMethodBreakdown: Record<string, { count: number; amount: number }>;
 }
 
-// ✅ COMPONENTE PRINCIPAL CON PATRONES ENTERPRISE v7.0 - HOOKS CORRECTOS
+// ✅ INTERFACE ESPECÍFICA PARA CAJEROS (EVITA CONFLICTO CON CUSTOMER)
+interface Cashier {
+  id: string;
+  firstName: string;
+  lastName?: string;
+  profilePictureUrl?: string;
+}
+
+// ✅ SALE CON RELACIONES EXTENDIDAS PARA HISTORIAL
+interface SaleWithRelations extends Sale {
+  customer?: {
+    id: string;
+    firstName: string;
+    lastName?: string;
+    email?: string;
+    profilePictureUrl?: string;
+  };
+  cashier?: {
+    id: string;
+    firstName: string;
+    lastName?: string;
+    profilePictureUrl?: string;
+  };
+  sale_items?: SaleItem[];
+  sale_payment_details?: SalePaymentDetail[];
+  // Campos calculados para display
+  customer_name?: string;
+  cashier_name?: string;  
+  payment_method?: string;
+  items_count?: number;
+}
+
+// ✅ COMPONENTE HISTORIAL DE VENTAS OPTIMIZADO v7.0
 const SalesHistoryPage = memo(() => {
-  // ✅ TODOS LOS HOOKS PRIMERO - ORDEN CONSISTENTE SIEMPRE
+  // ✅ HOOKS ENTERPRISE ORDENADOS
   const hydrated = useHydrated();
   const { addAuditFieldsFor } = useUserTracking();
   const { toast, alert } = useNotifications();
+  const supabase = createBrowserSupabaseClient();
 
-  // ✅ ESTADOS LOCALES
-  const [filters, setFilters] = useState<SalesFilters>({
-    status: 'all',
+  // ✅ ESTADOS ESPECÍFICOS PARA HISTORIAL
+  const [filters, setFilters] = useState<HistoryFilters>({
     sale_type: 'all',
     payment_status: 'all',
-    cashier_id: 'all',
+    cashier_id: 'all', 
     date_from: '',
     date_to: '',
     search: ''
   });
 
-  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [selectedSale, setSelectedSale] = useState<SaleWithRelations | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [menuSale, setMenuSale] = useState<Sale | null>(null);
-  const [stats, setStats] = useState<SalesStats>({
-    totalSales: 0,
-    totalAmount: 0,
-    totalCommissions: 0,
-    averageTicket: 0,
-    salesCount: 0,
-    refundsCount: 0,
-    layawayCount: 0,
-    todayTotal: 0
-  });
+  const [menuSale, setMenuSale] = useState<SaleWithRelations | null>(null);
+  
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [cashiers, setCashiers] = useState<Cashier[]>([]); // ✅ TIPO CORRECTO CASHIER[]
 
-  // ✅ CRUD SIMPLIFICADO PARA EVITAR BUCLE - QUERY BÁSICA FUNCIONAL
+  // ✅ CONFIGURACIÓN CRUD OPTIMIZADA PARA HISTORIAL - MEMOIZADA
+  const crudConfig = useMemo(() => ({
+    tableName: 'sales' as const,
+    selectQuery: `
+      *,
+      customer:Users!sales_customer_id_fkey (
+        id,
+        firstName,
+        lastName,
+        email,
+        profilePictureUrl
+      ),
+      cashier:Users!sales_cashier_id_fkey (
+        id,
+        firstName,
+        lastName,
+        profilePictureUrl
+      ),
+      sale_items (
+        id,
+        product_id,
+        product_name,
+        product_sku,
+        quantity,
+        unit_price,
+        total_price,
+        discount_amount,
+        tax_amount
+      ),
+      sale_payment_details (
+        id,
+        payment_method,
+        amount,
+        commission_rate,
+        commission_amount,
+        payment_reference,
+        sequence_order,
+        is_partial_payment,
+        payment_date
+      )
+    `,
+    onError: useCallback((error: string) => {
+      console.error('Error cargando historial:', error);
+      notify.error(`Error al cargar historial: ${error}`);
+    }, []),
+    onSuccess: useCallback(() => {
+      console.log('Historial cargado exitosamente');
+    }, [])
+  }), []);
+
+  // ✅ CRUD CON CONFIGURACIÓN ESTABLE
   const { 
-    data: sales, 
+    data: allSales, 
     loading, 
     updateItem, 
-    searchItems, 
-    stats: crudStats,
+    searchItems,
+    loadMore,
     refreshData 
-  } = useEntityCRUD<Sale>({
-    tableName: 'sales', // ✅ Detecta automáticamente auditoría updated_only
-    selectQuery: '*', // ✅ QUERY SIMPLE SIN RELACIONES PROBLEMÁTICAS
-    onError: (error) => {
-      console.error('Error en sales:', error);
-      notify.error(`Error al cargar ventas: ${error}`);
-    },
-    onSuccess: (message) => {
-      console.log('Sales cargadas:', message);
-    }
-  });
+  } = useEntityCRUD<SaleWithRelations>(crudConfig);
 
-  // ✅ FUNCIONES MEMOIZADAS CON OPTIMIZACIÓN v7.0
+  // ✅ FILTRO AUTOMÁTICO A COMPLETED PARA HISTORIAL
+  const completedSales = useMemo(() => {
+    return allSales.filter(sale => sale.status === 'completed');
+  }, [allSales]);
+
+  // ✅ CARGAR CASHIERS PARA FILTRO - CORREGIDO CON TIPO CASHIER
+  const loadCashiers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('Users') // ✅ Tabla Users con camelCase
+        .select('id, firstName, lastName, profilePictureUrl')
+        .eq('rol', 'empleado') // ✅ Campo rol en Users
+        .order('firstName');
+      
+      if (error) throw error;
+      
+      // ✅ TIPADO CORRECTO - data ya es Cashier[] compatible
+      setCashiers(data || []);
+    } catch (error) {
+      console.error('Error cargando cajeros:', error);
+      notify.error('Error al cargar lista de cajeros');
+    }
+  }, [supabase]);
+
+  // ✅ CARGAR DATOS INICIALES - SOLO COMPLETED
+  useEffect(() => {
+    if (hydrated) {
+      loadCashiers();
+      
+      // Cargar solo ventas completadas inicialmente
+      searchItems({ status: 'completed' });
+    }
+  }, [hydrated, loadCashiers, searchItems]);
+
+  // ✅ ESTADÍSTICAS CALCULADAS OPTIMIZADAS
+  const historyStats = useMemo((): HistoryStats => {
+    const today = getTodayInMexico();
+    const todaySales = completedSales.filter(sale => 
+      formatDateForDisplay(sale.created_at) === formatDateForDisplay(today)
+    );
+
+    // Breakdown por método de pago
+    const paymentMethodBreakdown: Record<string, { count: number; amount: number }> = {};
+    
+    completedSales.forEach(sale => {
+      const method = sale.is_mixed_payment ? 'mixto' : 
+        sale.sale_payment_details?.[0]?.payment_method || 'efectivo';
+      
+      if (!paymentMethodBreakdown[method]) {
+        paymentMethodBreakdown[method] = { count: 0, amount: 0 };
+      }
+      paymentMethodBreakdown[method].count++;
+      paymentMethodBreakdown[method].amount += sale.total_amount;
+    });
+
+    return {
+      totalCompleted: completedSales.length,
+      totalAmount: completedSales.reduce((sum, sale) => sum + sale.total_amount, 0),
+      totalCommissions: completedSales.reduce((sum, sale) => sum + (sale.commission_amount || 0), 0),
+      averageTicket: completedSales.length > 0 
+        ? completedSales.reduce((sum, sale) => sum + sale.total_amount, 0) / completedSales.length 
+        : 0,
+      directSalesCount: completedSales.filter(sale => sale.sale_type === 'sale').length,
+      completedLayawayCount: completedSales.filter(sale => sale.sale_type === 'layaway').length,
+      refundsCount: allSales.filter(sale => sale.status === 'refunded').length, // Todos los refunds
+      todayTotal: todaySales.reduce((sum, sale) => sum + sale.total_amount, 0),
+      paymentMethodBreakdown
+    };
+  }, [completedSales, allSales]);
+
+  // ✅ FUNCIONES HELPER MEMOIZADAS
   const formatPrice = useCallback((price: number): string => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -228,21 +310,11 @@ const SalesHistoryPage = memo(() => {
     }).format(price || 0);
   }, []);
 
-  const getStatusColor = useCallback((status: string): string => {
+  const getStatusColor = useCallback((status: SaleStatus): string => {
     switch (status) {
       case 'completed': return colorTokens.success;
       case 'pending': return colorTokens.warning;
       case 'cancelled': return colorTokens.danger;
-      case 'refunded': return colorTokens.info;
-      default: return colorTokens.neutral700;
-    }
-  }, []);
-
-  const getPaymentStatusColor = useCallback((status: string): string => {
-    switch (status) {
-      case 'paid': return colorTokens.success;
-      case 'partial': return colorTokens.warning;
-      case 'pending': return colorTokens.danger;
       case 'refunded': return colorTokens.info;
       default: return colorTokens.neutral700;
     }
@@ -259,47 +331,99 @@ const SalesHistoryPage = memo(() => {
     }
   }, []);
 
-  // ✅ ESTADÍSTICAS CALCULADAS CON USEMEMO v7.0
-  const calculatedStats = useMemo(() => {
-    const today = getTodayInMexico();
-    const completedSales = sales.filter(sale => sale.status === 'completed');
-    const todaySales = completedSales.filter(sale => 
-      formatDateForDisplay(sale.created_at).startsWith(formatDateForDisplay(today))
-    );
-    
-    return {
-      totalSales: sales.length,
-      totalAmount: completedSales.reduce((sum, sale) => sum + (sale.total_amount || 0), 0),
-      totalCommissions: completedSales.reduce((sum, sale) => sum + (sale.commission_amount || 0), 0),
-      averageTicket: completedSales.length > 0 
-        ? completedSales.reduce((sum, sale) => sum + sale.total_amount, 0) / completedSales.length 
-        : 0,
-      salesCount: completedSales.length,
-      refundsCount: sales.filter(sale => sale.status === 'refunded').length,
-      layawayCount: sales.filter(sale => sale.sale_type === 'layaway').length,
-      todayTotal: todaySales.reduce((sum, sale) => sum + sale.total_amount, 0)
-    };
-  }, [sales]);
-
-  // ✅ FILTRADO CON USECALLBACK v7.0
+  // ✅ APLICAR FILTROS CON COMPLETED AUTOMÁTICO
   const applyFilters = useCallback(async () => {
-    const filterObj: Record<string, any> = {};
+    const activeFiltersCount = Object.entries(filters).filter(([key, value]) => 
+      value !== 'all' && value !== ''
+    ).length;
     
-    if (filters.status !== 'all') filterObj.status = filters.status;
-    if (filters.sale_type !== 'all') filterObj.sale_type = filters.sale_type;
-    if (filters.payment_status !== 'all') filterObj.payment_status = filters.payment_status;
-    if (filters.cashier_id !== 'all') filterObj.cashier_id = filters.cashier_id;
-    if (filters.search.trim()) filterObj.sale_number = filters.search.trim();
+    const toastId = notify.loading(
+      activeFiltersCount > 0 
+        ? `Aplicando ${activeFiltersCount} filtro(s) a historial completado...`
+        : 'Cargando historial completo...'
+    );
 
     try {
-      await searchItems(filterObj);
-    } catch (error) {
-      notify.error('Error al aplicar filtros');
-    }
-  }, [filters, searchItems]);
+      const filterObj: Record<string, any> = {
+        status: 'completed' // ✅ SIEMPRE FILTRAR A COMPLETED PARA HISTORIAL
+      };
+      
+      if (filters.sale_type !== 'all') filterObj.sale_type = filters.sale_type;
+      if (filters.payment_status !== 'all') filterObj.payment_status = filters.payment_status;
+      if (filters.cashier_id !== 'all') filterObj.cashier_id = filters.cashier_id;
+      if (filters.search.trim()) filterObj.sale_number = filters.search.trim();
 
-  // ✅ MANEJO DE MENÚ MEMOIZADO
-  const handleMenuClick = useCallback((event: React.MouseEvent<HTMLElement>, sale: Sale) => {
+      // Filtros de fecha implementados en el searchItems
+      if (filters.date_from) filterObj.date_from = filters.date_from;
+      if (filters.date_to) filterObj.date_to = filters.date_to;
+
+      setPage(0);
+      await searchItems(filterObj);
+      
+      notify.dismiss(toastId);
+      notify.success(
+        activeFiltersCount > 0 
+          ? `Filtros aplicados - ${completedSales.length} ventas completadas encontradas`
+          : `Historial cargado - ${completedSales.length} ventas completadas totales`
+      );
+    } catch (error) {
+      notify.dismiss(toastId);
+      notify.error('Error al aplicar filtros');
+      console.error('Error en filtros:', error);
+    }
+  }, [filters, searchItems, completedSales.length]);
+
+  // ✅ LIMPIAR FILTROS
+  const clearFilters = useCallback(async () => {
+    setFilters({
+      sale_type: 'all',
+      payment_status: 'all',
+      cashier_id: 'all',
+      date_from: '',
+      date_to: '',
+      search: ''
+    });
+    setPage(0);
+    
+    const toastId = notify.loading('Limpiando filtros y cargando historial completo...');
+    
+    try {
+      await searchItems({ status: 'completed' }); // Solo completed
+      notify.dismiss(toastId);
+      notify.success(`Filtros limpiados - ${completedSales.length} ventas completadas mostradas`);
+    } catch (error) {
+      notify.dismiss(toastId);
+      notify.error('Error al limpiar filtros');
+      console.error('Error en clearFilters:', error);
+    }
+  }, [searchItems, completedSales.length]);
+
+  // ✅ PROCESAR SALES PARA DISPLAY
+  const processedSales = useMemo(() => {
+    return completedSales.map((sale): SaleWithRelations => {
+      const customer = sale.customer;
+      const cashier = sale.cashier;
+      const paymentMethods = sale.sale_payment_details || [];
+      const saleItems = sale.sale_items || [];
+      
+      return {
+        ...sale,
+        customer_name: customer 
+          ? `${customer.firstName} ${customer.lastName || ''}`.trim()
+          : 'Cliente General',
+        cashier_name: cashier 
+          ? `${cashier.firstName} ${cashier.lastName || ''}`.trim()
+          : 'Sistema',
+        payment_method: sale.is_mixed_payment 
+          ? 'Mixto' 
+          : paymentMethods[0]?.payment_method || 'Efectivo',
+        items_count: saleItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
+      };
+    });
+  }, [completedSales]);
+
+  // ✅ MANEJO DE MENÚ
+  const handleMenuClick = useCallback((event: React.MouseEvent<HTMLElement>, sale: SaleWithRelations) => {
     setMenuAnchor(event.currentTarget);
     setMenuSale(sale);
   }, []);
@@ -309,100 +433,237 @@ const SalesHistoryPage = memo(() => {
     setMenuSale(null);
   }, []);
 
-  // ✅ ACCIONES DE VENTA CON AUDITORÍA INTELIGENTE v7.0
-  const handleViewDetails = useCallback((sale: Sale) => {
+  // ✅ ACCIONES DEL MENÚ
+  const handleViewDetails = useCallback((sale: SaleWithRelations) => {
     setSelectedSale(sale);
     setDetailsOpen(true);
     handleMenuClose();
   }, [handleMenuClose]);
 
-  const handleEditSale = useCallback((sale: Sale) => {
+  const handleEditSale = useCallback((sale: SaleWithRelations) => {
     setSelectedSale(sale);
     setEditOpen(true);
     handleMenuClose();
   }, [handleMenuClose]);
 
-  const handlePrintReceipt = useCallback(async (sale: Sale) => {
+  // ✅ FUNCIÓN HELPER: OBTENER ITEMS DE VENTA
+  const getSaleItems = useCallback(async (saleId: string) => {
     try {
-      notify.success('Ticket enviado a impresión');
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select('*')
+        .eq('sale_id', saleId);
+      
+      if (error) throw error;
+      return data || [];
     } catch (error) {
-      notify.error('Error al imprimir ticket');
+      console.error('Error obteniendo sale_items:', error);
+      throw new Error('No se pudieron obtener los productos de la venta');
+    }
+  }, [supabase]);
+
+  // ✅ FUNCIÓN HELPER: CREAR MOVIMIENTO DE INVENTARIO CON AUDITORÍA
+  const createInventoryMovement = useCallback(async (
+    saleItem: SaleItem, 
+    reason: string,
+    movementType: 'entrada' | 'ajuste' = 'entrada'
+  ) => {
+    try {
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('current_stock, name')
+        .eq('id', saleItem.product_id)
+        .single();
+      
+      if (productError) throw productError;
+      
+      const newStock = movementType === 'entrada' 
+        ? productData.current_stock + saleItem.quantity 
+        : productData.current_stock; // Para ajuste, stock no cambia físicamente
+      
+      // ✅ CREAR MOVIMIENTO CON AUDITORÍA
+      const movementData = await addAuditFieldsFor('inventory_movements', {
+        product_id: saleItem.product_id,
+        movement_type: movementType,
+        quantity: saleItem.quantity,
+        previous_stock: productData.current_stock,
+        new_stock: newStock,
+        reason: reason,
+        reference_id: saleItem.sale_id,
+        unit_cost: saleItem.unit_price,
+        total_cost: saleItem.total_price
+      }, false);
+
+      const { error: movementError } = await supabase
+        .from('inventory_movements')
+        .insert([movementData]);
+      
+      if (movementError) throw movementError;
+      
+      return { productName: productData.name, newStock };
+    } catch (error) {
+      console.error('Error creando movimiento de inventario:', error);
+      throw error;
+    }
+  }, [supabase, addAuditFieldsFor]);
+
+  // ✅ ACTUALIZAR STOCK FÍSICO CON AUDITORÍA
+  const updateProductStock = useCallback(async (productId: string, quantityToAdd: number) => {
+    try {
+      const { data: currentProduct, error: fetchError } = await supabase
+        .from('products')
+        .select('current_stock')
+        .eq('id', productId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const newStock = currentProduct.current_stock + quantityToAdd;
+
+      const stockUpdateData = await addAuditFieldsFor('products', {
+        current_stock: newStock
+      }, true);
+
+      const { error } = await supabase
+        .from('products')
+        .update(stockUpdateData)
+        .eq('id', productId);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error actualizando stock:', error);
+      throw error;
+    }
+  }, [supabase, addAuditFieldsFor]);
+
+  // ✅ DEVOLUCIÓN COMPLETA CON LÓGICA DIFERENCIADA
+  const handleRefund = useCallback(async (sale: SaleWithRelations) => {
+    const isLayaway = sale.sale_type === 'layaway';
+    
+    const confirmed = await alert.confirm(
+      `¿Confirmar devolución de ${sale.sale_number}?\n\n` +
+      `Tipo: ${isLayaway ? 'Apartado Completado' : 'Venta Directa'}\n` +
+      `Monto: ${formatPrice(sale.total_amount)}\n\n` +
+      `${isLayaway 
+        ? '• El apartado ya estaba completado\n• Se restaurará inventario físico normalmente' 
+        : '• Se restaurará inventario físico\n• Se actualizarán movimientos de stock'
+      }\n\nEsta acción no se puede deshacer.`
+    );
+
+    if (!confirmed) return;
+
+    const progressToast = notify.loading('Procesando devolución completa...');
+
+    try {
+      // 1. Obtener productos de la venta
+      const saleItems = await getSaleItems(sale.id);
+      
+      if (saleItems.length === 0) {
+        notify.dismiss(progressToast);
+        notify.warning('La venta no tiene productos registrados');
+        return;
+      }
+
+      const restoredProducts = [];
+
+      // 2. PARA AMBOS TIPOS: Restaurar inventario físico (ya están completados)
+      for (const item of saleItems) {
+        try {
+          const result = await createInventoryMovement(
+            item, 
+            `Devolución ${isLayaway ? 'apartado completado' : 'venta directa'} ${sale.sale_number}`,
+            'entrada'
+          );
+          await updateProductStock(item.product_id, item.quantity);
+          
+          restoredProducts.push({
+            name: result.productName,
+            quantity: item.quantity,
+            newStock: result.newStock,
+            action: 'restaurado al inventario'
+          });
+        } catch (error) {
+          console.error(`Error restaurando producto ${item.product_name}:`, error);
+          throw new Error(`Error restaurando ${item.product_name}: ${(error as Error).message}`);
+        }
+      }
+
+      // 3. Actualizar status de venta
+      await updateItem(sale.id, {
+        status: 'refunded' as SaleStatus,
+        payment_status: 'refunded' as PaymentStatus,
+        cancellation_reason: `${isLayaway ? 'Apartado completado' : 'Venta'} devuelto - ${restoredProducts.length} productos restaurados`,
+        refund_amount: sale.total_amount,
+        refund_method: 'efectivo'
+      });
+
+      notify.dismiss(progressToast);
+      
+      const productsList = restoredProducts
+        .map(p => `• ${p.name}: ${p.quantity} unidades ${p.action}`)
+        .join('\n');
+      
+      notify.success(
+        `Devolución procesada correctamente\n\n${sale.sale_number}\n` +
+        `Monto: ${formatPrice(sale.total_amount)}\n\n${productsList}`
+      );
+
+      await refreshData();
+      
+    } catch (error) {
+      notify.dismiss(progressToast);
+      notify.error(`Error en devolución: ${(error as Error).message}`);
+      console.error('Error completo en devolución:', error);
+    }
+    handleMenuClose();
+  }, [alert, getSaleItems, createInventoryMovement, updateProductStock, updateItem, refreshData, handleMenuClose, formatPrice]);
+
+  // ✅ REIMPRESIÓN DE RECIBO
+  const handlePrintReceipt = useCallback(async (sale: SaleWithRelations) => {
+    const toastId = notify.loading('Generando recibo para reimpresión...');
+    
+    try {
+      // Simular generación de recibo
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      notify.dismiss(toastId);
+      notify.success(`Recibo de ${sale.sale_number} enviado a impresora`);
+      
+    } catch (error) {
+      notify.dismiss(toastId);
+      notify.error('Error al reimprimir recibo');
     }
     handleMenuClose();
   }, [handleMenuClose]);
 
-  const handleRefund = useCallback(async (sale: Sale) => {
-    const confirmed = await alert.confirm(
-      `¿Estás seguro de procesar la devolución de la venta ${sale.sale_number}?`
-    );
-
-    if (!confirmed) return;
-
+  // ✅ REFRESH CON FILTRO COMPLETED
+  const handleRefresh = useCallback(async () => {
+    const toastId = notify.loading('Actualizando historial de ventas...');
+    
     try {
-      // ✅ Auditoría inteligente sales (updated_only)
-      await updateItem(sale.id, {
-        status: 'refunded',
-        payment_status: 'refunded',
-        cancellation_reason: 'Devolución procesada'
-      });
+      await searchItems({ status: 'completed' }); // Solo completed
       
-      notify.success('Devolución procesada exitosamente');
-      await refreshData();
-    } catch (error) {
-      notify.error('Error al procesar devolución');
-    }
-    handleMenuClose();
-  }, [updateItem, refreshData, alert, handleMenuClose]);
-
-  const handleCancelSale = useCallback(async (sale: Sale) => {
-    const confirmed = await alert.confirm(
-      `¿Estás seguro de cancelar la venta ${sale.sale_number}?`
-    );
-
-    if (!confirmed) return;
-
-    try {
-      // ✅ Auditoría inteligente sales (updated_only)
-      await updateItem(sale.id, {
-        status: 'cancelled',
-        cancellation_reason: 'Venta cancelada por usuario'
-      });
+      notify.dismiss(toastId);
+      notify.success(`Historial actualizado - ${completedSales.length} ventas completadas cargadas`);
       
-      notify.success('Venta cancelada exitosamente');
-      await refreshData();
     } catch (error) {
-      notify.error('Error al cancelar venta');
+      notify.dismiss(toastId);
+      notify.error('Error al actualizar historial');
+      console.error('Error en refresh:', error);
     }
-    handleMenuClose();
-  }, [updateItem, refreshData, alert, handleMenuClose]);
+  }, [searchItems, completedSales.length]);
 
-  // ✅ LIMPIAR FILTROS MEMOIZADO
-  const clearFilters = useCallback(() => {
-    setFilters({
-      status: 'all',
-      sale_type: 'all',
-      payment_status: 'all',
-      cashier_id: 'all',
-      date_from: '',
-      date_to: '',
-      search: ''
-    });
+  // ✅ PAGINACIÓN
+  const handleChangePage = useCallback((event: unknown, newPage: number) => {
+    setPage(newPage - 1);
   }, []);
 
-  // ✅ VENTAS PROCESADAS CON USEMEMO v7.0 + QUERY SEPARADA PARA USUARIOS
-  const processedSales = useMemo(() => {
-    return sales.map(sale => ({
-      ...sale,
-      customer_name: 'Cliente General', // ✅ TEMPORAL - Evitar relaciones problemáticas
-      customer_email: '',
-      cashier_name: 'Sistema', // ✅ TEMPORAL - Evitar relaciones problemáticas  
-      payment_method: 'Efectivo', // ✅ TEMPORAL - Método principal MuscleUp
-      items_count: 0 // ✅ TEMPORAL
-    }));
-  }, [sales]);
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
 
-  // ✅ RENDER CONDICIONAL CORRECTO - NO EARLY RETURN
-  // Todos los hooks se ejecutan siempre, solo el JSX es condicional
+  // ✅ RENDER CONDICIONAL SIN EARLY RETURN DE HOOKS
   const loadingContent = (
     <Box sx={{ 
       display: 'flex', 
@@ -418,7 +679,7 @@ const SalesHistoryPage = memo(() => {
         Cargando MuscleUp Gym...
       </Typography>
       <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
-        Inicializando historial de ventas
+        Inicializando historial de ventas completadas
       </Typography>
     </Box>
   );
@@ -429,7 +690,7 @@ const SalesHistoryPage = memo(() => {
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh'
     }}>
-      {/* ✅ HEADER CON BRANDING MUSCLEUP v7.0 */}
+      {/* ✅ HEADER CON BRANDING MUSCLEUP */}
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -455,12 +716,12 @@ const SalesHistoryPage = memo(() => {
               color: colorTokens.textPrimary,
               mb: 1
             }}>
-              Historial de Ventas
+              Historial de Ventas Completadas
             </Typography>
             <Typography variant="body1" sx={{ 
               color: colorTokens.textSecondary
             }}>
-              Gestión completa de transacciones y análisis enterprise
+              Solo transacciones finalizadas - Análisis enterprise de rendimiento
             </Typography>
           </Box>
         </Box>
@@ -468,7 +729,7 @@ const SalesHistoryPage = memo(() => {
         <Button
           variant="contained"
           startIcon={<Refresh />}
-          onClick={refreshData}
+          onClick={handleRefresh}
           disabled={loading}
           sx={{
             background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandActive})`,
@@ -484,27 +745,29 @@ const SalesHistoryPage = memo(() => {
             }
           }}
         >
-          {loading ? 'Cargando...' : 'Actualizar'}
+          {loading ? 'Actualizando...' : 'Actualizar'}
         </Button>
       </Box>
 
-      {/* ✅ ESTADÍSTICAS CON COLORtokens MUSCLEUP v7.0 */}
+      {/* ✅ ESTADÍSTICAS ENTERPRISE */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`,
               color: colorTokens.textPrimary,
-              borderRadius: 3,
-              overflow: 'hidden'
+              borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                <TrendingUp sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
+                <CheckCircle sx={{ fontSize: 40, mb: 1 }} />
                 <Typography variant="h3" fontWeight="bold" sx={{ mb: 1 }}>
-                  {calculatedStats.salesCount}
+                  {historyStats.totalCompleted}
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                <Typography variant="body1">
                   Ventas Completadas
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                  {historyStats.directSalesCount} directas + {historyStats.completedLayawayCount} apartados
                 </Typography>
               </CardContent>
             </Card>
@@ -512,7 +775,7 @@ const SalesHistoryPage = memo(() => {
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
               color: colorTokens.textOnBrand,
@@ -521,10 +784,13 @@ const SalesHistoryPage = memo(() => {
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
                 <AttachMoney sx={{ fontSize: 40, mb: 1 }} />
                 <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                  {formatPrice(calculatedStats.totalAmount)}
+                  {formatPrice(historyStats.totalAmount)}
                 </Typography>
                 <Typography variant="body1">
-                  Total Vendido
+                  Ingresos Totales
+                </Typography>
+                <Typography variant="caption">
+                  Hoy: {formatPrice(historyStats.todayTotal)}
                 </Typography>
               </CardContent>
             </Card>
@@ -532,7 +798,7 @@ const SalesHistoryPage = memo(() => {
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})`,
               color: colorTokens.textPrimary,
@@ -541,10 +807,10 @@ const SalesHistoryPage = memo(() => {
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
                 <Analytics sx={{ fontSize: 40, mb: 1 }} />
                 <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                  {formatPrice(calculatedStats.totalCommissions)}
+                  {formatPrice(historyStats.totalCommissions)}
                 </Typography>
                 <Typography variant="body1">
-                  Comisiones
+                  Comisiones Generadas
                 </Typography>
               </CardContent>
             </Card>
@@ -552,16 +818,16 @@ const SalesHistoryPage = memo(() => {
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brandHover})`,
               color: colorTokens.textOnBrand,
               borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                <Receipt sx={{ fontSize: 40, mb: 1 }} />
+                <TrendingUp sx={{ fontSize: 40, mb: 1 }} />
                 <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                  {formatPrice(calculatedStats.averageTicket)}
+                  {formatPrice(historyStats.averageTicket)}
                 </Typography>
                 <Typography variant="body1">
                   Ticket Promedio
@@ -572,7 +838,7 @@ const SalesHistoryPage = memo(() => {
         </Grid>
       </Grid>
 
-      {/* ✅ FILTROS CON COLORTOKEN MUSCLEUP v7.0 */}
+      {/* ✅ FILTROS ESPECÍFICOS PARA HISTORIAL */}
       <Card sx={{ 
         mb: 4,
         background: colorTokens.surfaceLevel2,
@@ -586,16 +852,16 @@ const SalesHistoryPage = memo(() => {
               color: colorTokens.textPrimary,
               fontWeight: 700
             }}>
-              Filtros de Búsqueda
+              Filtros de Historial (Solo Completadas)
             </Typography>
           </Box>
           
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 3 }}>
+            <Grid size={{ xs: 12, md: 2.5 }}>
               <TextField
                 fullWidth
-                label="Buscar venta"
-                placeholder="Número de venta..."
+                label="Buscar por número"
+                placeholder="MUP-2025-001..."
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 InputProps={{
@@ -617,28 +883,7 @@ const SalesHistoryPage = memo(() => {
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colorTokens.textSecondary }}>Estado</InputLabel>
-                <Select
-                  value={filters.status}
-                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                  label="Estado"
-                  sx={{
-                    color: colorTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: colorTokens.border }
-                  }}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="completed">Completadas</MenuItem>
-                  <MenuItem value="pending">Pendientes</MenuItem>
-                  <MenuItem value="cancelled">Canceladas</MenuItem>
-                  <MenuItem value="refunded">Devueltas</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 2 }}>
+            <Grid size={{ xs: 6, md: 1.5 }}>
               <FormControl fullWidth>
                 <InputLabel sx={{ color: colorTokens.textSecondary }}>Tipo</InputLabel>
                 <Select
@@ -651,13 +896,54 @@ const SalesHistoryPage = memo(() => {
                   }}
                 >
                   <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="sale">Ventas</MenuItem>
-                  <MenuItem value="layaway">Apartados</MenuItem>
+                  <MenuItem value="sale">Ventas Directas</MenuItem>
+                  <MenuItem value="layaway">Apartados Completados</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 2 }}>
+            <Grid size={{ xs: 6, md: 1.5 }}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: colorTokens.textSecondary }}>Pago</InputLabel>
+                <Select
+                  value={filters.payment_status}
+                  onChange={(e) => setFilters(prev => ({ ...prev, payment_status: e.target.value }))}
+                  label="Pago"
+                  sx={{
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: colorTokens.border }
+                  }}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="paid">Pagado Completo</MenuItem>
+                  <MenuItem value="partial">Pago Parcial</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid size={{ xs: 6, md: 1.5 }}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: colorTokens.textSecondary }}>Cajero</InputLabel>
+                <Select
+                  value={filters.cashier_id}
+                  onChange={(e) => setFilters(prev => ({ ...prev, cashier_id: e.target.value }))}
+                  label="Cajero"
+                  sx={{
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: colorTokens.border }
+                  }}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  {cashiers.map((cashier) => (
+                    <MenuItem key={cashier.id} value={cashier.id}>
+                      {cashier.firstName} {cashier.lastName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid size={{ xs: 6, md: 2 }}>
               <TextField
                 fullWidth
                 type="date"
@@ -672,7 +958,7 @@ const SalesHistoryPage = memo(() => {
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 2 }}>
+            <Grid size={{ xs: 6, md: 2 }}>
               <TextField
                 fullWidth
                 type="date"
@@ -693,8 +979,9 @@ const SalesHistoryPage = memo(() => {
                   variant="contained"
                   onClick={applyFilters}
                   disabled={loading}
+                  startIcon={<Search />}
                   sx={{ 
-                    minWidth: '80px',
+                    flex: 1,
                     bgcolor: colorTokens.brand,
                     color: colorTokens.textOnBrand,
                     '&:hover': { bgcolor: colorTokens.brandHover }
@@ -708,7 +995,11 @@ const SalesHistoryPage = memo(() => {
                   sx={{ 
                     minWidth: '80px',
                     color: colorTokens.textSecondary,
-                    borderColor: colorTokens.border
+                    borderColor: colorTokens.border,
+                    '&:hover': {
+                      borderColor: colorTokens.brand,
+                      color: colorTokens.brand
+                    }
                   }}
                 >
                   Limpiar
@@ -719,7 +1010,7 @@ const SalesHistoryPage = memo(() => {
         </CardContent>
       </Card>
 
-      {/* ✅ TABLA CON COLORTOKEN MUSCLEUP v7.0 */}
+      {/* ✅ TABLA DE HISTORIAL */}
       <Card sx={{
         background: colorTokens.surfaceLevel2,
         border: `1px solid ${colorTokens.border}`,
@@ -734,7 +1025,7 @@ const SalesHistoryPage = memo(() => {
                   Número
                 </TableCell>
                 <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Fecha
+                  Fecha Completada
                 </TableCell>
                 <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Cliente
@@ -755,7 +1046,7 @@ const SalesHistoryPage = memo(() => {
                   Método Pago
                 </TableCell>
                 <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Estado
+                  Items
                 </TableCell>
                 <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
                   Acciones
@@ -765,7 +1056,7 @@ const SalesHistoryPage = memo(() => {
 
             <TableBody>
               <AnimatePresence>
-                {processedSales.map((sale, index) => (
+                {processedSales.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((sale, index) => (
                   <TableRow
                     key={sale.id}
                     component={motion.tr}
@@ -779,13 +1070,16 @@ const SalesHistoryPage = memo(() => {
                     }}
                   >
                     <TableCell>
-                      <Typography variant="body2" fontWeight="600" sx={{ color: colorTokens.brand }}>
-                        {sale.sale_number}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CheckCircle sx={{ color: colorTokens.success, fontSize: 16 }} />
+                        <Typography variant="body2" fontWeight="600" sx={{ color: colorTokens.brand }}>
+                          {sale.sale_number}
+                        </Typography>
+                      </Box>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                        {formatTimestampShort(sale.created_at)}
+                        {formatTimestampShort(sale.completed_at || sale.updated_at)}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -793,9 +1087,9 @@ const SalesHistoryPage = memo(() => {
                         <Typography variant="body2" fontWeight="500" sx={{ color: colorTokens.textPrimary }}>
                           {sale.customer_name}
                         </Typography>
-                        {sale.customer_email && (
+                        {sale.customer?.email && (
                           <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
-                            {sale.customer_email}
+                            {sale.customer.email}
                           </Typography>
                         )}
                       </Box>
@@ -810,7 +1104,7 @@ const SalesHistoryPage = memo(() => {
                         label={sale.sale_type === 'sale' ? 'Venta' : 'Apartado'}
                         size="small" 
                         sx={{
-                          backgroundColor: sale.sale_type === 'sale' ? colorTokens.success : colorTokens.warning,
+                          backgroundColor: sale.sale_type === 'sale' ? colorTokens.success : colorTokens.info,
                           color: colorTokens.textPrimary,
                           fontWeight: 600
                         }}
@@ -823,14 +1117,14 @@ const SalesHistoryPage = memo(() => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ 
-                        color: sale.commission_amount > 0 ? colorTokens.warning : colorTokens.success
+                        color: sale.commission_amount > 0 ? colorTokens.warning : colorTokens.textMuted
                       }}>
-                        {sale.commission_amount > 0 ? formatPrice(sale.commission_amount) : 'Sin comisión'}
+                        {sale.commission_amount > 0 ? formatPrice(sale.commission_amount) : '-'}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <span>{getPaymentMethodIcon(sale.payment_method)}</span>
+                        <span>{getPaymentMethodIcon(sale.payment_method || '')}</span>
                         <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           {sale.payment_method}
                         </Typography>
@@ -838,13 +1132,12 @@ const SalesHistoryPage = memo(() => {
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={sale.status}
+                        label={`${sale.items_count || 0} items`}
                         size="small" 
                         sx={{
-                          backgroundColor: getStatusColor(sale.status),
+                          backgroundColor: `${colorTokens.brand}20`,
                           color: colorTokens.textPrimary,
-                          fontWeight: 600,
-                          textTransform: 'capitalize'
+                          fontWeight: 500
                         }}
                       />
                     </TableCell>
@@ -872,7 +1165,7 @@ const SalesHistoryPage = memo(() => {
                   <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6 }}>
                     <CircularProgress sx={{ color: colorTokens.brand, mb: 2 }} />
                     <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
-                      Cargando historial de ventas...
+                      Cargando historial completado...
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -893,7 +1186,7 @@ const SalesHistoryPage = memo(() => {
                         opacity: 0.5
                       }} />
                       <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-                        No se encontraron ventas
+                        No se encontraron ventas completadas
                       </Typography>
                       <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
                         Intenta ajustar los filtros de búsqueda
@@ -905,9 +1198,71 @@ const SalesHistoryPage = memo(() => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* ✅ PAGINACIÓN */}
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          p: 2,
+          background: `${colorTokens.surfaceLevel1}40`,
+          borderTop: `1px solid ${colorTokens.border}`
+        }}>
+          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+            Mostrando {Math.min(page * rowsPerPage + 1, processedSales.length)} - {Math.min((page + 1) * rowsPerPage, processedSales.length)} de {processedSales.length} ventas completadas
+          </Typography>
+          
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+              Filas por página:
+            </Typography>
+            <Select
+              value={rowsPerPage}
+              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              size="small"
+              sx={{
+                color: colorTokens.textPrimary,
+                '& .MuiOutlinedInput-notchedOutline': { 
+                  borderColor: colorTokens.border 
+                },
+                minWidth: '80px'
+              }}
+            >
+              <MenuItem value={10}>10</MenuItem>
+              <MenuItem value={20}>20</MenuItem>
+              <MenuItem value={50}>50</MenuItem>
+              <MenuItem value={100}>100</MenuItem>
+            </Select>
+            
+            <Pagination
+              count={Math.ceil(processedSales.length / rowsPerPage)}
+              page={page + 1}
+              onChange={handleChangePage}
+              showFirstButton
+              showLastButton
+              sx={{
+                '& .MuiPaginationItem-root': {
+                  color: colorTokens.textSecondary,
+                  '&:hover': {
+                    backgroundColor: `${colorTokens.brand}20`,
+                    color: colorTokens.brand
+                  },
+                  '&.Mui-selected': {
+                    backgroundColor: colorTokens.brand,
+                    color: colorTokens.textOnBrand,
+                    fontWeight: 700,
+                    '&:hover': {
+                      backgroundColor: colorTokens.brandHover
+                    }
+                  }
+                }
+              }}
+            />
+          </Stack>
+        </Box>
       </Card>
 
-      {/* ✅ MENÚ DE ACCIONES CON COLORTOKEN MUSCLEUP v7.0 */}
+      {/* ✅ MENÚ DE ACCIONES ESPECÍFICO PARA HISTORIAL */}
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
@@ -915,7 +1270,7 @@ const SalesHistoryPage = memo(() => {
         PaperProps={{
           elevation: 12,
           sx: { 
-            minWidth: 220,
+            minWidth: 240,
             background: colorTokens.surfaceLevel3,
             border: `1px solid ${colorTokens.border}`,
             borderRadius: 2
@@ -924,68 +1279,104 @@ const SalesHistoryPage = memo(() => {
       >
         <MenuItem onClick={() => handleViewDetails(menuSale!)} sx={{ color: colorTokens.textPrimary }}>
           <Visibility sx={{ mr: 2, color: colorTokens.info }} />
-          Ver Detalles
-        </MenuItem>
-        
-        <MenuItem onClick={() => handleEditSale(menuSale!)} sx={{ color: colorTokens.textPrimary }}>
-          <Edit sx={{ mr: 2, color: colorTokens.warning }} />
-          Editar Venta
+          Ver Detalles Completos
         </MenuItem>
         
         <MenuItem onClick={() => handlePrintReceipt(menuSale!)} sx={{ color: colorTokens.textPrimary }}>
           <Print sx={{ mr: 2, color: colorTokens.success }} />
-          Reimprimir Ticket
+          Reimprimir Recibo
         </MenuItem>
         
         <Divider sx={{ borderColor: colorTokens.border, my: 1 }} />
         
-        <MenuItem 
-          onClick={() => handleRefund(menuSale!)}
-          disabled={menuSale?.status === 'refunded'}
-          sx={{ color: colorTokens.textPrimary }}
-        >
-          <Undo sx={{ mr: 2, color: colorTokens.info }} />
-          Procesar Devolución
+        <MenuItem onClick={() => handleRefund(menuSale!)} sx={{ color: colorTokens.textPrimary }}>
+          <Undo sx={{ mr: 2, color: colorTokens.warning }} />
+          Procesar Devolución Completa
         </MenuItem>
         
-        <MenuItem 
-          onClick={() => handleCancelSale(menuSale!)}
-          disabled={menuSale?.status === 'cancelled'}
-          sx={{ color: colorTokens.danger }}
-        >
-          <Cancel sx={{ mr: 2 }} />
-          Cancelar Venta
+        <MenuItem onClick={() => handleEditSale(menuSale!)} sx={{ color: colorTokens.textSecondary }}>
+          <Edit sx={{ mr: 2, color: colorTokens.textMuted }} />
+          Editar Información
         </MenuItem>
       </Menu>
 
-      {/* ✅ DIALOGS PLACEHOLDERS - IMPLEMENTAR SEGÚN NECESIDAD */}
-      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ color: colorTokens.textPrimary, bgcolor: colorTokens.surfaceLevel2 }}>
-          Detalles de Venta: {selectedSale?.sale_number}
+      {/* ✅ DIALOGS PLACEHOLDER */}
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle sx={{ 
+          color: colorTokens.textPrimary, 
+          bgcolor: colorTokens.surfaceLevel2,
+          borderBottom: `1px solid ${colorTokens.border}`
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <CheckCircle sx={{ color: colorTokens.success }} />
+            Detalles de Venta Completada: {selectedSale?.sale_number}
+          </Box>
         </DialogTitle>
-        <DialogContent sx={{ bgcolor: colorTokens.surfaceLevel1 }}>
-          <Typography sx={{ color: colorTokens.textSecondary, mt: 2 }}>
-            Implementar SaleDetailsDialog específico aquí
-          </Typography>
+        <DialogContent sx={{ bgcolor: colorTokens.surfaceLevel1, p: 3 }}>
+          {selectedSale && (
+            <Box>
+              <Typography variant="h6" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
+                Resumen de Transacción
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={6}>
+                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                    Tipo: {selectedSale.sale_type === 'sale' ? 'Venta Directa' : 'Apartado Completado'}
+                  </Typography>
+                </Grid>
+                <Grid size={6}>
+                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                    Total: {formatPrice(selectedSale.total_amount)}
+                  </Typography>
+                </Grid>
+                <Grid size={6}>
+                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                    Cliente: {selectedSale.customer_name}
+                  </Typography>
+                </Grid>
+                <Grid size={6}>
+                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                    Cajero: {selectedSale.cashier_name}
+                  </Typography>
+                </Grid>
+              </Grid>
+              
+              <Divider sx={{ my: 3, borderColor: colorTokens.border }} />
+              
+              <Typography variant="body2" sx={{ color: colorTokens.textMuted, fontStyle: 'italic' }}>
+                Implementar SaleDetailsDialog completo con productos, pagos y historial
+              </Typography>
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions sx={{ bgcolor: colorTokens.surfaceLevel2 }}>
-          <Button onClick={() => setDetailsOpen(false)} sx={{ color: colorTokens.textSecondary }}>
+        <DialogActions sx={{ bgcolor: colorTokens.surfaceLevel2, p: 2 }}>
+          <Button 
+            onClick={() => setDetailsOpen(false)} 
+            sx={{ color: colorTokens.textSecondary }}
+          >
             Cerrar
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: colorTokens.textPrimary, bgcolor: colorTokens.surfaceLevel2 }}>
-          Editar Venta: {selectedSale?.sale_number}
+        <DialogTitle sx={{ 
+          color: colorTokens.textPrimary, 
+          bgcolor: colorTokens.surfaceLevel2,
+          borderBottom: `1px solid ${colorTokens.border}`
+        }}>
+          Editar Información: {selectedSale?.sale_number}
         </DialogTitle>
-        <DialogContent sx={{ bgcolor: colorTokens.surfaceLevel1 }}>
-          <Typography sx={{ color: colorTokens.textSecondary, mt: 2 }}>
-            Implementar EditSaleDialog específico aquí
+        <DialogContent sx={{ bgcolor: colorTokens.surfaceLevel1, p: 3 }}>
+          <Typography variant="body2" sx={{ color: colorTokens.textMuted, fontStyle: 'italic' }}>
+            Implementar EditSaleDialog para modificar notas, referencias y datos no críticos
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ bgcolor: colorTokens.surfaceLevel2 }}>
-          <Button onClick={() => setEditOpen(false)} sx={{ color: colorTokens.textSecondary }}>
+        <DialogActions sx={{ bgcolor: colorTokens.surfaceLevel2, p: 2 }}>
+          <Button 
+            onClick={() => setEditOpen(false)} 
+            sx={{ color: colorTokens.textSecondary }}
+          >
             Cancelar
           </Button>
         </DialogActions>
@@ -993,7 +1384,6 @@ const SalesHistoryPage = memo(() => {
     </Box>
   );
 
-  // ✅ RETURN FINAL - CONDICIONAL PERO SIN EARLY RETURN DE HOOKS
   return hydrated ? mainContent : loadingContent;
 });
 

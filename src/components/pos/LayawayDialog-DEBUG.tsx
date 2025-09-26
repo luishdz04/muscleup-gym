@@ -1,4 +1,4 @@
-// src/components/pos/LayawayDialog.tsx - VERSIÓN CORREGIDA v7.0 CON FLUJO COMPLETO
+// components/pos/LayawayDialog.tsx - VERSIÓN CORREGIDA v7.0 CON TIPOS INTEGRADOS
 
 'use client';
 
@@ -59,8 +59,23 @@ import { notify } from '@/utils/notifications';
 import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ IMPORTS TIPOS CENTRALIZADOS v7.0
-import { Product, CartItem, Customer, Coupon, Totals } from '@/types/pos';
+// ✅ TIPOS CENTRALIZADOS COMPLETOS v7.0
+import { 
+  Product, 
+  CartItem, 
+  Customer, 
+  Coupon, 
+  Totals,
+  PaymentCommission,
+  SaleItem,
+  SalePaymentDetail,
+  InventoryMovement,
+  LayawayStatusHistory,
+  PAYMENT_METHODS,
+  SALE_STATUSES,
+  PAYMENT_STATUSES,
+  MOVEMENT_TYPES
+} from '@/types/pos';
 
 interface LayawayDialogProps {
   open: boolean;
@@ -73,13 +88,13 @@ interface LayawayDialogProps {
 }
 
 // ✅ TIPOS DE PAGO PARA DEPÓSITO
-interface PaymentMethod {
+interface PaymentMethodForm {
   method: string;
   amount: number;
   reference?: string;
 }
 
-// ✅ CONSTANTES ENTERPRISE v7.0 CON VALORES BD VÁLIDOS
+// ✅ CONSTANTES ENTERPRISE v7.0
 const DEPOSIT_PERCENTAGES = [30, 40, 50, 60, 70] as const;
 const LAYAWAY_DURATIONS = [
   { days: 7, label: '7 días' },
@@ -89,35 +104,13 @@ const LAYAWAY_DURATIONS = [
   { days: 60, label: '60 días' }
 ] as const;
 
-// ✅ MÉTODOS DE PAGO DISPONIBLES
+// ✅ MÉTODOS DE PAGO FALLBACK
 const PAYMENT_METHODS_FALLBACK = [
   { value: 'efectivo', label: 'Efectivo', icon: MoneyIcon },
   { value: 'transferencia', label: 'Transferencia', icon: BankIcon },
   { value: 'debito', label: 'Tarjeta Débito', icon: CardIcon },
   { value: 'credito', label: 'Tarjeta Crédito', icon: CardIcon }
 ] as const;
-
-// ✅ VALORES BD VÁLIDOS SEGÚN CONSTRAINTS
-const VALID_SALE_STATUS = {
-  PENDING: 'pending',      // ✅ Para apartados
-  COMPLETED: 'completed',  // ✅ Para ventas completadas
-  CANCELLED: 'cancelled',  // ✅ Para cancelaciones
-  REFUNDED: 'refunded',    // ✅ Para devoluciones
-  EXPIRED: 'expired'       // ✅ Para apartados vencidos
-} as const;
-
-const VALID_PAYMENT_STATUS = {
-  PENDING: 'pending',      // ✅ Sin pagos
-  PARTIAL: 'partial',      // ✅ Pago parcial (apartados)
-  PAID: 'paid'            // ✅ Completamente pagado
-} as const;
-
-const VALID_MOVEMENT_TYPES = {
-  ENTRADA: 'entrada',
-  SALIDA: 'salida',
-  AJUSTE: 'ajuste',        // ✅ Para reservas de apartado
-  TRANSFERENCIA: 'transferencia'
-} as const;
 
 export default function LayawayDialog({
   open,
@@ -133,12 +126,12 @@ export default function LayawayDialog({
   const { addAuditFieldsFor, getCurrentUser } = useUserTracking();
   const supabase = createBrowserSupabaseClient();
   
-  // ✅ CARGAR COMISIONES DE PAGO DINÁMICAMENTE
+  // ✅ CARGAR COMISIONES DINÁMICAMENTE DESDE BD
   const {
     data: paymentCommissions,
     loading: commissionsLoading,
     error: commissionsError
-  } = useEntityCRUD<any>({
+  } = useEntityCRUD<PaymentCommission>({
     tableName: 'payment_commissions',
     selectQuery: '*'
   });
@@ -151,10 +144,11 @@ export default function LayawayDialog({
   
   // ✅ ESTADOS DE PAGO DEL DEPÓSITO
   const [showPaymentSection, setShowPaymentSection] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodForm[]>([
     { method: 'efectivo', amount: 0 }
   ]);
   const [mixedPayment, setMixedPayment] = useState(false);
+  const [showCardOptions, setShowCardOptions] = useState(false);
 
   // ✅ FORMATEAR PRECIO ESTABLE v7.0
   const formatPrice = useCallback((price: number) => {
@@ -168,7 +162,7 @@ export default function LayawayDialog({
   const getCommissionRate = useCallback((paymentMethod: string): number => {
     if (commissionsLoading || !paymentCommissions || commissionsError) return 0;
     const commission = paymentCommissions.find(
-      (c: any) => c.payment_method === paymentMethod && c.is_active === true
+      (c: PaymentCommission) => c.payment_method === paymentMethod && c.is_active === true
     );
     if (!commission) return 0;
     return commission.commission_type === 'percentage' ? commission.commission_value : 0;
@@ -180,8 +174,8 @@ export default function LayawayDialog({
       return PAYMENT_METHODS_FALLBACK;
     }
     return paymentCommissions
-      .filter((c: any) => c.is_active === true)
-      .map((c: any) => {
+      .filter((c: PaymentCommission) => c.is_active === true)
+      .map((c: PaymentCommission) => {
         const fallbackMethod = PAYMENT_METHODS_FALLBACK.find(pm => pm.value === c.payment_method);
         return {
           value: c.payment_method,
@@ -247,11 +241,8 @@ export default function LayawayDialog({
     setPaymentMethods([{ method, amount: Math.round(amount * 100) / 100 }]);
   }, [depositAmount, getCommissionRate]);
 
-  // ✅ MANEJO ESPECIAL PARA TARJETAS (CRÉDITO/DÉBITO)
-  const [showCardOptions, setShowCardOptions] = useState(false);
-
-  // ✅ MANEJO DE MÉTODOS DE PAGO CORREGIDO - IGUAL QUE PAYMENTDIALOG
-  const updatePaymentMethod = useCallback((index: number, field: keyof PaymentMethod, value: any) => {
+  // ✅ MANEJO DE MÉTODOS DE PAGO - IGUAL QUE PAYMENTDIALOG
+  const updatePaymentMethod = useCallback((index: number, field: keyof PaymentMethodForm, value: any) => {
     if (!mixedPayment && field === 'method') {
       // Modo individual: resetear completamente y auto-calcular
       resetToSimplePayment(value);
@@ -311,7 +302,7 @@ export default function LayawayDialog({
     setLayawayDays(30);
     setNotes('');
     setProcessing(false);
-    setShowCardOptions(false); // ✅ Resetear opciones de tarjeta
+    setShowCardOptions(false);
     setPaymentMethods([{ method: 'efectivo', amount: 0 }]);
     setMixedPayment(false);
     onClose();
@@ -331,12 +322,12 @@ export default function LayawayDialog({
 
       const saleNumber = `APT-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       
-      // ✅ 1. CREAR APARTADO CON VALORES BD VÁLIDOS (SIN AUDITORÍA - SALES ES UPDATED_ONLY)
+      // ✅ 1. CREAR APARTADO (SIN AUDITORÍA - SALES ES UPDATED_ONLY)
       const layawayData = {
         sale_number: saleNumber,
         customer_id: customer.id,
         cashier_id: currentCashier,
-        sale_type: 'layaway', // ✅ Valor válido según constraint
+        sale_type: 'layaway', // ✅ Usando constante de tipos centralizados
         subtotal: Math.round(totals.subtotal * 100) / 100,
         tax_amount: Math.round(totals.taxAmount * 100) / 100,
         discount_amount: Math.round(totals.discountAmount * 100) / 100,
@@ -347,8 +338,8 @@ export default function LayawayDialog({
         paid_amount: totalPayments, // ✅ Depósito pagado inmediatamente
         pending_amount: pendingAmount,
         deposit_percentage: depositPercentage,
-        status: VALID_SALE_STATUS.PENDING, // ✅ 'pending' según constraint BD
-        payment_status: VALID_PAYMENT_STATUS.PARTIAL, // ✅ 'partial' - depósito pagado
+        status: 'pending', // ✅ Usando constante de tipos centralizados
+        payment_status: 'partial', // ✅ Depósito pagado
         is_mixed_payment: mixedPayment,
         payment_received: totalPayments,
         change_amount: changeAmount,
@@ -370,19 +361,18 @@ export default function LayawayDialog({
 
       if (layawayError) throw layawayError;
 
-      // ✅ 2. CREAR ITEMS DEL APARTADO
+      // ✅ 2. CREAR ITEMS DEL APARTADO (CORREGIDO product_sku)
       const layawayItemsData = cart.map(item => ({
         sale_id: layaway.id,
         product_id: item.product.id,
         product_name: item.product.name,
-        product_sku: item.product.sku || null,
+        product_sku: item.product.sku, // ✅ CORREGIDO: undefined en lugar de null
         quantity: item.quantity,
         unit_price: Math.round(item.unit_price * 100) / 100,
         total_price: Math.round(item.total_price * 100) / 100,
         discount_amount: Math.round((item.discount_amount || 0) * 100) / 100,
         tax_rate: item.product.tax_rate || 16,
-        tax_amount: Math.round((item.tax_amount || 0) * 100) / 100,
-        created_at: getCurrentTimestamp()
+        tax_amount: Math.round((item.tax_amount || 0) * 100) / 100
       }));
 
       const { error: itemsError } = await supabase
@@ -391,27 +381,30 @@ export default function LayawayDialog({
 
       if (itemsError) throw itemsError;
 
-      // ✅ 3. CREAR DETALLES DE PAGO DEL DEPÓSITO (CRÍTICO PARA CORTES DE CAJA)
-      const paymentDetailsData = paymentMethods.map((pm, index) => {
-        const commissionRate = getCommissionRate(pm.method);
-        const commissionAmount = (pm.amount || 0) * commissionRate / 100;
-        
-        return {
-          sale_id: layaway.id,
-          payment_method: pm.method,
-          amount: Math.round((pm.amount || 0) * 100) / 100,
-          payment_reference: pm.reference || null,
-          commission_rate: commissionRate,
-          commission_amount: Math.round(commissionAmount * 100) / 100,
-          sequence_order: index + 1,
-          payment_date: getCurrentTimestamp(),
-          created_at: getCurrentTimestamp(),
-          created_by: currentCashier,
-          is_partial_payment: true, // ✅ Marcar como pago parcial
-          payment_sequence: 1, // ✅ Primera secuencia de pago
-          notes: `Depósito de apartado - ${depositPercentage}%`
-        };
-      });
+      // ✅ 3. CREAR DETALLES DE PAGO DEL DEPÓSITO CON AUDITORÍA
+      const paymentDetailsData = await Promise.all(
+        paymentMethods.map(async (pm, index) => {
+          const commissionRate = getCommissionRate(pm.method);
+          const commissionAmount = (pm.amount || 0) * commissionRate / 100;
+          
+          const baseData = {
+            sale_id: layaway.id,
+            payment_method: pm.method,
+            amount: Math.round((pm.amount || 0) * 100) / 100,
+            payment_reference: pm.reference || null,
+            commission_rate: commissionRate,
+            commission_amount: Math.round(commissionAmount * 100) / 100,
+            sequence_order: index + 1,
+            payment_date: getCurrentTimestamp(),
+            is_partial_payment: true, // ✅ Marcar como pago parcial
+            payment_sequence: 1, // ✅ Primera secuencia de pago
+            notes: `Depósito de apartado - ${depositPercentage}%`
+          };
+
+          // Aplicar auditoría created_by para sale_payment_details
+          return await addAuditFieldsFor('sale_payment_details', baseData, false);
+        })
+      );
 
       const { error: paymentsError } = await supabase
         .from('sale_payment_details')
@@ -425,7 +418,7 @@ export default function LayawayDialog({
           .from('inventory_movements')
           .insert({
             product_id: item.product.id,
-            movement_type: VALID_MOVEMENT_TYPES.AJUSTE, // ✅ 'ajuste' según constraint BD
+            movement_type: 'ajuste', // ✅ Usando constante de tipos centralizados
             quantity: -item.quantity, // ✅ Negativo para reserva
             previous_stock: item.product.current_stock,
             new_stock: item.product.current_stock, // ✅ Stock no cambia físicamente, solo reserva
@@ -447,7 +440,7 @@ export default function LayawayDialog({
         .insert({
           layaway_id: layaway.id,
           previous_status: null,
-          new_status: VALID_SALE_STATUS.PENDING,
+          new_status: 'pending', // ✅ Usando constante de tipos centralizados
           previous_paid_amount: 0,
           new_paid_amount: totalPayments,
           reason: `Apartado creado con depósito ${formatPrice(totalPayments)}`,
@@ -778,12 +771,12 @@ export default function LayawayDialog({
             }}>
               <Box sx={{ mb: 3 }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: colorTokens.textPrimary, textAlign: 'center' }}>
-                  💳 COBRAR DEPÓSITO: {formatPrice(finalDepositTotal)}
+                  Cobrar Depósito: {formatPrice(finalDepositTotal)}
                 </Typography>
                 
                 <Alert severity="info" sx={{ mb: 2 }}>
                   <Typography variant="body2" fontWeight="bold">
-                    🏦 Selecciona el método de pago para cobrar el depósito del {depositPercentage}%
+                    Selecciona el método de pago para cobrar el depósito del {depositPercentage}%
                   </Typography>
                 </Alert>
               </Box>
@@ -843,7 +836,6 @@ export default function LayawayDialog({
                     onClick={() => {
                       setShowCardOptions(!showCardOptions);
                       if (!showCardOptions) {
-                        // Expandir opciones de tarjeta
                         setMixedPayment(false);
                       }
                     }}
@@ -855,12 +847,7 @@ export default function LayawayDialog({
                         ? `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})` 
                         : 'transparent',
                       color: showCardOptions ? colorTokens.textOnBrand : colorTokens.textPrimary,
-                      borderColor: colorTokens.info,
-                      '&:hover': {
-                        background: showCardOptions 
-                          ? `linear-gradient(135deg, ${colorTokens.infoHover}, ${colorTokens.info})` 
-                          : `${colorTokens.info}20`
-                      }
+                      borderColor: colorTokens.info
                     }}
                   >
                     Tarjeta
@@ -965,12 +952,7 @@ export default function LayawayDialog({
                         ? `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})` 
                         : 'transparent',
                       color: !mixedPayment && paymentMethods[0]?.method === 'transferencia' ? colorTokens.textOnBrand : colorTokens.textPrimary,
-                      borderColor: colorTokens.brand,
-                      '&:hover': {
-                        background: !mixedPayment && paymentMethods[0]?.method === 'transferencia' 
-                          ? `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})` 
-                          : `${colorTokens.brand}20`
-                      }
+                      borderColor: colorTokens.brand
                     }}
                   >
                     <Box display="flex" flexDirection="column" alignItems="center">
@@ -998,7 +980,6 @@ export default function LayawayDialog({
                     onClick={() => {
                       setShowCardOptions(false);
                       setMixedPayment(true);
-                      // Configurar pago mixto inicial
                       setPaymentMethods([
                         { method: 'efectivo', amount: depositAmount },
                         { method: 'debito', amount: 0 }
@@ -1012,12 +993,7 @@ export default function LayawayDialog({
                         ? `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brand})` 
                         : 'transparent',
                       color: mixedPayment ? colorTokens.textOnBrand : colorTokens.textPrimary,
-                      borderColor: colorTokens.warning,
-                      '&:hover': {
-                        background: mixedPayment 
-                          ? `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})` 
-                          : `${colorTokens.warning}20`
-                      }
+                      borderColor: colorTokens.warning
                     }}
                   >
                     <Box display="flex" flexDirection="column" alignItems="center">
