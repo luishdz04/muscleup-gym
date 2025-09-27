@@ -295,21 +295,20 @@ export const extractDateInMexico = (timestamp: string): string => {
 };
 
 
-// ✅ UTILIDADES ESPECÍFICAS PARA INVENTARIO v8.0
+/// ✅ FUNCIÓN CORREGIDA - USA MISMA LÓGICA QUE formatTimestampForDisplay
 export const formatMovementDate = (timestamp: string): string => {
-  try {
-    const date = new Date(timestamp);
-    return new Intl.DateTimeFormat('es-MX', {
-      timeZone: MEXICO_TIMEZONE,
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(date);
-  } catch {
-    return 'Fecha inválida';
-  }
+  // ✅ USAR MISMA FUNCIÓN AUXILIAR QUE formatTimestampForDisplay
+  const utcDate = createUtcDate(timestamp);
+  if (!utcDate) return 'Sin fecha';
+
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: MEXICO_TIMEZONE,
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(utcDate);
 };
 
 export const getInventoryPeriod = (days: number = 30): { start: string; end: string } => {

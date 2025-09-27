@@ -1,6 +1,3 @@
-// ✅ HOOK INVENTARIO MUSCLEUP v8.1 - ROLLBACK A VERSIÓN FUNCIONANDO
-// src/hooks/useInventoryManagement.ts
-
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -16,7 +13,7 @@ export type MovementType =
   | 'devolucion' | 'recepcion_compra' | 'ajuste_manual_mas' | 'ajuste_manual_menos'
   | 'transferencia_entrada' | 'transferencia_salida' | 'merma' | 'inventario_inicial';
 
-// ✅ INTERFACE ORIGINAL FUNCIONANDO - SIN CAMBIOS DRÁSTICOS
+// ✅ INTERFACE INVENTORY MOVEMENT CORREGIDA
 export interface InventoryMovement {
   id: string;
   product_id: string;
@@ -30,8 +27,7 @@ export interface InventoryMovement {
   reference_id?: string;
   notes?: string;
   created_at: string;
-  created_by?: string;
-  // ✅ MANTENER COMO OBJECT ÚNICO PERO OPCIONAL
+  created_by?: string; // ✅ AHORA SE REGISTRARÁ CORRECTAMENTE
   products?: {
     id: string;
     name: string;
@@ -44,7 +40,6 @@ export interface InventoryMovement {
     unit?: string;
     location?: string;
   };
-  // ✅ MANTENER COMO OBJECT ÚNICO PERO OPCIONAL
   Users?: {
     id: string;
     firstName: string;
@@ -63,7 +58,7 @@ export interface StockOperation {
   notes?: string;
 }
 
-// ✅ HOOK SIMPLIFICADO - ENFOQUE EN QUE FUNCIONE
+// ✅ HOOK CORREGIDO - ELIMINANDO CÓDIGO REDUNDANTE
 export const useInventoryManagement = () => {
   const hydrated = useHydrated();
   const { addAuditFieldsFor } = useUserTracking();
@@ -106,7 +101,7 @@ export const useInventoryManagement = () => {
     }
   }, [supabase]);
 
-  // ✅ REGISTRAR MOVIMIENTO - SIMPLIFICADO PARA QUE FUNCIONE
+  // 🔥 FUNCIÓN PRINCIPAL CORREGIDA - SOLO INSERTA MOVIMIENTO, TRIGGER MANEJA STOCK
   const recordMovement = useCallback(async (operation: StockOperation): Promise<InventoryMovement> => {
     if (!hydrated) throw new Error('Sistema no inicializado');
     
@@ -114,7 +109,7 @@ export const useInventoryManagement = () => {
     setError(null);
 
     try {
-      // Obtener stock actual ANTES del movimiento
+      // 1. Obtener stock actual ANTES del movimiento
       const { data: currentProduct, error: productError } = await supabase
         .from('products')
         .select('current_stock')
@@ -125,7 +120,7 @@ export const useInventoryManagement = () => {
       
       const previousStock = currentProduct.current_stock;
 
-      // Calcular new_stock DESPUÉS del movimiento
+      // 2. Calcular new_stock DESPUÉS del movimiento (solo para el registro)
       let newStock: number;
       
       if (['devolucion', 'recepcion_compra', 'ajuste_manual_mas', 'transferencia_entrada', 'inventario_inicial'].includes(operation.movement_type)) {
@@ -138,7 +133,7 @@ export const useInventoryManagement = () => {
 
       newStock = Math.max(0, newStock);
 
-      // Preparar QUANTITY con signo correcto
+      // 3. Preparar QUANTITY con signo correcto para el registro
       let signedQuantity: number;
       
       if (['devolucion', 'recepcion_compra', 'ajuste_manual_mas', 'transferencia_entrada', 'inventario_inicial'].includes(operation.movement_type)) {
@@ -149,7 +144,8 @@ export const useInventoryManagement = () => {
         signedQuantity = operation.quantity;
       }
 
-      // Preparar datos con auditoría automática
+      // 4. ✅ PREPARAR DATOS CON AUDITORÍA AUTOMÁTICA CORREGIDA
+      console.log('🔍 Preparando movimiento con auditoría para inventory_movements...');
       const movementData = await addAuditFieldsFor('inventory_movements', {
         product_id: operation.product_id,
         movement_type: operation.movement_type,
@@ -163,18 +159,27 @@ export const useInventoryManagement = () => {
         total_cost: 0
       }, false);
 
-      // ✅ INSERTAR Y RETORNAR DATO SIMPLE
+      console.log('✅ Datos con auditoría preparados:', movementData);
+
+      // 5. ✅ INSERTAR MOVIMIENTO - EL TRIGGER SE ENCARGA DEL STOCK
       const { data: movementResult, error } = await supabase
         .from('inventory_movements')
         .insert([movementData])
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error insertando movimiento:', error);
+        throw error;
+      }
 
+      console.log('✅ Movimiento insertado exitosamente:', movementResult);
+      
+      // 6. ✅ EL TRIGGER update_product_stock() SE EJECUTA AUTOMÁTICAMENTE
+      // NO HAY CÓDIGO PARA ACTUALIZAR products DIRECTAMENTE
+      
       notify.success(`Movimiento registrado: ${operation.movement_type.replace('_', ' ')}`);
       
-      // ✅ RETORNAR CON DATOS MÍNIMOS PARA QUE FUNCIONE
       return {
         ...movementResult,
         unit_cost: movementResult.unit_cost || 0,
@@ -185,13 +190,14 @@ export const useInventoryManagement = () => {
       const errorMsg = `Error registrando movimiento: ${err.message}`;
       setError(errorMsg);
       notify.error(errorMsg);
+      console.error('❌ Error completo en recordMovement:', err);
       throw err;
     } finally {
       setLoading(false);
     }
   }, [hydrated, addAuditFieldsFor, supabase]);
 
-  // ✅ FUNCIÓN PRINCIPAL CORREGIDA - QUERY SIMPLE QUE FUNCIONE
+  // ✅ FUNCIÓN CORREGIDA PARA OBTENER MOVIMIENTOS RECIENTES
   const getRecentMovements = useCallback(async (limit: number = 10): Promise<InventoryMovement[]> => {
     try {
       console.log('🔍 Obteniendo movimientos recientes...');
@@ -201,23 +207,15 @@ export const useInventoryManagement = () => {
         .select(`
           *,
           products!inner (
-            id,
-            name,
-            sku,
-            category,
-            current_stock,
-            reserved_stock,
-            min_stock,
-            max_stock,
-            unit,
-            location
+            id, name, sku, category, current_stock,
+            reserved_stock, min_stock, max_stock, unit, location
           ),
-          Users!created_by (
+          Users:Users!inventory_movements_created_by_fkey (
             id,
-            firstName,
-            lastName,
+            "firstName",
+            "lastName",
             email,
-            profilePictureUrl
+            "profilePictureUrl"
           )
         `)
         .order('created_at', { ascending: false })
@@ -229,9 +227,6 @@ export const useInventoryManagement = () => {
       }
 
       console.log('✅ Datos obtenidos:', data?.length || 0);
-      console.log('🔍 Primer movimiento:', data?.[0]);
-      console.log('🔍 Producto del primer movimiento:', data?.[0]?.products);
-      console.log('🔍 Usuario del primer movimiento:', data?.[0]?.Users);
       
       // ✅ MAPEAR DATOS PARA ASEGURAR COMPATIBILIDAD
       const movements = (data || []).map((item: any) => ({
@@ -247,8 +242,7 @@ export const useInventoryManagement = () => {
         reference_id: item.reference_id,
         notes: item.notes,
         created_at: item.created_at,
-        created_by: item.created_by,
-        // ✅ ASEGURAR QUE products EXISTA
+        created_by: item.created_by, // ✅ AHORA DEBERÍA TENER VALOR
         products: item.products ? {
           id: item.products.id,
           name: item.products.name,
@@ -261,7 +255,6 @@ export const useInventoryManagement = () => {
           unit: item.products.unit,
           location: item.products.location
         } : undefined,
-        // ✅ ASEGURAR QUE Users EXISTA
         Users: item.Users ? {
           id: item.Users.id,
           firstName: item.Users.firstName,
@@ -272,7 +265,6 @@ export const useInventoryManagement = () => {
       })) as InventoryMovement[];
 
       console.log('✅ Movimientos mapeados:', movements.length);
-      console.log('🔍 Primer movimiento mapeado:', movements[0]);
       
       return movements;
     } catch (err: any) {
@@ -281,169 +273,7 @@ export const useInventoryManagement = () => {
     }
   }, [supabase]);
 
-  // ✅ FUNCIÓN: Obtener movimiento específico POR ID - SIMPLIFICADA
-  const getMovementById = useCallback(async (movementId: string): Promise<InventoryMovement | null> => {
-    try {
-      console.log('🔍 Obteniendo movimiento por ID:', movementId);
-      
-      const { data, error } = await supabase
-        .from('inventory_movements')
-        .select(`
-          *,
-          products!inner (
-            id,
-            name,
-            sku,
-            category,
-            current_stock,
-            reserved_stock,
-            min_stock,
-            max_stock,
-            unit,
-            location
-          ),
-          Users!created_by (
-            id,
-            firstName,
-            lastName,
-            email,
-            profilePictureUrl
-          )
-        `)
-        .eq('id', movementId)
-        .single();
-        
-      if (error) {
-        console.error('❌ Error obteniendo movimiento por ID:', error);
-        throw error;
-      }
-
-      console.log('✅ Movimiento obtenido:', data);
-      
-      // ✅ MAPEAR DATO ÚNICO
-      const movement: InventoryMovement = {
-        id: data.id,
-        product_id: data.product_id,
-        movement_type: data.movement_type,
-        quantity: data.quantity,
-        previous_stock: data.previous_stock,
-        new_stock: data.new_stock,
-        unit_cost: data.unit_cost || 0,
-        total_cost: data.total_cost || 0,
-        reason: data.reason,
-        reference_id: data.reference_id,
-        notes: data.notes,
-        created_at: data.created_at,
-        created_by: data.created_by,
-        products: data.products ? {
-          id: data.products.id,
-          name: data.products.name,
-          sku: data.products.sku,
-          category: data.products.category,
-          current_stock: data.products.current_stock,
-          reserved_stock: data.products.reserved_stock,
-          min_stock: data.products.min_stock,
-          max_stock: data.products.max_stock,
-          unit: data.products.unit,
-          location: data.products.location
-        } : undefined,
-        Users: data.Users ? {
-          id: data.Users.id,
-          firstName: data.Users.firstName,
-          lastName: data.Users.lastName,
-          email: data.Users.email,
-          profilePictureUrl: data.Users.profilePictureUrl
-        } : undefined
-      };
-
-      console.log('✅ Movimiento mapeado:', movement);
-      
-      return movement;
-    } catch (err: any) {
-      console.error('❌ Error obteniendo movimiento específico:', err);
-      throw new Error(`Error al obtener movimiento: ${err.message}`);
-    }
-  }, [supabase]);
-
-  // ✅ FUNCIÓN: Obtener movimientos por producto - SIMPLIFICADA
-  const getProductMovements = useCallback(async (
-    productId: string, 
-    limit: number = 20
-  ): Promise<InventoryMovement[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('inventory_movements')
-        .select(`
-          *,
-          products!inner (
-            id,
-            name,
-            sku,
-            category,
-            current_stock,
-            reserved_stock,
-            min_stock,
-            max_stock,
-            unit,
-            location
-          ),
-          Users!created_by (
-            id,
-            firstName,
-            lastName,
-            email,
-            profilePictureUrl
-          )
-        `)
-        .eq('product_id', productId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-        
-      if (error) throw error;
-
-      const movements = (data || []).map((item: any) => ({
-        id: item.id,
-        product_id: item.product_id,
-        movement_type: item.movement_type,
-        quantity: item.quantity,
-        previous_stock: item.previous_stock,
-        new_stock: item.new_stock,
-        unit_cost: item.unit_cost || 0,
-        total_cost: item.total_cost || 0,
-        reason: item.reason,
-        reference_id: item.reference_id,
-        notes: item.notes,
-        created_at: item.created_at,
-        created_by: item.created_by,
-        products: item.products ? {
-          id: item.products.id,
-          name: item.products.name,
-          sku: item.products.sku,
-          category: item.products.category,
-          current_stock: item.products.current_stock,
-          reserved_stock: item.products.reserved_stock,
-          min_stock: item.products.min_stock,
-          max_stock: item.products.max_stock,
-          unit: item.products.unit,
-          location: item.products.location
-        } : undefined,
-        Users: item.Users ? {
-          id: item.Users.id,
-          firstName: item.Users.firstName,
-          lastName: item.Users.lastName,
-          email: item.Users.email,
-          profilePictureUrl: item.Users.profilePictureUrl
-        } : undefined
-      })) as InventoryMovement[];
-      
-      return movements;
-    } catch (err: any) {
-      console.error('Error obteniendo movimientos del producto:', err);
-      throw new Error(`Error al obtener movimientos del producto: ${err.message}`);
-    }
-  }, [supabase]);
-
-  // ✅ OPERACIONES ESPECÍFICAS DE NEGOCIO - SIN CAMBIOS
+  // ✅ OPERACIONES ESPECÍFICAS DE NEGOCIO CORREGIDAS
   const processSale = useCallback(async (
     productId: string, 
     quantity: number, 
@@ -575,6 +405,7 @@ export const useInventoryManagement = () => {
     });
   }, [recordMovement]);
 
+  // 🔥 FUNCIÓN CORREGIDA: SOLO REGISTRA MOVIMIENTO, NO ACTUALIZA STOCK DIRECTAMENTE
   const adjustInventory = useCallback(async (
     productId: string, 
     quantity: number,
@@ -583,6 +414,9 @@ export const useInventoryManagement = () => {
   ): Promise<void> => {
     const movementType: MovementType = quantity > 0 ? 'ajuste_manual_mas' : 'ajuste_manual_menos';
     
+    console.log(`🔧 Ajustando inventario: ${productId}, cantidad: ${quantity}, tipo: ${movementType}`);
+    
+    // ✅ SOLO REGISTRAR MOVIMIENTO - EL TRIGGER ACTUALIZA EL STOCK
     await recordMovement({
       product_id: productId,
       quantity: Math.abs(quantity),
@@ -590,6 +424,8 @@ export const useInventoryManagement = () => {
       reason: reason,
       notes: notes
     });
+    
+    console.log('✅ Ajuste de inventario completado - stock actualizado por trigger');
   }, [recordMovement]);
 
   return {
@@ -601,11 +437,7 @@ export const useInventoryManagement = () => {
     // ✅ CONSULTAS CORREGIDAS Y FUNCIONANDO
     getAvailableStock,
     checkAvailableStock,
-    getRecentMovements, // ✅ SIMPLIFICADO - DEBE FUNCIONAR
-    getMovementById, // ✅ SIMPLIFICADO - DEBE FUNCIONAR  
-    getProductMovements, // ✅ SIMPLIFICADO - DEBE FUNCIONAR
-
-    // Operaciones básicas
+    getRecentMovements, // ✅ CORREGIDO
     recordMovement,
 
     // Operaciones de negocio específicas
@@ -615,7 +447,7 @@ export const useInventoryManagement = () => {
     cancelLayaway,
     processRefund,
     receivePurchase,
-    adjustInventory,
+    adjustInventory, // ✅ CORREGIDO
 
     // Utilidades
     clearError: () => setError(null)

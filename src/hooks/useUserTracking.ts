@@ -1,4 +1,4 @@
-// hooks/useUserTracking.ts - VERSIÓN COMPLETA CON ESQUEMA BD REAL MUSCLEUP
+// hooks/useUserTracking.ts - VERSIÓN CORREGIDA v8.1 MUSCLEUP
 'use client';
 
 import { useCallback } from 'react';
@@ -6,12 +6,12 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 export type AuditType = 'full_camel' | 'full_snake' | 'created_only' | 'updated_only' | 'timestamps_only' | 'none';
 
-// ✅ CONFIGURACIÓN COMPLETA BASADA EN ESQUEMA BD REAL
+// ✅ CONFIGURACIÓN CORREGIDA BASADA EN ESQUEMA BD REAL MUSCLEUP v8.1
 const TABLE_AUDIT_CONFIG: Record<string, AuditType> = {
-  // 🎯 AUDITORÍA COMPLETA CAMELCASE (created_by + updated_by)
+  // 🎯 AUDITORÍA COMPLETA CAMELCASE
   'Users': 'full_camel', // createdBy, updatedBy, createdAt, updatedAt
 
-  // 🎯 AUDITORÍA COMPLETA SNAKE_CASE (created_by + updated_by) 
+  // 🎯 AUDITORÍA COMPLETA SNAKE_CASE 
   'user_memberships': 'full_snake',
   'membership_plans': 'full_snake',
   'cash_cuts': 'full_snake',
@@ -23,14 +23,17 @@ const TABLE_AUDIT_CONFIG: Record<string, AuditType> = {
   // ⚠️ AUDITORÍA PARCIAL - SOLO CREATED_BY
   'coupons': 'created_only',
   'employees': 'created_only',
+  
+  // 🔥 CORRECCIÓN CRÍTICA: INVENTORY_MOVEMENTS NECESITA AUDITORÍA
+  'inventory_movements': 'created_only', // ✅ CORREGIDO de 'none' a 'created_only'
 
   // ⚠️ AUDITORÍA PARCIAL - SOLO UPDATED_BY
   'sales': 'updated_only',
 
-  // 🕒 SOLO TIMESTAMPS AUTOMÁTICOS (sin user tracking)
+  // 🕒 SOLO TIMESTAMPS AUTOMÁTICOS
   'payment_commissions': 'timestamps_only',
 
-  // ❌ SIN AUDITORÍA
+  // ❌ SIN AUDITORÍA (resto de tablas)
   'addresses': 'none',
   'emergency_contacts': 'none',
   'membership_info': 'none',
@@ -40,19 +43,18 @@ const TABLE_AUDIT_CONFIG: Record<string, AuditType> = {
   'access_logs': 'none',
   'device_user_mappings': 'none',
   'fingerprint_templates': 'none',
-  'inventory_movements': 'none',
+  'temporary_access': 'none',
   'layaway_status_history': 'none',
-  'plan_access_restrictions': 'none',
-  'plan_f22_group_mappings': 'none',
-  'refund_items': 'none',
   'refunds': 'none',
+  'refund_items': 'none',
   'sale_edit_history': 'none',
   'sale_items': 'none',
   'sale_payment_details': 'none',
-  'special_access_schedules': 'none',
   'store_credits': 'none',
+  'plan_access_restrictions': 'none',
+  'plan_f22_group_mappings': 'none',
+  'special_access_schedules': 'none',
   'system_logs': 'none',
-  'temporary_access': 'none',
   'trigger_logs': 'none'
 };
 
@@ -68,7 +70,7 @@ export const useUserTracking = () => {
     return new Date().toISOString();
   }, []);
 
-  // ✅ FUNCIÓN PRINCIPAL INTELIGENTE - MANEJA TODOS LOS CASOS
+  // ✅ FUNCIÓN PRINCIPAL INTELIGENTE CORREGIDA
   const addAuditFields = useCallback(async (
     data: any, 
     isUpdate = false,
@@ -82,7 +84,7 @@ export const useUserTracking = () => {
     const auditType = TABLE_AUDIT_CONFIG[tableName];
     const userId = await getCurrentUser();
     
-    console.log(`🔍 Tabla: ${tableName} | Tipo: ${auditType} | Es update: ${isUpdate}`);
+    console.log(`🔍 Tabla: ${tableName} | Tipo: ${auditType} | Es update: ${isUpdate} | Usuario: ${userId}`);
 
     switch (auditType) {
       case 'full_camel': {
@@ -95,7 +97,7 @@ export const useUserTracking = () => {
       }
 
       case 'full_snake': {
-        // user_memberships, membership_plans, etc. - snake_case completo
+        // user_memberships, membership_plans, products, etc. - snake_case completo
         if (isUpdate) {
           return { ...data, updated_by: userId };
         } else {
@@ -104,11 +106,13 @@ export const useUserTracking = () => {
       }
 
       case 'created_only': {
-        // coupons, employees - solo created_by en INSERT
+        // 🔥 INVENTORY_MOVEMENTS ENTRA AQUÍ AHORA
+        // coupons, employees, inventory_movements - solo created_by en INSERT
         if (isUpdate) {
           console.log(`⚠️ Tabla '${tableName}' solo tiene created_by - UPDATE sin auditoría de usuario`);
           return data; // Solo trigger maneja updated_at
         } else {
+          console.log(`✅ Aplicando auditoría created_only para ${tableName} - created_by: ${userId}`);
           return { ...data, created_by: userId };
         }
       }
@@ -178,7 +182,7 @@ export const useUserTracking = () => {
           hasCreatedBy: true,
           hasUpdatedBy: false,
           naming: 'snake_case',
-          description: 'Solo created_by, updated_at por trigger'
+          description: 'Solo created_by, updated_at por trigger (INVENTORY_MOVEMENTS)'
         };
       case 'updated_only':
         return {

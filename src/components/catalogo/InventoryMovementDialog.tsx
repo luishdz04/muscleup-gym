@@ -325,8 +325,34 @@ export default function InventoryMovementDialog({
     // Formateo de valores
     const formatted = {
       date: formatTimestampForDisplay(movement.created_at),
-      dateShort: formatMovementDate(movement.created_at),
-      totalCost: new Intl.NumberFormat('es-MX', {
+dateShort: (() => {
+  if (!movement.created_at) return 'Sin fecha';
+  
+  try {
+    let dateString = movement.created_at.trim();
+    const hasTimezone = dateString.includes('Z') || 
+                       dateString.indexOf('+') > 10 || 
+                       dateString.indexOf('-', 10) > 10;
+    
+    if (!hasTimezone) {
+      dateString = dateString.replace(' ', 'T') + 'Z';
+    }
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Fecha inválida';
+    
+    return new Intl.DateTimeFormat('es-MX', {
+      timeZone: 'America/Mexico_City',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(date);
+  } catch {
+    return 'Fecha inválida';
+  }
+})(),      totalCost: new Intl.NumberFormat('es-MX', {
         style: 'currency',
         currency: 'MXN'
       }).format(movement.total_cost || 0),
