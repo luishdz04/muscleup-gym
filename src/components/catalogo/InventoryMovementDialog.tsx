@@ -1,4 +1,4 @@
-// 📁 src/components/catalogo/InventoryMovementDialog.tsx - CORREGIDO VISTA v8.1
+// 📁 src/components/catalogo/InventoryMovementDialog.tsx - v8.2 CORREGIDO
 'use client';
 
 import React, { useMemo, useCallback } from 'react';
@@ -10,7 +10,7 @@ import {
   Button,
   Typography,
   Box,
-  Grid,
+  Grid as Grid,
   Card,
   CardContent,
   Chip,
@@ -46,15 +46,12 @@ import {
   Remove as RemoveIcon
 } from '@mui/icons-material';
 
-// ✅ IMPORTS ENTERPRISE v8.1 CORREGIDOS
+// ✅ IMPORTS ENTERPRISE v8.2 CORREGIDOS
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
-import { 
-  formatTimestampForDisplay,
-  formatMovementDate 
-} from '@/utils/dateUtils';
+import { formatTimestampForDisplay } from '@/utils/dateUtils';
 
-// ✅ TIPOS ENTERPRISE v8.1 CON CORRECCIONES
+// ✅ TIPOS ENTERPRISE v8.2
 type MovementType = 
   | 'venta_directa' | 'venta_apartado' | 'reserva_apartado' | 'cancelar_reserva'
   | 'devolucion' | 'recepcion_compra' | 'ajuste_manual_mas' | 'ajuste_manual_menos'
@@ -62,35 +59,34 @@ type MovementType =
 
 type AlertSeverity = 'error' | 'warning' | 'info' | 'success';
 
-// ✅ INTERFACE CORREGIDA CON USUARIO EXPANDIDO
+// ✅ INTERFACE MOVEMENT v8.2
 interface InventoryMovement {
   id: string;
   product_id: string;
+  warehouse_id?: string; // ✅ MULTI-ALMACÉN v8.2
   movement_type: MovementType;
   quantity: number;
   previous_stock: number;
   new_stock: number;
-  unit_cost: number;
-  total_cost: number;
+  unit_cost?: number;
+  total_cost?: number;
   reason?: string;
   reference_id?: string;
   notes?: string;
   created_at: string;
   created_by?: string;
-  // ✅ RELACIÓN CON PRODUCTS CORREGIDA
   products?: {
     id: string;
     name: string;
     sku?: string;
     category?: string;
     current_stock: number;
-    reserved_stock?: number; // ✅ AGREGADO RESERVED_STOCK
+    reserved_stock?: number;
     min_stock: number;
     max_stock?: number;
     unit?: string;
     location?: string;
   };
-  // ✅ RELACIÓN CON USERS AGREGADA
   Users?: {
     id: string;
     firstName: string;
@@ -115,7 +111,7 @@ interface StockStatus {
   icon: React.ReactElement;
 }
 
-// ✅ CONFIGURACIÓN DE TIPOS DE MOVIMIENTO (sin cambios)
+// ✅ CONFIGURACIÓN DE TIPOS DE MOVIMIENTO v8.2
 const MOVEMENT_CONFIG: Record<MovementType, MovementConfig> = {
   // GRUPO: VENTAS Y APARTADOS
   venta_directa: {
@@ -242,10 +238,10 @@ export default function InventoryMovementDialog({
   onClose,
   movement
 }: InventoryMovementDialogProps) {
-  // ✅ HOOKS AL INICIO
+  // ✅ HOOKS AL INICIO (orden v8.2)
   const hydrated = useHydrated();
 
-  // ✅ CÁLCULOS MEMOIZADOS CORREGIDOS
+  // ✅ CÁLCULOS MEMOIZADOS v8.2 - SIMPLIFICADOS
   const { config, stockStatus, formattedValues, stockInfo, userInfo } = useMemo(() => {
     if (!movement) return {
       config: MOVEMENT_CONFIG.inventario_inicial,
@@ -269,7 +265,7 @@ export default function InventoryMovementDialog({
 
     const movementConfig = MOVEMENT_CONFIG[movement.movement_type] || MOVEMENT_CONFIG.inventario_inicial;
     
-    // ✅ CÁLCULO CORRECTO DE STOCK DISPONIBLE
+    // ✅ STOCK INFO SIMPLIFICADO
     const currentStock = movement.products?.current_stock || 0;
     const reservedStock = movement.products?.reserved_stock || 0;
     const availableStock = Math.max(0, currentStock - reservedStock);
@@ -280,7 +276,7 @@ export default function InventoryMovementDialog({
       availableStock
     };
 
-    // ✅ INFORMACIÓN DEL USUARIO CORREGIDA
+    // ✅ USER INFO SIMPLIFICADO
     const userInfo = {
       displayName: movement.Users?.firstName 
         ? `${movement.Users.firstName}${movement.Users.lastName ? ` ${movement.Users.lastName}` : ''}`
@@ -290,11 +286,9 @@ export default function InventoryMovementDialog({
       email: movement.Users?.email || null
     };
     
-    // ✅ CÁLCULO DE ESTADO DEL STOCK USANDO AVAILABLE_STOCK
+    // ✅ STATUS DEL STOCK
     let status: StockStatus | null = null;
     if (movement.products) {
-      const newStock = movement.new_stock;
-      
       if (availableStock === 0) {
         status = { 
           status: 'error', 
@@ -322,37 +316,11 @@ export default function InventoryMovementDialog({
       }
     }
 
-    // Formateo de valores
+    // ✅ FORMATEO SIMPLIFICADO v8.2
     const formatted = {
       date: formatTimestampForDisplay(movement.created_at),
-dateShort: (() => {
-  if (!movement.created_at) return 'Sin fecha';
-  
-  try {
-    let dateString = movement.created_at.trim();
-    const hasTimezone = dateString.includes('Z') || 
-                       dateString.indexOf('+') > 10 || 
-                       dateString.indexOf('-', 10) > 10;
-    
-    if (!hasTimezone) {
-      dateString = dateString.replace(' ', 'T') + 'Z';
-    }
-    
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Fecha inválida';
-    
-    return new Intl.DateTimeFormat('es-MX', {
-      timeZone: 'America/Mexico_City',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(date);
-  } catch {
-    return 'Fecha inválida';
-  }
-})(),      totalCost: new Intl.NumberFormat('es-MX', {
+      dateShort: formatTimestampForDisplay(movement.created_at), // ✅ USAR DATEUTILS
+      totalCost: new Intl.NumberFormat('es-MX', {
         style: 'currency',
         currency: 'MXN'
       }).format(movement.total_cost || 0),
@@ -371,7 +339,7 @@ dateShort: (() => {
     };
   }, [movement]);
 
-  // ✅ HELPERS PARA CÁLCULOS (sin cambios)
+  // ✅ HELPERS SIMPLIFICADOS v8.2
   const getStockDifference = useCallback((): number => {
     if (!movement) return 0;
     return movement.new_stock - movement.previous_stock;
@@ -400,7 +368,7 @@ dateShort: (() => {
     return `+${Math.abs(movement.quantity)}`;
   }, [movement, getStockDifference]);
 
-  // ✅ SSR SAFETY
+  // ✅ SSR SAFETY SIMPLIFICADO v8.2
   if (!hydrated) {
     return (
       <Dialog open={open} maxWidth="md" fullWidth>
@@ -416,9 +384,6 @@ dateShort: (() => {
             <CircularProgress size={50} sx={{ color: colorTokens.brand }} />
             <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
               Cargando Movimiento...
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
-              Inicializando auditoría de inventario
             </Typography>
           </Box>
         </DialogContent>
@@ -470,7 +435,7 @@ dateShort: (() => {
 
       <DialogContent sx={{ p: 4 }}>
         <Grid container spacing={3}>
-          {/* 📦 INFORMACIÓN DEL PRODUCTO - CORREGIDA */}
+          {/* 📦 INFORMACIÓN DEL PRODUCTO v8.2 */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
               background: colorTokens.surfaceLevel1, 
@@ -510,7 +475,6 @@ dateShort: (() => {
                       Categoría: {movement.products?.category || 'Sin categoría'}
                     </Typography>
                     <Box display="flex" gap={1} mt={1} flexWrap="wrap">
-                      {/* ✅ CHIPS CORREGIDOS CON STOCK REAL */}
                       <Chip 
                         label={`${stockInfo.availableStock} ${movement.products?.unit || 'u'} disponibles`}
                         size="small"
@@ -568,7 +532,7 @@ dateShort: (() => {
             </Card>
           </Grid>
 
-          {/* 📊 DETALLES DEL MOVIMIENTO - MANTENER IGUAL */}
+          {/* 📊 DETALLES DEL MOVIMIENTO v8.2 */}
           <Grid size={{ xs: 12, md: 8 }}>
             <Card sx={{ 
               background: config.bgColor, 
@@ -671,7 +635,7 @@ dateShort: (() => {
             </Card>
           </Grid>
 
-          {/* 📈 CAMBIO DE STOCK - MANTENER IGUAL */}
+          {/* 📈 CAMBIO DE STOCK v8.2 */}
           <Grid size={{ xs: 12, md: 4 }}>
             <Card sx={{ 
               background: colorTokens.surfaceLevel1, 
@@ -743,7 +707,7 @@ dateShort: (() => {
             </Card>
           </Grid>
 
-          {/* ⚠️ ALERTA DE ESTADO DEL STOCK - CORREGIDA */}
+          {/* ⚠️ ALERTA DE ESTADO DEL STOCK v8.2 */}
           {stockStatus && (
             <Grid size={{ xs: 12 }}>
               <Alert 
@@ -782,7 +746,7 @@ dateShort: (() => {
             </Grid>
           )}
 
-          {/* 👤 INFORMACIÓN DE AUDITORÍA - CORREGIDA */}
+          {/* 👤 INFORMACIÓN DE AUDITORÍA v8.2 */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
               background: colorTokens.surfaceLevel1, 
@@ -817,7 +781,6 @@ dateShort: (() => {
                           Usuario:
                         </TableCell>
                         <TableCell sx={{ color: colorTokens.textPrimary, border: 'none' }}>
-                          {/* ✅ DISPLAY CORREGIDO DEL USUARIO */}
                           <Box>
                             <Typography variant="body2" fontWeight="bold">
                               {userInfo.displayName}

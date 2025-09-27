@@ -51,6 +51,22 @@ const colorTokens = {
   surfaceLevel2: '#1B1E24',     // = neutral200
   surfaceLevel3: '#23272F',     // = neutral300
 
+
+  // ✅ SOLO AGREGAR ESTOS PARA MULTI-ALMACÉN
+  warehouse: {
+    central: '#6A7389',     // Usando tu neutral800
+    store: '#38BDF8',       // Usando tu info
+    temporary: '#FFCC00',   // Usando tu warning
+    default: '#22C55E'      // Usando tu success
+  },
+  
+  inventory: {
+    inStock: '#22C55E',     // Tu success
+    lowStock: '#FFCC00',    // Tu warning
+    outOfStock: '#EF4444',  // Tu danger
+    reserved: '#38BDF8'     // Tu info
+  },
+
   // ✅ UTILIDADES ADICIONALES
   divider: 'rgba(255, 255, 255, 0.12)',
   border: 'rgba(255, 255, 255, 0.12)',
@@ -183,6 +199,9 @@ let theme = createTheme({
       },
     },
          
+    
+
+
     // Paper (superficies)
     MuiPaper: {
       styleOverrides: {

@@ -1,4 +1,4 @@
-// 📁 src/components/catalogo/ProductStockDialog.tsx - CORREGIDO v8.0
+// 📁 src/components/catalogo/ProductStockDialog.tsx - MULTI-ALMACÉN v8.2 CORREGIDO
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -9,7 +9,7 @@ import {
   DialogActions,
   Button,
   TextField,
-  Grid,
+  Grid as Grid,
   FormControl,
   InputLabel,
   Select,
@@ -34,17 +34,18 @@ import {
   SwapHoriz as TransferenciaIcon,
   Warning as WarningIcon,
   Info as InfoIcon,
-  Inventory2 as StockIcon
+  Inventory2 as StockIcon,
+  Store as StoreIcon,
+  Warehouse as WarehouseIcon
 } from '@mui/icons-material';
 
-// ✅ IMPORTS ENTERPRISE v8.0 CORREGIDOS SEGÚN COMPLETE_IMPLEMENTATION_GUIDE
+// ✅ IMPORTS ENTERPRISE v8.2 CORREGIDOS
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useInventoryManagement } from '@/hooks/useInventoryManagement';
 import { notify } from '@/utils/notifications';
-import { useNotifications } from '@/hooks/useNotifications';
 
-// ✅ TIPOS ENTERPRISE v8.0 CORREGIDOS SEGÚN BD SCHEMA
+// ✅ TIPOS ENTERPRISE v8.2 - MULTI-ALMACÉN
 type MovementType = 
   | 'recepcion_compra' | 'devolucion' | 'ajuste_manual_mas' | 'inventario_inicial'
   | 'merma' | 'ajuste_manual_menos' | 'transferencia_entrada' | 'transferencia_salida';
@@ -64,6 +65,15 @@ interface ProductStock {
   is_active?: boolean;
 }
 
+// ✅ INTERFACE WAREHOUSE v8.2
+interface Warehouse {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+  location?: string;
+}
+
 interface MovementTypeConfig {
   value: MovementType;
   label: string;
@@ -79,14 +89,16 @@ interface FormData {
   quantity: number;
   reason: string;
   notes: string;
+  warehouseId: string; // ✅ NUEVO v8.2
 }
 
 interface FormErrors {
   quantity?: string;
   reason?: string;
+  warehouseId?: string; // ✅ NUEVO v8.2
 }
 
-// ✅ TIPOS DE MOVIMIENTO ENTERPRISE BD REALES v8.0
+// ✅ TIPOS DE MOVIMIENTO ENTERPRISE v8.2
 const MOVEMENT_TYPES: readonly MovementTypeConfig[] = [
   {
     value: 'recepcion_compra',
@@ -162,7 +174,7 @@ const MOVEMENT_TYPES: readonly MovementTypeConfig[] = [
   }
 ] as const;
 
-// ✅ RAZONES PREDEFINIDAS ENTERPRISE BD v8.0
+// ✅ RAZONES PREDEFINIDAS v8.2 - MULTI-ALMACÉN EXPANDIDAS
 const MOVEMENT_REASONS: Record<MovementType, readonly string[]> = {
   recepcion_compra: [
     'Compra a proveedor',
@@ -227,49 +239,75 @@ export default function ProductStockDialog({
   product,
   onSave
 }: ProductStockDialogProps) {
-  // ✅ TODOS LOS HOOKS AL INICIO - ORDEN CONSISTENTE
-  const hydrated = useHydrated();
-  
-  // ✅ HOOKS ENTERPRISE v8.0 CORREGIDOS
-  const { adjustInventory, loading: inventoryLoading } = useInventoryManagement();
-  const { alert } = useNotifications();
-
-  // ✅ ESTADO DEL FORMULARIO CON TIPADO FUERTE - TODOS LOS ESTADOS JUNTOS
+  // ✅ 1. HOOKS DE ESTADO PRIMERO (orden v8.2)
   const [formData, setFormData] = useState<FormData>({
     movementType: 'ajuste_manual_mas',
     quantity: 0,
     reason: '',
-    notes: ''
+    notes: '',
+    warehouseId: '' // ✅ NUEVO v8.2
   });
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState<boolean>(false);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]); // ✅ NUEVO v8.2
 
-  // ✅ EFECTOS - DESPUÉS DE TODOS LOS ESTADOS
+  // ✅ 2. HOOKS DE CONTEXT/CUSTOM (orden v8.2)
+  const hydrated = useHydrated();
+  const { adjustInventory, loading: inventoryLoading } = useInventoryManagement();
+
+  // ✅ 3. HOOKS DE EFECTO (después de custom)
   useEffect(() => {
     if (product && open) {
       setFormData({
         movementType: 'ajuste_manual_mas',
         quantity: 0,
         reason: '',
-        notes: ''
+        notes: '',
+        warehouseId: warehouses.length > 0 ? warehouses[0].id : ''
       });
+      loadWarehouses(); // ✅ CARGAR WAREHOUSES v8.2
     }
     setErrors({});
   }, [product, open]);
 
-  // ✅ HELPERS MEMOIZADOS PARA PERFORMANCE - CORREGIDO TIPADO DE COLORES
-  const { currentConfig, availableReasons, previewStock, previewColor, stockWarnings } = useMemo(() => {
+  // ✅ 4. HOOKS DE CALLBACK Y MEMO (al final)
+
+  // ✅ CARGAR WAREHOUSES v8.2
+  const loadWarehouses = useCallback(async () => {
+    try {
+      // Simular carga de warehouses - implementar con supabase cuando esté listo
+      const mockWarehouses: Warehouse[] = [
+        { id: '1', name: 'Tienda Principal', code: 'TIENDA_01', is_active: true, location: 'Planta Baja' },
+        { id: '2', name: 'Almacén Central', code: 'CENTRAL', is_active: true, location: 'Bodega' }
+      ];
+      setWarehouses(mockWarehouses);
+      
+      // Establecer warehouse por defecto si no hay uno seleccionado
+      if (!formData.warehouseId && mockWarehouses.length > 0) {
+        setFormData(prev => ({ ...prev, warehouseId: mockWarehouses[0].id }));
+      }
+      
+      console.log('✅ [v8.2] Warehouses cargados en dialog:', mockWarehouses.length);
+    } catch (error: any) {
+      console.error('Error cargando warehouses:', error);
+      notify.error('Error cargando almacenes');
+    }
+  }, [formData.warehouseId]);
+
+  // ✅ HELPERS MEMOIZADOS v8.2 - INCLUYE WAREHOUSE
+  const { currentConfig, availableReasons, previewStock, previewColor, stockWarnings, selectedWarehouse } = useMemo(() => {
     if (!product) return {
       currentConfig: MOVEMENT_TYPES[0],
       availableReasons: [] as readonly string[],
       previewStock: 0,
       previewColor: colorTokens.textSecondary,
-      stockWarnings: [] as string[]
+      stockWarnings: [] as string[],
+      selectedWarehouse: null
     };
 
     const config = MOVEMENT_TYPES.find(t => t.value === formData.movementType) || MOVEMENT_TYPES[0];
     const reasons = MOVEMENT_REASONS[formData.movementType] || [];
+    const warehouse = warehouses.find(w => w.id === formData.warehouseId) || null;
     
     // Calcular preview del stock
     let newStock = product.current_stock;
@@ -280,7 +318,7 @@ export default function ProductStockDialog({
     }
     newStock = Math.max(0, newStock);
 
-    // ✅ COLOR DEL PREVIEW CORREGIDO - TIPADO CONSISTENTE
+    // Color del preview
     let color: string;
     if (newStock === 0) color = colorTokens.danger;
     else if (newStock <= product.min_stock) color = colorTokens.warning;
@@ -298,11 +336,12 @@ export default function ProductStockDialog({
       availableReasons: reasons,
       previewStock: newStock,
       previewColor: color,
-      stockWarnings: warnings
+      stockWarnings: warnings,
+      selectedWarehouse: warehouse
     };
-  }, [product, formData.movementType, formData.quantity]);
+  }, [product, formData.movementType, formData.quantity, formData.warehouseId, warehouses]);
 
-  // ✅ VALIDACIONES ENTERPRISE
+  // ✅ VALIDACIONES ENTERPRISE v8.2 - INCLUYE WAREHOUSE
   const validateForm = useCallback((): boolean => {
     if (!product) return false;
     
@@ -320,11 +359,16 @@ export default function ProductStockDialog({
       newErrors.reason = 'La razón del movimiento es obligatoria';
     }
 
+    // ✅ VALIDACIÓN WAREHOUSE v8.2
+    if (!formData.warehouseId) {
+      newErrors.warehouseId = 'Debe seleccionar un almacén';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [product, formData, currentConfig]);
 
-  // ✅ HANDLERS MEMOIZADOS
+  // ✅ HANDLERS MEMOIZADOS v8.2
   const handleChange = useCallback(<K extends keyof FormData>(field: K, value: FormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field as keyof FormErrors]) {
@@ -332,23 +376,24 @@ export default function ProductStockDialog({
     }
   }, [errors]);
 
-  // ✅ MANEJO DE GUARDAR CON AUDITORÍA AUTOMÁTICA v8.0
+  // ✅ MANEJO DE GUARDAR v8.2 - CON WAREHOUSE
   const handleSave = useCallback(async (): Promise<void> => {
     if (!validateForm() || !product) return;
 
     setLoading(true);
     try {
-      // ✅ USAR adjustInventory CON AUDITORÍA AUTOMÁTICA
       const adjustmentQuantity = currentConfig.isPositive ? formData.quantity : -formData.quantity;
       
+      // ✅ USAR adjustInventory CON WAREHOUSE v8.2
       await adjustInventory(
         product.id,
         adjustmentQuantity,
         formData.reason,
-        formData.notes
+        `${formData.notes}${selectedWarehouse ? ` | Almacén: ${selectedWarehouse.name}` : ''}`,
+        formData.warehouseId // ✅ NUEVO PARÁMETRO v8.2
       );
 
-      notify.success(`Stock ajustado exitosamente: ${formData.movementType.replace('_', ' ')}`);
+      notify.success(`Stock ajustado en ${selectedWarehouse?.name || 'almacén'}: ${formData.movementType.replace('_', ' ')}`);
       onSave();
       onClose();
     } catch (error: any) {
@@ -357,9 +402,9 @@ export default function ProductStockDialog({
     } finally {
       setLoading(false);
     }
-  }, [validateForm, product, currentConfig, formData, adjustInventory, onSave, onClose]);
+  }, [validateForm, product, currentConfig, formData, adjustInventory, onSave, onClose, selectedWarehouse]);
 
-  // ✅ SSR SAFETY CON BRANDING MUSCLEUP v8.0 - DESPUÉS DE TODOS LOS HOOKS
+  // ✅ SSR SAFETY SIMPLIFICADO v8.2
   if (!hydrated) {
     return (
       <Dialog open={open} maxWidth="md" fullWidth>
@@ -374,7 +419,7 @@ export default function ProductStockDialog({
           }}>
             <CircularProgress size={40} sx={{ color: colorTokens.brand }} />
             <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-              Cargando ajuste de stock...
+              Cargando ajuste multi-almacén...
             </Typography>
           </Box>
         </DialogContent>
@@ -382,10 +427,9 @@ export default function ProductStockDialog({
     );
   }
 
-  // ✅ EARLY RETURN
   if (!product) return null;
 
-  const isFormValid = formData.quantity > 0 && formData.reason.trim() !== '';
+  const isFormValid = formData.quantity > 0 && formData.reason.trim() !== '' && formData.warehouseId !== '';
 
   return (
     <Dialog
@@ -409,13 +453,14 @@ export default function ProductStockDialog({
         alignItems: 'center',
         gap: 2
       }}>
-        <StockIcon sx={{ color: colorTokens.brand }} />
+        <WarehouseIcon sx={{ color: colorTokens.brand }} />
         <Box>
           <Typography variant="h6" fontWeight="bold">
-            Ajustar Stock - {product.name}
+            Ajustar Stock Multi-Almacén - {product.name}
           </Typography>
           <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
             Stock actual: {product.current_stock} {product.unit || 'unidades'}
+            {selectedWarehouse && ` | ${selectedWarehouse.name}`}
           </Typography>
         </Box>
       </DialogTitle>
@@ -448,7 +493,7 @@ export default function ProductStockDialog({
                     <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                       SKU: {product.sku || 'Sin SKU'} | Categoría: {product.category || 'Sin categoría'}
                     </Typography>
-                    <Box display="flex" gap={2} mt={1}>
+                    <Box display="flex" gap={2} mt={1} flexWrap="wrap">
                       <Chip 
                         label={`Stock: ${product.current_stock} ${product.unit || 'u'}`}
                         sx={{
@@ -497,7 +542,7 @@ export default function ProductStockDialog({
                 <Box>
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                     <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                      Nivel de Stock
+                      Nivel de Stock Actual
                     </Typography>
                     <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                       {product.max_stock ? 
@@ -525,7 +570,91 @@ export default function ProductStockDialog({
             </Card>
           </Grid>
 
-          {/* 🎯 TIPOS DE MOVIMIENTO ENTERPRISE BD v8.0 */}
+          {/* ✅ NUEVO: SELECCIÓN DE ALMACÉN v8.2 */}
+          <Grid size={{ xs: 12 }}>
+            <Card sx={{ 
+              background: `${colorTokens.brand}10`, 
+              border: `2px solid ${colorTokens.brand}30`,
+              borderRadius: 3
+            }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ 
+                  color: colorTokens.brand, 
+                  mb: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <StoreIcon />
+                  Seleccionar Almacén de Destino
+                </Typography>
+                
+                <FormControl fullWidth error={!!errors.warehouseId}>
+                  <InputLabel sx={{ 
+                    color: colorTokens.textSecondary,
+                    '&.Mui-focused': { color: colorTokens.brand }
+                  }}>
+                    Almacén *
+                  </InputLabel>
+                  <Select
+                    value={formData.warehouseId}
+                    label="Almacén *"
+                    onChange={(e) => handleChange('warehouseId', e.target.value)}
+                    sx={{
+                      color: colorTokens.textPrimary,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: `${colorTokens.brand}30`
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colorTokens.brand
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colorTokens.brand
+                      }
+                    }}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: {
+                          background: colorTokens.surfaceLevel2,
+                          border: `1px solid ${colorTokens.brand}30`,
+                          color: colorTokens.textPrimary
+                        }
+                      }
+                    }}
+                  >
+                    {warehouses.filter(w => w.is_active).map((warehouse) => (
+                      <MenuItem key={warehouse.id} value={warehouse.id}>
+                        <Box display="flex" alignItems="center" gap={2}>
+                          <StoreIcon sx={{ color: colorTokens.brand, fontSize: 20 }} />
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              {warehouse.name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                              {warehouse.code} {warehouse.location && `| ${warehouse.location}`}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errors.warehouseId && (
+                    <Typography variant="caption" sx={{ color: colorTokens.danger, mt: 0.5 }}>
+                      {errors.warehouseId}
+                    </Typography>
+                  )}
+                </FormControl>
+
+                {selectedWarehouse && (
+                  <Alert severity="info" sx={{ mt: 2, backgroundColor: `${colorTokens.info}10` }}>
+                    Movimiento será registrado en: <strong>{selectedWarehouse.name}</strong> ({selectedWarehouse.code})
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* 🎯 TIPOS DE MOVIMIENTO v8.2 */}
           <Grid size={{ xs: 12 }}>
             <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
               Tipo de Movimiento
@@ -577,7 +706,7 @@ export default function ProductStockDialog({
             </Grid>
           </Grid>
 
-          {/* 📝 FORMULARIO DE MOVIMIENTO */}
+          {/* 📝 FORMULARIO DE MOVIMIENTO v8.2 */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
               background: currentConfig.bgColor, 
@@ -697,8 +826,8 @@ export default function ProductStockDialog({
             </Card>
           </Grid>
 
-          {/* 📊 PREVIEW DEL RESULTADO */}
-          {formData.quantity > 0 && (
+          {/* 📊 PREVIEW DEL RESULTADO v8.2 */}
+          {formData.quantity > 0 && selectedWarehouse && (
             <Grid size={{ xs: 12 }}>
               <Card sx={{ 
                 background: `${previewColor}10`, 
@@ -709,7 +838,7 @@ export default function ProductStockDialog({
                   <Box display="flex" alignItems="center" gap={2} mb={2}>
                     <InfoIcon sx={{ color: previewColor }} />
                     <Typography variant="h6" fontWeight="bold" sx={{ color: previewColor }}>
-                      Preview del Resultado
+                      Preview - {selectedWarehouse.name}
                     </Typography>
                   </Box>
 
@@ -813,7 +942,7 @@ export default function ProductStockDialog({
             }
           }}
         >
-          {loading ? 'Procesando...' : 'Aplicar Movimiento'}
+          {loading ? 'Procesando...' : `Aplicar en ${selectedWarehouse?.code || 'Almacén'}`}
         </Button>
       </DialogActions>
     </Dialog>

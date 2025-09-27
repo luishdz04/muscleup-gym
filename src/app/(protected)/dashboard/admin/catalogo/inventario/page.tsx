@@ -7,7 +7,7 @@ import {
   Paper,
   Typography,
   Button,
-  Grid,
+  Grid as Grid,
   Card,
   CardContent,
   Chip,
@@ -30,7 +30,11 @@ import {
   CircularProgress,
   Avatar,
   Tooltip,
-  LinearProgress
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -44,32 +48,39 @@ import {
   History as HistoryIcon,
   Refresh as RefreshIcon,
   FileDownload as ExportIcon,
-  Assessment as AssessmentIcon
+  Assessment as AssessmentIcon,
+  Add as AddIcon,
+  Store as StoreIcon,
+  Warehouse as WarehouseIcon,
+  BusinessCenter as BusinessIcon
 } from '@mui/icons-material';
 
-// ✅ IMPORTS ENTERPRISE v8.1 CORREGIDOS SEGÚN COMPLETE_IMPLEMENTATION_GUIDE
+// ✅ IMPORTS ENTERPRISE v6.0 CORREGIDOS
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
-import { useProductStock } from '@/hooks/useProductStock';
 import { useInventoryManagement } from '@/hooks/useInventoryManagement';
-import { useSalesInventoryIntegration } from '@/hooks/useSalesInventoryIntegration';
+import { useProductStock } from '@/hooks/useProductStock'; // ✅ IMPORTADO CORRECTAMENTE
 import { notify } from '@/utils/notifications';
-import { useNotifications } from '@/hooks/useNotifications';
 import { 
   formatTimestampForDisplay,
-  formatDateForDisplay,
   getCurrentTimestamp,
-  getTodayInMexico,
-  formatMovementDate  // ✅ AGREGADO PARA MOVIMIENTOS
+  getTodayInMexico
 } from '@/utils/dateUtils';
 import ProductStockDialog from '@/components/catalogo/ProductStockDialog';
 import InventoryMovementDialog from '@/components/catalogo/InventoryMovementDialog';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ TIPOS MEJORADOS CON TIPADO FUERTE
+// ✅ TIPOS ENTERPRISE v6.0 CORREGIDOS - COMPATIBLE CON INVENTORYMOVEMENT
 type StockLevelFilter = '' | 'sin_stock' | 'stock_bajo' | 'stock_normal' | 'sobre_stock';
 type ProductStatus = 'active' | 'inactive' | 'all';
 type StockColor = 'error' | 'warning' | 'success' | 'info';
+
+// ✅ MOVEMENT TYPE EXPLÍCITO v6.0 - COMPATIBLE CON DIALOG
+type MovementType = 
+  | 'venta_directa' | 'venta_apartado' | 'reserva_apartado' | 'cancelar_reserva'
+  | 'devolucion' | 'recepcion_compra' | 'ajuste_manual_mas' | 'ajuste_manual_menos'
+  | 'transferencia_entrada' | 'transferencia_salida' | 'merma' | 'inventario_inicial';
 
 interface StockFilter {
   value: StockLevelFilter;
@@ -81,7 +92,70 @@ interface StatusFilter {
   label: string;
 }
 
-// ✅ CONFIGURACIONES TIPADAS
+// ✅ INTERFACE PRODUCT TIPADA v6.0
+interface Product {
+  id: string;
+  name: string;
+  sku?: string;
+  category?: string;
+  current_stock: number;
+  reserved_stock?: number;
+  min_stock: number;
+  max_stock?: number;
+  cost_price?: number;
+  sale_price?: number;
+  unit?: string;
+  location?: string;
+  is_active?: boolean;
+}
+
+// ✅ INTERFACE WAREHOUSE v6.0
+interface Warehouse {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+  location?: string;
+}
+
+// ✅ INTERFACE MOVEMENT EXPANDIDA v6.0 - COMPATIBLE CON INVENTORYMOVEMENT REAL
+interface Movement {
+  id: string;
+  product_id: string;
+  warehouse_id?: string;
+  movement_type: MovementType; // ✅ CORREGIDO: MovementType específico no string
+  quantity: number;
+  previous_stock: number;
+  new_stock: number;
+  unit_cost?: number; // ✅ OPCIONAL - compatible con useInventoryManagement
+  total_cost?: number; // ✅ OPCIONAL - compatible con useInventoryManagement
+  reason?: string;
+  reference_id?: string;
+  notes?: string;
+  created_at: string;
+  created_by?: string;
+  products?: {
+    id: string;
+    name: string;
+    sku?: string;
+    category?: string;
+    current_stock: number;
+    reserved_stock?: number;
+    min_stock: number;
+    max_stock?: number;
+    unit?: string;
+    location?: string;
+  };
+  Users?: {
+    id: string;
+    firstName: string;
+    lastName?: string;
+    email?: string;
+    profilePictureUrl?: string;
+  };
+}
+
+// ✅ CONFIGURACIONES TIPADAS v6.0
 const STOCK_FILTERS: readonly StockFilter[] = [
   { value: '', label: 'Todos los productos' },
   { value: 'stock_normal', label: '✅ Stock disponible' },
@@ -97,88 +171,147 @@ const STATUS_FILTERS: readonly StatusFilter[] = [
 ] as const;
 
 export default function InventarioPage() {
-  // ✅ TODOS LOS HOOKS AL INICIO - ORDEN CONSISTENTE
-  const hydrated = useHydrated();
-  
-  // ✅ HOOKS ENTERPRISE v8.1 CORREGIDOS CON getRecentMovements
-  const { 
-    products, 
-    stockStats, 
-    criticalProducts, 
-    searchProducts, 
-    inventoryValue,
-    loading: productsLoading,
-    getProductsByStatus,
-    fetchData: reloadProducts
-  } = useProductStock();
-  
-  const { 
-    adjustInventory,
-    getAvailableStock,
-    checkAvailableStock,
-    getRecentMovements,           // ✅ CORREGIDO: Agregado para movimientos
-    loading: inventoryLoading 
-  } = useInventoryManagement();
-  
-  const { alert } = useNotifications();
-
-  // ✅ ESTADOS LOCALES CON TIPADO FUERTE - TODOS JUNTOS
+  // ✅ 1. HOOKS DE ESTADO PRIMERO (orden v6.0)
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<ProductStatus>('active');
   const [selectedStockLevel, setSelectedStockLevel] = useState<StockLevelFilter>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(''); // ✅ MULTI-ALMACÉN v6.0
   const [page, setPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   
   // Estados para diálogos
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [selectedMovement, setSelectedMovement] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedMovement, setSelectedMovement] = useState<Movement | null>(null);
   const [stockDialogOpen, setStockDialogOpen] = useState<boolean>(false);
   const [movementDialogOpen, setMovementDialogOpen] = useState<boolean>(false);
+  const [createWarehouseOpen, setCreateWarehouseOpen] = useState<boolean>(false);
 
-  // ✅ ESTADOS PARA MOVIMIENTOS RECIENTES - AGREGADOS
-  const [recentMovements, setRecentMovements] = useState<any[]>([]);
-  const [movementsError, setMovementsError] = useState<string | null>(null);
+  // Estados para datos REALES v6.0
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [recentMovements, setRecentMovements] = useState<Movement[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Estados de notificación
+  // Estados para notificación
   const [notification, setNotification] = useState({
     open: false,
     message: '',
     severity: 'success' as 'success' | 'error' | 'warning' | 'info'
   });
 
-  // ✅ EFECTO PARA CARGAR MOVIMIENTOS RECIENTES - AGREGADO
+  // ✅ 2. HOOKS DE CONTEXT/CUSTOM REALES (orden v6.0)
+  const hydrated = useHydrated();
+  const { addAuditFieldsFor } = useUserTracking();
+  const { 
+    products,
+    stockStats,
+    criticalProducts,
+    inventoryValue,
+    getProductsByStatus,
+    searchProducts,
+    fetchData: reloadProducts, // ✅ CORREGIDO: USAR reloadProducts NO loadProducts
+    loading: productsLoading
+  } = useProductStock(); // ✅ IMPORTADO CORRECTAMENTE
+  const { 
+    getAvailableStock,
+    checkAvailableStock,
+    getRecentMovements,
+    adjustInventory,
+    loading: inventoryLoading 
+  } = useInventoryManagement();
+  const supabase = createBrowserSupabaseClient();
+
+  // ✅ 3. HOOKS DE EFECTO (después de custom)
   useEffect(() => {
-    const loadRecentMovements = async () => {
-      if (!hydrated || !getRecentMovements) return;
-      
-      try {
-        setMovementsError(null);
-        const movements = await getRecentMovements(8); // Últimos 8 movimientos
-        setRecentMovements(movements);
-        console.log('🔄 Movimientos recientes cargados:', movements.length);
-      } catch (error: any) {
-        console.error('Error cargando movimientos recientes:', error);
-        setMovementsError(error.message);
-      }
-    };
+    if (hydrated) {
+      console.log('✅ [v6.0] Inventario Multi-Almacén inicializado');
+      loadInitialData();
+    }
+  }, [hydrated]);
 
-    loadRecentMovements();
-  }, [hydrated, getRecentMovements]);
+  // ✅ 4. HOOKS DE CALLBACK Y MEMO (al final)
 
-  // ✅ CATEGORÍAS ÚNICAS MEMOIZADAS
+  // ✅ CARGAR DATOS REALES v6.0
+  const loadInitialData = useCallback(async () => {
+    setLoading(true);
+    try {
+      await loadWarehouses(); // Cargar warehouses reales de Supabase
+      await loadRecentMovements(); // Usar getRecentMovements real
+      console.log('✅ [v6.0] Datos reales cargados desde BD');
+    } catch (error: any) {
+      console.error('Error cargando datos reales:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ CARGAR WAREHOUSES REALES v6.0
+  const loadWarehouses = useCallback(async () => {
+    try {
+      // Query real a tu tabla warehouses funcionando
+      const { data, error } = await supabase
+        .from('warehouses')
+        .select('id, name, code, is_active, location, warehouse_type')
+        .eq('is_active', true)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+
+      const warehousesData: Warehouse[] = data.map((w: any) => ({
+        id: w.id,
+        name: w.name,
+        code: w.code,
+        is_active: w.is_active,
+        location: w.location
+      }));
+
+      setWarehouses(warehousesData);
+      console.log('✅ [v6.0] Warehouses reales cargados:', warehousesData.length);
+    } catch (error: any) {
+      console.error('Error cargando warehouses reales:', error);
+      throw error;
+    }
+  }, [supabase]);
+
+  // ✅ CARGAR MOVIMIENTOS RECIENTES REALES v6.0
+  const loadRecentMovements = useCallback(async () => {
+    if (!getRecentMovements) return;
+    
+    try {
+      const movements = await getRecentMovements(8, selectedWarehouse || undefined);
+      setRecentMovements(movements);
+      console.log('✅ [v6.0] Movimientos reales cargados:', movements.length);
+    } catch (error: any) {
+      console.error('Error cargando movimientos reales:', error);
+    }
+  }, [getRecentMovements, selectedWarehouse]);
+
+  // ✅ RECARGA MOVIMIENTOS CUANDO CAMBIA WAREHOUSE
+  useEffect(() => {
+    if (hydrated) {
+      loadRecentMovements();
+    }
+  }, [selectedWarehouse, loadRecentMovements, hydrated]);
+
+  // ✅ CATEGORÍAS ÚNICAS USANDO useProductStock REAL - FILTRAR UNDEFINED
   const uniqueCategories = useMemo(() => {
-    return [...new Set(products.map(p => p.category).filter(Boolean))];
+    return [...new Set(
+      products
+        .map((p: Product) => p.category)
+        .filter((category): category is string => Boolean(category))
+    )];
   }, [products]);
 
-  // ✅ FUNCIÓN HELPER PARA FILTRAR POR ESTADO ACTIVO/INACTIVO
+  // ✅ PRODUCTOS FILTRADOS USANDO useProductStock REAL v6.0
   const getProductsByActiveStatus = useCallback((status: 'active' | 'inactive') => {
-    return products.filter(product => 
+    return products.filter((product: Product) => 
       status === 'active' ? product.is_active !== false : product.is_active === false
     );
   }, [products]);
 
-  // ✅ PRODUCTOS FILTRADOS CON PERFORMANCE OPTIMIZADA
+  // ✅ PRODUCTOS FILTRADOS USANDO useProductStock REAL v6.0
   const filteredProducts = useMemo(() => {
     let filtered = products;
 
@@ -189,7 +322,7 @@ export default function InventarioPage() {
 
     // Filtro por búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(product => 
+      filtered = filtered.filter((product: Product) => 
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -198,16 +331,21 @@ export default function InventarioPage() {
 
     // Filtro por categoría
     if (selectedCategory) {
-      filtered = filtered.filter(product => product.category === selectedCategory);
+      filtered = filtered.filter((product: Product) => product.category === selectedCategory);
     }
 
-    // Filtro por nivel de stock
-    if (selectedStockLevel) {
+    // Filtro por nivel de stock usando useProductStock real
+    if (selectedStockLevel && getProductsByStatus) {
       filtered = getProductsByStatus(selectedStockLevel);
     }
 
+    // ✅ TODO: Filtro por warehouse cuando esté implementado el stock distribuido
+    // if (selectedWarehouse) {
+    //   filtered = filtered.filter(product => product.warehouse_id === selectedWarehouse);
+    // }
+
     return filtered;
-  }, [products, selectedStatus, searchTerm, selectedCategory, selectedStockLevel, getProductsByActiveStatus, getProductsByStatus]);
+  }, [products, selectedStatus, searchTerm, selectedCategory, selectedStockLevel, selectedWarehouse, getProductsByActiveStatus, getProductsByStatus]);
 
   // ✅ PAGINACIÓN CALCULADA
   const paginatedProducts = useMemo(() => {
@@ -215,7 +353,7 @@ export default function InventarioPage() {
     return filteredProducts.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredProducts, page, rowsPerPage]);
 
-  // ✅ FUNCIONES UTILITARIAS MEMOIZADAS CON CORRECCIONES
+  // ✅ FUNCIONES UTILITARIAS MEMOIZADAS - TIPOS EXPLÍCITOS v6.0
   const utilityFunctions = useMemo(() => ({
     formatPrice: (price: number): string => {
       const numPrice = typeof price === 'number' ? price : 0;
@@ -229,14 +367,14 @@ export default function InventarioPage() {
       return formatTimestampForDisplay(dateString);
     },
     
-    getStockColor: (product: any): StockColor => {
+    getStockColor: (product: Product): StockColor => {
       if (product.current_stock === 0) return 'error';
       if (product.current_stock <= product.min_stock) return 'warning';
       if (product.max_stock && product.current_stock > product.max_stock) return 'info';
       return 'success';
     },
     
-    getStockPercentage: (product: any): number => {
+    getStockPercentage: (product: Product): number => {
       if (product.max_stock && product.max_stock > 0) {
         return Math.min((product.current_stock / product.max_stock) * 100, 100);
       }
@@ -245,7 +383,7 @@ export default function InventarioPage() {
     }
   }), []);
 
-  // ✅ HANDLERS MEMOIZADOS PARA PERFORMANCE
+  // ✅ HANDLERS MEMOIZADOS v6.0
   const memoizedHandlers = useMemo(() => ({
     search: (value: string) => {
       setSearchTerm(value);
@@ -263,39 +401,40 @@ export default function InventarioPage() {
       setSelectedStatus(value);
       setPage(0);
     },
+    warehouseFilter: (value: string) => { // ✅ NUEVO v6.0
+      setSelectedWarehouse(value);
+      setPage(0);
+    },
     clearFilters: () => {
       setSearchTerm('');
       setSelectedCategory('');
       setSelectedStockLevel('');
       setSelectedStatus('active');
+      setSelectedWarehouse(''); // ✅ NUEVO v6.0
       setPage(0);
     }
   }), []);
 
-  // ✅ CALLBACK PARA RECARGAR MOVIMIENTOS - AGREGADO
+  // ✅ CALLBACK PARA RECARGAR MOVIMIENTOS
   const reloadMovements = useCallback(async () => {
     if (!getRecentMovements) return;
     
     try {
-      setMovementsError(null);
-      const movements = await getRecentMovements(8);
+      const movements = await getRecentMovements(8, selectedWarehouse || undefined);
       setRecentMovements(movements);
       notify.info('Movimientos actualizados');
-      console.log('🔄 Movimientos recargados:', movements.length);
     } catch (error: any) {
-      setMovementsError(error.message);
       notify.error('Error recargando movimientos');
-      console.error('Error en reloadMovements:', error);
     }
-  }, [getRecentMovements]);
+  }, [getRecentMovements, selectedWarehouse]);
 
   // ✅ MANEJO DE NOTIFICACIONES
   const closeNotification = useCallback(() => {
     setNotification(prev => ({ ...prev, open: false }));
   }, []);
 
-  // ✅ MANEJO DE DIÁLOGOS
-  const openStockDialog = useCallback((product: any) => {
+  // ✅ MANEJO DE DIÁLOGOS - TIPOS EXPLÍCITOS v6.0
+  const openStockDialog = useCallback((product: Product) => {
     setSelectedProduct(product);
     setStockDialogOpen(true);
   }, []);
@@ -305,7 +444,7 @@ export default function InventarioPage() {
     setStockDialogOpen(false);
   }, []);
 
-  const openMovementDialog = useCallback((movement: any) => {
+  const openMovementDialog = useCallback((movement: Movement) => {
     setSelectedMovement(movement);
     setMovementDialogOpen(true);
   }, []);
@@ -315,18 +454,27 @@ export default function InventarioPage() {
     setMovementDialogOpen(false);
   }, []);
 
-  // ✅ CALLBACK CORREGIDO PARA INCLUIR RECARGA DE MOVIMIENTOS
+  // ✅ NUEVO: MANEJO CREAR WAREHOUSE v6.0
+  const openCreateWarehouse = useCallback(() => {
+    setCreateWarehouseOpen(true);
+  }, []);
+
+  const closeCreateWarehouse = useCallback(() => {
+    setCreateWarehouseOpen(false);
+  }, []);
+
+  // ✅ CALLBACKS SAVE CORREGIDOS - USAR reloadProducts
   const handleStockSave = useCallback(() => {
     console.log('🔄 Stock ajustado, recargando datos...');
-    reloadProducts();
-    reloadMovements(); // ✅ AGREGADO: Recargar movimientos también
+    reloadProducts(); // ✅ CORREGIDO: USAR reloadProducts
+    reloadMovements();
     closeStockDialog();
   }, [reloadProducts, reloadMovements, closeStockDialog]);
 
   const handleMovementSave = useCallback(() => {
     console.log('🔄 Movimiento registrado, recargando datos...');
-    reloadProducts();
-    reloadMovements(); // ✅ AGREGADO: Recargar movimientos también
+    reloadProducts(); // ✅ CORREGIDO: USAR reloadProducts
+    reloadMovements();
     closeMovementDialog();
   }, [reloadProducts, reloadMovements, closeMovementDialog]);
 
@@ -340,17 +488,13 @@ export default function InventarioPage() {
     setPage(0);
   }, []);
 
-  // ✅ CALLBACK RELOAD CORREGIDO PARA INCLUIR MOVIMIENTOS
+  // ✅ CALLBACK RELOAD GENERAL
   const reload = useCallback(() => {
-    reloadProducts();
-    reloadMovements(); // ✅ CORREGIDO: Agregar recarga de movimientos
-    notify.info('Recargando datos de inventario...');
-  }, [reloadProducts, reloadMovements]);
+    loadInitialData();
+    notify.info('Recargando inventario multi-almacén...');
+  }, [loadInitialData]);
 
-  // ✅ LOADING STATE CALCULADO
-  const loading = productsLoading || inventoryLoading;
-
-  // ✅ SSR SAFETY CON BRANDING MUSCLEUP v8.1 - DESPUÉS DE TODOS LOS HOOKS
+  // ✅ SSR SAFETY SIMPLIFICADO v6.0
   if (!hydrated) {
     return (
       <Box sx={{ 
@@ -364,25 +508,8 @@ export default function InventarioPage() {
       }}>
         <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
         <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-          Cargando Inventario MuscleUp...
+          Cargando Inventario Multi-Almacén...
         </Typography>
-        <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
-          Inicializando control de stock enterprise v8.1
-        </Typography>
-      </Box>
-    );
-  }
-
-  // ✅ LOADING STATE CONDICIONAL - DESPUÉS DE SSR CHECK
-  if (loading && products.length === 0) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        minHeight: '50vh'
-      }}>
-        <CircularProgress sx={{ color: colorTokens.brand }} />
       </Box>
     );
   }
@@ -421,7 +548,7 @@ export default function InventarioPage() {
         </Alert>
       </Snackbar>
 
-      {/* 📊 HEADER CON ESTADÍSTICAS ENTERPRISE */}
+      {/* 📊 HEADER CON ESTADÍSTICAS ENTERPRISE v6.0 */}
       <Paper sx={{
         p: 4,
         mb: 4,
@@ -444,18 +571,35 @@ export default function InventarioPage() {
                 mb: 1
               }}
             >
-              <InventoryIcon sx={{ fontSize: 50 }} />
-              Control de Inventario
+              <WarehouseIcon sx={{ fontSize: 50 }} />
+              Control Multi-Almacén
             </Typography>
             <Typography variant="h6" sx={{ 
               color: colorTokens.textSecondary,
               fontWeight: 300
             }}>
-              Stock | Movimientos | Auditoría Enterprise v8.1
+              Inventario | Almacenes | Movimientos | Enterprise v6.0
             </Typography>
           </Box>
           
           <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={openCreateWarehouse}
+              sx={{ 
+                color: colorTokens.brand,
+                borderColor: colorTokens.brand,
+                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600,
+                '&:hover': {
+                  borderColor: colorTokens.brandHover,
+                  backgroundColor: `${colorTokens.brand}10`
+                }
+              }}
+            >
+              Crear Almacén
+            </Button>
+            
             <Button
               variant="outlined"
               startIcon={<AssessmentIcon />}
@@ -466,18 +610,6 @@ export default function InventarioPage() {
               }}
             >
               Reportes
-            </Button>
-            
-            <Button
-              variant="outlined"
-              startIcon={<ExportIcon />}
-              sx={{ 
-                color: colorTokens.textSecondary,
-                borderColor: `${colorTokens.textSecondary}60`,
-                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
-              }}
-            >
-              Exportar
             </Button>
             
             <Button
@@ -496,7 +628,7 @@ export default function InventarioPage() {
           </Box>
         </Box>
 
-        {/* 📊 ESTADÍSTICAS CON LOADING STATE CORREGIDAS */}
+        {/* 📊 ESTADÍSTICAS v6.0 */}
         {loading && !stockStats ? (
           <Box display="flex" justifyContent="center" py={4}>
             <CircularProgress sx={{ color: colorTokens.brand }} />
@@ -516,7 +648,7 @@ export default function InventarioPage() {
                         {stockStats.total}
                       </Typography>
                       <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                        Productos en Inventario
+                        Productos Total
                       </Typography>
                     </Box>
                     <InventoryIcon sx={{ fontSize: 40, color: colorTokens.info, opacity: 0.8 }} />
@@ -534,14 +666,14 @@ export default function InventarioPage() {
                 <CardContent>
                   <Box display="flex" alignItems="center" justifyContent="space-between">
                     <Box>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.success }}>
-                        {utilityFunctions.formatPrice(inventoryValue.sale)}
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.success }}>
+                        {stockStats.total - stockStats.sinStock - stockStats.critical}
                       </Typography>
                       <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                        Valor Total del Inventario
+                        Stock Disponible
                       </Typography>
                     </Box>
-                    <TrendingUpIcon sx={{ fontSize: 40, color: colorTokens.success, opacity: 0.8 }} />
+                    <CheckCircleIcon sx={{ fontSize: 40, color: colorTokens.success, opacity: 0.8 }} />
                   </Box>
                 </CardContent>
               </Card>
@@ -560,7 +692,7 @@ export default function InventarioPage() {
                         {stockStats.critical}
                       </Typography>
                       <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                        Productos con Stock Bajo
+                        Stock Crítico
                       </Typography>
                     </Box>
                     <WarningIcon sx={{ fontSize: 40, color: colorTokens.warning, opacity: 0.8 }} />
@@ -582,7 +714,7 @@ export default function InventarioPage() {
                         {stockStats.sinStock}
                       </Typography>
                       <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                        Productos Agotados
+                        Sin Stock
                       </Typography>
                     </Box>
                     <TrendingDownIcon sx={{ fontSize: 40, color: colorTokens.danger, opacity: 0.8 }} />
@@ -594,27 +726,7 @@ export default function InventarioPage() {
         ) : null}
       </Paper>
 
-      {/* ✅ ALERTA DE STOCK CRÍTICO */}
-      {criticalProducts.length > 0 && (
-        <Alert 
-          severity="warning" 
-          sx={{ 
-            mb: 3,
-            backgroundColor: colorTokens.surfaceLevel2,
-            border: `1px solid ${colorTokens.warning}`,
-            '& .MuiAlert-icon': { color: colorTokens.warning }
-          }}
-        >
-          <Typography sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
-            Stock Crítico Detectado
-          </Typography>
-          <Typography sx={{ color: colorTokens.textSecondary }}>
-            {criticalProducts.length} productos requieren atención inmediata
-          </Typography>
-        </Alert>
-      )}
-
-      {/* 🔍 FILTROS ENTERPRISE CON HANDLERS MEMORIZADOS */}
+      {/* 🔍 FILTROS ENTERPRISE v6.0 - CON WAREHOUSE */}
       <Paper sx={{ 
         p: 3, 
         mb: 3,
@@ -623,7 +735,7 @@ export default function InventarioPage() {
         borderRadius: 3
       }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid size={{ xs: 12, md: 3 }}>
+          <Grid size={{ xs: 12, md: 2.5 }}>
             <TextField
               fullWidth
               placeholder="Buscar productos..."
@@ -650,8 +762,41 @@ export default function InventarioPage() {
               }}
             />
           </Grid>
+
+          {/* ✅ NUEVO: FILTRO POR ALMACÉN v6.0 */}
+          <Grid size={{ xs: 12, md: 1.5 }}>
+            <FormControl fullWidth>
+              <InputLabel sx={{ 
+                color: colorTokens.textSecondary,
+                '&.Mui-focused': { color: colorTokens.brand }
+              }}>
+                Almacén
+              </InputLabel>
+              <Select
+                value={selectedWarehouse}
+                label="Almacén"
+                onChange={(e) => memoizedHandlers.warehouseFilter(e.target.value as string)}
+                sx={{
+                  color: colorTokens.textPrimary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: `${colorTokens.brand}30`
+                  }
+                }}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {warehouses.filter(w => w.is_active).map((warehouse: Warehouse) => (
+                  <MenuItem key={warehouse.id} value={warehouse.id}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <StoreIcon sx={{ fontSize: 16, color: colorTokens.brand }} />
+                      {warehouse.name}
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
           
-          <Grid size={{ xs: 12, md: 2 }}>
+          <Grid size={{ xs: 12, md: 1.5 }}>
             <FormControl fullWidth>
               <InputLabel sx={{ 
                 color: colorTokens.textSecondary,
@@ -662,7 +807,7 @@ export default function InventarioPage() {
               <Select
                 value={selectedCategory}
                 label="Categoría"
-                onChange={(e) => memoizedHandlers.categoryFilter(e.target.value)}
+                onChange={(e) => memoizedHandlers.categoryFilter(e.target.value as string)}
                 sx={{
                   color: colorTokens.textPrimary,
                   '& .MuiOutlinedInput-notchedOutline': {
@@ -671,7 +816,7 @@ export default function InventarioPage() {
                 }}
               >
                 <MenuItem value="">Todas</MenuItem>
-                {uniqueCategories.map((category) => (
+                {uniqueCategories.map((category: string) => (
                   <MenuItem key={category} value={category}>
                     {category}
                   </MenuItem>
@@ -708,7 +853,7 @@ export default function InventarioPage() {
             </FormControl>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 2 }}>
+          <Grid size={{ xs: 12, md: 1.5 }}>
             <FormControl fullWidth>
               <InputLabel sx={{ 
                 color: colorTokens.textSecondary,
@@ -736,16 +881,16 @@ export default function InventarioPage() {
             </FormControl>
           </Grid>
           
-          <Grid size={{ xs: 12, md: 2 }}>
+          <Grid size={{ xs: 12, md: 1.5 }}>
             <Typography variant="body2" sx={{ 
               color: colorTokens.textSecondary, 
               textAlign: 'center' 
             }}>
-              {filteredProducts.length} de {products.length} productos
+              {filteredProducts.length} de {products.length}
             </Typography>
           </Grid>
           
-          <Grid size={{ xs: 12, md: 1 }}>
+          <Grid size={{ xs: 12, md: 1.5 }}>
             <Button
               fullWidth
               variant="outlined"
@@ -762,7 +907,7 @@ export default function InventarioPage() {
         </Grid>
       </Paper>
 
-      {/* 📋 CONTENIDO PRINCIPAL - GRID DE PRODUCTOS Y MOVIMIENTOS */}
+      {/* 📋 CONTENIDO PRINCIPAL v6.0 */}
       <Grid container spacing={3}>
         {/* 📦 LISTA DE PRODUCTOS */}
         <Grid size={{ xs: 12, lg: 8 }}>
@@ -780,6 +925,17 @@ export default function InventarioPage() {
               }}>
                 <InventoryIcon />
                 Productos en Inventario
+                {selectedWarehouse && (
+                  <Chip 
+                    label={warehouses.find(w => w.id === selectedWarehouse)?.name || 'Almacén'}
+                    size="small"
+                    sx={{
+                      backgroundColor: `${colorTokens.brand}20`,
+                      color: colorTokens.brand,
+                      ml: 1
+                    }}
+                  />
+                )}
               </Typography>
             </Box>
 
@@ -804,7 +960,7 @@ export default function InventarioPage() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {paginatedProducts.map((product) => {
+                      {paginatedProducts.map((product: Product) => {
                         const stockColor = utilityFunctions.getStockColor(product);
                         const stockPercentage = utilityFunctions.getStockPercentage(product);
                         
@@ -859,7 +1015,7 @@ export default function InventarioPage() {
                                 <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                                   Min: {product.min_stock} | Max: {product.max_stock || 'N/A'}
                                 </Typography>
-                                   {(product.reserved_stock || 0) > 0 && (
+                                {(product.reserved_stock || 0) > 0 && (
                                   <Typography variant="caption" sx={{ color: colorTokens.warning, display: 'block' }}>
                                     Reservado: {product.reserved_stock || 0}
                                   </Typography>
@@ -970,7 +1126,7 @@ export default function InventarioPage() {
           </Paper>
         </Grid>
 
-        {/* 📜 MOVIMIENTOS RECIENTES - IMPLEMENTADO Y FUNCIONANDO v8.1 */}
+        {/* 📜 MOVIMIENTOS RECIENTES v6.0 - MEJORADO */}
         <Grid size={{ xs: 12, lg: 4 }}>
           <Paper sx={{ 
             background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
@@ -988,6 +1144,17 @@ export default function InventarioPage() {
                 }}>
                   <HistoryIcon />
                   Movimientos Recientes
+                  {selectedWarehouse && (
+                    <Chip 
+                      label={warehouses.find(w => w.id === selectedWarehouse)?.code || 'ALM'}
+                      size="small"
+                      sx={{
+                        backgroundColor: `${colorTokens.info}20`,
+                        color: colorTokens.info,
+                        ml: 1
+                      }}
+                    />
+                  )}
                 </Typography>
                 <Button
                   size="small"
@@ -1009,19 +1176,6 @@ export default function InventarioPage() {
                 <Box display="flex" justifyContent="center" alignItems="center" sx={{ p: 4 }}>
                   <CircularProgress size={32} sx={{ color: colorTokens.brand }} />
                 </Box>
-              ) : movementsError ? (
-                <Box sx={{ p: 3 }}>
-                  <Alert severity="error" sx={{ backgroundColor: colorTokens.surfaceLevel1 }}>
-                    Error cargando movimientos: {movementsError}
-                  </Alert>
-                  <Button 
-                    fullWidth 
-                    onClick={reloadMovements} 
-                    sx={{ mt: 2, color: colorTokens.textSecondary }}
-                  >
-                    Reintentar
-                  </Button>
-                </Box>
               ) : recentMovements.length === 0 ? (
                 <Box sx={{ p: 4, textAlign: 'center' }}>
                   <HistoryIcon sx={{ fontSize: 48, color: colorTokens.textMuted, mb: 2 }} />
@@ -1029,34 +1183,15 @@ export default function InventarioPage() {
                     No hay movimientos recientes
                   </Typography>
                   <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
-                    Los movimientos de inventario aparecerán aquí
+                    Los movimientos aparecerán aquí
                   </Typography>
                 </Box>
               ) : (
                 <Box sx={{ p: 2 }}>
-                  {recentMovements.map((movement) => {
+                  {recentMovements.map((movement: Movement) => {
                     const isPositive = movement.quantity > 0;
                     const movementColor = isPositive ? colorTokens.success : colorTokens.danger;
                     const movementIcon = isPositive ? <TrendingUpIcon /> : <TrendingDownIcon />;
-                    
-                    // Helper para formatear tipo de movimiento
-                    const formatMovementType = (type: string): string => {
-                      const types: Record<string, string> = {
-                        'venta_directa': 'Venta Directa',
-                        'venta_apartado': 'Venta Apartado',
-                        'reserva_apartado': 'Reserva Apartado',
-                        'cancelar_reserva': 'Cancelar Reserva',
-                        'devolucion': 'Devolución',
-                        'recepcion_compra': 'Recepción Compra',
-                        'ajuste_manual_mas': 'Ajuste Manual (+)',
-                        'ajuste_manual_menos': 'Ajuste Manual (-)',
-                        'transferencia_entrada': 'Transferencia Entrada',
-                        'transferencia_salida': 'Transferencia Salida',
-                        'merma': 'Merma',
-                        'inventario_inicial': 'Inventario Inicial'
-                      };
-                      return types[type] || type;
-                    };
 
                     return (
                       <Card 
@@ -1093,14 +1228,14 @@ export default function InventarioPage() {
                                 color: colorTokens.textPrimary,
                                 fontSize: '0.875rem'
                               }}>
-                                {movement.products?.name || 'Producto no encontrado'}
+                                {movement.products?.name || 'Producto'}
                               </Typography>
                               
                               <Typography variant="caption" sx={{ 
                                 color: colorTokens.textSecondary,
                                 display: 'block'
                               }}>
-                                {formatMovementType(movement.movement_type)}
+                                {movement.movement_type?.replace('_', ' ') || 'Movimiento'}
                               </Typography>
 
                               <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
@@ -1120,24 +1255,9 @@ export default function InventarioPage() {
                                   color: colorTokens.textMuted,
                                   fontSize: '0.7rem'
                                 }}>
-                                  {formatMovementDate(movement.created_at)}
+                                  {utilityFunctions.formatDate(movement.created_at)}
                                 </Typography>
                               </Box>
-
-                              {movement.reason && (
-                                <Typography variant="caption" sx={{ 
-                                  color: colorTokens.textSecondary,
-                                  display: 'block',
-                                  mt: 0.5,
-                                  fontStyle: 'italic',
-                                  fontSize: '0.7rem'
-                                }}>
-                                  {movement.reason.length > 30 ? 
-                                    `${movement.reason.substring(0, 30)}...` : 
-                                    movement.reason
-                                  }
-                                </Typography>
-                              )}
                             </Box>
                           </Box>
                         </CardContent>
@@ -1145,7 +1265,6 @@ export default function InventarioPage() {
                     );
                   })}
 
-                  {/* Footer con enlace a ver todos */}
                   <Box sx={{ p: 2, textAlign: 'center', borderTop: `1px solid ${colorTokens.border}` }}>
                     <Button
                       size="small"
@@ -1153,9 +1272,7 @@ export default function InventarioPage() {
                         color: colorTokens.textSecondary,
                         fontSize: '0.75rem'
                       }}
-                      onClick={() => {
-                        notify.info('Funcionalidad próximamente disponible');
-                      }}
+                      onClick={() => notify.info('Ver todos - próximamente')}
                     >
                       Ver todos los movimientos
                     </Button>
@@ -1167,7 +1284,59 @@ export default function InventarioPage() {
         </Grid>
       </Grid>
 
-      {/* 📝 DIALOGS */}
+      {/* ✅ NUEVO: MODAL CREAR ALMACÉN v6.0 */}
+      <Dialog
+        open={createWarehouseOpen}
+        onClose={closeCreateWarehouse}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+            border: `2px solid ${colorTokens.brand}30`,
+            borderRadius: 4
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          color: colorTokens.textPrimary
+        }}>
+          <BusinessIcon sx={{ color: colorTokens.brand }} />
+          Crear Nuevo Almacén
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 3 }}>
+            Esta funcionalidad estará disponible próximamente en la versión completa del sistema multi-almacén.
+          </Typography>
+          <Alert severity="info" sx={{ 
+            backgroundColor: `${colorTokens.info}10`,
+            border: `1px solid ${colorTokens.info}30`,
+            color: colorTokens.textPrimary
+          }}>
+            Por ahora, los almacenes se gestionan directamente en la base de datos. 
+            La interfaz completa de gestión de almacenes estará disponible en la próxima actualización.
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            onClick={closeCreateWarehouse}
+            variant="contained"
+            sx={{
+              background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+              color: colorTokens.textOnBrand,
+              fontWeight: 700,
+              px: 4, py: 1.5, borderRadius: 3
+            }}
+          >
+            Entendido
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 📝 DIALOGS EXISTENTES */}
       <ProductStockDialog
         open={stockDialogOpen}
         onClose={closeStockDialog}
