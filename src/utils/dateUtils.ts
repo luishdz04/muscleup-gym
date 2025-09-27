@@ -293,3 +293,42 @@ export const extractDateInMexico = (timestamp: string): string => {
     return '';
   }
 };
+
+
+// ✅ UTILIDADES ESPECÍFICAS PARA INVENTARIO v8.0
+export const formatMovementDate = (timestamp: string): string => {
+  try {
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('es-MX', {
+      timeZone: MEXICO_TIMEZONE,
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(date);
+  } catch {
+    return 'Fecha inválida';
+  }
+};
+
+export const getInventoryPeriod = (days: number = 30): { start: string; end: string } => {
+  const end = new Date();
+  const start = new Date(end.getTime() - (days * 24 * 60 * 60 * 1000));
+  
+  return {
+    start: start.toISOString(),
+    end: end.toISOString()
+  };
+};
+
+export const isRecentMovement = (timestamp: string, hoursThreshold: number = 24): boolean => {
+  try {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    return diffHours <= hoursThreshold;
+  } catch {
+    return false;
+  }
+};

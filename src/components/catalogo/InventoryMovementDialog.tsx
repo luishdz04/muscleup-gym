@@ -1,7 +1,7 @@
-// 📁 src/app/dashboard/admin/catalogo/inventario/components/InventoryMovementDialog.tsx
+// 📁 src/components/catalogo/InventoryMovementDialog.tsx - CORREGIDO VISTA v8.1
 'use client';
 
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -23,7 +23,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  CircularProgress
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -40,48 +40,64 @@ import {
   Description as NotesIcon,
   Info as InfoIcon,
   CheckCircle as SuccessIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  LocalShipping as ShippingIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon
 } from '@mui/icons-material';
 
-// 🎯 IMPORTACIONES CON TIPADO FUERTE CORREGIDO
-import { InventoryMovement } from '@/services/catalogService';
+// ✅ IMPORTS ENTERPRISE v8.1 CORREGIDOS
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { 
+  formatTimestampForDisplay,
+  formatMovementDate 
+} from '@/utils/dateUtils';
 
-// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-} as const;
+// ✅ TIPOS ENTERPRISE v8.1 CON CORRECCIONES
+type MovementType = 
+  | 'venta_directa' | 'venta_apartado' | 'reserva_apartado' | 'cancelar_reserva'
+  | 'devolucion' | 'recepcion_compra' | 'ajuste_manual_mas' | 'ajuste_manual_menos'
+  | 'transferencia_entrada' | 'transferencia_salida' | 'merma' | 'inventario_inicial';
 
-// 🎯 TIPOS MEJORADOS CON TIPADO FUERTE
-type MovementType = 'entrada' | 'salida' | 'ajuste' | 'transferencia';
 type AlertSeverity = 'error' | 'warning' | 'info' | 'success';
+
+// ✅ INTERFACE CORREGIDA CON USUARIO EXPANDIDO
+interface InventoryMovement {
+  id: string;
+  product_id: string;
+  movement_type: MovementType;
+  quantity: number;
+  previous_stock: number;
+  new_stock: number;
+  unit_cost: number;
+  total_cost: number;
+  reason?: string;
+  reference_id?: string;
+  notes?: string;
+  created_at: string;
+  created_by?: string;
+  // ✅ RELACIÓN CON PRODUCTS CORREGIDA
+  products?: {
+    id: string;
+    name: string;
+    sku?: string;
+    category?: string;
+    current_stock: number;
+    reserved_stock?: number; // ✅ AGREGADO RESERVED_STOCK
+    min_stock: number;
+    max_stock?: number;
+    unit?: string;
+    location?: string;
+  };
+  // ✅ RELACIÓN CON USERS AGREGADA
+  Users?: {
+    id: string;
+    firstName: string;
+    lastName?: string;
+    email?: string;
+  };
+}
 
 interface MovementConfig {
   label: string;
@@ -90,6 +106,7 @@ interface MovementConfig {
   bgColor: string;
   borderColor: string;
   description: string;
+  group: 'sale' | 'inventory' | 'transfer' | 'adjustment';
 }
 
 interface StockStatus {
@@ -98,43 +115,122 @@ interface StockStatus {
   icon: React.ReactElement;
 }
 
-// 🎯 CONFIGURACIÓN DE TIPOS DE MOVIMIENTO CON TIPADO FUERTE
+// ✅ CONFIGURACIÓN DE TIPOS DE MOVIMIENTO (sin cambios)
 const MOVEMENT_CONFIG: Record<MovementType, MovementConfig> = {
-  entrada: {
-    label: 'Entrada de Stock',
-    icon: <EntradaIcon />,
-    color: darkProTokens.success,
-    bgColor: `${darkProTokens.success}10`,
-    borderColor: `${darkProTokens.success}30`,
-    description: 'Incremento de inventario'
+  // GRUPO: VENTAS Y APARTADOS
+  venta_directa: {
+    label: 'Venta Directa',
+    icon: <RemoveIcon />,
+    color: colorTokens.danger,
+    bgColor: `${colorTokens.danger}10`,
+    borderColor: `${colorTokens.danger}30`,
+    description: 'Salida por venta en punto de venta',
+    group: 'sale'
   },
-  salida: {
-    label: 'Salida de Stock',
-    icon: <SalidaIcon />,
-    color: darkProTokens.error,
-    bgColor: `${darkProTokens.error}10`,
-    borderColor: `${darkProTokens.error}30`,
-    description: 'Reducción de inventario'
+  venta_apartado: {
+    label: 'Venta Apartado',
+    icon: <RemoveIcon />,
+    color: colorTokens.danger,
+    bgColor: `${colorTokens.danger}10`,
+    borderColor: `${colorTokens.danger}30`,
+    description: 'Salida final al completar apartado',
+    group: 'sale'
   },
-  ajuste: {
-    label: 'Ajuste de Inventario',
+  reserva_apartado: {
+    label: 'Reserva Apartado',
+    icon: <HistoryIcon />,
+    color: colorTokens.warning,
+    bgColor: `${colorTokens.warning}10`,
+    borderColor: `${colorTokens.warning}30`,
+    description: 'Reserva stock para apartado',
+    group: 'sale'
+  },
+  cancelar_reserva: {
+    label: 'Cancelar Reserva',
+    icon: <HistoryIcon />,
+    color: colorTokens.info,
+    bgColor: `${colorTokens.info}10`,
+    borderColor: `${colorTokens.info}30`,
+    description: 'Cancelar reserva de apartado',
+    group: 'sale'
+  },
+  // GRUPO: INVENTARIO
+  devolucion: {
+    label: 'Devolución Cliente',
+    icon: <AddIcon />,
+    color: colorTokens.success,
+    bgColor: `${colorTokens.success}10`,
+    borderColor: `${colorTokens.success}30`,
+    description: 'Entrada por devolución de cliente',
+    group: 'inventory'
+  },
+  recepcion_compra: {
+    label: 'Recepción Compra',
+    icon: <ShippingIcon />,
+    color: colorTokens.success,
+    bgColor: `${colorTokens.success}10`,
+    borderColor: `${colorTokens.success}30`,
+    description: 'Entrada por orden de compra',
+    group: 'inventory'
+  },
+  merma: {
+    label: 'Merma/Producto Dañado',
+    icon: <WarningIcon />,
+    color: colorTokens.danger,
+    bgColor: `${colorTokens.danger}10`,
+    borderColor: `${colorTokens.danger}30`,
+    description: 'Salida por producto dañado/vencido',
+    group: 'inventory'
+  },
+  inventario_inicial: {
+    label: 'Inventario Inicial',
+    icon: <ProductIcon />,
+    color: colorTokens.info,
+    bgColor: `${colorTokens.info}10`,
+    borderColor: `${colorTokens.info}30`,
+    description: 'Carga inicial de inventario',
+    group: 'inventory'
+  },
+  // GRUPO: AJUSTES
+  ajuste_manual_mas: {
+    label: 'Ajuste Manual (+)',
     icon: <AjusteIcon />,
-    color: darkProTokens.warning,
-    bgColor: `${darkProTokens.warning}10`,
-    borderColor: `${darkProTokens.warning}30`,
-    description: 'Corrección de stock'
+    color: colorTokens.success,
+    bgColor: `${colorTokens.success}10`,
+    borderColor: `${colorTokens.success}30`,
+    description: 'Incremento manual por inventario físico',
+    group: 'adjustment'
   },
-  transferencia: {
-    label: 'Transferencia',
+  ajuste_manual_menos: {
+    label: 'Ajuste Manual (-)',
+    icon: <AjusteIcon />,
+    color: colorTokens.danger,
+    bgColor: `${colorTokens.danger}10`,
+    borderColor: `${colorTokens.danger}30`,
+    description: 'Reducción manual por inventario físico',
+    group: 'adjustment'
+  },
+  // GRUPO: TRANSFERENCIAS
+  transferencia_entrada: {
+    label: 'Transferencia Entrada',
     icon: <TransferenciaIcon />,
-    color: darkProTokens.info,
-    bgColor: `${darkProTokens.info}10`,
-    borderColor: `${darkProTokens.info}30`,
-    description: 'Movimiento entre ubicaciones'
+    color: colorTokens.success,
+    bgColor: `${colorTokens.success}10`,
+    borderColor: `${colorTokens.success}30`,
+    description: 'Entrada por transferencia',
+    group: 'transfer'
+  },
+  transferencia_salida: {
+    label: 'Transferencia Salida',
+    icon: <TransferenciaIcon />,
+    color: colorTokens.warning,
+    bgColor: `${colorTokens.warning}10`,
+    borderColor: `${colorTokens.warning}30`,
+    description: 'Salida por transferencia',
+    group: 'transfer'
   }
 } as const;
 
-// ✅ INTERFACE MEJORADA CON TIPADO FUERTE
 interface InventoryMovementDialogProps {
   open: boolean;
   onClose: () => void;
@@ -146,101 +242,165 @@ export default function InventoryMovementDialog({
   onClose,
   movement
 }: InventoryMovementDialogProps) {
+  // ✅ HOOKS AL INICIO
+  const hydrated = useHydrated();
 
-  // ✅ EARLY RETURN CON VALIDACIÓN DE TIPO
-  if (!movement) return null;
-
-  // 🎯 OBTENER CONFIGURACIÓN DEL MOVIMIENTO CON TIPADO SEGURO
-  const config: MovementConfig = MOVEMENT_CONFIG[movement.movement_type] || MOVEMENT_CONFIG.entrada;
-
-  // 🎯 FUNCIONES UTILITARIAS CON VALIDACIONES DE UNDEFINED
-  const formatDate = (dateString: string | undefined): string => {
-    if (!dateString) return 'Fecha no disponible';
-    return new Date(dateString).toLocaleString('es-MX', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZoneName: 'short'
-    });
-  };
-
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  };
-
-  // ✅ FUNCIÓN CON VALIDACIÓN DE UNDEFINED
-  const getStockDifference = (): number => {
-    // Validar que ambos valores existan y sean números
-    const newStock = movement.new_stock ?? 0;
-    const previousStock = movement.previous_stock ?? 0;
-    return newStock - previousStock;
-  };
-
-  const getDifferenceColor = (): string => {
-    const diff = getStockDifference();
-    if (diff > 0) return darkProTokens.success;
-    if (diff < 0) return darkProTokens.error;
-    return darkProTokens.textSecondary;
-  };
-
-  const getTotalCost = (): number => {
-    return Math.abs(movement.quantity) * (movement.unit_cost || 0);
-  };
-
-  // ✅ FUNCIÓN CON VALIDACIONES COMPLETAS
-  const getStockStatus = (): StockStatus | null => {
-    const product = movement.products;
-    if (!product) return null;
-
-    const newStock = movement.new_stock ?? 0;
-
-    if (newStock === 0) {
-      return { 
-        status: 'error', 
-        message: 'Stock agotado', 
-        icon: <WarningIcon /> 
-      };
-    }
-    
-    if (newStock <= product.min_stock) {
-      return { 
-        status: 'warning', 
-        message: 'Stock por debajo del mínimo', 
-        icon: <WarningIcon /> 
-      };
-    }
-    
-    if (product.max_stock && newStock > product.max_stock) {
-      return { 
-        status: 'info', 
-        message: 'Stock por encima del máximo', 
-        icon: <InfoIcon /> 
-      };
-    }
-    
-    return { 
-      status: 'success', 
-      message: 'Stock en nivel normal', 
-      icon: <SuccessIcon /> 
+  // ✅ CÁLCULOS MEMOIZADOS CORREGIDOS
+  const { config, stockStatus, formattedValues, stockInfo, userInfo } = useMemo(() => {
+    if (!movement) return {
+      config: MOVEMENT_CONFIG.inventario_inicial,
+      stockStatus: null,
+      formattedValues: {
+        date: 'Sin fecha',
+        dateShort: 'Sin fecha',
+        totalCost: '$0.00',
+        unitCost: '$0.00'
+      },
+      stockInfo: {
+        currentStock: 0,
+        reservedStock: 0,
+        availableStock: 0
+      },
+      userInfo: {
+        displayName: 'Sistema automático',
+        email: null
+      }
     };
-  };
 
-  // ✅ VALORES SEGUROS CON DEFAULTS
-  const safeValues = {
-    newStock: movement.new_stock ?? 0,
-    previousStock: movement.previous_stock ?? 0,
-    createdAt: movement.created_at || new Date().toISOString(),
-    createdBy: movement.created_by || 'Sistema',
-    referenceId: movement.reference_id || null
-  };
+    const movementConfig = MOVEMENT_CONFIG[movement.movement_type] || MOVEMENT_CONFIG.inventario_inicial;
+    
+    // ✅ CÁLCULO CORRECTO DE STOCK DISPONIBLE
+    const currentStock = movement.products?.current_stock || 0;
+    const reservedStock = movement.products?.reserved_stock || 0;
+    const availableStock = Math.max(0, currentStock - reservedStock);
+    
+    const stockInfo = {
+      currentStock,
+      reservedStock,
+      availableStock
+    };
 
-  const stockStatus = getStockStatus();
+    // ✅ INFORMACIÓN DEL USUARIO CORREGIDA
+    const userInfo = {
+      displayName: movement.Users?.firstName 
+        ? `${movement.Users.firstName}${movement.Users.lastName ? ` ${movement.Users.lastName}` : ''}`
+        : movement.created_by 
+        ? `Usuario ID: ${movement.created_by.substring(0, 8)}...`
+        : 'Sistema automático',
+      email: movement.Users?.email || null
+    };
+    
+    // ✅ CÁLCULO DE ESTADO DEL STOCK USANDO AVAILABLE_STOCK
+    let status: StockStatus | null = null;
+    if (movement.products) {
+      const newStock = movement.new_stock;
+      
+      if (availableStock === 0) {
+        status = { 
+          status: 'error', 
+          message: 'Stock agotado - sin disponibles', 
+          icon: <WarningIcon /> 
+        };
+      } else if (availableStock <= movement.products.min_stock) {
+        status = { 
+          status: 'warning', 
+          message: 'Stock disponible por debajo del mínimo', 
+          icon: <WarningIcon /> 
+        };
+      } else if (movement.products.max_stock && currentStock > movement.products.max_stock) {
+        status = { 
+          status: 'info', 
+          message: 'Stock total por encima del máximo', 
+          icon: <InfoIcon /> 
+        };
+      } else {
+        status = { 
+          status: 'success', 
+          message: 'Stock disponible en nivel normal', 
+          icon: <SuccessIcon /> 
+        };
+      }
+    }
+
+    // Formateo de valores
+    const formatted = {
+      date: formatTimestampForDisplay(movement.created_at),
+      dateShort: formatMovementDate(movement.created_at),
+      totalCost: new Intl.NumberFormat('es-MX', {
+        style: 'currency',
+        currency: 'MXN'
+      }).format(movement.total_cost || 0),
+      unitCost: new Intl.NumberFormat('es-MX', {
+        style: 'currency',
+        currency: 'MXN'
+      }).format(movement.unit_cost || 0)
+    };
+
+    return {
+      config: movementConfig,
+      stockStatus: status,
+      formattedValues: formatted,
+      stockInfo,
+      userInfo
+    };
+  }, [movement]);
+
+  // ✅ HELPERS PARA CÁLCULOS (sin cambios)
+  const getStockDifference = useCallback((): number => {
+    if (!movement) return 0;
+    return movement.new_stock - movement.previous_stock;
+  }, [movement]);
+
+  const getDifferenceColor = useCallback((): string => {
+    const diff = getStockDifference();
+    if (diff > 0) return colorTokens.success;
+    if (diff < 0) return colorTokens.danger;
+    return colorTokens.textSecondary;
+  }, [getStockDifference]);
+
+  const getQuantityDisplay = useCallback((): string => {
+    if (!movement) return '0';
+    
+    const diff = getStockDifference();
+    
+    if (['ajuste_manual_mas', 'ajuste_manual_menos'].includes(movement.movement_type)) {
+      return `${diff > 0 ? '+' : ''}${diff}`;
+    }
+    
+    if (['venta_directa', 'venta_apartado', 'merma', 'transferencia_salida'].includes(movement.movement_type)) {
+      return `-${Math.abs(movement.quantity)}`;
+    }
+    
+    return `+${Math.abs(movement.quantity)}`;
+  }, [movement, getStockDifference]);
+
+  // ✅ SSR SAFETY
+  if (!hydrated) {
+    return (
+      <Dialog open={open} maxWidth="md" fullWidth>
+        <DialogContent>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            minHeight: '300px',
+            flexDirection: 'column',
+            gap: 2
+          }}>
+            <CircularProgress size={50} sx={{ color: colorTokens.brand }} />
+            <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+              Cargando Movimiento...
+            </Typography>
+            <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
+              Inicializando auditoría de inventario
+            </Typography>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!movement) return null;
 
   return (
     <Dialog
@@ -250,16 +410,16 @@ export default function InventoryMovementDialog({
       fullWidth
       PaperProps={{
         sx: {
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${darkProTokens.primary}30`,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `2px solid ${colorTokens.brand}30`,
           borderRadius: 4,
-          color: darkProTokens.textPrimary
+          color: colorTokens.textPrimary
         }
       }}
     >
       <DialogTitle sx={{ 
         background: `linear-gradient(135deg, ${config.bgColor}, ${config.borderColor})`,
-        borderBottom: `1px solid ${config.borderColor}`,
+        borderBottom: `1px solid ${colorTokens.border}`,
         display: 'flex',
         alignItems: 'center',
         gap: 2
@@ -276,37 +436,37 @@ export default function InventoryMovementDialog({
           <Typography variant="h6" fontWeight="bold" sx={{ color: config.color }}>
             {config.label}
           </Typography>
-          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-            Movimiento #{movement.id} • {formatDate(safeValues.createdAt)}
+          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+            Movimiento #{movement.id.substring(0, 8)}... • {formattedValues.dateShort}
           </Typography>
         </Box>
       </DialogTitle>
 
       <DialogContent sx={{ p: 4 }}>
         <Grid container spacing={3}>
-          {/* 📦 INFORMACIÓN DEL PRODUCTO */}
+          {/* 📦 INFORMACIÓN DEL PRODUCTO - CORREGIDA */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.textPrimary, 
+                  color: colorTokens.textPrimary, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1
                 }}>
-                  <ProductIcon sx={{ color: darkProTokens.primary }} />
+                  <ProductIcon sx={{ color: colorTokens.brand }} />
                   Información del Producto
                 </Typography>
                 
                 <Box display="flex" alignItems="center" gap={3}>
                   <Avatar sx={{ 
-                    backgroundColor: `${darkProTokens.primary}20`,
-                    color: darkProTokens.primary,
+                    backgroundColor: `${colorTokens.brand}20`,
+                    color: colorTokens.brand,
                     width: 64,
                     height: 64,
                     fontSize: '1.5rem',
@@ -316,31 +476,62 @@ export default function InventoryMovementDialog({
                   </Avatar>
                   
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                    <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
                       {movement.products?.name || 'Producto no encontrado'}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                    <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                       SKU: {movement.products?.sku || 'Sin SKU'} | 
                       Categoría: {movement.products?.category || 'Sin categoría'}
                     </Typography>
-                    <Box display="flex" gap={1} mt={1}>
+                    <Box display="flex" gap={1} mt={1} flexWrap="wrap">
+                      {/* ✅ CHIPS CORREGIDOS CON STOCK REAL */}
                       <Chip 
-                        label={`${movement.products?.current_stock || 0} ${movement.products?.unit || 'piezas'} disponibles`}
+                        label={`${stockInfo.availableStock} ${movement.products?.unit || 'u'} disponibles`}
                         size="small"
                         sx={{
-                          backgroundColor: `${darkProTokens.info}20`,
-                          color: darkProTokens.info,
-                          border: `1px solid ${darkProTokens.info}30`
+                          backgroundColor: stockInfo.availableStock > 0 
+                            ? `${colorTokens.success}20` 
+                            : `${colorTokens.danger}20`,
+                          color: stockInfo.availableStock > 0 
+                            ? colorTokens.success 
+                            : colorTokens.danger,
+                          border: `1px solid ${stockInfo.availableStock > 0 
+                            ? colorTokens.success 
+                            : colorTokens.danger}30`,
+                          fontWeight: 'bold'
                         }}
                       />
+                      
+                      <Chip 
+                        label={`${stockInfo.currentStock} total en stock`}
+                        size="small"
+                        sx={{
+                          backgroundColor: `${colorTokens.info}20`,
+                          color: colorTokens.info,
+                          border: `1px solid ${colorTokens.info}30`
+                        }}
+                      />
+                      
+                      {stockInfo.reservedStock > 0 && (
+                        <Chip 
+                          label={`${stockInfo.reservedStock} reservados`}
+                          size="small"
+                          sx={{
+                            backgroundColor: `${colorTokens.warning}20`,
+                            color: colorTokens.warning,
+                            border: `1px solid ${colorTokens.warning}30`
+                          }}
+                        />
+                      )}
+                      
                       {movement.products?.location && (
                         <Chip 
                           label={`Ubicación: ${movement.products.location}`}
                           size="small"
                           sx={{
-                            backgroundColor: `${darkProTokens.textSecondary}20`,
-                            color: darkProTokens.textSecondary,
-                            border: `1px solid ${darkProTokens.textSecondary}30`
+                            backgroundColor: `${colorTokens.textSecondary}20`,
+                            color: colorTokens.textSecondary,
+                            border: `1px solid ${colorTokens.textSecondary}30`
                           }}
                         />
                       )}
@@ -351,7 +542,7 @@ export default function InventoryMovementDialog({
             </Card>
           </Grid>
 
-          {/* 📊 DETALLES DEL MOVIMIENTO */}
+          {/* 📊 DETALLES DEL MOVIMIENTO - MANTENER IGUAL */}
           <Grid size={{ xs: 12, md: 8 }}>
             <Card sx={{ 
               background: config.bgColor, 
@@ -373,16 +564,13 @@ export default function InventoryMovementDialog({
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <Box sx={{ p: 2, textAlign: 'center' }}>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                         Cantidad
                       </Typography>
                       <Typography variant="h4" fontWeight="bold" sx={{ color: config.color }}>
-                        {movement.movement_type === 'ajuste' ? 
-                          `${getStockDifference() > 0 ? '+' : ''}${getStockDifference()}` :
-                          `${movement.movement_type === 'entrada' ? '+' : '-'}${Math.abs(movement.quantity)}`
-                        }
+                        {getQuantityDisplay()}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                         {movement.products?.unit || 'unidades'}
                       </Typography>
                     </Box>
@@ -390,13 +578,13 @@ export default function InventoryMovementDialog({
 
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <Box sx={{ p: 2, textAlign: 'center' }}>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                         Costo Unitario
                       </Typography>
-                      <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
-                        {formatPrice(movement.unit_cost || 0)}
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.brand }}>
+                        {formattedValues.unitCost}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                         por {movement.products?.unit || 'unidad'}
                       </Typography>
                     </Box>
@@ -407,7 +595,7 @@ export default function InventoryMovementDialog({
                     <Box display="flex" justifyContent="center" alignItems="center" sx={{ p: 1 }}>
                       <MoneyIcon sx={{ color: config.color, mr: 1 }} />
                       <Typography variant="h6" fontWeight="bold" sx={{ color: config.color }}>
-                        Costo Total: {formatPrice(getTotalCost())}
+                        Costo Total: {formattedValues.totalCost}
                       </Typography>
                     </Box>
                   </Grid>
@@ -415,14 +603,14 @@ export default function InventoryMovementDialog({
                   <Grid size={{ xs: 12 }}>
                     <Box sx={{ 
                       p: 2, 
-                      background: `${darkProTokens.textSecondary}10`,
+                      background: `${colorTokens.textSecondary}10`,
                       borderRadius: 2,
-                      border: `1px solid ${darkProTokens.textSecondary}30`
+                      border: `1px solid ${colorTokens.textSecondary}30`
                     }}>
-                      <Typography variant="subtitle2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 1 }}>
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 1 }}>
                         Razón del Movimiento:
                       </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                         {movement.reason || 'Sin razón especificada'}
                       </Typography>
                     </Box>
@@ -432,12 +620,12 @@ export default function InventoryMovementDialog({
                     <Grid size={{ xs: 12 }}>
                       <Box sx={{ 
                         p: 2, 
-                        background: `${darkProTokens.info}10`,
+                        background: `${colorTokens.info}10`,
                         borderRadius: 2,
-                        border: `1px solid ${darkProTokens.info}30`
+                        border: `1px solid ${colorTokens.info}30`
                       }}>
                         <Typography variant="subtitle2" fontWeight="bold" sx={{ 
-                          color: darkProTokens.info, 
+                          color: colorTokens.info, 
                           mb: 1,
                           display: 'flex',
                           alignItems: 'center',
@@ -446,7 +634,7 @@ export default function InventoryMovementDialog({
                           <NotesIcon />
                           Notas Adicionales:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           {movement.notes}
                         </Typography>
                       </Box>
@@ -457,34 +645,34 @@ export default function InventoryMovementDialog({
             </Card>
           </Grid>
 
-          {/* 📈 CAMBIO DE STOCK CON VALIDACIONES */}
+          {/* 📈 CAMBIO DE STOCK - MANTENER IGUAL */}
           <Grid size={{ xs: 12, md: 4 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.textPrimary, 
+                  color: colorTokens.textPrimary, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1
                 }}>
-                  <HistoryIcon sx={{ color: darkProTokens.primary }} />
+                  <HistoryIcon sx={{ color: colorTokens.brand }} />
                   Cambio de Stock
                 </Typography>
                 
                 <Box display="flex" flexDirection="column" gap={2}>
                   <Box textAlign="center" sx={{ p: 2 }}>
-                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                       Stock Anterior
                     </Typography>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-                      {safeValues.previousStock}
+                    <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
+                      {movement.previous_stock}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                       {movement.products?.unit || 'unidades'}
                     </Typography>
                   </Box>
@@ -499,25 +687,25 @@ export default function InventoryMovementDialog({
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
-                      {getStockDifference() > 0 ? <EntradaIcon /> : 
-                       getStockDifference() < 0 ? <SalidaIcon /> : 
-                       <AjusteIcon />}
+                      {getStockDifference() > 0 ? <EntradaIcon sx={{ color: colorTokens.textOnBrand }} /> : 
+                       getStockDifference() < 0 ? <SalidaIcon sx={{ color: colorTokens.textOnBrand }} /> : 
+                       <AjusteIcon sx={{ color: colorTokens.textOnBrand }} />}
                     </Box>
                   </Box>
 
                   <Box textAlign="center" sx={{ p: 2 }}>
-                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                       Stock Nuevo
                     </Typography>
                     <Typography variant="h4" fontWeight="bold" sx={{ color: getDifferenceColor() }}>
-                      {safeValues.newStock}
+                      {movement.new_stock}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                       {movement.products?.unit || 'unidades'}
                     </Typography>
                   </Box>
 
-                  <Divider sx={{ backgroundColor: `${darkProTokens.grayDark}60` }} />
+                  <Divider sx={{ backgroundColor: `${colorTokens.border}` }} />
 
                   <Box textAlign="center" sx={{ p: 1 }}>
                     <Typography variant="subtitle2" fontWeight="bold" sx={{ color: getDifferenceColor() }}>
@@ -529,61 +717,61 @@ export default function InventoryMovementDialog({
             </Card>
           </Grid>
 
-          {/* ⚠️ ALERTA DE ESTADO DEL STOCK */}
+          {/* ⚠️ ALERTA DE ESTADO DEL STOCK - CORREGIDA */}
           {stockStatus && (
             <Grid size={{ xs: 12 }}>
               <Alert 
                 severity={stockStatus.status}
                 icon={stockStatus.icon}
                 sx={{
-                  background: stockStatus.status === 'error' ? `${darkProTokens.error}20` :
-                             stockStatus.status === 'warning' ? `${darkProTokens.warning}20` :
-                             stockStatus.status === 'info' ? `${darkProTokens.info}20` :
-                             `${darkProTokens.success}20`,
+                  background: stockStatus.status === 'error' ? `${colorTokens.danger}20` :
+                             stockStatus.status === 'warning' ? `${colorTokens.warning}20` :
+                             stockStatus.status === 'info' ? `${colorTokens.info}20` :
+                             `${colorTokens.success}20`,
                   border: `1px solid ${
-                    stockStatus.status === 'error' ? darkProTokens.error :
-                    stockStatus.status === 'warning' ? darkProTokens.warning :
-                    stockStatus.status === 'info' ? darkProTokens.info :
-                    darkProTokens.success
+                    stockStatus.status === 'error' ? colorTokens.danger :
+                    stockStatus.status === 'warning' ? colorTokens.warning :
+                    stockStatus.status === 'info' ? colorTokens.info :
+                    colorTokens.success
                   }30`,
-                  color: darkProTokens.textPrimary,
+                  color: colorTokens.textPrimary,
                   '& .MuiAlert-icon': {
-                    color: stockStatus.status === 'error' ? darkProTokens.error :
-                           stockStatus.status === 'warning' ? darkProTokens.warning :
-                           stockStatus.status === 'info' ? darkProTokens.info :
-                           darkProTokens.success
+                    color: stockStatus.status === 'error' ? colorTokens.danger :
+                           stockStatus.status === 'warning' ? colorTokens.warning :
+                           stockStatus.status === 'info' ? colorTokens.info :
+                           colorTokens.success
                   }
                 }}
               >
                 <Typography variant="body2" fontWeight="bold">
-                  Estado del Stock: {stockStatus.message}
+                  {stockStatus.message}
                 </Typography>
-                {movement.products && (
-                  <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                    Stock mínimo: {movement.products.min_stock} | 
-                    Stock máximo: {movement.products.max_stock || 'No definido'}
-                  </Typography>
-                )}
+                <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                  Stock total: {stockInfo.currentStock} | 
+                  Disponible: {stockInfo.availableStock} | 
+                  Reservado: {stockInfo.reservedStock} |
+                  Mínimo: {movement.products?.min_stock || 0}
+                </Typography>
               </Alert>
             </Grid>
           )}
 
-          {/* 👤 INFORMACIÓN DE AUDITORÍA CON VALIDACIONES */}
+          {/* 👤 INFORMACIÓN DE AUDITORÍA - CORREGIDA */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.textPrimary, 
+                  color: colorTokens.textPrimary, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1
                 }}>
-                  <PersonIcon sx={{ color: darkProTokens.primary }} />
+                  <PersonIcon sx={{ color: colorTokens.brand }} />
                   Información de Auditoría
                 </Typography>
                 
@@ -591,37 +779,47 @@ export default function InventoryMovementDialog({
                   <Table size="small">
                     <TableBody>
                       <TableRow>
-                        <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                        <TableCell sx={{ color: colorTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
                           ID del Movimiento:
                         </TableCell>
-                        <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
-                          #{movement.id}
+                        <TableCell sx={{ color: colorTokens.textPrimary, border: 'none' }}>
+                          #{movement.id.substring(0, 8)}...
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                        <TableCell sx={{ color: colorTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
                           Usuario:
                         </TableCell>
-                        <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
-                          {safeValues.createdBy}
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
-                          Fecha y Hora:
-                        </TableCell>
-                        <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <TimeIcon sx={{ color: darkProTokens.info, fontSize: 16 }} />
-                            {formatDate(safeValues.createdAt)}
+                        <TableCell sx={{ color: colorTokens.textPrimary, border: 'none' }}>
+                          {/* ✅ DISPLAY CORREGIDO DEL USUARIO */}
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              {userInfo.displayName}
+                            </Typography>
+                            {userInfo.email && (
+                              <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                                {userInfo.email}
+                              </Typography>
+                            )}
                           </Box>
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                        <TableCell sx={{ color: colorTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                          Fecha y Hora:
+                        </TableCell>
+                        <TableCell sx={{ color: colorTokens.textPrimary, border: 'none' }}>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <TimeIcon sx={{ color: colorTokens.info, fontSize: 16 }} />
+                            {formattedValues.date}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ color: colorTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
                           Tipo de Operación:
                         </TableCell>
-                        <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
+                        <TableCell sx={{ color: colorTokens.textPrimary, border: 'none' }}>
                           <Chip
                             icon={config.icon}
                             label={config.label}
@@ -635,14 +833,32 @@ export default function InventoryMovementDialog({
                           />
                         </TableCell>
                       </TableRow>
-                      {/* ✅ CAMPO REFERENCE_ID CON VALIDACIÓN */}
-                      {safeValues.referenceId && (
+                      <TableRow>
+                        <TableCell sx={{ color: colorTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                          Grupo:
+                        </TableCell>
+                        <TableCell sx={{ color: colorTokens.textPrimary, border: 'none' }}>
+                          <Chip
+                            label={config.group === 'sale' ? 'Ventas' :
+                                  config.group === 'inventory' ? 'Inventario' :
+                                  config.group === 'transfer' ? 'Transferencias' :
+                                  'Ajustes'}
+                            size="small"
+                            sx={{
+                              backgroundColor: `${colorTokens.textSecondary}20`,
+                              color: colorTokens.textSecondary,
+                              border: `1px solid ${colorTokens.textSecondary}30`
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                      {movement.reference_id && (
                         <TableRow>
-                          <TableCell sx={{ color: darkProTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
+                          <TableCell sx={{ color: colorTokens.textSecondary, fontWeight: 'bold', border: 'none' }}>
                             Referencia:
                           </TableCell>
-                          <TableCell sx={{ color: darkProTokens.textPrimary, border: 'none' }}>
-                            {safeValues.referenceId}
+                          <TableCell sx={{ color: colorTokens.textPrimary, border: 'none' }}>
+                            {movement.reference_id}
                           </TableCell>
                         </TableRow>
                       )}
@@ -657,7 +873,7 @@ export default function InventoryMovementDialog({
 
       <DialogActions sx={{ 
         p: 3, 
-        borderTop: `1px solid ${darkProTokens.grayDark}`,
+        borderTop: `1px solid ${colorTokens.border}`,
         justifyContent: 'center'
       }}>
         <Button
@@ -665,12 +881,12 @@ export default function InventoryMovementDialog({
           startIcon={<CloseIcon />}
           variant="contained"
           sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-            color: darkProTokens.background,
+            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+            color: colorTokens.textOnBrand,
             fontWeight: 700,
             px: 4, py: 1.5, borderRadius: 3,
             '&:hover': {
-              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+              background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brandActive})`,
             }
           }}
         >
