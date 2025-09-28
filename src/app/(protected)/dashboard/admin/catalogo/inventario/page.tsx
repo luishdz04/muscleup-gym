@@ -321,7 +321,7 @@ export default function InventarioPage() {
     `
   });
 
-  // ✅ CRUD TRANSFERS CON AUDITORÍA INTELIGENTE v8.4
+  // ✅ CRUD TRANSFERS CON AUDITORÍA INTELIGENTE v8.4 - TABLAS CREADAS Y FUNCIONALES
   const { 
     data: transfers, 
     createItem: createTransfer,
@@ -382,18 +382,24 @@ export default function InventarioPage() {
     loading: inventoryLoading 
   } = useInventoryManagement();
 
-  // ✅ NUEVA FUNCIÓN PARA CARGAR STOCK POR ALMACÉN v8.4
+  // ✅ FUNCIÓN PARA CARGAR STOCK POR ALMACÉN v8.4 - CON DEBUG MEJORADO
   const loadWarehouseStocks = useCallback(async () => {
     if (!selectedWarehouse || products.length === 0) return;
     
+    console.log(`🔍 [DEBUG] Cargando stock para almacén: ${selectedWarehouse}`);
     setLoadingWarehouseStocks(true);
     try {
       const { data, error } = await supabase
         .from('product_warehouse_stock')
-        .select('product_id, current_stock, available_stock')
+        .select('product_id, current_stock, available_stock, reserved_stock')
         .eq('warehouse_id', selectedWarehouse);
       
-      if (error) throw error;
+      if (error) {
+        console.error(`❌ [ERROR] Error en consulta SQL:`, error);
+        throw error;
+      }
+      
+      console.log(`📊 [DEBUG] Respuesta de BD:`, data);
       
       const stocksByProduct: Record<string, number> = {};
       (data || []).forEach(item => {
@@ -401,13 +407,24 @@ export default function InventarioPage() {
       });
       
       setWarehouseStocks(prev => ({ ...prev, [selectedWarehouse]: stocksByProduct }));
-    } catch (error) {
-      console.error('Error cargando stocks por almacén:', error);
-      notify.error('Error cargando stock del almacén');
+      
+      const warehouseName = warehouses?.find(w => w.id === selectedWarehouse)?.name || 'Desconocido';
+      console.log(`✅ [SUCCESS] Stock cargado para ${warehouseName}: ${data?.length || 0} productos`);
+      console.log(`📦 [DEBUG] StocksByProduct:`, stocksByProduct);
+      
+      // Notificar si el almacén está vacío
+      if (!data || data.length === 0) {
+        console.warn(`⚠️ [WARNING] Almacén ${warehouseName} no tiene productos registrados`);
+        notify.warning(`Almacén "${warehouseName}" no tiene productos registrados`);
+      }
+      
+    } catch (error: any) {
+      console.error('❌ [ERROR] Error cargando stocks por almacén:', error);
+      notify.error('Error cargando stock del almacén: ' + (error.message || 'Error desconocido'));
     } finally {
       setLoadingWarehouseStocks(false);
     }
-  }, [selectedWarehouse, products, supabase]);
+  }, [selectedWarehouse, products, supabase, warehouses]);
 
   // ✅ 3. HOOKS DE EFECTO (después de custom)
   useEffect(() => {
@@ -424,21 +441,21 @@ export default function InventarioPage() {
     }
   }, [selectedWarehouse, loadWarehouseStocks]);
 
-  // ✅ CARGAR DATOS REALES v8.4
+  // ✅ CARGAR DATOS REALES v8.4 - CON TRANSFERS HABILITADO
   const loadInitialData = useCallback(async () => {
     try {
       await Promise.all([
         reloadWarehouses(),
         reloadProducts(),
-        reloadTransfers(),
+        reloadTransfers(), // ✅ HABILITADO: tabla existe
         reloadMovements()
       ]);
-      console.log('✅ [v8.4] Datos multi-almacén completos cargados desde BD');
+      console.log('✅ [v8.4] Sistema multi-almacén completo cargado - transfers operativo');
     } catch (error: any) {
       console.error('Error cargando datos v8.4:', error);
       notify.error('Error cargando datos del inventario');
     }
-  }, [reloadWarehouses, reloadProducts, reloadTransfers, reloadMovements]);
+  }, [reloadWarehouses, reloadProducts, reloadTransfers, reloadMovements]); // ✅ RESTAURADO reloadTransfers
 
   // ✅ STATS REALES CORREGIDAS v8.4
   const correctedStockStats = useMemo((): InventoryStats => {
@@ -761,12 +778,12 @@ export default function InventarioPage() {
     console.log('🔄 Traspaso realizado, recargando datos...');
     reloadProducts();
     reloadMovements();
-    reloadTransfers();
+    reloadTransfers(); // ✅ HABILITADO: tabla existe
     if (selectedWarehouse) {
       loadWarehouseStocks();
     }
     closeTransferDialog();
-  }, [reloadProducts, reloadMovements, reloadTransfers, selectedWarehouse, loadWarehouseStocks, closeTransferDialog]);
+  }, [reloadProducts, reloadMovements, reloadTransfers, selectedWarehouse, loadWarehouseStocks, closeTransferDialog]); // ✅ RESTAURADO reloadTransfers
 
   // ✅ HANDLERS DE PAGINACIÓN
   const handlePageChange = useCallback((_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
@@ -1316,20 +1333,38 @@ export default function InventarioPage() {
                   </Grid>
                 </Grid>
 
-                {/* ✅ INDICADOR DE FILTRO ACTIVO DE ALMACÉN */}
+                {/* ✅ INDICADOR DE FILTRO ACTIVO DE ALMACÉN MEJORADO */}
                 {selectedWarehouse && (
                   <Box sx={{ mt: 2 }}>
-                    <Alert severity="info" sx={{ backgroundColor: `${colorTokens.info}10` }}>
-                      <Typography variant="body2">
-                        <strong>Filtro activo:</strong> Mostrando productos con stock en{' '}
-                        <strong>
-                          {warehouses?.find(w => w.id === selectedWarehouse)?.name || 'Almacén'}
-                        </strong>
-                        {loadingWarehouseStocks && (
-                          <CircularProgress size={16} sx={{ ml: 1, color: colorTokens.info }} />
-                        )}
-                      </Typography>
-                    </Alert>
+                    {loadingWarehouseStocks ? (
+                      <Alert severity="info" sx={{ backgroundColor: `${colorTokens.info}10` }}>
+                        <Typography variant="body2">
+                          <CircularProgress size={16} sx={{ mr: 1, color: colorTokens.info }} />
+                          Cargando stock del almacén{' '}
+                          <strong>
+                            {warehouses?.find(w => w.id === selectedWarehouse)?.name || 'Almacén'}
+                          </strong>...
+                        </Typography>
+                      </Alert>
+                    ) : (
+                      <Alert 
+                        severity={filteredProducts.length > 0 ? "info" : "warning"} 
+                        sx={{ backgroundColor: filteredProducts.length > 0 ? `${colorTokens.info}10` : `${colorTokens.warning}10` }}
+                      >
+                        <Typography variant="body2">
+                          <strong>Filtro activo:</strong> Mostrando productos con stock en{' '}
+                          <strong>
+                            {warehouses?.find(w => w.id === selectedWarehouse)?.name || 'Almacén'}
+                          </strong>
+                          <br />
+                          {filteredProducts.length > 0 ? (
+                            `Encontrados: ${filteredProducts.length} productos con stock`
+                          ) : (
+                            `⚠️ Este almacén no tiene productos con stock. Selecciona otro almacén o agrega productos.`
+                          )}
+                        </Typography>
+                      </Alert>
+                    )}
                   </Box>
                 )}
               </Box>
