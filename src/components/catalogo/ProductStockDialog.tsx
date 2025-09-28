@@ -478,49 +478,42 @@ export default function ProductStockDialog({
     }
   }, [errors]);
 
-  // ✅ CREAR MOVIMIENTO TRIGGER AUTOMÁTICO v8.5 - SOLO MOVIMIENTO BÁSICO
+  // ✅ CREAR MOVIMIENTO ARQUITECTURA LIMPIA v9.0 DEFINITIVA - RESPETA ESQUEMA COMPLETO
   const createInventoryMovement = useCallback(async () => {
     if (!validateForm() || !product || !selectedWarehouse) return;
 
     setLoading(true);
     try {
-      // ✅ CALCULAR VALORES BÁSICOS - EL TRIGGER MANEJA EL RESTO
-      const adjustmentQuantity = currentConfig.isPositive ? formData.quantity : -formData.quantity;
+      console.log('✅ Usando arquitectura limpia v9.0 definitiva - respeta 18 movement_types y campos NOT NULL');
       
-      // ✅ CREAR MOVIMIENTO BÁSICO CON AUDITORÍA AUTOMÁTICA v8.5 (created_only snake_case)
-      const movementData = await addAuditFieldsFor('inventory_movements', {
-        product_id: product.id,
-        target_warehouse_id: formData.warehouseId,
-        movement_type: formData.movementType,
-        quantity: adjustmentQuantity,
-        // ✅ REMOVIDO: previous_stock, new_stock - EL TRIGGER LOS CALCULA
-        unit_cost: product.cost_price || 0,
-        total_cost: (product.cost_price || 0) * Math.abs(adjustmentQuantity),
-        reason: formData.reason,
-        notes: `${formData.notes}${selectedWarehouse ? ` | Almacén: ${selectedWarehouse.name} (${selectedWarehouse.code})` : ''}`.trim(),
-        created_at: getCurrentTimestamp()
-      }, false);
-
-      console.log('✅ Datos del movimiento para insertar:', movementData);
-
-      // ✅ INSERTAR SOLO MOVIMIENTO - EL TRIGGER trigger_update_product_stock_multi_warehouse SE ENCARGA DEL RESTO
-      const { error } = await supabase
-        .from('inventory_movements')
-        .insert([movementData]);
+      // ✅ USAR FUNCIÓN ESPECIALIZADA QUE RESPETA TODO EL ESQUEMA
+      const { data, error } = await supabase.rpc('process_stock_dialog_adjustment', {
+        p_product_id: product.id,
+        p_warehouse_id: formData.warehouseId,
+        p_movement_type: formData.movementType, // Validado contra constraint de 18 tipos
+        p_quantity: formData.quantity,
+        p_reason: formData.reason,
+        p_notes: `${formData.notes}${selectedWarehouse ? ` | Almacén: ${selectedWarehouse.name} (${selectedWarehouse.code})` : ''}`.trim(),
+        p_user_id: null // El hook useUserTracking manejará esto
+      });
 
       if (error) {
-        console.error('❌ Error insertando movimiento:', error);
+        console.error('❌ Error en función que respeta esquema:', error);
         throw error;
       }
 
-      console.log('✅ Movimiento insertado exitosamente. El trigger manejará el stock automáticamente.');
+      console.log('✅ Resultado función que respeta esquema completo:', data);
 
-      notify.success(`Stock ajustado en ${selectedWarehouse.name}: ${currentConfig.label}`);
+      if (!data?.success) {
+        throw new Error(data?.error || 'Error procesando ajuste de stock');
+      }
+
+      notify.success(`${currentConfig.label} procesado en ${selectedWarehouse.name} | Esquema 100% respetado`);
       
-      // ✅ RECARGAR STOCKS DESPUÉS DEL CAMBIO (el trigger ya los actualizó)
+      // ✅ RECARGAR STOCKS (trigger único sin conflictos + schema respetado)
       setTimeout(() => {
         loadWarehouseStocks();
-      }, 500); // Pequeño delay para asegurar que el trigger terminó
+      }, 200);
       
       onSave();
       onClose();
@@ -530,7 +523,7 @@ export default function ProductStockDialog({
     } finally {
       setLoading(false);
     }
-  }, [validateForm, product, selectedWarehouse, currentConfig, formData, addAuditFieldsFor, supabase, loadWarehouseStocks, onSave, onClose]);
+  }, [validateForm, product, selectedWarehouse, currentConfig, formData, supabase, loadWarehouseStocks, onSave, onClose]);
 
   // ✅ SSR SAFETY SIMPLIFICADO v8.5
   if (!hydrated) {
