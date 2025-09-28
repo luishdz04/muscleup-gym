@@ -1,4 +1,4 @@
-// 📁 src/components/catalogo/ProductStockDialog.tsx - v8.4 CAMPOS BD CORREGIDOS
+// 📁 src/components/catalogo/ProductStockDialog.tsx - v8.5 TRIGGER AUTOMÁTICO
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -40,7 +40,7 @@ import {
   BusinessCenter as BusinessIcon
 } from '@mui/icons-material';
 
-// ✅ IMPORTS ENTERPRISE v8.4 CORREGIDOS
+// ✅ IMPORTS ENTERPRISE v8.5 CORREGIDOS
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useEntityCRUD } from '@/hooks/useEntityCRUD';
@@ -49,7 +49,7 @@ import { notify } from '@/utils/notifications';
 import { getCurrentTimestamp } from '@/utils/dateUtils';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ IMPORTAR INTERFACES CENTRALIZADAS v8.4
+// ✅ IMPORTAR INTERFACES CENTRALIZADAS v8.5
 import { 
   Warehouse, 
   WarehouseBasic,
@@ -58,7 +58,7 @@ import {
   getWarehouseTypeInfo 
 } from '@/types/warehouse';
 
-// ✅ TIPOS ENTERPRISE v8.4 - MULTI-ALMACÉN CORREGIDO
+// ✅ TIPOS ENTERPRISE v8.5 - MULTI-ALMACÉN TRIGGER AUTOMÁTICO
 type MovementType = 
   | 'recepcion_compra' | 'devolucion' | 'ajuste_manual_mas' | 'inventario_inicial'
   | 'merma' | 'ajuste_manual_menos' | 'transferencia_entrada' | 'transferencia_salida';
@@ -78,14 +78,14 @@ interface ProductStock {
   is_active?: boolean;
 }
 
-// ✅ CORREGIDO: Interface para stock por almacén v8.4 - CAMPOS REALES DE BD
+// ✅ CORREGIDO v8.5: Interface para stock por almacén - SOLO LECTURA (trigger maneja escritura)
 interface WarehouseStockData {
   warehouse_id: string;
   current_stock: number;
   reserved_stock: number;
-  available_stock: number;
-  min_stock?: number;        // ✅ CORREGIDO: sin _threshold
-  max_stock?: number;        // ✅ CORREGIDO: sin _threshold
+  available_stock: number; // ✅ CALCULADO POR TRIGGER - SOLO LECTURA
+  min_stock?: number;
+  max_stock?: number;
   reorder_point?: number;
   reorder_quantity?: number;
 }
@@ -114,7 +114,7 @@ interface FormErrors {
   warehouseId?: string;
 }
 
-// ✅ TIPOS DE MOVIMIENTO ENTERPRISE v8.4
+// ✅ TIPOS DE MOVIMIENTO ENTERPRISE v8.5
 const MOVEMENT_TYPES: readonly MovementTypeConfig[] = [
   {
     value: 'recepcion_compra',
@@ -190,7 +190,7 @@ const MOVEMENT_TYPES: readonly MovementTypeConfig[] = [
   }
 ] as const;
 
-// ✅ RAZONES PREDEFINIDAS v8.4
+// ✅ RAZONES PREDEFINIDAS v8.5
 const MOVEMENT_REASONS: Record<MovementType, readonly string[]> = {
   recepcion_compra: [
     'Compra a proveedor',
@@ -242,7 +242,7 @@ const MOVEMENT_REASONS: Record<MovementType, readonly string[]> = {
   ]
 } as const;
 
-// ✅ CONSTANTES ICONOS POR TIPO v8.4
+// ✅ CONSTANTES ICONOS POR TIPO v8.5
 const WAREHOUSE_TYPE_ICONS = {
   central: <BusinessIcon />,
   store: <StoreIcon />,
@@ -262,7 +262,7 @@ export default function ProductStockDialog({
   product,
   onSave
 }: ProductStockDialogProps) {
-  // ✅ 1. HOOKS DE ESTADO PRIMERO (orden v8.4)
+  // ✅ 1. HOOKS DE ESTADO PRIMERO (orden v8.5)
   const [formData, setFormData] = useState<FormData>({
     movementType: 'ajuste_manual_mas',
     quantity: 0,
@@ -273,16 +273,16 @@ export default function ProductStockDialog({
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState<boolean>(false);
   
-  // ✅ ESTADOS PARA STOCK POR ALMACÉN v8.4
+  // ✅ ESTADOS PARA STOCK POR ALMACÉN v8.5
   const [warehouseStocks, setWarehouseStocks] = useState<Record<string, WarehouseStockData>>({});
   const [loadingStocks, setLoadingStocks] = useState<boolean>(false);
 
-  // ✅ 2. HOOKS DE CONTEXT/CUSTOM (orden v8.4)
+  // ✅ 2. HOOKS DE CONTEXT/CUSTOM (orden v8.5)
   const hydrated = useHydrated();
   const { addAuditFieldsFor } = useUserTracking();
   const supabase = createBrowserSupabaseClient();
   
-  // ✅ CARGAR WAREHOUSES REAL BD v8.4 - TIPOS CENTRALIZADOS
+  // ✅ CARGAR WAREHOUSES REAL BD v8.5 - TIPOS CENTRALIZADOS
   const { 
     data: warehouses,
     loading: warehousesLoading
@@ -296,13 +296,13 @@ export default function ProductStockDialog({
     `
   });
 
-  // ✅ FUNCIÓN PARA CARGAR STOCKS POR ALMACÉN v8.4 - CAMPOS CORREGIDOS
+  // ✅ FUNCIÓN PARA CARGAR STOCKS POR ALMACÉN v8.5 - SOLO LECTURA
   const loadWarehouseStocks = useCallback(async () => {
     if (!product?.id) return;
     
     setLoadingStocks(true);
     try {
-      // ✅ CONSULTA CORREGIDA - USANDO CAMPOS REALES DE LA TABLA
+      // ✅ CONSULTA SOLO LECTURA - EL TRIGGER MANEJA ESCRITURA
       const { data, error } = await supabase
         .from('product_warehouse_stock')
         .select(`
@@ -331,9 +331,9 @@ export default function ProductStockDialog({
           warehouse_id: item.warehouse_id,
           current_stock: item.current_stock || 0,
           reserved_stock: item.reserved_stock || 0,
-          available_stock: item.available_stock || item.current_stock || 0,
-          min_stock: item.min_stock,        // ✅ CORREGIDO: sin _threshold
-          max_stock: item.max_stock,        // ✅ CORREGIDO: sin _threshold
+          available_stock: item.available_stock || item.current_stock || 0, // ✅ CALCULADO POR TRIGGER
+          min_stock: item.min_stock,
+          max_stock: item.max_stock,
           reorder_point: item.reorder_point,
           reorder_quantity: item.reorder_quantity
         };
@@ -371,9 +371,9 @@ export default function ProductStockDialog({
     }
   }, [product, open, warehouses, loadWarehouseStocks]);
 
-  // ✅ 4. HOOKS DE CALLBACK Y MEMO (al final) - CORREGIDO PARA STOCK POR ALMACÉN
+  // ✅ 4. HOOKS DE CALLBACK Y MEMO (al final) - CORREGIDO PARA TRIGGER AUTOMÁTICO
 
-  // ✅ HELPERS MEMOIZADOS v8.4 - CON STOCK POR ALMACÉN REAL Y CAMPOS CORREGIDOS
+  // ✅ HELPERS MEMOIZADOS v8.5 - CON STOCK POR ALMACÉN REAL Y TRIGGER AUTOMÁTICO
   const { 
     currentConfig, 
     availableReasons, 
@@ -419,7 +419,7 @@ export default function ProductStockDialog({
     else if (product.max_stock && newStock > product.max_stock) color = colorTokens.info;
     else color = colorTokens.success;
 
-    // ✅ WARNINGS CON STOCK DEL ALMACÉN ESPECÍFICO Y CAMPOS CORREGIDOS
+    // ✅ WARNINGS CON STOCK DEL ALMACÉN ESPECÍFICO
     const warnings: string[] = [];
     if (newStock === 0) warnings.push('El almacén quedará sin stock');
     if (newStock <= product.min_stock && newStock > 0) {
@@ -428,7 +428,6 @@ export default function ProductStockDialog({
     if (product.max_stock && newStock > product.max_stock) {
       warnings.push(`Stock excede el máximo (${product.max_stock})`);
     }
-    // ✅ CORREGIDO: Usar campos reales de la BD
     if (warehouseStockData?.min_stock && newStock <= warehouseStockData.min_stock) {
       warnings.push(`Por debajo del mínimo del almacén (${warehouseStockData.min_stock})`);
     }
@@ -444,7 +443,7 @@ export default function ProductStockDialog({
     };
   }, [product, formData.movementType, formData.quantity, formData.warehouseId, warehouses, warehouseStocks]);
 
-  // ✅ VALIDACIONES ENTERPRISE v8.4 - CON STOCK DEL ALMACÉN
+  // ✅ VALIDACIONES ENTERPRISE v8.5 - CON STOCK DEL ALMACÉN
   const validateForm = useCallback((): boolean => {
     if (!product) return false;
     
@@ -471,7 +470,7 @@ export default function ProductStockDialog({
     return Object.keys(newErrors).length === 0;
   }, [product, formData, currentConfig, currentWarehouseStock]);
 
-  // ✅ HANDLERS MEMOIZADOS v8.4
+  // ✅ HANDLERS MEMOIZADOS v8.5
   const handleChange = useCallback(<K extends keyof FormData>(field: K, value: FormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field as keyof FormErrors]) {
@@ -479,25 +478,22 @@ export default function ProductStockDialog({
     }
   }, [errors]);
 
-  // ✅ CREAR MOVIMIENTO DIRECTO BD v8.4 - CORREGIDO PARA STOCK POR ALMACÉN
+  // ✅ CREAR MOVIMIENTO TRIGGER AUTOMÁTICO v8.5 - SOLO MOVIMIENTO BÁSICO
   const createInventoryMovement = useCallback(async () => {
     if (!validateForm() || !product || !selectedWarehouse) return;
 
     setLoading(true);
     try {
-      // ✅ CALCULAR VALORES CON STOCK DEL ALMACÉN ESPECÍFICO
+      // ✅ CALCULAR VALORES BÁSICOS - EL TRIGGER MANEJA EL RESTO
       const adjustmentQuantity = currentConfig.isPositive ? formData.quantity : -formData.quantity;
-      const previousStock = currentWarehouseStock;
-      const newStock = Math.max(0, previousStock + adjustmentQuantity);
       
-      // ✅ CREAR MOVIMIENTO CON AUDITORÍA AUTOMÁTICA v8.4
+      // ✅ CREAR MOVIMIENTO BÁSICO CON AUDITORÍA AUTOMÁTICA v8.5 (created_only snake_case)
       const movementData = await addAuditFieldsFor('inventory_movements', {
         product_id: product.id,
         target_warehouse_id: formData.warehouseId,
         movement_type: formData.movementType,
         quantity: adjustmentQuantity,
-        previous_stock: previousStock,
-        new_stock: newStock,
+        // ✅ REMOVIDO: previous_stock, new_stock - EL TRIGGER LOS CALCULA
         unit_cost: product.cost_price || 0,
         total_cost: (product.cost_price || 0) * Math.abs(adjustmentQuantity),
         reason: formData.reason,
@@ -505,29 +501,38 @@ export default function ProductStockDialog({
         created_at: getCurrentTimestamp()
       }, false);
 
-      // ✅ INSERTAR EN BD - EL TRIGGER SE ENCARGA DEL RESTO
+      console.log('✅ Datos del movimiento para insertar:', movementData);
+
+      // ✅ INSERTAR SOLO MOVIMIENTO - EL TRIGGER trigger_update_product_stock_multi_warehouse SE ENCARGA DEL RESTO
       const { error } = await supabase
         .from('inventory_movements')
         .insert([movementData]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error insertando movimiento:', error);
+        throw error;
+      }
+
+      console.log('✅ Movimiento insertado exitosamente. El trigger manejará el stock automáticamente.');
 
       notify.success(`Stock ajustado en ${selectedWarehouse.name}: ${currentConfig.label}`);
       
-      // ✅ RECARGAR STOCKS DESPUÉS DEL CAMBIO
-      await loadWarehouseStocks();
+      // ✅ RECARGAR STOCKS DESPUÉS DEL CAMBIO (el trigger ya los actualizó)
+      setTimeout(() => {
+        loadWarehouseStocks();
+      }, 500); // Pequeño delay para asegurar que el trigger terminó
       
       onSave();
       onClose();
     } catch (error: any) {
       notify.error(`Error al ajustar stock: ${error.message}`);
-      console.error('Error al ajustar stock:', error);
+      console.error('❌ Error al ajustar stock:', error);
     } finally {
       setLoading(false);
     }
-  }, [validateForm, product, selectedWarehouse, currentConfig, formData, currentWarehouseStock, addAuditFieldsFor, supabase, loadWarehouseStocks, onSave, onClose]);
+  }, [validateForm, product, selectedWarehouse, currentConfig, formData, addAuditFieldsFor, supabase, loadWarehouseStocks, onSave, onClose]);
 
-  // ✅ SSR SAFETY SIMPLIFICADO v8.4
+  // ✅ SSR SAFETY SIMPLIFICADO v8.5
   if (!hydrated) {
     return (
       <Dialog open={open} maxWidth="md" fullWidth>
@@ -697,7 +702,7 @@ export default function ProductStockDialog({
             </Card>
           </Grid>
 
-          {/* ✅ SELECCIÓN DE ALMACÉN BD REAL v8.4 - TIPOS CENTRALIZADOS CON NULL CHECKS */}
+          {/* ✅ SELECCIÓN DE ALMACÉN BD REAL v8.5 - TIPOS CENTRALIZADOS CON NULL CHECKS */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
               background: `${colorTokens.brand}10`, 
@@ -819,13 +824,17 @@ export default function ProductStockDialog({
                     {selectedWarehouse.is_default === true && ' - Almacén por defecto'}
                     <br />
                     Stock actual: <strong>{loadingStocks ? 'Cargando...' : currentWarehouseStock} {product.unit || 'u'}</strong>
+                    <br />
+                    <Typography variant="caption" sx={{ color: colorTokens.info, fontStyle: 'italic' }}>
+                      📋 El trigger automático actualizará el stock tras el movimiento
+                    </Typography>
                   </Alert>
                 )}
               </CardContent>
             </Card>
           </Grid>
 
-          {/* 🎯 TIPOS DE MOVIMIENTO v8.4 */}
+          {/* 🎯 TIPOS DE MOVIMIENTO v8.5 */}
           <Grid size={{ xs: 12 }}>
             <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
               Tipo de Movimiento
@@ -877,7 +886,7 @@ export default function ProductStockDialog({
             </Grid>
           </Grid>
 
-          {/* 📝 FORMULARIO DE MOVIMIENTO v8.4 */}
+          {/* 📝 FORMULARIO DE MOVIMIENTO v8.5 */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
               background: currentConfig.bgColor, 
@@ -997,7 +1006,7 @@ export default function ProductStockDialog({
             </Card>
           </Grid>
 
-          {/* 📊 PREVIEW DEL RESULTADO v8.4 - CORREGIDO PARA ALMACÉN ESPECÍFICO */}
+          {/* 📊 PREVIEW DEL RESULTADO v8.5 - CORREGIDO PARA TRIGGER AUTOMÁTICO */}
           {formData.quantity > 0 && selectedWarehouse && !loadingStocks && (
             <Grid size={{ xs: 12 }}>
               <Card sx={{ 
@@ -1045,7 +1054,7 @@ export default function ProductStockDialog({
                     <Grid size={{ xs: 4 }}>
                       <Box textAlign="center" sx={{ p: 2 }}>
                         <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                          Stock Final en {selectedWarehouse.code}
+                          Stock Final Estimado
                         </Typography>
                         <Typography variant="h4" fontWeight="bold" sx={{ color: previewColor }}>
                           {previewStock}
@@ -1063,6 +1072,12 @@ export default function ProductStockDialog({
                       {warning}
                     </Alert>
                   ))}
+
+                  {/* ✅ NOTA SOBRE TRIGGER AUTOMÁTICO */}
+                  <Alert severity="info" sx={{ mt: 2, backgroundColor: `${colorTokens.info}10` }}>
+                    📋 <strong>Trigger Automático:</strong> El sistema calculará automáticamente los stocks finales, 
+                    actualizará las tablas relacionadas y mantendrá la consistencia multi-almacén.
+                  </Alert>
                 </CardContent>
               </Card>
             </Grid>
@@ -1113,7 +1128,7 @@ export default function ProductStockDialog({
             }
           }}
         >
-          {loading ? 'Procesando...' : `Aplicar en ${selectedWarehouse?.code || 'Almacén'}`}
+          {loading ? 'Procesando...' : `Aplicar via Trigger ${selectedWarehouse?.code || 'Almacén'}`}
         </Button>
       </DialogActions>
     </Dialog>
