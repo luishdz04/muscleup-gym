@@ -1,4 +1,4 @@
-// hooks/useInventoryManagement.ts - VERSIÓN ENTERPRISE v8.2 MUSCLEUP CORREGIDA
+// hooks/useInventoryManagement.ts - VERSIÓN ENTERPRISE v8.2 CORREGIDA TYPES
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -12,6 +12,14 @@ import {
 import { notify } from '@/utils/notifications';
 import { colorTokens } from '@/theme';
 
+// ✅ IMPORTAR INTERFACES CENTRALIZADAS v8.2 - CORREGIDO IMPORTS
+import { 
+  Warehouse, 
+  WarehouseBasic,
+  WarehouseType,
+  ProductWarehouseStock 
+} from '@/types/warehouse';
+
 // ✅ TIPOS DE MOVIMIENTO ENTERPRISE v8.2 - MULTI-ALMACÉN
 export type MovementType = 
   | 'venta_directa' | 'venta_apartado' | 'reserva_apartado' | 'cancelar_reserva'
@@ -21,11 +29,11 @@ export type MovementType =
 export type MovementCategory = 'sales' | 'layaway' | 'adjustment' | 'transfer' | 'purchase' | 'loss';
 export type StockStatus = 'available' | 'reserved' | 'critical' | 'out_of_stock' | 'overstock';
 
-// ✅ INTERFACES ENTERPRISE v8.2 - MÁS ESPECÍFICAS
+// ✅ INTERFACES ENTERPRISE v8.2 - SINCRONIZADAS CON BD
 export interface InventoryMovement {
   id: string;
   product_id: string;
-  warehouse_id?: string; // ✅ MULTI-ALMACÉN v8.2
+  warehouse_id?: string | null; // ✅ MULTI-ALMACÉN v8.2 - Permitir null
   movement_type: MovementType;
   quantity: number;
   previous_stock: number;
@@ -37,10 +45,10 @@ export interface InventoryMovement {
   notes?: string;
   created_at: string;
   created_by?: string;
-  // ✅ RELACIONES EXPANDIDAS v8.2
+  // ✅ RELACIONES EXPANDIDAS v8.2 - USANDO TIPOS CENTRALIZADOS
   products?: ProductInfo;
   Users?: UserInfo;
-  warehouses?: WarehouseInfo;
+  warehouses?: WarehouseBasic; // ✅ CORREGIDO: Usar interface centralizada
 }
 
 export interface ProductInfo {
@@ -53,7 +61,7 @@ export interface ProductInfo {
   min_stock: number;
   max_stock?: number;
   unit?: string;
-  location?: string;
+  // ✅ ELIMINADO: location (no existe en BD real)
   status?: StockStatus;
 }
 
@@ -65,17 +73,11 @@ export interface UserInfo {
   profilePictureUrl?: string;
 }
 
-export interface WarehouseInfo {
-  id: string;
-  name: string;
-  code: string;
-  is_active: boolean;
-  location?: string;
-}
+// ✅ ELIMINADA: WarehouseInfo duplicada - usar Warehouse centralizada
 
 export interface StockOperation {
   product_id: string;
-  warehouse_id?: string; // ✅ MULTI-ALMACÉN v8.2
+  warehouse_id?: string | null; // ✅ MULTI-ALMACÉN v8.2 - Permitir null
   quantity: number;
   movement_type: MovementType;
   reference_id?: string;
@@ -111,7 +113,7 @@ export const useInventoryManagement = () => {
   const [lastMovement, setLastMovement] = useState<InventoryMovement | null>(null);
   const [stats, setStats] = useState<InventoryStats | null>(null);
 
-  // ✅ 2. HOOKS DE CONTEXT/CUSTOM (orden v8.2)
+  // ✅ 2. HOOKS DE CONTEXT/CUSTOM REALES (orden v8.2)
   const hydrated = useHydrated();
   const { addAuditFieldsFor, getTableAuditInfo } = useUserTracking();
   const supabase = createBrowserSupabaseClient();
@@ -152,10 +154,10 @@ export const useInventoryManagement = () => {
     }
   }, [hydrated]);
 
-  // ✅ OBTENER STOCK DISPONIBLE v8.2 - MULTI-ALMACÉN
+  // ✅ OBTENER STOCK DISPONIBLE v8.2 - MULTI-ALMACÉN CORREGIDO
   const getAvailableStock = useCallback(async (
     productId: string, 
-    warehouseId?: string
+    warehouseId?: string | null // ✅ CORREGIDO: null también válido
   ): Promise<number> => {
     if (!hydrated) {
       console.warn('Sistema inicializando...');
@@ -188,11 +190,11 @@ export const useInventoryManagement = () => {
     }
   }, [hydrated, supabase]);
 
-  // ✅ VALIDAR STOCK DISPONIBLE v8.2 - MEJORADA
+  // ✅ VALIDAR STOCK DISPONIBLE v8.2 - MEJORADA CON NULL CHECKS
   const checkAvailableStock = useCallback(async (
     productId: string, 
     requiredQuantity: number,
-    warehouseId?: string
+    warehouseId?: string | null // ✅ CORREGIDO: null también válido
   ): Promise<StockValidation> => {
     if (!hydrated) {
       return {
@@ -246,7 +248,7 @@ export const useInventoryManagement = () => {
     }
   }, [hydrated, supabase, getAvailableStock]);
 
-  // ✅ FUNCIÓN PRINCIPAL CORREGIDA v8.2 - REGISTRAR MOVIMIENTO
+  // ✅ FUNCIÓN PRINCIPAL CORREGIDA v8.2 - REGISTRAR MOVIMIENTO CON NULL CHECKS
   const recordMovement = useCallback(async (operation: StockOperation): Promise<InventoryMovement> => {
     if (!hydrated) {
       notify.error('Sistema no inicializado');
@@ -307,7 +309,7 @@ export const useInventoryManagement = () => {
       console.log(`🔍 [v8.2] Aplicando auditoría para inventory_movements...`);
       const movementData = await addAuditFieldsFor('inventory_movements', {
         product_id: operation.product_id,
-        warehouse_id: operation.warehouse_id || null, // ✅ MULTI-ALMACÉN
+        warehouse_id: operation.warehouse_id || null, // ✅ CORREGIDO: null válido
         movement_type: operation.movement_type,
         quantity: signedQuantity,
         previous_stock: previousStock,
@@ -333,7 +335,7 @@ export const useInventoryManagement = () => {
           *,
           products!inner (
             id, name, sku, category, current_stock,
-            reserved_stock, min_stock, max_stock, unit, location
+            reserved_stock, min_stock, max_stock, unit
           ),
           Users:Users!inventory_movements_created_by_fkey (
             id, "firstName", "lastName", email, "profilePictureUrl"
@@ -349,7 +351,7 @@ export const useInventoryManagement = () => {
       console.log(`✅ [v8.2] Movimiento registrado exitosamente - ID: ${movementResult.id}`);
       console.log(`🔧 [v8.2] Trigger automático actualizó stock de ${previousStock} → ${newStock}`);
       
-      // 6. ✅ FORMATEAR RESULTADO v8.2
+      // 6. ✅ FORMATEAR RESULTADO v8.2 CON NULL CHECKS
       const formattedMovement: InventoryMovement = {
         id: movementResult.id,
         product_id: movementResult.product_id,
@@ -374,8 +376,7 @@ export const useInventoryManagement = () => {
           reserved_stock: movementResult.products.reserved_stock,
           min_stock: movementResult.products.min_stock,
           max_stock: movementResult.products.max_stock,
-          unit: movementResult.products.unit,
-          location: movementResult.products.location
+          unit: movementResult.products.unit
         } : undefined,
         Users: movementResult.Users ? {
           id: movementResult.Users.id,
@@ -404,11 +405,11 @@ export const useInventoryManagement = () => {
     }
   }, [hydrated, addAuditFieldsFor, supabase]);
 
-  // ✅ OBTENER MOVIMIENTOS RECIENTES v8.2 - MEJORADA
+  // ✅ OBTENER MOVIMIENTOS RECIENTES v8.2 - CON NULL CHECKS MEJORADOS
   const getRecentMovements = useCallback(async (
     limit: number = 10,
-    warehouseId?: string,
-    productId?: string
+    warehouseId?: string | null, // ✅ CORREGIDO: null válido
+    productId?: string | null    // ✅ CORREGIDO: null válido
   ): Promise<InventoryMovement[]> => {
     if (!hydrated) {
       console.warn('Sistema inicializando...');
@@ -424,7 +425,7 @@ export const useInventoryManagement = () => {
           *,
           products!inner (
             id, name, sku, category, current_stock,
-            reserved_stock, min_stock, max_stock, unit, location
+            reserved_stock, min_stock, max_stock, unit
           ),
           Users:Users!inventory_movements_created_by_fkey (
             id, "firstName", "lastName", email, "profilePictureUrl"
@@ -433,11 +434,11 @@ export const useInventoryManagement = () => {
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      // ✅ FILTROS OPCIONALES v8.2
-      if (warehouseId) {
+      // ✅ FILTROS OPCIONALES v8.2 CON NULL CHECKS
+      if (warehouseId && warehouseId.trim() !== '') {
         query = query.eq('warehouse_id', warehouseId);
       }
-      if (productId) {
+      if (productId && productId.trim() !== '') {
         query = query.eq('product_id', productId);
       }
         
@@ -450,7 +451,7 @@ export const useInventoryManagement = () => {
 
       console.log(`✅ [v8.2] Movimientos obtenidos: ${data?.length || 0}`);
       
-      // ✅ MAPEAR DATOS v8.2 CON VALIDACIÓN
+      // ✅ MAPEAR DATOS v8.2 CON VALIDACIÓN MEJORADA
       const movements = (data || []).map((item: any): InventoryMovement => ({
         id: item.id,
         product_id: item.product_id,
@@ -475,8 +476,7 @@ export const useInventoryManagement = () => {
           reserved_stock: item.products.reserved_stock || 0,
           min_stock: item.products.min_stock || 0,
           max_stock: item.products.max_stock,
-          unit: item.products.unit,
-          location: item.products.location
+          unit: item.products.unit
         } : undefined,
         Users: item.Users ? {
           id: item.Users.id,
@@ -496,13 +496,13 @@ export const useInventoryManagement = () => {
     }
   }, [hydrated, supabase]);
 
-  // ✅ OPERACIONES DE NEGOCIO ESPECÍFICAS v8.2 - MEJORADAS
+  // ✅ OPERACIONES DE NEGOCIO ESPECÍFICAS v8.2 - CON NULL CHECKS
 
   const processSale = useCallback(async (
     productId: string, 
     quantity: number, 
     saleId: string,
-    warehouseId?: string
+    warehouseId?: string | null // ✅ CORREGIDO: null válido
   ): Promise<void> => {
     console.log(`🛒 [v8.2] Procesando venta - Producto: ${productId}, Cantidad: ${quantity}`);
     
@@ -528,7 +528,7 @@ export const useInventoryManagement = () => {
     productId: string, 
     quantity: number, 
     saleId: string,
-    warehouseId?: string
+    warehouseId?: string | null // ✅ CORREGIDO: null válido
   ): Promise<void> => {
     console.log(`📦 [v8.2] Creando apartado - Producto: ${productId}, Cantidad: ${quantity}`);
     
@@ -564,7 +564,7 @@ export const useInventoryManagement = () => {
     quantity: number,
     reason: string,
     notes?: string,
-    warehouseId?: string
+    warehouseId?: string | null // ✅ CORREGIDO: null válido
   ): Promise<void> => {
     const movementType: MovementType = quantity > 0 ? 'ajuste_manual_mas' : 'ajuste_manual_menos';
     
@@ -609,7 +609,7 @@ export const useInventoryManagement = () => {
     [getTableAuditInfo]
   );
 
-  // ✅ RETURN INTERFACE v8.2
+  // ✅ RETURN INTERFACE v8.2 CON TIPOS CORREGIDOS
   return {
     // Estados
     loading,
@@ -618,13 +618,13 @@ export const useInventoryManagement = () => {
     lastMovement,
     stats,
 
-    // ✅ CONSULTAS v8.2
+    // ✅ CONSULTAS v8.2 - NULL SAFE
     getAvailableStock,
     checkAvailableStock,
     getRecentMovements,
     recordMovement,
 
-    // ✅ OPERACIONES DE NEGOCIO v8.2
+    // ✅ OPERACIONES DE NEGOCIO v8.2 - NULL SAFE
     processSale,
     createLayaway,
     adjustInventory,
