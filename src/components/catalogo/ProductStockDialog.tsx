@@ -1,4 +1,4 @@
-// 📁 src/components/catalogo/ProductStockDialog.tsx - v8.2 BD REAL CORREGIDO
+// 📁 src/components/catalogo/ProductStockDialog.tsx - v8.3 MULTI-ALMACÉN CORREGIDO
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -9,7 +9,7 @@ import {
   DialogActions,
   Button,
   TextField,
-  Grid as Grid,
+  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -40,7 +40,7 @@ import {
   BusinessCenter as BusinessIcon
 } from '@mui/icons-material';
 
-// ✅ IMPORTS ENTERPRISE v8.2 CORREGIDOS
+// ✅ IMPORTS ENTERPRISE v8.3 CORREGIDOS
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useEntityCRUD } from '@/hooks/useEntityCRUD';
@@ -49,7 +49,7 @@ import { notify } from '@/utils/notifications';
 import { getCurrentTimestamp } from '@/utils/dateUtils';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ IMPORTAR INTERFACES CENTRALIZADAS v8.2 - CORREGIDO IMPORTS
+// ✅ IMPORTAR INTERFACES CENTRALIZADAS v8.3
 import { 
   Warehouse, 
   WarehouseBasic,
@@ -58,7 +58,7 @@ import {
   getWarehouseTypeInfo 
 } from '@/types/warehouse';
 
-// ✅ TIPOS ENTERPRISE v8.2 - MULTI-ALMACÉN
+// ✅ TIPOS ENTERPRISE v8.3 - MULTI-ALMACÉN CORREGIDO
 type MovementType = 
   | 'recepcion_compra' | 'devolucion' | 'ajuste_manual_mas' | 'inventario_inicial'
   | 'merma' | 'ajuste_manual_menos' | 'transferencia_entrada' | 'transferencia_salida';
@@ -76,6 +76,16 @@ interface ProductStock {
   category?: string;
   unit?: string;
   is_active?: boolean;
+}
+
+// ✅ NUEVO TIPO PARA STOCK POR ALMACÉN v8.3
+interface WarehouseStockData {
+  warehouse_id: string;
+  current_stock: number;
+  reserved_stock: number;
+  available_stock: number;
+  min_stock_threshold?: number;
+  max_stock_threshold?: number;
 }
 
 interface MovementTypeConfig {
@@ -102,7 +112,7 @@ interface FormErrors {
   warehouseId?: string;
 }
 
-// ✅ TIPOS DE MOVIMIENTO ENTERPRISE v8.2
+// ✅ TIPOS DE MOVIMIENTO ENTERPRISE v8.3
 const MOVEMENT_TYPES: readonly MovementTypeConfig[] = [
   {
     value: 'recepcion_compra',
@@ -178,7 +188,7 @@ const MOVEMENT_TYPES: readonly MovementTypeConfig[] = [
   }
 ] as const;
 
-// ✅ RAZONES PREDEFINIDAS v8.2
+// ✅ RAZONES PREDEFINIDAS v8.3
 const MOVEMENT_REASONS: Record<MovementType, readonly string[]> = {
   recepcion_compra: [
     'Compra a proveedor',
@@ -230,7 +240,7 @@ const MOVEMENT_REASONS: Record<MovementType, readonly string[]> = {
   ]
 } as const;
 
-// ✅ CONSTANTES ICONOS POR TIPO v8.2
+// ✅ CONSTANTES ICONOS POR TIPO v8.3
 const WAREHOUSE_TYPE_ICONS = {
   central: <BusinessIcon />,
   store: <StoreIcon />,
@@ -250,7 +260,7 @@ export default function ProductStockDialog({
   product,
   onSave
 }: ProductStockDialogProps) {
-  // ✅ 1. HOOKS DE ESTADO PRIMERO (orden v8.2)
+  // ✅ 1. HOOKS DE ESTADO PRIMERO (orden v8.3)
   const [formData, setFormData] = useState<FormData>({
     movementType: 'ajuste_manual_mas',
     quantity: 0,
@@ -260,18 +270,22 @@ export default function ProductStockDialog({
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState<boolean>(false);
+  
+  // ✅ NUEVOS ESTADOS PARA STOCK POR ALMACÉN v8.3
+  const [warehouseStocks, setWarehouseStocks] = useState<Record<string, WarehouseStockData>>({});
+  const [loadingStocks, setLoadingStocks] = useState<boolean>(false);
 
-  // ✅ 2. HOOKS DE CONTEXT/CUSTOM (orden v8.2)
+  // ✅ 2. HOOKS DE CONTEXT/CUSTOM (orden v8.3)
   const hydrated = useHydrated();
   const { addAuditFieldsFor } = useUserTracking();
   const supabase = createBrowserSupabaseClient();
   
-  // ✅ CARGAR WAREHOUSES REAL BD v8.2 - TIPOS CENTRALIZADOS
+  // ✅ CARGAR WAREHOUSES REAL BD v8.3 - TIPOS CENTRALIZADOS
   const { 
     data: warehouses,
     loading: warehousesLoading
   } = useEntityCRUD<Warehouse>({
-    tableName: 'warehouses', // ✅ Auditoría: full_snake (según guía v8.2)
+    tableName: 'warehouses', // ✅ Auditoría: full_snake (según guía v8.3)
     selectQuery: `
       id, code, name, description, address, warehouse_type, 
       is_active, is_default, manager_user_id, auto_restock_enabled,
@@ -280,9 +294,55 @@ export default function ProductStockDialog({
     `
   });
 
-  // ✅ 3. HOOKS DE EFECTO (después de custom)
+  // ✅ NUEVA FUNCIÓN PARA CARGAR STOCKS POR ALMACÉN v8.3
+  const loadWarehouseStocks = useCallback(async () => {
+    if (!product?.id) return;
+    
+    setLoadingStocks(true);
+    try {
+      // ✅ CONSULTAR TABLA product_warehouse_stock
+      const { data, error } = await supabase
+        .from('product_warehouse_stock')
+        .select(`
+          warehouse_id, 
+          current_stock, 
+          reserved_stock, 
+          available_stock,
+          min_stock_threshold,
+          max_stock_threshold
+        `)
+        .eq('product_id', product.id);
+      
+      if (error) throw error;
+      
+      // ✅ CONVERTIR A OBJETO PARA FÁCIL ACCESO
+      const stocksByWarehouse: Record<string, WarehouseStockData> = {};
+      (data || []).forEach(item => {
+        stocksByWarehouse[item.warehouse_id] = {
+          warehouse_id: item.warehouse_id,
+          current_stock: item.current_stock || 0,
+          reserved_stock: item.reserved_stock || 0,
+          available_stock: item.available_stock || item.current_stock || 0,
+          min_stock_threshold: item.min_stock_threshold,
+          max_stock_threshold: item.max_stock_threshold
+        };
+      });
+      
+      setWarehouseStocks(stocksByWarehouse);
+    } catch (error) {
+      console.error('Error cargando stocks por almacén:', error);
+      notify.error('Error cargando stock por almacén');
+    } finally {
+      setLoadingStocks(false);
+    }
+  }, [product?.id, supabase]);
+
+  // ✅ 3. HOOKS DE EFECTO (después de custom) - CORREGIDO
   useEffect(() => {
     if (product && open && warehouses.length > 0) {
+      // ✅ CARGAR STOCKS POR ALMACÉN PRIMERO
+      loadWarehouseStocks();
+      
       // ✅ BUSCAR WAREHOUSE POR DEFECTO O USAR EL PRIMERO - NULL SAFE
       const defaultWarehouse = warehouses.find(w => w.is_default === true && w.is_active) || 
                               warehouses.find(w => w.is_active) || 
@@ -297,19 +357,28 @@ export default function ProductStockDialog({
       });
       setErrors({});
     }
-  }, [product, open, warehouses]);
+  }, [product, open, warehouses, loadWarehouseStocks]);
 
-  // ✅ 4. HOOKS DE CALLBACK Y MEMO (al final)
+  // ✅ 4. HOOKS DE CALLBACK Y MEMO (al final) - CORREGIDO PARA STOCK POR ALMACÉN
 
-  // ✅ HELPERS MEMOIZADOS v8.2 - CON NULL CHECKS MEJORADOS
-  const { currentConfig, availableReasons, previewStock, previewColor, stockWarnings, selectedWarehouse } = useMemo(() => {
+  // ✅ HELPERS MEMOIZADOS v8.3 - CON STOCK POR ALMACÉN REAL
+  const { 
+    currentConfig, 
+    availableReasons, 
+    previewStock, 
+    previewColor, 
+    stockWarnings, 
+    selectedWarehouse, 
+    currentWarehouseStock 
+  } = useMemo(() => {
     if (!product) return {
       currentConfig: MOVEMENT_TYPES[0],
       availableReasons: [] as readonly string[],
       previewStock: 0,
       previewColor: colorTokens.textSecondary,
       stockWarnings: [] as string[],
-      selectedWarehouse: null as Warehouse | null
+      selectedWarehouse: null as Warehouse | null,
+      currentWarehouseStock: 0
     };
 
     const config = MOVEMENT_TYPES.find(t => t.value === formData.movementType) || MOVEMENT_TYPES[0];
@@ -318,27 +387,38 @@ export default function ProductStockDialog({
     // ✅ NULL SAFE WAREHOUSE SEARCH
     const warehouse = warehouses.find(w => w.id === formData.warehouseId) || null;
     
-    // Calcular preview del stock
-    let newStock = product.current_stock;
+    // ✅ OBTENER STOCK DEL ALMACÉN ESPECÍFICO (CRÍTICO)
+    const warehouseStockData = warehouseStocks[formData.warehouseId];
+    const warehouseStock = warehouseStockData?.current_stock || 0;
+    
+    // ✅ CALCULAR PREVIEW CON STOCK DEL ALMACÉN ESPECÍFICO
+    let newStock = warehouseStock; // ← CAMBIO CRÍTICO: usar warehouseStock
     if (config.isPositive) {
-      newStock = product.current_stock + formData.quantity;
+      newStock = warehouseStock + formData.quantity;
     } else {
-      newStock = product.current_stock - formData.quantity;
+      newStock = warehouseStock - formData.quantity;
     }
     newStock = Math.max(0, newStock);
 
-    // Color del preview
+    // Color del preview basado en el almacén
     let color: string;
     if (newStock === 0) color = colorTokens.danger;
     else if (newStock <= product.min_stock) color = colorTokens.warning;
     else if (product.max_stock && newStock > product.max_stock) color = colorTokens.info;
     else color = colorTokens.success;
 
-    // Warnings
+    // ✅ WARNINGS CON STOCK DEL ALMACÉN ESPECÍFICO
     const warnings: string[] = [];
-    if (newStock === 0) warnings.push('El producto quedará sin stock');
-    if (newStock <= product.min_stock && newStock > 0) warnings.push(`Stock por debajo del mínimo (${product.min_stock})`);
-    if (product.max_stock && newStock > product.max_stock) warnings.push(`Stock excede el máximo (${product.max_stock})`);
+    if (newStock === 0) warnings.push('El almacén quedará sin stock');
+    if (newStock <= product.min_stock && newStock > 0) {
+      warnings.push(`Stock por debajo del mínimo (${product.min_stock})`);
+    }
+    if (product.max_stock && newStock > product.max_stock) {
+      warnings.push(`Stock excede el máximo (${product.max_stock})`);
+    }
+    if (warehouseStockData?.min_stock_threshold && newStock <= warehouseStockData.min_stock_threshold) {
+      warnings.push(`Por debajo del mínimo del almacén (${warehouseStockData.min_stock_threshold})`);
+    }
 
     return {
       currentConfig: config,
@@ -346,11 +426,12 @@ export default function ProductStockDialog({
       previewStock: newStock,
       previewColor: color,
       stockWarnings: warnings,
-      selectedWarehouse: warehouse
+      selectedWarehouse: warehouse,
+      currentWarehouseStock: warehouseStock // ← NUEVO VALOR CRÍTICO
     };
-  }, [product, formData.movementType, formData.quantity, formData.warehouseId, warehouses]);
+  }, [product, formData.movementType, formData.quantity, formData.warehouseId, warehouses, warehouseStocks]);
 
-  // ✅ VALIDACIONES ENTERPRISE v8.2 - CON NULL CHECKS
+  // ✅ VALIDACIONES ENTERPRISE v8.3 - CON STOCK DEL ALMACÉN
   const validateForm = useCallback((): boolean => {
     if (!product) return false;
     
@@ -360,8 +441,9 @@ export default function ProductStockDialog({
       newErrors.quantity = 'La cantidad debe ser mayor a 0';
     }
 
-    if (!currentConfig.isPositive && formData.quantity > product.current_stock) {
-      newErrors.quantity = `Stock insuficiente. Disponible: ${product.current_stock}`;
+    // ✅ VALIDAR CON STOCK DEL ALMACÉN ESPECÍFICO (CRÍTICO)
+    if (!currentConfig.isPositive && formData.quantity > currentWarehouseStock) {
+      newErrors.quantity = `Stock insuficiente en este almacén. Disponible: ${currentWarehouseStock}`;
     }
 
     if (!formData.reason.trim()) {
@@ -374,9 +456,9 @@ export default function ProductStockDialog({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [product, formData, currentConfig]);
+  }, [product, formData, currentConfig, currentWarehouseStock]); // ← AGREGAR currentWarehouseStock
 
-  // ✅ HANDLERS MEMOIZADOS v8.2
+  // ✅ HANDLERS MEMOIZADOS v8.3
   const handleChange = useCallback(<K extends keyof FormData>(field: K, value: FormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field as keyof FormErrors]) {
@@ -384,25 +466,25 @@ export default function ProductStockDialog({
     }
   }, [errors]);
 
-  // ✅ CREAR MOVIMIENTO DIRECTO BD v8.2 - USANDO TABLA REAL CON NULL CHECKS
+  // ✅ CREAR MOVIMIENTO DIRECTO BD v8.3 - CORREGIDO PARA STOCK POR ALMACÉN
   const createInventoryMovement = useCallback(async () => {
     if (!validateForm() || !product || !selectedWarehouse) return;
 
     setLoading(true);
     try {
-      // ✅ CALCULAR VALORES PARA BD
+      // ✅ CALCULAR VALORES CON STOCK DEL ALMACÉN ESPECÍFICO
       const adjustmentQuantity = currentConfig.isPositive ? formData.quantity : -formData.quantity;
-      const previousStock = product.current_stock;
+      const previousStock = currentWarehouseStock; // ← CAMBIO CRÍTICO: usar stock del almacén
       const newStock = Math.max(0, previousStock + adjustmentQuantity);
       
-      // ✅ CREAR MOVIMIENTO CON AUDITORÍA AUTOMÁTICA v8.2
+      // ✅ CREAR MOVIMIENTO CON AUDITORÍA AUTOMÁTICA v8.3
       const movementData = await addAuditFieldsFor('inventory_movements', {
         product_id: product.id,
-        target_warehouse_id: formData.warehouseId, // ✅ NUEVO CAMPO v8.2
+        target_warehouse_id: formData.warehouseId, // ✅ ALMACÉN ESPECÍFICO
         movement_type: formData.movementType,
         quantity: adjustmentQuantity,
-        previous_stock: previousStock,
-        new_stock: newStock,
+        previous_stock: previousStock, // ← STOCK DEL ALMACÉN ESPECÍFICO
+        new_stock: newStock, // ← NUEVO STOCK DEL ALMACÉN ESPECÍFICO
         unit_cost: product.cost_price || 0,
         total_cost: (product.cost_price || 0) * Math.abs(adjustmentQuantity),
         reason: formData.reason,
@@ -417,7 +499,11 @@ export default function ProductStockDialog({
 
       if (error) throw error;
 
-      notify.success(`Stock ajustado en ${selectedWarehouse.name}: ${formData.movementType.replace('_', ' ')}`);
+      notify.success(`Stock ajustado en ${selectedWarehouse.name}: ${currentConfig.label}`);
+      
+      // ✅ RECARGAR STOCKS DESPUÉS DEL CAMBIO
+      await loadWarehouseStocks();
+      
       onSave();
       onClose();
     } catch (error: any) {
@@ -426,9 +512,9 @@ export default function ProductStockDialog({
     } finally {
       setLoading(false);
     }
-  }, [validateForm, product, selectedWarehouse, currentConfig, formData, addAuditFieldsFor, supabase, onSave, onClose]);
+  }, [validateForm, product, selectedWarehouse, currentConfig, formData, currentWarehouseStock, addAuditFieldsFor, supabase, loadWarehouseStocks, onSave, onClose]);
 
-  // ✅ SSR SAFETY SIMPLIFICADO v8.2
+  // ✅ SSR SAFETY SIMPLIFICADO v8.3
   if (!hydrated) {
     return (
       <Dialog open={open} maxWidth="md" fullWidth>
@@ -438,12 +524,13 @@ export default function ProductStockDialog({
             justifyContent: 'center', 
             alignItems: 'center',
             minHeight: '200px',
+            background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
             flexDirection: 'column',
             gap: 2
           }}>
-            <CircularProgress size={40} sx={{ color: colorTokens.brand }} />
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-              Cargando sistema multi-almacén...
+            <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
+            <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+              Cargando MuscleUp Gym...
             </Typography>
           </Box>
         </DialogContent>
@@ -483,7 +570,8 @@ export default function ProductStockDialog({
             Ajustar Stock Multi-Almacén - {product.name}
           </Typography>
           <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-            Stock actual: {product.current_stock} {product.unit || 'unidades'}
+            {/* ✅ MOSTRAR STOCK DEL ALMACÉN ESPECÍFICO */}
+            Stock en almacén: {loadingStocks ? 'Cargando...' : currentWarehouseStock} {product.unit || 'unidades'}
             {selectedWarehouse && ` | ${selectedWarehouse.name}`}
           </Typography>
         </Box>
@@ -519,7 +607,7 @@ export default function ProductStockDialog({
                     </Typography>
                     <Box display="flex" gap={2} mt={1} flexWrap="wrap">
                       <Chip 
-                        label={`Stock: ${product.current_stock} ${product.unit || 'u'}`}
+                        label={`Stock Global: ${product.current_stock} ${product.unit || 'u'}`}
                         sx={{
                           backgroundColor: `${colorTokens.info}20`,
                           color: colorTokens.info,
@@ -527,6 +615,19 @@ export default function ProductStockDialog({
                         }}
                         size="small"
                       />
+                      {/* ✅ MOSTRAR STOCK DEL ALMACÉN ESPECÍFICO */}
+                      {selectedWarehouse && (
+                        <Chip 
+                          label={`En ${selectedWarehouse.code}: ${currentWarehouseStock} ${product.unit || 'u'}`}
+                          sx={{
+                            backgroundColor: `${colorTokens.brand}20`,
+                            color: colorTokens.brand,
+                            border: `1px solid ${colorTokens.brand}30`,
+                            fontWeight: 'bold'
+                          }}
+                          size="small"
+                        />
+                      )}
                       <Chip 
                         label={`Min: ${product.min_stock}`}
                         sx={{
@@ -551,39 +652,41 @@ export default function ProductStockDialog({
                   </Box>
                 </Box>
 
-                {/* 📊 BARRA DE PROGRESO DEL STOCK */}
-                <Box>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                      Nivel de Stock Actual
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                      {product.max_stock ? 
-                        `${((product.current_stock / product.max_stock) * 100).toFixed(0)}%` : 
-                        '-- %'
-                      }
-                    </Typography>
+                {/* 📊 BARRA DE PROGRESO DEL STOCK DEL ALMACÉN */}
+                {selectedWarehouse && !loadingStocks && (
+                  <Box>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                        Nivel de Stock en {selectedWarehouse.name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                        {product.max_stock ? 
+                          `${((currentWarehouseStock / product.max_stock) * 100).toFixed(0)}%` : 
+                          '-- %'
+                        }
+                      </Typography>
+                    </Box>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={product.max_stock ? Math.min((currentWarehouseStock / product.max_stock) * 100, 100) : 50}
+                      sx={{
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: colorTokens.neutral400,
+                        '& .MuiLinearProgress-bar': {
+                          backgroundColor: currentWarehouseStock === 0 ? colorTokens.danger :
+                                          currentWarehouseStock <= product.min_stock ? colorTokens.warning :
+                                          colorTokens.success
+                        }
+                      }}
+                    />
                   </Box>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={product.max_stock ? Math.min((product.current_stock / product.max_stock) * 100, 100) : 50}
-                    sx={{
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: colorTokens.neutral400,
-                      '& .MuiLinearProgress-bar': {
-                        backgroundColor: product.current_stock === 0 ? colorTokens.danger :
-                                        product.current_stock <= product.min_stock ? colorTokens.warning :
-                                        colorTokens.success
-                      }
-                    }}
-                  />
-                </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
 
-          {/* ✅ SELECCIÓN DE ALMACÉN BD REAL v8.2 - TIPOS CENTRALIZADOS CON NULL CHECKS */}
+          {/* ✅ SELECCIÓN DE ALMACÉN BD REAL v8.3 - TIPOS CENTRALIZADOS CON NULL CHECKS */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
               background: `${colorTokens.brand}10`, 
@@ -648,6 +751,7 @@ export default function ProductStockDialog({
                         // ✅ USAR FUNCIÓN CENTRALIZADA PARA TYPE INFO
                         const typeInfo = getWarehouseTypeInfo(warehouse.warehouse_type);
                         const warehouseIcon = WAREHOUSE_TYPE_ICONS[warehouse.warehouse_type] || <WarehouseIcon />;
+                        const warehouseStockData = warehouseStocks[warehouse.id];
                         
                         return (
                           <MenuItem key={warehouse.id} value={warehouse.id}>
@@ -680,7 +784,10 @@ export default function ProductStockDialog({
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                                   {warehouse.code} | {typeInfo.label}
-                                  {warehouse.description && ` | ${warehouse.description}`}
+                                  {/* ✅ MOSTRAR STOCK DEL ALMACÉN EN EL SELECTOR */}
+                                  {warehouseStockData && !loadingStocks && (
+                                    ` | Stock: ${warehouseStockData.current_stock} ${product.unit || 'u'}`
+                                  )}
                                 </Typography>
                               </Box>
                             </Box>
@@ -701,14 +808,17 @@ export default function ProductStockDialog({
                   <Alert severity="info" sx={{ mt: 2, backgroundColor: `${colorTokens.info}10` }}>
                     Movimiento será registrado en: <strong>{selectedWarehouse.name}</strong> ({selectedWarehouse.code})
                     {selectedWarehouse.is_default === true && ' - Almacén por defecto'}
-                    {selectedWarehouse.description && ` - ${selectedWarehouse.description}`}
+                    {!loadingStocks && (
+                      <br />
+                    )}
+                    Stock actual: <strong>{loadingStocks ? 'Cargando...' : currentWarehouseStock} {product.unit || 'u'}</strong>
                   </Alert>
                 )}
               </CardContent>
             </Card>
           </Grid>
 
-          {/* 🎯 TIPOS DE MOVIMIENTO v8.2 */}
+          {/* 🎯 TIPOS DE MOVIMIENTO v8.3 */}
           <Grid size={{ xs: 12 }}>
             <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
               Tipo de Movimiento
@@ -760,7 +870,7 @@ export default function ProductStockDialog({
             </Grid>
           </Grid>
 
-          {/* 📝 FORMULARIO DE MOVIMIENTO v8.2 */}
+          {/* 📝 FORMULARIO DE MOVIMIENTO v8.3 */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
               background: currentConfig.bgColor, 
@@ -880,8 +990,8 @@ export default function ProductStockDialog({
             </Card>
           </Grid>
 
-          {/* 📊 PREVIEW DEL RESULTADO v8.2 - NULL SAFE */}
-          {formData.quantity > 0 && selectedWarehouse && (
+          {/* 📊 PREVIEW DEL RESULTADO v8.3 - CORREGIDO PARA ALMACÉN ESPECÍFICO */}
+          {formData.quantity > 0 && selectedWarehouse && !loadingStocks && (
             <Grid size={{ xs: 12 }}>
               <Card sx={{ 
                 background: `${previewColor}10`, 
@@ -900,10 +1010,10 @@ export default function ProductStockDialog({
                     <Grid size={{ xs: 4 }}>
                       <Box textAlign="center" sx={{ p: 2 }}>
                         <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                          Stock Actual
+                          Stock Actual en {selectedWarehouse.code}
                         </Typography>
                         <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
-                          {product.current_stock}
+                          {currentWarehouseStock}
                         </Typography>
                         <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                           {product.unit || 'u'}
@@ -928,7 +1038,7 @@ export default function ProductStockDialog({
                     <Grid size={{ xs: 4 }}>
                       <Box textAlign="center" sx={{ p: 2 }}>
                         <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                          Stock Final
+                          Stock Final en {selectedWarehouse.code}
                         </Typography>
                         <Typography variant="h4" fontWeight="bold" sx={{ color: previewColor }}>
                           {previewStock}
@@ -979,7 +1089,7 @@ export default function ProductStockDialog({
         </Button>
         <Button
           onClick={createInventoryMovement}
-          disabled={loading || !isFormValid}
+          disabled={loading || !isFormValid || loadingStocks}
           startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
           variant="contained"
           sx={{
