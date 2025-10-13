@@ -4,10 +4,10 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 // GET - Obtener detalle del corte
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } | Promise<{ id: string }> }
 ) {
   try {
-    const cutId = params.id;
+    const { id: cutId } = await context.params;
     console.log('🔍 API: Obteniendo detalle del corte:', cutId);
     
     const supabase = createServerSupabaseClient();
@@ -95,10 +95,10 @@ export async function GET(
 // DELETE - Eliminar corte
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } | Promise<{ id: string }> }
 ) {
   try {
-    const cutId = params.id;
+    const { id: cutId } = await context.params;
     console.log('🗑️ API: Eliminando corte:', cutId);
     
     const supabase = createServerSupabaseClient();
@@ -152,10 +152,10 @@ export async function DELETE(
 // PATCH - Actualizar corte
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } | Promise<{ id: string }> }
 ) {
   try {
-    const cutId = params.id;
+    const { id: cutId } = await context.params;
     const body = await request.json();
     
     console.log('✏️ API: Actualizando corte:', cutId, body);
@@ -167,24 +167,84 @@ export async function PATCH(
       updated_at: new Date().toISOString()
     };
     
-    // Solo actualizar campos que vengan en el body
+    // Campos básicos
     if (body.notes !== undefined) updateData.notes = body.notes;
-    if (body.expenses_amount !== undefined) {
-      updateData.expenses_amount = body.expenses_amount;
-      
-      // Recalcular balance final si se actualiza expenses_amount
-      const { data: currentCut } = await supabase
-        .from('cash_cuts')
-        .select('grand_total')
-        .eq('id', cutId)
-        .single();
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.expenses_amount !== undefined) updateData.expenses_amount = body.expenses_amount;
+    
+    // Campos de POS
+    if (body.pos_efectivo !== undefined) updateData.pos_efectivo = body.pos_efectivo;
+    if (body.pos_transferencia !== undefined) updateData.pos_transferencia = body.pos_transferencia;
+    if (body.pos_debito !== undefined) updateData.pos_debito = body.pos_debito;
+    if (body.pos_credito !== undefined) updateData.pos_credito = body.pos_credito;
+    if (body.pos_mixto !== undefined) updateData.pos_mixto = body.pos_mixto;
+    if (body.pos_total !== undefined) updateData.pos_total = body.pos_total;
+    if (body.pos_transactions !== undefined) updateData.pos_transactions = body.pos_transactions;
+    if (body.pos_commissions !== undefined) updateData.pos_commissions = body.pos_commissions;
+    
+    // Campos de Abonos
+    if (body.abonos_efectivo !== undefined) updateData.abonos_efectivo = body.abonos_efectivo;
+    if (body.abonos_transferencia !== undefined) updateData.abonos_transferencia = body.abonos_transferencia;
+    if (body.abonos_debito !== undefined) updateData.abonos_debito = body.abonos_debito;
+    if (body.abonos_credito !== undefined) updateData.abonos_credito = body.abonos_credito;
+    if (body.abonos_mixto !== undefined) updateData.abonos_mixto = body.abonos_mixto;
+    if (body.abonos_total !== undefined) updateData.abonos_total = body.abonos_total;
+    if (body.abonos_transactions !== undefined) updateData.abonos_transactions = body.abonos_transactions;
+    if (body.abonos_commissions !== undefined) updateData.abonos_commissions = body.abonos_commissions;
+    
+    // Campos de Membresías
+    if (body.membership_efectivo !== undefined) updateData.membership_efectivo = body.membership_efectivo;
+    if (body.membership_transferencia !== undefined) updateData.membership_transferencia = body.membership_transferencia;
+    if (body.membership_debito !== undefined) updateData.membership_debito = body.membership_debito;
+    if (body.membership_credito !== undefined) updateData.membership_credito = body.membership_credito;
+    if (body.membership_mixto !== undefined) updateData.membership_mixto = body.membership_mixto;
+    if (body.membership_total !== undefined) updateData.membership_total = body.membership_total;
+    if (body.membership_transactions !== undefined) updateData.membership_transactions = body.membership_transactions;
+    if (body.membership_commissions !== undefined) updateData.membership_commissions = body.membership_commissions;
+    
+    // Totales por método de pago
+    if (body.total_efectivo !== undefined) updateData.total_efectivo = body.total_efectivo;
+    if (body.total_transferencia !== undefined) updateData.total_transferencia = body.total_transferencia;
+    if (body.total_debito !== undefined) updateData.total_debito = body.total_debito;
+    if (body.total_credito !== undefined) updateData.total_credito = body.total_credito;
+    if (body.total_mixto !== undefined) updateData.total_mixto = body.total_mixto;
+    
+    // Totales generales
+    if (body.total_transactions !== undefined) updateData.total_transactions = body.total_transactions;
+    if (body.total_commissions !== undefined) updateData.total_commissions = body.total_commissions;
+    if (body.grand_total !== undefined) updateData.grand_total = body.grand_total;
+    if (body.final_balance !== undefined) updateData.final_balance = body.final_balance;
+    if (body.net_amount !== undefined) updateData.net_amount = body.net_amount;
+    
+    // 🔄 SINCRONIZACIÓN CON EGRESOS - Si no se envió expenses_amount manualmente, recalcular desde expenses
+    if (body.expenses_amount === undefined && body.syncExpenses !== false) {
+      try {
+        // Obtener la fecha del corte actual
+        const { data: currentCut } = await supabase
+          .from('cash_cuts')
+          .select('cut_date')
+          .eq('id', cutId)
+          .single();
         
-      if (currentCut) {
-        updateData.final_balance = parseFloat(currentCut.grand_total) - parseFloat(body.expenses_amount);
-        updateData.net_amount = updateData.final_balance; // Suponiendo que net_amount = final_balance
+        if (currentCut) {
+          // Consultar todos los egresos activos de ese día
+          const { data: dayExpenses, error: expensesError } = await supabase
+            .from('expenses')
+            .select('amount')
+            .eq('expense_date', currentCut.cut_date)
+            .eq('status', 'active');
+          
+          if (!expensesError && dayExpenses) {
+            const totalExpenses = dayExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount.toString()), 0);
+            updateData.expenses_amount = totalExpenses;
+            console.log(`🔄 Sincronizado expenses_amount: ${totalExpenses} para corte del ${currentCut.cut_date}`);
+          }
+        }
+      } catch (syncError) {
+        console.warn('⚠️ No se pudo sincronizar con egresos (no crítico):', syncError);
+        // No falla la actualización si falla la sync
       }
     }
-    if (body.status !== undefined) updateData.status = body.status;
     
     // Actualizar el corte
     const { data: updatedCut, error: updateError } = await supabase

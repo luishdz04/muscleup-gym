@@ -7,8 +7,15 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        // ✅ MÉTODO MODERNO: getAll (reemplaza get)
+        getAll() {
+          return request.cookies.getAll();
+        },
+        // ✅ MÉTODO MODERNO: setAll (reemplaza set y remove)
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+          });
         },
       },
     }

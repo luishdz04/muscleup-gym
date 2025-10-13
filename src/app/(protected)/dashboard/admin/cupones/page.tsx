@@ -55,7 +55,7 @@ import {
   createTimestampForDB,
   getDaysBetweenMexicoDates,
   isValidDateString
-} from '@/lib/utils/dateUtils';
+} from '@/utils/dateUtils';
 
 // Iconos principales
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';

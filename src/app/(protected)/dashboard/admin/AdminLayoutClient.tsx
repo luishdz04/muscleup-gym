@@ -3,6 +3,7 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { keyframes } from '@mui/system';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Box, 
@@ -36,6 +37,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 
+// ✅ IMPORTS ENTERPRISE v7.0
+import { colorTokens } from '@/theme';
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatMexicoTime } from '@/utils/dateUtils';
+import NotificationsMenu from '@/components/NotificationsMenu';
+
 // 🎨 ICONOS ORGANIZADOS POR CATEGORÍA
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -45,7 +52,6 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import SearchIcon from '@mui/icons-material/Search';
 import HomeIcon from '@mui/icons-material/Home';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EditIcon from '@mui/icons-material/Edit';
@@ -72,6 +78,18 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import HistoryIcon from '@mui/icons-material/History';
 
+// 🎨 Animaciones keyframes
+const pulse = keyframes`
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+`;
+
 // 💰 PAGOS Y MEMBRESÍAS (ASIGNACIONES + TRANSACCIONES)
 import PaymentIcon from '@mui/icons-material/Payment';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
@@ -90,7 +108,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import StorageIcon from '@mui/icons-material/Storage';
-import QrCodeIcon from '@mui/icons-material/QrCode';
+import WarehouseIcon from '@mui/icons-material/Warehouse';
 
 // 📊 REPORTES Y ANÁLISIS
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -117,7 +135,7 @@ import SystemUpdateIcon from '@mui/icons-material/SystemUpdate';
 
 const drawerWidth = 290;
 
-// 🎨 ESTILOS PERSONALIZADOS MEJORADOS
+// 🎨 ESTILOS PERSONALIZADOS CON THEME CENTRALIZADO v7.0
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -128,14 +146,14 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     duration: theme.transitions.duration.leavingScreen,
   }),
   marginLeft: `-${drawerWidth}px`,
-  backgroundColor: '#0a0a0a',
+  backgroundColor: colorTokens.neutral0,
   backgroundImage: `
-    radial-gradient(circle at 25px 25px, rgba(255,204,0,0.1) 2%, transparent 0%), 
-    radial-gradient(circle at 75px 75px, rgba(255,204,0,0.05) 2%, transparent 0%)
+    radial-gradient(circle at 25px 25px, ${colorTokens.brand}18 2%, transparent 0%), 
+    radial-gradient(circle at 75px 75px, ${colorTokens.brand}0D 2%, transparent 0%)
   `,
   backgroundSize: '100px 100px',
   minHeight: '100vh',
-  color: '#fff',
+  color: colorTokens.textPrimary,
   ...(open && {
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
@@ -151,63 +169,8 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'space-between',
   padding: theme.spacing(0, 1),
   ...theme.mixins.toolbar,
-}));
-
-const Search = styled('div')(({ theme }) => ({
-  position: 'relative',
-  borderRadius: '25px',
-  backgroundColor: alpha(theme.palette.common.white, 0.12),
-  border: '1px solid rgba(255, 204, 0, 0.2)',
-  '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.18),
-    borderColor: 'rgba(255, 204, 0, 0.4)',
-  },
-  '&:focus-within': {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
-    borderColor: '#ffcc00',
-    boxShadow: '0 0 0 2px rgba(255, 204, 0, 0.2)',
-  },
-  marginRight: theme.spacing(2),
-  marginLeft: 0,
-  width: '100%',
-  [theme.breakpoints.up('sm')]: {
-    marginLeft: theme.spacing(3),
-    width: 'auto',
-  },
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: '100%',
-  position: 'absolute',
-  pointerEvents: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: 'rgba(255, 204, 0, 0.7)',
-}));
-
-const StyledInputBase = styled('input')(({ theme }) => ({
-  color: 'inherit',
-  border: 'none',
-  background: 'transparent',
-  width: '100%',
-  padding: theme.spacing(1, 1, 1, 0),
-  paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-  paddingRight: theme.spacing(2),
-  transition: theme.transitions.create('width'),
-  fontFamily: 'inherit',
-  fontSize: '0.875rem',
-  [theme.breakpoints.up('md')]: {
-    width: '25ch',
-  },
-  '&:focus': {
-    outline: 'none',
-    width: '35ch',
-  },
-  '&::placeholder': {
-    color: 'rgba(255, 255, 255, 0.5)',
-  }
+  background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+  borderBottom: `1px solid ${colorTokens.border}`,
 }));
 
 // 🏗️ ESTRUCTURA DE MENÚ MEJORADA - ✅ MOVIDA FUERA DEL COMPONENTE
@@ -397,11 +360,11 @@ const menuItems: MenuItem[] = [
         section: 'inventario'
       },
       { 
-        text: 'Códigos QR', 
-        path: '/dashboard/admin/catalogo/qr', 
-        icon: <QrCodeIcon />,
+        text: 'Almacenes', 
+        path: '/dashboard/admin/catalogo/almacenes', 
+        icon: <WarehouseIcon />,
         parent: 'catalogo',
-        section: 'codigos-qr'
+        section: 'almacenes'
       }
     ]
   },
@@ -578,13 +541,16 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   // 🔧 ESTADOS MEJORADOS
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+  const [notificationsMenuAnchor, setNotificationsMenuAnchor] = useState<null | HTMLElement>(null);
   const [activeSection, setActiveSection] = useState<string>('');
   
   // ✅ ESTADO SIMPLIFICADO PARA SUBMENÚS (solo uno abierto a la vez)
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
+  
+  // ✅ HOOK DE NOTIFICACIONES v7.0 - CON FUNCIONALIDAD REAL
+  const { toast, unreadCount } = useNotifications();
   
   // ✅ useEffect OPTIMIZADO - SIN menuItems como dependencia
   useEffect(() => {
@@ -708,7 +674,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         sx={{ 
           display: 'flex', 
           alignItems: 'center',
-          '&:hover': { color: '#ffcc00' }
+          '&:hover': { color: colorTokens.brand }
         }}
       >
         <HomeIcon sx={{ mr: 0.5, fontSize: 20 }} />
@@ -726,7 +692,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         sx={{ 
           display: 'flex', 
           alignItems: 'center',
-          '&:hover': { color: '#ffcc00' }
+          '&:hover': { color: colorTokens.brand }
         }}
       >
         <DashboardIcon sx={{ mr: 0.5, fontSize: 20 }} />
@@ -741,28 +707,42 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
       let sectionName = part.charAt(0).toUpperCase() + part.slice(1);
       let sectionIcon = null;
       
-      // Buscar nombre e icono bonito
-   menuItems.forEach(item => {
-  // Buscar por path completo primero
-  if (item.path && pathname.startsWith(item.path)) {
-    sectionName = item.text;
-    sectionIcon = item.icon;
-  } else if (item.submenu && item.items) {
-    item.items.forEach(subItem => {
-      if (subItem.path && pathname.startsWith(subItem.path)) {
-        sectionName = subItem.text;
-        sectionIcon = subItem.icon;
-      }
-    });
-  }
-});
+      // Construir la ruta completa hasta este punto
+      const fullPathToHere = '/dashboard/admin' + currentPath;
+      
+      // Buscar nombre e icono bonito - EXACTO para esta ruta específica
+      let found = false;
+      menuItems.forEach(item => {
+        // Buscar por path EXACTO
+        if (item.path === fullPathToHere) {
+          sectionName = item.text;
+          sectionIcon = item.icon;
+          found = true;
+        } else if (item.submenu && item.items) {
+          // Si es un submenu padre (ej: "catalogo")
+          if (item.section === part) {
+            sectionName = item.text;
+            sectionIcon = item.icon;
+            found = true;
+          }
+          // Buscar en los items del submenu
+          item.items.forEach(subItem => {
+            if (subItem.path === fullPathToHere) {
+              sectionName = subItem.text;
+              sectionIcon = subItem.icon;
+              found = true;
+            }
+          });
+        }
+      });
+      
       const isLast = i === pathParts.length - 1;
       
       breadcrumbs.push(
         isLast ? (
           <Typography 
             key={part} 
-            color="#ffcc00" 
+            color={colorTokens.brand}
             sx={{ 
               display: 'flex', 
               alignItems: 'center',
@@ -782,7 +762,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             sx={{ 
               display: 'flex', 
               alignItems: 'center',
-              '&:hover': { color: '#ffcc00' }
+              '&:hover': { color: colorTokens.brand }
             }}
           >
             {sectionIcon && React.cloneElement(sectionIcon, { sx: { mr: 0.5, fontSize: 20 } })}
@@ -794,12 +774,12 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
     
     return (
       <Breadcrumbs 
-        separator={<NavigateNextIcon fontSize="small" sx={{ color: 'rgba(255,204,0,0.6)' }} />}
+        separator={<NavigateNextIcon fontSize="small" sx={{ color: alpha(colorTokens.brand, 0.6) }} />}
         aria-label="breadcrumb"
         sx={{ 
           mb: 3, 
           mt: 1,
-          color: 'rgba(255,255,255,0.8)',
+          color: colorTokens.textSecondary,
           '& .MuiBreadcrumbs-ol': {
             alignItems: 'center'
           }
@@ -813,15 +793,15 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   return (
     <>
       <Box sx={{ display: 'flex' }}>
-        {/* 🏢 BARRA SUPERIOR COMPLETAMENTE NEGRA Y MÁS ALTA */}
+        {/* 🏢 BARRA SUPERIOR CON THEME CENTRALIZADO v7.0 */}
         <AppBar 
           position="fixed" 
           sx={{ 
             zIndex: theme.zIndex.drawer + 1,
-            background: '#000000',
+            background: colorTokens.black,
             backdropFilter: 'none',
-            boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
-            borderBottom: '1px solid rgba(255, 204, 0, 0.15)'
+            boxShadow: `0 4px 20px 0 ${alpha(colorTokens.black, 0.8)}`,
+            borderBottom: `1px solid ${alpha(colorTokens.brand, 0.15)}`
           }}
         >
           {loading && (
@@ -832,9 +812,9 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                 left: 0, 
                 right: 0, 
                 height: '3px',
-                background: 'rgba(255,204,0,0.1)',
+                background: alpha(colorTokens.brand, 0.1),
                 '& .MuiLinearProgress-bar': {
-                  background: 'linear-gradient(90deg, #ffcc00, #ffd700)'
+                  background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.brandHover})`
                 }
               }} 
             />
@@ -848,9 +828,9 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
               edge="start"
               sx={{ 
                 mr: 2,
-                backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                backgroundColor: alpha(colorTokens.brand, 0.1),
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 204, 0, 0.2)',
+                  backgroundColor: alpha(colorTokens.brand, 0.2),
                 }
               }}
             >
@@ -860,30 +840,34 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             {/* ÁREA DEL LOGO MEJORADA */}
             <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
               <Box 
-                component="img"
+                component={motion.img}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                whileHover={{ scale: 1.02 }}
                 sx={{ 
                   height: 65,
                   width: 'auto',
                   mr: 2,
-                  filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
+                  cursor: 'pointer'
                 }}
                 src="/logo.png"
                 alt="Muscle Up Gym"
+                onClick={() => router.push('/dashboard/admin/dashboard')}
               />
               
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <IntegrationInstructionsIcon 
                     sx={{ 
-                      color: '#ffcc00', 
-                      fontSize: 24,
-                      filter: 'drop-shadow(0 1px 2px rgba(255,204,0,0.3))'
+                      color: colorTokens.brand, 
+                      fontSize: 24
                     }} 
                   />
                   <Typography 
                     variant="h5" 
                     sx={{ 
-                      color: 'rgba(255,255,255,0.95)',
+                      color: colorTokens.textPrimary,
                       fontWeight: 700,
                       letterSpacing: 1.5,
                       fontSize: '1.1rem'
@@ -895,8 +879,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                     size="small"
                     label="SGI"
                     sx={{
-                      backgroundColor: '#ffcc00',
-                      color: '#000',
+                      backgroundColor: colorTokens.brand,
+                      color: colorTokens.black,
                       fontWeight: 800,
                       fontSize: '0.75rem',
                       height: '24px',
@@ -908,45 +892,47 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
               </Box>
             </Box>
             
-            <Search sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 0.4, maxWidth: '600px' }}>
-              <SearchIconWrapper>
-                <SearchIcon />
-              </SearchIconWrapper>
-              <StyledInputBase
-                placeholder="Buscar usuarios, productos, reportes..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-              />
-            </Search>
+            {/* ✅ BUSCADOR ELIMINADO - Sin funcionalidad implementada */}
             
             <Box sx={{ flexGrow: 1 }} />
             
             {/* 🔔 ÁREA DE NOTIFICACIONES Y USUARIO */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Tooltip title="Notificaciones">
+              <Tooltip title={unreadCount > 0 ? `${unreadCount} notificaciones sin leer` : 'Sin notificaciones'}>
                 <IconButton 
                   color="inherit" 
+                  onClick={(e) => setNotificationsMenuAnchor(e.currentTarget)}
                   sx={{ 
                     mr: 1,
                     position: 'relative',
                     '&:hover': {
-                      backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                      backgroundColor: alpha(colorTokens.brand, 0.1),
                     }
                   }}
                   aria-label="mostrar notificaciones"
                 >
                   <Badge 
-                    badgeContent={7} 
-                    color="error"
+                    badgeContent={unreadCount} 
+                    max={99}
                     sx={{
                       '& .MuiBadge-badge': {
-                        background: 'linear-gradient(45deg, #ff4444, #ff6666)',
-                        color: 'white',
-                        fontWeight: 'bold'
+                        background: `linear-gradient(135deg, ${colorTokens.danger}, #ff6666)`,
+                        color: colorTokens.white,
+                        fontWeight: 800,
+                        fontSize: '0.7rem',
+                        minWidth: '20px',
+                        height: '20px',
+                        borderRadius: '10px',
+                        padding: '0 6px',
+                        top: '3px',
+                        right: '3px',
+                        border: `2px solid ${colorTokens.black}`,
+                        boxShadow: `0 2px 8px ${alpha(colorTokens.danger, 0.5)}`,
+                        animation: unreadCount > 0 ? `${pulse} 2s ease-in-out infinite` : 'none'
                       }
                     }}
                   >
-                    <NotificationsIcon />
+                    <NotificationsIcon sx={{ color: colorTokens.brand, fontSize: 28 }} />
                   </Badge>
                 </IconButton>
               </Tooltip>
@@ -955,9 +941,9 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                 size="small"
                 label={`Bienvenido, ${user?.firstName || 'Admin'}`}
                 sx={{
-                  backgroundColor: 'rgba(255, 204, 0, 0.15)',
-                  color: '#ffcc00',
-                  border: '1px solid rgba(255, 204, 0, 0.3)',
+                  backgroundColor: alpha(colorTokens.brand, 0.15),
+                  color: colorTokens.brand,
+                  border: `1px solid ${alpha(colorTokens.brand, 0.3)}`,
                   fontWeight: 600,
                   display: { xs: 'none', md: 'flex' }
                 }}
@@ -965,17 +951,20 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
               
               <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
                 <IconButton 
+                  component={motion.button}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleUserMenuOpen}
                   size="small"
                   edge="end"
                   aria-label="cuenta de usuario"
                   aria-haspopup="true"
                   sx={{ 
-                    bgcolor: 'rgba(255, 204, 0, 0.2)',
+                    bgcolor: alpha(colorTokens.brand, 0.2),
                     ml: 1,
-                    border: '2px solid rgba(255, 204, 0, 0.3)',
+                    border: `2px solid ${alpha(colorTokens.brand, 0.3)}`,
                     '&:hover': {
-                      bgcolor: 'rgba(255, 204, 0, 0.3)',
+                      bgcolor: alpha(colorTokens.brand, 0.3),
                     }
                   }}
                 >
@@ -984,7 +973,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                     src={user?.profilePictureUrl || ""}
                     sx={{ 
                       width: 40, 
-                      height: 40
+                      height: 40,
+                      border: `2px solid ${alpha(colorTokens.brand, 0.5)}`
                     }}
                   >
                     {user?.firstName?.charAt(0) || "U"}
@@ -1004,13 +994,13 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                 elevation: 0,
                 sx: {
                   overflow: 'visible',
-                  filter: 'drop-shadow(0px 4px 20px rgba(0,0,0,0.5))',
+                  filter: `drop-shadow(0px 4px 20px ${alpha(colorTokens.black, 0.5)})`,
                   mt: 1.5,
                   minWidth: 280,
-                  background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.98) 0%, rgba(25, 25, 25, 0.95) 100%)',
+                  background: `linear-gradient(135deg, ${colorTokens.neutral100} 0%, ${colorTokens.neutral200} 100%)`,
                   backdropFilter: 'blur(20px)',
-                  color: 'white',
-                  border: '1px solid rgba(255, 204, 0, 0.2)',
+                  color: colorTokens.textPrimary,
+                  border: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
                   borderRadius: 2,
                   '& .MuiMenuItem-root': {
                     px: 3,
@@ -1018,9 +1008,11 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                     my: 0.5,
                     mx: 1,
                     borderRadius: 1.5,
-                    color: 'white',
+                    color: colorTokens.textPrimary,
+                    transition: 'all 0.2s ease',
                     '&:hover': {
-                      bgcolor: 'rgba(255, 204, 0, 0.1)',
+                      bgcolor: alpha(colorTokens.brand, 0.1),
+                      transform: 'translateX(4px)'
                     },
                   },
                   '&:before': {
@@ -1031,11 +1023,11 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                     right: 20,
                     width: 12,
                     height: 12,
-                    bgcolor: 'rgba(18, 18, 18, 0.98)',
+                    bgcolor: colorTokens.neutral100,
                     transform: 'translateY(-50%) rotate(45deg)',
                     zIndex: 0,
-                    borderTop: '1px solid rgba(255, 204, 0, 0.2)',
-                    borderLeft: '1px solid rgba(255, 204, 0, 0.2)',
+                    borderTop: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
+                    borderLeft: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
                   },
                 },
               }}
@@ -1049,81 +1041,106 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                   py: 2, 
                   display: 'flex', 
                   alignItems: 'center',
-                  background: 'rgba(255, 204, 0, 0.05)',
+                  background: alpha(colorTokens.brand, 0.05),
                   mx: 1,
                   borderRadius: 1.5,
                   mb: 1
                 }}
               >
-                <Avatar 
-                  sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    mr: 2, 
-                    border: '3px solid #ffcc00' 
-                  }}
-                  src={user?.profilePictureUrl || ""}
-                >
-                  {user?.firstName?.charAt(0) || "U"}
-                </Avatar>
-                <Box>
-                  <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                <Box sx={{ position: 'relative', mr: 2 }}>
+                  <Avatar 
+                    sx={{ 
+                      width: 60, 
+                      height: 60,
+                      border: `3px solid ${colorTokens.brand}`
+                    }}
+                    src={user?.profilePictureUrl || ""}
+                  >
+                    {user?.firstName?.charAt(0) || "U"}
+                  </Avatar>
+                  {/* Badge online FUERA del avatar */}
+                  <Box sx={{
+                    position: 'absolute',
+                    bottom: 2,
+                    right: 2,
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    bgcolor: colorTokens.success,
+                    border: `3px solid ${colorTokens.neutral100}`,
+                    boxShadow: `0 0 10px ${alpha(colorTokens.success, 0.8)}`
+                  }} />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body1" sx={{ 
+                    fontWeight: 700, 
+                    mb: 0.3,
+                    color: colorTokens.textPrimary,
+                    lineHeight: 1.2
+                  }}>
                     {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
                   </Typography>
-                  <Chip
-                    size="small"
-                    label={user?.rol === 'admin' ? 'Administrador' : 'Empleado'}
-                    sx={{
-                      backgroundColor: '#ffcc00',
-                      color: '#000',
-                      fontWeight: 600,
-                      fontSize: '0.75rem'
-                    }}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5 }}>
+                    <Chip
+                      size="small"
+                      label={user?.rol === 'admin' ? 'Administrador' : 'Empleado'}
+                      sx={{
+                        backgroundColor: colorTokens.brand,
+                        color: colorTokens.black,
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        height: '22px'
+                      }}
+                    />
+                  </Box>
                   <Typography variant="caption" sx={{ 
-                    display: 'block', 
-                    color: 'rgba(255,255,255,0.6)',
-                    mt: 0.5
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    color: colorTokens.textSecondary,
+                    fontSize: '0.72rem',
+                    fontWeight: 500
                   }}>
-                    {new Date().toLocaleDateString('es-MX', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
+                    <Box component="span" sx={{ 
+                      width: 6, 
+                      height: 6, 
+                      borderRadius: '50%', 
+                      bgcolor: colorTokens.success 
+                    }} />
+                    {formatMexicoTime(new Date())}
                   </Typography>
                 </Box>
               </Box>
               
-              <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
+              <Divider sx={{ my: 1, borderColor: alpha(colorTokens.white, 0.1) }} />
               
               <MenuItem onClick={() => router.push('/dashboard/admin/perfil')}>
                 <ListItemIcon>
-                  <PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} />
+                  <PersonIcon fontSize="small" sx={{ color: colorTokens.brand }} />
                 </ListItemIcon>
                 Mi Perfil
               </MenuItem>
               
               <MenuItem onClick={() => router.push('/dashboard/admin/herramientas/configuracion')}>
                 <ListItemIcon>
-                  <SettingsIcon fontSize="small" sx={{ color: '#ffcc00' }} />
+                  <SettingsIcon fontSize="small" sx={{ color: colorTokens.brand }} />
                 </ListItemIcon>
                 Configuración
               </MenuItem>
               
-              <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
+              <Divider sx={{ my: 1, borderColor: alpha(colorTokens.textPrimary, 0.1) }} />
               
               <MenuItem 
                 onClick={handleLogout}
                 sx={{
-                  color: '#ff6b6b !important',
+                  color: `${colorTokens.danger} !important`,
                   '&:hover': {
-                    bgcolor: 'rgba(255, 107, 107, 0.1) !important',
+                    bgcolor: `${alpha(colorTokens.danger, 0.1)} !important`,
                   }
                 }}
               >
                 <ListItemIcon>
-                  <LogoutIcon fontSize="small" sx={{ color: '#ff6b6b' }} />
+                  <LogoutIcon fontSize="small" sx={{ color: colorTokens.danger }} />
                 </ListItemIcon>
                 Cerrar Sesión
               </MenuItem>
@@ -1131,7 +1148,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
           </Toolbar>
         </AppBar>
         
-        {/* 📂 MENÚ LATERAL MEJORADO */}
+        {/* 📂 MENÚ LATERAL CON THEME CENTRALIZADO v7.0 */}
         <Drawer
           sx={{
             width: drawerWidth,
@@ -1139,14 +1156,14 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             '& .MuiDrawer-paper': {
               width: drawerWidth,
               boxSizing: 'border-box',
-              background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)',
-              color: 'white',
-              borderRight: '1px solid rgba(255, 204, 0, 0.1)',
+              background: `linear-gradient(180deg, ${colorTokens.neutral50} 0%, ${colorTokens.neutral100} 100%)`,
+              color: colorTokens.textPrimary,
+              borderRight: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
               backgroundImage: `
-                radial-gradient(circle at 20% 50%, rgba(255,204,0,0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255,204,0,0.03) 0%, transparent 50%)
+                radial-gradient(circle at 20% 50%, ${alpha(colorTokens.brand, 0.05)} 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, ${alpha(colorTokens.brand, 0.03)} 0%, transparent 50%)
               `,
-              boxShadow: 'inset -1px 0 0 rgba(255,204,0,0.1), 4px 0 20px rgba(0,0,0,0.3)'
+              boxShadow: `inset -1px 0 0 ${alpha(colorTokens.brand, 0.1)}, 4px 0 20px ${alpha(colorTokens.black, 0.3)}`
             },
           }}
           variant={isMobile ? "temporary" : "persistent"}
@@ -1156,29 +1173,40 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         >
           {/* HEADER DEL DRAWER */}
           <DrawerHeader sx={{ 
-            background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.9) 0%, rgba(25, 25, 25, 0.8) 100%)',
-            borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
+            background: `linear-gradient(135deg, ${alpha(colorTokens.neutral100, 0.9)} 0%, ${alpha(colorTokens.neutral200, 0.8)} 100%)`,
+            borderBottom: `1px solid ${alpha(colorTokens.brand, 0.15)}`,
             minHeight: '100px !important',
             px: 2
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', pl: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', pl: 0 }}>
               <Box 
-                component="img"
+                component={motion.img}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ 
+                  duration: 0.5,
+                  ease: [0.4, 0, 0.2, 1]
+                }}
+                whileHover={{ 
+                  scale: 1.05,
+                  transition: { duration: 0.2 }
+                }}
                 sx={{ 
                   height: 50, 
                   mr: 2,
-                  filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
+                  cursor: 'pointer'
                 }}
                 src="/logo.png"
                 alt="Muscle Up Gym"
+                onClick={() => router.push('/dashboard/admin/dashboard')}
               />
               <Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <IntegrationInstructionsIcon sx={{ color: '#ffcc00', fontSize: 18 }} />
+                  <IntegrationInstructionsIcon sx={{ color: colorTokens.brand, fontSize: 18 }} />
                   <Typography variant="h6" sx={{ 
                     fontWeight: 700,
                     lineHeight: 1.1,
-                    background: 'linear-gradient(45deg, #ffcc00, #ffd700)',
+                    background: `linear-gradient(45deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
                     backgroundClip: 'text',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent'
@@ -1187,7 +1215,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                   </Typography>
                 </Box>
                 <Typography variant="caption" sx={{ 
-                  color: 'rgba(255,255,255,0.8)',
+                  color: colorTokens.textSecondary,
                   fontWeight: 600,
                   letterSpacing: 0.5,
                   fontSize: '0.7rem'
@@ -1200,59 +1228,83 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
               onClick={() => setDrawerOpen(false)}
               sx={{
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                  backgroundColor: alpha(colorTokens.brand, 0.1),
                 }
               }}
             >
-              <ChevronLeftIcon sx={{ color: 'white' }} />
+              <ChevronLeftIcon sx={{ color: colorTokens.textPrimary }} />
             </IconButton>
           </DrawerHeader>
           
-          <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.1)' }} />
+          <Divider sx={{ borderColor: alpha(colorTokens.brand, 0.1) }} />
           
           {/* INFORMACIÓN DEL USUARIO EN EL DRAWER */}
           <Box sx={{ 
             p: 2.5, 
             display: 'flex', 
             alignItems: 'center',
-            borderBottom: '1px solid rgba(255, 204, 0, 0.1)',
-            background: 'rgba(255, 204, 0, 0.03)'
+            borderBottom: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
+            background: alpha(colorTokens.brand, 0.03)
           }}>
-            <Avatar 
-              sx={{ 
-                width: 50, 
-                height: 50, 
-                mr: 2,
-                border: '3px solid #ffcc00',
-                background: 'linear-gradient(45deg, #ffcc00, #ffd700)'
-              }}
-              src={user?.profilePictureUrl || ""}
-            >
-              {user?.firstName?.charAt(0) || "U"}
-            </Avatar>
+            <Box sx={{ position: 'relative', mr: 2 }}>
+              <Avatar 
+                component={motion.div}
+                whileHover={{ scale: 1.05 }}
+                sx={{ 
+                  width: 50, 
+                  height: 50,
+                  border: `3px solid ${colorTokens.brand}`,
+                  cursor: 'pointer'
+                }}
+                src={user?.profilePictureUrl || ""}
+                onClick={() => router.push('/dashboard/admin/perfil')}
+              >
+                {user?.firstName?.charAt(0) || "U"}
+              </Avatar>
+              {/* Badge online FUERA del avatar */}
+              <Box sx={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                bgcolor: colorTokens.success,
+                border: `2.5px solid ${colorTokens.neutral100}`,
+                boxShadow: `0 0 8px ${alpha(colorTokens.success, 0.8)}`
+              }} />
+            </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body1" sx={{ 
-                fontWeight: 'bold', 
+                fontWeight: 700, 
                 lineHeight: 1.2,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis'
+                textOverflow: 'ellipsis',
+                color: colorTokens.textPrimary,
+                fontSize: '0.95rem'
               }}>
                 {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mt: 0.5 }}>
                 <Chip
                   size="small"
                   label={user?.rol === 'admin' ? 'Admin' : 'Staff'}
                   sx={{
-                    backgroundColor: '#ffcc00',
-                    color: '#000',
-                    fontWeight: 600,
-                    fontSize: '0.7rem',
-                    height: '20px'
+                    backgroundColor: colorTokens.brand,
+                    color: colorTokens.black,
+                    fontWeight: 700,
+                    fontSize: '0.68rem',
+                    height: '19px'
                   }}
                 />
-                <EditIcon sx={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.4)' }} />
+                <Typography variant="caption" sx={{ 
+                  color: colorTokens.textSecondary,
+                  fontSize: '0.7rem',
+                  fontWeight: 500
+                }}>
+                  {formatMexicoTime(new Date())}
+                </Typography>
               </Box>
             </Box>
           </Box>
@@ -1263,7 +1315,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             sx={{ 
               px: 1.5, 
               py: 2,
-              height: 'calc(100% - 240px)',
+              flex: 1,
               overflowY: 'auto',
               overflowX: 'hidden',
               '&::-webkit-scrollbar': {
@@ -1271,10 +1323,10 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                 backgroundColor: 'transparent'
               },
               '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(255, 204, 0, 0.3)',
+                backgroundColor: alpha(colorTokens.brand, 0.3),
                 borderRadius: '3px',
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 204, 0, 0.5)'
+                  backgroundColor: alpha(colorTokens.brand, 0.5)
                 }
               }
             }}
@@ -1289,6 +1341,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                       sx={{ mb: 0.5 }}
                     >
                       <ListItemButton
+                        component={motion.div}
                         onClick={() => toggleSubMenu(item.section)}
                         sx={{ 
                           minHeight: 52,
@@ -1296,14 +1349,16 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                           px: 2.5,
                           py: 1.5,
                           background: openSubMenu === item.section 
-                            ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.15) 0%, rgba(255, 204, 0, 0.05) 100%)'
+                            ? `linear-gradient(90deg, ${alpha(colorTokens.brand, 0.15)}, ${alpha(colorTokens.brand, 0.05)})`
                             : 'transparent',
-                          border: openSubMenu === item.section 
-                            ? '1px solid rgba(255, 204, 0, 0.2)' 
-                            : '1px solid transparent',
+                          borderLeft: openSubMenu === item.section 
+                            ? `3px solid ${colorTokens.brand}` 
+                            : '3px solid transparent',
+                          transition: 'all 0.2s ease',
                           '&:hover': {
-                            background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.1) 0%, rgba(255, 204, 0, 0.05) 100%)',
-                            border: '1px solid rgba(255, 204, 0, 0.15)',
+                            background: `linear-gradient(90deg, ${alpha(colorTokens.brand, 0.1)}, ${alpha(colorTokens.brand, 0.05)})`,
+                            borderLeft: `3px solid ${alpha(colorTokens.brand, 0.5)}`,
+                            transform: 'translateX(4px)'
                           }
                         }}
                       >
@@ -1312,7 +1367,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                             minWidth: 0,
                             mr: 2.5,
                             justifyContent: 'center',
-                            color: openSubMenu === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
+                            color: openSubMenu === item.section ? colorTokens.brand : colorTokens.textSecondary,
+                            transition: 'color 0.2s ease'
                           }}
                         >
                           {item.icon}
@@ -1322,12 +1378,12 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                           secondary={item.description}
                           primaryTypographyProps={{ 
                             fontWeight: openSubMenu === item.section ? 700 : 500,
-                            color: openSubMenu === item.section ? '#ffcc00' : 'inherit',
+                            color: openSubMenu === item.section ? colorTokens.brand : colorTokens.textPrimary,
                             fontSize: '0.95rem'
                           }}
                           secondaryTypographyProps={{
                             fontSize: '0.75rem',
-                            color: 'rgba(255,255,255,0.5)'
+                            color: colorTokens.textSecondary
                           }}
                         />
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1337,18 +1393,19 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                               color="error"
                               sx={{
                                 '& .MuiBadge-badge': {
-                                  background: 'linear-gradient(45deg, #ff4444, #ff6666)',
-                                  color: 'white',
+                                  background: colorTokens.danger,
+                                  color: colorTokens.white,
                                   fontWeight: 'bold',
-                                  fontSize: '0.7rem'
+                                  fontSize: '0.7rem',
+                                  animation: `${pulse} 2s ease-in-out infinite`
                                 }
                               }}
                             />
                           )}
                           {openSubMenu === item.section ? (
-                            <ExpandLess sx={{ color: '#ffcc00' }} />
+                            <ExpandLess sx={{ color: colorTokens.brand }} />
                           ) : (
-                            <ExpandMore sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                            <ExpandMore sx={{ color: colorTokens.textSecondary }} />
                           )}
                         </Box>
                       </ListItemButton>
@@ -1363,6 +1420,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                             sx={{ mb: 0.5 }}
                           >
                             <ListItemButton
+                              component={motion.div}
+                              whileHover={{ x: 4 }}
                               onClick={() => navigateTo(subItem.path!)}
                               sx={{ 
                                 minHeight: 44,
@@ -1371,14 +1430,15 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                                 pr: 2,
                                 py: 1,
                                 background: activeSection === subItem.section 
-                                  ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, rgba(255, 204, 0, 0.1) 100%)'
+                                  ? alpha(colorTokens.brand, 0.15)
                                   : 'transparent',
-                                border: activeSection === subItem.section 
-                                  ? '1px solid rgba(255, 204, 0, 0.3)' 
-                                  : '1px solid transparent',
+                                borderLeft: activeSection === subItem.section 
+                                  ? `2px solid ${colorTokens.brand}` 
+                                  : '2px solid transparent',
+                                transition: 'all 0.2s ease',
                                 '&:hover': {
-                                  background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.12) 0%, rgba(255, 204, 0, 0.06) 100%)',
-                                  border: '1px solid rgba(255, 204, 0, 0.2)',
+                                  background: alpha(colorTokens.brand, 0.1),
+                                  borderLeft: `2px solid ${alpha(colorTokens.brand, 0.5)}`
                                 }
                               }}
                             >
@@ -1387,7 +1447,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                                   minWidth: 0,
                                   mr: 2,
                                   justifyContent: 'center',
-                                  color: activeSection === subItem.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.6)',
+                                  color: activeSection === subItem.section ? colorTokens.brand : colorTokens.textSecondary,
+                                  transition: 'color 0.2s ease'
                                 }}
                               >
                                 {subItem.icon}
@@ -1396,7 +1457,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                                 primary={subItem.text} 
                                 primaryTypographyProps={{ 
                                   fontWeight: activeSection === subItem.section ? 700 : 500,
-                                  color: activeSection === subItem.section ? '#ffcc00' : 'inherit',
+                                  color: activeSection === subItem.section ? colorTokens.brand : colorTokens.textPrimary,
                                   fontSize: '0.85rem'
                                 }}
                               />
@@ -1406,8 +1467,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                                   color="error"
                                   sx={{
                                     '& .MuiBadge-badge': {
-                                      background: 'linear-gradient(45deg, #ff4444, #ff6666)',
-                                      color: 'white',
+                                      background: colorTokens.danger,
+                                      color: colorTokens.white,
                                       fontWeight: 'bold',
                                       fontSize: '0.65rem',
                                       minWidth: '16px',
@@ -1434,6 +1495,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                     sx={{ mb: 0.5 }}
                   >
                     <ListItemButton
+                      component={motion.div}
+                      whileHover={{ x: 4 }}
                       onClick={() => navigateTo(item.path!)}
                       sx={{ 
                         minHeight: 52,
@@ -1441,14 +1504,15 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                         px: 2.5,
                         py: 1.5,
                         background: activeSection === item.section 
-                          ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, rgba(255, 204, 0, 0.1) 100%)'
+                          ? `linear-gradient(90deg, ${alpha(colorTokens.brand, 0.15)}, ${alpha(colorTokens.brand, 0.05)})`
                           : 'transparent',
-                        border: activeSection === item.section 
-                          ? '1px solid rgba(255, 204, 0, 0.3)' 
-                          : '1px solid transparent',
+                        borderLeft: activeSection === item.section 
+                          ? `3px solid ${colorTokens.brand}` 
+                          : '3px solid transparent',
+                        transition: 'all 0.2s ease',
                         '&:hover': {
-                          background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.12) 0%, rgba(255, 204, 0, 0.06) 100%)',
-                          border: '1px solid rgba(255, 204, 0, 0.2)',
+                          background: `linear-gradient(90deg, ${alpha(colorTokens.brand, 0.1)}, ${alpha(colorTokens.brand, 0.05)})`,
+                          borderLeft: `3px solid ${alpha(colorTokens.brand, 0.5)}`
                         }
                       }}
                     >
@@ -1457,7 +1521,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                           minWidth: 0,
                           mr: 2.5,
                           justifyContent: 'center',
-                          color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
+                          color: activeSection === item.section ? colorTokens.brand : colorTokens.textSecondary,
+                          transition: 'color 0.2s ease'
                         }}
                       >
                         {item.icon}
@@ -1467,12 +1532,12 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                         secondary={item.description}
                         primaryTypographyProps={{ 
                           fontWeight: activeSection === item.section ? 700 : 500,
-                          color: activeSection === item.section ? '#ffcc00' : 'inherit',
+                          color: activeSection === item.section ? colorTokens.brand : colorTokens.textPrimary,
                           fontSize: '0.95rem'
                         }}
                         secondaryTypographyProps={{
                           fontSize: '0.75rem',
-                          color: 'rgba(255,255,255,0.5)'
+                          color: colorTokens.textSecondary
                         }}
                       />
                       {item.badge && (
@@ -1481,10 +1546,11 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                           color="error"
                           sx={{
                             '& .MuiBadge-badge': {
-                              background: 'linear-gradient(45deg, #ff4444, #ff6666)',
-                              color: 'white',
+                              background: colorTokens.danger,
+                              color: colorTokens.white,
                               fontWeight: 'bold',
-                              fontSize: '0.7rem'
+                              fontSize: '0.7rem',
+                              animation: `${pulse} 2s ease-in-out infinite`
                             }
                           }}
                         />
@@ -1498,34 +1564,11 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             })}
           </List>
           
-          {/* 🦶 FOOTER DEL DRAWER */}
-          <Box sx={{ 
-            p: 2.5, 
-            borderTop: '1px solid rgba(255, 204, 0, 0.1)',
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(18,18,18,0.2) 100%)',
-            mt: 'auto'
-          }}>
-            <Typography variant="caption" sx={{ 
-              color: 'rgba(255,255,255,0.6)',
-              fontWeight: 500
-            }}>
-              © {new Date().getFullYear()} Muscle Up Gym
-            </Typography>
-            <Typography variant="caption" sx={{ 
-              display: 'block', 
-              color: '#ffcc00', 
-              mt: 0.5,
-              fontWeight: 600
-            }}>
-              Sistema de Gestión v2.0.0
-            </Typography>
-          </Box>
         </Drawer>
         
         {/* 📄 CONTENIDO PRINCIPAL */}
         <Main open={drawerOpen && !isMobile}>
-          <DrawerHeader />
+          <Box sx={{ minHeight: '100px' }} /> {/* Spacer para AppBar */}
           <Container maxWidth="xl" disableGutters>
             {/* 🍞 BREADCRUMBS */}
             {generateBreadcrumbs()}
@@ -1563,12 +1606,19 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         pauseOnHover
         theme="dark"
         toastStyle={{
-          backgroundColor: '#1E1E1E',
-          color: '#FFFFFF',
-          border: '1px solid #333333',
+          backgroundColor: colorTokens.neutral100,
+          color: colorTokens.white,
+          border: `1px solid ${colorTokens.neutral200}`,
           borderRadius: '12px',
-          boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
+          boxShadow: `0 8px 25px ${alpha(colorTokens.black, 0.3)}`
         }}
+      />
+      
+      {/* 🔔 MENÚ DE NOTIFICACIONES */}
+      <NotificationsMenu
+        anchorEl={notificationsMenuAnchor}
+        open={Boolean(notificationsMenuAnchor)}
+        onClose={() => setNotificationsMenuAnchor(null)}
       />
     </>
   );

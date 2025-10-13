@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -34,122 +34,21 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { formatCurrency } from '@/utils/formHelpers';
+import {
+  getTodayInMexico,
+  formatDateLong,
+  formatMexicoTime
+} from '@/utils/dateUtils';
 
-// 🎨 DARK PRO SYSTEM - TOKENS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  roleAdmin: '#E91E63'
-};
-
-// ✅ FUNCIONES LOCALES (SIN IMPORTAR dateHelpers)
-
-// 💰 Función para formatear precios
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
-  }).format(amount);
-}
-
-// 📅 Función para obtener fecha actual de México
-function getMexicoDateLocal(): string {
-  const now = new Date();
-  
-  // Obtener fecha en zona horaria de México
-  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  
-  // Formatear como YYYY-MM-DD
-  const year = mexicoDate.getFullYear();
-  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoDate.getDate()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}`;
-}
-
-// ⏰ Función para formatear hora actual de México
-function formatMexicoTimeLocal(date: Date): string {
-  return date.toLocaleString('es-MX', {
-    timeZone: 'America/Mexico_City',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true
-  });
-}
-
-// 📅 Función para formatear fechas largas
-function formatDateLocal(dateString: string): string {
-  try {
-    // Crear fecha y formatear en español México
-    const date = new Date(dateString + 'T12:00:00');
-    
-    return date.toLocaleDateString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'America/Mexico_City'
-    });
-  } catch (error) {
-    console.error('❌ Error formateando fecha:', dateString, error);
-    
-    // Fallback manual
-    const date = new Date(dateString + 'T12:00:00');
-    const months = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ];
-    const weekdays = [
-      'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
-    ];
-    
-    const weekday = weekdays[date.getDay()];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    
-    return `${weekday}, ${day} de ${month} de ${year}`;
-  }
-}
+const formatPrice = (amount: number): string => formatCurrency(Number.isFinite(amount) ? amount : 0);
 
 interface DailyData {
   date: string;
-  timezone_info?: {
-    mexico_date: string;
-    mexico_range?: {
-      start: string;
-      end: string;
-    };
-    utc_range?: {
-      start: string;
-      end: string;
-    };
-    timezone?: string;
-    note: string;
-  };
   pos: {
     efectivo: number;
     transferencia: number;
@@ -177,6 +76,10 @@ interface DailyData {
     transactions: number;
     commissions: number;
   };
+  expenses?: {
+    amount: number;
+    count: number;
+  };
   totals: {
     efectivo: number;
     transferencia: number;
@@ -186,33 +89,40 @@ interface DailyData {
     transactions: number;
     commissions: number;
     net_amount: number;
+    expenses_amount?: number;
+    final_balance?: number;
   };
 }
 
 export default function CortesPage() {
   const router = useRouter();
+  const hydrated = useHydrated();
+  const { toast } = useNotifications();
+  const { getUTCTimestamp } = useUserTracking();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
   
   // ✅ ESTADO PARA HORA EN TIEMPO REAL
   const [currentMexicoTime, setCurrentMexicoTime] = useState<string>('');
   
   // ✅ FECHA ACTUAL EN MÉXICO USANDO FUNCIÓN LOCAL
-  const [selectedDate] = useState(() => {
-    const mexicoDate = getMexicoDateLocal();
-    console.log('🇲🇽 Fecha actual México (función local):', mexicoDate);
-    console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
-    console.log('⏰ Hora actual UTC:', new Date().toISOString());
-    return mexicoDate; // Formato: YYYY-MM-DD
-  });
+  const selectedDate = useMemo(() => getTodayInMexico(), []);
 
   // ✅ ACTUALIZAR HORA EN TIEMPO REAL CADA SEGUNDO
   useEffect(() => {
+    if (!hydrated) return;
+
     const updateTime = () => {
       const now = new Date();
-      const mexicoTime = formatMexicoTimeLocal(now);
+      const mexicoTime = formatMexicoTime(now, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
       setCurrentMexicoTime(mexicoTime);
     };
 
@@ -223,62 +133,76 @@ export default function CortesPage() {
     const interval = setInterval(updateTime, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [hydrated]);
 
-  // ✅ CARGAR DATOS DEL DÍA CON MEJOR MANEJO DE ERRORES
-  const loadDailyData = async () => {
-    try {
+  const loadDailyData = useCallback(async (
+    options: { withSkeleton?: boolean; withFeedback?: boolean } = {}
+  ): Promise<boolean> => {
+    const { withSkeleton = false, withFeedback = false } = options;
+
+    if (!hydrated) {
+      return false;
+    }
+
+    if (withSkeleton) {
       setLoading(true);
-      setError(null);
-      
-      console.log('🔍 Solicitando datos para fecha México:', selectedDate);
-      console.log('⏰ Hora actual México:', currentMexicoTime);
-      
+    }
+    setError(null);
+
+    try {
       const response = await fetch(`/api/cuts/daily-data?date=${selectedDate}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-        }
+          'Content-Type': 'application/json'
+        },
+        cache: 'no-store'
       });
-      
-      console.log('📡 Respuesta de la API:', response.status, response.statusText);
-      
+
       const data = await response.json();
-      console.log('📊 Datos recibidos de la API:', data);
-      
+
       if (response.ok && data.success) {
-        console.log('✅ Datos válidos recibidos:', {
-          fecha: data.date,
-          timezone_info: data.timezone_info,
-          total_ingresos: data.totals?.total || 0,
-          transacciones: data.totals?.transactions || 0
-        });
         setDailyData(data);
-      } else {
-        const errorMsg = data.error || `Error HTTP ${response.status}: ${response.statusText}`;
-        console.error('❌ Error en respuesta de API:', errorMsg);
-        setError(errorMsg);
+        setLastRefresh(getUTCTimestamp());
+
+        if (withFeedback) {
+          toast.success('Datos del corte actualizados');
+        }
+        return true;
       }
+
+      const errorMsg = data.error || `Error HTTP ${response.status}: ${response.statusText}`;
+      setError(errorMsg);
+      if (withFeedback || !withSkeleton) {
+        toast.error(errorMsg);
+      }
+      return false;
     } catch (error: any) {
-      console.error('💥 Error crítico en loadDailyData:', error);
-      setError(`Error de conexión: ${error.message}`);
+      const message = `Error de conexión: ${error.message}`;
+      setError(message);
+      if (withFeedback || !withSkeleton) {
+        toast.error('No se pudo obtener el corte del día');
+      }
+      return false;
     } finally {
-      setLoading(false);
+      if (withSkeleton) {
+        setLoading(false);
+      }
     }
-  };
+  }, [getUTCTimestamp, hydrated, selectedDate, toast]);
 
-  // 🔄 REFRESCAR DATOS
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
+    if (!hydrated) return;
     setRefreshing(true);
-    await loadDailyData();
+    const loadingToast = toast.loading('Actualizando corte del día...');
+    await loadDailyData({ withFeedback: true });
+    toast.dismiss(loadingToast);
     setRefreshing(false);
-  };
+  }, [hydrated, loadDailyData, toast]);
 
-  // ⚡ EFECTOS
   useEffect(() => {
-    console.log('🚀 Componente montado, cargando datos para fecha:', selectedDate);
-    loadDailyData();
-  }, [selectedDate]);
+    if (!hydrated) return;
+    loadDailyData({ withSkeleton: true });
+  }, [hydrated, loadDailyData]);
 
   // 📊 CALCULAR PORCENTAJES PARA MÉTODOS DE PAGO
   const calculatePaymentMethodPercentages = () => {
@@ -305,40 +229,27 @@ export default function CortesPage() {
   return (
     <Box sx={{ 
       minHeight: '100vh',
-      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
-      color: darkProTokens.textPrimary,
+      background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.surfaceLevel1})`,
+      color: colorTokens.textPrimary,
       p: 4
     }}>
       {/* 🏷️ HEADER CON HORA DINÁMICA */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{ 
-            bgcolor: darkProTokens.roleAdmin, 
+            bgcolor: colorTokens.brand, 
             width: 60, 
             height: 60 
           }}>
             <ReceiptIcon sx={{ fontSize: 32 }} />
           </Avatar>
           <Box>
-            <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+            <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
               Cortes de Caja
             </Typography>
             
-            {/* ✅ FECHA Y HORA DINÁMICA CORREGIDAS */}
-            <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-              📅 {formatDateLocal(selectedDate)} • ⏰ {currentMexicoTime} • Gestión de cortes diarios
-            </Typography>
-            
-            {/* ✅ INFORMACIÓN DE ZONA HORARIA CON FECHA CORRECTA */}
-            <Typography variant="caption" sx={{ 
-              color: darkProTokens.info,
-              display: 'block',
-              mt: 0.5
-            }}>
-              🇲🇽 Zona horaria: México (UTC-6) • Fecha consultada: {selectedDate}
-              {dailyData?.timezone_info && (
-                <span> • {dailyData.timezone_info.note}</span>
-              )}
+            <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+              {formatDateLong(selectedDate)} • {currentMexicoTime}
             </Typography>
           </Box>
         </Box>
@@ -349,9 +260,9 @@ export default function CortesPage() {
               onClick={handleRefresh}
               disabled={refreshing}
               sx={{ 
-                color: darkProTokens.info,
-                bgcolor: `${darkProTokens.info}20`,
-                '&:hover': { bgcolor: `${darkProTokens.info}30` }
+                color: colorTokens.info,
+                bgcolor: `${colorTokens.info}20`,
+                '&:hover': { bgcolor: `${colorTokens.info}30` }
               }}
             >
               <RefreshIcon sx={{ 
@@ -369,8 +280,8 @@ export default function CortesPage() {
             startIcon={<AddIcon />}
             onClick={() => router.push('/dashboard/admin/cortes/nuevo')}
             sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.primaryHover})`,
-              color: darkProTokens.textPrimary,
+              background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+              color: colorTokens.textPrimary,
               fontWeight: 700,
               px: 3,
               py: 1.5,
@@ -394,27 +305,24 @@ export default function CortesPage() {
               severity="error" 
               sx={{ 
                 mb: 3,
-                backgroundColor: `${darkProTokens.error}20`,
-                color: darkProTokens.textPrimary,
-                border: `1px solid ${darkProTokens.error}60`,
-                '& .MuiAlert-icon': { color: darkProTokens.error }
+                backgroundColor: `${colorTokens.danger}20`,
+                color: colorTokens.textPrimary,
+                border: `1px solid ${colorTokens.danger}60`,
+                '& .MuiAlert-icon': { color: colorTokens.danger }
               }}
               action={
                 <Button 
                   color="inherit" 
                   size="small" 
                   onClick={handleRefresh}
-                  sx={{ color: darkProTokens.textPrimary }}
+                  sx={{ color: colorTokens.textPrimary }}
                 >
                   Reintentar
                 </Button>
               }
             >
-              <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
                 {error}
-              </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                Fecha consultada: {selectedDate} • Hora México: {currentMexicoTime} • Verifique la API y la conexión a la base de datos
               </Typography>
             </Alert>
           </motion.div>
@@ -424,11 +332,11 @@ export default function CortesPage() {
       {/* 🔄 LOADING STATE */}
       {loading && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 8 }}>
-          <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin, mb: 3 }} />
-          <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+          <CircularProgress size={60} sx={{ color: colorTokens.brand, mb: 3 }} />
+          <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
             Cargando datos del día {selectedDate}...
           </Typography>
-          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+          <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
             Consultando información de ventas, abonos y membresías • {currentMexicoTime}
           </Typography>
         </Box>
@@ -438,30 +346,30 @@ export default function CortesPage() {
       {!loading && dailyData && (
         <Grid container spacing={4}>
           {/* 💰 RESUMEN PRINCIPAL */}
-          <Grid xs={12}>
+          <Grid size={{ xs: 12 }}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
               <Card sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                border: `2px solid ${darkProTokens.roleAdmin}40`,
+                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                border: `2px solid ${colorTokens.brand}40`,
                 borderRadius: 4,
                 overflow: 'hidden'
               }}>
                 <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin, mb: 3 }}>
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.brand, mb: 3 }}>
                     💰 Resumen del Día
                   </Typography>
                   
                   <Grid container spacing={3}>
-                    <Grid xs={12} md={3}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.success }}>
                           {formatPrice(dailyData.totals.total)}
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                           Ingresos Totales
                         </Typography>
                         <Chip
@@ -469,48 +377,48 @@ export default function CortesPage() {
                           label={`${dailyData.totals.transactions} transacciones`}
                           sx={{
                             mt: 1,
-                            backgroundColor: `${darkProTokens.success}20`,
-                            color: darkProTokens.success,
+                            backgroundColor: `${colorTokens.success}20`,
+                            color: colorTokens.success,
                             fontWeight: 600
                           }}
                         />
                       </Box>
                     </Grid>
                     
-                    <Grid xs={12} md={3}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.warning }}>
                           {formatPrice(dailyData.totals.commissions)}
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                           Comisiones
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                           {dailyData.totals.total > 0 ? ((dailyData.totals.commissions / dailyData.totals.total) * 100).toFixed(1) : 0}% del total
                         </Typography>
                       </Box>
                     </Grid>
                     
-                    <Grid xs={12} md={3}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.brand }}>
                           {formatPrice(dailyData.totals.net_amount)}
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                           Monto Neto
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                           Después de comisiones
                         </Typography>
                       </Box>
                     </Grid>
                     
-                    <Grid xs={12} md={3}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.info }}>
                           {dailyData.pos.transactions + dailyData.memberships.transactions + dailyData.abonos.transactions}
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                           Operaciones
                         </Typography>
                         <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mt: 1, flexWrap: 'wrap' }}>
@@ -527,45 +435,45 @@ export default function CortesPage() {
           </Grid>
 
           {/* 💳 DESGLOSE POR MÉTODOS DE PAGO */}
-          <Grid xs={12}>
+          <Grid size={{ xs: 12 }}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
               <Card sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                border: `1px solid ${darkProTokens.grayMedium}`,
+                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                border: `1px solid ${colorTokens.neutral500}`,
                 borderRadius: 4
               }}>
                 <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 3 }}>
                     💳 Desglose por Métodos de Pago
                   </Typography>
                   
                   <Grid container spacing={3}>
                     {/* EFECTIVO */}
-                    <Grid xs={12} md={3}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Paper sx={{ 
                         p: 3, 
                         textAlign: 'center',
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                        border: `2px solid ${darkProTokens.primary}40`,
+                        background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral300})`,
+                        border: `2px solid ${colorTokens.brand}40`,
                         borderRadius: 3
                       }}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
                           <Avatar sx={{ 
-                            bgcolor: darkProTokens.primary, 
+                            bgcolor: colorTokens.brand, 
                             width: 48, 
                             height: 48 
                           }}>
                             <AttachMoneyIcon sx={{ fontSize: 24 }} />
                           </Avatar>
                         </Box>
-                        <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.brand }}>
                           {formatPrice(dailyData.totals.efectivo)}
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
                           Efectivo
                         </Typography>
                         <LinearProgress 
@@ -574,40 +482,40 @@ export default function CortesPage() {
                           sx={{ 
                             height: 8, 
                             borderRadius: 4,
-                            backgroundColor: `${darkProTokens.primary}20`,
+                            backgroundColor: `${colorTokens.brand}20`,
                             '& .MuiLinearProgress-bar': {
-                              backgroundColor: darkProTokens.primary
+                              backgroundColor: colorTokens.brand
                             }
                           }} 
                         />
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                           {percentages.efectivo.toFixed(1)}%
                         </Typography>
                       </Paper>
                     </Grid>
 
                     {/* TRANSFERENCIA */}
-                    <Grid xs={12} md={3}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Paper sx={{ 
                         p: 3, 
                         textAlign: 'center',
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                        border: `2px solid ${darkProTokens.info}40`,
+                        background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral300})`,
+                        border: `2px solid ${colorTokens.info}40`,
                         borderRadius: 3
                       }}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
                           <Avatar sx={{ 
-                            bgcolor: darkProTokens.info, 
+                            bgcolor: colorTokens.info, 
                             width: 48, 
                             height: 48 
                           }}>
                             <AccountBalanceIcon sx={{ fontSize: 24 }} />
                           </Avatar>
                         </Box>
-                        <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.info }}>
                           {formatPrice(dailyData.totals.transferencia)}
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
                           Transferencia
                         </Typography>
                         <LinearProgress 
@@ -616,40 +524,40 @@ export default function CortesPage() {
                           sx={{ 
                             height: 8, 
                             borderRadius: 4,
-                            backgroundColor: `${darkProTokens.info}20`,
+                            backgroundColor: `${colorTokens.info}20`,
                             '& .MuiLinearProgress-bar': {
-                              backgroundColor: darkProTokens.info
+                              backgroundColor: colorTokens.info
                             }
                           }} 
                         />
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                           {percentages.transferencia.toFixed(1)}%
                         </Typography>
                       </Paper>
                     </Grid>
 
                     {/* TARJETA DÉBITO */}
-                    <Grid xs={12} md={3}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Paper sx={{ 
                         p: 3, 
                         textAlign: 'center',
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                        border: `2px solid ${darkProTokens.success}40`,
+                        background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral300})`,
+                        border: `2px solid ${colorTokens.success}40`,
                         borderRadius: 3
                       }}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
                           <Avatar sx={{ 
-                            bgcolor: darkProTokens.success, 
+                            bgcolor: colorTokens.success, 
                             width: 48, 
                             height: 48 
                           }}>
                             <CreditCardIcon sx={{ fontSize: 24 }} />
                           </Avatar>
                         </Box>
-                        <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.success }}>
                           {formatPrice(dailyData.totals.debito)}
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
                           Tarjeta Débito
                         </Typography>
                         <LinearProgress 
@@ -658,40 +566,40 @@ export default function CortesPage() {
                           sx={{ 
                             height: 8, 
                             borderRadius: 4,
-                            backgroundColor: `${darkProTokens.success}20`,
+                            backgroundColor: `${colorTokens.success}20`,
                             '& .MuiLinearProgress-bar': {
-                              backgroundColor: darkProTokens.success
+                              backgroundColor: colorTokens.success
                             }
                           }} 
                         />
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                           {percentages.debito.toFixed(1)}%
                         </Typography>
                       </Paper>
                     </Grid>
 
                     {/* TARJETA CRÉDITO */}
-                    <Grid xs={12} md={3}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Paper sx={{ 
                         p: 3, 
                         textAlign: 'center',
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                        border: `2px solid ${darkProTokens.error}40`,
+                        background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral300})`,
+                        border: `2px solid ${colorTokens.danger}40`,
                         borderRadius: 3
                       }}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
                           <Avatar sx={{ 
-                            bgcolor: darkProTokens.error, 
+                            bgcolor: colorTokens.danger, 
                             width: 48, 
                             height: 48 
                           }}>
                             <CreditCardIcon sx={{ fontSize: 24 }} />
                           </Avatar>
                         </Box>
-                        <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.danger }}>
                           {formatPrice(dailyData.totals.credito)}
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
                           Tarjeta Crédito
                         </Typography>
                         <LinearProgress 
@@ -700,13 +608,13 @@ export default function CortesPage() {
                           sx={{ 
                             height: 8, 
                             borderRadius: 4,
-                            backgroundColor: `${darkProTokens.error}20`,
+                            backgroundColor: `${colorTokens.danger}20`,
                             '& .MuiLinearProgress-bar': {
-                              backgroundColor: darkProTokens.error
+                              backgroundColor: colorTokens.danger
                             }
                           }} 
                         />
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                           {percentages.credito.toFixed(1)}%
                         </Typography>
                       </Paper>
@@ -718,7 +626,7 @@ export default function CortesPage() {
           </Grid>
 
           {/* 📈 DESGLOSE POR FUENTE DE INGRESOS */}
-          <Grid xs={12}>
+          <Grid size={{ xs: 12 }}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -726,79 +634,79 @@ export default function CortesPage() {
             >
               <Grid container spacing={3}>
                 {/* PUNTO DE VENTA */}
-                <Grid xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                    border: `1px solid ${darkProTokens.info}30`,
+                    background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                    border: `1px solid ${colorTokens.info}30`,
                     borderRadius: 4,
                     height: '100%'
                   }}>
                     <CardContent sx={{ p: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <Avatar sx={{ bgcolor: darkProTokens.info }}>
+                        <Avatar sx={{ bgcolor: colorTokens.info }}>
                           <ReceiptIcon />
                         </Avatar>
-                        <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.info }}>
                           Punto de Venta
                         </Typography>
                       </Box>
                       
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
                         {formatPrice(dailyData.pos.total)}
                       </Typography>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Efectivo:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.pos.efectivo)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Transferencia:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.pos.transferencia)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Débito:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.pos.debito)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Crédito:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.pos.credito)}
                         </Typography>
                       </Box>
                       
-                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 2 }} />
+                      <Divider sx={{ backgroundColor: colorTokens.neutral500, my: 2 }} />
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Transacciones:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {dailyData.pos.transactions}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Comisiones:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.warning, fontWeight: 600 }}>
                           {formatPrice(dailyData.pos.commissions)}
                         </Typography>
                       </Box>
@@ -807,79 +715,79 @@ export default function CortesPage() {
                 </Grid>
 
                 {/* ABONOS */}
-                <Grid xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                    border: `1px solid ${darkProTokens.warning}30`,
+                    background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                    border: `1px solid ${colorTokens.warning}30`,
                     borderRadius: 4,
                     height: '100%'
                   }}>
                     <CardContent sx={{ p: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <Avatar sx={{ bgcolor: darkProTokens.warning }}>
+                        <Avatar sx={{ bgcolor: colorTokens.warning }}>
                           <MonetizationOnIcon />
                         </Avatar>
-                        <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.warning }}>
                           Abonos
                         </Typography>
                       </Box>
                       
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
                         {formatPrice(dailyData.abonos.total)}
                       </Typography>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Efectivo:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.abonos.efectivo)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Transferencia:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.abonos.transferencia)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Débito:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.abonos.debito)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Crédito:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.abonos.credito)}
                         </Typography>
                       </Box>
                       
-                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 2 }} />
+                      <Divider sx={{ backgroundColor: colorTokens.neutral500, my: 2 }} />
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Transacciones:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {dailyData.abonos.transactions}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Comisiones:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.warning, fontWeight: 600 }}>
                           {formatPrice(dailyData.abonos.commissions)}
                         </Typography>
                       </Box>
@@ -888,79 +796,79 @@ export default function CortesPage() {
                 </Grid>
 
                 {/* MEMBRESÍAS */}
-                <Grid xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                    border: `1px solid ${darkProTokens.success}30`,
+                    background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                    border: `1px solid ${colorTokens.success}30`,
                     borderRadius: 4,
                     height: '100%'
                   }}>
                     <CardContent sx={{ p: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <Avatar sx={{ bgcolor: darkProTokens.success }}>
+                        <Avatar sx={{ bgcolor: colorTokens.success }}>
                           <AssessmentIcon />
                         </Avatar>
-                        <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.success }}>
                           Membresías
                         </Typography>
                       </Box>
                       
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
                         {formatPrice(dailyData.memberships.total)}
                       </Typography>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Efectivo:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.memberships.efectivo)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Transferencia:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.memberships.transferencia)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Débito:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.memberships.debito)}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Crédito:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {formatPrice(dailyData.memberships.credito)}
                         </Typography>
                       </Box>
                       
-                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 2 }} />
+                      <Divider sx={{ backgroundColor: colorTokens.neutral500, my: 2 }} />
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Transacciones:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                           {dailyData.memberships.transactions}
                         </Typography>
                       </Box>
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                           Comisiones:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.warning, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.warning, fontWeight: 600 }}>
                           {formatPrice(dailyData.memberships.commissions)}
                         </Typography>
                       </Box>
@@ -971,33 +879,110 @@ export default function CortesPage() {
             </motion.div>
           </Grid>
 
+          {/* 💸 EGRESOS Y BALANCE FINAL */}
+          <Grid size={{ xs: 12 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+            >
+              <Grid container spacing={3}>
+                {/* EGRESOS */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                    border: `2px solid ${colorTokens.danger}40`,
+                    borderRadius: 4,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Avatar sx={{ bgcolor: colorTokens.danger }}>
+                          <AttachMoneyIcon />
+                        </Avatar>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.danger }}>
+                          Egresos del Día
+                        </Typography>
+                      </Box>
+                      
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.danger, mb: 2 }}>
+                        - {formatPrice(dailyData.totals.expenses_amount || 0)}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                          Total de egresos:
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+                          {dailyData.expenses?.count || 0} registros
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* BALANCE FINAL */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Card sx={{
+                    background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
+                    border: `3px solid ${colorTokens.success}`,
+                    borderRadius: 4,
+                    height: '100%'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Avatar sx={{ bgcolor: colorTokens.success, width: 56, height: 56 }}>
+                          <TrendingUpIcon sx={{ fontSize: 32 }} />
+                        </Avatar>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.success }}>
+                          Balance Final
+                        </Typography>
+                      </Box>
+                      
+                      <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.success, mb: 2 }}>
+                        {formatPrice(dailyData.totals.final_balance || 0)}
+                      </Typography>
+                      
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                        Total Ingresos: {formatPrice(dailyData.totals.total)}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                        Total Egresos: {formatPrice(dailyData.totals.expenses_amount || 0)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </motion.div>
+          </Grid>
+
           {/* 🎯 ACCIONES RÁPIDAS */}
-          <Grid xs={12}>
+          <Grid size={{ xs: 12 }}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
               <Card sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                border: `1px solid ${darkProTokens.grayMedium}`,
+                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                border: `1px solid ${colorTokens.neutral500}`,
                 borderRadius: 4
               }}>
                 <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 3 }}>
                     🎯 Acciones Rápidas
                   </Typography>
                   
                   <Grid container spacing={2}>
-                    <Grid xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <Button
                         fullWidth
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={() => router.push('/dashboard/admin/cortes/nuevo')}
                         sx={{
-                          background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.primaryHover})`,
-                          color: darkProTokens.textPrimary,
+                          background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                          color: colorTokens.textPrimary,
                           py: 2,
                           fontSize: '1rem',
                           fontWeight: 600
@@ -1007,21 +992,21 @@ export default function CortesPage() {
                       </Button>
                     </Grid>
                     
-                    <Grid xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <Button
                         fullWidth
                         variant="outlined"
                         startIcon={<CalendarIcon />}
                         onClick={() => router.push('/dashboard/admin/cortes/historial')}
                         sx={{
-                          borderColor: darkProTokens.info,
-                          color: darkProTokens.info,
+                          borderColor: colorTokens.info,
+                          color: colorTokens.info,
                           py: 2,
                           fontSize: '1rem',
                           fontWeight: 600,
                           '&:hover': {
-                            borderColor: darkProTokens.infoHover,
-                            backgroundColor: `${darkProTokens.info}20`
+                            borderColor: colorTokens.infoHover,
+                            backgroundColor: `${colorTokens.info}20`
                           }
                         }}
                       >
@@ -1029,20 +1014,20 @@ export default function CortesPage() {
                       </Button>
                     </Grid>
                     
-                    <Grid xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <Button
                         fullWidth
                         variant="outlined"
                         startIcon={<AssessmentIcon />}
                         sx={{
-                          borderColor: darkProTokens.success,
-                          color: darkProTokens.success,
+                          borderColor: colorTokens.success,
+                          color: colorTokens.success,
                           py: 2,
                           fontSize: '1rem',
                           fontWeight: 600,
                           '&:hover': {
-                            borderColor: darkProTokens.successHover,
-                            backgroundColor: `${darkProTokens.success}20`
+                            borderColor: colorTokens.successHover,
+                            backgroundColor: `${colorTokens.success}20`
                           }
                         }}
                       >
@@ -1059,3 +1044,5 @@ export default function CortesPage() {
     </Box>
   );
 }
+
+

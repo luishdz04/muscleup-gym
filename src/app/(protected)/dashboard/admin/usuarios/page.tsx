@@ -1,7 +1,7 @@
 // app/admin/users/page.tsx - VERSIÓN ENTERPRISE v6.0 CORREGIDA - ERRORES TYPESCRIPT SOLUCIONADOS
 'use client';
 
-import React, { useState, useCallback, memo, useMemo } from 'react';
+import React, { useState, useCallback, memo, useMemo, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -23,11 +23,15 @@ import {
   CloudSync as CloudSyncIcon,
   ClearAll as ClearAllIcon,
   PhotoCamera as PhotoCameraIcon,
-  Verified as VerifiedIcon,
   CheckCircle as CheckCircleIcon,
+  Fingerprint as FingerprintIcon,
+  Email as EmailIcon,
   Search as SearchIcon,
   FilterList as FilterListIcon,
   Refresh as RefreshIcon,
+  Male as MaleIcon,
+  Female as FemaleIcon,
+  Transgender as TransgenderIcon,
 } from '@mui/icons-material';
 
 // ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
@@ -74,27 +78,16 @@ const UsersPage = memo(() => {
   } = useEntityCRUD<User>({
     tableName: 'Users', // Auditoría camelCase automática
     selectQuery: `
-      id,
-      firstName,
-      lastName,
-      email,
-      rol,
-      profilePictureUrl,
-      signatureUrl,
-      contractPdfUrl,
-      fingerprint,
-      whatsapp,
-      birthDate,
-      gender,
-      maritalStatus,
-      isMinor,
-      emailSent,
-      emailSentAt,
-      whatsappSent,
-      whatsappSentAt,
-      createdAt,
-      updatedAt
-    `
+      *,
+      addresses(*),
+      emergency_contacts(*),
+      membership_info(*)
+    `,
+    onError: (errorMsg) => {
+      console.error('❌ [USUARIOS] Error en useEntityCRUD:', errorMsg);
+      console.error('Error completo:', errorMsg);
+      toast.error(`Error cargando usuarios: ${errorMsg}`);
+    }
   });
 
   const { toast, alert } = useNotifications();
@@ -107,101 +100,203 @@ const UsersPage = memo(() => {
   
   // Estados de filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [syncing, setSyncing] = useState(false);
 
+  // ✅ FIX: Función simple sin dependencias problemáticas
+  const loadClients = useCallback(async () => {
+    try {
+      console.log('🔄 [USUARIOS] Cargando clientes...');
+      await refreshData(); // ✅ Usar refreshData del hook en lugar de searchItems
+      console.log('✅ [USUARIOS] Clientes cargados exitosamente');
+    } catch (error: any) {
+      console.error('❌ [USUARIOS] Error loading clients:', error);
+    }
+  }, [refreshData]); // ✅ refreshData es estable desde useEntityCRUD
+
+  // ✅ Cargar solo una vez cuando el componente se hidrata
+  useEffect(() => {
+    if (hydrated && initialLoad) {
+      console.log('🌊 [USUARIOS] Primera carga de usuarios...');
+      // refreshData ya se llama automáticamente en useEntityCRUD
+    }
+  }, [hydrated, initialLoad]); // ✅ Solo cuando cambia hydrated o initialLoad
+
+  const normalizedUsers = useMemo(() => {
+    // 🐛 DEBUG: Ver estructura completa de datos
+    if (users.length > 0) {
+      console.log('🔍 [DEBUG] Total usuarios:', users.length);
+      console.log('🔍 [DEBUG] Primer usuario completo:', JSON.stringify(users[0], null, 2));
+    }
+    
+    return users.map(user => {
+      const membershipSource = (user as any).membership ?? (user as any).membership_info ?? null;
+      const addressSource = (user as any).address ?? (user as any).addresses ?? null;
+      const emergencySource = (user as any).emergency ?? (user as any).emergency_contacts ?? null;
+
+      const membership = Array.isArray(membershipSource) ? membershipSource[0] : membershipSource;
+      const address = Array.isArray(addressSource) ? addressSource[0] : addressSource;
+      const emergency = Array.isArray(emergencySource) ? emergencySource[0] : emergencySource;
+
+      return {
+        ...user,
+        membership: membership ?? undefined,
+        address: address ?? undefined,
+        emergency: emergency ?? undefined
+      } as User;
+    });
+  }, [users]);
+
+  const clientUsers = useMemo(
+    () => normalizedUsers.filter(user => user.rol === 'cliente'),
+    [normalizedUsers]
+  );
+
   // ✅ USUARIOS FILTRADOS CON useMemo OPTIMIZADO
   const filteredUsers = useMemo(() => {
-    return users.filter(user => {
-      const matchesSearch = !searchTerm || 
-        user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase());
-        
-      const matchesRole = !filterRole || user.rol === filterRole;
-      
-      return matchesSearch && matchesRole;
+    return clientUsers.filter(user => {
+      if (!searchTerm) return true;
+
+      const query = searchTerm.toLowerCase();
+      return (
+        user.firstName.toLowerCase().includes(query) ||
+        user.lastName.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query)
+      );
     }).sort((a, b) => {
       const aValue = (a[sortBy as keyof User] as string) || '';
       const bValue = (b[sortBy as keyof User] as string) || '';
-      
+
       if (sortOrder === 'asc') {
         return aValue.localeCompare(bValue);
-      } else {
-        return bValue.localeCompare(aValue);
       }
+      return bValue.localeCompare(aValue);
     });
-  }, [users, searchTerm, filterRole, sortBy, sortOrder]);
+  }, [clientUsers, searchTerm, sortBy, sortOrder]);
 
   // ✅ ESTADÍSTICAS CALCULADAS - CORREGIDAS SEGÚN UserStats INTERFACE
   const userStats = useMemo((): UserStats & { isFiltered: boolean; totalFiltered: number } => {
-    const total = users.length;
-    const withPhotos = users.filter(u => u.profilePictureUrl).length;
-    const verified = users.filter(u => u.emailSent).length;
-    const emailsSent = users.filter(u => u.emailSent).length;
-    
-    // Calcular distribución por género
-    const genderDistribution = {
-      masculino: users.filter(u => u.gender === 'masculino').length,
-      femenino: users.filter(u => u.gender === 'femenino').length,
-      otro: users.filter(u => u.gender === 'otro' || !u.gender).length,
-    };
+    const total = clientUsers.length;
+    const thisMonth = new Date();
 
-    // Calcular niveles de membresía (requiere datos de membership_info si están disponibles)
-    const membershipLevels = {
-      principiante: users.filter(u => u.membership?.trainingLevel === 'principiante').length,
-      intermedio: users.filter(u => u.membership?.trainingLevel === 'intermedio').length,
-      avanzado: users.filter(u => u.membership?.trainingLevel === 'avanzado').length,
-    };
-
-    // Calcular completitud
-    const profilePictureCount = users.filter(u => u.profilePictureUrl).length;
-    const signatureCount = users.filter(u => u.signatureUrl).length;
-    const contractCount = users.filter(u => u.contractPdfUrl).length;
-    const allCompleteCount = users.filter(u => 
-      u.profilePictureUrl && u.signatureUrl && u.contractPdfUrl && 
-      u.fingerprint && u.emailSent && u.whatsappSent
+    const totalWithPhotos = clientUsers.filter(u => u.profilePictureUrl).length;
+    const totalWithSignature = clientUsers.filter(u => u.signatureUrl).length;
+    const totalWithContract = clientUsers.filter(u => u.contractPdfUrl).length;
+    const totalComplete = clientUsers.filter(u =>
+      u.profilePictureUrl &&
+      u.signatureUrl &&
+      u.contractPdfUrl &&
+      u.fingerprint &&
+      u.emailSent &&
+      u.whatsappSent
     ).length;
 
     const completionRate = {
-      profilePicture: total > 0 ? Math.round((profilePictureCount / total) * 100) : 0,
-      signature: total > 0 ? Math.round((signatureCount / total) * 100) : 0,
-      contract: total > 0 ? Math.round((contractCount / total) * 100) : 0,
-      allComplete: total > 0 ? Math.round((allCompleteCount / total) * 100) : 0,
+      profilePicture: total > 0 ? Math.round((totalWithPhotos / total) * 100) : 0,
+      signature: total > 0 ? Math.round((totalWithSignature / total) * 100) : 0,
+      contract: total > 0 ? Math.round((totalWithContract / total) * 100) : 0,
+      allComplete: total > 0 ? Math.round((totalComplete / total) * 100) : 0,
     };
 
-    // Calcular edad promedio
-    const usersWithBirthDate = users.filter(u => u.birthDate);
-    const averageAge = usersWithBirthDate.length > 0 
-      ? Math.round(usersWithBirthDate.reduce((sum, user) => {
-          const age = new Date().getFullYear() - new Date(user.birthDate).getFullYear();
-          return sum + age;
-        }, 0) / usersWithBirthDate.length)
+    const usersWithBirthDate = clientUsers.filter(u => u.birthDate);
+    const averageAge = usersWithBirthDate.length > 0
+      ? Math.round(
+          usersWithBirthDate.reduce((sum, user) => {
+            const age = new Date().getFullYear() - new Date(user.birthDate).getFullYear();
+            return sum + age;
+          }, 0) / usersWithBirthDate.length
+        )
       : 0;
 
-    // Calcular usuarios nuevos este mes
-    const thisMonth = new Date();
-    const newUsersThisMonth = users.filter(user => {
+    const genderDistribution = clientUsers.reduce(
+      (acc, user) => {
+        const genderValue = (user.gender || '').toString().trim().toLowerCase();
+
+        if (['masculino', 'male', 'hombre', 'm'].includes(genderValue)) {
+          acc.masculino += 1;
+        } else if (['femenino', 'female', 'mujer', 'f'].includes(genderValue)) {
+          acc.femenino += 1;
+        } else if (genderValue) {
+          acc.otro += 1;
+        } else {
+          acc.otro += 1;
+        }
+
+        return acc;
+      },
+      { masculino: 0, femenino: 0, otro: 0 }
+    );
+
+    const membershipLevels = {
+      principiante: clientUsers.filter(u => u.membership?.trainingLevel === 'principiante').length,
+      intermedio: clientUsers.filter(u => u.membership?.trainingLevel === 'intermedio').length,
+      avanzado: clientUsers.filter(u => u.membership?.trainingLevel === 'avanzado').length,
+    };
+
+    const newUsersThisMonth = clientUsers.filter(user => {
       if (!user.createdAt) return false;
       const userDate = new Date(user.createdAt);
-      return userDate.getMonth() === thisMonth.getMonth() && 
-             userDate.getFullYear() === thisMonth.getFullYear();
+      return (
+        userDate.getMonth() === thisMonth.getMonth() &&
+        userDate.getFullYear() === thisMonth.getFullYear()
+      );
     }).length;
 
     return {
       totalUsers: total,
       newUsersThisMonth,
-      activeUsers: users.filter(u => u.rol === 'cliente').length,
+      activeUsers: total,
       averageAge,
       genderDistribution,
       membershipLevels,
       completionRate,
-      isFiltered: Boolean(searchTerm || filterRole),
+      isFiltered: Boolean(searchTerm),
       totalFiltered: filteredUsers.length
     };
-  }, [users, filteredUsers.length, searchTerm, filterRole]);
+  }, [clientUsers, filteredUsers.length, searchTerm]);
+
+  const clientsWithPhotos = useMemo(
+    () => clientUsers.filter(u => u.profilePictureUrl).length,
+    [clientUsers]
+  );
+
+  const clientsWithContracts = useMemo(
+    () => clientUsers.filter(u => u.contractPdfUrl).length,
+    [clientUsers]
+  );
+
+  const clientsWithFingerprint = useMemo(
+    () => clientUsers.filter(u => u.fingerprint).length,
+    [clientUsers]
+  );
+
+  const clientsWithWhatsAppSent = useMemo(
+    () => clientUsers.filter(u => u.whatsappSent).length,
+    [clientUsers]
+  );
+
+  const clientsWithEmailSent = useMemo(
+    () => clientUsers.filter(u => u.emailSent).length,
+    [clientUsers]
+  );
+
+  const genderStats = useMemo(() => {
+    const { masculino, femenino, otro } = userStats.genderDistribution;
+    const total = Math.max(masculino + femenino + otro, 0);
+
+    const safeTotal = total === 0 ? 1 : total;
+
+    return {
+      masculino,
+      femenino,
+      otro,
+      total,
+      masculinoPct: Math.round((masculino / safeTotal) * 100),
+      femeninoPct: Math.round((femenino / safeTotal) * 100),
+      otroPct: Math.round((otro / safeTotal) * 100)
+    };
+  }, [userStats.genderDistribution]);
 
   // ✅ HANDLERS OPTIMIZADOS CON useCallback
   const handleOpenFormDialog = useCallback((user?: User) => {
@@ -306,14 +401,14 @@ const UsersPage = memo(() => {
   const handleManualRefresh = useCallback(async () => {
     setSyncing(true);
     try {
-      await refreshData();
+      await loadClients();
       toast.success('Lista de usuarios actualizada exitosamente');
     } catch (error: any) {
       toast.error('Error al actualizar la lista de usuarios');
     } finally {
       setSyncing(false);
     }
-  }, [refreshData, toast]);
+  }, [loadClients, toast]);
 
   const handleSortOrderToggle = useCallback(() => {
     setSortOrder(current => current === 'asc' ? 'desc' : 'asc');
@@ -321,34 +416,20 @@ const UsersPage = memo(() => {
 
   // ✅ BÚSQUEDA AVANZADA MEJORADA
   const handleAdvancedSearch = useCallback(async () => {
-    if (!searchTerm && !filterRole) {
-      await refreshData();
-      return;
-    }
-
     try {
-      const filters: Record<string, any> = {};
-      if (filterRole) filters.rol = filterRole;
-      
-      await searchItems(filters);
-      
-      if (searchTerm) {
-        // Filtrar localmente por término de búsqueda después de la búsqueda por BD
-        // Esto se maneja en filteredUsers
-      }
+      await loadClients();
     } catch (error) {
       console.error('Error en búsqueda:', error);
       toast.error('Error en la búsqueda');
     }
-  }, [searchTerm, filterRole, refreshData, searchItems, toast]);
+  }, [loadClients, toast]);
 
   const handleClearFilters = useCallback(() => {
     setSearchTerm('');
-    setFilterRole('');
     setSortBy('createdAt');
     setSortOrder('desc');
-    refreshData();
-  }, [refreshData]);
+    loadClients();
+  }, [loadClients]);
 
   // ✅ FUNCIÓN CORREGIDA PARA LIMPIAR CACHÉ
   const cleanupCache = useCallback(async () => {
@@ -457,6 +538,25 @@ const UsersPage = memo(() => {
       minHeight: '100vh',
       color: colorTokens.neutral1200
     }}>
+      {/* 🐛 PANEL DE DEBUG TEMPORAL */}
+      {process.env.NODE_ENV === 'development' && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: '#ffeb3b', border: '2px solid #f57c00' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+            🐛 DEBUG INFO:
+          </Typography>
+          <Typography variant="body2">
+            • Total users raw: {users.length}<br/>
+            • Normalized users: {normalizedUsers.length}<br/>
+            • Client users: {clientUsers.length}<br/>
+            • Filtered users: {filteredUsers.length}<br/>
+            • Loading: {loading ? 'Sí' : 'No'}<br/>
+            • Initial load: {initialLoad ? 'Sí' : 'No'}<br/>
+            • Error: {error || 'Ninguno'}<br/>
+            • Hydrated: {hydrated ? 'Sí' : 'No'}
+          </Typography>
+        </Paper>
+      )}
+      
       {/* PANEL DE CONTROL SUPERIOR */}
       <Paper sx={{
         p: 3,
@@ -484,31 +584,21 @@ const UsersPage = memo(() => {
               textShadow: `0 0 20px ${colorTokens.brand}40`
             }}>
               <DashboardIcon sx={{ fontSize: 40, color: colorTokens.brand }} />
-              Gestión de Usuarios MUP
+              Gestión de Clientes MUP
             </Typography>
             <Typography variant="body1" sx={{ color: colorTokens.neutral1000, mt: 1 }}>
-              Panel de administración con búsqueda avanzada y estadísticas en tiempo real
+              Panel especializado para seguimiento integral de clientes y su progreso
             </Typography>
             
-            {/* ✅ INFO DE AUDITORÍA */}
             <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
               <Chip
-                label={`Auditoría: ${auditInfo.description}`}
-                size="small"
-                variant="outlined"
-                sx={{ 
-                  color: colorTokens.info,
-                  borderColor: colorTokens.info,
-                  fontSize: '0.75rem'
-                }}
-              />
-              <Chip
-                label={`Total: ${stats.total}`}
+                label={`Clientes activos: ${clientUsers.length}`}
                 size="small"
                 variant="filled"
                 sx={{ 
                   bgcolor: colorTokens.brand,
-                  color: colorTokens.textOnBrand
+                  color: colorTokens.textOnBrand,
+                  fontWeight: 600
                 }}
               />
             </Box>
@@ -578,7 +668,7 @@ const UsersPage = memo(() => {
         {/* ✅ CONTROLES DE BÚSQUEDA Y FILTROS MEJORADOS */}
         <Box sx={{ mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 5 }}>
               <TextField
                 fullWidth
                 placeholder="Buscar por nombre, apellido o email..."
@@ -601,35 +691,6 @@ const UsersPage = memo(() => {
                   }
                 }}
               />
-            </Grid>
-            
-            <Grid size={{ xs: 12, md: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel>Rol</InputLabel>
-                <Select
-                  value={filterRole}
-                  onChange={(e) => setFilterRole(e.target.value)}
-                  label="Rol"
-                  sx={{
-                    bgcolor: colorTokens.neutral100,
-                    color: colorTokens.neutral1200,
-                    '& .MuiOutlinedInput-notchedOutline': { 
-                      borderColor: colorTokens.neutral400 
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': { 
-                      borderColor: colorTokens.brand 
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
-                      borderColor: colorTokens.brand 
-                    }
-                  }}
-                >
-                  <MenuItem value="">Todos</MenuItem>
-                  <MenuItem value="admin">Administrador</MenuItem>
-                  <MenuItem value="empleado">Empleado</MenuItem>
-                  <MenuItem value="cliente">Cliente</MenuItem>
-                </Select>
-              </FormControl>
             </Grid>
             
             <Grid size={{ xs: 12, md: 2 }}>
@@ -695,7 +756,7 @@ const UsersPage = memo(() => {
                   Actualizar
                 </Button>
                 
-                {(searchTerm || filterRole) && (
+                {searchTerm && (
                   <Button
                     variant="outlined"
                     startIcon={<ClearAllIcon />}
@@ -766,8 +827,18 @@ const UsersPage = memo(() => {
               }}
             />
             <Chip
-              icon={<VerifiedIcon />}
-              label={`${users.filter(u => u.emailSent).length} verificados`}
+              icon={<FingerprintIcon />}
+              label={`${clientsWithFingerprint} huellas registradas`}
+              size="small"
+              sx={{
+                bgcolor: `${colorTokens.warning}20`,
+                color: colorTokens.warning,
+                border: `1px solid ${colorTokens.warning}40`,
+              }}
+            />
+            <Chip
+              icon={<EmailIcon />}
+              label={`${clientsWithEmailSent} correos enviados`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.info}20`,
@@ -777,7 +848,7 @@ const UsersPage = memo(() => {
             />
             <Chip
               icon={<CheckCircleIcon />}
-              label={`${users.filter(u => u.emailSent).length} emails enviados`}
+              label={`${clientsWithWhatsAppSent} WhatsApp enviados`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.brand}20`,
@@ -793,10 +864,10 @@ const UsersPage = memo(() => {
       <UserStatsCards
         userStats={userStats}
         totalUsers={userStats.totalUsers}
-        verifiedCount={users.filter(u => u.emailSent).length}
+        verifiedCount={clientsWithFingerprint}
       />
 
-      {/* DISTRIBUCIÓN POR ROLES */}
+      {/* DISTRIBUCIÓN DE CLIENTES */}
       <Paper sx={{
         p: 3,
         mb: 3,
@@ -813,7 +884,7 @@ const UsersPage = memo(() => {
           alignItems: 'center',
           gap: 1
         }}>
-          Distribución por Roles
+          Distribución de Clientes
         </Typography>
         
         <Grid container spacing={3}>
@@ -831,13 +902,13 @@ const UsersPage = memo(() => {
               }
             }}>
               <Typography variant="h4" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
-                {users.filter(u => u.rol === 'admin').length}
+                {clientsWithContracts}
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-                Administradores
+                Contrato firmado
               </Typography>
               <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {userStats.totalUsers > 0 ? Math.round((users.filter(u => u.rol === 'admin').length / userStats.totalUsers) * 100) : 0}% del total
+                {userStats.totalUsers > 0 ? Math.round((clientsWithContracts / userStats.totalUsers) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>
@@ -848,22 +919,44 @@ const UsersPage = memo(() => {
               borderRadius: 2, 
               bgcolor: `${colorTokens.info}10`,
               border: `1px solid ${colorTokens.info}30`,
-              textAlign: 'center',
               transition: 'all 0.3s ease',
               '&:hover': {
                 transform: 'translateY(-2px)',
                 boxShadow: `0 4px 20px ${colorTokens.info}20`
               }
             }}>
-              <Typography variant="h4" sx={{ color: colorTokens.info, fontWeight: 700 }}>
-                {users.filter(u => u.rol === 'empleado').length}
+              <Typography variant="h4" sx={{ color: colorTokens.info, fontWeight: 700, textAlign: 'center' }}>
+                {genderStats.total}
               </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-                Empleados
+              <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600, textAlign: 'center' }}>
+                Distribución por género
               </Typography>
-              <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {userStats.totalUsers > 0 ? Math.round((users.filter(u => u.rol === 'empleado').length / userStats.totalUsers) * 100) : 0}% del total
-              </Typography>
+              <Box sx={{
+                mt: 1.5,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.75,
+                color: colorTokens.neutral1000
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <MaleIcon sx={{ fontSize: 18, color: colorTokens.info }} />
+                  <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                    Hombres: {genderStats.masculino} ({genderStats.masculinoPct}%)
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FemaleIcon sx={{ fontSize: 18, color: colorTokens.brand }} />
+                  <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                    Mujeres: {genderStats.femenino} ({genderStats.femeninoPct}%)
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TransgenderIcon sx={{ fontSize: 18, color: colorTokens.warning }} />
+                  <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                    Otro/No especificado: {genderStats.otro} ({genderStats.otroPct}%)
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
           </Grid>
 
@@ -881,13 +974,13 @@ const UsersPage = memo(() => {
               }
             }}>
               <Typography variant="h4" sx={{ color: colorTokens.success, fontWeight: 700 }}>
-                {users.filter(u => u.rol === 'cliente').length}
+                {clientsWithPhotos}
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-                Clientes
+                Foto de perfil cargada
               </Typography>
               <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
-                {userStats.totalUsers > 0 ? Math.round((users.filter(u => u.rol === 'cliente').length / userStats.totalUsers) * 100) : 0}% del total
+                {userStats.totalUsers > 0 ? Math.round((clientsWithPhotos / userStats.totalUsers) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>

@@ -1,43 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-
-// ✅ LÓGICA DE dateHelpers APLICADA DIRECTAMENTE (SIN IMPORTAR)
-function getMexicoDateRangeLocal(dateString: string) {
-  console.log('📅 Calculando rango para fecha México:', dateString);
-  
-  // Crear fecha base en México
-  const mexicoDate = new Date(dateString + 'T00:00:00.000-06:00'); // UTC-6 México
-  
-  // Inicio del día en México (00:00:00)
-  const startOfDayMexico = new Date(mexicoDate);
-  startOfDayMexico.setHours(0, 0, 0, 0);
-  
-  // Final del día en México (23:59:59.999)
-  const endOfDayMexico = new Date(mexicoDate);
-  endOfDayMexico.setHours(23, 59, 59, 999);
-  
-  // Convertir a UTC para las consultas
-  const startISO = startOfDayMexico.toISOString();
-  const endISO = endOfDayMexico.toISOString();
-  
-  console.log('⏰ Rango calculado directamente:', {
-    fecha_input: dateString,
-    inicio_mexico: startOfDayMexico.toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
-    fin_mexico: endOfDayMexico.toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
-    inicio_utc: startISO,
-    fin_utc: endISO
-  });
-  
-  return { startISO, endISO };
-}
+import { getMexicoDateRange } from '@/utils/dateUtils';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
-
-    console.log('🚀 API daily-data iniciada');
-    console.log('📅 Fecha recibida:', date);
 
     if (!date) {
       return NextResponse.json(
@@ -46,37 +14,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // ✅ VALIDAR FORMATO DE FECHA
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
-      console.error('❌ Error: Formato de fecha inválido:', date);
       return NextResponse.json(
         { error: 'Formato de fecha inválido. Use YYYY-MM-DD', success: false },
         { status: 400 }
       );
     }
 
-    console.log('🔍 Consultando datos para fecha México:', date);
-
     const supabase = createServerSupabaseClient();
+    const { startISO, endISO } = getMexicoDateRange(date);
 
-    // ✅ USAR FUNCIÓN LOCAL (SIN IMPORTAR)
-    const { startISO, endISO } = getMexicoDateRangeLocal(date);
-
-    console.log('⏰ Rango México calculado (función local):', {
-      fecha_mexico: date,
-      inicio_utc: startISO,
-      fin_utc: endISO,
-      note: 'Calculado directamente sin importaciones'
-    });
-
-    // 🏪 1. VENTAS POS
-    console.log('🛒 Consultando ventas POS...');
+    // 1. VENTAS POS
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
       .select(`
         id,
         total_amount,
+        created_at,
         sale_payment_details (
           payment_method,
           amount,
@@ -90,14 +45,15 @@ export async function GET(request: NextRequest) {
       .lte('created_at', endISO);
 
     if (salesError) {
-      console.error('❌ Error consultando ventas:', salesError);
       throw new Error(`Error consultando ventas: ${salesError.message}`);
     }
 
-    console.log('✅ Ventas consultadas:', salesData?.length || 0);
 
-    // 💰 2. ABONOS
-    console.log('💰 Consultando abonos...');
+
+    // 2. ABONOS (APARTADOS)
+    // ✅ CORRECCIÓN: Filtrar por sale_type='layaway' en lugar de is_partial_payment
+    // Esto incluye TODOS los pagos de apartados, sin importar el flag is_partial_payment
+    // ✅ EXCLUIR APARTADOS CANCELADOS - Solo contar pagos de apartados activos/completados
     const { data: abonosData, error: abonosError } = await supabase
       .from('sale_payment_details')
       .select(`
@@ -110,50 +66,39 @@ export async function GET(request: NextRequest) {
           status
         )
       `)
-      .eq('is_partial_payment', true)
+      .eq('sales.sale_type', 'layaway')
+      .neq('sales.status', 'cancelled')
       .gte('payment_date', startISO)
       .lte('payment_date', endISO);
 
     if (abonosError) {
-      console.error('❌ Error consultando abonos:', abonosError);
       throw new Error(`Error consultando abonos: ${abonosError.message}`);
     }
 
-    console.log('✅ Abonos consultados:', abonosData?.length || 0);
-
-    // 🎫 3. MEMBRESÍAS
-    console.log('🎫 Consultando membresías...');
+    // 3. MEMBRESÍAS - BUSCAR EN membership_payment_details
+    // IMPORTANTE: Los pagos se registran en membership_payment_details con su propio created_at
+    // NO en user_memberships, porque ahí el created_at es cuando se creó la membresía, 
+    // no cuando se hicieron los pagos individuales.
     const { data: membershipsData, error: membershipsError } = await supabase
-      .from('user_memberships')
+      .from('membership_payment_details')
       .select(`
-        amount_paid,
-        inscription_amount,
+        id,
+        membership_id,
         payment_method,
+        amount,
         commission_amount,
-        membership_payment_details (
-          payment_method,
-          amount,
-          commission_amount
-        )
+        created_at
       `)
       .gte('created_at', startISO)
       .lte('created_at', endISO);
 
     if (membershipsError) {
-      console.error('❌ Error consultando membresías:', membershipsError);
-      throw new Error(`Error consultando membresías: ${membershipsError.message}`);
+      throw new Error(`Error consultando pagos de membresías: ${membershipsError.message}`);
     }
 
-    console.log('✅ Membresías consultadas:', membershipsData?.length || 0);
 
-    console.log('📊 Datos obtenidos:', {
-      ventas: salesData?.length || 0,
-      abonos: abonosData?.length || 0,
-      membresias: membershipsData?.length || 0
-    });
 
-    // 🧮 PROCESAR VENTAS POS
-    console.log('🧮 Procesando ventas POS...');
+    // PROCESAR VENTAS POS
     const pos = {
       efectivo: 0,
       transferencia: 0,
@@ -169,40 +114,36 @@ export async function GET(request: NextRequest) {
       
       sale.sale_payment_details?.forEach(payment => {
         if (!payment.is_partial_payment) {
+          // IMPORTANTE: El 'amount' ya incluye la comisión
+          // commission_amount es solo informativo
           const amount = parseFloat(payment.amount || '0');
           const commission = parseFloat(payment.commission_amount || '0');
           
-          const totalWithCommission = amount + commission;
-          
-          pos.total += totalWithCommission;
-          pos.commissions += commission;
+          pos.total += amount; // NO sumar comisión, ya está incluida
+          pos.commissions += commission; // Solo para información
           
           switch (payment.payment_method?.toLowerCase()) {
             case 'efectivo':
-              pos.efectivo += totalWithCommission;
+              pos.efectivo += amount;
               break;
             case 'transferencia':
-              pos.transferencia += totalWithCommission;
+              pos.transferencia += amount;
               break;
             case 'debito':
-              pos.debito += totalWithCommission;
+              pos.debito += amount;
               break;
             case 'credito':
-              pos.credito += totalWithCommission;
+              pos.credito += amount;
               break;
             default:
-              console.warn(`🔴 Método de pago desconocido en POS: ${payment.payment_method}`);
-              pos.efectivo += totalWithCommission;
+              pos.efectivo += amount;
               break;
           }
         }
       });
     });
 
-    console.log('✅ Ventas POS procesadas:', pos);
-
-    // 🧮 PROCESAR ABONOS
-    console.log('🧮 Procesando abonos...');
+    // PROCESAR ABONOS
     const abonos = {
       efectivo: 0,
       transferencia: 0,
@@ -215,40 +156,36 @@ export async function GET(request: NextRequest) {
 
     const uniqueSaleIds = new Set();
     abonosData?.forEach(abono => {
+      // IMPORTANTE: El 'amount' ya incluye la comisión
+      // commission_amount es solo informativo
       const amount = parseFloat(abono.amount || '0');
       const commission = parseFloat(abono.commission_amount || '0');
       
-      const totalWithCommission = amount + commission;
-      
-      abonos.total += totalWithCommission;
-      abonos.commissions += commission;
+      abonos.total += amount; // NO sumar comisión, ya está incluida
+      abonos.commissions += commission; // Solo para información
       uniqueSaleIds.add(abono.sale_id);
       
       switch (abono.payment_method?.toLowerCase()) {
         case 'efectivo':
-          abonos.efectivo += totalWithCommission;
+          abonos.efectivo += amount;
           break;
         case 'transferencia':
-          abonos.transferencia += totalWithCommission;
+          abonos.transferencia += amount;
           break;
         case 'debito':
-          abonos.debito += totalWithCommission;
+          abonos.debito += amount;
           break;
         case 'credito':
-          abonos.credito += totalWithCommission;
+          abonos.credito += amount;
           break;
         default:
-          console.warn(`🔴 Método de pago desconocido en abonos: ${abono.payment_method}`);
-          abonos.efectivo += totalWithCommission;
+          abonos.efectivo += amount;
           break;
       }
     });
     abonos.transactions = uniqueSaleIds.size;
 
-    console.log('✅ Abonos procesados:', abonos);
-
-    // 🧮 PROCESAR MEMBRESÍAS
-    console.log('🧮 Procesando membresías...');
+    // PROCESAR PAGOS DE MEMBRESÍAS
     const memberships = {
       efectivo: 0,
       transferencia: 0,
@@ -259,112 +196,93 @@ export async function GET(request: NextRequest) {
       commissions: 0
     };
 
-    membershipsData?.forEach(membership => {
-      memberships.transactions++;
+    // Contar membresías únicas (por membership_id)
+    const uniqueMembershipIds = new Set();
+    
+    membershipsData?.forEach(payment => {
+      // Contar membresías únicas
+      uniqueMembershipIds.add(payment.membership_id);
       
-      const totalMembership = parseFloat(membership.amount_paid || '0');
-      const membershipCommission = parseFloat(membership.commission_amount || '0');
+      // IMPORTANTE: El 'amount' ya incluye la comisión
+      // commission_amount es solo informativo para saber cuánto fue de comisión
+      const amount = parseFloat(payment.amount || '0');
+      const commission = parseFloat(payment.commission_amount || '0');
       
-      memberships.total += totalMembership;
-      memberships.commissions += membershipCommission;
+      memberships.total += amount; // NO sumar comisión, ya está incluida
+      memberships.commissions += commission; // Solo para información
       
-      if (membership.membership_payment_details && membership.membership_payment_details.length > 0) {
-        console.log('✅ Usando detalles de pago para membresía');
-        
-        membership.membership_payment_details.forEach(payment => {
-          const amount = parseFloat(payment.amount || '0');
-          const commission = parseFloat(payment.commission_amount || '0');
-          
-          const totalWithCommission = amount + commission;
-          
-          switch (payment.payment_method?.toLowerCase()) {
-            case 'efectivo':
-              memberships.efectivo += totalWithCommission;
-              break;
-            case 'transferencia':
-              memberships.transferencia += totalWithCommission;
-              break;
-            case 'debito':
-              memberships.debito += totalWithCommission;
-              break;
-            case 'credito':
-              memberships.credito += totalWithCommission;
-              break;
-            default:
-              console.warn(`🔴 Método de pago desconocido en detalles membresía: ${payment.payment_method}`);
-              memberships.efectivo += totalWithCommission;
-              break;
-          }
-        });
-      } else {
-        console.log('⚠️ Usando payment_method directo para membresía');
-        
-        switch (membership.payment_method?.toLowerCase()) {
-          case 'efectivo':
-            memberships.efectivo += totalMembership;
-            break;
-          case 'transferencia':
-            memberships.transferencia += totalMembership;
-            break;
-          case 'debito':
-            memberships.debito += totalMembership;
-            break;
-          case 'credito':
-            memberships.credito += totalMembership;
-            break;
-          default:
-            console.warn(`🔴 Método de pago no especificado en membresía, asumiendo efectivo: ${membership.payment_method}`);
-            memberships.efectivo += totalMembership;
-            break;
-        }
+      switch (payment.payment_method?.toLowerCase()) {
+        case 'efectivo':
+          memberships.efectivo += amount;
+          break;
+        case 'transferencia':
+          memberships.transferencia += amount;
+          break;
+        case 'debito':
+          memberships.debito += amount;
+          break;
+        case 'credito':
+          memberships.credito += amount;
+          break;
+        default:
+          memberships.efectivo += amount;
+          break;
       }
     });
+    
+    memberships.transactions = uniqueMembershipIds.size;
 
-    console.log('✅ Membresías procesadas:', memberships);
+    // CONSULTAR EGRESOS
+    const { data: expensesData, error: expensesError } = await supabase
+      .from('expenses')
+      .select('amount')
+      .eq('expense_date', date)
+      .eq('status', 'active');
 
-    // 🧮 CALCULAR TOTALES
+    if (expensesError) {
+      throw new Error(`Error consultando egresos: ${expensesError.message}`);
+    }
+
+    const expenses_amount = expensesData?.reduce((sum, expense) => sum + parseFloat(expense.amount.toString()), 0) || 0;
+    const expenses_count = expensesData?.length || 0;
+
+    // CALCULAR TOTALES
+    const grand_total = pos.total + abonos.total + memberships.total;
+    const final_balance = grand_total - expenses_amount;
+
     const totals = {
       efectivo: pos.efectivo + abonos.efectivo + memberships.efectivo,
       transferencia: pos.transferencia + abonos.transferencia + memberships.transferencia,
       debito: pos.debito + abonos.debito + memberships.debito,
       credito: pos.credito + abonos.credito + memberships.credito,
-      total: pos.total + abonos.total + memberships.total,
+      total: grand_total,
       transactions: pos.transactions + abonos.transactions + memberships.transactions,
       commissions: pos.commissions + abonos.commissions + memberships.commissions,
-      net_amount: pos.total + abonos.total + memberships.total - (pos.commissions + abonos.commissions + memberships.commissions)
+      net_amount: grand_total - (pos.commissions + abonos.commissions + memberships.commissions)
     };
 
-    console.log('✅ Totales calculados:', totals);
-
-    // ✅ RESPUESTA FINAL
+    // RESPUESTA FINAL
     const response = {
       success: true,
       date,
-      timezone_info: {
-        mexico_date: date,
-        mexico_range: {
-          start: startISO,
-          end: endISO
-        },
-        timezone: 'America/Mexico_City (UTC-6)',
-        note: "✅ Datos filtrados directamente para fecha México (sin importaciones)"
-      },
       pos,
       abonos,
       memberships,
-      totals
+      expenses: {
+        amount: expenses_amount,
+        count: expenses_count
+      },
+      totals: {
+        ...totals,
+        expenses_amount,
+        final_balance
+      }
     };
 
-    console.log('🎉 API completada exitosamente sin importaciones');
     return NextResponse.json(response);
 
   } catch (error: any) {
-    console.error('💥 Error crítico en daily-data API:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-      timestamp: new Date().toISOString()
-    });
+    console.error('[API /cuts/daily-data] Error:', error.message);
     
     return NextResponse.json(
       { 

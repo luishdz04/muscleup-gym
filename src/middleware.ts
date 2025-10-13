@@ -13,22 +13,21 @@ async function updateSession(request: NextRequest) {
     SUPABASE_ANON_KEY,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        // ✅ MÉTODO MODERNO: getAll (reemplaza get)
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options });
+        // ✅ MÉTODO MODERNO: setAll (reemplaza set y remove)
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value)
+          );
           response = NextResponse.next({
             request: { headers: request.headers },
           });
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options });
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
-          response.cookies.set({ name, value: '', ...options });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
         },
       },
     }
@@ -74,22 +73,12 @@ export async function middleware(request: NextRequest) {
   if (user && isAdminRoute) {
     console.log('🔍 Middleware - Verificando acceso ADMIN...');
     
-    try {
-      const { data: userData } = await supabase
-        .from('Users')
-        .select('rol')
-        .eq('id', user.id)
-        .single();
-      
-      const userRole = userData?.rol;
-      console.log('🔍 Middleware - Rol verificado:', userRole);
-      
-      if (userRole !== 'admin' && userRole !== 'empleado') {
-        console.log(`🚨 Middleware - ACCESO DENEGADO a ruta admin. Rol: ${userRole}`);
-        return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
-      }
-    } catch (error) {
-      console.error('❌ Middleware - Error al verificar rol:', error);
+    // ✅ LEER ROL DESDE METADATA (más rápido, no requiere query adicional)
+    const userRole = user.user_metadata?.role || 'cliente';
+    console.log('🔍 Middleware - Rol desde metadata:', userRole);
+    
+    if (userRole !== 'admin' && userRole !== 'empleado') {
+      console.log(`🚨 Middleware - ACCESO DENEGADO a ruta admin. Rol: ${userRole}`);
       return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
     }
   }
@@ -105,27 +94,17 @@ export async function middleware(request: NextRequest) {
   
   // ✅ REDIRECCIÓN INTELIGENTE DESDE /dashboard
   if (user && pathname === '/dashboard') {
-    try {
-      const { data: userData } = await supabase
-        .from('Users')
-        .select('rol')
-        .eq('id', user.id)
-        .single();
-      
-      const userRole = userData?.rol || 'cliente';
-      console.log('🎯 Middleware - Redirigiendo según rol:', userRole);
-      
-      switch (userRole) {
-        case 'admin':
-        case 'empleado':
-          return NextResponse.redirect(new URL('/dashboard/admin/usuarios', request.url));
-        case 'cliente':
-        default:
-          return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
-      }
-    } catch (error) {
-      console.error('❌ Middleware - Error al obtener rol para redirección:', error);
-      return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
+    // ✅ LEER ROL DESDE METADATA
+    const userRole = user.user_metadata?.role || 'cliente';
+    console.log('🎯 Middleware - Redirigiendo según rol:', userRole);
+    
+    switch (userRole) {
+      case 'admin':
+      case 'empleado':
+        return NextResponse.redirect(new URL('/dashboard/admin/usuarios', request.url));
+      case 'cliente':
+      default:
+        return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
     }
   }
 

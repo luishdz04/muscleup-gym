@@ -1,395 +1,516 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  Button, 
-  TextField,
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  InputAdornment,
   MenuItem,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Avatar,
-  Chip,
-  IconButton,
-  InputAdornment,
-  Card,
-  CardContent,
-  Grid,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  CircularProgress,
-  Alert,
-  Tooltip
-} from '@mui/material';
-import { 
-  Search as SearchIcon,
-  Edit as EditIcon,
+  TextField,
+  Tooltip,
+  Typography
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import Grid from "@mui/material/Grid";
+import {
   Delete as DeleteIcon,
-  Visibility as ViewIcon,
-  PersonAdd as PersonAddIcon,
+  Edit as EditIcon,
   Fingerprint as FingerprintIcon,
-  Warning as WarningIcon,
-  CheckCircle as CheckCircleIcon
-} from '@mui/icons-material';
-import { useRouter } from 'next/navigation';
-import { toast } from 'react-toastify';
+  PersonAdd as PersonAddIcon,
+  Search as SearchIcon,
+  Visibility as ViewIcon,
+  Warning as WarningIcon
+} from "@mui/icons-material";
+import { useRouter } from "next/navigation";
 
-// IMPORTAR COMPONENTE DE EDICIÓN
-import EmployeeFormDialog from '@/components/dashboard/admin/EmployeeFormDialog';
+import EmployeeFormDialog from "@/components/dashboard/admin/EmployeeFormDialog";
+import { colorTokens } from "@/theme";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useHydrated } from "@/hooks/useHydrated";
 
-// 🎨 DARK PRO TOKENS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  success: '#388E3C',
-  error: '#D32F2F',
-  warning: '#F57C00',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888'
-};
-
-interface Employee {
-  id: string;
+interface EmployeeRecord {
+  id: string | null;
   user_id: string;
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
-  position: string;
-  department: string;
-  status: 'active' | 'inactive' | 'suspended';
-  salary: number;
-  hireDate: string;
-  profilePictureUrl?: string;
+  rol: "empleado" | "admin";
+  phone: string | null;
+  position: string | null;
+  department: string | null;
+  status: string | null;
+  salary: number | null;
+  hireDate: string | null;
+  profilePictureUrl: string | null;
   fingerprint: boolean;
   emergencyContact: {
-    name: string;
-    phone: string;
-    relationship: string;
+    name: string | null;
+    phone: string | null;
+    relationship: string | null;
   };
   address: {
-    street: string;
-    number: string;
-    neighborhood: string;
-    city: string;
-    state: string;
+    street: string | null;
+    number: string | null;
+    neighborhood: string | null;
+    city: string | null;
+    state: string | null;
+    postalCode: string | null;
   };
-  createdAt: string;
-  updatedAt: string;
+  birthDate: string | null;
+  gender: string | null;
+  maritalStatus: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  createdBy: string | null;
+  hasEmployeeRecord: boolean;
 }
+
+const palette = {
+  background: colorTokens.neutral0,
+  surface1: colorTokens.surfaceLevel1,
+  surface2: colorTokens.surfaceLevel2,
+  surface3: colorTokens.surfaceLevel3,
+  primary: colorTokens.brand,
+  primaryHover: colorTokens.brandHover,
+  success: colorTokens.success,
+  danger: colorTokens.danger,
+  warning: colorTokens.warning,
+  info: colorTokens.info,
+  textPrimary: colorTokens.textPrimary,
+  textSecondary: colorTokens.textSecondary,
+  textDisabled: colorTokens.textDisabled,
+  textOnBrand: colorTokens.textOnBrand,
+  divider: colorTokens.divider,
+  shadow: colorTokens.shadow
+};
+
+const ROLE_META: Record<"admin" | "empleado", { label: string; color: string; background: string }> = {
+  admin: {
+    label: "Administrador",
+    color: palette.primary,
+    background: `${palette.primary}20`
+  },
+  empleado: {
+    label: "Empleado",
+    color: palette.success,
+    background: `${palette.success}20`
+  }
+};
+
+const FILTER_FIELD_SX = {
+  "& .MuiOutlinedInput-root": {
+    backgroundColor: palette.surface2,
+    color: palette.textPrimary,
+    borderRadius: 2,
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+    "& fieldset": {
+      borderColor: palette.textSecondary,
+      borderWidth: "2px"
+    },
+    "&:hover fieldset": {
+      borderColor: palette.primary
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: palette.primary,
+      boxShadow: `0 0 0 3px ${palette.primary}40`
+    }
+  },
+  "& .MuiInputLabel-root": {
+    color: palette.textSecondary,
+    "&.Mui-focused": {
+      color: palette.primary
+    }
+  }
+};
+
+const TABLE_HEAD_CELL_SX = { color: palette.primary, fontWeight: 600 };
+
+const normalizeStatus = (status: string | null) => {
+  const value = (status ?? "").toLowerCase();
+  if (["active", "activo"].includes(value)) {
+    return { label: "Activo", color: palette.success };
+  }
+  if (["inactive", "inactivo"].includes(value)) {
+    return { label: "Inactivo", color: palette.textDisabled };
+  }
+  if (["suspended", "suspendido"].includes(value)) {
+    return { label: "Suspendido", color: palette.danger };
+  }
+  return { label: status ?? "Sin estado", color: palette.textDisabled };
+};
 
 const ListaEmpleados = () => {
   const router = useRouter();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [positionFilter, setPositionFilter] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const hydrated = useHydrated();
+  const { toast } = useNotifications();
 
-  // ESTADOS PARA MODALES
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [positionFilter, setPositionFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
 
-  const fetchEmployees = async () => {
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRecord | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchEmployees = useCallback(async () => {
+    if (!hydrated) return;
+
+    setLoading(true);
     try {
-      setLoading(true);
       const params = new URLSearchParams();
-      if (statusFilter) params.append('status', statusFilter);
-      if (positionFilter) params.append('position', positionFilter);
-      if (departmentFilter) params.append('department', departmentFilter);
+      if (statusFilter) params.append("status", statusFilter);
+      if (positionFilter) params.append("position", positionFilter);
+      if (departmentFilter) params.append("department", departmentFilter);
+      if (roleFilter) params.append("role", roleFilter);
 
-      const response = await fetch(`/api/admin/employees?${params}`);
-      const result = await response.json();
+      const query = params.toString();
+      const response = await fetch(`/api/admin/employees${query ? `?${query}` : ""}`);
+      const payload = await response.json();
 
-      if (response.ok) {
-        setEmployees(result.employees);
-      } else {
-        toast.error(result.error || 'Error al cargar empleados');
+      if (!response.ok) {
+        throw new Error(payload.error || "Error al cargar usuarios");
       }
+
+      const incoming: EmployeeRecord[] = Array.isArray(payload.employees)
+        ? payload.employees
+        : [];
+      setEmployees(incoming);
     } catch (error) {
-      toast.error('Error de conexión');
+      console.error("Error cargando usuarios:", error);
+      toast.error(error instanceof Error ? error.message : "Error de conexión al cargar usuarios");
     } finally {
       setLoading(false);
     }
-  };
+  }, [departmentFilter, hydrated, positionFilter, roleFilter, statusFilter, toast]);
 
   useEffect(() => {
     fetchEmployees();
-  }, [statusFilter, positionFilter, departmentFilter]);
+  }, [fetchEmployees]);
 
-  const filteredEmployees = employees.filter(emp => 
-    search === '' || 
-    `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-    emp.email.toLowerCase().includes(search.toLowerCase()) ||
-    emp.position.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredEmployees = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return darkProTokens.success;
-      case 'inactive': return darkProTokens.textDisabled;
-      case 'suspended': return darkProTokens.error;
-      default: return darkProTokens.textDisabled;
+    return employees.filter((employee) => {
+      const matchesRole = !roleFilter || employee.rol === roleFilter;
+      if (!matchesRole) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const haystack = [
+        `${employee.firstName} ${employee.lastName}`,
+        employee.email,
+        employee.position ?? "",
+        employee.department ?? ""
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearch);
+    });
+  }, [employees, roleFilter, search]);
+
+  const summary = useMemo(() => {
+    const total = employees.length;
+    const admins = employees.filter((employee) => employee.rol === "admin").length;
+    const active = employees.filter((employee) => normalizeStatus(employee.status).label === "Activo").length;
+    const fingerprint = employees.filter((employee) => employee.fingerprint).length;
+
+    return { total, admins, active, fingerprint };
+  }, [employees]);
+
+  const dialogEmployee = useMemo(() => {
+    if (!selectedEmployee || !selectedEmployee.hasEmployeeRecord) {
+      return null;
     }
-  };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'active': return 'Activo';
-      case 'inactive': return 'Inactivo';
-      case 'suspended': return 'Suspendido';
-      default: return status;
+    return {
+      id: selectedEmployee.id ?? undefined,
+      user_id: selectedEmployee.user_id,
+      firstName: selectedEmployee.firstName,
+      lastName: selectedEmployee.lastName,
+      email: selectedEmployee.email,
+      phone: selectedEmployee.phone ?? "",
+      position: selectedEmployee.position ?? "",
+      department: selectedEmployee.department ?? "",
+      salary: selectedEmployee.salary ?? 0,
+      hireDate: selectedEmployee.hireDate ?? "",
+      status: selectedEmployee.status ?? "activo",
+      profilePictureUrl: selectedEmployee.profilePictureUrl ?? undefined,
+      fingerprint: selectedEmployee.fingerprint
+    };
+  }, [selectedEmployee]);
+
+  const selectedRoleMeta = useMemo(() => {
+    if (!selectedEmployee) {
+      return ROLE_META.empleado;
     }
-  };
 
-  // HANDLERS PARA ACCIONES
-  const handleView = (employee: Employee) => {
-    console.log('👁️ Ver empleado:', employee.firstName, employee.lastName);
+    return ROLE_META[selectedEmployee.rol];
+  }, [selectedEmployee]);
+
+  const openView = (employee: EmployeeRecord) => {
     setSelectedEmployee(employee);
-    setViewDialogOpen(true);
+    setIsViewOpen(true);
   };
 
-  const handleEdit = (employee: Employee) => {
-    console.log('✏️ Editar empleado:', employee.firstName, employee.lastName);
+  const openEdit = (employee: EmployeeRecord) => {
+    if (!employee.hasEmployeeRecord) {
+      toast.error("Este usuario aún no tiene ficha en empleados. Regístralo desde 'Nuevo Registro'.");
+      return;
+    }
+
     setSelectedEmployee(employee);
-    setEditDialogOpen(true);
+    setIsEditOpen(true);
   };
 
-  const handleDeleteClick = (employee: Employee) => {
-    console.log('🗑️ Eliminar empleado:', employee.firstName, employee.lastName);
+  const openDelete = (employee: EmployeeRecord) => {
+    if (!employee.hasEmployeeRecord) {
+      toast.error("No hay registro de empleado para eliminar.");
+      return;
+    }
+
     setSelectedEmployee(employee);
-    setDeleteDialogOpen(true);
+    setIsDeleteOpen(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!selectedEmployee) return;
+  const closeDialogs = () => {
+    setSelectedEmployee(null);
+    setIsViewOpen(false);
+    setIsEditOpen(false);
+    setIsDeleteOpen(false);
+    setIsDeleting(false);
+  };
 
+  const handleDelete = async () => {
+    if (!selectedEmployee?.hasEmployeeRecord || !selectedEmployee.id) {
+      return;
+    }
+
+    setIsDeleting(true);
     try {
-      setDeleting(true);
-      console.log('🗑️ Eliminando empleado:', selectedEmployee.id);
-
       const response = await fetch(`/api/admin/employees/${selectedEmployee.id}`, {
-        method: 'DELETE',
+        method: "DELETE"
       });
 
-      if (response.ok) {
-        toast.success(`Empleado ${selectedEmployee.firstName} ${selectedEmployee.lastName} eliminado correctamente`);
-        
-        // Actualizar lista
-        setEmployees(prev => prev.filter(emp => emp.id !== selectedEmployee.id));
-        
-        // Cerrar modal
-        setDeleteDialogOpen(false);
-        setSelectedEmployee(null);
-      } else {
-        const result = await response.json();
-        toast.error(result.error || 'Error al eliminar empleado');
+      if (!response.ok) {
+        const payload = await response.json();
+        throw new Error(payload.error || "Error al eliminar empleado");
       }
+
+      toast.success(`Empleado ${selectedEmployee.firstName} ${selectedEmployee.lastName} eliminado correctamente`);
+      await fetchEmployees();
+      closeDialogs();
     } catch (error) {
-      console.error('❌ Error eliminando empleado:', error);
-      toast.error('Error de conexión al eliminar empleado');
-    } finally {
-      setDeleting(false);
+      console.error("Error eliminando empleado:", error);
+      toast.error(error instanceof Error ? error.message : "Error de conexión al eliminar empleado");
+      setIsDeleting(false);
     }
   };
 
-  // HANDLER PARA GUARDAR CAMBIOS
-  const handleSaveEmployee = async (employeeData: any) => {
-    try {
-      console.log('💾 Guardando cambios empleado:', employeeData);
-
-      const url = selectedEmployee 
-        ? `/api/admin/employees/${selectedEmployee.id}`
-        : '/api/admin/employees';
-      
-      const method = selectedEmployee ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(employeeData),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        
-        toast.success(selectedEmployee 
-          ? `Empleado ${employeeData.firstName} ${employeeData.lastName} actualizado correctamente`
-          : `Empleado ${employeeData.firstName} ${employeeData.lastName} creado correctamente`
-        );
-
-        // Actualizar lista
-        await fetchEmployees();
-        
-        // Cerrar modal
-        setEditDialogOpen(false);
-        setSelectedEmployee(null);
-      } else {
-        const result = await response.json();
-        throw new Error(result.error || 'Error al guardar empleado');
-      }
-    } catch (error: any) {
-      console.error('❌ Error guardando empleado:', error);
-      throw error; // Re-throw para que el modal lo maneje
+  const handleSaveEmployee = async (payload: any) => {
+    if (!selectedEmployee?.hasEmployeeRecord || !selectedEmployee.id) {
+      throw new Error("No existe un registro de empleado para actualizar");
     }
+
+    const response = await fetch(`/api/admin/employees/${selectedEmployee.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Error al actualizar empleado");
+    }
+
+    toast.success(`Empleado ${payload.firstName} ${payload.lastName} actualizado correctamente`);
+    closeDialogs();
+    await fetchEmployees();
   };
 
-  // CERRAR MODALES
-  const handleCloseView = () => {
-    setViewDialogOpen(false);
-    setSelectedEmployee(null);
-  };
-
-  const handleCloseEdit = () => {
-    setEditDialogOpen(false);
-    setSelectedEmployee(null);
-  };
-
-  const handleCloseDelete = () => {
-    setDeleteDialogOpen(false);
-    setSelectedEmployee(null);
-  };
+  if (!hydrated) {
+    return null;
+  }
 
   return (
-    <Box sx={{ 
-      p: 3,
-      minHeight: '100vh',
-      background: darkProTokens.background,
-      color: darkProTokens.textPrimary
-    }}>
-      {/* HEADER */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-          👥 Lista de Empleados
+    <Box
+      sx={{
+        p: isMobile ? 2 : 3,
+        minHeight: "100vh",
+        background: `radial-gradient(circle at top, ${palette.surface3} 0%, ${palette.background} 65%)`,
+        color: palette.textPrimary
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: isMobile ? "flex-start" : "center",
+          justifyContent: "space-between",
+          gap: 2,
+          mb: 4
+        }}
+      >
+        <Typography variant="h4" sx={{ fontWeight: 700, color: palette.primary }}>
+          👥 Lista de Usuarios del Equipo
         </Typography>
         <Button
           variant="contained"
           startIcon={<PersonAddIcon />}
-          onClick={() => router.push('/dashboard/admin/empleados/registrar')}
+          onClick={() => router.push("/dashboard/admin/empleados/registrar")}
           sx={{
-            backgroundColor: darkProTokens.primary,
-            color: darkProTokens.background,
+            backgroundColor: palette.primary,
+            color: palette.textOnBrand,
             fontWeight: 600,
-            '&:hover': {
-              backgroundColor: darkProTokens.primaryHover
+            "&:hover": {
+              backgroundColor: palette.primaryHover
             }
           }}
         >
-          Nuevo Empleado
+          Nuevo Registro
         </Button>
       </Box>
 
-      {/* STATS CARDS */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ 
-            background: darkProTokens.surfaceLevel1,
-            border: `1px solid ${darkProTokens.success}30`
-          }}>
+          <Card
+            sx={{
+              background: `linear-gradient(135deg, ${palette.surface2}, ${palette.surface3})`,
+              border: `1px solid ${palette.primary}40`
+            }}
+          >
             <CardContent>
-              <Typography variant="h4" sx={{ color: darkProTokens.success, fontWeight: 700 }}>
-                {employees.filter(e => e.status === 'active').length}
+              <Typography variant="overline" sx={{ color: palette.textSecondary }}>
+                Total usuarios
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                Empleados Activos
+              <Typography variant="h4" sx={{ fontWeight: 700, color: palette.primary }}>
+                {summary.total}
+              </Typography>
+              <Typography variant="body2" sx={{ color: palette.textSecondary }}>
+                Empleados y administradores registrados
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ 
-            background: darkProTokens.surfaceLevel1,
-            border: `1px solid ${darkProTokens.primary}30`
-          }}>
+          <Card
+            sx={{
+              background: `linear-gradient(135deg, ${palette.surface2}, ${palette.surface3})`,
+              border: `1px solid ${palette.primary}40`
+            }}
+          >
             <CardContent>
-              <Typography variant="h4" sx={{ color: darkProTokens.primary, fontWeight: 700 }}>
-                {employees.length}
+              <Typography variant="overline" sx={{ color: palette.textSecondary }}>
+                Administradores
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                Total Empleados
+              <Typography variant="h4" sx={{ fontWeight: 700, color: palette.primary }}>
+                {summary.admins}
+              </Typography>
+              <Typography variant="body2" sx={{ color: palette.textSecondary }}>
+                Con acceso total a la plataforma
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ 
-            background: darkProTokens.surfaceLevel1,
-            border: `1px solid ${darkProTokens.warning}30`
-          }}>
+          <Card
+            sx={{
+              background: `linear-gradient(135deg, ${palette.surface2}, ${palette.surface3})`,
+              border: `1px solid ${palette.success}40`
+            }}
+          >
             <CardContent>
-              <Typography variant="h4" sx={{ color: darkProTokens.warning, fontWeight: 700 }}>
-                {employees.filter(e => e.fingerprint).length}
+              <Typography variant="overline" sx={{ color: palette.textSecondary }}>
+                Activos
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                Con Huella Digital
+              <Typography variant="h4" sx={{ fontWeight: 700, color: palette.success }}>
+                {summary.active}
+              </Typography>
+              <Typography variant="body2" sx={{ color: palette.textSecondary }}>
+                Con estado operativo vigente
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ 
-            background: darkProTokens.surfaceLevel1,
-            border: `1px solid ${darkProTokens.error}30`
-          }}>
+          <Card
+            sx={{
+              background: `linear-gradient(135deg, ${palette.surface2}, ${palette.surface3})`,
+              border: `1px solid ${palette.info}40`
+            }}
+          >
             <CardContent>
-              <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 700 }}>
-                {employees.filter(e => e.status === 'suspended').length}
+              <Typography variant="overline" sx={{ color: palette.textSecondary }}>
+                Huella registrada
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                Suspendidos
+              <Typography variant="h4" sx={{ fontWeight: 700, color: palette.info }}>
+                {summary.fingerprint}
+              </Typography>
+              <Typography variant="body2" sx={{ color: palette.textSecondary }}>
+                Sincronizados con control biométrico
               </Typography>
             </CardContent>
           </Card>
+          </Grid>
         </Grid>
-      </Grid>
 
-      {/* FILTROS */}
-      <Paper sx={{ 
-        p: 3, 
-        mb: 3,
-        background: darkProTokens.surfaceLevel1,
-        border: `1px solid ${darkProTokens.primary}20`
-      }}>
-        <Grid container spacing={3}>
+      <Paper
+        sx={{
+          p: isMobile ? 2 : 3,
+          mb: 4,
+          background: `linear-gradient(135deg, ${palette.surface1}, ${palette.surface2})`,
+          border: `1px solid ${palette.divider}`
+        }}
+      >
+        <Grid container spacing={isMobile ? 2 : 3}>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth
-              placeholder="Buscar empleados..."
+              placeholder="Buscar por nombre, email o puesto..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: darkProTokens.textSecondary }} />
+                    <SearchIcon sx={{ color: palette.textSecondary }} />
                   </InputAdornment>
-                ),
+                )
               }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: darkProTokens.textPrimary,
-                  '& fieldset': { borderColor: darkProTokens.textDisabled },
-                  '&:hover fieldset': { borderColor: darkProTokens.primary },
-                  '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
-                }
-              }}
+              sx={FILTER_FIELD_SX}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 2 }}>
@@ -398,17 +519,8 @@ const ListaEmpleados = () => {
               select
               label="Estado"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: darkProTokens.textPrimary,
-                  '& fieldset': { borderColor: darkProTokens.textDisabled },
-                  '&:hover fieldset': { borderColor: darkProTokens.primary },
-                  '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
-                },
-                '& .MuiInputLabel-root': { color: darkProTokens.textSecondary },
-                '& .MuiInputLabel-root.Mui-focused': { color: darkProTokens.primary }
-              }}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              sx={FILTER_FIELD_SX}
             >
               <MenuItem value="">Todos</MenuItem>
               <MenuItem value="active">Activo</MenuItem>
@@ -416,23 +528,14 @@ const ListaEmpleados = () => {
               <MenuItem value="suspended">Suspendido</MenuItem>
             </TextField>
           </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
+          <Grid size={{ xs: 12, md: 2 }}>
             <TextField
               fullWidth
               select
               label="Puesto"
               value={positionFilter}
-              onChange={(e) => setPositionFilter(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: darkProTokens.textPrimary,
-                  '& fieldset': { borderColor: darkProTokens.textDisabled },
-                  '&:hover fieldset': { borderColor: darkProTokens.primary },
-                  '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
-                },
-                '& .MuiInputLabel-root': { color: darkProTokens.textSecondary },
-                '& .MuiInputLabel-root.Mui-focused': { color: darkProTokens.primary }
-              }}
+              onChange={(event) => setPositionFilter(event.target.value)}
+              sx={FILTER_FIELD_SX}
             >
               <MenuItem value="">Todos</MenuItem>
               <MenuItem value="Entrenador">Entrenador</MenuItem>
@@ -440,25 +543,17 @@ const ListaEmpleados = () => {
               <MenuItem value="Manager">Manager</MenuItem>
               <MenuItem value="Limpieza">Limpieza</MenuItem>
               <MenuItem value="Mantenimiento">Mantenimiento</MenuItem>
+              <MenuItem value="Ventas">Ventas</MenuItem>
             </TextField>
           </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
+          <Grid size={{ xs: 12, md: 2 }}>
             <TextField
               fullWidth
               select
               label="Departamento"
               value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: darkProTokens.textPrimary,
-                  '& fieldset': { borderColor: darkProTokens.textDisabled },
-                  '&:hover fieldset': { borderColor: darkProTokens.primary },
-                  '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
-                },
-                '& .MuiInputLabel-root': { color: darkProTokens.textSecondary },
-                '& .MuiInputLabel-root.Mui-focused': { color: darkProTokens.primary }
-              }}
+              onChange={(event) => setDepartmentFilter(event.target.value)}
+              sx={FILTER_FIELD_SX}
             >
               <MenuItem value="">Todos</MenuItem>
               <MenuItem value="Operaciones">Operaciones</MenuItem>
@@ -467,393 +562,380 @@ const ListaEmpleados = () => {
               <MenuItem value="Mantenimiento">Mantenimiento</MenuItem>
             </TextField>
           </Grid>
+          <Grid size={{ xs: 12, md: 2 }}>
+            <TextField
+              fullWidth
+              select
+              label="Rol"
+              value={roleFilter}
+              onChange={(event) => setRoleFilter(event.target.value)}
+              sx={FILTER_FIELD_SX}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="admin">Administrador</MenuItem>
+              <MenuItem value="empleado">Empleado</MenuItem>
+            </TextField>
+          </Grid>
         </Grid>
       </Paper>
 
-      {/* TABLA */}
-      <TableContainer component={Paper} sx={{ 
-        background: darkProTokens.surfaceLevel1,
-        border: `1px solid ${darkProTokens.primary}20`
-      }}>
+      <TableContainer
+        component={Paper}
+        sx={{
+          background: `linear-gradient(135deg, ${palette.surface2}, ${palette.surface3})`,
+          border: `1px solid ${palette.divider}`
+        }}
+      >
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ color: darkProTokens.primary, fontWeight: 600 }}>Empleado</TableCell>
-              <TableCell sx={{ color: darkProTokens.primary, fontWeight: 600 }}>Email</TableCell>
-              <TableCell sx={{ color: darkProTokens.primary, fontWeight: 600 }}>Puesto</TableCell>
-              <TableCell sx={{ color: darkProTokens.primary, fontWeight: 600 }}>Departamento</TableCell>
-              <TableCell sx={{ color: darkProTokens.primary, fontWeight: 600 }}>Estado</TableCell>
-              <TableCell sx={{ color: darkProTokens.primary, fontWeight: 600 }}>Huella</TableCell>
-              <TableCell sx={{ color: darkProTokens.primary, fontWeight: 600 }}>Acciones</TableCell>
+              <TableCell sx={TABLE_HEAD_CELL_SX}>Usuario</TableCell>
+              <TableCell sx={TABLE_HEAD_CELL_SX}>Email</TableCell>
+              <TableCell sx={TABLE_HEAD_CELL_SX}>Puesto</TableCell>
+              <TableCell sx={TABLE_HEAD_CELL_SX}>Departamento</TableCell>
+              <TableCell sx={TABLE_HEAD_CELL_SX}>Rol</TableCell>
+              <TableCell sx={TABLE_HEAD_CELL_SX}>Estado</TableCell>
+              <TableCell sx={TABLE_HEAD_CELL_SX}>Huella</TableCell>
+              <TableCell sx={TABLE_HEAD_CELL_SX}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} sx={{ textAlign: 'center', color: darkProTokens.textSecondary }}>
-                  Cargando empleados...
+                <TableCell colSpan={8} align="center" sx={{ color: palette.textSecondary }}>
+                  Cargando usuarios...
                 </TableCell>
               </TableRow>
             ) : filteredEmployees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} sx={{ textAlign: 'center', color: darkProTokens.textSecondary }}>
-                  No se encontraron empleados
+                <TableCell colSpan={8} align="center" sx={{ color: palette.textSecondary }}>
+                  No encontramos coincidencias con los filtros seleccionados
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEmployees.map((employee) => (
-                <TableRow key={employee.id} sx={{ '&:hover': { backgroundColor: `${darkProTokens.primary}05` } }}>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar 
-                        src={employee.profilePictureUrl || undefined}
-                        sx={{ 
-                          bgcolor: darkProTokens.primary,
-                          color: darkProTokens.background,
+              filteredEmployees.map((employee) => {
+                const roleMeta = ROLE_META[employee.rol] || ROLE_META.empleado; // Fallback for safety
+                const statusMeta = normalizeStatus(employee.status);
+
+                return (
+                  <TableRow
+                    key={`${employee.user_id}-${employee.id ?? "user"}`}
+                    sx={{
+                      "&:hover": {
+                        backgroundColor: `${palette.primary}10`
+                      }
+                    }}
+                  >
+                    <TableCell>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        <Avatar
+                          src={employee.profilePictureUrl || undefined}
+                          alt={`${employee.firstName} ${employee.lastName}`}
+                          imgProps={{
+                            loading: "lazy",
+                            onError: (e: any) => {
+                              console.warn(`⚠️ Error cargando foto de ${employee.firstName} ${employee.lastName}`);
+                              e.target.style.display = 'none';
+                            }
+                          }}
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            bgcolor: employee.profilePictureUrl ? palette.surface2 : palette.primary,
+                            color: palette.textOnBrand,
+                            fontWeight: 600,
+                            border: `2px solid ${palette.divider}`,
+                            boxShadow: employee.profilePictureUrl ? `0 2px 8px ${palette.shadow}` : 'none',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              transform: 'scale(1.05)',
+                              boxShadow: `0 4px 12px ${palette.shadow}`
+                            }
+                          }}
+                        >
+                          {(employee.firstName?.[0] ?? "").toUpperCase()}
+                          {(employee.lastName?.[0] ?? "").toUpperCase()}
+                        </Avatar>
+                        <Box>
+                          <Typography sx={{ fontWeight: 600, color: palette.textPrimary }}>
+                            {employee.firstName} {employee.lastName}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: palette.textSecondary }}>
+                            {employee.phone || "Sin teléfono"}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ color: palette.textSecondary }}>{employee.email}</TableCell>
+                    <TableCell sx={{ color: palette.textPrimary }}>{employee.position || "Sin puesto"}</TableCell>
+                    <TableCell sx={{ color: palette.textSecondary }}>{employee.department || "Sin asignar"}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={roleMeta.label}
+                        size="small"
+                        sx={{
+                          backgroundColor: roleMeta.background,
+                          color: roleMeta.color,
                           fontWeight: 600
                         }}
-                        imgProps={{
-                          onError: () => {
-                            console.error('❌ Error loading image:', employee.profilePictureUrl);
-                          }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={statusMeta.label}
+                        size="small"
+                        sx={{
+                          backgroundColor: `${statusMeta.color}20`,
+                          color: statusMeta.color,
+                          fontWeight: 600
                         }}
-                      >
-                        {employee.firstName[0]}{employee.lastName[0]}
-                      </Avatar>
-                      <Box>
-                        <Typography sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                          {employee.firstName} {employee.lastName}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                          {employee.phone}
-                        </Typography>
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {employee.fingerprint ? (
+                        <Tooltip title="Huella registrada">
+                          <FingerprintIcon sx={{ color: palette.success }} />
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="Sin huella registrada">
+                          <FingerprintIcon sx={{ color: palette.textDisabled }} />
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        <Tooltip title="Ver detalles">
+                          <IconButton size="small" sx={{ color: palette.primary }} onClick={() => openView(employee)}>
+                            <ViewIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title={employee.hasEmployeeRecord ? "Editar" : "Registrar ficha"}>
+                          <span>
+                            <IconButton
+                              size="small"
+                              sx={{ color: palette.warning }}
+                              disabled={!employee.hasEmployeeRecord}
+                              onClick={() => openEdit(employee)}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title={employee.hasEmployeeRecord ? "Eliminar" : "Sin registro para eliminar"}>
+                          <span>
+                            <IconButton
+                              size="small"
+                              sx={{ color: palette.danger }}
+                              disabled={!employee.hasEmployeeRecord}
+                              onClick={() => openDelete(employee)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell sx={{ color: darkProTokens.textSecondary }}>
-                    {employee.email}
-                  </TableCell>
-                  <TableCell sx={{ color: darkProTokens.textPrimary }}>
-                    {employee.position}
-                  </TableCell>
-                  <TableCell sx={{ color: darkProTokens.textSecondary }}>
-                    {employee.department || 'Sin asignar'}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getStatusLabel(employee.status)}
-                      size="small"
-                      sx={{
-                        backgroundColor: `${getStatusColor(employee.status)}20`,
-                        color: getStatusColor(employee.status),
-                        fontWeight: 600
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {employee.fingerprint ? (
-                      <Tooltip title="Huella registrada">
-                        <FingerprintIcon sx={{ color: darkProTokens.success }} />
-                      </Tooltip>
-                    ) : (
-                      <Tooltip title="Sin huella registrada">
-                        <FingerprintIcon sx={{ color: darkProTokens.textDisabled }} />
-                      </Tooltip>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Tooltip title="Ver empleado">
-                        <IconButton 
-                          size="small" 
-                          sx={{ color: darkProTokens.primary }}
-                          onClick={() => handleView(employee)}
-                        >
-                          <ViewIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Editar empleado">
-                        <IconButton 
-                          size="small" 
-                          sx={{ color: darkProTokens.warning }}
-                          onClick={() => handleEdit(employee)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Eliminar empleado">
-                        <IconButton 
-                          size="small" 
-                          sx={{ color: darkProTokens.error }}
-                          onClick={() => handleDeleteClick(employee)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {/* MODAL DE VER EMPLEADO (READONLY) */}
       <Dialog
-        open={viewDialogOpen}
-        onClose={handleCloseView}
+        open={isViewOpen}
+        onClose={closeDialogs}
         maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
-            background: darkProTokens.surfaceLevel2,
-            color: darkProTokens.textPrimary
+            background: `linear-gradient(135deg, ${palette.surface2}, ${palette.surface3})`,
+            color: palette.textPrimary,
+            border: `1px solid ${palette.divider}`
           }
         }}
       >
-        <DialogTitle sx={{ 
-          borderBottom: `1px solid ${darkProTokens.primary}30`,
-          color: darkProTokens.primary,
-          fontWeight: 600
-        }}>
-          👁️ Ver Empleado
-        </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
+        <DialogTitle sx={{ color: palette.primary, fontWeight: 600 }}>👁️ Detalles del usuario</DialogTitle>
+        <DialogContent>
           {selectedEmployee && (
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Nombre Completo
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                    {selectedEmployee.firstName} {selectedEmployee.lastName}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Email
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
-                    {selectedEmployee.email}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Teléfono
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
-                    {selectedEmployee.phone}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Puesto
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                    {selectedEmployee.position}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Departamento
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
-                    {selectedEmployee.department || 'Sin asignar'}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Salario
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: darkProTokens.success, fontWeight: 600 }}>
-                    ${selectedEmployee.salary?.toLocaleString() || 'No especificado'}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Fecha de Contratación
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>
-                    {selectedEmployee.hireDate ? new Date(selectedEmployee.hireDate).toLocaleDateString('es-MX') : 'No especificada'}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Estado
-                  </Typography>
-                  <Chip
-                    label={getStatusLabel(selectedEmployee.status)}
-                    size="small"
-                    sx={{
-                      backgroundColor: `${getStatusColor(selectedEmployee.status)}20`,
-                      color: getStatusColor(selectedEmployee.status),
-                      fontWeight: 600
-                    }}
-                  />
-                </Box>
-              </Grid>
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              {/* Foto de perfil */}
               <Grid size={{ xs: 12 }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary }}>
-                    Huella Dactilar
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <FingerprintIcon sx={{ 
-                      color: selectedEmployee.fingerprint ? darkProTokens.success : darkProTokens.textDisabled 
-                    }} />
-                    <Typography variant="body1" sx={{ 
-                      color: selectedEmployee.fingerprint ? darkProTokens.success : darkProTokens.textDisabled,
-                      fontWeight: 600
-                    }}>
-                      {selectedEmployee.fingerprint ? 'Registrada' : 'No registrada'}
-                    </Typography>
-                  </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                  <Avatar
+                    src={selectedEmployee.profilePictureUrl || undefined}
+                    alt={`${selectedEmployee.firstName} ${selectedEmployee.lastName}`}
+                    imgProps={{
+                      loading: "eager",
+                      onError: (e: any) => {
+                        console.warn(`⚠️ Error cargando foto de ${selectedEmployee.firstName}`);
+                        e.target.style.display = 'none';
+                      }
+                    }}
+                    sx={{
+                      width: 120,
+                      height: 120,
+                      bgcolor: selectedEmployee.profilePictureUrl ? palette.surface2 : palette.primary,
+                      color: palette.textOnBrand,
+                      fontWeight: 600,
+                      fontSize: '2.5rem',
+                      border: `3px solid ${palette.primary}`,
+                      boxShadow: `0 4px 20px ${palette.shadow}`
+                    }}
+                  >
+                    {(selectedEmployee.firstName?.[0] ?? "").toUpperCase()}
+                    {(selectedEmployee.lastName?.[0] ?? "").toUpperCase()}
+                  </Avatar>
                 </Box>
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: palette.textSecondary }}>
+                  Nombre completo
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600, color: palette.textPrimary }}>
+                  {selectedEmployee.firstName} {selectedEmployee.lastName}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: palette.textSecondary }}>
+                  Rol
+                </Typography>
+                <Chip
+                  label={selectedRoleMeta.label}
+                  size="small"
+                  sx={{
+                    backgroundColor: selectedRoleMeta.background,
+                    color: selectedRoleMeta.color,
+                    fontWeight: 600
+                  }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: palette.textSecondary }}>
+                  Email
+                </Typography>
+                <Typography variant="body1" sx={{ color: palette.textPrimary }}>
+                  {selectedEmployee.email}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: palette.textSecondary }}>
+                  Teléfono
+                </Typography>
+                <Typography variant="body1" sx={{ color: palette.textPrimary }}>
+                  {selectedEmployee.phone || "Sin teléfono"}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: palette.textSecondary }}>
+                  Puesto
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600, color: palette.textPrimary }}>
+                  {selectedEmployee.position || "Sin puesto"}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: palette.textSecondary }}>
+                  Departamento
+                </Typography>
+                <Typography variant="body1" sx={{ color: palette.textPrimary }}>
+                  {selectedEmployee.department || "Sin asignar"}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: palette.textSecondary }}>
+                  Estado laboral
+                </Typography>
+                <Chip
+                  label={normalizeStatus(selectedEmployee.status).label}
+                  size="small"
+                  sx={{
+                    backgroundColor: `${normalizeStatus(selectedEmployee.status).color}20`,
+                    color: normalizeStatus(selectedEmployee.status).color,
+                    fontWeight: 600
+                  }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ color: palette.textSecondary }}>
+                  Huella dactilar
+                </Typography>
+                <Typography variant="body1" sx={{ color: palette.textPrimary }}>
+                  {selectedEmployee.fingerprint ? "Registrada" : "No registrada"}
+                </Typography>
               </Grid>
             </Grid>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.primary}30` }}>
-          <Button onClick={handleCloseView} sx={{ color: darkProTokens.textSecondary }}>
+        <DialogActions>
+          <Button onClick={closeDialogs} sx={{ color: palette.textSecondary }}>
             Cerrar
           </Button>
-          <Button 
+          <Button
             variant="outlined"
-            onClick={() => {
-              handleCloseView();
-              if (selectedEmployee) {
-                handleEdit(selectedEmployee);
-              }
-            }}
+            onClick={() => selectedEmployee && openEdit(selectedEmployee)}
+            disabled={!selectedEmployee?.hasEmployeeRecord}
             sx={{
-              borderColor: darkProTokens.warning,
-              color: darkProTokens.warning,
-              '&:hover': {
-                backgroundColor: `${darkProTokens.warning}10`,
-                borderColor: darkProTokens.warning
-              }
+              borderColor: palette.warning,
+              color: palette.warning
             }}
           >
-            Editar
+            Editar ficha
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* MODAL DE EDITAR EMPLEADO */}
-      {selectedEmployee && (
+      {dialogEmployee && (
         <EmployeeFormDialog
-          open={editDialogOpen}
-          onClose={handleCloseEdit}
-          employee={selectedEmployee}
+          open={isEditOpen}
+          onClose={closeDialogs}
+          employee={dialogEmployee}
           onSave={handleSaveEmployee}
         />
       )}
 
-      {/* MODAL DE CONFIRMAR ELIMINACIÓN */}
       <Dialog
-        open={deleteDialogOpen}
-        onClose={handleCloseDelete}
+        open={isDeleteOpen}
+        onClose={closeDialogs}
         maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {
-            background: darkProTokens.surfaceLevel2,
-            color: darkProTokens.textPrimary,
-            border: `2px solid ${darkProTokens.error}40`
+            background: `linear-gradient(135deg, ${palette.surface2}, ${palette.surface3})`,
+            border: `1px solid ${palette.danger}40`
           }
         }}
       >
-        <DialogTitle sx={{ 
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          color: darkProTokens.error,
-          fontWeight: 600
-        }}>
-          <WarningIcon />
-          Confirmar Eliminación
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1, color: palette.danger }}>
+          <WarningIcon /> Confirmar eliminación
         </DialogTitle>
         <DialogContent>
           {selectedEmployee && (
-            <>
-              <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
-                ¿Estás seguro de que deseas eliminar al empleado:
+            <Alert severity="warning" sx={{ backgroundColor: `${palette.warning}20`, border: `1px solid ${palette.warning}40` }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                {selectedEmployee.firstName} {selectedEmployee.lastName}
               </Typography>
-              <Alert 
-                severity="warning" 
-                sx={{ 
-                  mb: 2,
-                  backgroundColor: `${darkProTokens.warning}20`,
-                  color: darkProTokens.textPrimary,
-                  border: `1px solid ${darkProTokens.warning}40`
-                }}
-              >
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {selectedEmployee.firstName} {selectedEmployee.lastName}
-                </Typography>
-                <Typography variant="body2">
-                  {selectedEmployee.position} - {selectedEmployee.department}
-                </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  {selectedEmployee.email}
-                </Typography>
-              </Alert>
-              <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
-                ⚠️ Esta acción eliminará:
+              <Typography variant="body2">{selectedEmployee.email}</Typography>
+              <Typography variant="body2" sx={{ color: palette.textSecondary }}>
+                Esta acción eliminará la ficha del empleado y los datos asociados.
               </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, ml: 2 }}>
-                • Todos los datos del empleado
-                <br />
-                • Archivos asociados (foto de perfil)
-                <br />
-                • Datos de huella dactilar (BD + F22)
-                <br />
-                • Historial de registros
-              </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600, mt: 2 }}>
-                Esta acción no se puede deshacer.
-              </Typography>
-            </>
+            </Alert>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 3, gap: 2 }}>
-          <Button 
-            onClick={handleCloseDelete}
-            disabled={deleting}
-            sx={{ color: darkProTokens.textSecondary }}
-          >
+        <DialogActions sx={{ gap: 2 }}>
+          <Button onClick={closeDialogs} disabled={isDeleting} sx={{ color: palette.textSecondary }}>
             Cancelar
           </Button>
-          <Button 
+          <Button
+            onClick={handleDelete}
+            disabled={isDeleting}
             variant="contained"
             color="error"
-            onClick={handleDeleteConfirm}
-            disabled={deleting}
-            startIcon={deleting ? <CircularProgress size={16} /> : <DeleteIcon />}
-            sx={{
-              backgroundColor: darkProTokens.error,
-              '&:hover': {
-                backgroundColor: '#B71C1C'
-              }
-            }}
+            startIcon={isDeleting ? <CircularProgress size={16} /> : undefined}
           >
-            {deleting ? 'Eliminando...' : 'Eliminar Empleado'}
+            {isDeleting ? "Eliminando..." : "Eliminar"}
           </Button>
         </DialogActions>
       </Dialog>

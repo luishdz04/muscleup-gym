@@ -1,4 +1,4 @@
-// hooks/useUserTracking.ts - VERSIÓN ENTERPRISE v8.2 MUSCLEUP CORREGIDA
+// hooks/useUserTracking.ts - VERSIÓN ENTERPRISE v8.2 MUSCLEUP - REFACTORIZADO
 'use client';
 
 import { useCallback } from 'react';
@@ -9,14 +9,15 @@ import { notify } from '@/utils/notifications';
 
 export type AuditType = 'full_camel' | 'full_snake' | 'created_only' | 'updated_only' | 'timestamps_only' | 'none';
 
-// ✅ CONFIGURACIÓN ENTERPRISE v8.2 BASADA EN ESQUEMA BD REAL MUSCLEUP 
+// ✅ CONFIGURACIÓN ENTERPRISE v8.2 - REFACTORIZADA CON MEMBERSHIP_PAYMENT_DETAILS
 const TABLE_AUDIT_CONFIG: Record<string, AuditType> = {
   // 🎯 AUDITORÍA COMPLETA CAMELCASE
   'Users': 'full_camel', // createdBy, updatedBy, createdAt, updatedAt
 
-  // 🎯 AUDITORÍA COMPLETA SNAKE_CASE - MULTI-ALMACÉN v8.2
+  // 🎯 AUDITORÍA COMPLETA SNAKE_CASE - MULTI-ALMACÉN v8.2 + REFACTORIZACIÓN
   'user_memberships': 'full_snake',
   'membership_plans': 'full_snake',
+  'membership_payment_details': 'full_snake', // ✅ ACTUALIZADO: Ahora tiene created_by, updated_by
   'cash_cuts': 'full_snake',
   'expenses': 'full_snake',
   'products': 'full_snake',
@@ -24,6 +25,8 @@ const TABLE_AUDIT_CONFIG: Record<string, AuditType> = {
   'purchase_orders': 'full_snake',
   'warehouses': 'full_snake', // ✅ MULTI-ALMACÉN v8.2
   'product_warehouse_stock': 'full_snake', // ✅ MULTI-ALMACÉN v8.2
+  'warehouse_transfers': 'full_snake', // ✅ MULTI-ALMACÉN v8.2
+  'warehouse_transfer_items': 'full_snake', // ✅ MULTI-ALMACÉN v8.2
 
   // ⚠️ AUDITORÍA PARCIAL - SOLO CREATED_BY
   'coupons': 'created_only',
@@ -40,7 +43,6 @@ const TABLE_AUDIT_CONFIG: Record<string, AuditType> = {
   'addresses': 'none',
   'emergency_contacts': 'none',
   'membership_info': 'none',
-  'membership_payment_details': 'none',
   'biometric_devices': 'none',
   'access_control_config': 'none',
   'access_logs': 'none',
@@ -191,7 +193,7 @@ export const useUserTracking = (): UserTrackingHook => {
         }
 
         case 'full_snake': {
-          // products, user_memberships, warehouses, etc. - snake_case completo v8.2
+          // products, user_memberships, membership_payment_details, warehouses, etc. - snake_case completo v8.2
           if (isUpdate) {
             return { 
               ...data, 
@@ -282,11 +284,11 @@ export const useUserTracking = (): UserTrackingHook => {
   const getTableAuditInfo = useCallback((tableName: string): TableAuditInfo => {
     const auditType = TABLE_AUDIT_CONFIG[tableName];
     
-    // ✅ CATEGORIZACIÓN DE TABLAS v8.2
+    // ✅ CATEGORIZACIÓN DE TABLAS v8.2 ACTUALIZADA
     const getTableCategory = (table: string): TableAuditInfo['tableCategory'] => {
-      if (['products', 'inventory_movements', 'warehouses', 'product_warehouse_stock'].includes(table)) return 'inventory';
-      if (['Users', 'user_memberships', 'membership_plans'].includes(table)) return 'membership';
-      if (['sales', 'sale_items', 'refunds'].includes(table)) return 'sales';
+      if (['products', 'inventory_movements', 'warehouses', 'product_warehouse_stock', 'warehouse_transfers', 'warehouse_transfer_items'].includes(table)) return 'inventory';
+      if (['Users', 'user_memberships', 'membership_plans', 'membership_payment_details'].includes(table)) return 'membership';
+      if (['sales', 'sale_items', 'sale_payment_details', 'refunds'].includes(table)) return 'sales';
       if (['biometric_devices', 'fingerprint_templates', 'access_logs'].includes(table)) return 'biometric';
       if (['system_logs', 'trigger_logs'].includes(table)) return 'system';
       return 'core';

@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Grid,
   Card,
   CardContent,
   Button,
@@ -24,8 +23,10 @@ import {
   InputAdornment,
   Collapse,
   FormControlLabel,
-  Switch
+  Switch,
+  Skeleton
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
@@ -57,81 +58,17 @@ import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
-// 🎨 DARK PRO SYSTEM - TOKENS (IGUAL QUE CORTES)
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  roleAdmin: '#E91E63'
-};
-
-// ✅ FUNCIONES LOCALES PARA FECHAS MÉXICO (IGUAL QUE CORTES)
-function getMexicoDateLocal(): string {
-  const now = new Date();
-  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  const year = mexicoDate.getFullYear();
-  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatMexicoTimeLocal(date: Date): string {
-  return date.toLocaleString('es-MX', {
-    timeZone: 'America/Mexico_City',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true
-  });
-}
-
-function formatDateLocal(dateString: string): string {
-  try {
-    const date = new Date(dateString + 'T12:00:00');
-    return date.toLocaleDateString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'America/Mexico_City'
-    });
-  } catch (error) {
-    console.error('❌ Error formateando fecha:', dateString, error);
-    const date = new Date(dateString + 'T12:00:00');
-    const months = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ];
-    const weekdays = [
-      'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
-    ];
-    const weekday = weekdays[date.getDay()];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    return `${weekday}, ${day} de ${month} de ${year}`;
-  }
-}
+// ✅ IMPORTS CENTRALIZADOS
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatPrice } from '@/utils/formatUtils';
+import { 
+  getTodayInMexico, 
+  formatDateForDisplay,
+  getMexicoTimestampWithOffset
+} from '@/utils/dateUtils';
 
 // 🔍 DETECTOR DE RANGO (IGUAL QUE CORTES)
 function getMexicoDateRangeDisplay(dateString: string): string {
@@ -150,39 +87,19 @@ function getMexicoDateRangeDisplay(dateString: string): string {
   }
 }
 
-// ✅ FUNCIÓN PARA TIMESTAMP DB (IGUAL QUE CORTES)
-function createTimestampForDB(): string {
-  const now = new Date();
-  const mexicoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-  
-  const year = mexicoTime.getFullYear();
-  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoTime.getDate()).padStart(2, '0');
-  const hours = String(mexicoTime.getHours()).padStart(2, '0');
-  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
-  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
-}
-
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
-  }).format(amount);
-}
+// ✅ REUTILIZAR FUNCIÓN DE dateUtils (CONSISTENCIA)
+const createTimestampForDB = (): string => getMexicoTimestampWithOffset();
 
 // ✅ TIPOS DE EGRESO SEGÚN CONSTRAINT DE TABLA
 const EXPENSE_TYPES = [
-  { value: 'nomina', label: 'Nómina', icon: <GroupsIcon />, color: darkProTokens.error },
-  { value: 'suplementos', label: 'Suplementos', icon: <LocalOfferIcon />, color: darkProTokens.warning },
-  { value: 'servicios', label: 'Servicios', icon: <HomeIcon />, color: darkProTokens.success },
-  { value: 'mantenimiento', label: 'Mantenimiento', icon: <BuildIcon />, color: darkProTokens.info },
-  { value: 'limpieza', label: 'Limpieza', icon: <CleaningServicesIcon />, color: darkProTokens.primary },
-  { value: 'marketing', label: 'Marketing', icon: <CampaignIcon />, color: darkProTokens.roleAdmin },
-  { value: 'equipamiento', label: 'Equipamiento', icon: <AssessmentIcon />, color: darkProTokens.warning },
-  { value: 'otros', label: 'Otros', icon: <MoneyOffIcon />, color: darkProTokens.textSecondary }
+  { value: 'nomina', label: 'Nómina', icon: <GroupsIcon />, color: colorTokens.danger },
+  { value: 'suplementos', label: 'Suplementos', icon: <LocalOfferIcon />, color: colorTokens.warning },
+  { value: 'servicios', label: 'Servicios', icon: <HomeIcon />, color: colorTokens.success },
+  { value: 'mantenimiento', label: 'Mantenimiento', icon: <BuildIcon />, color: colorTokens.info },
+  { value: 'limpieza', label: 'Limpieza', icon: <CleaningServicesIcon />, color: colorTokens.brand },
+  { value: 'marketing', label: 'Marketing', icon: <CampaignIcon />, color: colorTokens.danger },
+  { value: 'equipamiento', label: 'Equipamiento', icon: <AssessmentIcon />, color: colorTokens.warning },
+  { value: 'otros', label: 'Otros', icon: <MoneyOffIcon />, color: colorTokens.textSecondary }
 ];
 
 // ✅ INTERFACE PARA USUARIO (IGUAL QUE CORTES)
@@ -217,14 +134,14 @@ interface RelatedCutData {
 
 export default function NuevoEgresoPage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
+  useUserTracking();
+  const { toast } = useNotifications();
   
   // ✅ ESTADOS (IGUAL QUE CORTES)
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const mexicoDateString = getMexicoDateLocal();
+    const mexicoDateString = getTodayInMexico();
     const mexicoDate = new Date(mexicoDateString + 'T12:00:00');
-    
-    console.log('🇲🇽 Fecha actual México (crear egreso):', mexicoDateString);
-    console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
     
     return mexicoDate;
   });
@@ -261,9 +178,9 @@ export default function NuevoEgresoPage() {
       
       if (data.success && data.user) {
         setCurrentUser(data.user);
-        console.log('👤 Usuario autenticado cargado:', data.user);
+        console.log('Usuario autenticado cargado:', data.user);
       } else {
-        console.warn('⚠️ No se pudo cargar usuario autenticado');
+        console.warn('No se pudo cargar usuario autenticado');
         setCurrentUser({
           id: 'unknown',
           firstName: 'luishdz04',
@@ -310,7 +227,14 @@ export default function NuevoEgresoPage() {
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
-      const mexicoTime = formatMexicoTimeLocal(now);
+      const formatter = new Intl.DateTimeFormat('es-MX', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'America/Mexico_City'
+      });
+      const mexicoTime = formatter.format(now);
       setCurrentTime(mexicoTime);
     };
     
@@ -329,16 +253,16 @@ export default function NuevoEgresoPage() {
   // ✅ CARGAR INFORMACIÓN DEL CORTE RELACIONADO
   const loadRelatedCut = async (dateString: string) => {
     try {
-      console.log('🔍 Verificando corte relacionado para fecha:', dateString);
+      console.log('Verificando corte relacionado para fecha:', dateString);
       
       const response = await fetch(`/api/cuts/check-existing?date=${dateString}&purpose=expenses`);
       const data = await response.json();
       
       if (response.ok) {
         setRelatedCutData(data);
-        console.log('📊 Corte relacionado:', data);
+        console.log('Corte relacionado:', data);
       } else {
-        console.log('ℹ️ No hay corte para esta fecha');
+        console.log('No hay corte para esta fecha');
         setRelatedCutData({ exists: false });
       }
     } catch (error) {
@@ -369,7 +293,7 @@ export default function NuevoEgresoPage() {
         created_at_mexico: createTimestampForDB()
       };
       
-      console.log('📊 Creando egreso con datos:', requestData);
+      console.log('Creando egreso con datos:', requestData);
       
       const response = await fetch('/api/expenses/create', {
         method: 'POST',
@@ -382,7 +306,7 @@ export default function NuevoEgresoPage() {
       const result = await response.json();
       
       if (result.success) {
-        setSuccess(`✅ Egreso creado exitosamente: ${result.message}`);
+        setSuccess(`Egreso creado exitosamente: ${result.message}`);
         setTimeout(() => {
           router.push(`/dashboard/admin/egresos`);
         }, 2000);
@@ -404,9 +328,11 @@ export default function NuevoEgresoPage() {
     }));
   };
 
-  const handleDateChange = (newDate: Date | null) => {
+  const handleDateChange = (newDate: Date | null | import('dayjs').Dayjs) => {
     if (newDate) {
-      setSelectedDate(newDate);
+      // Convert Dayjs to Date if needed
+      const dateObj = newDate instanceof Date ? newDate : new Date(newDate.toString());
+      setSelectedDate(dateObj);
       setSuccess(null);
       setError(null);
     }
@@ -422,45 +348,54 @@ export default function NuevoEgresoPage() {
            expenseData.amount > 0;
   };
 
+  // ✅ SSR Safety
+  if (!isHydrated) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Skeleton variant="rectangular" width="100%" height={400} sx={{ borderRadius: 2 }} />
+      </Box>
+    );
+  }
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <Box sx={{ 
         minHeight: '100vh',
-        background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
-        color: darkProTokens.textPrimary,
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.surfaceLevel1})`,
+        color: colorTokens.textPrimary,
         p: 4,
         // ✅ CSS GLOBAL PARA DATEPICKER (IGUAL QUE CORTES)
         '& .MuiPickersLayout-root': {
-          backgroundColor: darkProTokens.surfaceLevel2,
+          backgroundColor: colorTokens.surfaceLevel2,
         },
         '& .MuiDayCalendar-weekContainer': {
           '& .MuiPickersDay-root': {
-            color: darkProTokens.textPrimary,
+            color: colorTokens.textPrimary,
             '&:hover': {
-              backgroundColor: `${darkProTokens.primary}30`,
+              backgroundColor: `${colorTokens.brand}30`,
             },
             '&.Mui-selected': {
-              backgroundColor: darkProTokens.primary,
-              color: darkProTokens.background,
+              backgroundColor: colorTokens.brand,
+              color: colorTokens.neutral0,
             },
           },
         },
         '& .MuiPickersCalendarHeader-root': {
           '& .MuiPickersCalendarHeader-label': {
-            color: darkProTokens.textPrimary,
+            color: colorTokens.textPrimary,
           },
           '& .MuiIconButton-root': {
-            color: darkProTokens.textPrimary,
+            color: colorTokens.textPrimary,
           },
         },
         '& .MuiPickersDay-today': {
-          borderColor: darkProTokens.primary,
+          borderColor: colorTokens.brand,
         },
         '& .MuiTypography-caption': {
-          color: darkProTokens.textSecondary,
+          color: colorTokens.textSecondary,
         },
         '& .MuiPickersLayout-contentWrapper': {
-          backgroundColor: darkProTokens.surfaceLevel2,
+          backgroundColor: colorTokens.surfaceLevel2,
         }
       }}>
         {/* HEADER CON DETECTOR DE RANGO (IGUAL QUE CORTES) */}
@@ -469,15 +404,15 @@ export default function NuevoEgresoPage() {
             <IconButton
               onClick={() => router.push('/dashboard/admin/egresos')}
               sx={{ 
-                color: darkProTokens.textSecondary,
-                '&:hover': { color: darkProTokens.primary }
+                color: colorTokens.textSecondary,
+                '&:hover': { color: colorTokens.brand }
               }}
             >
               <ArrowBackIcon />
             </IconButton>
             
             <Avatar sx={{ 
-              bgcolor: darkProTokens.error, 
+              bgcolor: colorTokens.danger, 
               width: 60, 
               height: 60 
             }}>
@@ -485,34 +420,29 @@ export default function NuevoEgresoPage() {
             </Avatar>
             
             <Box>
-              <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+              <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
                 Crear Nuevo Egreso
               </Typography>
               
-              <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                📅 {formatDateLocal(selectedDate.toISOString().split('T')[0])} • ⏰ {currentTime}
+              <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+                {formatDateForDisplay(selectedDate.toISOString().split('T')[0])} • {currentTime}
               </Typography>
               
-              {/* 🔍 DETECTOR DE RANGO INTELIGENTE */}
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: 1, 
                 mt: 1,
                 p: 1.5,
-                backgroundColor: `${darkProTokens.info}15`,
+                backgroundColor: `${colorTokens.info}15`,
                 borderRadius: 2,
-                border: `1px solid ${darkProTokens.info}30`
+                border: `1px solid ${colorTokens.info}30`
               }}>
-                <DateRangeIcon sx={{ color: darkProTokens.info, fontSize: 18 }} />
-                <Typography variant="body2" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
-                  📊 Rango de datos: {getMexicoDateRangeDisplay(selectedDate.toISOString().split('T')[0])}
+                <DateRangeIcon sx={{ color: colorTokens.info, fontSize: 18 }} />
+                <Typography variant="body2" sx={{ color: colorTokens.info, fontWeight: 600 }}>
+                  Rango de datos: {getMexicoDateRangeDisplay(selectedDate.toISOString().split('T')[0])}
                 </Typography>
               </Box>
-              
-              <Typography variant="caption" sx={{ color: darkProTokens.textDisabled, mt: 0.5, display: 'block' }}>
-                🇲🇽 Zona horaria: México • 💸 Registro de gastos operativos
-              </Typography>
             </Box>
           </Box>
           
@@ -525,10 +455,10 @@ export default function NuevoEgresoPage() {
                   onChange={(e) => setShowPreview(e.target.checked)}
                   sx={{
                     '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: darkProTokens.info,
+                      color: colorTokens.info,
                     },
                     '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                      backgroundColor: darkProTokens.info,
+                      backgroundColor: colorTokens.info,
                     },
                   }}
                 />
@@ -541,7 +471,7 @@ export default function NuevoEgresoPage() {
                   </Typography>
                 </Box>
               }
-              sx={{ color: darkProTokens.textSecondary }}
+              sx={{ color: colorTokens.textSecondary }}
             />
           </Box>
         </Box>
@@ -589,26 +519,26 @@ export default function NuevoEgresoPage() {
 
         <Grid container spacing={4}>
           {/* CONFIGURACIÓN DEL EGRESO */}
-          <Grid size={12} md={showPreview ? 6 : 8}>
+          <Grid size={{ xs: 12, md: showPreview ? 6 : 8 }}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
             >
               <Card sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                border: `2px solid ${darkProTokens.error}40`,
+                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                border: `2px solid ${colorTokens.danger}40`,
                 borderRadius: 4,
                 height: 'fit-content'
               }}>
                 <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.error, mb: 3 }}>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.danger, mb: 3 }}>
                     ⚙️ Información del Egreso
                   </Typography>
                   
                   {/* SELECTOR DE FECHA */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       📅 Fecha del Egreso
                     </Typography>
                     <DatePicker
@@ -620,43 +550,43 @@ export default function NuevoEgresoPage() {
                       sx={{
                         width: '100%',
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.neutral400,
+                          color: colorTokens.textPrimary,
                           '& fieldset': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: colorTokens.neutral500,
                           },
                           '&:hover fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                           '&.Mui-focused fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                         },
                         '& .MuiInputLabel-root': {
-                          color: darkProTokens.textSecondary,
+                          color: colorTokens.textSecondary,
                           '&.Mui-focused': {
-                            color: darkProTokens.primary,
+                            color: colorTokens.brand,
                           },
                         },
                         '& .MuiSvgIcon-root': {
-                          color: darkProTokens.primary,
+                          color: colorTokens.brand,
                         },
                         '& .MuiInputBase-input': {
-                          color: darkProTokens.textPrimary,
+                          color: colorTokens.textPrimary,
                         },
                       }}
                     />
                   </Box>
 
-                  <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
+                  <Divider sx={{ backgroundColor: colorTokens.neutral500, my: 3 }} />
 
                   {/* TIPO DE EGRESO */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       📂 Tipo de Egreso *
                     </Typography>
                     <FormControl fullWidth>
-                      <InputLabel sx={{ color: darkProTokens.textSecondary }}>
+                      <InputLabel sx={{ color: colorTokens.textSecondary }}>
                         Seleccionar tipo
                       </InputLabel>
                       <Select
@@ -664,26 +594,26 @@ export default function NuevoEgresoPage() {
                         onChange={(e) => handleExpenseDataChange('expense_type', e.target.value)}
                         label="Seleccionar tipo"
                         sx={{
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.neutral400,
+                          color: colorTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: colorTokens.neutral500,
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                           '& .MuiSvgIcon-root': {
-                            color: darkProTokens.textSecondary,
+                            color: colorTokens.textSecondary,
                           },
                         }}
                         MenuProps={{
                           PaperProps: {
                             sx: {
-                              backgroundColor: darkProTokens.surfaceLevel3,
-                              color: darkProTokens.textPrimary,
+                              backgroundColor: colorTokens.surfaceLevel3,
+                              color: colorTokens.textPrimary,
                             },
                           },
                         }}
@@ -704,7 +634,7 @@ export default function NuevoEgresoPage() {
 
                   {/* DESCRIPCIÓN */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       📝 Descripción *
                     </Typography>
                     <TextField
@@ -716,16 +646,16 @@ export default function NuevoEgresoPage() {
                       rows={3}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.neutral400,
+                          color: colorTokens.textPrimary,
                           '& fieldset': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: colorTokens.neutral500,
                           },
                           '&:hover fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                           '&.Mui-focused fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                         },
                       }}
@@ -734,7 +664,7 @@ export default function NuevoEgresoPage() {
 
                   {/* MONTO */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       💰 Monto *
                     </Typography>
                     <TextField
@@ -749,16 +679,16 @@ export default function NuevoEgresoPage() {
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.neutral400,
+                          color: colorTokens.textPrimary,
                           '& fieldset': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: colorTokens.neutral500,
                           },
                           '&:hover fieldset': {
-                            borderColor: darkProTokens.error,
+                            borderColor: colorTokens.danger,
                           },
                           '&.Mui-focused fieldset': {
-                            borderColor: darkProTokens.error,
+                            borderColor: colorTokens.danger,
                           },
                         },
                       }}
@@ -767,7 +697,7 @@ export default function NuevoEgresoPage() {
 
                   {/* NÚMERO DE RECIBO */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       🧾 Número de Recibo (Opcional)
                     </Typography>
                     <TextField
@@ -777,16 +707,16 @@ export default function NuevoEgresoPage() {
                       placeholder="Ej: CFE-2025-001, REC-123456"
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.neutral400,
+                          color: colorTokens.textPrimary,
                           '& fieldset': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: colorTokens.neutral500,
                           },
                           '&:hover fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                           '&.Mui-focused fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                         },
                       }}
@@ -795,7 +725,7 @@ export default function NuevoEgresoPage() {
 
                   {/* NOTAS */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       📄 Notas Adicionales (Opcional)
                     </Typography>
                     <TextField
@@ -807,40 +737,40 @@ export default function NuevoEgresoPage() {
                       placeholder="Información adicional, observaciones, etc..."
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.neutral400,
+                          color: colorTokens.textPrimary,
                           '& fieldset': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: colorTokens.neutral500,
                           },
                           '&:hover fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                           '&.Mui-focused fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                         },
                       }}
                     />
                   </Box>
 
-                  <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
+                  <Divider sx={{ backgroundColor: colorTokens.neutral500, my: 3 }} />
 
                   {/* INFORMACIÓN DEL EGRESO */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       📋 Información del Registro
                     </Typography>
                     
                     <Stack spacing={2}>
                       <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                           Registrado por:
                         </Typography>
                         <Chip
                           label={getCurrentUserDisplayName()}
                           sx={{
-                            backgroundColor: `${darkProTokens.info}20`,
-                            color: darkProTokens.info,
+                            backgroundColor: `${colorTokens.info}20`,
+                            color: colorTokens.info,
                             fontWeight: 600,
                             mt: 0.5
                           }}
@@ -848,17 +778,17 @@ export default function NuevoEgresoPage() {
                       </Box>
                       
                       <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                           Fecha y hora:
                         </Typography>
-                        <Typography variant="body1" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                          {formatDateLocal(selectedDate.toISOString().split('T')[0])} • {currentTime}
+                        <Typography variant="body1" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+                          {formatDateForDisplay(selectedDate.toISOString().split('T')[0])} • {currentTime}
                         </Typography>
                       </Box>
                       
                       {expenseData.expense_type && (
                         <Box>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                             Categoría:
                           </Typography>
                           <Chip
@@ -883,12 +813,12 @@ export default function NuevoEgresoPage() {
                       fullWidth
                       onClick={() => router.push('/dashboard/admin/egresos')}
                       sx={{
-                        borderColor: darkProTokens.textSecondary,
-                        color: darkProTokens.textSecondary,
+                        borderColor: colorTokens.textSecondary,
+                        color: colorTokens.textSecondary,
                         py: 1.5,
                         '&:hover': {
-                          borderColor: darkProTokens.textPrimary,
-                          backgroundColor: `${darkProTokens.textSecondary}20`
+                          borderColor: colorTokens.textPrimary,
+                          backgroundColor: `${colorTokens.textSecondary}20`
                         }
                       }}
                     >
@@ -903,14 +833,14 @@ export default function NuevoEgresoPage() {
                       startIcon={creating ? <CircularProgress size={20} /> : <SaveIcon />}
                       sx={{
                         background: isFormValid() 
-                          ? `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`
-                          : darkProTokens.grayMedium,
-                        color: darkProTokens.textPrimary,
+                          ? `linear-gradient(135deg, ${colorTokens.danger}, ${colorTokens.dangerHover})`
+                          : colorTokens.neutral500,
+                        color: colorTokens.textPrimary,
                         py: 1.5,
                         fontWeight: 700,
                         '&:disabled': {
-                          background: darkProTokens.grayMedium,
-                          color: darkProTokens.textDisabled
+                          background: colorTokens.neutral500,
+                          color: colorTokens.textDisabled
                         }
                       }}
                     >
@@ -924,27 +854,27 @@ export default function NuevoEgresoPage() {
 
           {/* VISTA PREVIA (cuando está habilitada) */}
           {showPreview && (
-            <Grid size={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
                 <Card sx={{
-                  background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                  border: `1px solid ${darkProTokens.grayMedium}`,
+                  background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                  border: `1px solid ${colorTokens.neutral500}`,
                   borderRadius: 4,
                   height: 'fit-content'
                 }}>
                   <CardContent sx={{ p: 4 }}>
-                    <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+                    <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 3 }}>
                       👁️ Vista Previa del Egreso
                     </Typography>
                     
                     {isFormValid() ? (
                       <Paper sx={{
                         p: 3,
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                        background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral400})`,
                         border: `2px solid ${getExpenseTypeInfo(expenseData.expense_type).color}40`,
                         borderRadius: 3
                       }}>
@@ -958,7 +888,7 @@ export default function NuevoEgresoPage() {
                               {getExpenseTypeInfo(expenseData.expense_type).icon}
                             </Avatar>
                             <Box>
-                              <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                              <Typography variant="h6" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                                 {expenseData.description || 'Descripción del egreso'}
                               </Typography>
                               <Chip
@@ -973,54 +903,54 @@ export default function NuevoEgresoPage() {
                             </Box>
                           </Box>
                           
-                          <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                          <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.danger }}>
                             -{formatPrice(expenseData.amount)}
                           </Typography>
                         </Box>
                         
                         <Stack spacing={1}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                               Fecha:
                             </Typography>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                              {formatDateLocal(selectedDate.toISOString().split('T')[0])}
+                            <Typography variant="body2" sx={{ color: colorTokens.textPrimary }}>
+                              {formatDateForDisplay(selectedDate.toISOString().split('T')[0])}
                             </Typography>
                           </Box>
                           
                           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                               Hora:
                             </Typography>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textPrimary }}>
                               {currentTime}
                             </Typography>
                           </Box>
                           
                           {expenseData.receipt_number && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                              <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                                 Recibo:
                               </Typography>
-                              <Typography variant="body2" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                              <Typography variant="body2" sx={{ color: colorTokens.info, fontWeight: 600 }}>
                                 #{expenseData.receipt_number}
                               </Typography>
                             </Box>
                           )}
                           
                           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                               Registrado por:
                             </Typography>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textPrimary }}>
                               {getCurrentUserDisplayName()}
                             </Typography>
                           </Box>
                         </Stack>
                         
                         {expenseData.notes && (
-                          <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontStyle: 'italic' }}>
+                          <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${colorTokens.neutral500}` }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontStyle: 'italic' }}>
                               📝 {expenseData.notes}
                             </Typography>
                           </Box>
@@ -1030,15 +960,15 @@ export default function NuevoEgresoPage() {
                       <Box sx={{ 
                         textAlign: 'center', 
                         py: 6,
-                        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel1}, ${darkProTokens.surfaceLevel2})`,
+                        background: `linear-gradient(135deg, ${colorTokens.surfaceLevel1}, ${colorTokens.surfaceLevel2})`,
                         borderRadius: 3,
-                        border: `1px dashed ${darkProTokens.grayMedium}`
+                        border: `1px dashed ${colorTokens.neutral500}`
                       }}>
-                        <MoneyOffIcon sx={{ fontSize: 60, color: darkProTokens.textDisabled, mb: 2 }} />
-                        <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                        <MoneyOffIcon sx={{ fontSize: 60, color: colorTokens.textDisabled, mb: 2 }} />
+                        <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
                           Complete los campos requeridos
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                           La vista previa aparecerá cuando complete el tipo, descripción y monto
                         </Typography>
                       </Box>
@@ -1046,22 +976,22 @@ export default function NuevoEgresoPage() {
                     
                     {/* INFORMACIÓN DEL CORTE RELACIONADO */}
                     {relatedCutData && (
-                      <Box sx={{ mt: 3, pt: 3, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
-                        <Typography variant="subtitle2" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                      <Box sx={{ mt: 3, pt: 3, borderTop: `1px solid ${colorTokens.neutral500}` }}>
+                        <Typography variant="subtitle2" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                           🔄 Sincronización con Corte
                         </Typography>
                         
                         {relatedCutData.exists ? (
                           <Box sx={{ 
                             p: 2,
-                            backgroundColor: `${darkProTokens.success}15`,
+                            backgroundColor: `${colorTokens.success}15`,
                             borderRadius: 2,
-                            border: `1px solid ${darkProTokens.success}30`
+                            border: `1px solid ${colorTokens.success}30`
                           }}>
-                            <Typography variant="body2" sx={{ color: darkProTokens.success, fontWeight: 600, mb: 1 }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.success, fontWeight: 600, mb: 1 }}>
                               ✅ Se sincronizará automáticamente
                             </Typography>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                               Corte: {relatedCutData.cut?.cut_number}<br />
                               Gastos actuales: {formatPrice(relatedCutData.cut?.expenses_amount || 0)}
                             </Typography>
@@ -1069,14 +999,14 @@ export default function NuevoEgresoPage() {
                         ) : (
                           <Box sx={{ 
                             p: 2,
-                            backgroundColor: `${darkProTokens.info}15`,
+                            backgroundColor: `${colorTokens.info}15`,
                             borderRadius: 2,
-                            border: `1px solid ${darkProTokens.info}30`
+                            border: `1px solid ${colorTokens.info}30`
                           }}>
-                            <Typography variant="body2" sx={{ color: darkProTokens.info, fontWeight: 600, mb: 1 }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.info, fontWeight: 600, mb: 1 }}>
                               ℹ️ Sin corte para esta fecha
                             </Typography>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                               El egreso se registrará normalmente. Se podrá sincronizar cuando se cree un corte.
                             </Typography>
                           </Box>
@@ -1093,3 +1023,6 @@ export default function NuevoEgresoPage() {
     </LocalizationProvider>
   );
 }
+
+
+

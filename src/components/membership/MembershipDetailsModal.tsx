@@ -17,7 +17,8 @@ import {
   Stack,
   IconButton,
   Divider,
-  Avatar
+  Avatar,
+  Paper
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -28,7 +29,8 @@ import {
   AcUnit as AcUnitIcon,
   Timer as TimerIcon,
   AttachMoney as AttachMoneyIcon,
-  Receipt as ReceiptIcon
+  Receipt as ReceiptIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { colorTokens } from '@/theme';
 import { MembershipHistory } from '@/types/membership';
@@ -228,6 +230,16 @@ const MembershipDetailsModal = memo<Props>(({
                   <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
                     {getPaymentIcon(membership.payment_method)} {membership.payment_method}
                   </Typography>
+                  {membership.is_mixed_payment && membership.payment_method_breakdown && (
+                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary, display: 'block', mt: 0.5 }}>
+                      {membership.payment_method_breakdown}
+                    </Typography>
+                  )}
+                  {!membership.is_mixed_payment && membership.payment_reference && (
+                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary, display: 'block', mt: 0.5 }}>
+                      Ref: {membership.payment_reference}
+                    </Typography>
+                  )}
                 </Box>
               </Box>
             </CardContent>
@@ -491,239 +503,152 @@ const MembershipDetailsModal = memo<Props>(({
             {membership.is_mixed_payment && membership.payment_details && Array.isArray(membership.payment_details) && (
               <Grid size={12}>
                 <Card sx={{
-                  background: `${colorTokens.warning}15`,
-                  border: `2px solid ${colorTokens.warning}40`,
-                  borderRadius: 4,
-                  boxShadow: `0 8px 32px ${colorTokens.warning}20`
+                  background: colorTokens.surfaceLevel2,
+                  border: `1px solid ${colorTokens.neutral400}40`,
+                  borderRadius: 4
                 }}>
                   <CardContent sx={{ p: 4 }}>
-                    <Typography variant="h5" sx={{ 
-                      color: colorTokens.warning,
-                      fontWeight: 800,
-                      mb: 4,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      textAlign: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <ReceiptIcon sx={{ fontSize: 40 }} />
-                      💳 Desglose de Pago Mixto
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                      <Box>
+                        <Typography variant="h6" sx={{ color: colorTokens.textPrimary, fontWeight: 700, mb: 0.5 }}>
+                          Resumen de métodos de pago
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                          Distribución de los abonos registrados para esta membresía
+                        </Typography>
+                      </Box>
+                      <Chip 
+                        label={`${membership.payment_details.length} métodos`}
+                        sx={{
+                          backgroundColor: `${colorTokens.neutral400}20`,
+                          color: colorTokens.textPrimary,
+                          fontWeight: 600
+                        }}
+                      />
+                    </Box>
 
-                    {/* ✅ DESGLOSE VISUAL - CADA MÉTODO DEL ARRAY */}
-                    <Box sx={{
-                      background: `${colorTokens.neutral200}05`,
-                      border: `1px solid ${colorTokens.neutral400}`,
-                      borderRadius: 3,
-                      p: 4,
-                      mb: 4
-                    }}>
-                      <Grid container spacing={3}>
-                        {/* Renderizar cada método del array payment_details */}
-                        {membership.payment_details.map((detail: any, index: number) => {
-                          const methodIcon = detail.method === 'efectivo' ? '💵' : 
-                                            detail.method === 'debito' || detail.method === 'credito' ? '💳' : 
-                                            detail.method === 'transferencia' ? '🏦' : '💰';
-                          const methodColor = detail.method === 'efectivo' ? colorTokens.success : 
-                                             detail.method === 'debito' || detail.method === 'credito' ? colorTokens.info : 
-                                             detail.method === 'transferencia' ? colorTokens.warning : colorTokens.neutral600;
-                          const methodLabel = detail.method === 'efectivo' ? 'Efectivo' : 
-                                             detail.method === 'debito' ? 'Tarjeta Débito' : 
-                                             detail.method === 'credito' ? 'Tarjeta Crédito' : 
-                                             detail.method === 'transferencia' ? 'Transferencia' : detail.method;
+                    <Stack spacing={2} sx={{ mt: 3 }}>
+                      {membership.payment_details.map((detail: any, index: number) => {
+                        const methodLabel = detail.method === 'efectivo' ? 'Efectivo' :
+                          detail.method === 'debito' ? 'Tarjeta débito' :
+                          detail.method === 'credito' ? 'Tarjeta crédito' :
+                          detail.method === 'transferencia' ? 'Transferencia' : detail.method;
 
-                          return (
-                            <Grid key={detail.id || index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                              <Box sx={{
-                                background: `${methodColor}15`,
-                                border: `2px solid ${methodColor}`,
-                                borderRadius: 3,
-                                p: 3,
-                                textAlign: 'center',
-                                transition: 'all 0.3s ease',
-                                '&:hover': {
-                                  transform: 'translateY(-4px)',
-                                  boxShadow: `0 8px 32px ${methodColor}30`
-                                }
-                              }}>
-                                <Typography variant="h2" sx={{ mb: 2 }}>{methodIcon}</Typography>
-                                <Typography variant="h6" sx={{ 
-                                  color: colorTokens.textSecondary,
-                                  mb: 1,
-                                  fontWeight: 600
-                                }}>
+                        const methodInitial = methodLabel.charAt(0).toUpperCase();
+                        const hasCommission = detail.commission_amount && detail.commission_amount > 0;
+
+                        return (
+                          <Paper
+                            key={detail.id || index}
+                            elevation={0}
+                            sx={{
+                              borderRadius: 3,
+                              border: `1px solid ${colorTokens.neutral400}40`,
+                              backgroundColor: colorTokens.surfaceLevel3,
+                              px: 3,
+                              py: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 3,
+                              flexWrap: 'wrap'
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Avatar 
+                                sx={{
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius: 12,
+                                  fontWeight: 700,
+                                  background: `${colorTokens.brand}15`,
+                                  color: colorTokens.brand
+                                }}
+                              >
+                                {methodInitial}
+                              </Avatar>
+                              <Box>
+                                <Typography variant="subtitle1" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                                   {methodLabel}
                                 </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  color: colorTokens.textSecondary,
-                                  display: 'block',
-                                  mb: 2
-                                }}>
+                                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                                   Pago #{detail.sequence || index + 1}
                                 </Typography>
-                                <Typography variant="h4" sx={{ 
-                                  color: methodColor, 
-                                  fontWeight: 800
-                                }}>
-                                  {formatPrice(detail.amount)}
-                                </Typography>
                                 {detail.reference && (
-                                  <Typography variant="caption" sx={{ 
-                                    color: colorTokens.textSecondary,
-                                    display: 'block',
-                                    mt: 1,
-                                    fontFamily: 'monospace'
-                                  }}>
+                                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontFamily: 'monospace', mt: 0.5 }}>
                                     Ref: {detail.reference}
                                   </Typography>
                                 )}
+                                {hasCommission && (
+                                  <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                                    Comisión aplicada: {formatPrice(detail.commission_amount)}
+                                  </Typography>
+                                )}
                               </Box>
-                            </Grid>
-                          );
-                        })}
+                            </Box>
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                                Monto
+                              </Typography>
+                              <Typography variant="h6" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
+                                {formatPrice(detail.amount)}
+                              </Typography>
+                            </Box>
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
 
-                        {/* Total */}
-                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                          <Box sx={{
-                            background: `${colorTokens.brand}20`,
-                            border: `3px solid ${colorTokens.brand}`,
-                            borderRadius: 3,
-                            p: 3,
-                            textAlign: 'center',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            '&::before': {
-                              content: '""',
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              background: `linear-gradient(135deg, ${colorTokens.brand}10, ${colorTokens.brand}05)`,
-                              zIndex: -1
-                            }
-                          }}>
-                            <Typography variant="h2" sx={{ mb: 2, color: colorTokens.brand }}>🧮</Typography>
-                            <Typography variant="h6" sx={{ 
-                              color: colorTokens.textSecondary,
-                              mb: 2,
-                              fontWeight: 600
-                            }}>
-                              Total Final
-                            </Typography>
-                            <Typography variant="h3" sx={{ 
-                              color: colorTokens.brand, 
-                              fontWeight: 900
-                            }}>
-                              {formatPrice(membership.amount_paid)}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                      </Grid>
-                    </Box>
-
-                    <Divider sx={{ 
-                      borderColor: `${colorTokens.warning}30`, 
-                      my: 4,
-                      borderWidth: 2
-                    }} />
-
-                    {/* ✅ FÓRMULA VISUAL BASADA EN EL ARRAY */}
-                    <Box sx={{
-                      background: `linear-gradient(135deg, ${colorTokens.brand}10, ${colorTokens.brand}05)`,
-                      border: `2px solid ${colorTokens.brand}30`,
-                      borderRadius: 4,
-                      p: 4,
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="h5" sx={{ 
-                        color: colorTokens.textPrimary,
-                        fontWeight: 700,
-                        mb: 3,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 2
-                      }}>
-                        <AttachMoneyIcon sx={{ fontSize: 32, color: colorTokens.brand }} />
-                        📊 Fórmula de Pago
-                      </Typography>
-                      
-                      <Typography variant="h4" sx={{ 
-                        color: colorTokens.textPrimary,
-                        fontWeight: 800,
-                        fontFamily: 'monospace',
-                        letterSpacing: '2px',
-                        lineHeight: 1.5,
-                        textShadow: `2px 2px 4px rgba(0,0,0,0.3)`
-                      }}>
-                        {/* Construir fórmula dinámicamente del array */}
-                        {(() => {
-                          const parts = membership.payment_details.map((detail: any) => {
-                            const icon = detail.method === 'efectivo' ? '💵' : 
-                                        detail.method === 'debito' || detail.method === 'credito' ? '💳' : 
-                                        detail.method === 'transferencia' ? '🏦' : '💰';
-                            return `${icon} ${formatPrice(detail.amount)}`;
-                          });
-                          
-                          return parts.join(' + ') + ` = 🧮 ${formatPrice(membership.amount_paid)}`;
-                        })()}
-                      </Typography>
-
-                      {/* Verificación del total */}
-                      <Box sx={{
-                        mt: 3,
-                        p: 2,
-                        background: `${colorTokens.success}10`,
-                        border: `1px solid ${colorTokens.success}30`,
-                        borderRadius: 2
-                      }}>
-                        <Typography variant="body1" sx={{ 
-                          color: colorTokens.success,
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 1
-                        }}>
-                          ✅ Total Verificado: {(() => {
-                            const calculatedTotal = membership.payment_details.reduce((sum: number, detail: any) => sum + (detail.amount || 0), 0);
-                            return Math.abs(calculatedTotal - membership.amount_paid) < 0.01 ? 
-                              'Coincide perfectamente' : 
-                              `Diferencia: ${formatPrice(Math.abs(calculatedTotal - membership.amount_paid))}`;
-                          })()}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    {/* Referencias de pago si existen */}
-                    {membership.payment_reference && (
-                      <Box sx={{ mt: 4 }}>
-                        <Typography variant="h6" sx={{ 
-                          color: colorTokens.textSecondary,
-                          mb: 2,
-                          fontWeight: 700
-                        }}>
-                          📄 Referencias de Pago:
-                        </Typography>
-                        <Box sx={{
-                          background: `${colorTokens.neutral200}05`,
-                          border: `1px solid ${colorTokens.neutral400}`,
-                          borderRadius: 3,
-                          p: 3
-                        }}>
-                          <Typography variant="h6" sx={{ 
-                            color: colorTokens.textPrimary,
-                            fontFamily: 'monospace',
-                            fontWeight: 600,
-                            textAlign: 'center'
-                          }}>
-                            {membership.payment_reference}
+                    <Box sx={{ mt: 4, pt: 3, borderTop: `1px solid ${colorTokens.neutral400}30` }}>
+                      <Stack spacing={2}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                          <Typography variant="subtitle2" sx={{ color: colorTokens.textSecondary }}>
+                            Total pagado
+                          </Typography>
+                          <Typography variant="h5" sx={{ color: colorTokens.brand, fontWeight: 800 }}>
+                            {formatPrice(membership.amount_paid)}
                           </Typography>
                         </Box>
-                      </Box>
-                    )}
+
+                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                          {membership.payment_details.map((detail: any, index: number) => {
+                            const methodLabel = detail.method === 'efectivo' ? 'Efectivo' :
+                              detail.method === 'debito' ? 'Tarjeta débito' :
+                              detail.method === 'credito' ? 'Tarjeta crédito' :
+                              detail.method === 'transferencia' ? 'Transferencia' : detail.method;
+
+                            return (
+                              <Chip
+                                key={`resume-${detail.id || index}`}
+                                label={`${methodLabel}: ${formatPrice(detail.amount)}`}
+                                variant="outlined"
+                                sx={{
+                                  borderColor: `${colorTokens.neutral400}60`,
+                                  color: colorTokens.textSecondary,
+                                  fontWeight: 500
+                                }}
+                              />
+                            );
+                          })}
+                        </Stack>
+
+                        <Box sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          color: colorTokens.success,
+                          fontWeight: 600
+                        }}>
+                          <CheckCircleIcon fontSize="small" />
+                          {(() => {
+                            const calculatedTotal = membership.payment_details.reduce((sum: number, detail: any) => sum + (detail.amount || 0), 0);
+                            return Math.abs(calculatedTotal - membership.amount_paid) < 0.01
+                              ? 'El total registrado coincide con la suma de los montos.'
+                              : `Advertencia: diferencia detectada de ${formatPrice(Math.abs(calculatedTotal - membership.amount_paid))}`;
+                          })()}
+                        </Box>
+                      </Stack>
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>

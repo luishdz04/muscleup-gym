@@ -34,7 +34,8 @@ export const useEntityCRUD = <T extends { id: string }>({
   const auditInfo = useMemo(() => getTableAuditInfo(tableName), [tableName, getTableAuditInfo]);
 
   // ✅ FUNCIÓN PARA OBTENER EL CAMPO CORRECTO DE ORDEN SEGÚN NAMING CONVENTION
-  const getOrderByField = useCallback((tableName: string) => {
+  // ⚠️ SIN useCallback para evitar loop infinito
+  const getOrderByField = (tableName: string) => {
     const auditInfo = getTableAuditInfo(tableName);
     
     // Usar naming convention correcto según tipo de auditoría
@@ -47,7 +48,7 @@ export const useEntityCRUD = <T extends { id: string }>({
         // Para tablas sin auditoría, intentar created_at primero, luego createdAt
         return tableName === 'Users' ? 'createdAt' : 'created_at';
     }
-  }, [getTableAuditInfo]);
+  };
 
   const fetchData = useCallback(async () => {
     if (!hydrated) return;
@@ -82,7 +83,7 @@ export const useEntityCRUD = <T extends { id: string }>({
       setLoading(false);
       setInitialLoad(false);
     }
-  }, [tableName, selectQuery, onError, hydrated, supabase, getOrderByField]);
+  }, [tableName, selectQuery, hydrated, supabase]); // ✅ REMOVIDO getOrderByField y onError
 
   useEffect(() => {
     if (hydrated) {

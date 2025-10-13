@@ -26,7 +26,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Alert,
   Stack,
   Avatar,
   Tooltip,
@@ -37,38 +36,29 @@ import {
 import {
   Search as SearchIcon,
   Payments as PaymentIcon,
-  ShoppingCart as ConvertIcon,
   Cancel as CancelIcon,
   Visibility as ViewIcon,
   Add as AddPaymentIcon,
   Warning as WarningIcon,
   CheckCircle as CheckIcon,
-  CheckCircle, // ✅ AGREGADO PARA TABS
-  Schedule as PendingIcon,
   Error as ErrorIcon,
   Person as PersonIcon,
   AttachMoney as MoneyIcon,
   Refresh as RefreshIcon,
   FilterList as FilterIcon,
   Bookmark as BookmarkIcon,
-  History as HistoryIcon,
-  AccessTime as TimeIcon,
-  LocalOffer as OfferIcon
+    CheckCircle as CheckCircleIcon,
+  AccessTime as TimeIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ✅ IMPORTS ENTERPRISE ESTÁNDAR MUSCLEUP v7.0
+// ✅ IMPORTS ENTERPRISE ESTÁNDAR MUSCLEUP v8.2
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
 import { 
-  getCurrentTimestamp,
-  formatTimestampForDisplay,
-  formatDateForDisplay,
-  getTodayInMexico,
   formatTimestampShort,
-  daysBetween,
-  addDaysToDate
+  getTodayInMexico
 } from '@/utils/dateUtils';
 import { notify } from '@/utils/notifications';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -79,19 +69,15 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { 
   Sale, 
   SaleItem, 
-  SalePaymentDetail,
-  Customer,
-  SaleStatus,
-  PaymentStatus
+  SalePaymentDetail
 } from '@/types/pos';
 
-// ✅ IMPORTAR DIALOGS (PLACEHOLDER - implementar según existan)
-// import PaymentToLayawayDialog from '@/components/dialogs/PaymentToLayawayDialog';
-// import LayawayDetailsDialog from '@/components/dialogs/LayawayDetailsDialog';
-// import ConvertToSaleDialog from '@/components/dialogs/ConvertToSaleDialog';
-// import CancelLayawayDialog from '@/components/dialogs/CancelLayawayDialog';
+// ✅ DIÁLOGOS SIMPLIFICADOS v8.2 - SOLO 3 NECESARIOS
+import PaymentToLayawayDialog from '@/components/dialogs/PaymentToLayawayDialog';
+import LayawayDetailsDialog from '@/components/dialogs/LayawayDetailsDialog';
+import CancelLayawayDialog from '@/components/dialogs/CancelLayawayDialog';
 
-// ✅ INTERFACE ESPECÍFICA PARA CLIENTES DEL FILTRO (EVITA CONFLICTO CON CUSTOMER)
+// ✅ INTERFACE ESPECÍFICA PARA CLIENTES DEL FILTRO
 interface CustomerFilter {
   id: string;
   firstName: string;
@@ -99,12 +85,15 @@ interface CustomerFilter {
   email?: string;
 }
 
-// ✅ INTERFACE LAYAWAY EXTENDIDA BASADA EN SALE
+// ✅ INTERFACE LAYAWAY EXTENDIDA BASADA EN SALE v8.2
 interface LayawayWithDetails extends Sale {
+  source_warehouse_id?: string;
+  cancelled_at?: string; // ✅ AÑADIR ESTA LÍNEA
   customer?: {
     id: string;
     firstName: string;
     lastName?: string;
+    
     email?: string;
     profilePictureUrl?: string;
   };
@@ -122,24 +111,25 @@ interface LayawayWithDetails extends Sale {
 
 // ✅ FILTROS ESPECÍFICOS PARA APARTADOS
 interface LayawayFilters {
-  status_category: 'active' | 'expiring' | 'expired' | 'completed' | 'all';
+  status_category: 'active' | 'expiring' | 'expired' | 'completed' | 'cancelled' | 'all';
   search: string;
   customer_filter: string;
 }
 
-// ✅ ESTADÍSTICAS ESPECÍFICAS APARTADOS
+// ✅ ESTADÍSTICAS ESPECÍFICAS APARTADOS v8.2 - CON CANCELADOS
 interface LayawayStats {
   activeCount: number;
-  expiringCount: number; // Próximos 7 días
+  expiringCount: number;
   expiredCount: number;
   completedCount: number;
+  cancelledCount: number; // ✅ NUEVO
   totalValue: number;
   totalCollected: number;
   totalPending: number;
   averageProgress: number;
 }
 
-// ✅ COMPONENTE PRINCIPAL GESTIÓN DE APARTADOS v7.0
+// ✅ COMPONENTE PRINCIPAL GESTIÓN DE APARTADOS v8.2 MULTI-ALMACÉN
 const LayawayManagementPage = memo(() => {
   // ✅ HOOKS ENTERPRISE ORDENADOS
   const hydrated = useHydrated();
@@ -147,7 +137,7 @@ const LayawayManagementPage = memo(() => {
   const { toast, alert } = useNotifications();
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ ESTADOS ESPECÍFICOS PARA APARTADOS
+  // ✅ ESTADOS ESPECÍFICOS PARA APARTADOS - SIMPLIFICADOS
   const [activeTab, setActiveTab] = useState(0);
   const [filters, setFilters] = useState<LayawayFilters>({
     status_category: 'active',
@@ -158,26 +148,26 @@ const LayawayManagementPage = memo(() => {
   const [selectedLayaway, setSelectedLayaway] = useState<LayawayWithDetails | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   
-  const [customers, setCustomers] = useState<CustomerFilter[]>([]); // ✅ TIPO CORRECTO CUSTOMERFILTER[]
+  const [customers, setCustomers] = useState<CustomerFilter[]>([]);
 
-  // ✅ CALLBACKS ESTABLES FUERA DEL USEMEMO - CORRIGE REGLAS DE HOOKS
+  // ✅ CALLBACKS ESTABLES FUERA DEL USEMEMO
   const handleLayawayCrudError = useCallback((error: string) => {
     console.error('Error cargando apartados:', error);
     notify.error(`Error al cargar apartados: ${error}`);
   }, []);
 
   const handleLayawayCrudSuccess = useCallback(() => {
-    console.log('Apartados cargados exitosamente');
+    console.log('✅ Apartados cargados exitosamente');
   }, []);
 
-  // ✅ CONFIGURACIÓN CRUD ESPECÍFICA PARA APARTADOS - SIN HOOKS DENTRO
+  // ✅ CONFIGURACIÓN CRUD v8.2 - CON source_warehouse_id MULTI-ALMACÉN
   const layawayCrudConfig = useMemo(() => ({
-    tableName: 'sales' as const, // ✅ Detecta updated_only automáticamente
+    tableName: 'sales' as const,
     selectQuery: `
       *,
+      source_warehouse_id,
       customer:Users!sales_customer_id_fkey (
         id,
         firstName,
@@ -196,6 +186,7 @@ const LayawayManagementPage = memo(() => {
         product_id,
         product_name,
         product_sku,
+        source_warehouse_id,
         quantity,
         unit_price,
         total_price,
@@ -227,7 +218,7 @@ const LayawayManagementPage = memo(() => {
     refreshData 
   } = useEntityCRUD<LayawayWithDetails>(layawayCrudConfig);
 
-  // ✅ FILTRO AUTOMÁTICO A LAYAWAYS PENDIENTES/EXPIRADOS
+  // ✅ FILTRO AUTOMÁTICO A LAYAWAYS
   const layaways = useMemo(() => {
     return allSales.filter(sale => sale.sale_type === 'layaway');
   }, [allSales]);
@@ -248,12 +239,10 @@ const LayawayManagementPage = memo(() => {
     }
   }, [supabase]);
 
-  // ✅ CARGAR DATOS INICIALES - SOLO LAYAWAYS
+  // ✅ CARGAR DATOS INICIALES
   useEffect(() => {
     if (hydrated) {
       loadCustomers();
-      
-      // Cargar apartados con filtro automático
       searchItems({ sale_type: 'layaway' });
     }
   }, [hydrated, loadCustomers, searchItems]);
@@ -266,11 +255,6 @@ const LayawayManagementPage = memo(() => {
     }).format(price || 0);
   }, []);
 
-  const getMexicoDateString = useCallback((): string => {
-    return getTodayInMexico();
-  }, []);
-
-  // ✅ CALCULAR DÍAS HASTA VENCIMIENTO CORREGIDO
   const getDaysUntilExpiration = useCallback((layawayExpiresAt: string): number => {
     if (!layawayExpiresAt) return 0;
     
@@ -278,7 +262,6 @@ const LayawayManagementPage = memo(() => {
       const today = new Date();
       const expiration = new Date(layawayExpiresAt);
       
-      // Resetear horas para comparación exacta de días
       today.setHours(0, 0, 0, 0);
       expiration.setHours(0, 0, 0, 0);
       
@@ -292,29 +275,25 @@ const LayawayManagementPage = memo(() => {
     }
   }, []);
 
-  // ✅ PROCESAR LAYAWAYS CON CÁLCULOS ENTERPRISE CORREGIDOS
+  // ✅ PROCESAR LAYAWAYS CON CÁLCULOS ENTERPRISE
   const processedLayaways = useMemo(() => {
     return layaways.map((layaway): LayawayWithDetails => {
       const customer = layaway.customer;
       const totalAmount = layaway.total_amount || 0;
       const paidAmount = layaway.paid_amount || 0;
       
-      // ✅ CALCULAR PENDIENTE REAL CONSIDERANDO COMISIONES
-      // Si el cliente ya pagó el monto requerido (incluso con comisiones), pendiente = 0
       const realPendingAmount = Math.max(0, totalAmount - paidAmount);
-      
       const progressPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
       const daysUntilExpiration = getDaysUntilExpiration(layaway.layaway_expires_at || '');
       
       return {
         ...layaway,
-        // ✅ CORREGIR PENDING AMOUNT
         pending_amount: realPendingAmount,
         customer_name: customer 
           ? `${customer.firstName} ${customer.lastName || ''}`.trim()
           : 'Cliente General',
         customer_email: customer?.email || '',
-        customer_phone: '', // Agregar si existe whatsapp en Users
+        customer_phone: '',
         progress_percentage: progressPercentage,
         days_until_expiration: daysUntilExpiration,
         is_expired: daysUntilExpiration < 0 && layaway.status === 'pending',
@@ -323,7 +302,7 @@ const LayawayManagementPage = memo(() => {
     });
   }, [layaways, getDaysUntilExpiration]);
 
-  // ✅ ESTADÍSTICAS CALCULADAS CON USEMEMO
+  // ✅ ESTADÍSTICAS CALCULADAS v8.2 - CON CANCELADOS
   const layawayStats = useMemo((): LayawayStats => {
     const active = processedLayaways.filter(l => 
       l.status === 'pending' && !l.is_expired
@@ -331,10 +310,27 @@ const LayawayManagementPage = memo(() => {
     const expiring = processedLayaways.filter(l => l.is_expiring_soon);
     const expired = processedLayaways.filter(l => l.is_expired);
     const completed = processedLayaways.filter(l => l.status === 'completed');
+    const cancelled = processedLayaways.filter(l => l.status === 'cancelled'); // ✅ NUEVO
 
-    const totalValue = processedLayaways.reduce((sum, l) => sum + l.total_amount, 0);
-    const totalCollected = processedLayaways.reduce((sum, l) => sum + l.paid_amount, 0);
-    const totalPending = processedLayaways.reduce((sum, l) => sum + (l.pending_amount || 0), 0);
+ // ✅ LÓGICA CORREGIDA: Filtrar antes de sumar
+const activeAndCompleted = processedLayaways.filter(l => l.status !== 'cancelled');
+
+const totalValue = activeAndCompleted.reduce((sum, l) => sum + l.total_amount, 0);
+
+// ✅ CORREGIDO: Usar payment_received que incluye comisiones cobradas
+// paid_amount = valor neto aplicado a la deuda
+// payment_received = total cobrado incluyendo comisiones
+const totalCollected = activeAndCompleted.reduce((sum, l) => {
+  // Si tiene payment_received (lo que realmente cobró), usarlo
+  // Si no, usar paid_amount como fallback
+  const collected = l.payment_received || l.paid_amount || 0;
+  return sum + collected;
+}, 0);
+
+// El pendiente real solo existe en los apartados con estado 'pending'
+const totalPending = processedLayaways
+  .filter(l => l.status === 'pending')
+  .reduce((sum, l) => sum + (l.pending_amount || 0), 0);
     
     const averageProgress = processedLayaways.length > 0
       ? processedLayaways.reduce((sum, l) => sum + (l.progress_percentage || 0), 0) / processedLayaways.length
@@ -345,6 +341,7 @@ const LayawayManagementPage = memo(() => {
       expiringCount: expiring.length,
       expiredCount: expired.length,
       completedCount: completed.length,
+      cancelledCount: cancelled.length, // ✅ NUEVO
       totalValue,
       totalCollected,
       totalPending,
@@ -352,7 +349,7 @@ const LayawayManagementPage = memo(() => {
     };
   }, [processedLayaways]);
 
-  // ✅ CONFIGURACIÓN DE TABS MEMOIZADA
+  // ✅ CONFIGURACIÓN DE TABS v8.2 - CON CANCELADOS
   const tabsData = useMemo(() => [
     { 
       label: 'Activos', 
@@ -385,21 +382,30 @@ const LayawayManagementPage = memo(() => {
       label: 'Completados', 
       value: 'completed', 
       color: colorTokens.info,
-      icon: <CheckCircle />,
+      icon: <CheckIcon />,
       count: layawayStats.completedCount,
       filter: (layaways: LayawayWithDetails[]) => 
         layaways.filter(l => l.status === 'completed')
+    },
+    // ✅ NUEVA PESTAÑA CANCELADOS
+    { 
+      label: 'Cancelados', 
+      value: 'cancelled', 
+      color: colorTokens.danger,
+      icon: <CancelIcon />,
+      count: layawayStats.cancelledCount,
+      filter: (layaways: LayawayWithDetails[]) => 
+        layaways.filter(l => l.status === 'cancelled')
     }
   ], [layawayStats]);
 
-  // ✅ APARTADOS FILTRADOS SEGÚN TAB ACTIVO
+  // ✅ APARTADOS FILTRADOS
   const filteredLayaways = useMemo(() => {
     const currentTab = tabsData[activeTab];
     if (!currentTab) return processedLayaways;
     
     let filtered = currentTab.filter(processedLayaways);
     
-    // Aplicar filtros adicionales
     if (filters.search.trim()) {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(layaway =>
@@ -440,7 +446,7 @@ const LayawayManagementPage = memo(() => {
       await loadCustomers();
       
       notify.dismiss(toastId);
-      notify.success(`Apartados actualizados - ${layaways.length} apartados cargados`);
+      notify.success(`✅ ${layaways.length} apartados actualizados`);
       
     } catch (error) {
       notify.dismiss(toastId);
@@ -458,52 +464,79 @@ const LayawayManagementPage = memo(() => {
     setActiveTab(0);
   }, []);
 
-  // ✅ HANDLERS DE ACCIONES CON VALIDACIÓN
+  // ✅ HANDLERS DE ACCIONES SIMPLIFICADOS v8.2
   const handleViewDetails = useCallback((layaway: LayawayWithDetails) => {
     if (!layaway?.id) {
-      notify.error('No se puede abrir detalles: apartado inválido');
+      notify.error('⚠️ No se puede abrir detalles: apartado inválido');
       return;
     }
+    
+    console.log(`📋 Abriendo detalles de apartado: ${layaway.sale_number}`);
     setSelectedLayaway(layaway);
     setDetailsDialogOpen(true);
   }, []);
 
   const handleAddPayment = useCallback((layaway: LayawayWithDetails) => {
-    if (!layaway?.id || layaway.status !== 'pending') {
-      notify.error('No se puede agregar abono: apartado inválido o no pendiente');
+    if (!layaway?.id) {
+      notify.error('⚠️ Apartado inválido');
       return;
     }
+    
+    if (layaway.status !== 'pending') {
+      notify.error('⚠️ Solo se pueden agregar abonos a apartados pendientes');
+      return;
+    }
+    
+    if (!layaway.source_warehouse_id) {
+      notify.error('⚠️ Almacén origen no configurado - contacta al administrador');
+      console.error('Apartado sin source_warehouse_id:', layaway);
+      return;
+    }
+    
+    console.log(`💰 Abriendo diálogo de abono - Apartado: ${layaway.sale_number}, Almacén: ${layaway.source_warehouse_id}`);
     setSelectedLayaway(layaway);
     setPaymentDialogOpen(true);
   }, []);
 
-  const handleConvertToSale = useCallback((layaway: LayawayWithDetails) => {
-    if (!layaway?.id || layaway.status !== 'pending' || (layaway.pending_amount || 0) > 0) {
-      notify.error('No se puede convertir: apartado debe estar completamente pagado');
-      return;
-    }
-    setSelectedLayaway(layaway);
-    setConvertDialogOpen(true);
-  }, []);
-
   const handleCancelLayaway = useCallback((layaway: LayawayWithDetails) => {
-    if (!layaway?.id || layaway.status !== 'pending') {
-      notify.error('No se puede cancelar: apartado inválido o ya procesado');
+    if (!layaway?.id) {
+      notify.error('⚠️ Apartado inválido');
       return;
     }
+    
+    if (layaway.status !== 'pending') {
+      notify.error('⚠️ Solo se pueden cancelar apartados pendientes');
+      return;
+    }
+    
+    if (!layaway.source_warehouse_id) {
+      notify.error('⚠️ Almacén origen no configurado - contacta al administrador');
+      console.error('Apartado sin source_warehouse_id:', layaway);
+      return;
+    }
+    
+    console.log(`❌ Cancelando apartado - ${layaway.sale_number}, Almacén: ${layaway.source_warehouse_id}`);
     setSelectedLayaway(layaway);
     setCancelDialogOpen(true);
   }, []);
 
-  // ✅ FUNCIONES DE ÉXITO
+  // ✅ FUNCIONES DE ÉXITO SIMPLIFICADAS
   const handleDialogSuccess = useCallback(() => {
+    console.log('✅ Operación exitosa - refrescando datos');
     setPaymentDialogOpen(false);
-    setConvertDialogOpen(false);
     setCancelDialogOpen(false);
     setDetailsDialogOpen(false);
     setSelectedLayaway(null);
     handleRefresh();
   }, [handleRefresh]);
+
+  const handleDialogClose = useCallback(() => {
+    console.log('🚪 Cerrando diálogo sin cambios');
+    setPaymentDialogOpen(false);
+    setCancelDialogOpen(false);
+    setDetailsDialogOpen(false);
+    setSelectedLayaway(null);
+  }, []);
 
   const getProgressColor = useCallback((percentage: number): string => {
     if (percentage >= 80) return colorTokens.success;
@@ -511,28 +544,30 @@ const LayawayManagementPage = memo(() => {
     return colorTokens.danger;
   }, []);
 
-  // ✅ RENDER CONDICIONAL SIN EARLY RETURN DE HOOKS
-  const loadingContent = (
-    <Box sx={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      minHeight: '100vh',
-      background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
-      flexDirection: 'column',
-      gap: 2
-    }}>
-      <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
-      <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-        Cargando MuscleUp Gym...
-      </Typography>
-      <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
-        Inicializando gestión de apartados
-      </Typography>
-    </Box>
-  );
+  // ✅ SSR SAFETY MUSCLEUP v8.2
+  if (!hydrated) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+        flexDirection: 'column',
+        gap: 2
+      }}>
+        <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
+        <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+          Cargando MuscleUp Gym...
+        </Typography>
+        <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
+          Inicializando gestión de apartados
+        </Typography>
+      </Box>
+    );
+  }
 
-  const mainContent = (
+  return (
     <Box sx={{ 
       p: 3,
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
@@ -569,7 +604,7 @@ const LayawayManagementPage = memo(() => {
             <Typography variant="body1" sx={{ 
               color: colorTokens.textSecondary
             }}>
-              Administra y da seguimiento a apartados pendientes y expirados
+              Gestión de apartados | Activos | Cancelados | Completados
             </Typography>
           </Box>
         </Box>
@@ -857,7 +892,7 @@ const LayawayManagementPage = memo(() => {
         </CardContent>
       </Card>
 
-      {/* ✅ TABS DE ESTADOS APARTADOS */}
+      {/* ✅ TABS DE ESTADOS APARTADOS v8.2 - CON CANCELADOS */}
       <Card sx={{ 
         mb: 4,
         background: colorTokens.surfaceLevel2,
@@ -908,7 +943,7 @@ const LayawayManagementPage = memo(() => {
         </Tabs>
       </Card>
 
-      {/* ✅ TABLA DE APARTADOS OPTIMIZADA */}
+      {/* ✅ TABLA DE APARTADOS OPTIMIZADA (resto del código igual) */}
       <Card sx={{
         background: colorTokens.surfaceLevel2,
         border: `1px solid ${colorTokens.border}`,
@@ -935,78 +970,15 @@ const LayawayManagementPage = memo(() => {
           <Table stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Número
-                </TableCell>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Cliente
-                </TableCell>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Total
-                </TableCell>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Pagado
-                </TableCell>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Pendiente
-                </TableCell>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Progreso
-                </TableCell>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Vence
-                </TableCell>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Estado
-                </TableCell>
-                <TableCell sx={{ 
-                  background: colorTokens.brand,
-                  color: colorTokens.textOnBrand, 
-                  fontWeight: 'bold',
-                  borderBottom: `2px solid ${colorTokens.brandActive}`
-                }}>
-                  Acciones
-                </TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Número</TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Cliente</TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Total</TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Pagado</TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Pendiente</TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Progreso</TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Vence</TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Estado</TableCell>
+                <TableCell sx={{ background: colorTokens.brand, color: colorTokens.textOnBrand, fontWeight: 'bold', borderBottom: `2px solid ${colorTokens.brandActive}` }}>Acciones</TableCell>
               </TableRow>
             </TableHead>
 
@@ -1038,11 +1010,7 @@ const LayawayManagementPage = memo(() => {
 
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ 
-                          width: 32, 
-                          height: 32, 
-                          bgcolor: layaway.customer_name !== 'Cliente General' ? colorTokens.success : colorTokens.warning
-                        }}>
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: layaway.customer_name !== 'Cliente General' ? colorTokens.success : colorTokens.warning }}>
                           <PersonIcon fontSize="small" />
                         </Avatar>
                         <Box>
@@ -1075,86 +1043,68 @@ const LayawayManagementPage = memo(() => {
                         {formatPrice(layaway.pending_amount || 0)}
                       </Typography>
                       {(layaway.pending_amount || 0) === 0 && (
-                        <Chip 
-                          label="Completado"
-                          size="small"
-                          sx={{
-                            mt: 0.5,
-                            fontSize: '0.7rem',
-                            backgroundColor: colorTokens.success,
-                            color: colorTokens.textPrimary,
-                            fontWeight: 600
-                          }}
-                        />
+                        <Chip label="Completado" size="small" sx={{ mt: 0.5, fontSize: '0.7rem', backgroundColor: colorTokens.success, color: colorTokens.textPrimary, fontWeight: 600 }} />
                       )}
                     </TableCell>
 
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={layaway.progress_percentage || 0} 
-                          sx={{ 
-                            flexGrow: 1, 
-                            height: 8, 
-                            borderRadius: 4,
-                            backgroundColor: colorTokens.neutral500,
-                            '& .MuiLinearProgress-bar': {
-                              backgroundColor: getProgressColor(layaway.progress_percentage || 0)
-                            }
-                          }}
-                        />
+                        <LinearProgress variant="determinate" value={layaway.progress_percentage || 0} sx={{ flexGrow: 1, height: 8, borderRadius: 4, backgroundColor: colorTokens.neutral500, '& .MuiLinearProgress-bar': { backgroundColor: getProgressColor(layaway.progress_percentage || 0) }}} />
                         <Typography variant="caption" fontWeight="600" sx={{ color: colorTokens.textPrimary }}>
                           {Math.round(layaway.progress_percentage || 0)}%
                         </Typography>
                       </Box>
                     </TableCell>
 
-                    <TableCell>
-                      <Box>
-                        <Typography variant="body2" fontWeight="500" sx={{ color: colorTokens.textPrimary }}>
-                          {layaway.layaway_expires_at ? formatTimestampShort(layaway.layaway_expires_at) : 'Sin fecha'}
-                        </Typography>
-                        {layaway.layaway_expires_at && (
-                          <Chip 
-                            label={
-                              (layaway.days_until_expiration || 0) > 1 
-                                ? `${layaway.days_until_expiration} días restantes` 
-                                : (layaway.days_until_expiration || 0) === 1 
-                                  ? 'Vence mañana'
-                                  : (layaway.days_until_expiration || 0) === 0
-                                    ? 'Vence hoy'
-                                    : `Vencido hace ${Math.abs(layaway.days_until_expiration || 0)} días`
-                            }
-                            size="small"
-                            sx={{
-                              mt: 0.5,
-                              fontSize: '0.7rem',
-                              backgroundColor: 
-                                (layaway.days_until_expiration || 0) > 7 ? colorTokens.success :
-                                (layaway.days_until_expiration || 0) > 0 ? colorTokens.warning :
-                                colorTokens.danger,
-                              color: colorTokens.textPrimary,
-                              fontWeight: 600
-                            }}
-                          />
-                        )}
-                      </Box>
-                    </TableCell>
+                  <TableCell>
+  <Box>
+    <Typography variant="body2" fontWeight="500" sx={{ color: colorTokens.textPrimary }}>
+      {/* Mostramos la fecha de completado o cancelación si existe */}
+      {layaway.status === 'completed' && layaway.completed_at ? formatTimestampShort(layaway.completed_at) :
+       layaway.status === 'cancelled' && layaway.cancelled_at ? formatTimestampShort(layaway.cancelled_at) :
+       layaway.layaway_expires_at ? formatTimestampShort(layaway.layaway_expires_at) : 'Sin fecha'}
+    </Typography>
+    
+    {/* Lógica condicional para el Chip */}
+    {layaway.status === 'completed' ? (
+      <Chip 
+        label="Completado"
+        size="small"
+        icon={<CheckCircleIcon />}
+        sx={{ mt: 0.5, backgroundColor: `${colorTokens.success}20`, color: colorTokens.success }}
+      />
+    ) : layaway.status === 'cancelled' ? (
+      <Chip 
+        label="Cancelado"
+        size="small"
+        icon={<CancelIcon />}
+        sx={{ mt: 0.5, backgroundColor: `${colorTokens.danger}20`, color: colorTokens.danger }}
+      />
+    ) : layaway.layaway_expires_at ? (
+      <Chip 
+        label={
+          (layaway.days_until_expiration || 0) > 1 ? `${layaway.days_until_expiration} días restantes` : 
+          (layaway.days_until_expiration || 0) === 1 ? 'Vence mañana' :
+          (layaway.days_until_expiration || 0) === 0 ? 'Vence hoy' :
+          `Vencido hace ${Math.abs(layaway.days_until_expiration || 0)} días`
+        }
+        size="small"
+        sx={{
+          mt: 0.5,
+          backgroundColor: (layaway.days_until_expiration || 0) > 7 ? colorTokens.success : (layaway.days_until_expiration || 0) >= 0 ? colorTokens.warning : colorTokens.danger,
+          color: colorTokens.textPrimary
+        }}
+      />
+    ) : null}
+  </Box>
+</TableCell>
 
                     <TableCell>
                       <Chip 
-                        label={layaway.status}
-                        size="small" 
+                        label={layaway.status} size="small" 
                         sx={{
-                          backgroundColor: 
-                            layaway.status === 'completed' ? colorTokens.success :
-                            layaway.status === 'pending' ? 
-                              (layaway.is_expired ? colorTokens.danger : colorTokens.warning) :
-                            colorTokens.neutral700,
-                          color: colorTokens.textPrimary,
-                          fontWeight: 600,
-                          textTransform: 'capitalize'
+                          backgroundColor: layaway.status === 'completed' ? colorTokens.success : layaway.status === 'pending' ? (layaway.is_expired ? colorTokens.danger : colorTokens.warning) : colorTokens.neutral700,
+                          color: colorTokens.textPrimary, fontWeight: 600, textTransform: 'capitalize'
                         }}
                       />
                     </TableCell>
@@ -1162,77 +1112,19 @@ const LayawayManagementPage = memo(() => {
                     <TableCell>
                       <Stack direction="row" spacing={0.5}>
                         <Tooltip title="Ver Detalles">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleViewDetails(layaway)}
-                            sx={{
-                              color: colorTokens.textSecondary,
-                              '&:hover': {
-                                backgroundColor: `${colorTokens.info}20`,
-                                color: colorTokens.info
-                              }
-                            }}
-                          >
+                          <IconButton size="small" onClick={() => handleViewDetails(layaway)} sx={{ color: colorTokens.textSecondary, '&:hover': { backgroundColor: `${colorTokens.info}20`, color: colorTokens.info }}}>
                             <ViewIcon />
                           </IconButton>
                         </Tooltip>
 
                         <Tooltip title="Agregar Abono">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleAddPayment(layaway)}
-                            disabled={layaway.status !== 'pending'}
-                            sx={{
-                              color: colorTokens.textSecondary,
-                              '&:hover': {
-                                backgroundColor: `${colorTokens.brand}20`,
-                                color: colorTokens.brand
-                              },
-                              '&.Mui-disabled': {
-                                color: colorTokens.textDisabled
-                              }
-                            }}
-                          >
+                          <IconButton size="small" onClick={() => handleAddPayment(layaway)} disabled={layaway.status !== 'pending'} sx={{ color: colorTokens.textSecondary, '&:hover': { backgroundColor: `${colorTokens.brand}20`, color: colorTokens.brand }, '&.Mui-disabled': { color: colorTokens.textDisabled }}}>
                             <AddPaymentIcon />
                           </IconButton>
                         </Tooltip>
 
-                        <Tooltip title="Completar Apartado">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleConvertToSale(layaway)}
-                            disabled={(layaway.pending_amount || 0) > 0 || layaway.status !== 'pending'}
-                            sx={{
-                              color: colorTokens.textSecondary,
-                              '&:hover': {
-                                backgroundColor: `${colorTokens.success}20`,
-                                color: colorTokens.success
-                              },
-                              '&.Mui-disabled': {
-                                color: colorTokens.textDisabled
-                              }
-                            }}
-                          >
-                            <ConvertIcon />
-                          </IconButton>
-                        </Tooltip>
-
                         <Tooltip title="Cancelar Apartado">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleCancelLayaway(layaway)}
-                            disabled={layaway.status !== 'pending'}
-                            sx={{
-                              color: colorTokens.textSecondary,
-                              '&:hover': {
-                                backgroundColor: `${colorTokens.danger}20`,
-                                color: colorTokens.danger
-                              },
-                              '&.Mui-disabled': {
-                                color: colorTokens.textDisabled
-                              }
-                            }}
-                          >
+                          <IconButton size="small" onClick={() => handleCancelLayaway(layaway)} disabled={layaway.status !== 'pending'} sx={{ color: colorTokens.textSecondary, '&:hover': { backgroundColor: `${colorTokens.danger}20`, color: colorTokens.danger }, '&.Mui-disabled': { color: colorTokens.textDisabled }}}>
                             <CancelIcon />
                           </IconButton>
                         </Tooltip>
@@ -1245,17 +1137,8 @@ const LayawayManagementPage = memo(() => {
               {filteredLayaways.length === 0 && !loading && (
                 <TableRow>
                   <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6 }}>
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 2
-                    }}>
-                      <BookmarkIcon sx={{ 
-                        fontSize: 60, 
-                        color: colorTokens.textMuted,
-                        opacity: 0.5
-                      }} />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <BookmarkIcon sx={{ fontSize: 60, color: colorTokens.textMuted, opacity: 0.5 }} />
                       <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                         No se encontraron apartados
                       </Typography>
@@ -1270,26 +1153,16 @@ const LayawayManagementPage = memo(() => {
           </Table>
         </TableContainer>
 
-        {/* ✅ FOOTER CON INFORMACIÓN */}
-        <Box sx={{ 
-          p: 2,
-          background: `${colorTokens.surfaceLevel1}40`,
-          borderTop: `1px solid ${colorTokens.border}`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        <Box sx={{ p: 2, background: `${colorTokens.surfaceLevel1}40`, borderTop: `1px solid ${colorTokens.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-            Mostrando {filteredLayaways.length} de {layawayStats.activeCount + layawayStats.expiringCount + layawayStats.expiredCount + layawayStats.completedCount} apartados totales
+            Mostrando {filteredLayaways.length} de {layawayStats.activeCount + layawayStats.expiringCount + layawayStats.expiredCount + layawayStats.completedCount + layawayStats.cancelledCount} apartados totales
           </Typography>
           
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
               Pendiente total: {formatPrice(layawayStats.totalPending)}
             </Typography>
-            
             <Divider orientation="vertical" flexItem sx={{ borderColor: colorTokens.border }} />
-            
             <Typography variant="body2" sx={{ color: colorTokens.success }}>
               Cobrado: {formatPrice(layawayStats.totalCollected)}
             </Typography>
@@ -1297,191 +1170,30 @@ const LayawayManagementPage = memo(() => {
         </Box>
       </Card>
 
-      {/* ✅ DIALOGS PLACEHOLDER - IMPLEMENTAR SEGÚN EXISTAN */}
-      {/* 
+      {/* ✅ DIALOGS ENTERPRISE v8.2 SIMPLIFICADOS */}
       <PaymentToLayawayDialog
         open={paymentDialogOpen}
-        onClose={() => setPaymentDialogOpen(false)}
+        onClose={handleDialogClose}
         layaway={selectedLayaway}
+        warehouseId={selectedLayaway?.source_warehouse_id || ''}
         onSuccess={handleDialogSuccess}
       />
 
       <LayawayDetailsDialog
         open={detailsDialogOpen}
-        onClose={() => setDetailsDialogOpen(false)}
+        onClose={handleDialogClose}
         layaway={selectedLayaway}
-      />
-
-      <ConvertToSaleDialog
-        open={convertDialogOpen}
-        onClose={() => setConvertDialogOpen(false)}
-        layaway={selectedLayaway}
-        onSuccess={handleDialogSuccess}
       />
 
       <CancelLayawayDialog
         open={cancelDialogOpen}
-        onClose={() => setCancelDialogOpen(false)}
+        onClose={handleDialogClose}
         layaway={selectedLayaway}
+        warehouseId={selectedLayaway?.source_warehouse_id || ''}
         onSuccess={handleDialogSuccess}
       />
-      */}
-
-      {/* ✅ PLACEHOLDERS PARA DIALOGS NO IMPLEMENTADOS */}
-      {paymentDialogOpen && (
-        <Box 
-          onClick={() => setPaymentDialogOpen(false)}
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bgcolor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999
-          }}
-        >
-          <Card sx={{ p: 4, maxWidth: 400, bgcolor: colorTokens.surfaceLevel2 }}>
-            <Typography variant="h6" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
-              Agregar Abono
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 3 }}>
-              Implementar PaymentToLayawayDialog
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textMuted, mb: 2 }}>
-              Apartado: {selectedLayaway?.sale_number}
-            </Typography>
-            <Button 
-              variant="contained" 
-              onClick={() => setPaymentDialogOpen(false)}
-              sx={{ bgcolor: colorTokens.brand }}
-            >
-              Cerrar
-            </Button>
-          </Card>
-        </Box>
-      )}
-
-      {detailsDialogOpen && (
-        <Box 
-          onClick={() => setDetailsDialogOpen(false)}
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bgcolor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999
-          }}
-        >
-          <Card sx={{ p: 4, maxWidth: 500, bgcolor: colorTokens.surfaceLevel2 }}>
-            <Typography variant="h6" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
-              Detalles de Apartado
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 3 }}>
-              Implementar LayawayDetailsDialog
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textMuted, mb: 2 }}>
-              Apartado: {selectedLayaway?.sale_number}<br />
-              Total: {formatPrice(selectedLayaway?.total_amount || 0)}<br />
-              Pagado: {formatPrice(selectedLayaway?.paid_amount || 0)}<br />
-              Pendiente: {formatPrice(selectedLayaway?.pending_amount || 0)}
-            </Typography>
-            <Button 
-              variant="contained" 
-              onClick={() => setDetailsDialogOpen(false)}
-              sx={{ bgcolor: colorTokens.brand }}
-            >
-              Cerrar
-            </Button>
-          </Card>
-        </Box>
-      )}
-
-      {convertDialogOpen && (
-        <Box 
-          onClick={() => setConvertDialogOpen(false)}
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bgcolor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999
-          }}
-        >
-          <Card sx={{ p: 4, maxWidth: 400, bgcolor: colorTokens.surfaceLevel2 }}>
-            <Typography variant="h6" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
-              Completar Apartado
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 3 }}>
-              Implementar ConvertToSaleDialog
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textMuted, mb: 2 }}>
-              Apartado: {selectedLayaway?.sale_number}
-            </Typography>
-            <Button 
-              variant="contained" 
-              onClick={() => setConvertDialogOpen(false)}
-              sx={{ bgcolor: colorTokens.success }}
-            >
-              Cerrar
-            </Button>
-          </Card>
-        </Box>
-      )}
-
-      {cancelDialogOpen && (
-        <Box 
-          onClick={() => setCancelDialogOpen(false)}
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bgcolor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999
-          }}
-        >
-          <Card sx={{ p: 4, maxWidth: 400, bgcolor: colorTokens.surfaceLevel2 }}>
-            <Typography variant="h6" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
-              Cancelar Apartado
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 3 }}>
-              Implementar CancelLayawayDialog
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textMuted, mb: 2 }}>
-              Apartado: {selectedLayaway?.sale_number}
-            </Typography>
-            <Button 
-              variant="contained" 
-              onClick={() => setCancelDialogOpen(false)}
-              sx={{ bgcolor: colorTokens.danger }}
-            >
-              Cerrar
-            </Button>
-          </Card>
-        </Box>
-      )}
     </Box>
   );
-
-  return hydrated ? mainContent : loadingContent;
 });
 
 LayawayManagementPage.displayName = 'LayawayManagementPage';

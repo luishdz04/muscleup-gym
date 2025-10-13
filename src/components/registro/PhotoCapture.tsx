@@ -60,40 +60,9 @@ export default function PhotoCapture({
     };
   }, [stream]);
 
-  const startCamera = async () => {
-    try {
-      setError(null);
-      setIsCapturing(true);
-      
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Tu navegador no soporta acceso a la cámara");
-      }
-      
-      const constraints = {
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user'
-        }
-      };
-      
-      const streamObj = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(streamObj);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = streamObj;
-        await videoRef.current.play().catch(e => {
-          console.error("Error al reproducir video:", e);
-          throw new Error("No se pudo inicializar el video");
-        });
-      } else {
-        throw new Error("Error al inicializar el video");
-      }
-    } catch (error) {
-      console.error('Error accediendo a la cámara:', error);
-      setError('No se pudo acceder a la cámara. Intenta subir una foto.');
-      setIsCapturing(false);
-    }
+  const startCamera = () => {
+    setError(null);
+    setIsCapturing(true);
   };
 
   const stopCamera = () => {
@@ -108,6 +77,76 @@ export default function PhotoCapture({
     
     setIsCapturing(false);
   };
+
+  useEffect(() => {
+    if (!isCapturing) {
+      return;
+    }
+
+    if (typeof navigator === 'undefined') {
+      setError('Tu navegador no soporta acceso a la cámara');
+      setIsCapturing(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const enableCamera = async () => {
+      let streamObj: MediaStream | null = null;
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Tu navegador no soporta acceso a la cámara');
+        }
+
+        const constraints: MediaStreamConstraints = {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          }
+        };
+
+        streamObj = await navigator.mediaDevices.getUserMedia(constraints);
+
+        if (cancelled) {
+          streamObj.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        const videoElement = videoRef.current;
+        if (!videoElement) {
+          streamObj.getTracks().forEach(track => track.stop());
+          throw new Error('No se pudo inicializar la vista previa de la cámara');
+        }
+
+        videoElement.srcObject = streamObj;
+        await videoElement.play().catch((err) => {
+          console.error('Error al reproducir video:', err);
+          throw new Error('No se pudo inicializar el video');
+        });
+
+        setStream(streamObj);
+      } catch (err) {
+        console.error('Error accediendo a la cámara:', err);
+        if (streamObj) {
+          streamObj.getTracks().forEach(track => track.stop());
+        }
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+        if (!cancelled) {
+          setError('No se pudo acceder a la cámara. Intenta subir una foto.');
+          setIsCapturing(false);
+        }
+      }
+    };
+
+    enableCamera();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCapturing]);
 
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) {

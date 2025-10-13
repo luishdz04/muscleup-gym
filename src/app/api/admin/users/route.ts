@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     
     // Si es cliente, guardar datos adicionales en las tablas relacionadas
     if (newUser.rol === 'cliente') {
-      // Insertar dirección
+      // ✅ UPSERT dirección (previene duplicados si se ejecuta múltiples veces)
       if (address) {
         const addressData = {
           ...address,
@@ -107,14 +107,17 @@ export async function POST(request: NextRequest) {
         
         const { error: addressError } = await supabaseAdmin
           .from('addresses')
-          .insert([addressData]);
+          .upsert([addressData], { 
+            onConflict: 'userId',
+            ignoreDuplicates: false
+          });
         
         if (addressError) {
           console.error("Error al guardar dirección:", addressError);
         }
       }
       
-      // Insertar contacto de emergencia
+      // ✅ UPSERT contacto de emergencia
       if (emergency) {
         const emergencyData = {
           ...emergency,
@@ -123,14 +126,17 @@ export async function POST(request: NextRequest) {
         
         const { error: emergencyError } = await supabaseAdmin
           .from('emergency_contacts')
-          .insert([emergencyData]);
+          .upsert([emergencyData], { 
+            onConflict: 'userId',
+            ignoreDuplicates: false
+          });
         
         if (emergencyError) {
           console.error("Error al guardar contacto de emergencia:", emergencyError);
         }
       }
       
-      // Insertar información de membresía
+      // ✅ UPSERT información de membresía
       if (membership) {
         const membershipData = {
           ...membership,
@@ -139,7 +145,10 @@ export async function POST(request: NextRequest) {
         
         const { error: membershipError } = await supabaseAdmin
           .from('membership_info')
-          .insert([membershipData]);
+          .upsert([membershipData], { 
+            onConflict: 'userId',
+            ignoreDuplicates: false
+          });
         
         if (membershipError) {
           console.error("Error al guardar información de membresía:", membershipError);

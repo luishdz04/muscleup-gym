@@ -1,136 +1,172 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { formatMexicoTime, formatTimestampShort } from '@/utils/dateUtils';
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    
-    // Parámetros de filtros
-    const search = searchParams.get('search') || '';
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
-    const expenseType = searchParams.get('expenseType');
-    const status = searchParams.get('status');
+	try {
+		const { searchParams } = new URL(request.url);
+		const search = searchParams.get('search') ?? '';
+		const dateFrom = searchParams.get('dateFrom');
+		const dateTo = searchParams.get('dateTo');
+		const expenseType = searchParams.get('expenseType');
+		const status = searchParams.get('status');
 
-    console.log('📄 API: Exportando egresos', { search, dateFrom, dateTo, expenseType, status });
+		const supabase = createServerSupabaseClient();
 
-    const supabase = createServerSupabaseClient();
+		let query = supabase
+			.from('expenses')
+			.select(`
+				*,
+				created_by:Users!expenses_created_by_fkey(id, firstName, lastName, email)
+			`)
+			.order('created_at', { ascending: false });
 
-    // Construir query
-    let query = supabase
-      .from('expenses')
-      .select(`
-        *,
-        "Users"!expenses_created_by_fkey(id, firstName, lastName, name, email)
-      `)
-      .order('created_at', { ascending: false });
+		if (search) {
+			query = query.or(
+				`description.ilike.%${search}%,notes.ilike.%${search}%,receipt_number.ilike.%${search}%`
+			);
+		}
 
-    // Aplicar filtros
-    if (search) {
-      query = query.or(`description.ilike.%${search}%,notes.ilike.%${search}%,receipt_number.ilike.%${search}%`);
-    }
+		if (dateFrom) {
+			query = query.gte('expense_date', dateFrom);
+		}
 
-    if (dateFrom) {
-      query = query.gte('expense_date', dateFrom);
-    }
+		if (dateTo) {
+			query = query.lte('expense_date', dateTo);
+		}
 
-    if (dateTo) {
-      query = query.lte('expense_date', dateTo);
-    }
+		if (expenseType && expenseType !== 'all') {
+			query = query.eq('expense_type', expenseType);
+		}
 
-    if (expenseType && expenseType !== 'all') {
-      query = query.eq('expense_type', expenseType);
-    }
+		if (status && status !== 'all') {
+			query = query.eq('status', status);
+		}
 
-    if (status && status !== 'all') {
-      query = query.eq('status', status);
-    }
+		const { data: expenses, error } = await query;
 
-    const { data: expenses, error } = await query;
+		if (error) {
+			console.error('Error exportando egresos:', error);
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Error al exportar egresos'
+				},
+				{ status: 500 }
+			);
+		}
 
-    if (error) {
-      console.error('❌ Error exportando egresos:', error);
-      return NextResponse.json({
-        success: false,
-        error: 'Error al exportar egresos'
-      }, { status: 500 });
-    }
+		const safeExpenses = expenses ?? [];
 
-    // Formatear datos para Excel
-    const exportData = expenses?.map(expense => ({
-      'Fecha': expense.expense_date,
-      'Hora': new Date(expense.expense_time).toLocaleString('es-MX', {
-        timeZone: 'America/Mexico_City',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      }),
-      'Categoría': expense.expense_type,
-      'Descripción': expense.description,
-      'Monto': parseFloat(expense.amount || '0'),
-      'Número de Recibo': expense.receipt_number || '',
-      'Estado': expense.status,
-      'Responsable': expense.Users 
-        ? expense.Users.name || `${expense.Users.firstName || ''} ${expense.Users.lastName || ''}`.trim() || expense.Users.email 
-        : 'Usuario',
-      'Notas': expense.notes || '',
-      'Creado': new Date(expense.created_at).toLocaleString('es-MX', {
-        timeZone: 'America/Mexico_City'
-      }),
-      'Actualizado': new Date(expense.updated_at).toLocaleString('es-MX', {
-        timeZone: 'America/Mexico_City'
-      })
-    })) || [];
+		// Crear workbook con ExcelJS
+		const workbook = new ExcelJS.Workbook();
+		workbook.creator = 'MuscleUp GYM';
+		workbook.created = new Date();
 
-    // Crear libro de Excel con múltiples hojas
-    const workbook = XLSX.utils.book_new();
+		// Hoja de Egresos
+		const expensesSheet = workbook.addWorksheet('Egresos');
+		expensesSheet.columns = [
+			{ header: 'Fecha', key: 'fecha', width: 12 },
+			{ header: 'Hora', key: 'hora', width: 15 },
+			{ header: 'Categoría', key: 'categoria', width: 20 },
+			{ header: 'Descripción', key: 'descripcion', width: 30 },
+			{ header: 'Monto', key: 'monto', width: 12 },
+			{ header: 'Número de Recibo', key: 'recibo', width: 15 },
+			{ header: 'Estado', key: 'estado', width: 12 },
+			{ header: 'Responsable', key: 'responsable', width: 25 },
+			{ header: 'Notas', key: 'notas', width: 30 },
+			{ header: 'Creado', key: 'creado', width: 18 },
+			{ header: 'Actualizado', key: 'actualizado', width: 18 }
+		];
 
-    // Hoja 1: Datos principales
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    XLSX.utils.book_append_sheet(workbook, ws, 'Egresos');
+		// Agregar datos
+		safeExpenses.forEach(expense => {
+			expensesSheet.addRow({
+				fecha: expense.expense_date,
+				hora: formatMexicoTime(expense.expense_time),
+				categoria: expense.expense_type,
+				descripcion: expense.description,
+				monto: parseFloat(String(expense.amount ?? '0')),
+				recibo: expense.receipt_number || '',
+				estado: expense.status,
+				responsable: expense.created_by
+					? `${expense.created_by.firstName || ''} ${expense.created_by.lastName || ''}`.trim() || expense.created_by.email || 'Usuario'
+					: 'Usuario',
+				notas: expense.notes || '',
+				creado: formatTimestampShort(expense.created_at),
+				actualizado: formatTimestampShort(expense.updated_at)
+			});
+		});
 
-    // Hoja 2: Resumen por categorías
-    if (expenses && expenses.length > 0) {
-      const categoriesMap: Record<string, { count: number; amount: number }> = {};
-      expenses.forEach(expense => {
-        const type = expense.expense_type || 'otros';
-        if (!categoriesMap[type]) {
-          categoriesMap[type] = { count: 0, amount: 0 };
-        }
-        categoriesMap[type].count++;
-        categoriesMap[type].amount += parseFloat(expense.amount || '0');
-      });
+		// Estilo para el header
+		expensesSheet.getRow(1).font = { bold: true };
+		expensesSheet.getRow(1).fill = {
+			type: 'pattern',
+			pattern: 'solid',
+			fgColor: { argb: 'FFE74C3C' }
+		};
 
-      const categorySummary = Object.entries(categoriesMap).map(([category, data]) => ({
-        'Categoría': category,
-        'Cantidad de Egresos': data.count,
-        'Monto Total': data.amount,
-        'Monto Promedio': data.amount / data.count
-      }));
+		// Hoja de Resumen por Categorías
+		if (safeExpenses.length > 0) {
+			const categoriesMap: Record<string, { count: number; amount: number }> = {};
 
-      const wsSummary = XLSX.utils.json_to_sheet(categorySummary);
-      XLSX.utils.book_append_sheet(workbook, wsSummary, 'Resumen por Categorías');
-    }
+			safeExpenses.forEach(expense => {
+				const type = expense.expense_type || 'otros';
+				if (!categoriesMap[type]) {
+					categoriesMap[type] = { count: 0, amount: 0 };
+				}
+				categoriesMap[type].count += 1;
+				categoriesMap[type].amount += parseFloat(String(expense.amount ?? '0'));
+			});
 
-    // Generar buffer
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+			const summarySheet = workbook.addWorksheet('Resumen por Categorías');
+			summarySheet.columns = [
+				{ header: 'Categoría', key: 'categoria', width: 20 },
+				{ header: 'Cantidad de Egresos', key: 'cantidad', width: 18 },
+				{ header: 'Monto Total', key: 'total', width: 15 },
+				{ header: 'Monto Promedio', key: 'promedio', width: 15 }
+			];
 
-    console.log('✅ Excel generado con', exportData.length, 'egresos');
+			Object.entries(categoriesMap).forEach(([category, data]) => {
+				summarySheet.addRow({
+					categoria: category,
+					cantidad: data.count,
+					total: data.amount,
+					promedio: data.count > 0 ? data.amount / data.count : 0
+				});
+			});
 
-    // Retornar archivo
-    return new NextResponse(excelBuffer, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename=egresos_${new Date().toISOString().split('T')[0]}.xlsx`
-      }
-    });
+			// Estilo para el header del resumen
+			summarySheet.getRow(1).font = { bold: true };
+			summarySheet.getRow(1).fill = {
+				type: 'pattern',
+				pattern: 'solid',
+				fgColor: { argb: 'FF3498DB' }
+			};
+		}
 
-  } catch (error: any) {
-    console.error('❌ Error en API exportar egresos:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Error al exportar egresos'
-    }, { status: 500 });
-  }
+		// Generar el buffer
+		const excelBuffer = await workbook.xlsx.writeBuffer();
+
+		return new NextResponse(excelBuffer, {
+			headers: {
+				'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				'Content-Disposition': `attachment; filename=egresos_${
+					new Date().toISOString().split('T')[0]
+				}.xlsx`
+			}
+		});
+	} catch (error: any) {
+		console.error('Error en API exportar egresos:', error);
+		return NextResponse.json(
+			{
+				success: false,
+				error: 'Error al exportar egresos'
+			},
+			{ status: 500 }
+		);
+	}
 }
+
+

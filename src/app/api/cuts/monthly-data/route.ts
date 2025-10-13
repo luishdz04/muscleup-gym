@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-// ✅ FUNCIÓN PARA TIMESTAMP MÉXICO
-function toMexicoTimestamp(date: Date): string {
-  const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-  const year = mexicoTime.getFullYear();
-  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoTime.getDate()).padStart(2, '0');
-  const hours = String(mexicoTime.getHours()).padStart(2, '0');
-  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
-  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -39,16 +26,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createServerSupabaseClient();
+  const supabase = createServerSupabaseClient();
 
-    // ✅ ESTRATEGIA CORREGIDA: LEER DIRECTAMENTE DE CASH_CUTS
-    console.log('🔍 Buscando cortes existentes en cash_cuts para el mes:', month);
+  // ✅ ESTRATEGIA CORREGIDA: LEER DIRECTAMENTE DE CASH_CUTS
+  console.log('🔍 Buscando cortes existentes en cash_cuts para el mes:', month);
 
-    // Calcular primer y último día del mes para el filtro
-    const [year, monthNum] = month.split('-').map(Number);
-    const firstDay = `${year}-${monthNum.toString().padStart(2, '0')}-01`;
-    const lastDay = new Date(year, monthNum, 0).getDate();
-    const lastDayString = `${year}-${monthNum.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+  // Calcular primer y último día del mes en horario CDMX
+  const [year, monthNum] = month.split('-').map(Number);
+  const monthKey = `${year}-${monthNum.toString().padStart(2, '0')}`;
+  const firstDay = `${monthKey}-01`;
+  const lastDayDate = new Date(Date.UTC(year, monthNum, 0));
+  const lastDay = lastDayDate.getUTCDate();
+  const lastDayString = `${monthKey}-${lastDay.toString().padStart(2, '0')}`;
 
     console.log('📅 Rango de fechas para el mes:', {
       mes: month,
@@ -83,6 +72,8 @@ export async function GET(request: NextRequest) {
         total_transferencia,
         total_debito,
         total_credito,
+        expenses_amount,
+        final_balance,
         grand_total,
         total_transactions,
         total_commissions
@@ -103,19 +94,40 @@ export async function GET(request: NextRequest) {
       console.log('✅ Consolidando datos de', monthCuts.length, 'cortes existentes');
 
       const consolidatedData = monthCuts.reduce((acc, cut) => {
-        // Sumar totales por categoría
-        acc.pos_total += parseFloat(cut.pos_total || '0');
-        acc.membership_total += parseFloat(cut.membership_total || '0');
-        acc.abonos_total += parseFloat(cut.abonos_total || '0');
-        acc.grand_total += parseFloat(cut.grand_total || '0');
-        acc.total_transactions += parseInt(cut.total_transactions || '0');
-        acc.total_commissions += parseFloat(cut.total_commissions || '0');
+        const toNumber = (value: unknown) => {
+          if (value === null || value === undefined) return 0;
+          const num = typeof value === 'number' ? value : parseFloat(value as string);
+          return Number.isFinite(num) ? num : 0;
+        };
 
-        // Sumar por método de pago
-        acc.total_efectivo += parseFloat(cut.total_efectivo || '0');
-        acc.total_transferencia += parseFloat(cut.total_transferencia || '0');
-        acc.total_debito += parseFloat(cut.total_debito || '0');
-        acc.total_credito += parseFloat(cut.total_credito || '0');
+        acc.pos_total += toNumber(cut.pos_total);
+        acc.membership_total += toNumber(cut.membership_total);
+        acc.abonos_total += toNumber(cut.abonos_total);
+        acc.grand_total += toNumber(cut.grand_total);
+        acc.total_transactions += toNumber(cut.total_transactions);
+        acc.total_commissions += toNumber(cut.total_commissions);
+        acc.expenses_amount += toNumber(cut.expenses_amount);
+        acc.final_balance += toNumber(cut.final_balance);
+
+        acc.pos_efectivo += toNumber(cut.pos_efectivo);
+        acc.pos_transferencia += toNumber(cut.pos_transferencia);
+        acc.pos_debito += toNumber(cut.pos_debito);
+        acc.pos_credito += toNumber(cut.pos_credito);
+
+        acc.membership_efectivo += toNumber(cut.membership_efectivo);
+        acc.membership_transferencia += toNumber(cut.membership_transferencia);
+        acc.membership_debito += toNumber(cut.membership_debito);
+        acc.membership_credito += toNumber(cut.membership_credito);
+
+        acc.abonos_efectivo += toNumber(cut.abonos_efectivo);
+        acc.abonos_transferencia += toNumber(cut.abonos_transferencia);
+        acc.abonos_debito += toNumber(cut.abonos_debito);
+        acc.abonos_credito += toNumber(cut.abonos_credito);
+
+        acc.total_efectivo += toNumber(cut.total_efectivo);
+        acc.total_transferencia += toNumber(cut.total_transferencia);
+        acc.total_debito += toNumber(cut.total_debito);
+        acc.total_credito += toNumber(cut.total_credito);
 
         return acc;
       }, {
@@ -125,6 +137,20 @@ export async function GET(request: NextRequest) {
         grand_total: 0,
         total_transactions: 0,
         total_commissions: 0,
+        expenses_amount: 0,
+        final_balance: 0,
+        pos_efectivo: 0,
+        pos_transferencia: 0,
+        pos_debito: 0,
+        pos_credito: 0,
+        membership_efectivo: 0,
+        membership_transferencia: 0,
+        membership_debito: 0,
+        membership_credito: 0,
+        abonos_efectivo: 0,
+        abonos_transferencia: 0,
+        abonos_debito: 0,
+        abonos_credito: 0,
         total_efectivo: 0,
         total_transferencia: 0,
         total_debito: 0,
@@ -145,31 +171,31 @@ export async function GET(request: NextRequest) {
           note: `✅ Datos consolidados de ${monthCuts.length} cortes existentes en cash_cuts`
         },
         pos: {
-          efectivo: parseFloat((consolidatedData.total_efectivo * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          transferencia: parseFloat((consolidatedData.total_transferencia * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          debito: parseFloat((consolidatedData.total_debito * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          credito: parseFloat((consolidatedData.total_credito * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          efectivo: consolidatedData.pos_efectivo,
+          transferencia: consolidatedData.pos_transferencia,
+          debito: consolidatedData.pos_debito,
+          credito: consolidatedData.pos_credito,
           total: consolidatedData.pos_total,
-          transactions: Math.round(consolidatedData.total_transactions * (consolidatedData.pos_total / consolidatedData.grand_total || 0)),
-          commissions: parseFloat((consolidatedData.total_commissions * (consolidatedData.pos_total / consolidatedData.grand_total || 0)).toFixed(2))
+          transactions: consolidatedData.total_transactions,
+          commissions: consolidatedData.total_commissions
         },
         abonos: {
-          efectivo: parseFloat((consolidatedData.total_efectivo * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          transferencia: parseFloat((consolidatedData.total_transferencia * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          debito: parseFloat((consolidatedData.total_debito * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          credito: parseFloat((consolidatedData.total_credito * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          efectivo: consolidatedData.abonos_efectivo,
+          transferencia: consolidatedData.abonos_transferencia,
+          debito: consolidatedData.abonos_debito,
+          credito: consolidatedData.abonos_credito,
           total: consolidatedData.abonos_total,
-          transactions: Math.round(consolidatedData.total_transactions * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)),
-          commissions: parseFloat((consolidatedData.total_commissions * (consolidatedData.abonos_total / consolidatedData.grand_total || 0)).toFixed(2))
+          transactions: consolidatedData.total_transactions,
+          commissions: consolidatedData.total_commissions
         },
         memberships: {
-          efectivo: parseFloat((consolidatedData.total_efectivo * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          transferencia: parseFloat((consolidatedData.total_transferencia * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          debito: parseFloat((consolidatedData.total_debito * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2)),
-          credito: parseFloat((consolidatedData.total_credito * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2)),
+          efectivo: consolidatedData.membership_efectivo,
+          transferencia: consolidatedData.membership_transferencia,
+          debito: consolidatedData.membership_debito,
+          credito: consolidatedData.membership_credito,
           total: consolidatedData.membership_total,
-          transactions: Math.round(consolidatedData.total_transactions * (consolidatedData.membership_total / consolidatedData.grand_total || 0)),
-          commissions: parseFloat((consolidatedData.total_commissions * (consolidatedData.membership_total / consolidatedData.grand_total || 0)).toFixed(2))
+          transactions: consolidatedData.total_transactions,
+          commissions: consolidatedData.total_commissions
         },
         totals: {
           efectivo: consolidatedData.total_efectivo,
@@ -181,6 +207,11 @@ export async function GET(request: NextRequest) {
           commissions: consolidatedData.total_commissions,
           net_amount: consolidatedData.grand_total - consolidatedData.total_commissions
         },
+        expenses: {
+          amount: consolidatedData.expenses_amount,
+          average: monthCuts.length > 0 ? consolidatedData.expenses_amount / monthCuts.length : 0
+        },
+        final_balance: consolidatedData.final_balance,
         cuts_info: {
           total_cuts: monthCuts.length,
           manual_cuts: monthCuts.filter(c => c.is_manual).length,
@@ -255,6 +286,11 @@ export async function GET(request: NextRequest) {
           commissions: 0,
           net_amount: 0
         },
+        expenses: {
+          amount: 0,
+          average: 0
+        },
+        final_balance: 0,
         cuts_info: {
           total_cuts: 0,
           manual_cuts: 0,

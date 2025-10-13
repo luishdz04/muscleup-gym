@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Grid,
   Card,
   CardContent,
   Button,
@@ -17,8 +16,10 @@ import {
   Avatar,
   Stack,
   LinearProgress,
-  Paper
+  Paper,
+  Skeleton
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
   Add as AddIcon,
   MoneyOff as MoneyOffIcon,
@@ -41,105 +42,17 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
-// 🎨 DARK PRO SYSTEM - TOKENS (IGUAL QUE CORTES)
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  roleAdmin: '#E91E63'
-};
-
-// ✅ FUNCIONES LOCALES (SIN IMPORTAR dateHelpers) - IGUAL QUE CORTES
-
-// 💰 Función para formatear precios
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
-  }).format(amount);
-}
-
-// 📅 Función para obtener fecha actual de México
-function getMexicoDateLocal(): string {
-  const now = new Date();
-  
-  // Obtener fecha en zona horaria de México
-  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  
-  // Formatear como YYYY-MM-DD
-  const year = mexicoDate.getFullYear();
-  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoDate.getDate()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}`;
-}
-
-// ⏰ Función para formatear hora actual de México
-function formatMexicoTimeLocal(date: Date): string {
-  return date.toLocaleString('es-MX', {
-    timeZone: 'America/Mexico_City',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true
-  });
-}
-
-// 📅 Función para formatear fechas largas
-function formatDateLocal(dateString: string): string {
-  try {
-    // Crear fecha y formatear en español México
-    const date = new Date(dateString + 'T12:00:00');
-    
-    return date.toLocaleDateString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'America/Mexico_City'
-    });
-  } catch (error) {
-    console.error('❌ Error formateando fecha:', dateString, error);
-    
-    // Fallback manual
-    const date = new Date(dateString + 'T12:00:00');
-    const months = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ];
-    const weekdays = [
-      'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
-    ];
-    
-    const weekday = weekdays[date.getDay()];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    
-    return `${weekday}, ${day} de ${month} de ${year}`;
-  }
-}
+// ✅ IMPORTS CENTRALIZADOS
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatPrice } from '@/utils/formatUtils';
+import { 
+  getTodayInMexico, 
+  formatDateForDisplay,
+  formatTimestampForDisplay
+} from '@/utils/dateUtils';
 
 // 🎯 FUNCIÓN PARA OBTENER ICONO POR CATEGORÍA
 function getCategoryIcon(category: string) {
@@ -171,21 +84,21 @@ function getCategoryColor(category: string) {
   switch (category?.toLowerCase()) {
     case 'comida':
     case 'alimentos':
-      return darkProTokens.warning;
+      return colorTokens.warning;
     case 'transporte':
     case 'gasolina':
     case 'combustible':
-      return darkProTokens.info;
+      return colorTokens.info;
     case 'equipamiento':
     case 'equipo':
     case 'mantenimiento':
-      return darkProTokens.error;
+      return colorTokens.danger;
     case 'servicios':
-      return darkProTokens.success;
+      return colorTokens.success;
     case 'compras':
-      return darkProTokens.primary;
+      return colorTokens.brand;
     default:
-      return darkProTokens.textSecondary;
+      return colorTokens.textSecondary;
   }
 }
 
@@ -231,49 +144,48 @@ interface RelatedCutData {
 
 export default function EgresosPage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
+  useUserTracking();
+  const { toast } = useNotifications();
+
+  // 📊 ESTADOS
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dailyExpensesData, setDailyExpensesData] = useState<DailyExpensesData | null>(null);
   const [relatedCutData, setRelatedCutData] = useState<RelatedCutData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  
-  // ✅ ESTADO PARA HORA EN TIEMPO REAL (IGUAL QUE CORTES)
   const [currentMexicoTime, setCurrentMexicoTime] = useState<string>('');
   
-  // ✅ FECHA ACTUAL EN MÉXICO USANDO FUNCIÓN LOCAL (IGUAL QUE CORTES)
+  // ✅ FECHA ACTUAL EN MÉXICO USANDO dateUtils
   const [selectedDate] = useState(() => {
-    const mexicoDate = getMexicoDateLocal();
-    console.log('🇲🇽 Fecha actual México (función local):', mexicoDate);
-    console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
-    console.log('⏰ Hora actual UTC:', new Date().toISOString());
-    return mexicoDate; // Formato: YYYY-MM-DD
+    const mexicoDate = getTodayInMexico();
+    return mexicoDate;
   });
 
-  // ✅ ACTUALIZAR HORA EN TIEMPO REAL CADA SEGUNDO (IGUAL QUE CORTES)
+  // ⏰ ACTUALIZAR HORA EN TIEMPO REAL
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const mexicoTime = formatMexicoTimeLocal(now);
+      const mexicoTime = now.toLocaleString('es-MX', {
+        timeZone: 'America/Mexico_City',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
       setCurrentMexicoTime(mexicoTime);
     };
 
-    // Actualizar inmediatamente
     updateTime();
-
-    // Actualizar cada segundo
     const interval = setInterval(updateTime, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ CARGAR DATOS DEL DÍA CON MEJOR MANEJO DE ERRORES (IGUAL QUE CORTES)
+  // 💸 CARGAR DATOS DE EGRESOS
   const loadExpenses = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Cargando egresos para fecha México:', selectedDate);
-      console.log('⏰ Timestamp actual México:', currentMexicoTime);
       
       const response = await fetch(`/api/expenses/daily?date=${selectedDate}`, {
         method: 'GET',
@@ -282,27 +194,20 @@ export default function EgresosPage() {
         }
       });
       
-      console.log('📡 Respuesta de la API egresos:', response.status, response.statusText);
-      
       const data = await response.json();
-      console.log('📊 Datos recibidos de egresos:', data);
       
       if (response.ok && data.success) {
-        console.log('✅ Datos de egresos válidos recibidos:', {
-          fecha: data.date,
-          timezone_info: data.timezone_info,
-          total_egresos: data.summary?.total_amount || 0,
-          cantidad_egresos: data.summary?.total_expenses || 0
-        });
         setDailyExpensesData(data);
       } else {
-        const errorMsg = data.error || `Error HTTP ${response.status}: ${response.statusText}`;
+        const errorMsg = data.error || `Error HTTP ${response.status}`;
         console.error('❌ Error en respuesta de API egresos:', errorMsg);
-        setError(errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (error: any) {
       console.error('💥 Error crítico en loadExpenses:', error);
-      setError(`Error de conexión: ${error.message}`);
+      const errorMsg = `Error de conexión: ${error.message}`;
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -311,18 +216,12 @@ export default function EgresosPage() {
   // ✅ CARGAR INFORMACIÓN DEL CORTE RELACIONADO
   const loadRelatedCut = async () => {
     try {
-      console.log('🔍 Verificando corte relacionado para fecha:', selectedDate);
-      
       const response = await fetch(`/api/cuts/check-existing?date=${selectedDate}&purpose=expenses`);
-      console.log('📡 Respuesta API check-existing:', response.status);
-      
       const data = await response.json();
-      console.log('📊 Datos corte relacionado:', data);
       
       if (response.ok) {
         setRelatedCutData(data);
       } else {
-        console.log('ℹ️ No hay corte para esta fecha o API no disponible');
         setRelatedCutData({ exists: false });
       }
     } catch (error) {
@@ -331,18 +230,25 @@ export default function EgresosPage() {
     }
   };
 
-  // 🔄 REFRESCAR DATOS (IGUAL QUE CORTES)
+  // 🔄 REFRESCAR DATOS
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadExpenses(), loadRelatedCut()]);
-    setRefreshing(false);
+    try {
+      await Promise.all([loadExpenses(), loadRelatedCut()]);
+      toast.success('Datos actualizados correctamente');
+    } catch (error) {
+      // Error ya manejado en loadExpenses
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  // ⚡ EFECTOS (IGUAL QUE CORTES)
+  // ⚡ CARGAR DATOS AL MONTAR
   useEffect(() => {
-    console.log('🚀 Componente egresos montado, cargando datos para fecha:', selectedDate);
-    Promise.all([loadExpenses(), loadRelatedCut()]);
-  }, [selectedDate]);
+    if (isHydrated) {
+      Promise.all([loadExpenses(), loadRelatedCut()]);
+    }
+  }, [selectedDate, isHydrated]);
 
   // 📊 CALCULAR PORCENTAJES PARA CATEGORÍAS
   const calculateCategoryPercentages = () => {
@@ -362,44 +268,47 @@ export default function EgresosPage() {
 
   const categoryPercentages = calculateCategoryPercentages();
 
+  // 🔒 SSR SAFETY - SKELETON MIENTRAS HIDRATA
+  if (!isHydrated) {
+    return (
+      <Box sx={{ 
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.surfaceLevel1})`,
+        color: colorTokens.textPrimary,
+        p: 4
+      }}>
+        <Skeleton variant="rectangular" height={200} sx={{ mb: 3, borderRadius: 4, bgcolor: colorTokens.neutral200 }} />
+        <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 4, bgcolor: colorTokens.neutral200 }} />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ 
       minHeight: '100vh',
-      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
-      color: darkProTokens.textPrimary,
+      background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.surfaceLevel1})`,
+      color: colorTokens.textPrimary,
       p: 4
     }}>
-      {/* 🏷️ HEADER CON HORA DINÁMICA (IGUAL QUE CORTES) */}
+      {/* 🏷️ HEADER CON HORA DINÁMICA */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{ 
-            bgcolor: darkProTokens.error, 
+            bgcolor: colorTokens.danger, 
             width: 60, 
             height: 60 
           }}>
             <MoneyOffIcon sx={{ fontSize: 32 }} />
           </Avatar>
           <Box>
-            <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+            <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
               Egresos del Día
             </Typography>
             
-            {/* ✅ FECHA Y HORA DINÁMICA CORREGIDAS */}
-            <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-              📅 {formatDateLocal(selectedDate)} • ⏰ {currentMexicoTime} • Gestión de gastos diarios
+            <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+              {formatDateForDisplay(selectedDate)} • {currentMexicoTime}
             </Typography>
             
-            {/* ✅ INFORMACIÓN DE ZONA HORARIA CON FECHA CORRECTA */}
-            <Typography variant="caption" sx={{ 
-              color: darkProTokens.info,
-              display: 'block',
-              mt: 0.5
-            }}>
-              🇲🇽 Zona horaria: México (UTC-6) • Fecha consultada: {selectedDate}
-              {dailyExpensesData?.timezone_info && (
-                <span> • {dailyExpensesData.timezone_info.note}</span>
-              )}
-            </Typography>
           </Box>
         </Box>
         
@@ -409,9 +318,9 @@ export default function EgresosPage() {
               onClick={handleRefresh}
               disabled={refreshing}
               sx={{ 
-                color: darkProTokens.info,
-                bgcolor: `${darkProTokens.info}20`,
-                '&:hover': { bgcolor: `${darkProTokens.info}30` }
+                color: colorTokens.info,
+                bgcolor: `${colorTokens.info}20`,
+                '&:hover': { bgcolor: `${colorTokens.info}30` }
               }}
             >
               <RefreshIcon sx={{ 
@@ -429,8 +338,8 @@ export default function EgresosPage() {
             startIcon={<AddIcon />}
             onClick={() => router.push('/dashboard/admin/egresos/nuevo')}
             sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-              color: darkProTokens.textPrimary,
+              background: `linear-gradient(135deg, ${colorTokens.danger}, ${colorTokens.dangerHover})`,
+              color: colorTokens.textPrimary,
               fontWeight: 700,
               px: 3,
               py: 1.5,
@@ -454,42 +363,35 @@ export default function EgresosPage() {
               severity="error" 
               sx={{ 
                 mb: 3,
-                backgroundColor: `${darkProTokens.error}20`,
-                color: darkProTokens.textPrimary,
-                border: `1px solid ${darkProTokens.error}60`,
-                '& .MuiAlert-icon': { color: darkProTokens.error }
+                backgroundColor: `${colorTokens.danger}20`,
+                color: colorTokens.textPrimary,
+                border: `1px solid ${colorTokens.danger}60`,
+                '& .MuiAlert-icon': { color: colorTokens.danger }
               }}
               action={
                 <Button 
                   color="inherit" 
                   size="small" 
                   onClick={handleRefresh}
-                  sx={{ color: darkProTokens.textPrimary }}
+                  sx={{ color: colorTokens.textPrimary }}
                 >
                   Reintentar
                 </Button>
               }
             >
-              <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
                 {error}
-              </Typography>
-              <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                Fecha consultada: {selectedDate} • Hora México: {currentMexicoTime} • Verifique la API y la conexión a la base de datos
               </Typography>
             </Alert>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 🔄 LOADING STATE (IGUAL QUE CORTES) */}
       {loading && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 8 }}>
-          <CircularProgress size={60} sx={{ color: darkProTokens.error, mb: 3 }} />
-          <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-            Cargando egresos del día {selectedDate}...
-          </Typography>
-          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
-            Consultando gastos y sincronización con cortes • {currentMexicoTime}
+          <CircularProgress size={60} sx={{ color: colorTokens.danger, mb: 3 }} />
+          <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+            Cargando egresos...
           </Typography>
         </Box>
       )}
@@ -505,23 +407,23 @@ export default function EgresosPage() {
         transition={{ duration: 0.5 }}
       >
         <Card sx={{
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${darkProTokens.error}40`,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `2px solid ${colorTokens.danger}40`,
           borderRadius: 4,
           overflow: 'hidden'
         }}>
           <CardContent sx={{ p: 4 }}>
-            <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.error, mb: 3 }}>
-              💸 Resumen de Egresos
+            <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.danger, mb: 3 }}>
+              Resumen de Egresos
             </Typography>
             
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                  <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.danger }}>
                     {formatPrice(dailyExpensesData.summary.total_amount)}
                   </Typography>
-                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                  <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                     Total de Egresos
                   </Typography>
                   <Chip
@@ -529,8 +431,8 @@ export default function EgresosPage() {
                     label={`${dailyExpensesData.summary.total_expenses} gastos`}
                     sx={{
                       mt: 1,
-                      backgroundColor: `${darkProTokens.error}20`,
-                      color: darkProTokens.error,
+                      backgroundColor: `${colorTokens.danger}20`,
+                      color: colorTokens.danger,
                       fontWeight: 600
                     }}
                   />
@@ -539,13 +441,13 @@ export default function EgresosPage() {
               
               <Grid size={{ xs: 12, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                  <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.warning }}>
                     {Object.keys(dailyExpensesData.summary.categories).length}
                   </Typography>
-                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                  <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                     Categorías
                   </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                  <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                     Tipos de gastos registrados
                   </Typography>
                 </Box>
@@ -553,16 +455,16 @@ export default function EgresosPage() {
               
               <Grid size={{ xs: 12, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                  <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.brand }}>
                     {dailyExpensesData.summary.total_expenses > 0 ? 
                       formatPrice(dailyExpensesData.summary.total_amount / dailyExpensesData.summary.total_expenses) 
                       : formatPrice(0)
                     }
                   </Typography>
-                  <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                  <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                     Promedio por Gasto
                   </Typography>
-                  <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                  <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                     Gasto promedio registrado
                   </Typography>
                 </Box>
@@ -572,10 +474,10 @@ export default function EgresosPage() {
                 <Box sx={{ textAlign: 'center' }}>
                   {relatedCutData?.exists ? (
                     <>
-                      <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                      <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.success }}>
                         ✅
                       </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                         Sincronizado
                       </Typography>
                       <Chip
@@ -583,21 +485,21 @@ export default function EgresosPage() {
                         size="small"
                         sx={{
                           mt: 1,
-                          backgroundColor: `${darkProTokens.success}20`,
-                          color: darkProTokens.success,
+                          backgroundColor: `${colorTokens.success}20`,
+                          color: colorTokens.success,
                           fontWeight: 600
                         }}
                       />
                     </>
                   ) : (
                     <>
-                      <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                      <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.info }}>
                         📋
                       </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
                         Sin Corte
                       </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                         No hay corte para este día
                       </Typography>
                     </>
@@ -619,12 +521,12 @@ export default function EgresosPage() {
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <Card sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `1px solid ${darkProTokens.grayMedium}`,
+            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+            border: `1px solid ${colorTokens.neutral500}`,
             borderRadius: 4
           }}>
             <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+              <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 3 }}>
                 📈 Desglose por Categorías
               </Typography>
               
@@ -634,7 +536,7 @@ export default function EgresosPage() {
                     <Paper sx={{ 
                       p: 3, 
                       textAlign: 'center',
-                      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                      background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral400})`,
                       border: `2px solid ${getCategoryColor(category)}40`,
                       borderRadius: 3
                     }}>
@@ -650,7 +552,7 @@ export default function EgresosPage() {
                       <Typography variant="h4" fontWeight="bold" sx={{ color: getCategoryColor(category) }}>
                         {formatPrice(data.total)}
                       </Typography>
-                      <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1, textTransform: 'capitalize' }}>
+                      <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1, textTransform: 'capitalize' }}>
                         {category}
                       </Typography>
                       <LinearProgress 
@@ -665,7 +567,7 @@ export default function EgresosPage() {
                           }
                         }} 
                       />
-                      <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mt: 1 }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mt: 1 }}>
                         {(categoryPercentages[category] || 0).toFixed(1)}% • {data.count} gastos
                       </Typography>
                     </Paper>
@@ -686,12 +588,12 @@ export default function EgresosPage() {
         transition={{ duration: 0.5, delay: 0.2 }}
       >
         <Card sx={{
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.grayMedium}`,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `1px solid ${colorTokens.neutral500}`,
           borderRadius: 4
         }}>
           <CardContent sx={{ p: 4 }}>
-            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+            <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 3 }}>
               📋 Lista de Egresos del Día
             </Typography>
             
@@ -699,15 +601,15 @@ export default function EgresosPage() {
               <Box sx={{ 
                 textAlign: 'center', 
                 py: 8,
-                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel1}, ${darkProTokens.surfaceLevel2})`,
+                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel1}, ${colorTokens.surfaceLevel2})`,
                 borderRadius: 3,
-                border: `1px dashed ${darkProTokens.grayMedium}`
+                border: `1px dashed ${colorTokens.neutral500}`
               }}>
-                <MoneyOffIcon sx={{ fontSize: 80, color: darkProTokens.textDisabled, mb: 2 }} />
-                <Typography variant="h6" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                <MoneyOffIcon sx={{ fontSize: 80, color: colorTokens.textDisabled, mb: 2 }} />
+                <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
                   No hay egresos registrados para hoy
                 </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textDisabled, mb: 3 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textDisabled, mb: 3 }}>
                   Los egresos que registres aparecerán aquí
                 </Typography>
                 <Button
@@ -715,8 +617,8 @@ export default function EgresosPage() {
                   startIcon={<AddIcon />}
                   onClick={() => router.push('/dashboard/admin/egresos/nuevo')}
                   sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-                    color: darkProTokens.textPrimary
+                    background: `linear-gradient(135deg, ${colorTokens.danger}, ${colorTokens.dangerHover})`,
+                    color: colorTokens.textPrimary
                   }}
                 >
                   Registrar Primer Egreso
@@ -733,7 +635,7 @@ export default function EgresosPage() {
                   >
                     <Paper sx={{
                       p: 3,
-                      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
+                      background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral400})`,
                       border: `1px solid ${getCategoryColor(expense.expense_type)}30`,
                       borderRadius: 3,
                       '&:hover': {
@@ -752,7 +654,7 @@ export default function EgresosPage() {
                             {getCategoryIcon(expense.expense_type)}
                           </Avatar>
                           <Box>
-                            <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
+                            <Typography variant="h6" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
                               {expense.description}
                             </Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
@@ -766,14 +668,14 @@ export default function EgresosPage() {
                                   textTransform: 'capitalize'
                                 }}
                               />
-                              <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                              <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                                 {expense.expense_time}
                               </Typography>
                               {expense.receipt_number && (
                                 <Chip
                                   label={`#${expense.receipt_number}`}
                                   size="small"
-                                  sx={{ backgroundColor: `${darkProTokens.info}20`, color: darkProTokens.info }}
+                                  sx={{ backgroundColor: `${colorTokens.info}20`, color: colorTokens.info }}
                                 />
                               )}
                             </Box>
@@ -781,18 +683,18 @@ export default function EgresosPage() {
                         </Box>
                         
                         <Box sx={{ textAlign: 'right' }}>
-                          <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                          <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.danger }}>
                             -{formatPrice(expense.amount)}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                          <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                             ID: {expense.id.slice(0, 8)}...
                           </Typography>
                         </Box>
                       </Box>
                       
                       {expense.notes && (
-                        <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontStyle: 'italic' }}>
+                        <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${colorTokens.neutral500}` }}>
+                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontStyle: 'italic' }}>
                             📝 {expense.notes}
                           </Typography>
                         </Box>
@@ -815,12 +717,12 @@ export default function EgresosPage() {
         transition={{ duration: 0.5, delay: 0.3 }}
       >
         <Card sx={{
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.grayMedium}`,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `1px solid ${colorTokens.neutral500}`,
           borderRadius: 4
         }}>
           <CardContent sx={{ p: 4 }}>
-            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.textPrimary, mb: 3 }}>
+            <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 3 }}>
               🎯 Acciones Rápidas
             </Typography>
             
@@ -832,8 +734,8 @@ export default function EgresosPage() {
                   startIcon={<AddIcon />}
                   onClick={() => router.push('/dashboard/admin/egresos/nuevo')}
                   sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})`,
-                    color: darkProTokens.textPrimary,
+                    background: `linear-gradient(135deg, ${colorTokens.danger}, ${colorTokens.dangerHover})`,
+                    color: colorTokens.textPrimary,
                     py: 2,
                     fontSize: '1rem',
                     fontWeight: 600
@@ -850,14 +752,14 @@ export default function EgresosPage() {
                   startIcon={<CalendarIcon />}
                   onClick={() => router.push('/dashboard/admin/egresos/historial')}
                   sx={{
-                    borderColor: darkProTokens.info,
-                    color: darkProTokens.info,
+                    borderColor: colorTokens.info,
+                    color: colorTokens.info,
                     py: 2,
                     fontSize: '1rem',
                     fontWeight: 600,
                     '&:hover': {
-                      borderColor: darkProTokens.infoHover,
-                      backgroundColor: `${darkProTokens.info}20`
+                      borderColor: colorTokens.infoHover,
+                      backgroundColor: `${colorTokens.info}20`
                     }
                   }}
                 >
@@ -873,14 +775,14 @@ export default function EgresosPage() {
                   onClick={() => relatedCutData?.exists && router.push('/dashboard/admin/cortes')}
                   disabled={!relatedCutData?.exists}
                   sx={{
-                    borderColor: relatedCutData?.exists ? darkProTokens.success : darkProTokens.textDisabled,
-                    color: relatedCutData?.exists ? darkProTokens.success : darkProTokens.textDisabled,
+                    borderColor: relatedCutData?.exists ? colorTokens.success : colorTokens.textDisabled,
+                    color: relatedCutData?.exists ? colorTokens.success : colorTokens.textDisabled,
                     py: 2,
                     fontSize: '1rem',
                     fontWeight: 600,
                     '&:hover': {
-                      borderColor: relatedCutData?.exists ? darkProTokens.successHover : darkProTokens.textDisabled,
-                      backgroundColor: relatedCutData?.exists ? `${darkProTokens.success}20` : 'transparent'
+                      borderColor: relatedCutData?.exists ? colorTokens.successHover : colorTokens.textDisabled,
+                      backgroundColor: relatedCutData?.exists ? `${colorTokens.success}20` : 'transparent'
                     }
                   }}
                 >
@@ -897,3 +799,5 @@ export default function EgresosPage() {
     </Box>
   );
 }
+
+

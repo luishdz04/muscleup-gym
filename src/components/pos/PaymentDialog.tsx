@@ -1,4 +1,4 @@
-// components/pos/PaymentDialog.tsx - VERSIÓN COMPLETA v7.0 CON TIPOS INTEGRADOS
+// components/pos/PaymentDialog.tsx - VERSIÓN v10.1 MULTI-ALMACÉN CORREGIDA
 
 'use client';
 
@@ -68,6 +68,7 @@ import {
   PaymentCommission
 } from '@/types/pos';
 
+// ✅ PROPS ACTUALIZADAS v10.1 - INCLUYE warehouseId
 interface PaymentDialogProps {
   open: boolean;
   onClose: () => void;
@@ -75,6 +76,7 @@ interface PaymentDialogProps {
   customer: Customer | null;
   coupon: Coupon | null;
   totals: Totals;
+  warehouseId: string; // ✅ CRÍTICO: Almacén origen de la venta
   onSuccess: () => void;
 }
 
@@ -101,6 +103,7 @@ export default function PaymentDialog({
   customer,
   coupon,
   totals,
+  warehouseId, // ✅ RECIBIR warehouseId del POS
   onSuccess
 }: PaymentDialogProps) {
   // ✅ HOOKS ENTERPRISE v7.0
@@ -186,9 +189,10 @@ export default function PaymentDialog({
       cart.length > 0 &&
       totalPayments >= (finalTotal - EPSILON) &&
       !processing &&
-      !commissionsLoading
+      !commissionsLoading &&
+      !!warehouseId // ✅ Validar que hay almacén configurado
     );
-  }, [cart.length, totalPayments, finalTotal, processing, commissionsLoading]);
+  }, [cart.length, totalPayments, finalTotal, processing, commissionsLoading, warehouseId]);
 
   // ✅ FUNCIONES DE MANIPULACIÓN
   const addPaymentMethod = useCallback(() => {
@@ -272,10 +276,16 @@ export default function PaymentDialog({
     onClose();
   }, [onClose, processing]);
 
-  // ✅ PROCESAR PAGO - LÓGICA BD COMPLETA v7.0
+  // ✅ PROCESAR PAGO - VERSIÓN v10.1 MULTI-ALMACÉN CORREGIDA
   const processPayment = useCallback(async () => {
     if (!canProcessPayment) return;
     
+    // ✅ VALIDACIÓN CRÍTICA: Verificar almacén configurado
+    if (!warehouseId) {
+      notify.error('⚠️ Error: Almacén no configurado. Contacta al administrador.');
+      return;
+    }
+
     setProcessing(true);
     setNetworkError(null);
     
@@ -287,12 +297,15 @@ export default function PaymentDialog({
 
       const saleNumber = `POS-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       
+      console.log(`🏪 Procesando venta ${saleNumber} desde almacén: ${warehouseId}`);
+
       // ✅ DATOS DE VENTA - sales table (updated_only según useUserTracking)
       const saleData = {
         sale_number: saleNumber,
         customer_id: customer?.id || null,
         cashier_id: currentCashier,
         sale_type: 'sale', // ✅ CORRECTO: venta directa POS
+        source_warehouse_id: warehouseId, // ✅ CRÍTICO: Almacén origen
         subtotal: Math.round(totals.subtotal * 100) / 100,
         tax_amount: Math.round(totals.taxAmount * 100) / 100,
         discount_amount: Math.round(totals.discountAmount * 100) / 100,
@@ -320,12 +333,15 @@ export default function PaymentDialog({
 
       if (saleError) throw saleError;
 
-      // ✅ INSERTAR ITEMS DE VENTA (NO AUDITORÍA)
+      console.log(`✅ Venta creada: ID ${sale.id}`);
+
+      // ✅ INSERTAR ITEMS DE VENTA CON source_warehouse_id (NO AUDITORÍA)
       const saleItemsData = cart.map(item => ({
         sale_id: sale.id,
         product_id: item.product.id,
         product_name: item.product.name,
-        product_sku: item.product.sku, // ✅ CORREGIDO: undefined en lugar de null
+        product_sku: item.product.sku,
+        source_warehouse_id: warehouseId, // ✅ TRAZABILIDAD: De qué almacén salió
         quantity: item.quantity,
         unit_price: Math.round(item.unit_price * 100) / 100,
         total_price: Math.round(item.total_price * 100) / 100,
@@ -339,6 +355,8 @@ export default function PaymentDialog({
         .insert(saleItemsData);
 
       if (itemsError) throw itemsError;
+
+      console.log(`✅ ${saleItemsData.length} items de venta insertados`);
 
       // ✅ INSERTAR DETALLES DE PAGO CON AUDITORÍA (created_by)
       const paymentDetailsData = await Promise.all(
@@ -371,44 +389,39 @@ export default function PaymentDialog({
 
       if (paymentsError) throw paymentsError;
 
-      // ✅ ACTUALIZAR INVENTARIO CON AUDITORÍA (products usa snake_case)
-      for (const item of cart) {
-        const newStock = Math.max(0, item.product.current_stock - item.quantity);
-        
-        const productUpdateData = await addAuditFieldsFor('products', {
-          current_stock: newStock
-        }, true);
+      console.log(`✅ ${paymentDetailsData.length} métodos de pago registrados`);
 
-        const { error: stockError } = await supabase
-          .from('products')
-          .update(productUpdateData)
-          .eq('id', item.product.id);
+      // ✅ INSERTAR MOVIMIENTOS DE INVENTARIO - ARQUITECTURA TRIGGER-FIRST v10.1
+      // 🎯 CRÍTICO: NO actualizar products.current_stock directamente
+      // Los triggers SMART v8.2 se encargan automáticamente de:
+      // 1. Validar que hay stock suficiente
+      // 2. Actualizar product_warehouse_stock del almacén correcto
+      // 3. Calcular previous_stock y new_stock automáticamente
+      
+      console.log(`🏭 Registrando ${cart.length} movimientos de inventario para almacén ${warehouseId}`);
 
-        if (stockError) throw stockError;
+      const inventoryMovements = cart.map(item => ({
+        product_id: item.product.id,
+        movement_type: 'venta_directa', // ✅ CORRECTO: Constraint verificado
+        quantity: -item.quantity, // ✅ NEGATIVO para salidas
+        source_warehouse_id: warehouseId, // ✅ LA CLAVE: De qué almacén descontar
+        reason: `Venta POS #${sale.sale_number}`,
+        reference_id: sale.id,
+        created_by: currentCashier,
+        created_at: getCurrentTimestamp()
+      }));
 
-        // ✅ MOVIMIENTO DE INVENTARIO (NO AUDITORÍA)
-        const { error: movementError } = await supabase
-          .from('inventory_movements')
-          .insert({
-            product_id: item.product.id,
-            movement_type: 'salida', // ✅ CORRECTO: 'salida' para ventas según constraint BD
-            quantity: -item.quantity, // ✅ NEGATIVO para salidas
-            previous_stock: item.product.current_stock,
-            new_stock: newStock,
-            unit_cost: item.product.cost_price || 0,
-            total_cost: (item.product.cost_price || 0) * item.quantity,
-            reason: 'Venta POS',
-            reference_id: sale.id,
-            notes: `Venta ${saleNumber} - ${item.product.name}`,
-            created_at: getCurrentTimestamp(),
-            created_by: currentCashier
-          });
+      // ✅ INSERCIÓN BATCH - Los triggers hacen el resto
+      const { error: movementsError } = await supabase
+        .from('inventory_movements')
+        .insert(inventoryMovements);
 
-        if (movementError) {
-          console.error('Error en movimiento de inventario:', movementError);
-          throw new Error(`Error actualizando inventario: ${movementError.message}`);
-        }
+      if (movementsError) {
+        console.error('❌ Error registrando movimientos:', movementsError);
+        throw new Error(`Error registrando movimientos de inventario: ${movementsError.message}`);
       }
+
+      console.log('✅ Movimientos registrados. Los triggers SMART actualizarán el stock automáticamente.');
 
       // ✅ ACTUALIZAR CUPÓN SI APLICA (created_only según useUserTracking)
       if (coupon) {
@@ -421,25 +434,31 @@ export default function PaymentDialog({
           .eq('id', coupon.id);
 
         if (couponError) throw couponError;
+
+        console.log(`✅ Cupón ${coupon.code} actualizado`);
       }
 
       // ✅ NOTIFICACIÓN DE ÉXITO CON BRANDING MUSCLEUP
-      notify.success(`✅ Venta completada: ${saleNumber}`);
+      notify.success(`✅ Venta completada: ${saleNumber} (Almacén: ${warehouseId})`);
       onSuccess();
       handleClose();
 
     } catch (error: any) {
-      console.error('Error processing payment:', error);
+      console.error('❌ Error processing payment:', error);
       const errorMsg = error.message || 'Error desconocido al procesar el pago';
       setNetworkError(errorMsg);
       
-      // ✅ NOTIFICACIÓN DE ERROR ESPECÍFICA
-      if (errorMsg.includes('inventory_movements_movement_type_check')) {
-        notify.error('Error de configuración en inventario. Contacta al administrador.');
+      // ✅ NOTIFICACIONES DE ERROR ESPECÍFICAS v10.1
+      if (errorMsg.includes('insufficient_stock')) {
+        notify.error('⚠️ Stock insuficiente en el almacén. Verifica el inventario.');
+      } else if (errorMsg.includes('inventory_movements_movement_type_check')) {
+        notify.error('⚠️ Error de configuración en inventario. Contacta al administrador.');
       } else if (errorMsg.includes('constraint')) {
-        notify.error('Error de validación en base de datos. Verifica los datos.');
+        notify.error('⚠️ Error de validación en base de datos. Verifica los datos.');
+      } else if (errorMsg.includes('trigger')) {
+        notify.error('⚠️ Error en actualización automática de stock. Contacta al administrador.');
       } else {
-        notify.error(`Error: ${errorMsg}`);
+        notify.error(`❌ Error: ${errorMsg}`);
       }
     } finally {
       setProcessing(false);
@@ -447,7 +466,7 @@ export default function PaymentDialog({
   }, [
     canProcessPayment, customer, totals, finalTotal, totalPayments, changeAmount, 
     mixedPayment, totalCommissions, coupon, cart, paymentMethods, getCommissionRate,
-    addAuditFieldsFor, getCurrentUser, supabase, onSuccess, handleClose
+    addAuditFieldsFor, getCurrentUser, supabase, onSuccess, handleClose, warehouseId
   ]);
 
   // ✅ EFECTOS DE CONFIGURACIÓN
@@ -484,6 +503,32 @@ export default function PaymentDialog({
             </Typography>
           </Box>
         </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ✅ VALIDACIÓN CRÍTICA: Almacén no configurado
+  if (!warehouseId) {
+    return (
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogContent>
+          <Alert severity="error" icon={<WarningIcon />}>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              ⚠️ Almacén no configurado
+            </Typography>
+            <Typography variant="body2">
+              No se puede procesar la venta sin un almacén origen configurado.
+              Contacta al administrador del sistema.
+            </Typography>
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose} variant="contained" sx={{ 
+            background: colorTokens.danger 
+          }}>
+            Cerrar
+          </Button>
+        </DialogActions>
       </Dialog>
     );
   }
@@ -543,7 +588,9 @@ export default function PaymentDialog({
             <Typography variant="body2" fontWeight={600}>
               {networkError.includes('constraint') 
                 ? '⚠️ Error de validación BD - Contacta al administrador' 
-                : networkError
+                : networkError.includes('insufficient_stock')
+                  ? '⚠️ Stock insuficiente en el almacén'
+                  : networkError
               }
             </Typography>
           </Alert>

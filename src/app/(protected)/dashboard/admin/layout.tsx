@@ -14,8 +14,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+      // ✅ MÉTODO MODERNO: getAll (reemplaza get)
+      getAll() {
+        return cookieStore.getAll();
+      },
+      // ✅ MÉTODO MODERNO: setAll
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options);
+        });
       },
     },
   });
@@ -29,7 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Verificar rol en servidor
   const { data: userData } = await supabase
     .from('Users')
-    .select('rol, firstName, lastName, profilePictureUrl, id')
+    .select('rol, firstName, lastName, id')
     .eq('id', user.id)
     .single();
 
@@ -38,14 +45,31 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/dashboard/cliente');
   }
 
+  // ✅ OBTENER DATOS DESDE EMPLOYEES PARA ADMIN/EMPLEADO
+  let profilePictureUrl = null;
+  let firstName = userData?.firstName;
+  let lastName = userData?.lastName;
+
+  if (userRole === 'admin' || userRole === 'empleado') {
+    const { data: employeeData } = await supabase
+      .from('employees')
+      .select('profile_picture_url')
+      .eq('user_id', user.id)
+      .single();
+
+    if (employeeData) {
+      profilePictureUrl = employeeData.profile_picture_url;
+    }
+  }
+
   // Pasar datos del usuario al client component
   const userWithRole = {
     id: user.id,
     email: user.email,
     rol: userData?.rol,
-    firstName: userData?.firstName,
-    lastName: userData?.lastName,
-    profilePictureUrl: userData?.profilePictureUrl
+    firstName: firstName,
+    lastName: lastName,
+    profilePictureUrl: profilePictureUrl
   };
 
   return (

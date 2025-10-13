@@ -1,4 +1,4 @@
-// hooks/useProductStock.ts - v8.0 CORREGIDO CON QUERY SIMPLE
+// hooks/useProductStock.ts - v8.1 CON total_system_stock
 'use client';
 
 import { useMemo, useCallback } from 'react';
@@ -6,11 +6,13 @@ import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 
 export type StockStatus = 'sin_stock' | 'stock_bajo' | 'stock_normal' | 'sobre_stock';
 
+// ✅ INTERFACE ACTUALIZADA CON total_system_stock
 export interface ProductStock {
   id: string;
   name: string;
   sku?: string;
   current_stock: number;
+  total_system_stock?: number; // ✅ NUEVO - Campo del sistema multi-almacén v10.1
   reserved_stock?: number;
   min_stock: number;
   max_stock?: number;
@@ -45,10 +47,15 @@ export const useProductStock = () => {
     ...rest 
   } = useEntityCRUD<ProductStock>({
     tableName: 'products',
-    // ✅ QUERY SIMPLE SIN CAMPOS CALCULADOS COMPLEJOS
+    // ✅ QUERY ACTUALIZADA - Incluye total_system_stock
     selectQuery: `
-      id, name, sku, current_stock, min_stock, max_stock, 
-      cost_price, sale_price, category, brand, unit, 
+      id, name, sku, 
+      current_stock, 
+      total_system_stock,
+      reserved_stock,
+      min_stock, max_stock, 
+      cost_price, sale_price, 
+      category, brand, unit, 
       is_active, updated_at
     `
   });
@@ -59,15 +66,17 @@ export const useProductStock = () => {
     stock_status: StockStatus 
   })[] => {
     return rawProducts.map(product => {
+      // ✅ USAR total_system_stock si existe, sino current_stock
+      const systemStock = product.total_system_stock || product.current_stock;
       const reservedStock = product.reserved_stock || 0;
-      const availableStock = product.current_stock - reservedStock;
+      const availableStock = systemStock - reservedStock;
       
       let stockStatus: StockStatus = 'stock_normal';
       if (availableStock <= 0) {
         stockStatus = 'sin_stock';
       } else if (availableStock <= product.min_stock) {
         stockStatus = 'stock_bajo';
-      } else if (product.max_stock && product.current_stock > product.max_stock) {
+      } else if (product.max_stock && systemStock > product.max_stock) {
         stockStatus = 'sobre_stock';
       }
 
@@ -83,6 +92,9 @@ export const useProductStock = () => {
     if (!products.length) return null;
 
     const stats = products.reduce((acc, product) => {
+      // ✅ USAR total_system_stock si existe
+      const systemStock = product.total_system_stock || product.current_stock;
+      
       acc.total++;
       switch (product.stock_status) {
         case 'sin_stock': acc.sinStock++; break;
@@ -90,7 +102,7 @@ export const useProductStock = () => {
         case 'stock_normal': acc.stockNormal++; break;
         case 'sobre_stock': acc.sobreStock++; break;
       }
-      acc.totalStock += product.current_stock;
+      acc.totalStock += systemStock;
       acc.totalReservado += product.reserved_stock || 0;
       acc.totalDisponible += product.available_stock;
       return acc;
@@ -119,8 +131,10 @@ export const useProductStock = () => {
     if (!products.length) return { cost: 0, sale: 0 };
     
     return products.reduce((acc, product) => {
-      acc.cost += (product.cost_price || 0) * product.current_stock;
-      acc.sale += (product.sale_price || 0) * product.current_stock;
+      // ✅ USAR total_system_stock si existe
+      const systemStock = product.total_system_stock || product.current_stock;
+      acc.cost += (product.cost_price || 0) * systemStock;
+      acc.sale += (product.sale_price || 0) * systemStock;
       return acc;
     }, { cost: 0, sale: 0 });
   }, [products]);
@@ -134,14 +148,17 @@ export const useProductStock = () => {
       or: `name.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`
     };
     const results = await searchItems(filters);
-    return results.map(product => ({
-      ...product,
-      available_stock: product.current_stock - (product.reserved_stock || 0),
-      stock_status: (product.current_stock <= 0 ? 'sin_stock' :
-                   product.current_stock <= product.min_stock ? 'stock_bajo' :
-                   product.max_stock && product.current_stock > product.max_stock ? 'sobre_stock' :
-                   'stock_normal') as StockStatus
-    }));
+    return results.map(product => {
+      const systemStock = product.total_system_stock || product.current_stock;
+      return {
+        ...product,
+        available_stock: systemStock - (product.reserved_stock || 0),
+        stock_status: (systemStock <= 0 ? 'sin_stock' :
+                     systemStock <= product.min_stock ? 'stock_bajo' :
+                     product.max_stock && systemStock > product.max_stock ? 'sobre_stock' :
+                     'stock_normal') as StockStatus
+      };
+    });
   }, [searchItems, fetchData, products]);
 
   return {

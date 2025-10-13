@@ -30,6 +30,9 @@ import {
 // ✅ HOOK PERSONALIZADO PARA LÓGICA DE MEMBRESÍAS
 import { useMembershipStats } from '@/hooks/useMembershipStats';
 
+// ✅ COMPONENTE DE RECORDATORIOS DE VENCIMIENTO
+import MembershipExpirationReminder from '@/components/admin/MembershipExpirationReminder';
+
 // Iconos
 import PaymentIcon from '@mui/icons-material/Payment';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
@@ -240,7 +243,10 @@ function MembresiasPage() {
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* 🔔 BOTÓN DE RECORDATORIOS DE VENCIMIENTO */}
+            <MembershipExpirationReminder daysBeforeExpiration={3} />
+
             <Button
               size="small"
               startIcon={<RefreshIcon />}

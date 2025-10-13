@@ -1,23 +1,37 @@
-// hooks/useRegistrarMembresia.ts - ENTERPRISE v4.1 CORREGIDO
+// hooks/useRegistrarMembresia.ts - ENTERPRISE v6.0 REFACTORIZADO NUEVO ESQUEMA BD
 import { useState, useEffect, useCallback, useMemo, useReducer } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ IMPORTACIONES ENTERPRISE OBLIGATORIAS
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
 import { useUserTracking } from '@/hooks/useUserTracking';
 import { 
   formatTimestampForDisplay, 
   formatDateForDisplay,
   getTodayInMexico,
-  daysBetween,
-  addDaysToDate,
   calculateRenewalStartDate,
-  calculateMembershipEndDate,
-  getCurrentTimestamp  // ✅ AGREGAR PARA TIMESTAMPS UTC
+  formatDateLong,
+  calculateMembershipEndDate
 } from '@/utils/dateUtils';
+import { notify } from '@/utils/notifications';
 
-import toast from 'react-hot-toast';
+// ✅ IMPORTS PARA LÓGICA DE PAGOS AVANZADA (como PaymentDialog.tsx)
+import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 
-// ✅ DEBOUNCE FUNCIÓN MANUAL (sin lodash)
+// ✅ IMPORTACIONES DE TIPOS
+import type {
+  UserMembership,
+  MembershipPlan,
+  Coupon,
+  PaymentCommission,
+  UserMembershipHistory,
+  PaymentDetail,
+  PaymentType,
+  MembershipFormData,
+  MembershipStatus,
+  PaymentMethod
+} from '@/types/membership';
+
+// ✅ DEBOUNCE FUNCIÓN MANUAL
 function debounce<T extends (...args: any[]) => void>(
   func: T,
   wait: number
@@ -29,7 +43,7 @@ function debounce<T extends (...args: any[]) => void>(
   };
 }
 
-// 📊 TIPOS E INTERFACES
+// 📊 TIPOS E INTERFACES - ACTUALIZADOS AL NUEVO ESQUEMA
 interface User {
   id: string;
   firstName: string;
@@ -61,66 +75,8 @@ interface Plan {
   is_active: boolean;
 }
 
-interface Coupon {
-  id: string;
-  code: string;
-  description: string;
-  discount_type: 'percentage' | 'fixed';
-  discount_value: number;
-  min_amount: number;
-  max_uses: number;
-  current_uses: number;
-  start_date: string;
-  end_date: string;
-  is_active: boolean;
-}
-
-interface PaymentCommission {
-  id: string;
-  payment_method: string;
-  commission_type: 'percentage' | 'fixed';
-  commission_value: number;
-  min_amount: number;
-  is_active: boolean;
-}
-
-interface PaymentDetail {
-  id: string;
-  method: string;
-  amount: number;
-  commission_rate: number;
-  commission_amount: number;
-  reference: string;
-  sequence: number;
-}
-
-interface UserMembershipHistory {
-  id: string;
-  created_at: string;
-  status: string;
-  plan_name: string;
-  end_date: string | null;
-  start_date: string;
-}
-
-interface FormData {
-  userId: string;
-  planId: string;
-  paymentType: string;
-  paymentMethod: string;
-  paymentReference: string;
-  couponCode: string;
-  notes: string;
-  paymentReceived: number;
-  paymentChange: number;
-  isMixedPayment: boolean;
-  paymentDetails: PaymentDetail[];
-  isRenewal: boolean;
-  skipInscription: boolean;
-  customCommissionRate: number | null;
-  editingCommission: boolean;
-  latestEndDate: string | null;
-}
+// ✅ FORMULARIO ACTUALIZADO - CAMPOS REFACTORIZADOS
+type FormData = MembershipFormData;
 
 // 📋 DATOS ESTÁTICOS
 const paymentTypes = [
@@ -134,27 +90,21 @@ const paymentTypes = [
   { value: 'annual', label: 'Anual', key: 'annual_price', duration: 'annual_duration' }
 ];
 
-// 🎯 ESTADO INICIAL
+// 🎯 ESTADO INICIAL REFACTORIZADO
 const initialFormData: FormData = {
   userId: '',
   planId: '',
   paymentType: '',
-  paymentMethod: '',
-  paymentReference: '',
   couponCode: '',
   notes: '',
-  paymentReceived: 0,
-  paymentChange: 0,
   isMixedPayment: false,
   paymentDetails: [],
   isRenewal: false,
   skipInscription: false,
-  customCommissionRate: null,
-  editingCommission: false,
   latestEndDate: null
 };
 
-// 🔧 REDUCER MEJORADO
+// 🔧 REDUCER REFACTORIZADO
 const formReducer = (state: FormData, action: any): FormData => {
   switch (action.type) {
     case 'SET_USER':
@@ -166,28 +116,16 @@ const formReducer = (state: FormData, action: any): FormData => {
         isRenewal: false,
         skipInscription: false,
         latestEndDate: null,
-        // RESET COMPLETO del estado de pago
-        paymentMethod: '',
         paymentDetails: [],
         isMixedPayment: false,
-        paymentReceived: 0,
-        paymentChange: 0,
-        customCommissionRate: null,
-        editingCommission: false,
       };
       
     case 'SET_PLAN':
       return { 
         ...state, 
         planId: action.payload,
-        // RESET COMPLETO del estado de pago
-        paymentMethod: '',
         paymentDetails: [],
         isMixedPayment: false,
-        paymentReceived: 0,
-        paymentChange: 0,
-        customCommissionRate: null,
-        editingCommission: false,
       };
       
     case 'SET_PAYMENT_TYPE':
@@ -195,30 +133,13 @@ const formReducer = (state: FormData, action: any): FormData => {
         ...state,
         paymentType: action.payload
       };
-
-    case 'SET_PAYMENT_METHOD':
-      return {
-        ...state,
-        paymentMethod: action.payload,
-        isMixedPayment: false,
-        paymentDetails: [],
-        paymentReceived: 0,
-        paymentChange: 0,
-        customCommissionRate: null,
-        editingCommission: false,
-      };
       
     case 'TOGGLE_MIXED_PAYMENT':
       const willBeMixed = !state.isMixedPayment;
       return {
         ...state,
         isMixedPayment: willBeMixed,
-        paymentMethod: '',
         paymentDetails: [],
-        paymentReceived: 0,
-        paymentChange: 0,
-        customCommissionRate: null,
-        editingCommission: false,
       };
       
     case 'SET_RENEWAL_DATA':
@@ -245,10 +166,14 @@ const formReducer = (state: FormData, action: any): FormData => {
       return {
         ...state,
         paymentDetails: action.payload,
-        isMixedPayment: true,
-        paymentMethod: '',
-        paymentReceived: 0,
-        paymentChange: 0,
+        isMixedPayment: state.isMixedPayment,
+      };
+
+    case 'SET_SINGLE_PAYMENT_DETAIL':
+      return {
+        ...state,
+        paymentDetails: action.payload,
+        isMixedPayment: false,
       };
       
     case 'RESET_FORM':
@@ -262,8 +187,8 @@ const formReducer = (state: FormData, action: any): FormData => {
 export const useRegistrarMembresia = () => {
   const supabase = createBrowserSupabaseClient();
   
-  // ✅ HOOK ENTERPRISE OBLIGATORIO PARA AUDITORÍA
-  const { addAuditFields, getCurrentUser } = useUserTracking();
+  // ✅ HOOK ENTERPRISE OBLIGATORIO v6.0 CON addAuditFieldsFor
+  const { addAuditFieldsFor, getCurrentUser } = useUserTracking();
   
   // 🔧 ESTADOS CON REDUCER
   const [formData, dispatch] = useReducer(formReducer, initialFormData);
@@ -278,6 +203,19 @@ export const useRegistrarMembresia = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   
+  // ✅ CARGAR COMISIONES DINÁMICAMENTE DESDE BD (como PaymentDialog.tsx)
+  const {
+    data: paymentCommissionsData,
+    loading: commissionsLoading,
+    error: commissionsError
+  } = useEntityCRUD<PaymentCommission>({
+    tableName: 'payment_commissions',
+    selectQuery: '*'
+  });
+
+  // ✅ CONSTANTES PARA LÓGICA DE PAGOS AVANZADA
+  const EPSILON = 0.001; // Para comparaciones de punto flotante
+
   // 🔧 ESTADOS DE UI
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -304,6 +242,25 @@ export const useRegistrarMembresia = () => {
     return formatDateForDisplay(dateString);
   }, []);
 
+  // ✅ FUNCIONES DE CÁLCULO DE COMISIONES (como PaymentDialog.tsx)
+  const getCommissionRate = useCallback((paymentMethod: string): number => {
+    if (commissionsLoading || !paymentCommissionsData || commissionsError) return 0;
+    const commission = paymentCommissionsData.find(
+      (c: PaymentCommission) => c.payment_method === paymentMethod && c.is_active === true
+    );
+    if (!commission) return 0;
+    return commission.commission_type === 'percentage' ? commission.commission_value : 0;
+  }, [paymentCommissionsData, commissionsLoading, commissionsError]);
+
+  const calculateCommission = useCallback((method: string, amount: number) => {
+    const rate = getCommissionRate(method);
+    const commissionAmount = (amount * rate) / 100;
+    return {
+      rate,
+      amount: Math.round(commissionAmount * 100) / 100
+    };
+  }, [getCommissionRate]);
+
   // 🔍 BÚSQUEDA DE USUARIOS CON DEBOUNCE
   const debouncedLoadUsers = useMemo(
     () => debounce(async (searchTerm: string) => {
@@ -317,20 +274,22 @@ export const useRegistrarMembresia = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          toast.error('No hay sesión activa');
+          notify.error('No hay sesión activa');
           return;
         }
 
         const { data, error } = await supabase
           .from('Users')
-          .select('id, firstName, lastName, email, profilePictureUrl')
+          .select('id, firstName, lastName, email, profilePictureUrl, rol')
+          .eq('rol', 'cliente')
           .or(`firstName.ilike.%${searchTerm}%,lastName.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
           .limit(20);
 
         if (error) {
           const { data: broadData, error: broadError } = await supabase
             .from('Users')
-            .select('id, firstName, lastName, email, profilePictureUrl')
+            .select('id, firstName, lastName, email, profilePictureUrl, rol')
+            .eq('rol', 'cliente')
             .limit(50);
 
           if (broadError) throw broadError;
@@ -348,7 +307,7 @@ export const useRegistrarMembresia = () => {
         setUsers(data || []);
         
       } catch (err: any) {
-        toast.error(`Error al buscar usuarios: ${err.message}`);
+        notify.error(`Error al buscar usuarios: ${err.message}`);
         setUsers([]);
       } finally {
         setLoadingUsers(false);
@@ -434,14 +393,14 @@ export const useRegistrarMembresia = () => {
       });
 
       if (formattedHistory.length === 0) {
-        toast.success('Cliente nuevo detectado: Primera membresía');
+        notify.success('Cliente nuevo detectado: Primera membresía');
       } else {
-        toast.success(`Cliente existente: ${formattedHistory.length} membresías previas`);
+        notify.success(`Cliente existente: ${formattedHistory.length} membresías previas`);
       }
 
     } catch (err: any) {
       setUserHistory([]);
-      toast.error(`Error cargando historial: ${err.message}`);
+      notify.error(`Error cargando historial: ${err.message}`);
       
       dispatch({
         type: 'SET_RENEWAL_DATA',
@@ -454,7 +413,7 @@ export const useRegistrarMembresia = () => {
     }
   }, [supabase, dispatch]);
 
-  // ✅ VALIDAR CUPÓN - CORREGIDO PARA USAR SUBTOTAL CORRECTO
+  // ✅ VALIDAR CUPÓN
   const validateCoupon = useCallback(async (code: string) => {
     if (!code.trim()) {
       setAppliedCoupon(null);
@@ -471,7 +430,7 @@ export const useRegistrarMembresia = () => {
         .single();
 
       if (error || !data) {
-        toast.error('Cupón no válido o no encontrado');
+        notify.error('Cupón no válido o no encontrado');
         setAppliedCoupon(null);
         dispatch({ type: 'CLEAR_COUPON' });
         return;
@@ -480,38 +439,30 @@ export const useRegistrarMembresia = () => {
       const today = getTodayInMexico();
       
       if (data.start_date && today < data.start_date) {
-        toast.error('El cupón no está vigente aún');
+        notify.error('El cupón no está vigente aún');
         setAppliedCoupon(null);
         dispatch({ type: 'CLEAR_COUPON' });
         return;
       }
 
       if (data.end_date && today > data.end_date) {
-        toast.error('El cupón ha expirado');
+        notify.error('El cupón ha expirado');
         setAppliedCoupon(null);
         dispatch({ type: 'CLEAR_COUPON' });
         return;
       }
 
       if (data.max_uses && data.current_uses >= data.max_uses) {
-        toast.error('El cupón ha alcanzado su límite de usos');
+        notify.error('El cupón ha alcanzado su límite de usos');
         setAppliedCoupon(null);
         dispatch({ type: 'CLEAR_COUPON' });
         return;
       }
 
-      // 🔥 PROBLEMA CRÍTICO CORREGIDO: Usar subtotal + inscription para validar monto mínimo
       const currentSubtotal = getCurrentSubtotalForCoupon();
-      
-      console.log('🎯 VALIDACION CUPÓN:', {
-        coupon: data.code,
-        minAmount: data.min_amount,
-        currentSubtotal: currentSubtotal,
-        isValidAmount: currentSubtotal >= data.min_amount
-      });
 
       if (data.min_amount && currentSubtotal < data.min_amount) {
-        toast.error(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}. Subtotal actual: ${formatPrice(currentSubtotal)}`);
+        notify.error(`El cupón requiere un monto mínimo de ${formatPrice(data.min_amount)}. Subtotal actual: ${formatPrice(currentSubtotal)}`);
         setAppliedCoupon(null);
         dispatch({ type: 'CLEAR_COUPON' });
         return;
@@ -523,16 +474,15 @@ export const useRegistrarMembresia = () => {
         payload: { couponCode: code.toUpperCase() }
       });
       
-      toast.success(`Cupón "${data.code}" aplicado: ${data.discount_type === 'percentage' ? `${data.discount_value}%` : formatPrice(data.discount_value)} de descuento`);
+      notify.success(`Cupón "${data.code}" aplicado: ${data.discount_type === 'percentage' ? `${data.discount_value}%` : formatPrice(data.discount_value)} de descuento`);
       
     } catch (err: any) {
-      toast.error(err.message);
+      notify.error(err.message);
       setAppliedCoupon(null);
       dispatch({ type: 'CLEAR_COUPON' });
     }
   }, [supabase, formatPrice, dispatch]);
 
-  // ✅ FUNCIÓN HELPER PARA OBTENER EL SUBTOTAL ACTUAL
   const getCurrentSubtotalForCoupon = useCallback(() => {
     if (!selectedPlan || !formData.paymentType) {
       return 0;
@@ -547,31 +497,58 @@ export const useRegistrarMembresia = () => {
     return planPrice + inscription;
   }, [selectedPlan, formData.paymentType, formData.skipInscription, formData.isRenewal]);
 
-  // ✅ CALCULAR COMISIÓN
-  const calculateCommission = useCallback((method: string, amount: number): { rate: number; amount: number } => {
-    const methodsWithCommission = ['debito', 'credito'];
-    
-    if (!methodsWithCommission.includes(method)) {
-      return { rate: 0, amount: 0 };
+  const recalculateMixedPaymentDetails = useCallback((details: PaymentDetail[]): PaymentDetail[] => {
+    if (!details || details.length === 0) {
+      return [];
     }
 
-    if (formData.customCommissionRate !== null) {
-      const customAmount = (amount * formData.customCommissionRate) / 100;
-      return { rate: formData.customCommissionRate, amount: customAmount };
-    }
+    const sortedDetails = [...details]
+      .map((detail, index) => ({
+        ...detail,
+        sequence: index + 1
+      }));
 
-    const commission = paymentCommissions.find(c => c.payment_method === method);
-    if (!commission || amount < commission.min_amount) {
-      return { rate: 0, amount: 0 };
-    }
+    let remainingNet = totalAmount;
 
-    if (commission.commission_type === 'percentage') {
-      const commissionAmount = (amount * commission.commission_value) / 100;
-      return { rate: commission.commission_value, amount: commissionAmount };
-    } else {
-      return { rate: 0, amount: commission.commission_value };
-    }
-  }, [formData.customCommissionRate, paymentCommissions]);
+    const recalculated = sortedDetails.map((detail, index) => {
+      if (!detail.method) {
+        return detail;
+      }
+
+      const updatedDetail = { ...detail };
+
+      if (index === 0) {
+        const commission = calculateCommission(updatedDetail.method, updatedDetail.amount || 0);
+        updatedDetail.commission_rate = commission.rate;
+        updatedDetail.commission_amount = commission.amount;
+      } else {
+        const commissionRate = getCommissionRate(updatedDetail.method);
+        let grossAmount = remainingNet;
+
+        if (commissionRate > 0 && remainingNet > EPSILON) {
+          grossAmount = remainingNet / (1 - commissionRate / 100);
+        }
+
+        grossAmount = remainingNet <= EPSILON ? 0 : Math.round(grossAmount * 100) / 100;
+        updatedDetail.amount = grossAmount;
+
+        const commission = calculateCommission(updatedDetail.method, updatedDetail.amount || 0);
+        updatedDetail.commission_rate = commission.rate;
+        updatedDetail.commission_amount = commission.amount;
+      }
+
+      const netContribution = Math.max(0, (updatedDetail.amount || 0) - (updatedDetail.commission_amount || 0));
+      remainingNet = Math.max(0, remainingNet - netContribution);
+
+      if (remainingNet <= EPSILON) {
+        remainingNet = 0;
+      }
+
+      return updatedDetail;
+    });
+
+    return recalculated;
+  }, [calculateCommission, getCommissionRate, totalAmount, EPSILON]);
 
   // ✅ MANEJAR PAGOS MIXTOS
   const addMixedPaymentDetail = useCallback(() => {
@@ -585,18 +562,24 @@ export const useRegistrarMembresia = () => {
       sequence: formData.paymentDetails.length + 1
     };
 
+    const updatedDetails = [...formData.paymentDetails, newDetail];
+    const recalculated = recalculateMixedPaymentDetails(updatedDetails);
+
     dispatch({
       type: 'UPDATE_PAYMENT_DETAILS',
-      payload: [...formData.paymentDetails, newDetail]
+      payload: recalculated
     });
-  }, [formData.paymentDetails]);
+  }, [formData.paymentDetails, recalculateMixedPaymentDetails]);
 
   const removeMixedPaymentDetail = useCallback((id: string) => {
+    const filteredDetails = formData.paymentDetails.filter(detail => detail.id !== id);
+    const recalculated = recalculateMixedPaymentDetails(filteredDetails);
+
     dispatch({
       type: 'UPDATE_PAYMENT_DETAILS',
-      payload: formData.paymentDetails.filter(detail => detail.id !== id)
+      payload: recalculated
     });
-  }, [formData.paymentDetails]);
+  }, [formData.paymentDetails, recalculateMixedPaymentDetails]);
 
   const updateMixedPaymentDetail = useCallback((id: string, field: keyof PaymentDetail, value: any) => {
     const updatedDetails = formData.paymentDetails.map(detail => {
@@ -614,24 +597,16 @@ export const useRegistrarMembresia = () => {
       return detail;
     });
 
+    const recalculated = recalculateMixedPaymentDetails(updatedDetails);
+
     dispatch({
       type: 'UPDATE_PAYMENT_DETAILS',
-      payload: updatedDetails
+      payload: recalculated
     });
-  }, [formData.paymentDetails, calculateCommission]);
+  }, [formData.paymentDetails, calculateCommission, recalculateMixedPaymentDetails]);
 
-  // ✅ CÁLCULOS DE MEMBRESÍA - CORREGIDOS
+  // ✅ CÁLCULOS DE MEMBRESÍA
   const membershipCalculations = useMemo(() => {
-    console.log('🧮 RECALCULANDO MEMBRESÍA:', {
-      selectedPlan: selectedPlan?.name,
-      paymentType: formData.paymentType,
-      skipInscription: formData.skipInscription,
-      isRenewal: formData.isRenewal,
-      appliedCoupon: appliedCoupon?.code,
-      couponType: appliedCoupon?.discount_type,
-      couponValue: appliedCoupon?.discount_value
-    });
-
     if (!selectedPlan || !formData.paymentType) {
       return {
         subtotal: 0,
@@ -658,35 +633,28 @@ export const useRegistrarMembresia = () => {
     const planPrice = selectedPlan[paymentTypeData.key as keyof Plan] as number;
     const inscription = (formData.skipInscription || formData.isRenewal) ? 0 : (selectedPlan.inscription_price || 0);
     
-    // ✅ CORREGIDO: Calcular descuento correctamente
     let discount = 0;
     if (appliedCoupon) {
       if (appliedCoupon.discount_type === 'percentage') {
-        // Aplicar descuento SOLO al plan, no a la inscripción
         discount = (planPrice * appliedCoupon.discount_value) / 100;
       } else {
-        // Descuento fijo se aplica al total (plan + inscripción)
         discount = appliedCoupon.discount_value;
       }
     }
 
     const newSubtotal = planPrice;
     const newInscription = inscription;
-    const newDiscount = Math.min(discount, newSubtotal + newInscription); // No puede ser mayor al total
+    const newDiscount = Math.min(discount, newSubtotal + newInscription);
     const newTotal = newSubtotal + newInscription - newDiscount;
 
-    // Calcular comisión sobre el total después del descuento
-    let newCommission = 0;
-    if (formData.isMixedPayment) {
-      newCommission = formData.paymentDetails.reduce((sum, detail) => sum + detail.commission_amount, 0);
-    } else if (formData.paymentMethod) {
-      const commission = calculateCommission(formData.paymentMethod, newTotal);
-      newCommission = commission.amount;
-    }
+    const commissionFromDetails = formData.paymentDetails.reduce((sum, detail) => {
+      return sum + (detail.commission_amount || 0);
+    }, 0);
 
+    const newCommission = Math.round(commissionFromDetails * 100) / 100;
     const newFinalAmount = newTotal + newCommission;
 
-    const result = {
+    return {
       subtotal: newSubtotal,
       inscription: newInscription,
       discount: newDiscount,
@@ -694,10 +662,6 @@ export const useRegistrarMembresia = () => {
       total: newTotal,
       final: newFinalAmount
     };
-
-    console.log('✅ CÁLCULOS FINALES:', result);
-    
-    return result;
   }, [
     selectedPlan, 
     formData.paymentType, 
@@ -705,9 +669,7 @@ export const useRegistrarMembresia = () => {
     formData.isRenewal, 
     appliedCoupon, 
     formData.isMixedPayment, 
-    formData.paymentDetails, 
-    formData.paymentMethod,
-    calculateCommission
+    formData.paymentDetails
   ]);
 
   // ✅ ACTUALIZAR ESTADOS DE CÁLCULO
@@ -718,23 +680,14 @@ export const useRegistrarMembresia = () => {
     setCommissionAmount(membershipCalculations.commission);
     setTotalAmount(membershipCalculations.total);
     setFinalAmount(membershipCalculations.final);
-
-    // Actualizar cambio para efectivo
-    if (formData.paymentMethod === 'efectivo' && formData.paymentReceived > 0) {
-      const change = formData.paymentReceived - membershipCalculations.final;
-      dispatch({
-        type: 'UPDATE_PAYMENT',
-        payload: { paymentChange: Math.max(0, change) }
-      });
-    }
-  }, [membershipCalculations, formData.paymentMethod, formData.paymentReceived, dispatch]);
+  }, [membershipCalculations]);
 
   // ✅ CALCULAR FECHA DE VENCIMIENTO
-  const calculateEndDate = useCallback((): Date | null => {
-    if (!selectedPlan || !formData.paymentType) return null;
+  const calculateEndDate = useCallback((): string => {
+    if (!selectedPlan || !formData.paymentType) return '';
 
     const paymentTypeData = paymentTypes.find(pt => pt.value === formData.paymentType);
-    if (!paymentTypeData || paymentTypeData.value === 'visit') return null;
+    if (!paymentTypeData || paymentTypeData.value === 'visit') return '';
 
     let startDateString: string;
     
@@ -744,75 +697,18 @@ export const useRegistrarMembresia = () => {
       startDateString = getTodayInMexico();
     }
     
-    const endDateString = calculateMembershipEndDate(startDateString, formData.paymentType, selectedPlan);
-    
-    const [year, month, day] = endDateString.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1, day, 23, 59, 59));
+    return calculateMembershipEndDate(startDateString, formData.paymentType, selectedPlan);
   }, [selectedPlan, formData.paymentType, formData.isRenewal, formData.latestEndDate]);
-
-  // ✅ VALIDAR FECHAS DE MEMBRESÍA
-  const validateMembershipDates = useCallback((startDate: string, endDate: string | null, paymentType: string): boolean => {
-    try {
-      const start = new Date(`${startDate}T00:00:00`);
-      
-      if (!endDate) {
-        return false;
-      }
-      
-      const end = new Date(`${endDate}T00:00:00`);
-      
-      if (paymentType === 'visit') {
-        if (startDate !== endDate) {
-          return false;
-        }
-        return true;
-      }
-      
-      if (end <= start) {
-        return false;
-      }
-      
-      const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      
-      const minDurations: Record<string, number> = {
-        weekly: 6,
-        biweekly: 13,
-        monthly: 28,
-        bimonthly: 55,
-        quarterly: 85,
-        semester: 170,
-        annual: 350
-      };
-      
-      const minDays = minDurations[paymentType];
-      if (minDays && daysDiff < minDays) {
-        // Solo warning, no error
-      }
-      
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }, []);
 
   // ✅ VALIDAR PAGO
   const validatePayment = useCallback((): boolean => {
-    console.log('🔍 Validando pago:', {
-      isMixed: formData.isMixedPayment,
-      paymentMethod: formData.paymentMethod,
-      paymentDetails: formData.paymentDetails,
-      detailsLength: formData.paymentDetails.length,
-      finalAmount: finalAmount
-    });
-
-    // Permitir ventas de $0 (cupones que cubren todo)
     if (finalAmount <= 0) {
       return true; 
     }
 
     if (formData.isMixedPayment) {
       if (formData.paymentDetails.length === 0) {
-        toast.error('Debe agregar al menos un método de pago para pagos mixtos');
+        notify.error('Debe agregar al menos un método de pago para pagos mixtos');
         return false;
       }
       
@@ -821,41 +717,31 @@ export const useRegistrarMembresia = () => {
       );
       
       if (invalidDetails.length > 0) {
-        toast.error('Todos los métodos de pago deben tener método seleccionado y monto mayor a cero');
+        notify.error('Todos los métodos de pago deben tener método seleccionado y monto mayor a cero');
         return false;
       }
-      
-      const totalPaidWithCommissions = formData.paymentDetails.reduce((sum, detail) => 
-        sum + detail.amount + detail.commission_amount, 0
-      );
-      
-      if (Math.abs(totalPaidWithCommissions - finalAmount) > 0.01) {
-        toast.error(`El total de pagos mixtos (${formatPrice(totalPaidWithCommissions)}) debe coincidir con el total (${formatPrice(finalAmount)})`);
-        return false;
-      }
-    } else if (formData.paymentMethod === 'efectivo') {
-      if (formData.paymentReceived < finalAmount) {
-        toast.error(`El monto recibido debe ser mayor o igual a ${formatPrice(finalAmount)}`);
-        return false;
-      }
-    } else if (!formData.paymentMethod) {
-      toast.error('Debe seleccionar un método de pago');
+    }
+
+    const totalPaid = formData.paymentDetails.reduce((sum, detail) => 
+      sum + (detail.amount || 0),
+    0);
+
+    if (formData.paymentDetails.length > 0 && Math.abs(totalPaid - finalAmount) > 0.01) {
+      notify.error(`El total de pagos (${formatPrice(totalPaid)}) debe coincidir con el total (${formatPrice(finalAmount)})`);
       return false;
     }
 
     return true;
-  }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formData.paymentMethod, formData.paymentReceived, formatPrice]);
+  }, [formData.isMixedPayment, formData.paymentDetails, finalAmount, formatPrice]);
 
-  // ✅ PROCESAR VENTA - CON AUDITORÍA AUTOMÁTICA ENTERPRISE
+  // ✅ PROCESAR VENTA - REFACTORIZADO NUEVO ESQUEMA BD
   const handleSubmit = useCallback(async () => {
+    setLoading(true);
+    
     try {
-      setLoading(true);
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No hay sesión activa. Por favor, inicie sesión nuevamente.');
-      }
-      
+      const currentUser = await getCurrentUser();
+      if (!currentUser) throw new Error('Usuario no autenticado');
+
       if (!selectedUser || !selectedPlan || !formData.paymentType) {
         throw new Error('Debe completar todos los campos obligatorios');
       }
@@ -863,223 +749,191 @@ export const useRegistrarMembresia = () => {
       if (!validatePayment()) {
         return false;
       }
-      
-      console.log('🚀 handleSubmit - Datos validados:', {
-        isMixedPayment: formData.isMixedPayment,
-        paymentMethod: formData.paymentMethod,
-        paymentDetails: formData.paymentDetails,
-        finalAmount: finalAmount,
-        appliedCoupon: appliedCoupon?.code
-      });
-      
-      const today = getTodayInMexico();
-      // ✅ USAR FUNCIÓN CENTRALIZADA PARA TIMESTAMP UTC
-      const currentTimestamp = getCurrentTimestamp();
-      let startDate: string;
-      
-      if (formData.isRenewal && formData.latestEndDate) {
-        // Calcular fecha de inicio para renovación
-        const latestEnd = new Date(formData.latestEndDate);
-        latestEnd.setDate(latestEnd.getDate() + 1);
-        startDate = latestEnd.toISOString().split('T')[0];
-      } else {
-        startDate = getTodayInMexico();
-      }
-      
-      // ✅ CALCULAR FECHA DE FIN SEGÚN TIPO DE PAGO
-      let endDate: string;
-      if (formData.paymentType === 'visit') {
-        endDate = startDate;
-      } else {
-        const startDateObj = new Date(startDate);
-        const paymentTypeData = paymentTypes.find(pt => pt.value === formData.paymentType);
+
+      const startDate = (formData.isRenewal && formData.latestEndDate)
+        ? calculateRenewalStartDate(formData.latestEndDate)
+        : getTodayInMexico();
         
-        if (paymentTypeData) {
-          const durationKey = paymentTypeData.duration as string;
-          let daysToAdd = 0;
+      const endDate = calculateMembershipEndDate(startDate, formData.paymentType, selectedPlan);
+
+      // ✅ PASO 1: INSERTAR REGISTRO PRINCIPAL - ESQUEMA NUEVO
+      const baseMembershipData = {
+    userid: selectedUser.id,
+    plan_id: selectedPlan.id,
+    start_date: startDate,
+    end_date: endDate,
+    payment_type: formData.paymentType,
+    status: 'active',
+    is_renewal: formData.isRenewal,
+    notes: formData.notes || null,
+    total_amount: finalAmount,          // ✅ Incluye comisiones
+    paid_amount: finalAmount,           // ✅ Monto efectivamente cobrado
+    pending_amount: 0,                  // ✅ NUEVO CAMPO
+    inscription_amount: inscriptionAmount,
+    coupon_code: appliedCoupon?.code || null,
+    skip_inscription: formData.skipInscription,
+      };
+
+      // ✅ APLICAR AUDITORÍA v6.0
+      const membershipDataWithAudit = await addAuditFieldsFor('user_memberships', baseMembershipData, false);
+      
+      const { data: newMembership, error: membershipError } = await supabase
+        .from('user_memberships')
+        .insert(membershipDataWithAudit)
+        .select('id')
+        .single();
+
+      if (membershipError) throw membershipError;
+      if (!newMembership || !newMembership.id) throw new Error('No se pudo crear el registro de membresía.');
+
+      // ✅ PASO 2: INSERTAR DETALLES DE PAGO - LÓGICA AVANZADA (como PaymentDialog.tsx)
+      const paymentDetailsToInsert = await Promise.all(
+        formData.paymentDetails.map(async (detail, index) => {
+          const commissionRate = getCommissionRate(detail.method);
+          const commissionAmount = (detail.amount || 0) * commissionRate / 100;
           
-          if (typeof durationKey === 'string' && selectedPlan[durationKey as keyof Plan]) {
-            daysToAdd = selectedPlan[durationKey as keyof Plan] as number;
-          } else if (typeof paymentTypeData.duration === 'number') {
-            daysToAdd = paymentTypeData.duration;
-          }
+          const baseData = {
+            membership_id: newMembership.id,
+            payment_method: detail.method,
+            amount: Math.round((detail.amount || 0) * 100) / 100,
+            payment_reference: detail.reference || null,
+            commission_rate: commissionRate,
+            commission_amount: Math.round(commissionAmount * 100) / 100,
+            sequence_order: index + 1
+          };
+
+          // Aplicar auditoría created_by para membership_payment_details
+          return await addAuditFieldsFor('membership_payment_details', baseData, false);
+        })
+      );
+
+      const { error: paymentDetailsError } = await supabase
+        .from('membership_payment_details')
+        .insert(paymentDetailsToInsert);
+
+      if (paymentDetailsError) {
+        await supabase.from('user_memberships').delete().eq('id', newMembership.id);
+        throw paymentDetailsError;
+      }
+
+      // ✅ ACTUALIZAR CUPÓN
+      if (appliedCoupon) {
+        const couponUpdateData = await addAuditFieldsFor('coupons', { 
+          current_uses: appliedCoupon.current_uses + 1
+        }, true);
+        
+        const { error: couponError } = await supabase
+          .from('coupons')
+          .update(couponUpdateData)
+          .eq('id', appliedCoupon.id);
           
-          startDateObj.setDate(startDateObj.getDate() + daysToAdd);
-          endDate = startDateObj.toISOString().split('T')[0];
-        } else {
-          endDate = startDate;
+        if (couponError) {
+          console.error('Error actualizando cupón:', couponError);
         }
       }
-      
-      if (!validateMembershipDates(startDate, endDate, formData.paymentType)) {
-        throw new Error('Error en el cálculo de fechas de la membresía');
-      }
-      
-      // ✅ CREAR DATOS BASE DE MEMBRESÍA
-      const baseMembershipData = {
-        userid: selectedUser.id,
-        plan_id: selectedPlan.id,
-        
-        start_date: startDate,
-        end_date: endDate,
-        
-        payment_type: formData.paymentType,
-        status: 'active',
-        
-        total_visits: formData.paymentType === 'visit' ? 1 : null,
-        remaining_visits: formData.paymentType === 'visit' ? 1 : null,
-        
-        amount_paid: finalAmount,
-        subtotal: subtotal,
-        inscription_amount: inscriptionAmount,
-        discount_amount: discountAmount,
-        commission_amount: commissionAmount,
-        
-        payment_method: formData.isMixedPayment ? 'mixto' : formData.paymentMethod,
-        payment_reference: formData.paymentReference || null,
-        is_mixed_payment: formData.isMixedPayment,
-        payment_details: formData.isMixedPayment ? formData.paymentDetails : null,
-        
-        payment_received: formData.paymentMethod === 'efectivo' ? formData.paymentReceived : finalAmount,
-        payment_change: formData.paymentMethod === 'efectivo' ? formData.paymentChange : 0,
-        
-        coupon_code: appliedCoupon?.code || null,
-    
-        
-        is_renewal: formData.isRenewal,
-        skip_inscription: formData.skipInscription,
-        
-        custom_commission_rate: formData.customCommissionRate,
-        
-        notes: formData.notes || null
-      };
-      
-      // ✅ APLICAR AUDITORÍA AUTOMÁTICA ENTERPRISE
-      const membershipDataWithAudit = await addAuditFields(baseMembershipData, false);
-      
-      // ✅ PROCESAR RENOVACIÓN CON AUDITORÍA
+
+      // ✅ PROCESAR RENOVACIÓN
       if (formData.isRenewal) {
-        const renewalUpdateData = { 
+        const today = getTodayInMexico();
+        const renewalUpdateData = await addAuditFieldsFor('user_memberships', { 
           status: 'expired',
           notes: `Expirada por renovación el ${today}`
-        };
-        
-        const renewalDataWithAudit = await addAuditFields(renewalUpdateData, true);
+        }, true);
         
         const { error: updateError } = await supabase
           .from('user_memberships')
-          .update(renewalDataWithAudit)
+          .update(renewalUpdateData)
           .eq('userid', selectedUser.id)
-          .eq('status', 'active');
+          .eq('status', 'active')
+          .neq('id', newMembership.id); // ✅ Excluir la nueva
           
         if (updateError) {
           console.warn('Warning al actualizar membresías previas:', updateError);
         }
       }
-      
-      // ✅ INSERTAR NUEVA MEMBRESÍA CON AUDITORÍA
-      const { data: membership, error: membershipError } = await supabase
-        .from('user_memberships')
-        .insert([membershipDataWithAudit])
-        .select()
-        .single();
-        
-      if (membershipError) {
-        throw membershipError;
-      }
-      
-      // ✅ ACTUALIZAR CUPÓN CON AUDITORÍA
-      if (appliedCoupon) {
-        const couponUpdateData = { 
-          current_uses: appliedCoupon.current_uses + 1
-        };
-        
-        const couponDataWithAudit = await addAuditFields(couponUpdateData, true);
-        
-        const { error: couponError } = await supabase
-          .from('coupons')
-          .update(couponDataWithAudit)
-          .eq('id', appliedCoupon.id);
-          
-        if (couponError) {
-          console.error('Error actualizando cupón:', couponError);
-          // No fallar la transacción por esto
-        }
-      }
-      
-      // ✅ MENSAJE DE ÉXITO MEJORADO
+
+      // ✅ MENSAJE DE ÉXITO
       let successMsg;
       if (formData.paymentType === 'visit') {
-        successMsg = `🎉 ¡Visita registrada! ${selectedUser.firstName} tiene acceso HOY (${formatDate(endDate)})`;
+        successMsg = `🎉 ¡Visita registrada! ${selectedUser.firstName} tiene acceso HOY`;
       } else {
-        const endDateFormatted = new Date(endDate).toLocaleDateString('es-MX', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
+        const endDateFormatted = formatDateLong(endDate);
         successMsg = formData.isRenewal 
           ? `🎉 ¡Renovación exitosa! La membresía de ${selectedUser.firstName} ha sido extendida hasta el ${endDateFormatted}`
           : `🎉 ¡Membresía registrada! ${selectedUser.firstName} tiene acceso hasta el ${endDateFormatted}`;
       }
 
-      // ✅ AGREGAR INFORMACIÓN DEL DESCUENTO AL MENSAJE
       if (appliedCoupon && discountAmount > 0) {
         successMsg += `\n💰 Descuento aplicado: ${formatPrice(discountAmount)}`;
       }
         
-      toast.success(successMsg);
-      
+      notify.success(successMsg);
+
+      // ✅ ENVIAR WHATSAPP AL CLIENTE CON DETALLES DE LA MEMBRESÍA
+      try {
+        console.log('📱 Enviando WhatsApp al cliente...');
+        const whatsappResponse = await fetch('/api/send-membership-whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            membershipId: newMembership.id,
+            isRenewal: formData.isRenewal
+          })
+        });
+
+        const whatsappData = await whatsappResponse.json();
+        
+        if (whatsappData.success) {
+          console.log('✅ WhatsApp enviado exitosamente:', whatsappData.messageSid);
+          notify.success(`📱 WhatsApp de confirmación enviado a ${selectedUser.firstName}`);
+        } else {
+          console.warn('⚠️ No se pudo enviar WhatsApp:', whatsappData.message);
+          // No mostramos error al usuario para no interrumpir el flujo
+        }
+      } catch (whatsappError) {
+        console.error('❌ Error al enviar WhatsApp (no crítico):', whatsappError);
+        // No afecta el registro de la membresía
+      }
+
+      setLoading(false);
       return true;
-      
+
     } catch (err: any) {
-      toast.error(`Error al procesar la venta: ${err.message || 'Error desconocido'}`);
+      notify.error(`Error al procesar la venta: ${err.message || 'Error desconocido'}`);
+      setLoading(false);
       return false;
     } finally {
-      setLoading(false);
       setConfirmDialogOpen(false);
     }
   }, [
     supabase,
-    addAuditFields, // ✅ USAR AUDITORÍA ENTERPRISE
+    addAuditFieldsFor,
+    getCurrentUser,
     selectedUser,
     selectedPlan,
     formData,
     validatePayment,
-    validateMembershipDates,
     finalAmount,
-    subtotal,
+    totalAmount,
     inscriptionAmount,
     discountAmount,
-    commissionAmount,
     appliedCoupon,
-    formatDate,
-    formatPrice
+    formatPrice,
+    getCommissionRate
   ]);
 
   // ✅ VALIDAR SI PUEDE PROCEDER AL SIGUIENTE PASO
   const canProceedToNextStep = useCallback(() => {
-    console.log('🔍 Validando paso:', {
-      step: activeStep,
-      selectedUser: !!selectedUser,
-      selectedPlan: !!selectedPlan,
-      paymentType: formData.paymentType,
-      isMixedPayment: formData.isMixedPayment,
-      paymentMethod: formData.paymentMethod,
-      paymentDetailsLength: formData.paymentDetails.length,
-      paymentDetailsValid: formData.paymentDetails.every(detail => detail.amount > 0 && detail.method)
-    });
-
     switch (activeStep) {
       case 0: return selectedUser !== null;
       case 1: return selectedPlan !== null && formData.paymentType !== '';
-      case 2: return true; // Paso de cupones siempre puede continuar
+      case 2: return true;
       case 3: 
         if (formData.isMixedPayment) {
           return formData.paymentDetails.length > 0 && 
                  formData.paymentDetails.every(detail => detail.amount > 0 && detail.method);
         } else {
-          return formData.paymentMethod !== '';
+          return formData.paymentDetails.length > 0;
         }
       default: return false;
     }
@@ -1093,7 +947,7 @@ export const useRegistrarMembresia = () => {
     setAppliedCoupon(null);
     setUserHistory([]);
     setActiveStep(0);
-    toast.success('Formulario reiniciado');
+    notify.success('Formulario reiniciado');
   }, [dispatch]);
 
   // ✅ CARGAR DATOS INICIAL
@@ -1118,10 +972,10 @@ export const useRegistrarMembresia = () => {
         if (commissionsError) throw commissionsError;
         setPaymentCommissions(commissionsData || []);
 
-        toast.success('Datos cargados correctamente');
+        notify.success('Datos cargados correctamente');
 
       } catch (err: any) {
-        toast.error(`Error cargando datos: ${err.message}`);
+        notify.error(`Error cargando datos: ${err.message}`);
       } finally {
         setLoadingPlans(false);
       }
@@ -1156,6 +1010,10 @@ export const useRegistrarMembresia = () => {
     confirmDialogOpen,
     setConfirmDialogOpen,
     
+    // ✅ NUEVOS ESTADOS PARA LÓGICA DE PAGOS AVANZADA
+    commissionsLoading,
+    commissionsError,
+    
     // Cálculos
     subtotal,
     inscriptionAmount,
@@ -1170,6 +1028,7 @@ export const useRegistrarMembresia = () => {
     debouncedLoadUsers,
     loadUserHistory,
     validateCoupon,
+    getCommissionRate,
     calculateCommission,
     addMixedPaymentDetail,
     removeMixedPaymentDetail,

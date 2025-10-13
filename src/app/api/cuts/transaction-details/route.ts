@@ -1,32 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getMexicoDateRange } from '@/utils/dateUtils';
 
-// ✅ FUNCIÓN LOCAL PARA RANGO DE FECHAS MÉXICO
-function getMexicoDateRangeLocal(dateString: string) {
-  console.log('📅 Calculando rango para fecha México:', dateString);
-  
-  // Crear fecha base en México
-  const mexicoDate = new Date(dateString + 'T00:00:00.000-06:00'); // UTC-6 México
-  
-  // Inicio del día en México (00:00:00)
-  const startOfDayMexico = new Date(mexicoDate);
-  startOfDayMexico.setHours(0, 0, 0, 0);
-  
-  // Final del día en México (23:59:59.999)
-  const endOfDayMexico = new Date(mexicoDate);
-  endOfDayMexico.setHours(23, 59, 59, 999);
-  
-  // Convertir a UTC para las consultas
-  const startISO = startOfDayMexico.toISOString();
-  const endISO = endOfDayMexico.toISOString();
-  
-  console.log('⏰ Rango calculado para detalles:', {
-    fecha_input: dateString,
-    inicio_utc: startISO,
-    fin_utc: endISO
-  });
-  
-  return { startISO, endISO };
+type SupabaseJoinResult<T> = T | T[] | null | undefined;
+
+function extractSingleRecord<T>(value: SupabaseJoinResult<T>): T | null {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    return value.length > 0 ? (value[0] as T) : null;
+  }
+  return value;
+}
+
+function buildCustomerName(customer: any, fallback: string) {
+  if (!customer) return fallback;
+
+  const first = typeof customer.firstName === 'string' ? customer.firstName.trim() : '';
+  const last = typeof customer.lastName === 'string' ? customer.lastName.trim() : '';
+  const displayName = [first, last].filter(Boolean).join(' ');
+
+  if (displayName) return displayName;
+
+  if (typeof customer.name === 'string' && customer.name.trim()) {
+    return customer.name.trim();
+  }
+
+  if (typeof customer.whatsapp === 'string' && customer.whatsapp.trim()) {
+    return customer.whatsapp.trim();
+  }
+
+  return fallback;
 }
 
 export async function GET(request: NextRequest) {
@@ -34,8 +37,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
 
-    console.log('🚀 API transaction-details iniciada');
-    console.log('📅 Fecha recibida:', date);
+
+
 
     if (!date) {
       return NextResponse.json(
@@ -55,12 +58,12 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createServerSupabaseClient();
-    const { startISO, endISO } = getMexicoDateRangeLocal(date);
+    const { startISO, endISO } = getMexicoDateRange(date);
 
-    console.log('🔍 Consultando transacciones detalladas...');
 
-    // 🛒 1. TRANSACCIONES POS (VENTAS COMPLETAS)
-    console.log('🛒 Consultando ventas POS...');
+
+    // 🛒 1. TRANSACCIONES POS (VENTAS COMPLETAS) - CON JOINS
+
     const { data: posTransactions, error: posError } = await supabase
       .from('sales')
       .select(`
@@ -70,7 +73,26 @@ export async function GET(request: NextRequest) {
         status,
         created_at,
         notes,
-        customer_id
+        customer:Users!sales_customer_id_fkey (
+          id,
+          firstName,
+          lastName,
+          whatsapp
+        ),
+        sale_items (
+          id,
+          product_name,
+          quantity,
+          unit_price,
+          total_price
+        ),
+        sale_payment_details (
+          id,
+          payment_method,
+          amount,
+          commission_amount,
+          payment_reference
+        )
       `)
       .eq('sale_type', 'sale')
       .eq('status', 'completed')
@@ -81,10 +103,10 @@ export async function GET(request: NextRequest) {
       console.error('❌ Error consultando ventas POS:', posError);
     }
 
-    console.log('✅ Ventas POS encontradas:', posTransactions?.length || 0);
+
 
     // 💰 2. TRANSACCIONES ABONOS (PAGOS PARCIALES)
-    console.log('💰 Consultando abonos...');
+
     const { data: abonosTransactions, error: abonosError } = await supabase
       .from('sale_payment_details')
       .select(`
@@ -94,7 +116,20 @@ export async function GET(request: NextRequest) {
         amount,
         commission_amount,
         payment_date,
-        notes
+        notes,
+        is_partial_payment,
+        sales:sale_id (
+          id,
+          sale_number,
+          status,
+          created_at,
+          customer:Users!sales_customer_id_fkey (
+            id,
+            firstName,
+            lastName,
+            whatsapp
+          )
+        )
       `)
       .eq('is_partial_payment', true)
       .gte('payment_date', startISO)
@@ -104,145 +139,113 @@ export async function GET(request: NextRequest) {
       console.error('❌ Error consultando abonos:', abonosError);
     }
 
-    console.log('✅ Abonos encontrados:', abonosTransactions?.length || 0);
 
-    // 🎫 3. TRANSACCIONES MEMBRESÍAS
-    console.log('🎫 Consultando membresías...');
-    const { data: membershipTransactions, error: membershipError } = await supabase
-      .from('user_memberships')
-      .select(`
-        id,
-        amount_paid,
-        inscription_amount,
-        payment_type,
-        payment_method,
-        start_date,
-        end_date,
-        status,
-        created_at,
-        notes,
-        commission_amount,
-        userid,
-        planid
-      `)
+
+    // 🎫 3. TRANSACCIONES MEMBRESÍAS - CON JOINS (igual que el historial)
+    // Primero obtenemos los IDs de membresías que tuvieron pagos hoy
+
+
+
+    
+    // ⚠️ CRÍTICO: membership_payment_details.created_at es timestamp WITHOUT timezone
+    // La BD guarda timestamps en UTC pero la columna no tiene zona horaria
+    // Cuando guardamos "2025-10-07 20:10:39" (8:10 PM México), se guarda como "2025-10-08 02:10:39" (UTC)
+    // Para buscar el día 7 de octubre en México, buscamos desde "2025-10-08 00:00:00" hasta "2025-10-08 23:59:59"
+    // (porque en UTC, el día 7 de México va desde las 06:00 del día 7 hasta las 05:59 del día 8)
+    
+    // Obtener TODOS los pagos sin filtro de fecha primero para debug
+    const { data: allPayments } = await supabase
+      .from('membership_payment_details')
+      .select('membership_id, created_at, amount')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+
+    
+    const { data: membershipPaymentsOfDay, error: paymentsError } = await supabase
+      .from('membership_payment_details')
+      .select('membership_id, created_at')
       .gte('created_at', startISO)
       .lte('created_at', endISO);
 
-    if (membershipError) {
-      console.error('❌ Error consultando membresías:', membershipError);
+    if (paymentsError) {
+      console.error('❌ Error consultando pagos de membresías:', paymentsError);
     }
 
-    console.log('✅ Membresías encontradas:', membershipTransactions?.length || 0);
 
-    // 📊 4. OBTENER DATOS ADICIONALES POR SEPARADO
     
-    // Obtener datos de clientes para POS y Membresías
-    const customerIds = [...new Set([
-      ...(posTransactions || []).map(s => s.customer_id).filter(Boolean),
-      ...(membershipTransactions || []).map(m => m.userid).filter(Boolean)
-    ])];
+    const uniqueMembershipIdsFromPayments = [...new Set((membershipPaymentsOfDay || []).map(p => p.membership_id))];
 
-    let customers = [];
-    if (customerIds.length > 0) {
-      console.log('👥 Consultando datos de clientes...');
-      const { data: customersData, error: customersError } = await supabase
-        .from('Users')
-        .select('id, firstName, lastName, whatsapp')
-        .in('id', customerIds);
-      
-      if (!customersError) {
-        customers = customersData || [];
+
+    // Ahora obtener la info completa CON JOINS (como en historial)
+    let membershipTransactions: any[] = [];
+    if (uniqueMembershipIdsFromPayments.length > 0) {
+      const { data: membershipsData, error: membershipError } = await supabase
+        .from('user_memberships')
+        .select(`
+          id,
+          userid,
+          plan_id,
+          payment_type,
+          start_date,
+          end_date,
+          status,
+          created_at,
+          notes,
+          Users!userid (
+            id,
+            firstName,
+            lastName,
+            whatsapp
+          ),
+          membership_plans!plan_id (
+            id,
+            name,
+            description
+          ),
+          membership_payment_details!membership_id (
+            id,
+            payment_method,
+            amount,
+            commission_amount,
+            sequence_order,
+            created_at
+          )
+        `)
+        .in('id', uniqueMembershipIdsFromPayments);
+
+      if (membershipError) {
+        console.error('❌ Error consultando membresías:', membershipError);
       }
+
+      membershipTransactions = membershipsData || [];
+
     }
 
-    // Obtener productos para POS
-    const saleIds = (posTransactions || []).map(s => s.id);
-    let saleItems = [];
-    if (saleIds.length > 0) {
-      console.log('🛍️ Consultando productos vendidos...');
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('sale_items')
-        .select('sale_id, product_name, quantity, unit_price, total_price')
-        .in('sale_id', saleIds);
-      
-      if (!itemsError) {
-        saleItems = itemsData || [];
-      }
-    }
+    // 📊 4. PROCESAR Y FORMATEAR DATOS (Los datos ya vienen relacionados de Supabase)
 
-    // Obtener métodos de pago para POS
-    let posPayments = [];
-    if (saleIds.length > 0) {
-      console.log('💳 Consultando métodos de pago POS...');
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('sale_payment_details')
-        .select('sale_id, payment_method, amount, commission_amount')
-        .in('sale_id', saleIds)
-        .neq('is_partial_payment', true);
-      
-      if (!paymentsError) {
-        posPayments = paymentsData || [];
-      }
-    }
 
-    // Obtener planes de membresía
-    const planIds = [...new Set((membershipTransactions || []).map(m => m.planid).filter(Boolean))];
-    let membershipPlans = [];
-    if (planIds.length > 0) {
-      console.log('🎫 Consultando planes de membresía...');
-      const { data: plansData, error: plansError } = await supabase
-        .from('membership_plans')
-        .select('id, name, description')
-        .in('id', planIds);
-      
-      if (!plansError) {
-        membershipPlans = plansData || [];
-      }
-    }
-
-    // ✅ OBTENER MÉTODOS DE PAGO DETALLADOS PARA MEMBRESÍAS
-    const membershipIds = (membershipTransactions || []).map(m => m.id);
-    let membershipPayments = [];
-    if (membershipIds.length > 0) {
-      console.log('💳 Consultando métodos de pago de membresías...');
-      const { data: membershipPaymentsData, error: membershipPaymentsError } = await supabase
-        .from('membership_payment_details')
-        .select('membership_id, payment_method, amount, commission_amount, sequence_order')
-        .in('membership_id', membershipIds);
-      
-      if (!membershipPaymentsError) {
-        membershipPayments = membershipPaymentsData || [];
-      }
-    }
-
-    // 📊 5. PROCESAR Y FORMATEAR DATOS
-    console.log('📊 Procesando datos para frontend...');
-
-    // Helper para encontrar datos
-    const findCustomer = (id: string) => customers.find(c => c.id === id);
-    const findPlan = (id: string) => membershipPlans.find(p => p.id === id);
-    const getItemsForSale = (saleId: string) => saleItems.filter(item => item.sale_id === saleId);
-    const getPaymentsForSale = (saleId: string) => posPayments.filter(payment => payment.sale_id === saleId);
-    const getPaymentsForMembership = (membershipId: string) => 
-      membershipPayments.filter(payment => payment.membership_id === membershipId);
-
-    // 🛒 PROCESAR VENTAS POS
-    const processedPOS = [];
+    // 🛒 PROCESAR VENTAS POS (datos ya relacionados)
+    const processedPOS: any[] = [];
     (posTransactions || []).forEach(sale => {
-      const customer = findCustomer(sale.customer_id);
-      const items = getItemsForSale(sale.id);
-      const payments = getPaymentsForSale(sale.id);
+      const customer = extractSingleRecord(sale.customer);
+      const items = Array.isArray(sale.sale_items) ? sale.sale_items : [];
+      const payments = Array.isArray(sale.sale_payment_details) ? sale.sale_payment_details : [];
 
       // Para cada método de pago de la venta
-      payments.forEach((payment, index) => {
-        const productNames = items.map(item => 
+      payments.forEach((payment: any, index: number) => {
+        const productNames = items.map((item: any) => 
           `${item.product_name} (${item.quantity}x)`
         ).join(', ') || 'Venta POS';
 
-        // ✅ CALCULAR MONTO TOTAL CON COMISIÓN INCLUIDA
-        const baseAmount = parseFloat(payment.amount || 0);
+        // IMPORTANTE: El 'amount' ya incluye la comisión
+        const amount = parseFloat(payment.amount || 0);
         const commissionAmount = parseFloat(payment.commission_amount || 0);
-        const totalAmountWithCommission = baseAmount + commissionAmount;
+
+        // ✅ Agregar 'Z' al timestamp para indicar que es UTC
+        const createdAtUTC = sale.created_at.endsWith('Z') 
+          ? sale.created_at 
+          : sale.created_at + 'Z';
 
         processedPOS.push({
           id: `pos_${sale.id}_${index}`,
@@ -250,17 +253,15 @@ export async function GET(request: NextRequest) {
           sale_id: sale.id,
           sale_number: sale.sale_number,
           product_name: productNames,
-          quantity: items.reduce((sum, item) => sum + item.quantity, 0) || 1,
-          unit_price: totalAmountWithCommission,
-          customer_name: customer 
-            ? `${customer.firstName} ${customer.lastName || ''}`.trim()
-            : 'Cliente General',
-          customer_phone: customer?.whatsapp,
+          quantity: items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 1,
+          unit_price: amount,
+          customer_name: buildCustomerName(customer, 'Cliente General'),
+          customer_phone: customer?.whatsapp ?? null,
           payment_method: payment.payment_method,
-          amount: totalAmountWithCommission, // ✅ MONTO CON COMISIÓN INCLUIDA
-          base_amount: baseAmount, // ✅ MONTO BASE SIN COMISIÓN
-          commission_amount: commissionAmount, // ✅ COMISIÓN PARA MOSTRAR COMO INFO
-          created_at: sale.created_at,
+          amount: amount,
+          base_amount: amount - commissionAmount,
+          commission_amount: commissionAmount,
+          created_at: createdAtUTC, // ✅ FECHA UTC con indicador Z
           reference: sale.sale_number,
           notes: sale.notes,
           status: sale.status
@@ -269,100 +270,97 @@ export async function GET(request: NextRequest) {
     });
 
     // 💰 PROCESAR ABONOS
-    const processedAbonos = [];
-    (abonosTransactions || []).forEach(abono => {
-      // ✅ CALCULAR MONTO TOTAL CON COMISIÓN INCLUIDA
-      const baseAmount = parseFloat(abono.amount || 0);
+  const processedAbonos: any[] = [];
+  (abonosTransactions || []).forEach(abono => {
+      // IMPORTANTE: El 'amount' ya incluye la comisión
+      const amount = parseFloat(abono.amount || 0);
       const commissionAmount = parseFloat(abono.commission_amount || 0);
-      const totalAmountWithCommission = baseAmount + commissionAmount;
+
+      const paymentDateRaw = typeof abono.payment_date === 'string'
+        ? abono.payment_date
+        : abono.payment_date instanceof Date
+          ? abono.payment_date.toISOString()
+          : new Date().toISOString();
+
+      // ✅ Agregar 'Z' al timestamp para indicar que es UTC
+      const createdAtUTC = paymentDateRaw.endsWith('Z')
+        ? paymentDateRaw
+        : `${paymentDateRaw}Z`;
+
+      const saleData = extractSingleRecord(abono.sales);
+      const customerData = extractSingleRecord(saleData?.customer);
+
+      const customerPhone = customerData?.whatsapp ?? null;
+      const customerName = buildCustomerName(customerData, 'Cliente');
+
+      const saleReference = saleData?.sale_number || abono.sale_id;
 
       processedAbonos.push({
         id: `abono_${abono.id}`,
         type: 'abono',
         sale_id: abono.sale_id,
-        product_name: 'Abono a apartado',
-        customer_name: 'Cliente',
-        customer_phone: null,
+        product_name: saleData?.sale_number
+          ? `Abono a venta ${saleData.sale_number}`
+          : 'Abono a apartado',
+        customer_name: customerName,
+        customer_phone: customerPhone,
         payment_method: abono.payment_method,
-        amount: totalAmountWithCommission, // ✅ MONTO CON COMISIÓN INCLUIDA
-        base_amount: baseAmount, // ✅ MONTO BASE SIN COMISIÓN
-        commission_amount: commissionAmount, // ✅ COMISIÓN PARA MOSTRAR COMO INFO
-        created_at: abono.payment_date,
-        reference: abono.sale_id,
+        amount: amount, // El monto ya incluye comisión
+        base_amount: amount - commissionAmount, // Monto sin comisión
+        commission_amount: commissionAmount, // Comisión informativa
+        created_at: createdAtUTC, // ✅ FECHA UTC con indicador Z
+        reference: saleReference,
         notes: abono.notes,
-        status: 'completed',
-        is_partial_payment: true
+        status: saleData?.status || 'completed',
+        is_partial_payment: abono.is_partial_payment ?? true
       });
     });
 
-       // 🎫 PROCESAR MEMBRESÍAS CON PAGOS SEPARADOS - CORREGIDO
-    const processedMemberships = [];
+    // 🎫 PROCESAR MEMBRESÍAS (datos ya relacionados)
+    const processedMemberships: any[] = [];
+    
     (membershipTransactions || []).forEach(membership => {
-      const customer = findCustomer(membership.userid);
-      const plan = findPlan(membership.planid);
-      const payments = getPaymentsForMembership(membership.id);
+      const customer = extractSingleRecord(membership.Users);
+      const plan = extractSingleRecord(membership.membership_plans);
+      const payments = Array.isArray(membership.membership_payment_details)
+        ? membership.membership_payment_details
+        : [];
 
-      // ✅ SI HAY PAGOS DETALLADOS, MOSTRAR CADA UNO POR SEPARADO
-      if (payments && payments.length > 0) {
-        // Ordenar por secuencia
-        payments.sort((a, b) => (a.sequence_order || 1) - (b.sequence_order || 1));
-        
-        payments.forEach((payment, index) => {
-          const baseAmount = parseFloat(payment.amount || 0);
-          const commissionAmount = parseFloat(payment.commission_amount || 0);
-          // ✅ APLICAR LA MISMA LÓGICA QUE POS: MONTO + COMISIÓN
-          const totalAmountWithCommission = baseAmount + commissionAmount;
-          
-          processedMemberships.push({
-            id: `membership_${membership.id}_${index}`,
-            type: 'membership',
-            membership_id: membership.id,
-            membership_type: plan?.name || 'Membresía',
-            membership_duration: membership.payment_type || 'N/A',
-            customer_name: customer 
-              ? `${customer.firstName} ${customer.lastName || ''}`.trim()
-              : 'Cliente',
-            customer_phone: customer?.whatsapp,
-            payment_method: payment.payment_method,
-            amount: totalAmountWithCommission, // ✅ MONTO CON COMISIÓN INCLUIDA
-            base_amount: baseAmount, // ✅ MONTO BASE SIN COMISIÓN
-            commission_amount: commissionAmount, // ✅ COMISIÓN PARA MOSTRAR COMO INFO
-            created_at: membership.created_at,
-            reference: membership.id,
-            notes: membership.notes,
-            status: membership.status,
-            payment_sequence: payment.sequence_order || 1,
-            is_payment_detail: true // ✅ MARCADOR PARA SABER QUE ES DETALLE DE PAGO
-          });
-        });
-      } else {
-        // ✅ SI NO HAY PAGOS DETALLADOS, MOSTRAR COMO ANTES (PAGO ÚNICO)
-        // PERO TAMBIÉN APLICAR LA LÓGICA DE COMISIÓN INCLUIDA
-        const baseAmount = parseFloat(membership.amount_paid || 0);
-        const commissionAmount = parseFloat(membership.commission_amount || 0);
-        const totalAmountWithCommission = baseAmount + commissionAmount;
-        
+      // Filtrar solo los pagos del día actual
+      const paymentsOfDay = payments.filter((payment: any) => {
+        const paymentDate = payment.created_at;
+        return paymentDate >= startISO && paymentDate <= endISO;
+      });
+
+      // Para cada método de pago de la membresía (solo del día)
+      paymentsOfDay.forEach((payment: any, index: number) => {
+        const amount = parseFloat(payment.amount || 0);
+        const commissionAmount = parseFloat(payment.commission_amount || 0);
+
+        // ✅ Agregar 'Z' al timestamp para indicar que es UTC
+        const createdAtUTC = payment.created_at.endsWith('Z') 
+          ? payment.created_at 
+          : payment.created_at + 'Z';
+
         processedMemberships.push({
-          id: `membership_${membership.id}`,
+          id: `membership_${membership.id}_${index}`,
           type: 'membership',
           membership_id: membership.id,
           membership_type: plan?.name || 'Membresía',
           membership_duration: membership.payment_type || 'N/A',
-          customer_name: customer 
-            ? `${customer.firstName} ${customer.lastName || ''}`.trim()
-            : 'Cliente',
-          customer_phone: customer?.whatsapp,
-          payment_method: membership.payment_method || 'mixto',
-          amount: totalAmountWithCommission, // ✅ MONTO CON COMISIÓN INCLUIDA
-          base_amount: baseAmount, // ✅ MONTO BASE SIN COMISIÓN
-          commission_amount: commissionAmount, // ✅ COMISIÓN PARA MOSTRAR COMO INFO
-          created_at: membership.created_at,
+          customer_name: buildCustomerName(customer, 'Cliente'),
+          customer_phone: customer?.whatsapp ?? null,
+          payment_method: payment.payment_method,
+          amount: amount,
+          base_amount: amount - commissionAmount,
+          commission_amount: commissionAmount,
+          created_at: createdAtUTC, // ✅ FECHA UTC con indicador Z
           reference: membership.id,
           notes: membership.notes,
           status: membership.status,
-          is_payment_detail: false // ✅ PAGO ÚNICO/TOTAL
+          payment_sequence: payment.sequence_order || 1
         });
-      }
+      });
     });
 
     // ✅ RESPUESTA FINAL
@@ -392,17 +390,16 @@ export async function GET(request: NextRequest) {
         grand_total: [...processedPOS, ...processedAbonos, ...processedMemberships].reduce((sum, t) => sum + t.amount, 0)
       },
       debug: {
-        customers_found: customers.length,
-        sale_items_found: saleItems.length,
-        pos_payments_found: posPayments.length,
-        membership_plans_found: membershipPlans.length,
-        membership_payments_found: membershipPayments.length
+        pos_raw_count: posTransactions?.length || 0,
+        membership_raw_count: membershipTransactions?.length || 0,
+        abonos_raw_count: abonosTransactions?.length || 0,
+        membership_payments_of_day: membershipPaymentsOfDay?.length || 0
       }
     };
 
-    console.log('🎉 API transaction-details completada exitosamente');
-    console.log('📊 Totales:', response.totals);
-    console.log('🔍 Debug:', response.debug);
+
+
+
     
     return NextResponse.json(response);
 

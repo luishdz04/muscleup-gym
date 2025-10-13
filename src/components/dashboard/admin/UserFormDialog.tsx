@@ -69,6 +69,7 @@ import {
 // ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
+import { useFingerprintManagement } from '@/hooks/useFingerprintManagement';
 import { 
   formatTimestampForDisplay,
   getCurrentTimestamp,
@@ -80,6 +81,8 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { validateFileSimple } from '@/utils/fileValidation';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { User, Address, EmergencyContact, MembershipInfo } from '@/types/user';
+import PhotoCapture from '@/components/registro/PhotoCapture';
+import FingerprintRegistration from './FingerprintRegistration';
 
 interface UserFormDialogProps {
   open: boolean;
@@ -87,6 +90,84 @@ interface UserFormDialogProps {
   user: User | null;
   onSave: (userData: any) => Promise<void>;
 }
+
+const normalizeRol = (rol?: string | null): 'cliente' | 'empleado' | 'admin' => {
+  if (!rol) return 'cliente';
+  const value = rol.toString().trim().toLowerCase();
+  if (value === 'cliente' || value === 'empleado' || value === 'admin') return value;
+  if (value.startsWith('client')) return 'cliente';
+  if (value.startsWith('emple')) return 'empleado';
+  if (value.startsWith('admin')) return 'admin';
+  return 'cliente';
+};
+
+const normalizeGender = (gender?: string | null) => {
+  if (!gender) return '';
+  const value = gender.toString().trim().toLowerCase();
+  if (['masculino', 'm', 'male', 'hombre'].includes(value)) return 'masculino';
+  if (['femenino', 'f', 'female', 'mujer'].includes(value)) return 'femenino';
+  if (['otro', 'other', 'no binario', 'no-binario'].includes(value)) return 'otro';
+  return value;
+};
+
+const normalizeMaritalStatus = (status?: string | null) => {
+  if (!status) return '';
+  const value = status.toString().trim().toLowerCase();
+  const map: Record<string, string> = {
+    'soltero': 'soltero',
+    'soltera': 'soltero',
+    'soltero/a': 'soltero',
+    'single': 'soltero',
+    'casado': 'casado',
+    'casada': 'casado',
+    'casado/a': 'casado',
+    'married': 'casado',
+    'divorciado': 'divorciado',
+    'divorciada': 'divorciado',
+    'divorciado/a': 'divorciado',
+    'divorced': 'divorciado',
+    'viudo': 'viudo',
+    'viuda': 'viudo',
+    'viudo/a': 'viudo',
+    'widowed': 'viudo'
+  };
+  return map[value] || value;
+};
+
+const extractStoragePath = (url?: string | null) => {
+  if (!url) return '';
+  const publicRoot = '/storage/v1/object/public/user-files/';
+  const publicIndex = url.indexOf(publicRoot);
+  if (publicIndex !== -1) {
+    return url.slice(publicIndex + publicRoot.length);
+  }
+  const segments = url.split('/').filter(Boolean);
+  if (segments.length >= 2) {
+    return segments.slice(-2).join('/');
+  }
+  return '';
+};
+
+const normalizeTrainingLevel = (level?: string | null) => {
+  if (!level) return 'principiante';
+  const value = level.toString().trim().toLowerCase();
+  const map: Record<string, string> = {
+    'principiante': 'principiante',
+    'beginner': 'principiante',
+    'intermedio': 'intermedio',
+    'intermediate': 'intermedio',
+    'avanzado': 'avanzado',
+    'advanced': 'avanzado',
+    'atleta': 'atleta',
+    'athlete': 'atleta'
+  };
+  return map[value] || 'principiante';
+};
+
+const normalizeBloodType = (bloodType?: string | null) => {
+  if (!bloodType) return '';
+  return bloodType.toString().trim().toUpperCase();
+};
 
 const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({ 
   open, 
@@ -151,6 +232,35 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [birthDate, setBirthDate] = useState<Dayjs | null>(null);
 
+  // ✅ HOOK DE HUELLAS DIGITALES
+  const {
+    fingerprintState,
+    fingerprintDialogOpen,
+    handleFingerprintDialogOpen,
+    handleFingerprintDialogClose,
+    handleFingerprintDataReady,
+    handleDeleteFingerprint,
+    handleDeleteAllFingerprints,
+    processPendingFingerprint,
+    initializeWithFingerprint,
+    hasPendingFingerprint,
+    isSyncing: isFingerprintSyncing
+  } = useFingerprintManagement({
+    userId: user?.id, // ✅ Solo usar user?.id - evita errores con usuarios nuevos
+    onFingerprintChange: (hasFingerprint) => {
+      setFormData(prev => ({ ...prev, fingerprint: hasFingerprint }));
+      setHasChanges(true);
+    },
+    onError: (message) => {
+      notify.error(message);
+      toast.error(message);
+    },
+    onSuccess: (message) => {
+      notify.success(message);
+      toast.success(message);
+    }
+  });
+
   // ✅ TODOS LOS useMemo - ORDEN FIJO, NO CONDICIONALES
   const steps = useMemo(() => {
     const baseSteps = ['Información Personal'];
@@ -170,7 +280,8 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
   const isFirstStep = useMemo(() => activeStep === 0, [activeStep]);
 
   const profilePreview = useMemo(() => {
-    return profilePicture ? URL.createObjectURL(profilePicture) : '';
+    if (!profilePicture) return null;
+    return URL.createObjectURL(profilePicture);
   }, [profilePicture]);
 
   const signaturePreview = useMemo(() => {
@@ -230,34 +341,55 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
   // ✅ TODOS LOS useCallback - ORDEN FIJO
   const loadRelatedData = useCallback(async (userId: string) => {
     try {
-      const { data: address } = await supabase
+      // ✅ CARGAR DIRECCIÓN - manejar si no existe
+      const { data: address, error: addressError } = await supabase
         .from('addresses')
         .select('*')
         .eq('userId', userId)
-        .single();
+        .maybeSingle(); // ✅ Usar maybeSingle() en lugar de single()
       
-      if (address) {
-        setAddressData(address);
+      if (address && !addressError) {
+        setAddressData({
+          street: address.street || '',
+          number: address.number || '',
+          neighborhood: address.neighborhood || '',
+          city: address.city || '',
+          state: address.state || '',
+          postalCode: address.postalCode || '',
+          country: address.country || 'México'
+        });
       }
 
-      const { data: emergency } = await supabase
+      // ✅ CARGAR CONTACTO DE EMERGENCIA - manejar si no existe
+      const { data: emergency, error: emergencyError } = await supabase
         .from('emergency_contacts')
         .select('*')
         .eq('userId', userId)
-        .single();
+        .maybeSingle(); // ✅ Usar maybeSingle() en lugar de single()
         
-      if (emergency) {
-        setEmergencyData(emergency);
+      if (emergency && !emergencyError) {
+        setEmergencyData({
+          name: emergency.name || '',
+          phone: emergency.phone || '',
+          medicalCondition: emergency.medicalCondition || '',
+          bloodType: normalizeBloodType(emergency.bloodType)
+        });
       }
 
-      const { data: membership } = await supabase
+      // ✅ CARGAR MEMBRESÍA - manejar si no existe
+      const { data: membership, error: membershipError } = await supabase
         .from('membership_info')
         .select('*')
         .eq('userId', userId)
-        .single();
+        .maybeSingle(); // ✅ Usar maybeSingle() en lugar de single()
         
-      if (membership) {
-        setMembershipData(membership);
+      if (membership && !membershipError) {
+        setMembershipData({
+          referredBy: membership.referredBy || '',
+          mainMotivation: membership.mainMotivation || '',
+          receivePlans: Boolean(membership.receivePlans),
+          trainingLevel: normalizeTrainingLevel(membership.trainingLevel)
+        });
       }
     } catch (error) {
       console.error('Error cargando datos relacionados:', error);
@@ -349,37 +481,54 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     setHasChanges(true);
   }, []);
 
-  const handleFileChange = useCallback((type: 'profilePicture' | 'signature') => 
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processImageFile = useCallback((file: File, type: 'profilePicture' | 'signature') => {
+    try {
+      const validation = validateFileSimple(file, 'image');
+      if (!validation.isValid) {
+        toast.error(validation.error || 'Archivo inválido');
+        return false;
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        toast.loading('Archivo grande - puede tardar en subir...');
+        setTimeout(() => toast.dismiss(), 2000);
+      }
+
+      if (type === 'profilePicture') {
+        setProfilePicture(file);
+        setHasExistingProfilePicture(false);
+      } else {
+        setSignature(file);
+        setHasExistingSignature(false);
+      }
+
+      setHasChanges(true);
+      return true;
+    } catch (error: any) {
+      toast.error('Error al procesar archivo: ' + error.message);
+      return false;
+    }
+  }, [toast, setProfilePicture, setHasExistingProfilePicture, setSignature, setHasExistingSignature, setHasChanges]);
+
+  const handleFileChange = useCallback((type: 'profilePicture' | 'signature') =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      processImageFile(file, type);
+    }, [processImageFile]);
 
-      try {
-        const validation = validateFileSimple(file, 'image');
-        if (!validation.isValid) {
-          toast.error(validation.error || 'Archivo inválido');
-          return;
-        }
+  const handleProfilePhotoCapture = useCallback((file: File) => {
+    processImageFile(file, 'profilePicture');
+  }, [processImageFile]);
 
-        if (file.size > 2 * 1024 * 1024) {
-          toast.loading('Archivo grande - puede tardar en subir...');
-          setTimeout(() => toast.dismiss(), 2000);
-        }
-
-        if (type === 'profilePicture') {
-          setProfilePicture(file);
-          setHasExistingProfilePicture(false);
-        } else {
-          setSignature(file);
-          setHasExistingSignature(false);
-        }
-        
-        setHasChanges(true);
-        
-      } catch (error: any) {
-        toast.error('Error al procesar archivo: ' + error.message);
-      }
-    }, [toast]);
+  const handleClearCapturedPhoto = useCallback(() => {
+    if (profilePicture && profilePreview) {
+      URL.revokeObjectURL(profilePreview);
+    }
+    setProfilePicture(null);
+    setHasExistingProfilePicture(Boolean(formData.profilePictureUrl));
+    setHasChanges(true);
+  }, [formData.profilePictureUrl, profilePicture, profilePreview]);
 
   const handleDeleteExistingFile = useCallback(async (type: 'profilePicture' | 'signature' | 'contract') => {
     const fileNames = {
@@ -440,6 +589,16 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
       setFileUploading(true);
 
       if (profilePicture) {
+        const existingPath = extractStoragePath(formData.profilePictureUrl);
+        if (existingPath) {
+          const { error: removeError } = await supabase.storage
+            .from('user-files')
+            .remove([existingPath]);
+          if (removeError) {
+            console.warn('No se pudo eliminar la foto anterior:', removeError);
+          }
+        }
+
         const fileExt = profilePicture.name.split('.').pop();
         const fileName = `profile-${userId}-${Date.now()}.${fileExt}`;
         const filePath = `profiles/${fileName}`;
@@ -461,6 +620,16 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
       }
 
       if (signature) {
+        const existingPath = extractStoragePath(formData.signatureUrl);
+        if (existingPath) {
+          const { error: removeError } = await supabase.storage
+            .from('user-files')
+            .remove([existingPath]);
+          if (removeError) {
+            console.warn('No se pudo eliminar la firma anterior:', removeError);
+          }
+        }
+
         const fileExt = signature.name.split('.').pop();
         const fileName = `signature-${userId}-${Date.now()}.${fileExt}`;
         const filePath = `signatures/${fileName}`;
@@ -489,7 +658,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     } finally {
       setFileUploading(false);
     }
-  }, [profilePicture, signature, supabase]);
+  }, [profilePicture, signature, formData.profilePictureUrl, formData.signatureUrl, supabase]);
 
   const validateStep = useCallback((step: number) => {
     const newErrors: Record<string, string> = {};
@@ -620,6 +789,13 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
       await onSave(userDataWithAudit);
       await saveRelatedData(userId);
       
+      // ✅ PROCESAR HUELLA PENDIENTE
+      if (hasPendingFingerprint) {
+        console.log('🖐️ Procesando huella pendiente...');
+        const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+        await processPendingFingerprint(fullName);
+      }
+      
       if (formData.rol === 'cliente' && hasChanges) {
         try {
           const response = await fetch('/api/generate-contract', {
@@ -668,7 +844,9 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     toast,
     onClose,
     hasExistingProfilePicture,
-    hasExistingSignature
+    hasExistingSignature,
+    hasPendingFingerprint,
+    processPendingFingerprint
   ]);
 
   const handleClose = useCallback(() => {
@@ -684,26 +862,81 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
   // ✅ CLEANUP EFFECT
   useEffect(() => {
     return () => {
-      if (profilePreview) URL.revokeObjectURL(profilePreview);
-      if (signaturePreview) URL.revokeObjectURL(signaturePreview);
+      if (profilePicture && profilePreview) URL.revokeObjectURL(profilePreview);
+      if (signature && signaturePreview) URL.revokeObjectURL(signaturePreview);
     };
-  }, [profilePreview, signaturePreview]);
+  }, [profilePicture, profilePreview, signature, signaturePreview]);
 
   // ✅ LOAD DATA EFFECT  
   useEffect(() => {
     if (open && user?.id) {
-      setFormData(prev => ({ ...prev, ...user }));
+      // ✅ RESETEAR DATOS RELACIONADOS ANTES DE CARGAR NUEVOS
+      setAddressData({
+        street: '',
+        number: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'México'
+      });
+      
+      setEmergencyData({
+        name: '',
+        phone: '',
+        medicalCondition: '',
+        bloodType: ''
+      });
+      
+      setMembershipData({
+        referredBy: '',
+        mainMotivation: '',
+        receivePlans: false,
+        trainingLevel: 'principiante'
+      });
+      
+      const normalizedUser = {
+        id: user.id || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        rol: normalizeRol(user.rol),
+        whatsapp: user.whatsapp || '',
+        birthDate: user.birthDate || '',
+        gender: normalizeGender(user.gender),
+        maritalStatus: normalizeMaritalStatus(user.maritalStatus),
+        isMinor: Boolean(user.isMinor),
+        emailSent: Boolean(user.emailSent),
+        emailSentAt: user.emailSentAt,
+        whatsappSent: Boolean(user.whatsappSent),
+        whatsappSentAt: user.whatsappSentAt,
+        profilePictureUrl: user.profilePictureUrl || '',
+        signatureUrl: user.signatureUrl || '',
+        contractPdfUrl: user.contractPdfUrl || '',
+        fingerprint: Boolean(user.fingerprint)
+      };
+
+      // ✅ REEMPLAZAR COMPLETAMENTE - NO HACER MERGE
+      setFormData(normalizedUser);
+      setHasChanges(false);
       setBirthDate(user.birthDate ? dayjs(user.birthDate) : null);
       
       setHasExistingProfilePicture(!!user.profilePictureUrl);
       setHasExistingSignature(!!user.signatureUrl);
       setHasExistingContract(!!user.contractPdfUrl);
       
+      // ✅ INICIALIZAR ESTADO DE HUELLA
+      initializeWithFingerprint(Boolean(user.fingerprint));
+      
+      // ✅ CARGAR DATOS RELACIONADOS DESPUÉS
       loadRelatedData(user.id);
     } else if (open && !user) {
       resetForm();
+    } else if (!open) {
+      // ✅ LIMPIAR TODO AL CERRAR EL DIÁLOGO
+      resetForm();
     }
-  }, [open, user, loadRelatedData, resetForm]);
+  }, [open, user, loadRelatedData, resetForm]); // ✅ initializeWithFingerprint es estable, no necesita estar en deps
 
   // ✅ SSR SAFETY - MOVER DESPUÉS DE TODOS LOS HOOKS
   if (!hydrated) {
@@ -720,10 +953,10 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
               <Box sx={{ position: 'relative' }}>
                 <Avatar
                   src={
-                    profilePicture 
-                      ? URL.createObjectURL(profilePicture) 
-                      : hasExistingProfilePicture && formData.profilePictureUrl 
-                        ? formData.profilePictureUrl 
+                    profilePreview
+                      ? profilePreview
+                      : hasExistingProfilePicture && formData.profilePictureUrl
+                        ? formData.profilePictureUrl
                         : undefined
                   }
                   sx={{
@@ -780,6 +1013,18 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
               </Box>
             </Box>
             
+            <Box sx={{ mb: 3 }}>
+              <PhotoCapture
+                inputId="admin-user-photo-capture"
+                label="Capturar o subir foto"
+                tooltip="Utiliza la cámara o carga una imagen existente para actualizar la foto del cliente"
+                previewUrl={profilePreview}
+                onPhotoCapture={handleProfilePhotoCapture}
+                onClearPhoto={handleClearCapturedPhoto}
+                errorMessage={errors.profilePicture}
+              />
+            </Box>
+
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
@@ -1022,30 +1267,122 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                       }
                     />
                     
-                    <FormControlLabel
-                      control={
+                    {/* ✅ GESTIÓN DE HUELLAS DIGITALES */}
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: 2,
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: colorTokens.neutral200,
+                      border: `2px solid ${formData.fingerprint ? colorTokens.success : colorTokens.neutral400}`
+                    }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <FingerprintIcon sx={{ 
+                            color: formData.fingerprint ? colorTokens.success : colorTokens.neutral700,
+                            fontSize: '2rem'
+                          }} />
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ 
+                              color: colorTokens.neutral1200,
+                              fontWeight: 600 
+                            }}>
+                              Huella Dactilar
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+                              {formData.fingerprint ? 'Registrada en BD y F22' : 'No registrada'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        
                         <Switch
                           checked={formData.fingerprint || false}
-                          onChange={handleSwitchChange('fingerprint')}
+                          disabled
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': {
-                              color: colorTokens.brand,
+                              color: colorTokens.success,
                             },
                             '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                              backgroundColor: colorTokens.brand,
+                              backgroundColor: colorTokens.success,
                             },
                           }}
                         />
-                      }
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <FingerprintIcon sx={{ color: colorTokens.brand }} />
-                          <Typography sx={{ color: colorTokens.neutral1200 }}>
-                            Huella dactilar registrada
-                          </Typography>
-                        </Box>
-                      }
-                    />
+                      </Box>
+
+                      {/* Mensajes de estado */}
+                      {fingerprintState.message && (
+                        <Alert severity="success" sx={{ py: 0.5 }}>
+                          {fingerprintState.message}
+                        </Alert>
+                      )}
+                      
+                      {fingerprintState.error && (
+                        <Alert severity="error" sx={{ py: 0.5 }}>
+                          {fingerprintState.error}
+                        </Alert>
+                      )}
+
+                      {/* Botones de acción */}
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Button
+                          variant={formData.fingerprint ? 'outlined' : 'contained'}
+                          size="small"
+                          startIcon={
+                            isFingerprintSyncing ? (
+                              <CircularProgress size={16} sx={{ color: 'inherit' }} />
+                            ) : (
+                              <FingerprintIcon />
+                            )
+                          }
+                          onClick={handleFingerprintDialogOpen}
+                          disabled={!formData.id && !user?.id || isFingerprintSyncing}
+                          sx={{
+                            bgcolor: formData.fingerprint ? 'transparent' : colorTokens.brand,
+                            color: formData.fingerprint ? colorTokens.brand : colorTokens.neutral1200,
+                            borderColor: colorTokens.brand,
+                            '&:hover': {
+                              bgcolor: formData.fingerprint ? `${colorTokens.brand}20` : colorTokens.brandHover,
+                              borderColor: colorTokens.brandHover
+                            }
+                          }}
+                        >
+                          {isFingerprintSyncing ? 'Sincronizando...' : (formData.fingerprint ? 'Reemplazar' : 'Registrar')}
+                        </Button>
+                        
+                        {formData.fingerprint && (
+                          <>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              color="error"
+                              startIcon={<DeleteIcon />}
+                              onClick={handleDeleteFingerprint}
+                              disabled={isFingerprintSyncing}
+                            >
+                              Eliminar
+                            </Button>
+                            
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              color="warning"
+                              startIcon={<DeleteIcon />}
+                              onClick={handleDeleteAllFingerprints}
+                              disabled={isFingerprintSyncing}
+                            >
+                              Eliminar Todas
+                            </Button>
+                          </>
+                        )}
+                      </Box>
+
+                      {!formData.id && !user?.id && (
+                        <Typography variant="caption" sx={{ color: colorTokens.warning, fontStyle: 'italic' }}>
+                          ⚠️ Guarda el usuario primero para poder registrar huella
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
                 </Box>
               </Grid>
@@ -1338,6 +1675,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     <MenuItem value="principiante">Principiante</MenuItem>
                     <MenuItem value="intermedio">Intermedio</MenuItem>
                     <MenuItem value="avanzado">Avanzado</MenuItem>
+                    <MenuItem value="atleta">Atleta</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -1934,6 +2272,26 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
           </Button>
         </Box>
       </DialogActions>
+
+      {/* ✅ DIÁLOGO DE REGISTRO DE HUELLA */}
+      {(formData.id || user?.id) && (
+        <FingerprintRegistration
+          open={fingerprintDialogOpen}
+          onClose={handleFingerprintDialogClose}
+          user={{
+            id: formData.id || user?.id || '',
+            firstName: formData.firstName || user?.firstName || '',
+            lastName: formData.lastName || user?.lastName || '',
+            fingerprint: formData.fingerprint || false
+          }}
+          userType="cliente"
+          onFingerprintDataReady={handleFingerprintDataReady}
+          onError={(message) => {
+            notify.error(message);
+            toast.error(message);
+          }}
+        />
+      )}
     </Dialog>
   );
 };

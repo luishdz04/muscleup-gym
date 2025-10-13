@@ -1,4 +1,4 @@
-// 📁 src/app/dashboard/admin/catalogo/productos/page.tsx
+// src/app/(protected)/dashboard/admin/catalogo/productos/page.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -25,142 +25,92 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Alert,
-  Snackbar,
   CircularProgress,
   Fab,
-  Tooltip,
   Menu,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Fade,
+  Slide
 } from '@mui/material';
 import {
   Search as SearchIcon,
   FilterList as FilterIcon,
   Inventory as InventoryIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  Warning as WarningIcon,
-  CheckCircle as CheckCircleIcon,
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Restore as RestoreIcon,
   MoreVert as MoreVertIcon,
   Refresh as RefreshIcon,
-  FileDownload as ExportIcon,
   Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon
+  VisibilityOff as VisibilityOffIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 
-// 🎯 IMPORTAR NUESTROS HOOKS ENTERPRISE Y TIPOS
-import { useProducts, useProductStats } from '@/hooks/useCatalog';
-import { Product } from '@/services/catalogService'; // Mejora #3: Tipado fuerte
+// ✅ IMPORTS ENTERPRISE v6.0
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { notify } from '@/utils/notifications';
+import { formatTimestampForDisplay } from '@/utils/dateUtils';
+import { useProducts } from '@/hooks/useCatalog';
+import { Product } from '@/services/catalogService';
 import ProductFormDialog from '@/components/catalogo/ProductFormDialog';
 
-// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
-
 const STATUS_FILTERS = [
-  { value: 'active', label: '✅ Productos Activos' },
-  { value: 'inactive', label: '❌ Productos Inactivos' },
-  { value: 'all', label: '📋 Todos los Productos' }
-];
-
-const STOCK_FILTERS = [
-  { value: '', label: 'Todos los productos' },
-  { value: 'available', label: '✅ Stock disponible' },
-  { value: 'low', label: '⚠️ Stock bajo' },
-  { value: 'out', label: '❌ Sin stock' },
-  { value: 'overstock', label: '📈 Sobre stock' }
+  { value: 'active', label: 'Productos Activos' },
+  { value: 'inactive', label: 'Productos Inactivos' },
+  { value: 'all', label: 'Todos los Productos' }
 ];
 
 export default function ProductosPage() {
   const router = useRouter();
+  const hydrated = useHydrated();
   
-  // 🎯 USAR NUESTROS HOOKS ENTERPRISE
+  // HOOKS ENTERPRISE
   const {
     products,
     loading,
     error,
     total,
     page,
-    hasMore,
     filters,
-    notification,
     createProduct,
     updateProduct,
     deleteProduct,
     restoreProduct,
     updateFilters,
     changePage,
-    reload,
-    closeNotification
+    reload
   } = useProducts({
     status: 'active',
     limit: 20
   });
 
-  const {
-    stats,
-    loading: statsLoading,
-    error: statsError,
-    reload: reloadStats
-  } = useProductStats();
-
-  // 🎯 ESTADOS LOCALES SIMPLIFICADOS - MEJORA #3: TIPADO FUERTE
+  // ESTADOS LOCALES
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuProduct, setMenuProduct] = useState<Product | null>(null);
 
-  // ✅ MEJORA #2: MEMORIZAR CÁLCULO DE CATEGORÍAS ÚNICAS
+  // CATEGORÍAS ÚNICAS MEMORIZADAS
   const uniqueCategories = useMemo(() => {
     return [...new Set(products.map(p => p.category))];
   }, [products]);
 
-  // 🎯 FUNCIONES SIMPLIFICADAS - MEJORA #1: ELIMINAR ESTADOS REDUNDANTES
+  // CONTAR PRODUCTOS ACTIVOS
+  const activeProductsCount = useMemo(() => {
+    return products.filter(p => p.is_active !== false).length;
+  }, [products]);
+
+  // HANDLERS
   const handleSearch = (value: string) => {
-    updateFilters({ search: value, page: 1 }); // Resetear página al filtrar
+    updateFilters({ search: value, page: 1 });
   };
 
   const handleCategoryFilter = (value: string) => {
     updateFilters({ category: value, page: 1 });
-  };
-
-  const handleStockFilter = (value: string) => {
-    updateFilters({ stockLevel: value as any, page: 1 });
   };
 
   const handleStatusFilter = (value: string) => {
@@ -179,11 +129,10 @@ export default function ProductosPage() {
   };
 
   const handleProductSave = () => {
-  console.log('🔄 Producto guardado, recargando datos...');
-  reload(); // Recargar la lista de productos
-  reloadStats(); // Recargar las estadísticas también
-  closeProductDialog(); // Cerrar el diálogo
-};
+    reload();
+    closeProductDialog();
+    notify.success('Producto guardado exitosamente');
+  };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, product: Product) => {
     setMenuAnchor(event.currentTarget);
@@ -210,97 +159,85 @@ export default function ProductosPage() {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'MXN'
+      currency: 'MXN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
     }).format(price);
   };
 
-  const getStockColor = (product: Product): 'error' | 'warning' | 'success' | 'info' => {
-    if (product.current_stock === 0) return 'error';
-    if (product.current_stock <= product.min_stock) return 'warning';
-    if (product.max_stock && product.current_stock > product.max_stock) return 'info';
-    return 'success';
-  };
+  // SSR SAFETY
+  if (!hydrated) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+        flexDirection: 'column',
+        gap: 3
+      }}>
+        <CircularProgress size={80} sx={{ color: colorTokens.brand }} />
+        <Typography variant="h5" sx={{ color: colorTokens.textSecondary }}>
+          Cargando Catálogo de Productos...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ 
       minHeight: '100vh',
-      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
-      color: darkProTokens.textPrimary,
+      background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+      color: colorTokens.textPrimary,
       p: 3
     }}>
-      {/* 🔔 NOTIFICACIÓN ENTERPRISE */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={closeNotification}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          severity={notification.severity}
-          onClose={closeNotification}
-          sx={{
-            background: notification.severity === 'success' ? 
-              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
-              notification.severity === 'error' ?
-              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
-              notification.severity === 'warning' ?
-              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
-              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
-            color: darkProTokens.textPrimary,
-            fontWeight: 600,
-            borderRadius: 3
-          }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
-
-      {/* 📊 HEADER CON ESTADÍSTICAS ENTERPRISE */}
-      <Paper sx={{
-        p: 4,
-        mb: 4,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `2px solid ${darkProTokens.primary}30`,
-        borderRadius: 4,
-        boxShadow: `0 8px 32px ${darkProTokens.primary}10`
-      }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Box>
-            <Typography 
-              variant="h3" 
-              component="h1" 
-              sx={{
-                fontWeight: 800,
-                color: darkProTokens.primary,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                mb: 1
-              }}
-            >
-              <InventoryIcon sx={{ fontSize: 50 }} />
-              Gestión de Productos
-            </Typography>
-            <Typography variant="h6" sx={{ 
-              color: darkProTokens.textSecondary,
-              fontWeight: 300
-            }}>
-              Catálogo | Inventario | Control de Stock
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<ExportIcon />}
-              sx={{ 
-                color: darkProTokens.textSecondary,
-                borderColor: `${darkProTokens.textSecondary}60`,
-                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
-              }}
-            >
-              Exportar
-            </Button>
+      {/* HEADER CON ESTADÍSTICA PRINCIPAL */}
+      <Fade in timeout={1000}>
+        <Paper sx={{
+          p: 4,
+          mb: 4,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `2px solid ${colorTokens.brand}30`,
+          borderRadius: 4,
+          boxShadow: `0 12px 40px ${colorTokens.glow}`,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '4px',
+            background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.brandHover})`
+          }
+        }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Box>
+              <Typography 
+                variant="h3" 
+                component="h1" 
+                sx={{
+                  fontWeight: 900,
+                  color: colorTokens.brand,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  mb: 1,
+                  textShadow: `0 2px 8px ${colorTokens.glow}`
+                }}
+              >
+                <InventoryIcon sx={{ fontSize: 50 }} />
+                Catálogo de Productos
+              </Typography>
+              <Typography variant="h6" sx={{ 
+                color: colorTokens.textSecondary,
+                fontWeight: 400
+              }}>
+                Gestión maestra de productos y precios
+              </Typography>
+            </Box>
             
             <Button
               variant="outlined"
@@ -308,478 +245,382 @@ export default function ProductosPage() {
               onClick={reload}
               disabled={loading}
               sx={{ 
-                color: darkProTokens.textSecondary,
-                borderColor: `${darkProTokens.textSecondary}60`,
+                color: colorTokens.textSecondary,
+                borderColor: `${colorTokens.textSecondary}60`,
                 px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
               }}
             >
               {loading ? <CircularProgress size={20} /> : 'Actualizar'}
             </Button>
           </Box>
-        </Box>
 
-        {/* 📊 ESTADÍSTICAS CON LOADING STATE */}
-        {statsLoading ? (
-          <Box display="flex" justifyContent="center" py={4}>
-            <CircularProgress sx={{ color: darkProTokens.primary }} />
-          </Box>
-        ) : statsError ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Error al cargar estadísticas: {statsError}
-          </Alert>
-        ) : stats ? (
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          {/* ESTADÍSTICA PRINCIPAL - PRODUCTOS DISPONIBLES */}
+          <Grid container spacing={3} justifyContent="center">
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <Card sx={{ 
-                background: `${darkProTokens.info}10`, 
-                border: `1px solid ${darkProTokens.info}30`,
-                borderRadius: 3
-              }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
-                        {stats.totalProducts}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        Productos Totales
-                      </Typography>
-                    </Box>
-                    <InventoryIcon sx={{ fontSize: 40, color: darkProTokens.info, opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card sx={{ 
-                background: `${darkProTokens.success}10`, 
-                border: `1px solid ${darkProTokens.success}30`,
-                borderRadius: 3
-              }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                        {formatPrice(stats.totalValue)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        Valor Total
-                      </Typography>
-                    </Box>
-                    <TrendingUpIcon sx={{ fontSize: 40, color: darkProTokens.success, opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card sx={{ 
-                background: `${darkProTokens.warning}10`, 
-                border: `1px solid ${darkProTokens.warning}30`,
-                borderRadius: 3
-              }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
-                        {stats.lowStockProducts}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        Stock Bajo
-                      </Typography>
-                    </Box>
-                    <WarningIcon sx={{ fontSize: 40, color: darkProTokens.warning, opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card sx={{ 
-                background: `${darkProTokens.error}10`, 
-                border: `1px solid ${darkProTokens.error}30`,
-                borderRadius: 3
-              }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.error }}>
-                        {stats.outOfStockProducts}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        Sin Stock
-                      </Typography>
-                    </Box>
-                    <TrendingDownIcon sx={{ fontSize: 40, color: darkProTokens.error, opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        ) : null}
-      </Paper>
-
-      {/* 🔍 FILTROS ENTERPRISE - MEJORA #1: USAR ESTADO CENTRALIZADO */}
-      <Paper sx={{ 
-        p: 3, 
-        mb: 3,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 3
-      }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              fullWidth
-              placeholder="Buscar productos..."
-              value={filters.search || ''} // ✅ Usar estado centralizado
-              onChange={(e) => handleSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: darkProTokens.primary }} />
-                  </InputAdornment>
-                ),
-                sx: {
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  }
+                background: `linear-gradient(135deg, ${colorTokens.success}15, ${colorTokens.success}10)`, 
+                border: `2px solid ${colorTokens.success}30`,
+                borderRadius: 3,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: `0 8px 25px ${colorTokens.success}30`
                 }
-              }}
-            />
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ 
-                color: darkProTokens.textSecondary,
-                '&.Mui-focused': { color: darkProTokens.primary }
               }}>
-                Categoría
-              </InputLabel>
-              <Select
-                value={filters.category || ''} // ✅ Usar estado centralizado
-                label="Categoría"
-                onChange={(e) => handleCategoryFilter(e.target.value)}
-                sx={{
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  }
-                }}
-              >
-                <MenuItem value="">Todas</MenuItem>
-                {/* ✅ MEJORA #2: USAR CATEGORÍAS MEMORIZADAS */}
-                {uniqueCategories.map((category) => (
-                  <MenuItem key={category} value={category}>
-                    {category}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ 
-                color: darkProTokens.textSecondary,
-                '&.Mui-focused': { color: darkProTokens.primary }
-              }}>
-                Stock
-              </InputLabel>
-              <Select
-                value={filters.stockLevel || ''} // ✅ Usar estado centralizado
-                label="Stock"
-                onChange={(e) => handleStockFilter(e.target.value)}
-                sx={{
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  }
-                }}
-              >
-                {STOCK_FILTERS.map((filter) => (
-                  <MenuItem key={filter.value} value={filter.value}>
-                    {filter.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ 
-                color: darkProTokens.textSecondary,
-                '&.Mui-focused': { color: darkProTokens.primary }
-              }}>
-                Estado
-              </InputLabel>
-              <Select
-                value={filters.status}
-                label="Estado"
-                onChange={(e) => handleStatusFilter(e.target.value)}
-                sx={{
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  }
-                }}
-              >
-                {STATUS_FILTERS.map((filter) => (
-                  <MenuItem key={filter.value} value={filter.value}>
-                    {filter.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 2 }}>
-            <Typography variant="body2" sx={{ 
-              color: darkProTokens.textSecondary, 
-              textAlign: 'center' 
-            }}>
-              {products.length} de {total} productos
-            </Typography>
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 1 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<FilterIcon />}
-              onClick={() => {
-                // ✅ LIMPIAR FILTROS USANDO ESTADO CENTRALIZADO
-                updateFilters({ 
-                  search: '', 
-                  category: '', 
-                  stockLevel: undefined,
-                  page: 1 
-                });
-              }}
-              sx={{
-                color: darkProTokens.textSecondary,
-                borderColor: `${darkProTokens.textSecondary}40`
-              }}
-            >
-              Limpiar
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* 📋 TABLA DE PRODUCTOS ENTERPRISE */}
-      <Paper sx={{ 
-        mb: 3,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 3
-      }}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" p={4}>
-            <CircularProgress sx={{ color: darkProTokens.primary }} size={40} />
-          </Box>
-        ) : error ? (
-          <Alert severity="error" sx={{ m: 3 }}>
-            Error al cargar productos: {error}
-          </Alert>
-        ) : (
-          <>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ 
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`
+                <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                  <CheckCircleIcon sx={{ 
+                    fontSize: 60, 
+                    color: colorTokens.success, 
+                    mb: 2,
+                    filter: `drop-shadow(0 4px 8px ${colorTokens.success}40)`
+                  }} />
+                  <Typography variant="h2" fontWeight="bold" sx={{ 
+                    color: colorTokens.success,
+                    mb: 1
                   }}>
-                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Producto</TableCell>
-                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>SKU</TableCell>
-                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Categoría</TableCell>
-                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Stock</TableCell>
-                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Estado</TableCell>
-                    <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Precio</TableCell>
-                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {products.map((product) => (
-                    <TableRow 
-                      key={product.id} 
-                      hover
-                      sx={{ 
-                        opacity: product.is_active === false ? 0.6 : 1,
-                        backgroundColor: product.is_active === false ? `${darkProTokens.error}10` : 'transparent',
-                        '&:hover': {
-                          backgroundColor: `${darkProTokens.primary}05`
-                        }
-                      }}
-                    >
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Box>
-                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-                              {product.name}
-                            </Typography>
-                            {product.brand && (
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                {product.brand}
+                    {activeProductsCount}
+                  </Typography>
+                  <Typography variant="h6" sx={{ 
+                    color: colorTokens.textPrimary,
+                    fontWeight: 600
+                  }}>
+                    Productos Disponibles
+                  </Typography>
+                  <Typography variant="caption" sx={{ 
+                    color: colorTokens.textSecondary,
+                    display: 'block',
+                    mt: 1
+                  }}>
+                    Activos en el catálogo
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Fade>
+
+      {/* FILTROS */}
+      <Slide in direction="up" timeout={600}>
+        <Paper sx={{ 
+          p: 3, 
+          mb: 3,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `1px solid ${colorTokens.border}`,
+          borderRadius: 3
+        }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                fullWidth
+                placeholder="Buscar productos..."
+                value={filters.search || ''}
+                onChange={(e) => handleSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: colorTokens.brand }} />
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${colorTokens.brand}30`
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colorTokens.brand
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colorTokens.brand
+                    }
+                  }
+                }}
+              />
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 2.5 }}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ 
+                  color: colorTokens.textSecondary,
+                  '&.Mui-focused': { color: colorTokens.brand }
+                }}>
+                  Categoría
+                </InputLabel>
+                <Select
+                  value={filters.category || ''}
+                  label="Categoría"
+                  onChange={(e) => handleCategoryFilter(e.target.value)}
+                  sx={{
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${colorTokens.brand}30`
+                    }
+                  }}
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {uniqueCategories.map((category) => (
+                    <MenuItem key={category} value={category}>
+                      {category}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 2.5 }}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ 
+                  color: colorTokens.textSecondary,
+                  '&.Mui-focused': { color: colorTokens.brand }
+                }}>
+                  Estado
+                </InputLabel>
+                <Select
+                  value={filters.status}
+                  label="Estado"
+                  onChange={(e) => handleStatusFilter(e.target.value)}
+                  sx={{
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${colorTokens.brand}30`
+                    }
+                  }}
+                >
+                  {STATUS_FILTERS.map((filter) => (
+                    <MenuItem key={filter.value} value={filter.value}>
+                      {filter.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 2 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.brand }}>
+                  {products.length}
+                </Typography>
+                <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                  de {total} productos
+                </Typography>
+              </Box>
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 2 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<FilterIcon />}
+                onClick={() => {
+                  updateFilters({ 
+                    search: '', 
+                    category: '', 
+                    page: 1 
+                  });
+                  notify.info('Filtros limpiados');
+                }}
+                sx={{
+                  color: colorTokens.textSecondary,
+                  borderColor: `${colorTokens.textSecondary}40`
+                }}
+              >
+                Limpiar
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Slide>
+
+      {/* TABLA DE PRODUCTOS */}
+      <Fade in timeout={1000}>
+        <Paper sx={{ 
+          mb: 3,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `1px solid ${colorTokens.border}`,
+          borderRadius: 3,
+          overflow: 'hidden'
+        }}>
+          {loading ? (
+            <Box display="flex" justifyContent="center" p={4}>
+              <CircularProgress sx={{ color: colorTokens.brand }} size={40} />
+            </Box>
+          ) : error ? (
+            <Box p={3}>
+              <Typography color="error">Error al cargar productos: {error}</Typography>
+            </Box>
+          ) : (
+            <>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ 
+                      background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral400})`
+                    }}>
+                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Producto</TableCell>
+                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>SKU</TableCell>
+                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Categoría</TableCell>
+                      <TableCell align="right" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Precio Venta</TableCell>
+                      <TableCell align="right" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Precio Costo</TableCell>
+                      <TableCell align="center" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {products.map((product) => (
+                      <TableRow 
+                        key={product.id} 
+                        hover
+                        sx={{ 
+                          opacity: product.is_active === false ? 0.6 : 1,
+                          backgroundColor: product.is_active === false ? `${colorTokens.danger}10` : 'transparent',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            backgroundColor: colorTokens.hoverOverlay,
+                            transform: 'scale(1.005)'
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <Box>
+                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
+                                {product.name}
                               </Typography>
+                              {product.brand && (
+                                <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                                  {product.brand}
+                                </Typography>
+                              )}
+                            </Box>
+                            {product.is_active === false && (
+                              <Chip 
+                                label="INACTIVO" 
+                                sx={{
+                                  backgroundColor: colorTokens.danger,
+                                  color: colorTokens.textOnBrand,
+                                  fontWeight: 700
+                                }} 
+                                size="small" 
+                              />
                             )}
                           </Box>
-                          {product.is_active === false && (
-                            <Chip 
-                              label="INACTIVO" 
-                              sx={{
-                                backgroundColor: darkProTokens.error,
-                                color: darkProTokens.textPrimary,
-                                fontWeight: 700
-                              }} 
-                              size="small" 
-                            />
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontFamily="monospace" sx={{ color: darkProTokens.textSecondary }}>
-                          {product.sku || 'Sin SKU'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={product.category} 
-                          size="small" 
-                          sx={{
-                            backgroundColor: `${darkProTokens.info}20`,
-                            color: darkProTokens.info,
-                            border: `1px solid ${darkProTokens.info}40`
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-                          {product.current_stock} {product.unit}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          size="small"
-                          icon={
-                            product.current_stock === 0 ? <WarningIcon /> :
-                            product.current_stock <= product.min_stock ? <TrendingDownIcon /> :
-                            <CheckCircleIcon />
-                          }
-                          label={
-                            product.current_stock === 0 ? 'Sin Stock' :
-                            product.current_stock <= product.min_stock ? 'Stock Bajo' :
-                            'Disponible'
-                          }
-                          sx={{
-                            backgroundColor: getStockColor(product) === 'error' ? `${darkProTokens.error}20` :
-                                           getStockColor(product) === 'warning' ? `${darkProTokens.warning}20` :
-                                           `${darkProTokens.success}20`,
-                            color: getStockColor(product) === 'error' ? darkProTokens.error :
-                                  getStockColor(product) === 'warning' ? darkProTokens.warning :
-                                  darkProTokens.success,
-                            border: `1px solid ${
-                              getStockColor(product) === 'error' ? darkProTokens.error :
-                              getStockColor(product) === 'warning' ? darkProTokens.warning :
-                              darkProTokens.success
-                            }40`
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
-                          {formatPrice(product.sale_price)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                          Costo: {formatPrice(product.cost_price)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => handleMenuOpen(e, product)}
-                          sx={{ color: darkProTokens.textSecondary }}
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            
-            <TablePagination
-              component="div"
-              count={total}
-              page={page - 1} // TablePagination usa índice base 0
-              onPageChange={(_, newPage) => changePage(newPage + 1)}
-              rowsPerPage={filters.limit || 20}
-              onRowsPerPageChange={(e) => {
-                updateFilters({ limit: parseInt(e.target.value, 10) });
-              }}
-              labelRowsPerPage="Filas por página:"
-              labelDisplayedRows={({ from, to, count }) => 
-                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-              }
-              sx={{
-                color: darkProTokens.textSecondary,
-                borderTop: `1px solid ${darkProTokens.grayDark}`,
-                '& .MuiTablePagination-selectIcon': { color: darkProTokens.textSecondary },
-                '& .MuiTablePagination-actions button': { color: darkProTokens.textSecondary }
-              }}
-            />
-          </>
-        )}
-      </Paper>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontFamily="monospace" sx={{ color: colorTokens.textSecondary }}>
+                            {product.sku || 'Sin SKU'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={product.category} 
+                            size="small" 
+                            sx={{
+                              backgroundColor: `${colorTokens.info}20`,
+                              color: colorTokens.info,
+                              border: `1px solid ${colorTokens.info}40`
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: colorTokens.brand }}>
+                            {formatPrice(product.sale_price)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                            {formatPrice(product.cost_price)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleMenuOpen(e, product)}
+                            sx={{ 
+                              color: colorTokens.textSecondary,
+                              '&:hover': {
+                                backgroundColor: `${colorTokens.brand}15`,
+                                color: colorTokens.brand
+                              }
+                            }}
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              
+              <TablePagination
+                component="div"
+                count={total}
+                page={page - 1}
+                onPageChange={(_, newPage) => changePage(newPage + 1)}
+                rowsPerPage={filters.limit || 20}
+                onRowsPerPageChange={(e) => {
+                  updateFilters({ limit: parseInt(e.target.value, 10) });
+                }}
+                labelRowsPerPage="Filas por página:"
+                labelDisplayedRows={({ from, to, count }) => 
+                  `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                }
+                sx={{
+                  color: colorTokens.textSecondary,
+                  borderTop: `1px solid ${colorTokens.border}`,
+                  background: `${colorTokens.brand}03`,
+                  '& .MuiTablePagination-selectIcon': { color: colorTokens.textSecondary },
+                  '& .MuiTablePagination-actions button': { 
+                    color: colorTokens.textSecondary,
+                    '&:hover': {
+                      backgroundColor: `${colorTokens.brand}10`
+                    }
+                  }
+                }}
+              />
+            </>
+          )}
+        </Paper>
+      </Fade>
 
-      {/* 🎯 FAB PARA AGREGAR PRODUCTO */}
+      {/* FAB PARA AGREGAR PRODUCTO */}
       <Fab
-        color="primary"
         sx={{
           position: 'fixed',
           bottom: 24,
           right: 24,
-          background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-          color: darkProTokens.background,
+          background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+          color: colorTokens.textOnBrand,
           fontWeight: 700,
+          boxShadow: `0 8px 25px ${colorTokens.brand}40`,
           '&:hover': {
-            background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-            transform: 'scale(1.1)'
-          }
+            background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
+            transform: 'scale(1.1)',
+            boxShadow: `0 12px 35px ${colorTokens.brand}60`
+          },
+          transition: 'all 0.3s ease'
         }}
         onClick={() => openProductDialog()}
       >
         <AddIcon />
       </Fab>
 
-      {/* 📝 MENÚ DE ACCIONES */}
+      {/* MENÚ DE ACCIONES */}
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
         PaperProps={{
           sx: {
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `1px solid ${darkProTokens.primary}30`,
+            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+            border: `1px solid ${colorTokens.brand}30`,
             borderRadius: 2,
-            color: darkProTokens.textPrimary
+            color: colorTokens.textPrimary
           }
         }}
       >
         <MenuItem onClick={() => openProductDialog(menuProduct!)}>
           <ListItemIcon>
-            <EditIcon sx={{ color: darkProTokens.primary }} />
+            <EditIcon sx={{ color: colorTokens.brand }} />
           </ListItemIcon>
           <ListItemText>Editar Producto</ListItemText>
         </MenuItem>
@@ -787,14 +628,14 @@ export default function ProductosPage() {
         {menuProduct?.is_active === false ? (
           <MenuItem onClick={() => handleRestore(menuProduct.id)}>
             <ListItemIcon>
-              <RestoreIcon sx={{ color: darkProTokens.success }} />
+              <RestoreIcon sx={{ color: colorTokens.success }} />
             </ListItemIcon>
             <ListItemText>Restaurar Producto</ListItemText>
           </MenuItem>
         ) : (
           <MenuItem onClick={() => handleDelete(menuProduct?.id!)}>
             <ListItemIcon>
-              <DeleteIcon sx={{ color: darkProTokens.error }} />
+              <DeleteIcon sx={{ color: colorTokens.danger }} />
             </ListItemIcon>
             <ListItemText>Eliminar Producto</ListItemText>
           </MenuItem>
@@ -806,21 +647,21 @@ export default function ProductosPage() {
         }}>
           <ListItemIcon>
             {menuProduct?.is_active === false ? 
-              <VisibilityOffIcon sx={{ color: darkProTokens.warning }} /> : 
-              <VisibilityIcon sx={{ color: darkProTokens.info }} />
+              <VisibilityOffIcon sx={{ color: colorTokens.warning }} /> : 
+              <VisibilityIcon sx={{ color: colorTokens.info }} />
             }
           </ListItemIcon>
           <ListItemText>Ver en Inventario</ListItemText>
         </MenuItem>
       </Menu>
 
-      {/* 📝 DIALOG DE FORMULARIO */}
+      {/* DIALOG DE FORMULARIO */}
       <ProductFormDialog
-  open={productDialogOpen}
-  onClose={closeProductDialog}
-  product={selectedProduct || undefined}
-  onSave={handleProductSave}
-/>
+        open={productDialogOpen}
+        onClose={closeProductDialog}
+        product={selectedProduct || undefined}
+        onSave={handleProductSave}
+      />
     </Box>
   );
 }

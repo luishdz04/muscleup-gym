@@ -1,6 +1,8 @@
+// components/dialogs/SaleDetailsDialog.tsx - v7.5 PATRÓN LAYAWAY
+
 'use client';
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -20,112 +22,211 @@ import {
   TableRow,
   Paper,
   Chip,
-  Divider,
   Stack,
-  Avatar
+  Avatar,
+  Divider,
+  CircularProgress
 } from '@mui/material';
 import {
   Close as CloseIcon,
   Person as PersonIcon,
-  Receipt as ReceiptIcon,
-  Payment as PaymentIcon,
-  ShoppingCart as CartIcon,
-  AttachMoney as MoneyIcon
+  CheckCircle,
+  Cancel,
+  Undo
 } from '@mui/icons-material';
-// ✅ IMPORTAR HELPERS DE FECHA CORREGIDOS
-import { toMexicoTimestamp, toMexicoDate, formatMexicoDateTime } from '@/utils/dateHelpers';
 
-// 🎨 DARK PRO SYSTEM - TOKENS
-const darkProTokens = {
-  // Base Colors
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  
-  // Neutrals
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  
-  // Primary Accent (Golden)
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  
-  // Semantic Colors
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  
-  // User Roles
-  roleModerator: '#9C27B0'
-};
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { formatTimestampForDisplay } from '@/utils/dateUtils';
 
 interface SaleDetailsDialogProps {
   open: boolean;
   onClose: () => void;
-  sale: any;
+  sale: {
+    id: string;
+    sale_number: string;
+    customer_name?: string;
+    customer?: {
+      id: string;
+      firstName: string;
+      lastName?: string;
+      email?: string;
+      profilePictureUrl?: string;
+    };
+    cashier_name?: string;
+    cashier?: {
+      id: string;
+      firstName: string;
+      lastName?: string;
+      profilePictureUrl?: string;
+    };
+    total_amount: number;
+    subtotal: number;
+    tax_amount?: number;
+    discount_amount?: number;
+    coupon_discount?: number;
+    coupon_code?: string;
+    commission_amount?: number;
+    commission_rate?: number;
+    change_amount?: number;
+    status: string;
+    payment_status?: string;
+    payment_method?: string;
+    created_at: string;
+    completed_at?: string;
+    cancelled_at?: string;
+    cancel_reason?: string;
+    notes?: string;
+    is_mixed_payment?: boolean;
+    receipt_printed?: boolean;
+    sale_items?: Array<{
+      id: string;
+      product_name: string;
+      product_sku?: string;
+      quantity: number;
+      unit_price: number;
+      total_price: number;
+      discount_amount?: number;
+      tax_amount?: number;
+    }>;
+    sale_payment_details?: Array<{
+      id: string;
+      payment_method: string;
+      amount: number;
+      payment_date?: string;
+      commission_amount?: number;
+      commission_rate?: number;
+      payment_reference?: string;
+      sequence_order?: number;
+      is_partial_payment?: boolean;
+      notes?: string;
+    }>;
+  } | null;
 }
 
 export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDialogProps) {
-  
-  // ✅ FUNCIONES UTILITARIAS CORREGIDAS CON HELPERS DE FECHA MÉXICO
-  const formatPrice = (price: number) => {
+  const hydrated = useHydrated();
+
+  const formatPrice = useCallback((price: number | string) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
-    }).format(price || 0);
-  };
+    }).format(numPrice || 0);
+  }, []);
 
-  // ✅ FUNCIONES CORREGIDAS PARA MOSTRAR FECHAS EN UI
-  const formatMexicoDate = (dateString: string) => {
-    return formatMexicoDateTime(dateString);
-  };
+  const formatDate = useCallback((date: string | number | undefined) => {
+    if (!date) return 'N/A';
+    if (typeof date === 'string') {
+      return formatTimestampForDisplay(date);
+    }
+    return formatTimestampForDisplay(new Date(date).toISOString());
+  }, []);
 
-  const formatDate = (dateString: string) => {
-    return formatMexicoDateTime(dateString);
-  };
+  const safeSale = useMemo(() => {
+    if (!sale) return null;
+    
+    const normalizedItems = sale.sale_items || [];
+    const normalizedPayments = sale.sale_payment_details || [];
+    
+    // ✅ CONVERSIÓN EXPLÍCITA A NÚMEROS PARA EVITAR STRINGS "0"
+    return {
+      ...sale,
+      sale_items: normalizedItems,
+      sale_payment_details: normalizedPayments,
+      customer_name: sale.customer_name || sale.customer?.firstName || 'Cliente General',
+      cashier_name: sale.cashier_name || sale.cashier?.firstName || 'Sistema',
+      // ✅ FORZAR CONVERSIÓN A NÚMEROS
+      discount_amount: Number(sale.discount_amount) || 0,
+      coupon_discount: Number(sale.coupon_discount) || 0,
+      tax_amount: Number(sale.tax_amount) || 0,
+      commission_amount: Number(sale.commission_amount) || 0,
+      commission_rate: Number(sale.commission_rate) || 0,
+      change_amount: Number(sale.change_amount) || 0,
+      subtotal: Number(sale.subtotal) || 0,
+      total_amount: Number(sale.total_amount) || 0
+    };
+  }, [sale]);
 
-  if (!sale) return null;
+  const getPaymentMethodLabel = useCallback((method: string) => {
+    const labels: Record<string, string> = {
+      'efectivo': '💵 Efectivo',
+      'debito': '💳 Tarjeta Débito',
+      'credito': '💳 Tarjeta Crédito',
+      'transferencia': '🏦 Transferencia',
+      'mixto': '🔄 Pago Mixto'
+    };
+    return labels[method?.toLowerCase()] || method || 'No especificado';
+  }, []);
+
+  const getPaymentMethodColor = useCallback((method: string) => {
+    const colors: Record<string, string> = {
+      'efectivo': colorTokens.success,
+      'debito': colorTokens.info,
+      'credito': colorTokens.warning,
+      'transferencia': colorTokens.brand,
+      'mixto': colorTokens.brandActive
+    };
+    return colors[method?.toLowerCase()] || colorTokens.neutral600;
+  }, []);
+
+  const getStatusColor = useCallback((status: string) => {
+    switch (status) {
+      case 'completed': return colorTokens.success;
+      case 'cancelled': return colorTokens.danger;
+      case 'refunded': return colorTokens.info;
+      default: return colorTokens.neutral600;
+    }
+  }, []);
+
+  if (!hydrated) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+        <DialogContent>
+          <Box display="flex" justifyContent="center" alignItems="center" py={4} gap={2}>
+            <CircularProgress sx={{ color: colorTokens.brand }} />
+            <Typography sx={{ color: colorTokens.textSecondary }}>
+              Cargando MuscleUp Gym...
+            </Typography>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!safeSale) return null;
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="lg" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
       fullWidth
       PaperProps={{
         sx: {
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `1px solid ${darkProTokens.grayDark}`,
-          color: darkProTokens.textPrimary,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `1px solid ${colorTokens.border}`,
+          color: colorTokens.textPrimary,
           borderRadius: 4
         }
       }}
     >
-      <DialogTitle sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        background: `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})`,
-        color: darkProTokens.textPrimary,
-        borderRadius: '16px 16px 0 0'
-      }}>
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: `linear-gradient(135deg, ${getStatusColor(safeSale.status)}, ${colorTokens.brandActive})`,
+          color: colorTokens.textOnBrand,
+          borderRadius: '16px 16px 0 0'
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <ReceiptIcon />
+          {safeSale.status === 'completed' && <CheckCircle />}
+          {safeSale.status === 'cancelled' && <Cancel />}
+          {safeSale.status === 'refunded' && <Undo />}
           <Typography variant="h6" fontWeight="bold">
-            📋 Detalles de Venta #{sale.sale_number}
+            Venta #{safeSale.sale_number}
           </Typography>
         </Box>
         <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
@@ -133,90 +234,99 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
         </Button>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, background: darkProTokens.surfaceLevel1 }}>
+      <DialogContent sx={{ p: 3, background: colorTokens.surfaceLevel1 }}>
         <Grid container spacing={3}>
-          {/* ✅ Información general */}
+          
           <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ 
-              height: '100%',
-              background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 3
-            }}>
+            <Card
+              sx={{
+                height: '100%',
+                background: colorTokens.surfaceLevel3,
+                border: `1px solid ${colorTokens.border}`,
+                borderRadius: 3
+              }}
+            >
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
-                  📋 Información General
+                <Typography variant="h6" sx={{ mb: 2, color: colorTokens.success, fontWeight: 700 }}>
+                  Información General
                 </Typography>
                 
                 <Stack spacing={2}>
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Número de Venta:</Typography>
-                    <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>{sale.sale_number}</Typography>
+                    <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                      Número de Venta:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="600" sx={{ color: colorTokens.textPrimary }}>
+                      {safeSale.sale_number}
+                    </Typography>
                   </Box>
                   
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Fecha:</Typography>
-                    <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{formatDate(sale.created_at)}</Typography>
+                    <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                      Fecha de Creación:
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: colorTokens.textPrimary }}>
+                      {formatDate(safeSale.created_at)}
+                    </Typography>
                   </Box>
 
-                  {sale.completed_at && (
+                  {safeSale.completed_at && (
                     <Box>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Fecha de Completado:</Typography>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{formatDate(sale.completed_at)}</Typography>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                        Fecha Completada:
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: colorTokens.textPrimary }}>
+                        {formatDate(safeSale.completed_at)}
+                      </Typography>
                     </Box>
                   )}
                   
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Tipo de Venta:</Typography>
-                    <Chip 
-                      label={sale.sale_type === 'sale' ? 'Venta Directa' : 'Apartado'} 
+                    <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                      Estado:
+                    </Typography>
+                    <Chip
+                      label={
+                        safeSale.status === 'completed'
+                          ? 'Completada'
+                          : safeSale.status === 'cancelled'
+                          ? 'Cancelada'
+                          : safeSale.status === 'refunded'
+                          ? 'Devuelta'
+                          : safeSale.status
+                      }
                       sx={{
-                        backgroundColor: sale.sale_type === 'sale' ? darkProTokens.success : darkProTokens.roleModerator,
-                        color: darkProTokens.textPrimary,
+                        backgroundColor: getStatusColor(safeSale.status),
+                        color: colorTokens.textOnBrand,
                         fontWeight: 600
                       }}
-                      size="small" 
+                      size="small"
                     />
                   </Box>
                   
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Estado:</Typography>
-                    <Chip 
-                      label={sale.status} 
+                    <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                      Método de Pago:
+                    </Typography>
+                    <Chip
+                      label={getPaymentMethodLabel(safeSale.payment_method || '')}
+                      size="small"
                       sx={{
-                        backgroundColor: 
-                          sale.status === 'completed' ? darkProTokens.success :
-                          sale.status === 'pending' ? darkProTokens.warning :
-                          sale.status === 'cancelled' ? darkProTokens.error : darkProTokens.roleModerator,
-                        color: darkProTokens.textPrimary,
-                        fontWeight: 600,
-                        textTransform: 'capitalize'
+                        backgroundColor: getPaymentMethodColor(safeSale.payment_method || ''),
+                        color: colorTokens.textOnBrand,
+                        fontWeight: 600
                       }}
-                      size="small" 
                     />
                   </Box>
                   
-                  <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Estado de Pago:</Typography>
-                    <Chip 
-                      label={sale.payment_status} 
-                      sx={{
-                        backgroundColor: 
-                          sale.payment_status === 'paid' ? darkProTokens.success :
-                          sale.payment_status === 'partial' ? darkProTokens.warning :
-                          sale.payment_status === 'pending' ? darkProTokens.error : darkProTokens.roleModerator,
-                        color: darkProTokens.textPrimary,
-                        fontWeight: 600,
-                        textTransform: 'capitalize'
-                      }}
-                      size="small" 
-                    />
-                  </Box>
-                  
-                  {sale.notes && (
+                  {safeSale.notes && safeSale.notes.trim() !== '' && (
                     <Box>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Notas:</Typography>
-                      <Typography variant="body1" sx={{ color: darkProTokens.textPrimary }}>{sale.notes}</Typography>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                        Notas:
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: colorTokens.textPrimary }}>
+                        {safeSale.notes}
+                      </Typography>
                     </Box>
                   )}
                 </Stack>
@@ -224,33 +334,36 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
             </Card>
           </Grid>
 
-          {/* ✅ Cliente y cajero */}
           <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ 
-              height: '100%',
-              background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 3
-            }}>
+            <Card
+              sx={{
+                height: '100%',
+                background: colorTokens.surfaceLevel3,
+                border: `1px solid ${colorTokens.border}`,
+                borderRadius: 3
+              }}
+            >
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
-                  👤 Cliente y Cajero
+                <Typography variant="h6" sx={{ mb: 2, color: colorTokens.success, fontWeight: 700 }}>
+                  Cliente y Cajero
                 </Typography>
                 
                 <Stack spacing={2}>
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Cliente:</Typography>
+                    <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                      Cliente:
+                    </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: darkProTokens.success }}>
-                        <PersonIcon fontSize="small" />
+                      <Avatar sx={{ width: 40, height: 40, bgcolor: colorTokens.success }}>
+                        <PersonIcon />
                       </Avatar>
                       <Box>
-                        <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                          {sale.customer_name || 'Cliente General'}
+                        <Typography variant="body1" fontWeight="600" sx={{ color: colorTokens.textPrimary }}>
+                          {safeSale.customer_name}
                         </Typography>
-                        {sale.customer_email && (
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            📧 {sale.customer_email}
+                        {safeSale.customer?.email && (
+                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                            {safeSale.customer.email}
                           </Typography>
                         )}
                       </Box>
@@ -258,50 +371,43 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
                   </Box>
                   
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Cajero:</Typography>
-                    <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                      {sale.cashier_name || 'N/A'}
+                    <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                      Cajero:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="600" sx={{ color: colorTokens.textPrimary, mt: 0.5 }}>
+                      {safeSale.cashier_name}
                     </Typography>
                   </Box>
                   
                   <Box>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Opciones:</Typography>
+                    <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                      Opciones:
+                    </Typography>
                     <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>
-                      {sale.receipt_printed && (
-                        <Chip 
-                          label="Ticket impreso" 
-                          size="small" 
+                      {safeSale.receipt_printed && (
+                        <Chip
+                          label="Ticket impreso"
+                          size="small"
                           sx={{
-                            backgroundColor: darkProTokens.info,
-                            color: darkProTokens.textPrimary,
+                            backgroundColor: colorTokens.info,
+                            color: colorTokens.textOnBrand,
                             fontWeight: 600
                           }}
                         />
                       )}
-                      {sale.email_sent && (
-                        <Chip 
-                          label="Email enviado" 
-                          size="small" 
+                      {safeSale.is_mixed_payment && (
+                        <Chip
+                          label="Pago mixto"
+                          size="small"
                           sx={{
-                            backgroundColor: darkProTokens.roleModerator,
-                            color: darkProTokens.textPrimary,
+                            backgroundColor: colorTokens.warning,
+                            color: colorTokens.textOnBrand,
                             fontWeight: 600
                           }}
                         />
                       )}
-                      {sale.is_mixed_payment && (
-                        <Chip 
-                          label="Pago mixto" 
-                          size="small" 
-                          sx={{
-                            backgroundColor: darkProTokens.warning,
-                            color: darkProTokens.textPrimary,
-                            fontWeight: 600
-                          }}
-                        />
-                      )}
-                      {!sale.receipt_printed && !sale.email_sent && !sale.is_mixed_payment && (
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, fontStyle: 'italic' }}>
+                      {!safeSale.receipt_printed && !safeSale.is_mixed_payment && (
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontStyle: 'italic' }}>
                           Sin opciones especiales
                         </Typography>
                       )}
@@ -312,87 +418,111 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
             </Card>
           </Grid>
 
-          {/* ✅ Productos */}
           <Grid size={{ xs: 12 }}>
-            <Card sx={{
-              background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 3
-            }}>
+            <Card
+              sx={{
+                background: colorTokens.surfaceLevel3,
+                border: `1px solid ${colorTokens.border}`,
+                borderRadius: 3
+              }}
+            >
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
-                  🛒 Productos Vendidos ({sale.items?.length || 0})
+                <Typography variant="h6" sx={{ mb: 2, color: colorTokens.success, fontWeight: 700 }}>
+                  Productos ({safeSale.sale_items.length})
                 </Typography>
                 
-                <TableContainer component={Paper} sx={{
-                  background: darkProTokens.surfaceLevel2,
-                  border: `1px solid ${darkProTokens.grayDark}`,
-                  borderRadius: 2
-                }}>
+                <TableContainer
+                  component={Paper}
+                  sx={{
+                    background: colorTokens.surfaceLevel2,
+                    border: `1px solid ${colorTokens.border}`,
+                    borderRadius: 2
+                  }}
+                >
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ background: darkProTokens.grayDark }}>
-                        <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Producto</TableCell>
-                        <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>SKU</TableCell>
-                        <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Cantidad</TableCell>
-                        <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Precio Unit.</TableCell>
-                        <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Descuento</TableCell>
-                        <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Impuestos</TableCell>
-                        <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold' }}>Total</TableCell>
+                      <TableRow sx={{ background: colorTokens.surfaceLevel3 }}>
+                        <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                          Producto
+                        </TableCell>
+                        <TableCell align="center" sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                          SKU
+                        </TableCell>
+                        <TableCell align="center" sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                          Cantidad
+                        </TableCell>
+                        <TableCell align="right" sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                          Precio Unit.
+                        </TableCell>
+                        <TableCell align="right" sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                          Descuento
+                        </TableCell>
+                        <TableCell align="right" sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                          Total
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {sale.items?.map((item: any, index: number) => (
-                        <TableRow key={index} sx={{
-                          '&:hover': { backgroundColor: `${darkProTokens.primary}10` },
-                          '&:nth-of-type(even)': { backgroundColor: `${darkProTokens.surfaceLevel1}60` }
-                        }}>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="500" sx={{ color: darkProTokens.textPrimary }}>
-                              {item.product_name}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                              {item.product_sku || 'N/A'}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip 
-                              label={item.quantity}
-                              size="small"
+                      {safeSale.sale_items.length > 0 ? (
+                        safeSale.sale_items.map((item: any) => {
+                          // ✅ CONVERSIÓN A NÚMEROS PARA ITEMS
+                          const itemDiscountAmount = Number(item.discount_amount) || 0;
+                          
+                          return (
+                            <TableRow
+                              key={item.id}
                               sx={{
-                                backgroundColor: darkProTokens.primary,
-                                color: darkProTokens.background,
-                                fontWeight: 700
+                                '&:hover': { backgroundColor: `${colorTokens.brand}10` },
+                                '&:nth-of-type(even)': { backgroundColor: `${colorTokens.surfaceLevel1}60` }
                               }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                              {formatPrice(item.unit_price)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" sx={{ color: darkProTokens.error }}>
-                              -{formatPrice(item.discount_amount || 0)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" sx={{ color: darkProTokens.info }}>
-                              {formatPrice(item.tax_amount || 0)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.primary }}>
-                              {formatPrice(item.total_price)}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      )) || (
+                            >
+                              <TableCell>
+                                <Typography variant="body2" fontWeight="500" sx={{ color: colorTokens.textPrimary }}>
+                                  {item.product_name}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="center">
+                                <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
+                                  {item.product_sku || '-'}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="center">
+                                <Chip
+                                  label={`×${item.quantity}`}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: colorTokens.brand,
+                                    color: colorTokens.textOnBrand,
+                                    fontWeight: 700
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" sx={{ color: colorTokens.textPrimary }}>
+                                  {formatPrice(item.unit_price)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" sx={{ 
+                                  color: itemDiscountAmount > 0 ? colorTokens.warning : colorTokens.textMuted 
+                                }}>
+                                  {itemDiscountAmount > 0
+                                    ? `-${formatPrice(itemDiscountAmount)}`
+                                    : '-'}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" fontWeight="600" sx={{ color: colorTokens.brand }}>
+                                  {formatPrice(item.total_price)}
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
                         <TableRow>
-                          <TableCell colSpan={7} align="center">
-                            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, py: 2 }}>
+                          <TableCell colSpan={6} align="center">
+                            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, py: 2 }}>
                               No hay productos registrados
                             </Typography>
                           </TableCell>
@@ -405,207 +535,289 @@ export default function SaleDetailsDialog({ open, onClose, sale }: SaleDetailsDi
             </Card>
           </Grid>
 
-          {/* ✅ Información de pagos */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ 
-              height: '100%',
-              background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 3
-            }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
-                  💳 Información de Pagos
-                </Typography>
-                
-                {sale.is_mixed_payment ? (
-                  <Box>
-                    <Typography variant="body2" sx={{ mb: 2, color: darkProTokens.textSecondary }}>Pago Mixto ({sale.payment_details?.length || 0} métodos):</Typography>
-                    {sale.payment_details?.map((payment: any, index: number) => (
-                      <Box key={index} sx={{ 
-                        p: 2, 
-                        border: `1px solid ${darkProTokens.grayDark}`, 
-                        borderRadius: 2, 
-                        mb: 1,
-                        background: darkProTokens.surfaceLevel2
-                      }}>
-                        <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                          Pago #{payment.sequence_order}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                          Método: {payment.payment_method === 'efectivo' && '💵 Efectivo'}
-                          {payment.payment_method === 'debito' && '💳 Débito'}
-                          {payment.payment_method === 'credito' && '💳 Crédito'}
-                          {payment.payment_method === 'transferencia' && '🏦 Transferencia'}
-                          {payment.payment_method === 'vales' && '🎫 Vales'}
-                          {!['efectivo', 'debito', 'credito', 'transferencia', 'vales'].includes(payment.payment_method) && `💰 ${payment.payment_method}`}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                          Monto: {formatPrice(payment.amount)}
-                        </Typography>
-                        {payment.commission_amount > 0 && (
-                          <Typography variant="body2" sx={{ color: darkProTokens.warning }}>
-                            Comisión ({payment.commission_rate}%): {formatPrice(payment.commission_amount)}
-                          </Typography>
-                        )}
-                        {payment.payment_reference && (
-                          <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                            Ref: {payment.payment_reference}
-                          </Typography>
-                        )}
-                        <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                          {formatDate(payment.payment_date)}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                ) : (
-                  <Stack spacing={2}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Método de Pago:</Typography>
-                      <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                        {sale.payment_method === 'efectivo' && '💵 Efectivo'}
-                        {sale.payment_method === 'debito' && '💳 Tarjeta Débito'}
-                        {sale.payment_method === 'credito' && '💳 Tarjeta Crédito'}
-                        {sale.payment_method === 'transferencia' && '🏦 Transferencia'}
-                        {sale.payment_method === 'vales' && '🎫 Vales de Despensa'}
-                        {sale.payment_method === 'Mixto' && '🔄 Pago Mixto'}
-                        {!['efectivo', 'debito', 'credito', 'transferencia', 'vales', 'Mixto'].includes(sale.payment_method) && `💰 ${sale.payment_method || 'N/A'}`}
-                      </Typography>
-                    </Box>
-                    
-                    {sale.commission_amount > 0 && (
-                      <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisión:</Typography>
-                        <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.warning }}>
-                          {formatPrice(sale.commission_amount)}
-                        </Typography>
-                      </Box>
-                    )}
-                    
-                    {sale.change_amount > 0 && (
-                      <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Cambio:</Typography>
-                        <Typography variant="body1" fontWeight="600" sx={{ color: darkProTokens.info }}>
-                          {formatPrice(sale.change_amount)}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Stack>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
+          {safeSale.sale_payment_details && safeSale.sale_payment_details.length > 0 && (
+            <Grid size={{ xs: 12 }}>
+              <Card
+                sx={{
+                  background: colorTokens.surfaceLevel3,
+                  border: `1px solid ${colorTokens.border}`,
+                  borderRadius: 3
+                }}
+              >
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 2, color: colorTokens.success, fontWeight: 700 }}>
+                    Detalles de Pago ({safeSale.sale_payment_details.length})
+                  </Typography>
+                  
+                  <TableContainer
+                    component={Paper}
+                    sx={{
+                      background: colorTokens.surfaceLevel2,
+                      border: `1px solid ${colorTokens.border}`,
+                      borderRadius: 2
+                    }}
+                  >
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ background: colorTokens.surfaceLevel3 }}>
+                          <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                            Método
+                          </TableCell>
+                          <TableCell align="right" sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                            Monto
+                          </TableCell>
+                          <TableCell align="right" sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                            Comisión
+                          </TableCell>
+                          <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold' }}>
+                            Referencia
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {safeSale.sale_payment_details.map((payment: any, index: number) => {
+                          // ✅ CONVERSIÓN A NÚMEROS PARA PAGOS
+                          const paymentCommissionAmount = Number(payment.commission_amount) || 0;
+                          const paymentCommissionRate = Number(payment.commission_rate) || 0;
+                          
+                          return (
+                            <TableRow
+                              key={payment.id || index}
+                              sx={{
+                                '&:hover': { backgroundColor: `${colorTokens.brand}10` },
+                                '&:nth-of-type(even)': { backgroundColor: `${colorTokens.surfaceLevel1}60` }
+                              }}
+                            >
+                              <TableCell>
+                                <Chip
+                                  label={getPaymentMethodLabel(payment.payment_method)}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: getPaymentMethodColor(payment.payment_method),
+                                    color: colorTokens.textOnBrand,
+                                    fontWeight: 600
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" fontWeight="600" sx={{ color: colorTokens.success }}>
+                                  {formatPrice(payment.amount)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" sx={{ color: colorTokens.warning }}>
+                                  {paymentCommissionAmount > 0
+                                    ? formatPrice(paymentCommissionAmount)
+                                    : '$0.00'}
+                                </Typography>
+                                {paymentCommissionRate > 0 && (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: colorTokens.textSecondary, display: 'block' }}
+                                  >
+                                    ({paymentCommissionRate.toFixed(2)}%)
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                                  {payment.payment_reference || 'N/A'}
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
 
-          {/* ✅ Totales */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ 
-              height: '100%',
-              background: darkProTokens.surfaceLevel3,
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 3
-            }}>
+          <Grid size={{ xs: 12 }}>
+            <Card
+              sx={{
+                background: colorTokens.surfaceLevel3,
+                border: `1px solid ${colorTokens.border}`,
+                borderRadius: 3
+              }}
+            >
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, color: darkProTokens.success, fontWeight: 700 }}>
-                  💰 Resumen Financiero
+                <Typography variant="h6" sx={{ mb: 2, color: colorTokens.success, fontWeight: 700 }}>
+                  Resumen Financiero
                 </Typography>
                 
-                <Stack spacing={2}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Subtotal:</Typography>
-                    <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                      {formatPrice(sale.subtotal || 0)}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Impuestos:</Typography>
-                    <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.info }}>
-                      {formatPrice(sale.tax_amount || 0)}
-                    </Typography>
-                  </Box>
-                  
-                  {(sale.discount_amount > 0 || sale.coupon_discount > 0) && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Descuentos:</Typography>
-                      <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.error }}>
-                        -{formatPrice((sale.discount_amount || 0) + (sale.coupon_discount || 0))}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Total Base:</Typography>
-                    <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.textPrimary }}>
-                      {formatPrice(sale.total_amount || 0)}
-                    </Typography>
-                  </Box>
-                  
-                  {sale.commission_amount > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>Comisiones:</Typography>
-                      <Typography variant="body2" fontWeight="600" sx={{ color: darkProTokens.warning }}>
-                        +{formatPrice(sale.commission_amount)}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  <Divider sx={{ borderColor: darkProTokens.grayDark }} />
-                  
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Stack spacing={1.5}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                          Subtotal:
+                        </Typography>
+                        <Typography variant="body1" fontWeight="600" sx={{ color: colorTokens.textPrimary }}>
+                          {formatPrice(safeSale.subtotal)}
+                        </Typography>
+                      </Box>
+                      
+                      {safeSale.discount_amount > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                            Descuento:
+                          </Typography>
+                          <Typography variant="body1" fontWeight="600" sx={{ color: colorTokens.warning }}>
+                            -{formatPrice(safeSale.discount_amount)}
+                          </Typography>
+                        </Box>
+                      )}
+                      
+                      {safeSale.coupon_discount > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                            Cupón{safeSale.coupon_code ? ` (${safeSale.coupon_code})` : ''}:
+                          </Typography>
+                          <Typography variant="body1" fontWeight="600" sx={{ color: colorTokens.success }}>
+                            -{formatPrice(safeSale.coupon_discount)}
+                          </Typography>
+                        </Box>
+                      )}
+                      
+                      {safeSale.tax_amount > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                            Impuestos:
+                          </Typography>
+                          <Typography variant="body1" fontWeight="600" sx={{ color: colorTokens.textPrimary }}>
+                            {formatPrice(safeSale.tax_amount)}
+                          </Typography>
+                        </Box>
+                      )}
+                      
+                      <Divider sx={{ borderColor: colorTokens.border, my: 1 }} />
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
+                          Total:
+                        </Typography>
+                        <Typography variant="h5" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
+                          {formatPrice(safeSale.total_amount)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Stack spacing={2}>
+{safeSale.commission_amount > 0 && (
+                        <Box sx={{ 
+                          p: 2,
+                          bgcolor: `${colorTokens.warning}10`,
+                          borderRadius: 2,
+                          border: `1px solid ${colorTokens.warning}`
+                        }}>
+                          <Typography variant="caption" sx={{ 
+                            color: colorTokens.textMuted, 
+                            textTransform: 'uppercase', 
+                            fontSize: '0.7rem' 
+                          }}>
+                            Comisiones Totales
+                          </Typography>
+                          <Typography variant="h4" sx={{ color: colorTokens.warning, fontWeight: 700, mt: 1 }}>
+                            {formatPrice(safeSale.commission_amount)}
+                          </Typography>
+                          {safeSale.commission_rate && safeSale.commission_rate > 0 && (
+                            <Typography variant="caption" sx={{ 
+                              color: colorTokens.textMuted, 
+                              mt: 0.5, 
+                              display: 'block' 
+                            }}>
+                              Tasa: {safeSale.commission_rate}%
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+
+{safeSale.change_amount > 0 && (
+                        <Box sx={{ 
+                          p: 2,
+                          bgcolor: `${colorTokens.info}10`,
+                          borderRadius: 2,
+                          border: `1px solid ${colorTokens.info}`
+                        }}>
+                          <Typography variant="caption" sx={{ 
+                            color: colorTokens.textMuted, 
+                            textTransform: 'uppercase', 
+                            fontSize: '0.7rem' 
+                          }}>
+                            Cambio Entregado
+                          </Typography>
+                          <Typography variant="h5" sx={{ color: colorTokens.info, fontWeight: 700, mt: 1 }}>
+                            {formatPrice(safeSale.change_amount)}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Stack>
+                  </Grid>
+                </Grid>
+
+                {safeSale.cancel_reason && safeSale.cancel_reason.trim() !== '' && (
                   <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
+                    mt: 3,
                     p: 2,
-                    background: `${darkProTokens.success}20`,
+                    bgcolor: `${colorTokens.danger}10`,
                     borderRadius: 2,
-                    border: `1px solid ${darkProTokens.success}30`
+                    border: `1px solid ${colorTokens.danger}`
                   }}>
-                    <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>Total Final:</Typography>
-                    <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                      {formatPrice((sale.total_amount || 0) + (sale.commission_amount || 0))}
-                    </Typography>
-                  </Box>
-                  
-                  {sale.payment_status === 'partial' && sale.pending_amount > 0 && (
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between',
-                      p: 2,
-                      background: `${darkProTokens.warning}20`,
-                      borderRadius: 2,
-                      border: `1px solid ${darkProTokens.warning}`
+                    <Typography variant="caption" sx={{ 
+                      color: colorTokens.danger, 
+                      textTransform: 'uppercase', 
+                      fontSize: '0.7rem', 
+                      mb: 1, 
+                      display: 'block', 
+                      fontWeight: 700 
                     }}>
-                      <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>Pendiente por Pagar:</Typography>
-                      <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
-                        {formatPrice(sale.pending_amount)}
+                      Razón de {safeSale.status === 'cancelled' ? 'Cancelación' : 'Devolución'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: colorTokens.textPrimary }}>
+                      {safeSale.cancel_reason}
+                    </Typography>
+                    {safeSale.cancelled_at && (
+                      <Typography variant="caption" sx={{ 
+                        color: colorTokens.textMuted, 
+                        mt: 1, 
+                        display: 'block' 
+                      }}>
+                        Fecha: {formatDate(safeSale.cancelled_at)}
                       </Typography>
-                    </Box>
-                  )}
-                </Stack>
+                    )}
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
         </Grid>
       </DialogContent>
 
-      <DialogActions sx={{ 
-        p: 3,
-        background: darkProTokens.surfaceLevel2,
-        borderTop: `1px solid ${darkProTokens.grayDark}`
-      }}>
-        <Button 
-          onClick={onClose} 
-          variant="contained" 
+      <DialogActions
+        sx={{
+          p: 3,
+          background: colorTokens.surfaceLevel2,
+          borderTop: `1px solid ${colorTokens.border}`
+        }}
+      >
+        <Button
+          onClick={onClose}
+          variant="contained"
           size="large"
           sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-            color: darkProTokens.background,
+            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandActive})`,
+            color: colorTokens.textOnBrand,
             fontWeight: 700,
             px: 4,
             py: 1.5,
             borderRadius: 3,
             '&:hover': {
-              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+              background: `linear-gradient(135deg, ${colorTokens.brandActive}, ${colorTokens.brand})`,
               transform: 'translateY(-1px)'
             }
           }}

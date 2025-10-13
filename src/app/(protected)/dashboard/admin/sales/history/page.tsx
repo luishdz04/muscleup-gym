@@ -32,14 +32,15 @@ import {
   CircularProgress,
   InputAdornment,
   Menu,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Tabs,
+  Tab,
+  Badge
 } from '@mui/material';
 import {
   Visibility,
   Cancel,
   CheckCircle,
-  LocalMall,
-  CalendarToday,
   AttachMoney,
   CreditCard,
   Refresh,
@@ -54,17 +55,15 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ✅ IMPORTS ENTERPRISE ESTÁNDAR MUSCLEUP v7.0
+// ✅ IMPORTS ENTERPRISE ESTÁNDAR MUSCLEUP v7.2
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
 import { 
   getCurrentTimestamp,
-  formatTimestampForDisplay,
-  formatDateForDisplay,
-  getTodayInMexico,
   formatTimestampShort,
-  extractDateInMexico
+  extractDateInMexico,
+  getTodayInMexico
 } from '@/utils/dateUtils';
 import { notify } from '@/utils/notifications';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -72,6 +71,8 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 // ✅ IMPORT DEL EDITDIALOG
 import EditDialog from '@/components/pos/EditDialog';
+import SaleDetailsDialog from '@/components/dialogs/SaleDetailsDialog';
+
 
 // ✅ CONSTANTE FUERA DEL COMPONENTE PARA ESTABILIDAD
 const SALES_SELECT_QUERY = `
@@ -113,12 +114,12 @@ const SALES_SELECT_QUERY = `
   )
 `;
 
-// ✅ TIPOS CORREGIDOS Y COMPLETOS v7.0
+// ✅ TIPOS CORREGIDOS Y COMPLETOS v7.2
 export type SaleStatus = 'pending' | 'completed' | 'cancelled' | 'refunded';
 export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'refunded';
 export type SaleType = 'sale' | 'layaway';
 
-// ✅ INTERFACES COMPLETAS SIN ANY
+// ✅ INTERFACES COMPLETAS
 interface SaleItem {
   id: string;
   sale_id: string;
@@ -164,31 +165,32 @@ interface Cashier {
   profilePictureUrl?: string;
 }
 
-// ✅ SALE PRINCIPAL CON ESQUEMA BD MUSCLEUP (snake_case) - COMPATIBLE CON EDITDIALOG
+// ✅ SALE PRINCIPAL v7.2
 interface Sale {
   id: string;
   sale_number: string;
   customer_id?: string;
   cashier_id: string;
   sale_type: SaleType;
+  source_warehouse_id?: string;
   subtotal: number;
-  tax_amount?: number;          // ✅ OPCIONAL PARA COMPATIBILIDAD
-  discount_amount?: number;     // ✅ OPCIONAL PARA COMPATIBILIDAD
-  coupon_discount?: number;     // ✅ OPCIONAL PARA COMPATIBILIDAD
+  tax_amount?: number;
+  discount_amount?: number;
+  coupon_discount?: number;
   coupon_code?: string;
   total_amount: number;
   required_deposit?: number;
-  paid_amount?: number;         // ✅ OPCIONAL PARA COMPATIBILIDAD
+  paid_amount?: number;
   pending_amount?: number;
   deposit_percentage?: number;
   layaway_expires_at?: string;
   status: SaleStatus;
   payment_status: PaymentStatus;
-  is_mixed_payment?: boolean;   // ✅ OPCIONAL PARA COMPATIBILIDAD
+  is_mixed_payment?: boolean;
   payment_received?: number;
-  change_amount?: number;       // ✅ OPCIONAL PARA COMPATIBILIDAD
-  commission_rate?: number;     // ✅ OPCIONAL PARA COMPATIBILIDAD
-  commission_amount?: number;   // ✅ OPCIONAL PARA COMPATIBILIDAD
+  change_amount?: number;
+  commission_rate?: number;
+  commission_amount?: number;
   notes?: string;
   receipt_printed?: boolean;
   created_at: string;
@@ -196,12 +198,12 @@ interface Sale {
   updated_at: string;
   custom_commission_rate?: number;
   skip_inscription?: boolean;
-  cancellation_date?: string;
+  cancelled_at?: string;
+  cancel_reason?: string;
   payment_plan_days?: number;
   initial_payment?: number;
   expiration_date?: string;
   last_payment_date?: string;
-  cancellation_reason?: string;
   cancelled_by?: string;
   refund_amount?: number;
   refund_method?: string;
@@ -211,45 +213,34 @@ interface Sale {
   updated_by?: string;
 }
 
-// ✅ SALE CON RELACIONES EXTENDIDAS PARA HISTORIAL - COMPATIBLE CON EDITDIALOG
 interface SaleWithRelations extends Sale {
   customer?: Customer;
   cashier?: Cashier;
   sale_items?: SaleItem[];
   sale_payment_details?: SalePaymentDetail[];
-  // Campos calculados para display
   customer_name: string;
   cashier_name: string;  
   payment_method: string;
   items_count: number;
 }
 
-// ✅ FILTROS ESPECÍFICOS PARA HISTORIAL
+// ✅ FILTROS v7.2 (SIN status - manejado por pestañas)
 interface HistoryFilters {
-  sale_type: string;
-  status: string;
   cashier_id: string;
   date_from: string;
   date_to: string;
   search: string;
 }
 
-// ✅ STATS AMPLIADAS CON KPIS FINANCIEROS REALES v7.0
+// ✅ STATS v7.2
 interface HistoryStats {
-  // Conteos básicos
   totalCompleted: number;
-  directSalesCount: number;
-  completedLayawayCount: number;  
   refundsCount: number;
   cancelledCount: number;
-  
-  // Métricas financieras core
   totalAmount: number;
   totalCommissions: number;
   averageTicket: number;
   todayTotal: number;
-  
-  // ✅ NUEVAS MÉTRICAS ENTERPRISE
   totalCancelledAmount: number;
   totalRefundedAmount: number;  
   netTotalAmount: number;
@@ -257,24 +248,20 @@ interface HistoryStats {
   refundRate: number;
   averageCancellationTicket: number;
   averageRefundTicket: number;
-  
-  // Análisis de rendimiento
   conversionRate: number;
   netConversionRate: number;
   totalLostRevenue: number;
-  
   paymentMethodBreakdown: Record<string, { count: number; amount: number }>;
 }
 
-// ✅ COMPONENTE CORREGIDO CON REFRESH Y SINCRONIZACIÓN PERFECTOS
+// ✅ COMPONENTE PRINCIPAL v7.2
 const SalesHistoryPage = memo(() => {
-  // ✅ HOOKS ENTERPRISE ORDENADOS
+  // ✅ HOOKS ENTERPRISE
   const hydrated = useHydrated();
   const { addAuditFieldsFor } = useUserTracking();
   const { toast, alert } = useNotifications();
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ REF PARA EVITAR LOOPS EN EFFECTS
   const refreshInProgress = useRef(false);
 
   // ✅ ESTADOS PRINCIPALES
@@ -282,10 +269,11 @@ const SalesHistoryPage = memo(() => {
   const [globalSalesData, setGlobalSalesData] = useState<SaleWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // ✅ ESTADOS ESPECÍFICOS PARA HISTORIAL CON PAGINACIÓN SERVIDOR
+  // ✅ NUEVO: Estado para pestañas v7.2
+  const [activeTab, setActiveTab] = useState(0);
+  
+  // ✅ FILTROS v7.2 (SIN status)
   const [filters, setFilters] = useState<HistoryFilters>({
-    sale_type: 'all',
-    status: 'all',
     cashier_id: 'all', 
     date_from: '',
     date_to: '',
@@ -302,7 +290,7 @@ const SalesHistoryPage = memo(() => {
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
 
-  // ✅ FUNCIÓN UNIFICADA PARA PROCESAR SALES - CORRECCIÓN PRINCIPAL v7.0
+  // ✅ FUNCIÓN UNIFICADA PARA PROCESAR SALES
   const processSaleWithCalculatedFields = useCallback((rawSale: any): SaleWithRelations => {
     const customer = rawSale.customer;
     const cashier = rawSale.cashier;
@@ -324,28 +312,28 @@ const SalesHistoryPage = memo(() => {
     };
   }, []);
 
-  // ✅ CARGAR STATS GLOBALES - USANDO FUNCIÓN UNIFICADA
+  // ✅ CARGAR STATS GLOBALES - SOLO VENTAS DIRECTAS
   const loadGlobalStatsData = useCallback(async () => {
     try {
       let query = supabase
         .from('sales')
         .select(SALES_SELECT_QUERY)
-        .in('status', ['completed', 'cancelled', 'refunded']);
+        .in('status', ['completed', 'cancelled', 'refunded'])
+        .eq('sale_type', 'sale');
 
       const { data, error } = await query;
       if (error) throw error;
 
-      // ✅ USAR FUNCIÓN UNIFICADA PARA PROCESAR
       const processedData = (data || []).map(processSaleWithCalculatedFields);
       setGlobalSalesData(processedData);
-      console.log(`✅ Stats globales: ${processedData.length} transacciones`);
+      console.log(`✅ Stats globales: ${processedData.length} ventas directas`);
     } catch (error) {
       console.error('Error cargando stats globales:', error);
       setGlobalSalesData([]);
     }
   }, [supabase, processSaleWithCalculatedFields]);
 
-  // ✅ FUNCIÓN SEARCHITEMS - USANDO FUNCIÓN UNIFICADA
+  // ✅ FUNCIÓN SEARCHITEMS - SOLO VENTAS DIRECTAS
   const searchItemsWithServerFilters = useCallback(async (
     filterParams: Record<string, any> = {},
     pageNum: number = 0,
@@ -359,16 +347,13 @@ const SalesHistoryPage = memo(() => {
         .from('sales')
         .select(SALES_SELECT_QUERY, { count: returnTotalCount ? 'exact' : undefined });
 
-      // ✅ FILTRO BASE: SOLO ESTADOS PROCESADOS
-      query = query.in('status', ['completed', 'cancelled', 'refunded']);
+      // ✅ FILTROS BASE
+      query = query.eq('sale_type', 'sale');
 
-      // ✅ FILTROS SERVIDOR - CONSTRUCCIÓN INTELIGENTE
+      // ✅ FILTROS SERVIDOR
       Object.entries(filterParams).forEach(([key, value]) => {
         if (value && value !== 'all' && value !== '') {
           switch (key) {
-            case 'sale_type':
-              query = query.eq('sale_type', value);
-              break;
             case 'status':
               query = query.eq('status', value);
               break;
@@ -385,64 +370,136 @@ const SalesHistoryPage = memo(() => {
         }
       });
 
-      // ✅ PAGINACIÓN REAL EN SERVIDOR
       const from = pageNum * pageSize;
       const to = from + pageSize - 1;
       query = query.range(from, to);
-
-      // ✅ ORDENAMIENTO POR TABLA SALES (snake_case)
       query = query.order('created_at', { ascending: false });
 
       const { data, error, count } = await query;
       
       if (error) throw error;
 
-      // ✅ USAR FUNCIÓN UNIFICADA Y ACTUALIZAR ESTADO PRINCIPAL
       const processedData = (data || []).map(processSaleWithCalculatedFields);
       setAllSales(processedData);
 
-      // ✅ ACTUALIZAR TOTAL COUNT SI SE SOLICITA
       if (returnTotalCount && count !== null) {
         setTotalCount(count);
       }
 
-      console.log(`✅ Búsqueda completada: ${processedData.length} resultados de ${count || 'N/A'} total`);
+      console.log(`✅ Búsqueda completada: ${processedData.length} ventas directas de ${count || 'N/A'} total`);
       return processedData;
     } catch (error) {
       console.error('Error en searchItemsWithServerFilters:', error);
-      setAllSales([]); // Reset en caso de error
+      setAllSales([]);
       throw error;
     }
   }, [supabase, processSaleWithCalculatedFields]);
 
-  // ✅ NUEVA LÓGICA: CARGAR STATS GLOBALES PRIMERO, LUEGO TABLA
+  // ✅ CARGAR STATS GLOBALES PRIMERO
   useEffect(() => {
     if (!hydrated) return;
-    
     console.log('💧 Hidratado - cargando stats globales primero...');
     loadGlobalStatsData();
   }, [hydrated, loadGlobalStatsData]);
 
-  // ✅ NUEVA LÓGICA: TABLA SE CARGA CUANDO YA TENEMOS DATOS GLOBALES
+  // ✅ ESTADÍSTICAS GLOBALES
+  const globalStats = useMemo((): HistoryStats => {
+    const today = getTodayInMexico();
+    
+    const todayTransactions = globalSalesData.filter((sale: SaleWithRelations) => {
+      const saleDate = extractDateInMexico(sale.created_at);
+      return saleDate === today;
+    });
+
+    const completedSales = globalSalesData.filter((sale: SaleWithRelations) => sale.status === 'completed');
+    const cancelledSales = globalSalesData.filter((sale: SaleWithRelations) => sale.status === 'cancelled');
+    const refundedSales = globalSalesData.filter((sale: SaleWithRelations) => sale.status === 'refunded');
+    
+    const totalAmount = completedSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
+    const totalCancelledAmount = cancelledSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
+    const totalRefundedAmount = refundedSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
+    
+    const totalTransactions = completedSales.length + cancelledSales.length + refundedSales.length;
+    const successfulTransactions = completedSales.length;
+    
+    const todayTotal = todayTransactions
+      .filter((sale: SaleWithRelations) => sale.status === 'completed')
+      .reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
+
+    return {
+      totalCompleted: completedSales.length,
+      refundsCount: refundedSales.length,
+      cancelledCount: cancelledSales.length,
+      totalAmount,
+      totalCommissions: completedSales.reduce((sum: number, sale: SaleWithRelations) => sum + (sale.commission_amount || 0), 0),
+      averageTicket: completedSales.length > 0 ? totalAmount / completedSales.length : 0,
+      todayTotal,
+      totalCancelledAmount,
+      totalRefundedAmount,
+      netTotalAmount: totalAmount - totalRefundedAmount,
+      cancellationRate: totalTransactions > 0 ? (cancelledSales.length / totalTransactions) * 100 : 0,
+      refundRate: successfulTransactions > 0 ? (refundedSales.length / successfulTransactions) * 100 : 0,
+      averageCancellationTicket: cancelledSales.length > 0 ? totalCancelledAmount / cancelledSales.length : 0,
+      averageRefundTicket: refundedSales.length > 0 ? totalRefundedAmount / refundedSales.length : 0,
+      conversionRate: totalTransactions > 0 ? (successfulTransactions / totalTransactions) * 100 : 0,
+      netConversionRate: totalTransactions > 0 ? ((successfulTransactions - refundedSales.length) / totalTransactions) * 100 : 0,
+      totalLostRevenue: totalCancelledAmount + totalRefundedAmount,
+      paymentMethodBreakdown: globalSalesData.reduce((breakdown: Record<string, { count: number; amount: number }>, sale: SaleWithRelations) => {
+        const method = sale.payment_method;
+        if (!breakdown[method]) {
+          breakdown[method] = { count: 0, amount: 0 };
+        }
+        breakdown[method].count++;
+        breakdown[method].amount += sale.total_amount;
+        return breakdown;
+      }, {})
+    };
+  }, [globalSalesData]);
+
+  // ✅ NUEVO: Configuración de pestañas v7.2
+  const tabsData = useMemo(() => [
+    { 
+      label: 'Completadas', 
+      value: 'completed', 
+      color: colorTokens.success,
+      icon: <CheckCircle />,
+      count: globalStats.totalCompleted,
+    },
+    { 
+      label: 'Canceladas', 
+      value: 'cancelled', 
+      color: colorTokens.danger,
+      icon: <Cancel />,
+      count: globalStats.cancelledCount,
+    },
+    { 
+      label: 'Devueltas', 
+      value: 'refunded', 
+      color: colorTokens.info,
+      icon: <Undo />,
+      count: globalStats.refundsCount,
+    }
+  ], [globalStats]);
+
+  // ✅ NUEVO: TABLA SE CARGA SEGÚN PESTAÑA ACTIVA v7.2
   useEffect(() => {
-    // Solo proceder cuando tengamos stats globales (aunque sea array vacío)
     if (!hydrated || globalSalesData.length === 0) {
       console.log(`⏳ Esperando stats globales: hydrated=${hydrated}, globalSalesData=${globalSalesData.length}`);
       return;
     }
+
+    const currentTabStatus = tabsData[activeTab]?.value;
+    if (!currentTabStatus) return;
     
-    console.log(`🔄 Stats globales listas (${globalSalesData.length}), cargando tabla...`);
-    console.log(`📊 Página=${page}, Filtros=`, filters);
+    console.log(`🔄 Stats globales listas, cargando tabla para: ${currentTabStatus}`);
     
     const cargarTabla = async () => {
       setLoading(true);
       try {
-        const serverFilters: Record<string, any> = {};
-        if (filters.sale_type !== 'all') serverFilters.sale_type = filters.sale_type;
-        if (filters.status !== 'all') serverFilters.status = filters.status;
-        if (filters.cashier_id !== 'all') serverFilters.cashier_id = filters.cashier_id;
-        if (filters.date_from) serverFilters.date_from = filters.date_from;
-        if (filters.date_to) serverFilters.date_to = filters.date_to;
+        const serverFilters: Record<string, any> = { ...filters };
+        serverFilters.status = currentTabStatus; // ✅ Forzar filtro según pestaña
+        
+        if (serverFilters.cashier_id === 'all') delete serverFilters.cashier_id;
 
         await searchItemsWithServerFilters(serverFilters, page, rowsPerPage, true);
       } catch (error) {
@@ -454,18 +511,16 @@ const SalesHistoryPage = memo(() => {
     };
     
     cargarTabla();
-  }, [hydrated, globalSalesData.length, filters, page, rowsPerPage, searchItemsWithServerFilters]);
+  }, [hydrated, globalSalesData.length, activeTab, tabsData, filters, page, rowsPerPage, searchItemsWithServerFilters]);
 
-  // ✅ PROCESAR SALES PARA DISPLAY - SIN FILTRADO DUPLICADO (YA PROCESADAS)
+  // ✅ PROCESAR SALES PARA DISPLAY
   const processedSales = useMemo(() => {
-    // NO HAY FILTRADO AQUÍ - SOLO USAR LAS YA PROCESADAS
     return allSales;
   }, [allSales]);
 
-  // ✅ FILTRADO SOLO PARA BÚSQUEDA (TEXTO) - INSTANTÁNEO
+  // ✅ FILTRADO SOLO PARA BÚSQUEDA
   const filteredSales = useMemo(() => {
     return processedSales.filter(sale => {
-      // Solo filtro de búsqueda en cliente para UX instantánea
       if (filters.search.trim() && !sale.sale_number.toLowerCase().includes(filters.search.toLowerCase())) {
         return false;
       }
@@ -473,9 +528,8 @@ const SalesHistoryPage = memo(() => {
     });
   }, [processedSales, filters.search]);
 
-  // ✅ CAJEROS DINÁMICOS - EXTRAÍDOS DE LAS VENTAS MOSTRADAS ACTUALMENTE
+  // ✅ CAJEROS DINÁMICOS
   const availableCashiers = useMemo(() => {
-    // Obtener cajeros únicos de las ventas que se están mostrando
     const cashierMap = new Map<string, Cashier>();
     
     filteredSales.forEach(sale => {
@@ -489,85 +543,12 @@ const SalesHistoryPage = memo(() => {
       }
     });
     
-    // Convertir a array y ordenar
-    const cashiersArray = Array.from(cashierMap.values()).sort((a, b) => 
+    return Array.from(cashierMap.values()).sort((a, b) => 
       a.firstName.localeCompare(b.firstName)
     );
-    
-    console.log(`📊 Cajeros dinámicos extraídos: ${cashiersArray.length} de ${filteredSales.length} ventas`);
-    return cashiersArray;
   }, [filteredSales]);
 
-  // ✅ ESTADÍSTICAS GLOBALES - CORREGIDAS CON extractDateInMexico
-  const globalStats = useMemo((): HistoryStats => {
-    const today = getTodayInMexico();
-    
-    // ✅ CORRECCIÓN CRÍTICA: Usar extractDateInMexico para comparación precisa
-    const todayTransactions = globalSalesData.filter((sale: SaleWithRelations) => {
-      const saleDate = extractDateInMexico(sale.created_at);
-      return saleDate === today;
-    });
-
-    // Separar por status para análisis detallado
-    const completedSales = globalSalesData.filter((sale: SaleWithRelations) => sale.status === 'completed');
-    const cancelledSales = globalSalesData.filter((sale: SaleWithRelations) => sale.status === 'cancelled');
-    const refundedSales = globalSalesData.filter((sale: SaleWithRelations) => sale.status === 'refunded');
-    
-    // Métricas financieras básicas
-    const totalAmount = completedSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
-    const totalCancelledAmount = cancelledSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
-    const totalRefundedAmount = refundedSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
-    
-    // Análisis de rendimiento y conversión
-    const totalTransactions = completedSales.length + cancelledSales.length + refundedSales.length;
-    const successfulTransactions = completedSales.length;
-    
-    // ✅ CÁLCULO CORREGIDO DE TOTAL HOY
-    const todayTotal = todayTransactions
-      .filter((sale: SaleWithRelations) => sale.status === 'completed')
-      .reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
-
-    return {
-      // Conteos básicos
-      totalCompleted: completedSales.length,
-      directSalesCount: completedSales.filter((sale: SaleWithRelations) => sale.sale_type === 'sale').length,
-      completedLayawayCount: completedSales.filter((sale: SaleWithRelations) => sale.sale_type === 'layaway').length,
-      refundsCount: refundedSales.length,
-      cancelledCount: cancelledSales.length,
-      
-      // Métricas financieras core
-      totalAmount,
-      totalCommissions: completedSales.reduce((sum: number, sale: SaleWithRelations) => sum + (sale.commission_amount || 0), 0),
-      averageTicket: completedSales.length > 0 ? totalAmount / completedSales.length : 0,
-      todayTotal,
-      
-      // ✅ NUEVAS MÉTRICAS ENTERPRISE
-      totalCancelledAmount,
-      totalRefundedAmount,
-      netTotalAmount: totalAmount - totalRefundedAmount,
-      cancellationRate: totalTransactions > 0 ? (cancelledSales.length / totalTransactions) * 100 : 0,
-      refundRate: successfulTransactions > 0 ? (refundedSales.length / successfulTransactions) * 100 : 0,
-      averageCancellationTicket: cancelledSales.length > 0 ? totalCancelledAmount / cancelledSales.length : 0,
-      averageRefundTicket: refundedSales.length > 0 ? totalRefundedAmount / refundedSales.length : 0,
-      
-      // Análisis de rendimiento
-      conversionRate: totalTransactions > 0 ? (successfulTransactions / totalTransactions) * 100 : 0,
-      netConversionRate: totalTransactions > 0 ? ((successfulTransactions - refundedSales.length) / totalTransactions) * 100 : 0,
-      totalLostRevenue: totalCancelledAmount + totalRefundedAmount,
-      
-      paymentMethodBreakdown: globalSalesData.reduce((breakdown: Record<string, { count: number; amount: number }>, sale: SaleWithRelations) => {
-        const method = sale.payment_method;
-        if (!breakdown[method]) {
-          breakdown[method] = { count: 0, amount: 0 };
-        }
-        breakdown[method].count++;
-        breakdown[method].amount += sale.total_amount;
-        return breakdown;
-      }, {})
-    };
-  }, [globalSalesData]);
-
-  // ✅ ESTADÍSTICAS CONTEXTUALES - CORREGIDAS CON extractDateInMexico
+  // ✅ ESTADÍSTICAS CONTEXTUALES
   const contextualStats = useMemo((): HistoryStats => {
     const today = getTodayInMexico();
     
@@ -576,37 +557,27 @@ const SalesHistoryPage = memo(() => {
       return saleDate === today;
     });
 
-    // Separar por status para análisis detallado - FILTRADOS
     const completedSales = filteredSales.filter((sale: SaleWithRelations) => sale.status === 'completed');
     const cancelledSales = filteredSales.filter((sale: SaleWithRelations) => sale.status === 'cancelled');
     const refundedSales = filteredSales.filter((sale: SaleWithRelations) => sale.status === 'refunded');
     
-    // Métricas financieras básicas - FILTRADAS
     const totalAmount = completedSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
     const totalCancelledAmount = cancelledSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
     const totalRefundedAmount = refundedSales.reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0);
     
-    // Análisis de rendimiento y conversión - FILTRADOS
     const totalTransactions = completedSales.length + cancelledSales.length + refundedSales.length;
     const successfulTransactions = completedSales.length;
     
     return {
-      // Conteos básicos - FILTRADOS
       totalCompleted: completedSales.length,
-      directSalesCount: completedSales.filter((sale: SaleWithRelations) => sale.sale_type === 'sale').length,
-      completedLayawayCount: completedSales.filter((sale: SaleWithRelations) => sale.sale_type === 'layaway').length,
       refundsCount: refundedSales.length,
       cancelledCount: cancelledSales.length,
-      
-      // Métricas financieras core - FILTRADAS
       totalAmount,
       totalCommissions: completedSales.reduce((sum: number, sale: SaleWithRelations) => sum + (sale.commission_amount || 0), 0),
       averageTicket: completedSales.length > 0 ? totalAmount / completedSales.length : 0,
       todayTotal: todayTransactions
         .filter((sale: SaleWithRelations) => sale.status === 'completed')
         .reduce((sum: number, sale: SaleWithRelations) => sum + sale.total_amount, 0),
-      
-      // ✅ NUEVAS MÉTRICAS ENTERPRISE - FILTRADAS
       totalCancelledAmount,
       totalRefundedAmount,
       netTotalAmount: totalAmount - totalRefundedAmount,
@@ -614,12 +585,9 @@ const SalesHistoryPage = memo(() => {
       refundRate: successfulTransactions > 0 ? (refundedSales.length / successfulTransactions) * 100 : 0,
       averageCancellationTicket: cancelledSales.length > 0 ? totalCancelledAmount / cancelledSales.length : 0,
       averageRefundTicket: refundedSales.length > 0 ? totalRefundedAmount / refundedSales.length : 0,
-      
-      // Análisis de rendimiento - FILTRADOS
       conversionRate: totalTransactions > 0 ? (successfulTransactions / totalTransactions) * 100 : 0,
       netConversionRate: totalTransactions > 0 ? ((successfulTransactions - refundedSales.length) / totalTransactions) * 100 : 0,
       totalLostRevenue: totalCancelledAmount + totalRefundedAmount,
-      
       paymentMethodBreakdown: filteredSales.reduce((breakdown: Record<string, { count: number; amount: number }>, sale: SaleWithRelations) => {
         const method = sale.payment_method;
         if (!breakdown[method]) {
@@ -632,7 +600,7 @@ const SalesHistoryPage = memo(() => {
     };
   }, [filteredSales]);
 
-  // ✅ FUNCIONES HELPER MEMOIZADAS
+  // ✅ FUNCIONES HELPER
   const formatPrice = useCallback((price: number): string => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -663,22 +631,18 @@ const SalesHistoryPage = memo(() => {
 
   // ✅ ACTUALIZAR FILTROS CON RESET DE PÁGINA
   const updateFiltersWithPageReset = useCallback((newFilters: Partial<HistoryFilters>) => {
-    setPage(0); // ✅ CRÍTICO: Resetear página antes de cambiar filtros
+    setPage(0);
     setFilters(prev => ({ ...prev, ...newFilters }));
-    console.log('🔄 Filtros actualizados, página reseteada:', newFilters);
   }, []);
 
-  // ✅ MANEJADOR DE BÚSQUEDA INSTANTÁNEA (SIN RESET DE PÁGINA)
+  // ✅ MANEJADOR DE BÚSQUEDA
   const handleSearchChange = useCallback((searchValue: string) => {
     setFilters(prev => ({ ...prev, search: searchValue }));
-    // NO resetear página para búsqueda - es filtro instantáneo cliente
   }, []);
 
-  // ✅ LIMPIAR FILTROS
+  // ✅ LIMPIAR FILTROS v7.2
   const clearFilters = useCallback(() => {
     setFilters({
-      sale_type: 'all',
-      status: 'all',
       cashier_id: 'all',
       date_from: '',
       date_to: '',
@@ -686,6 +650,12 @@ const SalesHistoryPage = memo(() => {
     });
     setPage(0);
     notify.success('Filtros limpiados');
+  }, []);
+
+  // ✅ NUEVO: Handler para cambio de pestaña v7.2
+  const handleTabChange = useCallback((event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+    setPage(0);
   }, []);
 
   // ✅ MANEJO DE MENÚ
@@ -712,10 +682,9 @@ const SalesHistoryPage = memo(() => {
     handleMenuClose();
   }, [handleMenuClose]);
 
-  // ✅ UPDATE ITEM CON AUDITORÍA sales (updated_only)
+  // ✅ UPDATE ITEM CON AUDITORÍA
   const updateItem = useCallback(async (saleId: string, updates: Partial<Sale>) => {
     try {
-      // Aplicar auditoría para tabla sales (updated_only)
       const dataWithAudit = await addAuditFieldsFor('sales', updates, true);
       
       const { data, error } = await supabase
@@ -727,7 +696,6 @@ const SalesHistoryPage = memo(() => {
         
       if (error) throw error;
       
-      // ✅ CORRECCIÓN CRÍTICA: FUSIÓN DE ESTADO EN LUGAR DE REEMPLAZO
       const processedSale = processSaleWithCalculatedFields(data);
       setAllSales(prev => prev.map(sale => 
         sale.id === saleId ? { ...sale, ...processedSale } : sale
@@ -740,97 +708,19 @@ const SalesHistoryPage = memo(() => {
     }
   }, [supabase, addAuditFieldsFor, processSaleWithCalculatedFields]);
 
-  // ✅ FUNCIÓN HELPER: OBTENER ITEMS DE VENTA
-  const getSaleItems = useCallback(async (saleId: string): Promise<SaleItem[]> => {
+  // ✅ OBTENER USUARIO ACTUAL
+  const getCurrentUser = useCallback(async (): Promise<string> => {
     try {
-      const { data, error } = await supabase
-        .from('sale_items')
-        .select('*')
-        .eq('sale_id', saleId);
-      
-      if (error) throw error;
-      return data || [];
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) throw new Error('Usuario no autenticado');
+      return user.id;
     } catch (error) {
-      console.error('Error obteniendo sale_items:', error);
-      throw new Error('No se pudieron obtener los productos de la venta');
+      console.error('Error obteniendo usuario:', error);
+      throw new Error('No se pudo identificar al usuario actual');
     }
   }, [supabase]);
 
-  // ✅ FUNCIÓN HELPER: CREAR MOVIMIENTO DE INVENTARIO CON AUDITORÍA
-  const createInventoryMovement = useCallback(async (
-    saleItem: SaleItem, 
-    reason: string,
-    movementType: 'entrada' | 'ajuste' = 'entrada'
-  ): Promise<{ productName: string; newStock: number }> => {
-    try {
-      const { data: productData, error: productError } = await supabase
-        .from('products')
-        .select('current_stock, name')
-        .eq('id', saleItem.product_id)
-        .single();
-      
-      if (productError) throw productError;
-      
-      const newStock = movementType === 'entrada' 
-        ? productData.current_stock + saleItem.quantity 
-        : productData.current_stock;
-      
-      // Crear movimiento sin auditoría (inventory_movements = none)
-      const movementData = await addAuditFieldsFor('inventory_movements', {
-        product_id: saleItem.product_id,
-        movement_type: movementType,
-        quantity: saleItem.quantity,
-        previous_stock: productData.current_stock,
-        new_stock: newStock,
-        reason: reason,
-        reference_id: saleItem.sale_id,
-        unit_cost: saleItem.unit_price,
-        total_cost: saleItem.total_price
-      }, false);
-
-      const { error: movementError } = await supabase
-        .from('inventory_movements')
-        .insert([movementData]);
-      
-      if (movementError) throw movementError;
-      
-      return { productName: productData.name, newStock };
-    } catch (error) {
-      console.error('Error creando movimiento de inventario:', error);
-      throw error;
-    }
-  }, [supabase, addAuditFieldsFor]);
-
-  // ✅ ACTUALIZAR STOCK FÍSICO CON AUDITORÍA products (full_snake)
-  const updateProductStock = useCallback(async (productId: string, quantityToAdd: number): Promise<void> => {
-    try {
-      const { data: currentProduct, error: fetchError } = await supabase
-        .from('products')
-        .select('current_stock')
-        .eq('id', productId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const newStock = currentProduct.current_stock + quantityToAdd;
-
-      const stockUpdateData = await addAuditFieldsFor('products', {
-        current_stock: newStock
-      }, true);
-
-      const { error } = await supabase
-        .from('products')
-        .update(stockUpdateData)
-        .eq('id', productId);
-      
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error actualizando stock:', error);
-      throw error;
-    }
-  }, [supabase, addAuditFieldsFor]);
-
-  // ✅ FUNCIÓN REFRESH CORREGIDA - RECARGA DIRECTA SIN TRUCOS
+  // ✅ FUNCIÓN REFRESH
   const refreshData = useCallback(async () => {
     if (refreshInProgress.current) {
       console.log('⏳ Refresh ya en progreso, omitiendo...');
@@ -841,16 +731,12 @@ const SalesHistoryPage = memo(() => {
     refreshInProgress.current = true;
     
     try {
-      // 1. Recargar stats globales PRIMERO
       await loadGlobalStatsData();
       
-      // 2. Recargar tabla con parámetros actuales DIRECTAMENTE
-      const serverFilters: Record<string, any> = {};
-      if (filters.sale_type !== 'all') serverFilters.sale_type = filters.sale_type;
-      if (filters.status !== 'all') serverFilters.status = filters.status;
-      if (filters.cashier_id !== 'all') serverFilters.cashier_id = filters.cashier_id;
-      if (filters.date_from) serverFilters.date_from = filters.date_from;
-      if (filters.date_to) serverFilters.date_to = filters.date_to;
+      const currentTabStatus = tabsData[activeTab]?.value;
+      const serverFilters: Record<string, any> = { ...filters };
+      if (currentTabStatus) serverFilters.status = currentTabStatus;
+      if (serverFilters.cashier_id === 'all') delete serverFilters.cashier_id;
 
       await searchItemsWithServerFilters(serverFilters, page, rowsPerPage, true);
       
@@ -861,121 +747,94 @@ const SalesHistoryPage = memo(() => {
     } finally {
       refreshInProgress.current = false;
     }
-  }, [loadGlobalStatsData, filters, page, rowsPerPage, searchItemsWithServerFilters]);
+  }, [loadGlobalStatsData, activeTab, tabsData, filters, page, rowsPerPage, searchItemsWithServerFilters]);
 
-  // ✅ FUSIÓN DE ESTADO CORREGIDA - CORRECCIÓN PRINCIPAL v7.0
+  // ✅ FUSIÓN DE ESTADO
   const updateSaleInLocalState = useCallback((updatedSale: SaleWithRelations) => {
-    console.log('🔄 Actualizando venta en estado local (método corregido):', updatedSale.sale_number);
-    
-    // ✅ FUSIÓN CORREGIDA: { ...sale, ...updatedSale }
     const merger = (sale: SaleWithRelations) => 
-      sale.id === updatedSale.id 
-        ? { ...sale, ...updatedSale } // ✅ FUSIONA el objeto viejo con el nuevo
-        : sale;
+      sale.id === updatedSale.id ? { ...sale, ...updatedSale } : sale;
 
     setAllSales(prev => prev.map(merger));
     setGlobalSalesData(prev => prev.map(merger));
-    
-    console.log('✅ Venta actualizada en ambos estados locales');
   }, []);
 
-  // ✅ CALLBACK MEJORADO PARA EDITDIALOG - CON ACTUALIZACIÓN INMEDIATA
+  // ✅ CALLBACK PARA EDITDIALOG
   const handleEditSuccess = useCallback((updatedSale?: SaleWithRelations) => {
-    console.log('✅ Callback de éxito del EditDialog ejecutado');
-    
     if (updatedSale) {
-      console.log('📝 Actualizando venta local inmediatamente:', updatedSale.sale_number);
       updateSaleInLocalState(updatedSale);
     }
-    
-    // Opcional: refresh completo en background para garantizar sincronización
-    setTimeout(() => {
-      refreshData();
-    }, 1000);
-    
-    notify.success('Venta actualizada correctamente en el historial');
+    setTimeout(() => refreshData(), 1000);
+    notify.success('Venta actualizada correctamente');
   }, [updateSaleInLocalState, refreshData]);
 
-  // ✅ FUNCIÓN UNIFICADA: PROCESAR CANCELACIÓN/DEVOLUCIÓN CON RESTAURACIÓN DE INVENTARIO
+  // ✅ CANCELACIÓN/DEVOLUCIÓN CON INVENTORY_MOVEMENTS
   const processTransactionReversal = useCallback(async (
     sale: SaleWithRelations, 
     actionType: 'cancel' | 'refund'
   ) => {
-    const isLayaway = sale.sale_type === 'layaway';
     const actionName = actionType === 'cancel' ? 'cancelación' : 'devolución';
     
     const confirmed = await alert.confirm(
-      `¿Confirmar ${actionName} de ${sale.sale_number}?\n\n` +
-      `Tipo: ${isLayaway ? 'Apartado Completado' : 'Venta Directa'}\n` +
+      `¿Confirmar ${actionName} de la venta #${sale.sale_number}?\n\n` +
       `Monto: ${formatPrice(sale.total_amount)}\n\n` +
-      `Esta acción:\n` +
-      `• Cambiará el status de la transacción\n` +
-      `• Restaurará el inventario físico automáticamente\n` +
-      `• No se puede deshacer\n\n` +
+      `Esta acción restaurará el inventario automáticamente y no se puede deshacer.\n` +
       `¿Continuar?`
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      handleMenuClose();
+      return;
+    }
 
     const progressToast = notify.loading(`Procesando ${actionName}...`);
 
     try {
-      // 1. Obtener productos de la venta
-      const saleItems = await getSaleItems(sale.id);
+      const currentUserId = await getCurrentUser();
+      const saleItems = sale.sale_items || [];
       
       if (saleItems.length === 0) {
-        notify.dismiss(progressToast);
-        notify.warning('La venta no tiene productos registrados');
-        return;
+        throw new Error('La venta no tiene productos para procesar');
       }
 
-      const restoredProducts = [];
-
-      // 2. Restaurar inventario físico para todos los productos
-      for (const item of saleItems) {
-        try {
-          const result = await createInventoryMovement(
-            item, 
-            `${actionName.charAt(0).toUpperCase() + actionName.slice(1)} ${sale.sale_number}`,
-            'entrada'
-          );
-          await updateProductStock(item.product_id, item.quantity);
-          
-          restoredProducts.push({
-            name: result.productName,
-            quantity: item.quantity,
-            newStock: result.newStock
-          });
-        } catch (error) {
-          console.error(`Error restaurando producto ${item.product_name}:`, error);
-          throw new Error(`Error restaurando ${item.product_name}: ${(error as Error).message}`);
-        }
+      const warehouseId = sale.source_warehouse_id;
+      if (!warehouseId) {
+        throw new Error('No se pudo determinar el almacén de origen');
       }
 
-      // 3. Actualizar status de venta con auditoría sales (updated_only)
+      const inventoryMovements = saleItems.map((item: SaleItem) => ({
+        product_id: item.product_id,
+        movement_type: 'devolucion_cliente',
+        quantity: item.quantity,
+        target_warehouse_id: warehouseId,
+        reason: `${actionName.charAt(0).toUpperCase() + actionName.slice(1)} de Venta #${sale.sale_number}`,
+        reference_id: sale.id,
+        created_by: currentUserId,
+      }));
+
+      const { error: movementsError } = await supabase
+        .from('inventory_movements')
+        .insert(inventoryMovements);
+
+      if (movementsError) {
+        throw new Error(`Error al revertir el inventario: ${movementsError.message}`);
+      }
+
       const statusUpdate = actionType === 'cancel' ? 'cancelled' : 'refunded';
       const reason = prompt(`Motivo de la ${actionName} (opcional):`) || `${actionName.charAt(0).toUpperCase() + actionName.slice(1)} procesada`;
-
+      
       await updateItem(sale.id, {
         status: statusUpdate as SaleStatus,
         payment_status: 'refunded' as PaymentStatus,
-        cancellation_date: getCurrentTimestamp(),
-        cancellation_reason: `${actionName.charAt(0).toUpperCase() + actionName.slice(1)} - ${reason}`,
-        refund_amount: sale.total_amount,
-        refund_method: 'efectivo'
+        cancelled_at: getCurrentTimestamp(),
+        cancel_reason: reason,
       });
 
       notify.dismiss(progressToast);
-      
-      const productsList = restoredProducts
-        .map(p => `• ${p.name}: +${p.quantity} unidades`)
-        .join('\n');
-      
       notify.success(
         `${actionName.charAt(0).toUpperCase() + actionName.slice(1)} procesada exitosamente\n\n` +
-        `${sale.sale_number}\n` +
-        `Monto: ${formatPrice(sale.total_amount)}\n\n` +
-        `Inventario restaurado:\n${productsList}`
+        `Venta #${sale.sale_number}\n` +
+        `Monto: ${formatPrice(sale.total_amount)}\n` +
+        `Inventario restaurado automáticamente`
       );
 
       await refreshData();
@@ -983,12 +842,11 @@ const SalesHistoryPage = memo(() => {
     } catch (error) {
       notify.dismiss(progressToast);
       notify.error(`Error en ${actionName}: ${(error as Error).message}`);
-      console.error(`Error completo en ${actionName}:`, error);
     }
+    
     handleMenuClose();
-  }, [alert, getSaleItems, createInventoryMovement, updateProductStock, updateItem, refreshData, handleMenuClose, formatPrice]);
+  }, [alert, getCurrentUser, updateItem, refreshData, handleMenuClose, formatPrice, supabase]);
 
-  // ✅ FUNCIONES SIMPLIFICADAS QUE USAN LA LÓGICA UNIFICADA
   const handleRefund = useCallback(async (sale: SaleWithRelations) => {
     await processTransactionReversal(sale, 'refund');
   }, [processTransactionReversal]);
@@ -997,39 +855,36 @@ const SalesHistoryPage = memo(() => {
     await processTransactionReversal(sale, 'cancel');
   }, [processTransactionReversal]);
 
-  // ✅ REFRESH MANUAL - BOTÓN CON PROTECCIÓN ANTI-SPAM
+  // ✅ REFRESH MANUAL
   const handleRefresh = useCallback(async () => {
     if (refreshInProgress.current) {
       notify.warning('Actualización ya en progreso...');
       return;
     }
     
-    const toastId = notify.loading('Actualizando historial de ventas...');
+    const toastId = notify.loading('Actualizando historial...');
     
     try {
       await refreshData();
       notify.dismiss(toastId);
-      notify.success('Historial actualizado - datos refrescados');
+      notify.success('Historial actualizado');
     } catch (error) {
       notify.dismiss(toastId);
       notify.error('Error al actualizar historial');
-      console.error('Error en refresh:', error);
     }
   }, [refreshData]);
 
-  // ✅ PAGINACIÓN SIMPLIFICADA - SOLO CAMBIAR ESTADO, useEffect MAESTRO MANEJA EL RESTO
+  // ✅ PAGINACIÓN
   const handleChangePage = useCallback((event: unknown, newPage: number) => {
     setPage(newPage - 1);
   }, []);
 
-  // ✅ CAMBIO DE FILAS POR PÁGINA SIMPLIFICADO CON RESET
   const handleChangeRowsPerPage = useCallback((event: SelectChangeEvent<number>) => {
     setRowsPerPage(event.target.value as number);
-    setPage(0); // ✅ CRÍTICO: Resetear página
-    console.log(`📄 Cambiando filas por página: ${event.target.value}, página reseteada a 0`);
+    setPage(0);
   }, []);
 
-  // ✅ SSR SAFETY CON BRANDING MUSCLEUP
+  // ✅ SSR SAFETY
   if (!hydrated) {
     return (
       <Box sx={{ 
@@ -1046,7 +901,7 @@ const SalesHistoryPage = memo(() => {
           Cargando MuscleUp Gym...
         </Typography>
         <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
-          Inicializando historial de ventas procesadas
+          Inicializando historial de ventas directas
         </Typography>
       </Box>
     );
@@ -1059,7 +914,7 @@ const SalesHistoryPage = memo(() => {
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh'
     }}>
-      {/* ✅ HEADER CON BRANDING MUSCLEUP */}
+      {/* HEADER */}
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -1085,12 +940,12 @@ const SalesHistoryPage = memo(() => {
               color: colorTokens.textPrimary,
               mb: 1
             }}>
-              Historial de Ventas Procesadas
+              Historial de Ventas Directas
             </Typography>
             <Typography variant="body1" sx={{ 
               color: colorTokens.textSecondary
             }}>
-              Transacciones completadas, canceladas y devueltas - Análisis enterprise
+              Solo ventas directas - Análisis por estado
             </Typography>
           </Box>
         </Box>
@@ -1119,9 +974,8 @@ const SalesHistoryPage = memo(() => {
         </Button>
       </Box>
 
-      {/* ✅ ESTADÍSTICAS ENTERPRISE AMPLIADAS - BASADAS EN GLOBALSTATS */}
+      {/* ESTADÍSTICAS */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* Card 1: Ventas Completadas con Desglose */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{
@@ -1137,10 +991,7 @@ const SalesHistoryPage = memo(() => {
                 <Typography variant="body1" sx={{ mb: 1 }}>
                   Ventas Completadas
                 </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
-                  {globalStats.directSalesCount} directas • {globalStats.completedLayawayCount} apartados
-                </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
+                <Typography variant="caption" sx={{ opacity: 0.9 }}>
                   Conversión: {globalStats.conversionRate.toFixed(1)}%
                 </Typography>
               </CardContent>
@@ -1148,36 +999,25 @@ const SalesHistoryPage = memo(() => {
           </motion.div>
         </Grid>
 
-        {/* Card 2: Ingresos con Protagonismo al NETO */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
               color: colorTokens.textOnBrand,
               borderRadius: 3,
-              position: 'relative',
-              overflow: 'visible'
+              position: 'relative'
             }}>
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
                 <AttachMoney sx={{ fontSize: 40, mb: 1 }} />
-                
-                {/* Ingreso NETO - Lo más importante */}
                 <Typography variant="h3" fontWeight="bold" sx={{ mb: 0.5 }}>
                   {formatPrice(globalStats.netTotalAmount)}
                 </Typography>
                 <Typography variant="body1" sx={{ mb: 1, fontWeight: 600 }}>
                   Ingreso Real (Neto)
                 </Typography>
-                
-                {/* Ingreso Bruto - Secundario */}
-                <Typography variant="caption" sx={{ opacity: 0.9, display: 'block', mb: 0.5 }}>
+                <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
                   Bruto: {formatPrice(globalStats.totalAmount)}
                 </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
-                  Hoy: {formatPrice(globalStats.todayTotal)}
-                </Typography>
-                
-                {/* Badge indicador de efectividad */}
                 <Box sx={{ 
                   position: 'absolute', 
                   top: 8, 
@@ -1196,7 +1036,6 @@ const SalesHistoryPage = memo(() => {
           </motion.div>
         </Grid>
 
-        {/* Card 3: Costos de Transacción */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{
@@ -1212,25 +1051,20 @@ const SalesHistoryPage = memo(() => {
                 <Typography variant="body1" sx={{ mb: 1 }}>
                   Costos de Transacción
                 </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
-                  Comisiones pagadas por métodos de pago
-                </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
-                  Promedio: {globalStats.totalCompleted > 0 ? formatPrice(globalStats.totalCommissions / globalStats.totalCompleted) : '$0'} por venta
+                <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                  Comisiones pagadas
                 </Typography>
               </CardContent>
             </Card>
           </motion.div>
         </Grid>
 
-        {/* Card 4: KPIs de Rendimiento Empresarial */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})`,
               color: colorTokens.textPrimary,
-              borderRadius: 3,
-              position: 'relative'
+              borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', py: 3 }}>
                 <Analytics sx={{ fontSize: 40, mb: 1 }} />
@@ -1240,52 +1074,16 @@ const SalesHistoryPage = memo(() => {
                 <Typography variant="body1" sx={{ mb: 1 }}>
                   Ticket Promedio
                 </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
+                <Typography variant="caption" sx={{ opacity: 0.9 }}>
                   Conversión: {globalStats.conversionRate.toFixed(1)}%
                 </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
-                  Retención Final: {globalStats.netConversionRate.toFixed(1)}%
-                </Typography>
-                
-                {/* Indicador de salud del negocio */}
-                {globalStats.netConversionRate >= 85 ? (
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: 8, 
-                    right: 8, 
-                    backgroundColor: colorTokens.success, 
-                    borderRadius: '50%', 
-                    width: 12, 
-                    height: 12 
-                  }} />
-                ) : globalStats.netConversionRate >= 70 ? (
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: 8, 
-                    right: 8, 
-                    backgroundColor: colorTokens.warning, 
-                    borderRadius: '50%', 
-                    width: 12, 
-                    height: 12 
-                  }} />
-                ) : (
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: 8, 
-                    right: 8, 
-                    backgroundColor: colorTokens.danger, 
-                    borderRadius: '50%', 
-                    width: 12, 
-                    height: 12 
-                  }} />
-                )}
               </CardContent>
             </Card>
           </motion.div>
         </Grid>
       </Grid>
 
-      {/* ✅ NUEVA SECCIÓN: ANÁLISIS DETALLADO DE RENDIMIENTO FINANCIERO */}
+      {/* ANÁLISIS FINANCIERO */}
       <Card sx={{ 
         mb: 4,
         background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
@@ -1299,7 +1097,7 @@ const SalesHistoryPage = memo(() => {
               color: colorTokens.textPrimary,
               fontWeight: 700
             }}>
-              Análisis Financiero Enterprise - Panorama General
+              Análisis Financiero Enterprise
             </Typography>
           </Box>
           
@@ -1309,11 +1107,8 @@ const SalesHistoryPage = memo(() => {
                 <Typography variant="h6" sx={{ color: colorTokens.warning, fontWeight: 700 }}>
                   {formatPrice(globalStats.totalCommissions)}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Comisiones Generadas
-                </Typography>
-                <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
-                  De {globalStats.totalCompleted} ventas completadas
                 </Typography>
               </Box>
             </Grid>
@@ -1323,11 +1118,8 @@ const SalesHistoryPage = memo(() => {
                 <Typography variant="h6" sx={{ color: colorTokens.danger, fontWeight: 700 }}>
                   {globalStats.cancellationRate.toFixed(1)}%
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Tasa Cancelación
-                </Typography>
-                <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
-                  Ticket promedio: {formatPrice(globalStats.averageCancellationTicket)}
                 </Typography>
               </Box>
             </Grid>
@@ -1337,11 +1129,8 @@ const SalesHistoryPage = memo(() => {
                 <Typography variant="h6" sx={{ color: colorTokens.info, fontWeight: 700 }}>
                   {globalStats.refundRate.toFixed(1)}%
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Tasa Devolución
-                </Typography>
-                <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
-                  Ticket promedio: {formatPrice(globalStats.averageRefundTicket)}
                 </Typography>
               </Box>
             </Grid>
@@ -1351,11 +1140,8 @@ const SalesHistoryPage = memo(() => {
                 <Typography variant="h6" sx={{ color: colorTokens.success, fontWeight: 700 }}>
                   {globalStats.totalAmount > 0 ? ((globalStats.netTotalAmount / globalStats.totalAmount) * 100).toFixed(1) : '0.0'}%
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Retención Neta
-                </Typography>
-                <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
-                  Ingresos realmente retenidos
                 </Typography>
               </Box>
             </Grid>
@@ -1363,9 +1149,9 @@ const SalesHistoryPage = memo(() => {
         </CardContent>
       </Card>
 
-      {/* ✅ SECCIÓN CONTEXTUAL: ANÁLISIS DEL SUBSET FILTRADO */}
-      {(filters.search !== '' || filters.sale_type !== 'all' || filters.status !== 'all' || 
-        filters.cashier_id !== 'all' || filters.date_from !== '' || filters.date_to !== '') && (
+      {/* ANÁLISIS CONTEXTUAL */}
+      {(filters.search !== '' || filters.cashier_id !== 'all' || 
+        filters.date_from !== '' || filters.date_to !== '') && (
         <Card sx={{ 
           mb: 4,
           background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
@@ -1454,7 +1240,7 @@ const SalesHistoryPage = memo(() => {
         </Card>
       )}
 
-      {/* ✅ FILTROS ESPECÍFICOS PARA HISTORIAL */}
+      {/* FILTROS v7.2 (SIN filtro de estado) */}
       <Card sx={{ 
         mb: 4,
         background: colorTokens.surfaceLevel2,
@@ -1468,12 +1254,12 @@ const SalesHistoryPage = memo(() => {
               color: colorTokens.textPrimary,
               fontWeight: 700
             }}>
-              Filtros de Análisis - Aplicación en Tiempo Real
+              Filtros Adicionales
             </Typography>
           </Box>
           
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 3 }}>
+            <Grid size={{ xs: 12, md: 5 }}>
               <TextField
                 fullWidth
                 label="Buscar por número"
@@ -1499,46 +1285,7 @@ const SalesHistoryPage = memo(() => {
               />
             </Grid>
 
-            <Grid size={{ xs: 6, md: 1.5 }}>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colorTokens.textSecondary }}>Tipo</InputLabel>
-                <Select
-                  value={filters.sale_type}
-                  onChange={(e) => updateFiltersWithPageReset({ sale_type: e.target.value })}
-                  label="Tipo"
-                  sx={{
-                    color: colorTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: colorTokens.border }
-                  }}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="sale">Ventas Directas</MenuItem>
-                  <MenuItem value="layaway">Apartados</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 6, md: 1.5 }}>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colorTokens.textSecondary }}>Estado</InputLabel>
-                <Select
-                  value={filters.status}
-                  onChange={(e) => updateFiltersWithPageReset({ status: e.target.value })}
-                  label="Estado"
-                  sx={{
-                    color: colorTokens.textPrimary,
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: colorTokens.border }
-                  }}
-                >
-                  <MenuItem value="all">Todos los Estados</MenuItem>
-                  <MenuItem value="completed">Completadas</MenuItem>
-                  <MenuItem value="cancelled">Canceladas</MenuItem>
-                  <MenuItem value="refunded">Devueltas</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 6, md: 2 }}>
+            <Grid size={{ xs: 6, md: 2.5 }}>
               <FormControl fullWidth>
                 <InputLabel sx={{ color: colorTokens.textSecondary }}>Cajero</InputLabel>
                 <Select
@@ -1550,9 +1297,7 @@ const SalesHistoryPage = memo(() => {
                     '& .MuiOutlinedInput-notchedOutline': { borderColor: colorTokens.border }
                   }}
                 >
-                  <MenuItem value="all">
-                    Todos los Cajeros ({availableCashiers.length})
-                  </MenuItem>
+                  <MenuItem value="all">Todos ({availableCashiers.length})</MenuItem>
                   {availableCashiers.map((cashier) => (
                     <MenuItem key={cashier.id} value={cashier.id}>
                       {cashier.firstName} {cashier.lastName}
@@ -1562,7 +1307,7 @@ const SalesHistoryPage = memo(() => {
               </FormControl>
             </Grid>
 
-            <Grid size={{ xs: 6, md: 1.75 }}>
+            <Grid size={{ xs: 6, md: 2 }}>
               <TextField
                 fullWidth
                 type="date"
@@ -1577,7 +1322,7 @@ const SalesHistoryPage = memo(() => {
               />
             </Grid>
 
-            <Grid size={{ xs: 6, md: 1.75 }}>
+            <Grid size={{ xs: 6, md: 2 }}>
               <TextField
                 fullWidth
                 type="date"
@@ -1606,8 +1351,7 @@ const SalesHistoryPage = memo(() => {
                     borderColor: colorTokens.danger,
                     color: colorTokens.danger,
                     backgroundColor: `${colorTokens.danger}10`
-                  },
-                  '&:disabled': { opacity: 0.6 }
+                  }
                 }}
               >
                 ✕
@@ -1617,7 +1361,57 @@ const SalesHistoryPage = memo(() => {
         </CardContent>
       </Card>
 
-      {/* ✅ TABLA DE HISTORIAL */}
+      {/* ✅ NUEVO: PESTAÑAS v7.2 */}
+      <Card sx={{ 
+        mb: 4,
+        background: colorTokens.surfaceLevel2,
+        border: `1px solid ${colorTokens.border}`,
+        borderRadius: 3
+      }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={handleTabChange}
+          variant="fullWidth"
+          sx={{
+            '& .MuiTabs-indicator': {
+              backgroundColor: colorTokens.brand,
+              height: 3
+            }
+          }}
+        >
+          {tabsData.map((tab, index) => (
+            <Tab 
+              key={tab.value}
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
+                  <Badge badgeContent={tab.count} color="error" max={999}>
+                    {React.cloneElement(tab.icon, { 
+                      sx: { 
+                        color: activeTab === index ? tab.color : colorTokens.textSecondary,
+                        fontSize: 24
+                      }
+                    })}
+                  </Badge>
+                  <Typography sx={{ 
+                    fontWeight: activeTab === index ? 700 : 500,
+                    color: activeTab === index ? tab.color : colorTokens.textSecondary,
+                    fontSize: '1rem'
+                  }}>
+                    {tab.label}
+                  </Typography>
+                </Box>
+              }
+              sx={{
+                '&.Mui-selected': {
+                  backgroundColor: `${colorTokens.brand}10`
+                }
+              }}
+            />
+          ))}
+        </Tabs>
+      </Card>
+
+      {/* TABLA */}
       <Card sx={{
         background: colorTokens.surfaceLevel2,
         border: `1px solid ${colorTokens.border}`,
@@ -1628,36 +1422,15 @@ const SalesHistoryPage = memo(() => {
           <Table>
             <TableHead>
               <TableRow sx={{ background: colorTokens.brand }}>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Número
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Fecha/Estado
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Cliente
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Cajero
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Tipo
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Total
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Comisión
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Método Pago
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Items
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>
-                  Acciones
-                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Número</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Fecha/Estado</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Cliente</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Cajero</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Total</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Comisión</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Método Pago</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Items</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: colorTokens.textOnBrand }}>Acciones</TableCell>
               </TableRow>
             </TableHead>
 
@@ -1722,17 +1495,6 @@ const SalesHistoryPage = memo(() => {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        label={sale.sale_type === 'sale' ? 'Venta' : 'Apartado'}
-                        size="small" 
-                        sx={{
-                          backgroundColor: sale.sale_type === 'sale' ? colorTokens.success : colorTokens.info,
-                          color: colorTokens.textPrimary,
-                          fontWeight: 600
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
                       <Typography variant="body2" fontWeight="600" sx={{ color: colorTokens.textPrimary }}>
                         {formatPrice(sale.total_amount)}
                       </Typography>
@@ -1784,7 +1546,7 @@ const SalesHistoryPage = memo(() => {
 
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6 }}>
+                  <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6 }}>
                     <CircularProgress sx={{ color: colorTokens.brand, mb: 2 }} />
                     <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
                       Cargando historial...
@@ -1795,7 +1557,7 @@ const SalesHistoryPage = memo(() => {
 
               {filteredSales.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6 }}>
+                  <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6 }}>
                     <Box sx={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -1808,10 +1570,10 @@ const SalesHistoryPage = memo(() => {
                         opacity: 0.5
                       }} />
                       <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-                        No se encontraron transacciones procesadas
+                        No se encontraron ventas directas
                       </Typography>
                       <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
-                        Intenta ajustar los filtros de búsqueda
+                        Intenta ajustar los filtros
                       </Typography>
                     </Box>
                   </TableCell>
@@ -1821,7 +1583,7 @@ const SalesHistoryPage = memo(() => {
           </Table>
         </TableContainer>
 
-        {/* ✅ PAGINACIÓN SERVIDOR */}
+        {/* PAGINACIÓN */}
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between',
@@ -1831,15 +1593,13 @@ const SalesHistoryPage = memo(() => {
           borderTop: `1px solid ${colorTokens.border}`
         }}>
           <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-            Mostrando {Math.min(page * rowsPerPage + 1, totalCount)} - {Math.min((page + 1) * rowsPerPage, totalCount)} de {totalCount} transacciones
-            {filteredSales.length < totalCount && (
-              <span> (búsqueda filtrada: {filteredSales.length})</span>
-            )}
+            Mostrando {Math.min(page * rowsPerPage + 1, totalCount)} - {Math.min((page + 1) * rowsPerPage, totalCount)} de {totalCount}
+            {filteredSales.length < totalCount && ` (filtrados: ${filteredSales.length})`}
           </Typography>
           
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-              Filas por página:
+              Filas:
             </Typography>
             <Select
               value={rowsPerPage}
@@ -1848,11 +1608,7 @@ const SalesHistoryPage = memo(() => {
               size="small"
               sx={{
                 color: colorTokens.textPrimary,
-                '& .MuiOutlinedInput-notchedOutline': { 
-                  borderColor: colorTokens.border 
-                },
-                minWidth: '80px',
-                '&.Mui-disabled': { opacity: 0.6 }
+                minWidth: '80px'
               }}
             >
               <MenuItem value={10}>10</MenuItem>
@@ -1871,20 +1627,10 @@ const SalesHistoryPage = memo(() => {
               sx={{
                 '& .MuiPaginationItem-root': {
                   color: colorTokens.textSecondary,
-                  '&:hover': {
-                    backgroundColor: `${colorTokens.brand}20`,
-                    color: colorTokens.brand
-                  },
                   '&.Mui-selected': {
                     backgroundColor: colorTokens.brand,
                     color: colorTokens.textOnBrand,
-                    fontWeight: 700,
-                    '&:hover': {
-                      backgroundColor: colorTokens.brandHover
-                    }
-                  },
-                  '&.Mui-disabled': {
-                    opacity: 0.4
+                    fontWeight: 700
                   }
                 }
               }}
@@ -1893,7 +1639,7 @@ const SalesHistoryPage = memo(() => {
         </Box>
       </Card>
 
-      {/* ✅ MENÚ DE ACCIONES SIMPLIFICADO - AMBAS ACCIONES RESTAURAN INVENTARIO */}
+      {/* MENÚ ACCIONES */}
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
@@ -1910,12 +1656,11 @@ const SalesHistoryPage = memo(() => {
       >
         <MenuItem onClick={() => menuSale && handleViewDetails(menuSale)} sx={{ color: colorTokens.textPrimary }}>
           <Visibility sx={{ mr: 2, color: colorTokens.info }} />
-          Ver Detalles Completos
+          Ver Detalles
         </MenuItem>
         
         <Divider sx={{ borderColor: colorTokens.border, my: 1 }} />
         
-        {/* ✅ ACCIONES SIMPLIFICADAS PARA VENTAS COMPLETADAS - SOLO COMPLETED STATUS */}
         {menuSale?.status === 'completed' && [
           <MenuItem 
             key="refund" 
@@ -1943,70 +1688,19 @@ const SalesHistoryPage = memo(() => {
         
         <MenuItem onClick={() => menuSale && handleEditSale(menuSale)} sx={{ color: colorTokens.textSecondary }}>
           <Edit sx={{ mr: 2, color: colorTokens.textMuted }} />
-          Editar Información
+          Editar
         </MenuItem>
       </Menu>
 
-      {/* ✅ DIALOGS PLACEHOLDER */}
-      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle sx={{ 
-          color: colorTokens.textPrimary, 
-          bgcolor: colorTokens.surfaceLevel2,
-          borderBottom: `1px solid ${colorTokens.border}`
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <CheckCircle sx={{ color: colorTokens.success }} />
-            Detalles de Transacción: {selectedSale?.sale_number}
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ bgcolor: colorTokens.surfaceLevel1, p: 3 }}>
-          {selectedSale && (
-            <Box>
-              <Typography variant="h6" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
-                Resumen de Transacción
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid size={6}>
-                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                    Tipo: {selectedSale.sale_type === 'sale' ? 'Venta Directa' : 'Apartado'}
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                    Total: {formatPrice(selectedSale.total_amount)}
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                    Cliente: {selectedSale.customer_name}
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                    Cajero: {selectedSale.cashier_name}
-                  </Typography>
-                </Grid>
-              </Grid>
-              
-              <Divider sx={{ my: 3, borderColor: colorTokens.border }} />
-              
-              <Typography variant="body2" sx={{ color: colorTokens.textMuted, fontStyle: 'italic' }}>
-                Implementar SaleDetailsDialog completo con productos, pagos y historial
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ bgcolor: colorTokens.surfaceLevel2, p: 2 }}>
-          <Button 
-            onClick={() => setDetailsOpen(false)} 
-            sx={{ color: colorTokens.textSecondary }}
-          >
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* VISTA DETALLES*/}
 
-      {/* ✅ EDITDIALOG CONECTADO CON CALLBACK MEJORADO */}
+      <SaleDetailsDialog
+  open={detailsOpen}
+  onClose={() => setDetailsOpen(false)}
+  sale={selectedSale}
+/>
+
+      {/* EDITDIALOG */}
       <EditDialog
         open={editOpen}
         onClose={() => setEditOpen(false)}

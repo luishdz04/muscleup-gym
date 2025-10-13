@@ -4,7 +4,9 @@
 /* 👇 2) importa Tailwind */
 @import "tailwindcss";
 
-
+/* ============================================================================
+   ANIMACIONES CUSTOM DEL PROYECTO
+   ============================================================================ */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -21,13 +23,6 @@
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-out forwards;
-}
-
-/* (si tienes reglas extra, ponlas después…) */
-
-/* Agregar al final de tu archivo CSS global */
 @keyframes pulse {
   0% {
     opacity: 1;
@@ -40,43 +35,119 @@
   }
 }
 
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
 
-/* SweetAlert2 Dark Pro Styles - Agregar al final */
+/* ============================================================================
+   ANIMACIONES REQUERIDAS POR TREMOR (Accordion, Dialog, etc.)
+   Según la guía oficial: https://tremor.so/docs/ui/accordion
+   ============================================================================ */
+@layer base {
+  :root {
+    /* Variables CSS para animaciones de Tremor */
+    --animate-accordion-open: accordionOpen 150ms cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-accordion-close: accordionClose 150ms cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-dialog-overlay-show: dialogOverlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-dialog-content-show: dialogContentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes accordionOpen {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+
+  @keyframes accordionClose {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+
+  @keyframes dialogOverlayShow {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes dialogContentShow {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -45%) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+}
+
+
+/* SweetAlert2 Dark Pro Styles - Tema Completo */
 .swal-dark-popup {
+  background: #1B1E24 !important;
   border-radius: 16px !important;
   border: 1px solid #2C313B !important;
   backdrop-filter: blur(20px) !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
 }
 
-.swal-dark-confirm-button {
-  background: linear-gradient(135deg, #FFCC00, #E6B800) !important;
-  color: #000000 !important;
+.swal-dark-title {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+}
+
+.swal-dark-content {
+  color: #C9CFDB !important;
+}
+
+.swal-dark-confirm {
+  background: linear-gradient(135deg, #EF4444, #DC2626) !important;
+  color: #FFFFFF !important;
   border: none !important;
   border-radius: 8px !important;
   font-weight: 600 !important;
-  padding: 10px 24px !important;
+  padding: 11px 28px !important;
   font-size: 0.95rem !important;
   transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
 }
 
-.swal-dark-confirm-button:hover {
-  background: linear-gradient(135deg, #E6B800, #CCA300) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 6px 20px rgba(255, 204, 0, 0.4) !important;
+.swal-dark-confirm:hover {
+  background: linear-gradient(135deg, #DC2626, #B91C1C) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5) !important;
 }
 
-.swal-dark-cancel-button {
+.swal-dark-cancel {
   background: #424959 !important;
   color: #FFFFFF !important;
   border: 1px solid #535B6E !important;
   border-radius: 8px !important;
   font-weight: 600 !important;
-  padding: 10px 24px !important;
+  padding: 10px 28px !important;
   font-size: 0.95rem !important;
+  transition: all 0.3s ease !important;
 }
 
-.swal-dark-cancel-button:hover {
+.swal-dark-cancel:hover {
   background: #535B6E !important;
+  border-color: #6A7389 !important;
   transform: translateY(-1px) !important;
+}
+
+/* Iconos de SweetAlert2 en Dark Mode */
+.swal2-icon.swal2-warning {
+  border-color: #FFCC00 !important;
+  color: #FFCC00 !important;
+}
+
+.swal2-icon.swal2-error {
+  border-color: #EF4444 !important;
+}
+
+.swal2-icon.swal2-success {
+  border-color: #22C55E !important;
+}
+
+.swal2-icon.swal2-info {
+  border-color: #38BDF8 !important;
 }

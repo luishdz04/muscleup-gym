@@ -2,7 +2,7 @@
 
 import './globals.css';
 import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+// Footer eliminado del layout global - se agrega en páginas públicas específicas
 import MUIThemeProvider from '@/components/providers/ThemeProvider';
 import type { Metadata, Viewport } from 'next';
 
@@ -46,7 +46,7 @@ export default function RootLayout({
           {/* 2. AÑADE EL COMPONENTE AQUÍ */}          
           <Navbar />
           <main className="flex-grow">{children}</main>
-          <Footer />
+          {/* Footer eliminado - se agrega individualmente en páginas públicas */}
         </MUIThemeProvider>
       </body>
     </html>

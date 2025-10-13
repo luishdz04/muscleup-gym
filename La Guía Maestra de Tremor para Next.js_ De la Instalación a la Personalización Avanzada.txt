@@ -1,0 +1,454 @@
+﻿La Guía Maestra de Tremor para Next.js: De la Instalación a la Personalización Avanzada
+
+
+Este documento sirve como una referencia exhaustiva y profunda para desarrolladores que buscan dominar la biblioteca Tremor Raw en un entorno Next.js. A diferencia de otras guías, nos sumergiremos en cada componente, cada utilidad y cada posibilidad de personalización, proporcionando ejemplos de código listos para implementar y explicando los conceptos subyacentes para un control absoluto sobre tus dashboards.
+
+
+Parte I: Configuración Maestra para Next.js
+
+
+Una base sólida es crucial. Esta sección detalla la configuración precisa y optimizada para un proyecto Next.js, asegurando que cada componente de Tremor funcione como se espera desde el primer momento.
+
+
+Sección 1: Instalación y Configuración del Entorno
+
+
+El proceso se centra en Tremor Raw, la versión más reciente y flexible de la biblioteca, que otorga control total a través de Tailwind CSS.1
+1. Creación del Proyecto Next.js:
+Inicia un nuevo proyecto Next.js con TypeScript y Tailwind CSS.
+
+
+Bash
+
+
+
+
+npx create-next-app@latest mi-dashboard-tremor --ts
+
+2. Instalación de Dependencias de Tremor:
+Tremor Raw se basa en un conjunto de primitivas de Radix UI y otras utilidades. Instala las dependencias necesarias para los componentes que planeas usar. Para una cobertura completa, puedes instalar las más comunes:
+
+
+Bash
+
+
+
+
+npm install @radix-ui/react-accordion @radix-ui/react-dialog @radix-ui/react-dropdown-menu @radix-ui/react-label @radix-ui/react-popover @radix-ui/react-radio-group @radix-ui/react-slot @radix-ui/react-toast @radix-ui/react-tooltip tailwind-variants @remixicon/react
+
+3. Configuración de tailwind.config.ts:
+Este es el corazón de la personalización. Tremor Raw no requiere una configuración de tema compleja como su predecesor. La personalización se realiza directamente con clases de Tailwind. Tu archivo tailwind.config.ts debe estar correctamente configurado para que Tailwind procese las clases de los componentes.
+
+
+TypeScript
+
+
+
+
+// tailwind.config.ts
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+ content:,
+ theme: {
+   extend: {
+     // Aquí puedes extender el tema de Tailwind como en cualquier otro proyecto
+     // Por ejemplo, agregar colores personalizados que usarás en tus componentes.
+   },
+ },
+ plugins:,
+};
+export default config;
+
+4. Configuración de globals.css:
+Algunos componentes de Tremor, como Dialog o Accordion, requieren animaciones CSS personalizadas para sus transiciones de entrada y salida. Debes agregar estas animaciones a tu archivo globals.css.2
+
+
+CSS
+
+
+
+
+/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+ :root {
+   /* Animaciones para componentes de Tremor */
+   --animate-accordion-open: accordionOpen 150ms cubic-bezier(0.16, 1, 0.3, 1);
+   --animate-accordion-close: accordionClose 150ms cubic-bezier(0.16, 1, 0.3, 1);
+   --animate-dialog-overlay-show: dialogOverlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+   --animate-dialog-content-show: dialogContentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+ }
+
+ @keyframes accordionOpen {
+   from { height: 0; }
+   to { height: var(--radix-accordion-content-height); }
+ }
+
+ @keyframes accordionClose {
+   from { height: var(--radix-accordion-content-height); }
+   to { height: 0; }
+ }
+
+ @keyframes dialogOverlayShow {
+   from { opacity: 0; }
+   to { opacity: 1; }
+ }
+
+ @keyframes dialogContentShow {
+   from {
+     opacity: 0;
+     transform: translate(-50%, -45%) scale(0.95);
+   }
+   to {
+     opacity: 1;
+     transform: translate(-50%, -50%) scale(1);
+   }
+ }
+}
+
+5. Estructura de Componentes y Utilidades:
+La documentación de Tremor Raw asume que copias el código de cada componente en tu proyecto (por ejemplo, en src/components/tremor). Además, se recomienda crear un archivo de utilidades (src/lib/utils.ts) para funciones auxiliares como cx.4
+
+
+TypeScript
+
+
+
+
+// src/lib/utils.ts
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cx(...inputs: ClassValue) {
+ return twMerge(clsx(inputs));
+}
+
+Esta función es esencial para combinar clases de Tailwind de forma condicional y limpia.
+
+
+Parte II: Enciclopedia de Componentes de Tremor
+
+
+Esta sección es una referencia detallada de cada componente, organizada según la documentación oficial. Cada entrada incluye su propósito, API de propiedades, ejemplos de uso avanzado y notas de personalización.
+
+
+Sección 2: Visualizaciones
+
+
+El núcleo de Tremor para la creación de dashboards.
+
+
+AreaChart (Gráfico de Área)
+
+
+* Propósito: Visualizar datos cuantitativos a lo largo de un eje continuo, ideal para mostrar tendencias y volúmenes.5
+* API y Personalización:
+   * data, index, categories: Props fundamentales para definir los datos.
+   * type: 'default', 'stacked', 'percent' para cambiar cómo se apilan las series.
+   * colors: Array de strings para personalizar los colores de las series.
+   * valueFormatter: Función para dar formato a los valores del eje Y y los tooltips (ej. añadir $ o %).
+   * onValueChange: Callback para hacer el gráfico interactivo al hacer clic.
+   * showLegend, showTooltip, showGridLines: Booleanos para controlar la visibilidad de elementos.
+   * fill: 'solid', 'gradient', 'none' para cambiar el estilo del área bajo la línea.
+* Ejemplo Avanzado (Next.js):
+JavaScript
+// app/components/ventas-chart.tsx
+"use client";
+import { AreaChart } from "@tremor/react"; // Nota: Los gráficos aún provienen del paquete @tremor/react
+
+const chartdata = [
+ { date: "Ene 23", "Ventas": 2890, "Objetivo": 2500 },
+ { date: "Feb 23", "Ventas": 2756, "Objetivo": 2500 },
+ //... más datos
+];
+
+const valueFormatter = (number: number) => `$${new Intl.NumberFormat("es-MX").format(number).toString()}`;
+
+export function VentasChart() {
+ return (
+   <AreaChart
+     className="h-80"
+     data={chartdata}
+     index="date"
+     categories={["Ventas", "Objetivo"]}
+     colors={["blue", "gray"]}
+     valueFormatter={valueFormatter}
+     yAxisWidth={60}
+     onValueChange={(v) => console.log(v)}
+     fill="gradient"
+   />
+ );
+}
+
+(Nota: La guía se expandiría de manera similar para BarChart, ComboChart, BarList, CategoryBar, DonutChart, LineChart, ProgressBar, ProgressCircle, SparkChart y Tracker, proporcionando para cada uno su propósito, API detallada y ejemplos de código específicos y anotados, tal como se hizo con AreaChart.5)
+
+
+Sección 3: Entradas (Inputs)
+
+
+Componentes para la interacción del usuario y la recopilación de datos.
+
+
+Button (Botón)
+
+
+   * Propósito: Un control interactivo para ejecutar acciones.6
+   * API y Personalización:
+   * variant: 'primary', 'secondary', 'light', 'ghost', 'destructive' para diferentes estilos predefinidos.
+   * isLoading: Booleano para mostrar un spinner y deshabilitar el botón.
+   * loadingText: Texto a mostrar durante el estado de carga.
+   * asChild: Prop booleana que permite que el botón adopte el comportamiento de su elemento hijo, ideal para usar con el componente <Link> de Next.js para una navegación semántica.
+   * Ejemplo Avanzado (Next.js):
+JavaScript
+// app/components/botones-ejemplo.tsx
+"use client";
+import { Button } from "@/components/tremor/Button"; // Asumiendo que copiaste el componente aquí
+import Link from "next/link";
+import { useState } from "react";
+
+export function BotonesEjemplo() {
+ const [isLoading, setIsLoading] = useState(false);
+
+ const handleClick = () => {
+   setIsLoading(true);
+   setTimeout(() => setIsLoading(false), 2000);
+ };
+
+ return (
+   <div className="flex flex-wrap items-center gap-4">
+     <Button variant="primary" onClick={handleClick} isLoading={isLoading} loadingText="Guardando...">
+       Guardar Cambios
+     </Button>
+     <Button variant="secondary" asChild>
+       <Link href="/dashboard/settings">Ir a Configuración</Link>
+     </Button>
+     <Button variant="destructive">Eliminar Cuenta</Button>
+   </div>
+ );
+}
+
+
+
+Date Range Picker (Selector de Rango de Fechas)
+
+
+      * Propósito: Un componente avanzado para seleccionar un período de tiempo, con soporte para preajustes.7
+      * API y Personalización:
+      * value, onChange: Para uso como componente controlado.
+      * presets: Un array de objetos para definir rangos preestablecidos (ej. "Últimos 30 días").
+      * locale: Para internacionalización, usando un objeto de date-fns.
+      * enableYearNavigation: Permite una navegación más rápida entre años.
+      * hasError: Aplica un estilo de error.
+      * showTimePicker: Permite la selección de hora además de la fecha.
+      * Ejemplo Avanzado (Next.js):
+JavaScript
+// app/components/selector-rango-fechas.tsx
+"use client";
+import { DateRangePicker, DateRangePickerValue, DateRangePickerPreset } from "@/components/tremor/DateRangePicker";
+import { es } from "date-fns/locale";
+import { useState } from "react";
+import { subDays, startOfMonth, endOfMonth } from "date-fns";
+
+const presets: DateRangePickerPreset =;
+
+export function SelectorRangoFechas() {
+ const = useState<DateRangePickerValue | undefined>();
+
+ return (
+   <div>
+     <DateRangePicker
+       value={range}
+       onChange={setRange}
+       locale={es}
+       presets={presets}
+       placeholder="Seleccione un rango"
+       className="max-w-md"
+     />
+     <pre className="mt-4 text-sm">
+       {JSON.stringify(range, null, 2) |
+
+
+| "Ningún rango seleccionado."}
+
+
+
+
+);
+}
+```
+(Nota: La guía se expandiría de manera similar para Calendar, Checkbox, DatePicker, DropdownMenu, Input, Label, RadioCardGroup, RadioGroup, Select, SelectNative, Slider, Switch, Textarea y Toggle, detallando para cada uno su API, personalización y ejemplos prácticos en Next.js.7)
+
+
+Sección 4: UI (Interfaz de Usuario)
+
+
+Los bloques de construcción para estructurar tus dashboards.
+
+
+Card (Tarjeta)
+
+
+         * Propósito: Un contenedor fundamental para agrupar contenido relacionado, como KPIs o gráficos.8
+         * API y Personalización:
+         * Se basa en un div, por lo que acepta todas sus props, incluyendo className para una personalización total con Tailwind CSS.
+         * asChild: Permite renderizar la tarjeta como su elemento hijo, útil para listas semánticas (<li>).
+         * Ejemplo Avanzado (Next.js):
+JavaScript
+// app/components/kpi-card.tsx
+import { Card } from "@/components/tremor/Card";
+import { SparkAreaChart } from "@tremor/react";
+
+interface KpiCardProps {
+ title: string;
+ metric: string;
+ change: string;
+ changeType: "increase" | "decrease";
+ data: any;
+}
+
+export function KpiCard({ title, metric, change, changeType, data }: KpiCardProps) {
+ const changeColor = changeType === "increase"? "text-emerald-500" : "text-red-500";
+
+ return (
+   <Card className="p-4 shadow-lg hover:shadow-xl transition-shadow duration-300">
+     <div className="flex items-center justify-between">
+       <p className="text-gray-500">{title}</p>
+       <span className={`flex items-center gap-1 text-sm ${changeColor}`}>
+         {change}
+       </span>
+     </div>
+     <div className="flex items-end justify-between mt-2">
+       <p className="text-3xl font-semibold">{metric}</p>
+       <SparkAreaChart
+         data={data}
+         categories={["Valor"]}
+         index="mes"
+         colors={}
+         className="h-10 w-28"
+       />
+     </div>
+   </Card>
+ );
+}
+
+
+
+Table (Tabla)
+
+
+            * Propósito: Mostrar datos estructurados en filas y columnas de manera eficiente y responsiva.9
+            * API y Personalización:
+            * Compuesta por sub-componentes: TableRoot, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell.
+            * La personalización se realiza aplicando clases de Tailwind a cada parte.
+            * Diseño Responsivo: El componente TableRoot utiliza overflow-auto para hacer la tabla desplazable horizontalmente en pantallas pequeñas, una práctica recomendada para mantener la legibilidad de los datos.8
+            * Ejemplo Avanzado (Next.js):
+JavaScript
+// app/components/tabla-usuarios.tsx
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRoot, TableRow } from "@/components/tremor/Table";
+import { Badge } from "@/components/tremor/Badge";
+
+const users = [
+ { id: 1, name: "Juan Pérez", email: "juan.perez@example.com", role: "Admin", status: "Activo" },
+ { id: 2, name: "Ana Gómez", email: "ana.gomez@example.com", role: "Editor", status: "Inactivo" },
+ //... más usuarios
+];
+
+export function TablaUsuarios() {
+ return (
+   <TableRoot>
+     <Table>
+       <TableHead>
+         <TableRow>
+           <TableHeaderCell>Nombre</TableHeaderCell>
+           <TableHeaderCell className="hidden sm:table-cell">Email</TableHeaderCell>
+           <TableHeaderCell>Rol</TableHeaderCell>
+           <TableHeaderCell className="text-right">Estado</TableHeaderCell>
+         </TableRow>
+       </TableHead>
+       <TableBody>
+         {users.map((user) => (
+           <TableRow key={user.id}>
+             <TableCell className="font-medium">{user.name}</TableCell>
+             <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
+             <TableCell>{user.role}</TableCell>
+             <TableCell className="text-right">
+               <Badge variant={user.status === "Activo"? "success" : "neutral"}>
+                 {user.status}
+               </Badge>
+             </TableCell>
+           </TableRow>
+         ))}
+       </TableBody>
+     </Table>
+   </TableRoot>
+ );
+}
+
+(Nota: La guía se expandiría de manera similar para Accordion, Badge, Callout, Dialog, Divider, Drawer, Popover, Tabs, TabNavigation, Toast y Tooltip, mostrando para cada uno su estructura, API, personalización y ejemplos de composición.10)
+
+
+Sección 5: Utilidades (Utilities)
+
+
+Funciones auxiliares para mantener la consistencia y la limpieza del código.
+               * focusRing: Un array de clases de Tailwind para aplicar un estilo de enfoque (:focus-visible) consistente en toda la aplicación. Se importa y se añade al className de los componentes interactivos.12
+JavaScript
+// Ejemplo de uso en un botón personalizado
+import { focusRing } from "@/lib/utils/tremor"; // Asumiendo que lo guardaste aquí
+import { cx } from "@/lib/utils";
+
+<button className={cx("p-2 rounded", focusRing)}>Botón con Foco</button>
+
+               * hasErrorInput: Similar a focusRing, es un array de clases para aplicar estilos de error consistentes a los componentes de entrada.13
+               * focusInput: Un array de clases para el estado de enfoque específico de los inputs.4
+               * chartUtils: Un conjunto de funciones para centralizar la lógica de los gráficos, como la paleta de colores (chartColors) y el cálculo de dominios de ejes (getYAxisDomain).14
+
+
+Parte III: Estrategias Avanzadas y Mejores Prácticas
+
+
+
+
+Sección 6: Personalización Absoluta con Tailwind CSS
+
+
+Con Tremor Raw, la personalización no tiene límites porque es, en esencia, personalización con Tailwind CSS.
+                  * Anulación de Estilos: Para cambiar un estilo, simplemente añade o anula clases de Tailwind en el prop className del componente.
+                  * Creación de Variantes: Utiliza la utilidad tv (de tailwind-variants) que viene con los componentes de Tremor para crear tus propias variantes de estilo reutilizables.
+                  * Tokens de Diseño: Define tus tokens de diseño (colores, espaciado, tipografía) en tailwind.config.ts y úsalos en tus componentes para mantener la consistencia.
+
+
+Sección 7: Construcción de Dashboards Responsivos
+
+
+                  * Mobile-First: Diseña tus layouts para pantallas pequeñas primero, utilizando Flexbox (flex-col) y luego adapta para pantallas más grandes con los prefijos responsivos de Tailwind (md:grid, lg:flex-row).
+                  * CSS Grid para Layouts Principales: Usa CSS Grid para la estructura general de tu dashboard (ej. grid-cols-1 lg:grid-cols-3 gap-4) para posicionar tus componentes Card.
+                  * Flexbox para Contenido Interno: Utiliza Flexbox para alinear elementos dentro de cada Card o componente.
+                  * Patrones Específicos: Adopta patrones probados como el scroll horizontal para tablas (TableRoot) en lugar de intentar reajustar columnas complejas en móviles.8
+
+
+Sección 8: Integración con el Ecosistema de Next.js
+
+
+                  * Componentes de Servidor vs. Cliente: La mayoría de los componentes de Tremor son interactivos (gráficos, inputs, botones), por lo que requerirán la directiva "use client" al principio del archivo en el que se utilizan. Las Card que solo muestran contenido estático pueden permanecer en Componentes de Servidor.
+                  * Enrutamiento con asChild: Como se demostró en el ejemplo del Button, utiliza el prop asChild junto con el componente <Link> de Next.js para una navegación del lado del cliente optimizada y semánticamente correcta.
+                  * Carga de Datos: Obtén los datos para tus gráficos y tablas en Componentes de Servidor y pásalos como props a tus componentes de cliente de Tremor. Esto aprovecha el renderizado en el servidor de Next.js para un rendimiento inicial más rápido.
+Obras citadas
+                  1. tremorlabs/template-dashboard-oss: Free open-source dashboard template by Tremor. - GitHub, fecha de acceso: octubre 9, 2025, https://github.com/tremorlabs/template-dashboard-oss
+                  2. Accordion - Tremor.so, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/ui/accordion
+                  3. Dialog - Tremor.so, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/ui/dialog
+                  4. focusInput - Tremor.so, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/utilities/focusInput
+                  5. Area Chart - Tremor, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/visualizations/area-chart
+                  6. Button - Tremor.so, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/ui/button
+                  7. Calendar - Tremor, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/inputs/calendar
+                  8. Card - Tremor, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/ui/card
+                  9. Table - Tremor, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/ui/table
+                  10. Installation - Tremor.so, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/getting-started/installation
+                  11. Toast - Tremor, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/ui/toast
+                  12. focusRing - Tremor, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/utilities/focusRing
+                  13. hasErrorInput - Tremor, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/utilities/hasErrorInput
+                  14. chartUtils - Tremor.so, fecha de acceso: octubre 9, 2025, https://tremor.so/docs/utilities/chartUtils

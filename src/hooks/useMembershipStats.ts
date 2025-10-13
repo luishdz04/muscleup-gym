@@ -1,10 +1,10 @@
-// hooks/useMembershipStats.ts - VERSIÓN FINAL POST-CORRECCIONES BD
+// hooks/useMembershipStats.ts - v6.0 CORREGIDO ESQUEMA BD ACTUALIZADO
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ IMPORTS ENTERPRISE OBLIGATORIOS MUP v4.1
+// ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
 import { notify } from '@/utils/notifications';
@@ -38,11 +38,11 @@ const INITIAL_STATS: MembershipStats = {
 };
 
 export const useMembershipStats = () => {
-  // ✅ SSR SAFETY OBLIGATORIO
+  // ✅ SSR SAFETY OBLIGATORIO v6.0
   const hydrated = useHydrated();
   
-  // ✅ AUDITORÍA AUTOMÁTICA
-  const { addAuditFields } = useUserTracking();
+  // ✅ AUDITORÍA AUTOMÁTICA v6.0
+  const { addAuditFieldsFor } = useUserTracking();
   
   const [stats, setStats] = useState<MembershipStats>(INITIAL_STATS);
   const [loading, setLoading] = useState(true);
@@ -72,7 +72,7 @@ export const useMembershipStats = () => {
     return addDaysToDate(today, 7);
   }, []);
 
-  // ✅ CONVERSIÓN UTC TIMESTAMP A FECHA MÉXICO (POST-CORRECCIÓN BD)
+  // ✅ CONVERSIÓN UTC TIMESTAMP A FECHA MÉXICO
   const convertUtcTimestampToMexicoDate = useCallback((utcTimestamp: string): string => {
     if (!utcTimestamp) return '';
     
@@ -87,7 +87,7 @@ export const useMembershipStats = () => {
     }
   }, []);
 
-  // ✅ FUNCIÓN PRINCIPAL DE CARGA - POST CORRECCIONES BD
+  // ✅ FUNCIÓN PRINCIPAL DE CARGA - ESQUEMA BD v6.0 ACTUALIZADO
   const loadData = useCallback(async (isRefresh = false) => {
     if (!hydrated) return;
 
@@ -100,7 +100,7 @@ export const useMembershipStats = () => {
 
       const supabase = createBrowserSupabaseClient();
       
-      // ✅ SELECT OPTIMIZADO POST-LIMPIEZA BD
+      // ✅ SELECT OPTIMIZADO v6.0 - CAMPOS ACTUALIZADOS
       const { data: allMemberships, error: statsError } = await supabase
         .from('user_memberships')
         .select(`
@@ -110,7 +110,9 @@ export const useMembershipStats = () => {
           updated_at,
           start_date,
           end_date,
-          amount_paid,
+          paid_amount,
+          total_amount,
+          pending_amount,
           freeze_start_date,
           unfreeze_date,
           userid,
@@ -127,31 +129,31 @@ export const useMembershipStats = () => {
       const firstDayOfMonth = getFirstDayOfMonth();
       const in7Days = getIn7DaysDate();
       
-      console.log(`📅 Fechas México (post-correcciones BD):`);
+      console.log(`📅 Fechas México (v6.0 BD actualizada):`);
       console.log(`   📅 Hoy: ${mexicoToday}`);
       console.log(`   📅 Primer día del mes: ${firstDayOfMonth}`);
       console.log(`   📅 En 7 días: ${in7Days}`);
 
-      // ✅ ESTADÍSTICAS CON LÓGICA CORREGIDA
+      // ✅ ESTADÍSTICAS CON ESQUEMA v6.0 ACTUALIZADO
       const calculatedStats: MembershipStats = {
         total: allMemberships?.length || 0,
         active: allMemberships?.filter(m => m.status === 'active').length || 0,
         expired: allMemberships?.filter(m => m.status === 'expired').length || 0,
         
-        // ✅ FROZEN: Lógica enterprise post-correcciones BD
+        // ✅ FROZEN: Lógica enterprise v6.0
         frozen: allMemberships?.filter(m => 
           m.status === 'frozen' || 
           (m.freeze_start_date && (!m.unfreeze_date || m.unfreeze_date > mexicoToday))
         ).length || 0,
         
-        // ✅ INGRESOS: created_at con timezone UTC consistente
+        // ✅ INGRESOS: paid_amount (CAMPO ACTUALIZADO v6.0)
         revenue_this_month: allMemberships
           ?.filter(m => {
             if (!m.created_at) return false;
             const createdDateMexico = convertUtcTimestampToMexicoDate(m.created_at);
             return createdDateMexico >= firstDayOfMonth;
           })
-          .reduce((sum, m) => sum + (m.amount_paid || 0), 0) || 0,
+          .reduce((sum, m) => sum + (m.paid_amount || 0), 0) || 0,
         
         // ✅ NUEVAS: created_at con timezone UTC consistente  
         new_this_month: allMemberships
@@ -169,7 +171,7 @@ export const useMembershipStats = () => {
           }).length || 0
       };
 
-      console.log('📊 Estadísticas finales (BD corregida):', calculatedStats);
+      console.log('📊 Estadísticas finales (BD v6.0):', calculatedStats);
       
       setStats(calculatedStats);
       
@@ -202,7 +204,7 @@ export const useMembershipStats = () => {
     return loadData(true);
   }, [hydrated, loadData]);
 
-  // ✅ INICIALIZACIÓN SSR SAFE
+  // ✅ INICIALIZACIÓN SSR SAFE v6.0
   useEffect(() => {
     if (!hydrated) return;
 
@@ -212,11 +214,11 @@ export const useMembershipStats = () => {
       try {
         await loadData(false);
         if (isMounted) {
-          notify.success('📊 Datos cargados correctamente');
+          notify.success('Datos cargados correctamente');
         }
       } catch (error: any) {
         if (isMounted) {
-          notify.error(`❌ Error cargando datos: ${error.message}`);
+          notify.error(`Error cargando datos: ${error.message}`);
         }
       }
     };
@@ -249,34 +251,34 @@ export const useMembershipStats = () => {
   ]);
 };
 
-// ✅ INTERFACE FINAL POST-CORRECCIONES BD
-interface UserMembership {
+// ✅ INTERFACE ACTUALIZADA v6.0 - ESQUEMA BD CORRECTO
+export interface UserMembership {
   // Identificadores
   id: string;
   userid?: string;
-  plan_id: string; // ✅ Unificado (planid eliminado)
+  plan_id: string; // ✅ Unificado (planid ELIMINADO)
   
   // Estado y fechas
   status: 'active' | 'expired' | 'frozen' | string;
   start_date: string; // DATE 'YYYY-MM-DD'
   end_date?: string; // DATE 'YYYY-MM-DD'
   
-  // Congelamiento (lógica unificada)
+  // Congelamiento (esquema v6.0)
   freeze_start_date?: string; // DATE
-  unfreeze_date?: string; // DATE (freeze_end_date eliminado)
+  unfreeze_date?: string; // DATE (freeze_end_date ELIMINADO)
   freeze_reason?: string;
   total_frozen_days?: number;
   
-  // Pagos
+  // Pagos (esquema v6.0 actualizado)
   payment_type: string;
-  payment_method?: string;
-  amount_paid: number;
+  paid_amount: number; // ✅ NUEVO CAMPO (reemplaza amount_paid)
+  total_amount: number; // ✅ NUEVO CAMPO
+  pending_amount: number; // ✅ NUEVO CAMPO
   inscription_amount?: number;
-  discount_amount?: number;
   
-  // Auditoría (ambos con timezone ahora)
-  created_at: string; // ✅ timestamp with time zone (UTC)
-  updated_at: string; // ✅ timestamp with time zone (UTC) - CORREGIDO
+  // Auditoría (ambos con timezone UTC)
+  created_at: string; // timestamp with time zone (UTC)
+  updated_at: string; // timestamp with time zone (UTC)
   created_by?: string;
   updated_by?: string;
 }

@@ -281,6 +281,22 @@ const MembershipTable = memo<Props>(({
                     }}>
                       {getPaymentIcon(membership.payment_method)} {membership.payment_method}
                     </Typography>
+                    {membership.is_mixed_payment && membership.payment_method_breakdown && (
+                      <Typography variant="caption" sx={{ 
+                        color: colorTokens.textSecondary,
+                        display: 'block'
+                      }}>
+                        {membership.payment_method_breakdown}
+                      </Typography>
+                    )}
+                    {membership.payment_reference && !membership.is_mixed_payment && (
+                      <Typography variant="caption" sx={{ 
+                        color: colorTokens.textSecondary,
+                        display: 'block'
+                      }}>
+                        Ref: {membership.payment_reference}
+                      </Typography>
+                    )}
                   </Box>
                 </TableCell>
 

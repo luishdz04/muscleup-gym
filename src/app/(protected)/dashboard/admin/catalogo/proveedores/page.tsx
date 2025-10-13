@@ -1,4 +1,4 @@
-// 📁 src/app/dashboard/admin/catalogo/proveedores/page.tsx
+// src/app/(protected)/dashboard/admin/catalogo/proveedores/page.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -25,8 +25,6 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Alert,
-  Snackbar,
   CircularProgress,
   Fab,
   Avatar,
@@ -35,7 +33,8 @@ import {
   ListItemIcon,
   ListItemText,
   Rating,
-  Badge
+  Fade,
+  Slide
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -51,61 +50,30 @@ import {
   Restore as RestoreIcon,
   MoreVert as MoreVertIcon,
   Refresh as RefreshIcon,
-  FileDownload as ExportIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
   WhatsApp as WhatsAppIcon,
   Language as WebsiteIcon,
-  Assessment as AssessmentIcon,
   CreditCard as CreditIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 
-// 🎯 IMPORTAR NUESTROS HOOKS ENTERPRISE Y TIPOS
+// ✅ IMPORTS ENTERPRISE v6.0
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { notify } from '@/utils/notifications';
+import { formatTimestampForDisplay } from '@/utils/dateUtils';
 import { useSuppliers, useSupplierStats } from '@/hooks/useCatalog';
-import { Supplier } from '@/services/catalogService'; // Mejora #3: Tipado fuerte
+import { Supplier } from '@/services/catalogService';
 import SupplierFormDialog from '@/components/catalogo/SupplierFormDialog';
 
-// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
-
 const STATUS_FILTERS = [
-  { value: 'active', label: '✅ Proveedores Activos' },
-  { value: 'inactive', label: '❌ Proveedores Inactivos' },
-  { value: 'all', label: '📋 Todos los Proveedores' }
+  { value: 'active', label: 'Proveedores Activos' },
+  { value: 'inactive', label: 'Proveedores Inactivos' },
+  { value: 'all', label: 'Todos los Proveedores' }
 ];
 
 const RATING_FILTERS = [
@@ -119,25 +87,21 @@ const RATING_FILTERS = [
 
 export default function ProveedoresPage() {
   const router = useRouter();
+  const hydrated = useHydrated();
   
-  // 🎯 USAR NUESTROS HOOKS ENTERPRISE
+  // HOOKS ENTERPRISE
   const {
     suppliers,
     loading,
     error,
     total,
     page,
-    hasMore,
     filters,
-    notification,
-    createSupplier,
-    updateSupplier,
-    deleteSupplier,
-    restoreSupplier,
     updateFilters,
     changePage,
-    reload,
-    closeNotification
+    deleteSupplier,
+    restoreSupplier,
+    reload
   } = useSuppliers({
     status: 'active',
     limit: 20
@@ -146,25 +110,24 @@ export default function ProveedoresPage() {
   const {
     stats,
     loading: statsLoading,
-    error: statsError,
     reload: reloadStats
   } = useSupplierStats();
 
-  // 🎯 ESTADOS LOCALES SIMPLIFICADOS - MEJORA #3: TIPADO FUERTE
+  // ESTADOS LOCALES
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuSupplier, setMenuSupplier] = useState<Supplier | null>(null);
 
-  // ✅ MEJORA #2: MEMORIZAR CÁLCULO DE CATEGORÍAS ÚNICAS
+  // CATEGORÍAS ÚNICAS MEMORIZADAS
   const uniqueCategories = useMemo(() => {
     const allCategories = suppliers.flatMap(s => s.categories || []);
     return [...new Set(allCategories)];
   }, [suppliers]);
 
-  // 🎯 FUNCIONES SIMPLIFICADAS - MEJORA #1: ELIMINAR ESTADOS REDUNDANTES
+  // HANDLERS
   const handleSearch = (value: string) => {
-    updateFilters({ search: value, page: 1 }); // Resetear página al filtrar
+    updateFilters({ search: value, page: 1 });
   };
 
   const handleCategoryFilter = (value: string) => {
@@ -191,11 +154,11 @@ export default function ProveedoresPage() {
   };
 
   const handleSupplierSave = () => {
-  console.log('🔄 Proveedor guardado, recargando datos...');
-  reload(); // Recargar la lista de proveedores
-  reloadStats(); // Recargar las estadísticas también
-  closeSupplierDialog(); // Cerrar el diálogo
-};
+    reload();
+    reloadStats();
+    closeSupplierDialog();
+    notify.success('Proveedor guardado exitosamente');
+  };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, supplier: Supplier) => {
     setMenuAnchor(event.currentTarget);
@@ -222,16 +185,10 @@ export default function ProveedoresPage() {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'MXN'
+      currency: 'MXN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
     }).format(price);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
   };
 
   const getBalanceColor = (supplier: Supplier): 'error' | 'warning' | 'success' | 'info' => {
@@ -245,104 +202,85 @@ export default function ProveedoresPage() {
   };
 
   const getRatingColor = (rating: number): string => {
-    if (rating >= 4.5) return darkProTokens.success;
-    if (rating >= 3.5) return darkProTokens.primary;
-    if (rating >= 2.5) return darkProTokens.warning;
-    return darkProTokens.error;
+    if (rating >= 4.5) return colorTokens.success;
+    if (rating >= 3.5) return colorTokens.brand;
+    if (rating >= 2.5) return colorTokens.warning;
+    return colorTokens.danger;
   };
+
+  // SSR SAFETY
+  if (!hydrated) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+        flexDirection: 'column',
+        gap: 3
+      }}>
+        <CircularProgress size={80} sx={{ color: colorTokens.brand }} />
+        <Typography variant="h5" sx={{ color: colorTokens.textSecondary }}>
+          Cargando Gestión de Proveedores...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ 
       minHeight: '100vh',
-      background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
-      color: darkProTokens.textPrimary,
+      background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+      color: colorTokens.textPrimary,
       p: 3
     }}>
-      {/* 🔔 NOTIFICACIÓN ENTERPRISE */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={closeNotification}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert 
-          severity={notification.severity}
-          onClose={closeNotification}
-          sx={{
-            background: notification.severity === 'success' ? 
-              `linear-gradient(135deg, ${darkProTokens.success}, ${darkProTokens.successHover})` :
-              notification.severity === 'error' ?
-              `linear-gradient(135deg, ${darkProTokens.error}, ${darkProTokens.errorHover})` :
-              notification.severity === 'warning' ?
-              `linear-gradient(135deg, ${darkProTokens.warning}, ${darkProTokens.warningHover})` :
-              `linear-gradient(135deg, ${darkProTokens.info}, ${darkProTokens.infoHover})`,
-            color: darkProTokens.textPrimary,
-            fontWeight: 600,
-            borderRadius: 3
-          }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
-
-      {/* 📊 HEADER CON ESTADÍSTICAS ENTERPRISE */}
-      <Paper sx={{
-        p: 4,
-        mb: 4,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `2px solid ${darkProTokens.primary}30`,
-        borderRadius: 4,
-        boxShadow: `0 8px 32px ${darkProTokens.primary}10`
-      }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Box>
-            <Typography 
-              variant="h3" 
-              component="h1" 
-              sx={{
-                fontWeight: 800,
-                color: darkProTokens.primary,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                mb: 1
-              }}
-            >
-              <BusinessIcon sx={{ fontSize: 50 }} />
-              Gestión de Proveedores
-            </Typography>
-            <Typography variant="h6" sx={{ 
-              color: darkProTokens.textSecondary,
-              fontWeight: 300
-            }}>
-              Directorio | Relaciones Comerciales | Control de Crédito
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<AssessmentIcon />}
-              sx={{ 
-                color: darkProTokens.textSecondary,
-                borderColor: `${darkProTokens.textSecondary}60`,
-                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
-              }}
-            >
-              Reportes
-            </Button>
-            
-            <Button
-              variant="outlined"
-              startIcon={<ExportIcon />}
-              sx={{ 
-                color: darkProTokens.textSecondary,
-                borderColor: `${darkProTokens.textSecondary}60`,
-                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
-              }}
-            >
-              Exportar
-            </Button>
+      {/* HEADER CON ESTADÍSTICAS */}
+      <Fade in timeout={1000}>
+        <Paper sx={{
+          p: 4,
+          mb: 4,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `2px solid ${colorTokens.brand}30`,
+          borderRadius: 4,
+          boxShadow: `0 12px 40px ${colorTokens.glow}`,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '4px',
+            background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.brandHover})`
+          }
+        }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Box>
+              <Typography 
+                variant="h3" 
+                component="h1" 
+                sx={{
+                  fontWeight: 900,
+                  color: colorTokens.brand,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  mb: 1,
+                  textShadow: `0 2px 8px ${colorTokens.glow}`
+                }}
+              >
+                <BusinessIcon sx={{ fontSize: 50 }} />
+                Gestión de Proveedores
+              </Typography>
+              <Typography variant="h6" sx={{ 
+                color: colorTokens.textSecondary,
+                fontWeight: 400
+              }}>
+                Directorio | Relaciones Comerciales | Control de Crédito
+              </Typography>
+            </Box>
             
             <Button
               variant="outlined"
@@ -350,548 +288,586 @@ export default function ProveedoresPage() {
               onClick={reload}
               disabled={loading}
               sx={{ 
-                color: darkProTokens.textSecondary,
-                borderColor: `${darkProTokens.textSecondary}60`,
+                color: colorTokens.textSecondary,
+                borderColor: `${colorTokens.textSecondary}60`,
                 px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
               }}
             >
               {loading ? <CircularProgress size={20} /> : 'Actualizar'}
             </Button>
           </Box>
-        </Box>
 
-        {/* 📊 ESTADÍSTICAS CON LOADING STATE */}
-        {statsLoading ? (
-          <Box display="flex" justifyContent="center" py={4}>
-            <CircularProgress sx={{ color: darkProTokens.primary }} />
-          </Box>
-        ) : statsError ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Error al cargar estadísticas: {statsError}
-          </Alert>
-        ) : stats ? (
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card sx={{ 
-                background: `${darkProTokens.info}10`, 
-                border: `1px solid ${darkProTokens.info}30`,
-                borderRadius: 3
-              }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.info }}>
-                        {stats.totalSuppliers}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        Total de Proveedores
-                      </Typography>
-                    </Box>
-                    <BusinessIcon sx={{ fontSize: 40, color: darkProTokens.info, opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card sx={{ 
-                background: `${darkProTokens.success}10`, 
-                border: `1px solid ${darkProTokens.success}30`,
-                borderRadius: 3
-              }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.success }}>
-                        {stats.activeSuppliers}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        Proveedores Activos
-                      </Typography>
-                    </Box>
-                    <CheckCircleIcon sx={{ fontSize: 40, color: darkProTokens.success, opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card sx={{ 
-                background: `${darkProTokens.warning}10`, 
-                border: `1px solid ${darkProTokens.warning}30`,
-                borderRadius: 3
-              }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
-                        {formatPrice(stats.totalCreditLimit)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        Límite de Crédito Total
-                      </Typography>
-                    </Box>
-                    <CreditIcon sx={{ fontSize: 40, color: darkProTokens.warning, opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card sx={{ 
-                background: `${darkProTokens.error}10`, 
-                border: `1px solid ${darkProTokens.error}30`,
-                borderRadius: 3
-              }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.error }}>
-                        {formatPrice(stats.totalBalance)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                        Saldo Pendiente Total
-                      </Typography>
-                    </Box>
-                    <AccountBalanceIcon sx={{ fontSize: 40, color: darkProTokens.error, opacity: 0.8 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        ) : null}
-      </Paper>
-
-      {/* 🔍 FILTROS ENTERPRISE - MEJORA #1: USAR ESTADO CENTRALIZADO */}
-      <Paper sx={{ 
-        p: 3, 
-        mb: 3,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 3
-      }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              fullWidth
-              placeholder="Buscar proveedores..."
-              value={filters.search || ''} // ✅ Usar estado centralizado
-              onChange={(e) => handleSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: darkProTokens.primary }} />
-                  </InputAdornment>
-                ),
-                sx: {
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkProTokens.primary
+          {/* ESTADÍSTICAS */}
+          {statsLoading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress sx={{ color: colorTokens.brand }} />
+            </Box>
+          ) : stats ? (
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card sx={{ 
+                  background: `linear-gradient(135deg, ${colorTokens.info}15, ${colorTokens.info}10)`, 
+                  border: `1px solid ${colorTokens.info}30`,
+                  borderRadius: 3,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: `0 8px 25px ${colorTokens.info}20`
                   }
-                }
-              }}
-            />
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ 
-                color: darkProTokens.textSecondary,
-                '&.Mui-focused': { color: darkProTokens.primary }
-              }}>
-                Categoría
-              </InputLabel>
-              <Select
-                value={filters.category || ''} // ✅ Usar estado centralizado
-                label="Categoría"
-                onChange={(e) => handleCategoryFilter(e.target.value)}
-                sx={{
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
+                }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.info }}>
+                          {stats.totalSuppliers}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                          Total de Proveedores
+                        </Typography>
+                      </Box>
+                      <BusinessIcon sx={{ fontSize: 40, color: colorTokens.info, opacity: 0.8 }} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card sx={{ 
+                  background: `linear-gradient(135deg, ${colorTokens.success}15, ${colorTokens.success}10)`, 
+                  border: `1px solid ${colorTokens.success}30`,
+                  borderRadius: 3,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: `0 8px 25px ${colorTokens.success}20`
+                  }
+                }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.success }}>
+                          {stats.activeSuppliers}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                          Proveedores Activos
+                        </Typography>
+                      </Box>
+                      <CheckCircleIcon sx={{ fontSize: 40, color: colorTokens.success, opacity: 0.8 }} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card sx={{ 
+                  background: `linear-gradient(135deg, ${colorTokens.warning}15, ${colorTokens.warning}10)`, 
+                  border: `1px solid ${colorTokens.warning}30`,
+                  borderRadius: 3,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: `0 8px 25px ${colorTokens.warning}20`
+                  }
+                }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.warning }}>
+                          {formatPrice(stats.totalCreditLimit)}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                          Límite de Crédito Total
+                        </Typography>
+                      </Box>
+                      <CreditIcon sx={{ fontSize: 40, color: colorTokens.warning, opacity: 0.8 }} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card sx={{ 
+                  background: `linear-gradient(135deg, ${colorTokens.danger}15, ${colorTokens.danger}10)`, 
+                  border: `1px solid ${colorTokens.danger}30`,
+                  borderRadius: 3,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: `0 8px 25px ${colorTokens.danger}20`
+                  }
+                }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.danger }}>
+                          {formatPrice(stats.totalBalance)}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                          Saldo Pendiente Total
+                        </Typography>
+                      </Box>
+                      <AccountBalanceIcon sx={{ fontSize: 40, color: colorTokens.danger, opacity: 0.8 }} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          ) : null}
+        </Paper>
+      </Fade>
+
+      {/* FILTROS */}
+      <Slide in direction="up" timeout={600}>
+        <Paper sx={{ 
+          p: 3, 
+          mb: 3,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `1px solid ${colorTokens.border}`,
+          borderRadius: 3
+        }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                fullWidth
+                placeholder="Buscar proveedores..."
+                value={filters.search || ''}
+                onChange={(e) => handleSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: colorTokens.brand }} />
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${colorTokens.brand}30`
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colorTokens.brand
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colorTokens.brand
+                    }
                   }
                 }}
-              >
-                <MenuItem value="">Todas</MenuItem>
-                {/* ✅ MEJORA #2: USAR CATEGORÍAS MEMORIZADAS */}
-                {uniqueCategories.map((category) => (
-                  <MenuItem key={category} value={category}>
-                    {category}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ 
-                color: darkProTokens.textSecondary,
-                '&.Mui-focused': { color: darkProTokens.primary }
-              }}>
-                Calificación
-              </InputLabel>
-              <Select
-                value={filters.rating?.toString() || ''} // ✅ Usar estado centralizado
-                label="Calificación"
-                onChange={(e) => handleRatingFilter(e.target.value)}
+              />
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ 
+                  color: colorTokens.textSecondary,
+                  '&.Mui-focused': { color: colorTokens.brand }
+                }}>
+                  Categoría
+                </InputLabel>
+                <Select
+                  value={filters.category || ''}
+                  label="Categoría"
+                  onChange={(e) => handleCategoryFilter(e.target.value)}
+                  sx={{
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${colorTokens.brand}30`
+                    }
+                  }}
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {uniqueCategories.map((category) => (
+                    <MenuItem key={category} value={category}>
+                      {category}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ 
+                  color: colorTokens.textSecondary,
+                  '&.Mui-focused': { color: colorTokens.brand }
+                }}>
+                  Calificación
+                </InputLabel>
+                <Select
+                  value={filters.rating?.toString() || ''}
+                  label="Calificación"
+                  onChange={(e) => handleRatingFilter(e.target.value)}
+                  sx={{
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${colorTokens.brand}30`
+                    }
+                  }}
+                >
+                  {RATING_FILTERS.map((filter) => (
+                    <MenuItem key={filter.value} value={filter.value}>
+                      {filter.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ 
+                  color: colorTokens.textSecondary,
+                  '&.Mui-focused': { color: colorTokens.brand }
+                }}>
+                  Estado
+                </InputLabel>
+                <Select
+                  value={filters.status}
+                  label="Estado"
+                  onChange={(e) => handleStatusFilter(e.target.value)}
+                  sx={{
+                    color: colorTokens.textPrimary,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: `${colorTokens.brand}30`
+                    }
+                  }}
+                >
+                  {STATUS_FILTERS.map((filter) => (
+                    <MenuItem key={filter.value} value={filter.value}>
+                      {filter.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 2 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.brand }}>
+                  {suppliers.length}
+                </Typography>
+                <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                  de {total} proveedores
+                </Typography>
+              </Box>
+            </Grid>
+            
+            <Grid size={{ xs: 12, md: 1 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<FilterIcon />}
+                onClick={() => {
+                  updateFilters({ 
+                    search: '', 
+                    category: '', 
+                    rating: undefined,
+                    page: 1 
+                  });
+                  notify.info('Filtros limpiados');
+                }}
                 sx={{
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  }
+                  color: colorTokens.textSecondary,
+                  borderColor: `${colorTokens.textSecondary}40`
                 }}
               >
-                {RATING_FILTERS.map((filter) => (
-                  <MenuItem key={filter.value} value={filter.value}>
-                    {filter.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                Limpiar
+              </Button>
+            </Grid>
           </Grid>
+        </Paper>
+      </Slide>
 
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ 
-                color: darkProTokens.textSecondary,
-                '&.Mui-focused': { color: darkProTokens.primary }
-              }}>
-                Estado
-              </InputLabel>
-              <Select
-                value={filters.status}
-                label="Estado"
-                onChange={(e) => handleStatusFilter(e.target.value)}
-                sx={{
-                  color: darkProTokens.textPrimary,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: `${darkProTokens.primary}30`
-                  }
-                }}
-              >
-                {STATUS_FILTERS.map((filter) => (
-                  <MenuItem key={filter.value} value={filter.value}>
-                    {filter.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 2 }}>
-            <Typography variant="body2" sx={{ 
-              color: darkProTokens.textSecondary, 
-              textAlign: 'center' 
-            }}>
-              {suppliers.length} de {total} proveedores
-            </Typography>
-          </Grid>
-          
-          <Grid size={{ xs: 12, md: 1 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<FilterIcon />}
-              onClick={() => {
-                // ✅ LIMPIAR FILTROS USANDO ESTADO CENTRALIZADO
-                updateFilters({ 
-                  search: '', 
-                  category: '', 
-                  rating: undefined,
-                  page: 1 
-                });
-              }}
-              sx={{
-                color: darkProTokens.textSecondary,
-                borderColor: `${darkProTokens.textSecondary}40`
-              }}
-            >
-              Limpiar
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* 📋 TABLA DE PROVEEDORES ENTERPRISE */}
-      <Paper sx={{ 
-        mb: 3,
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-        border: `1px solid ${darkProTokens.grayDark}`,
-        borderRadius: 3
-      }}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" p={4}>
-            <CircularProgress sx={{ color: darkProTokens.primary }} size={40} />
-          </Box>
-        ) : error ? (
-          <Alert severity="error" sx={{ m: 3 }}>
-            Error al cargar proveedores: {error}
-          </Alert>
-        ) : (
-          <>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ 
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`
-                  }}>
-                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Proveedor</TableCell>
-                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Contacto</TableCell>
-                    <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Categorías</TableCell>
-                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Calificación</TableCell>
-                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Estado</TableCell>
-                    <TableCell align="right" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Crédito</TableCell>
-                    <TableCell align="center" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {suppliers.map((supplier) => (
-                    <TableRow 
-                      key={supplier.id} 
-                      hover
-                      sx={{ 
-                        opacity: supplier.is_active === false ? 0.6 : 1,
-                        backgroundColor: supplier.is_active === false ? `${darkProTokens.error}10` : 'transparent',
-                        '&:hover': {
-                          backgroundColor: `${darkProTokens.primary}05`
-                        }
-                      }}
-                    >
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <Avatar sx={{ 
-                            backgroundColor: `${darkProTokens.primary}20`,
-                            color: darkProTokens.primary,
-                            fontWeight: 'bold'
-                          }}>
-                            {supplier.company_name.charAt(0)}
-                          </Avatar>
+      {/* TABLA DE PROVEEDORES */}
+      <Fade in timeout={1000}>
+        <Paper sx={{ 
+          mb: 3,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `1px solid ${colorTokens.border}`,
+          borderRadius: 3,
+          overflow: 'hidden'
+        }}>
+          {loading ? (
+            <Box display="flex" justifyContent="center" p={4}>
+              <CircularProgress sx={{ color: colorTokens.brand }} size={40} />
+            </Box>
+          ) : error ? (
+            <Box p={3}>
+              <Typography color="error">Error al cargar proveedores: {error}</Typography>
+            </Box>
+          ) : (
+            <>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ 
+                      background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral400})`
+                    }}>
+                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Proveedor</TableCell>
+                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Contacto</TableCell>
+                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Categorías</TableCell>
+                      <TableCell align="center" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Calificación</TableCell>
+                      <TableCell align="center" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Estado</TableCell>
+                      <TableCell align="right" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Crédito</TableCell>
+                      <TableCell align="center" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {suppliers.map((supplier) => (
+                      <TableRow 
+                        key={supplier.id} 
+                        hover
+                        sx={{ 
+                          opacity: supplier.is_active === false ? 0.6 : 1,
+                          backgroundColor: supplier.is_active === false ? `${colorTokens.danger}10` : 'transparent',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            backgroundColor: colorTokens.hoverOverlay,
+                            transform: 'scale(1.005)'
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={2}>
+                            <Avatar sx={{ 
+                              backgroundColor: `${colorTokens.brand}20`,
+                              color: colorTokens.brand,
+                              fontWeight: 'bold'
+                            }}>
+                              {supplier.company_name.charAt(0)}
+                            </Avatar>
+                            <Box>
+                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
+                                {supplier.company_name}
+                              </Typography>
+                              {supplier.rfc && (
+                                <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                                  RFC: {supplier.rfc}
+                                </Typography>
+                              )}
+                              {supplier.is_active === false && (
+                                <Chip 
+                                  label="INACTIVO" 
+                                  sx={{
+                                    backgroundColor: colorTokens.danger,
+                                    color: colorTokens.textOnBrand,
+                                    fontWeight: 700,
+                                    ml: 1
+                                  }} 
+                                  size="small" 
+                                />
+                              )}
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
                           <Box>
-                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
-                              {supplier.company_name}
-                            </Typography>
-                            {supplier.rfc && (
-                              <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                                RFC: {supplier.rfc}
+                            {supplier.contact_person && (
+                              <Typography variant="subtitle2" sx={{ color: colorTokens.textPrimary }}>
+                                {supplier.contact_person}
                               </Typography>
                             )}
-                            {supplier.is_active === false && (
-                              <Chip 
-                                label="INACTIVO" 
-                                sx={{
-                                  backgroundColor: darkProTokens.error,
-                                  color: darkProTokens.textPrimary,
-                                  fontWeight: 700,
-                                  ml: 1
-                                }} 
-                                size="small" 
-                              />
-                            )}
+                            <Box display="flex" gap={1} mt={0.5}>
+                              {supplier.email && (
+                                <Tooltip title={supplier.email}>
+                                  <IconButton size="small" sx={{ color: colorTokens.info }}>
+                                    <EmailIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {supplier.phone && (
+                                <Tooltip title={supplier.phone}>
+                                  <IconButton size="small" sx={{ color: colorTokens.success }}>
+                                    <PhoneIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {supplier.whatsapp && (
+                                <Tooltip title={supplier.whatsapp}>
+                                  <IconButton size="small" sx={{ color: colorTokens.success }}>
+                                    <WhatsAppIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {supplier.website && (
+                                <Tooltip title={supplier.website}>
+                                  <IconButton size="small" sx={{ color: colorTokens.brand }}>
+                                    <WebsiteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
                           </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box>
-                          {supplier.contact_person && (
-                            <Typography variant="subtitle2" sx={{ color: darkProTokens.textPrimary }}>
-                              {supplier.contact_person}
-                            </Typography>
-                          )}
-                          <Box display="flex" gap={1} mt={0.5}>
-                            {supplier.email && (
-                              <Tooltip title={supplier.email}>
-                                <IconButton size="small" sx={{ color: darkProTokens.info }}>
-                                  <EmailIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <Box display="flex" flexWrap="wrap" gap={0.5}>
+                            {supplier.categories && supplier.categories.length > 0 ? (
+                              supplier.categories.slice(0, 2).map((category, index) => (
+                                <Chip 
+                                  key={index}
+                                  label={category} 
+                                  size="small" 
+                                  sx={{
+                                    backgroundColor: `${colorTokens.info}20`,
+                                    color: colorTokens.info,
+                                    border: `1px solid ${colorTokens.info}40`
+                                  }}
+                                />
+                              ))
+                            ) : (
+                              <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                                Sin categorías
+                              </Typography>
                             )}
-                            {supplier.phone && (
-                              <Tooltip title={supplier.phone}>
-                                <IconButton size="small" sx={{ color: darkProTokens.success }}>
-                                  <PhoneIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            {supplier.whatsapp && (
-                              <Tooltip title={supplier.whatsapp}>
-                                <IconButton size="small" sx={{ color: darkProTokens.success }}>
-                                  <WhatsAppIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            {supplier.website && (
-                              <Tooltip title={supplier.website}>
-                                <IconButton size="small" sx={{ color: darkProTokens.primary }}>
-                                  <WebsiteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box display="flex" flexWrap="wrap" gap={0.5}>
-                          {supplier.categories && supplier.categories.length > 0 ? (
-                            supplier.categories.slice(0, 2).map((category, index) => (
+                            {supplier.categories && supplier.categories.length > 2 && (
                               <Chip 
-                                key={index}
-                                label={category} 
+                                label={`+${supplier.categories.length - 2}`}
                                 size="small" 
                                 sx={{
-                                  backgroundColor: `${darkProTokens.info}20`,
-                                  color: darkProTokens.info,
-                                  border: `1px solid ${darkProTokens.info}40`
+                                  backgroundColor: `${colorTokens.textSecondary}20`,
+                                  color: colorTokens.textSecondary,
+                                  border: `1px solid ${colorTokens.textSecondary}40`
                                 }}
                               />
-                            ))
-                          ) : (
-                            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                              Sin categorías
-                            </Typography>
-                          )}
-                          {supplier.categories && supplier.categories.length > 2 && (
-                            <Chip 
-                              label={`+${supplier.categories.length - 2}`}
-                              size="small" 
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" flexDirection="column" alignItems="center">
+                            <Rating 
+                              value={supplier.rating || 0} 
+                              readOnly 
+                              size="small"
                               sx={{
-                                backgroundColor: `${darkProTokens.textSecondary}20`,
-                                color: darkProTokens.textSecondary,
-                                border: `1px solid ${darkProTokens.textSecondary}40`
+                                '& .MuiRating-iconFilled': {
+                                  color: getRatingColor(supplier.rating || 0)
+                                }
                               }}
                             />
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box display="flex" flexDirection="column" alignItems="center">
-                          <Rating 
-                            value={supplier.rating || 0} 
-                            readOnly 
+                            <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                              {supplier.rating || 0}/5
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip
                             size="small"
+                            icon={supplier.is_active === false ? <WarningIcon /> : <CheckCircleIcon />}
+                            label={supplier.is_active === false ? 'Inactivo' : 'Activo'}
                             sx={{
-                              '& .MuiRating-iconFilled': {
-                                color: getRatingColor(supplier.rating || 0)
-                              }
+                              backgroundColor: supplier.is_active === false ? `${colorTokens.danger}20` : `${colorTokens.success}20`,
+                              color: supplier.is_active === false ? colorTokens.danger : colorTokens.success,
+                              border: `1px solid ${supplier.is_active === false ? colorTokens.danger : colorTokens.success}40`
                             }}
                           />
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
-                            {supplier.rating || 0}/5
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          size="small"
-                          icon={supplier.is_active === false ? <WarningIcon /> : <CheckCircleIcon />}
-                          label={supplier.is_active === false ? 'Inactivo' : 'Activo'}
-                          sx={{
-                            backgroundColor: supplier.is_active === false ? `${darkProTokens.error}20` : `${darkProTokens.success}20`,
-                            color: supplier.is_active === false ? darkProTokens.error : darkProTokens.success,
-                            border: `1px solid ${supplier.is_active === false ? darkProTokens.error : darkProTokens.success}40`
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
-                            Límite: {formatPrice(supplier.credit_limit || 0)}
-                          </Typography>
-                          <Typography 
-                            variant="caption" 
+                        </TableCell>
+                        <TableCell align="right">
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: colorTokens.brand }}>
+                              Límite: {formatPrice(supplier.credit_limit || 0)}
+                            </Typography>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                color: getBalanceColor(supplier) === 'error' ? colorTokens.danger :
+                                      getBalanceColor(supplier) === 'warning' ? colorTokens.warning :
+                                      getBalanceColor(supplier) === 'info' ? colorTokens.info :
+                                      colorTokens.success
+                              }}
+                            >
+                              Saldo: {formatPrice(supplier.current_balance || 0)}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleMenuOpen(e, supplier)}
                             sx={{ 
-                              color: getBalanceColor(supplier) === 'error' ? darkProTokens.error :
-                                    getBalanceColor(supplier) === 'warning' ? darkProTokens.warning :
-                                    getBalanceColor(supplier) === 'info' ? darkProTokens.info :
-                                    darkProTokens.success
+                              color: colorTokens.textSecondary,
+                              '&:hover': {
+                                backgroundColor: `${colorTokens.brand}15`,
+                                color: colorTokens.brand
+                              }
                             }}
                           >
-                            Saldo: {formatPrice(supplier.current_balance || 0)}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => handleMenuOpen(e, supplier)}
-                          sx={{ color: darkProTokens.textSecondary }}
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            
-            <TablePagination
-              component="div"
-              count={total}
-              page={page - 1} // TablePagination usa índice base 0
-              onPageChange={(_, newPage) => changePage(newPage + 1)}
-              rowsPerPage={filters.limit || 20}
-              onRowsPerPageChange={(e) => {
-                updateFilters({ limit: parseInt(e.target.value, 10) });
-              }}
-              labelRowsPerPage="Filas por página:"
-              labelDisplayedRows={({ from, to, count }) => 
-                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-              }
-              sx={{
-                color: darkProTokens.textSecondary,
-                borderTop: `1px solid ${darkProTokens.grayDark}`,
-                '& .MuiTablePagination-selectIcon': { color: darkProTokens.textSecondary },
-                '& .MuiTablePagination-actions button': { color: darkProTokens.textSecondary }
-              }}
-            />
-          </>
-        )}
-      </Paper>
+                            <MoreVertIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              
+              <TablePagination
+                component="div"
+                count={total}
+                page={page - 1}
+                onPageChange={(_, newPage) => changePage(newPage + 1)}
+                rowsPerPage={filters.limit || 20}
+                onRowsPerPageChange={(e) => {
+                  updateFilters({ limit: parseInt(e.target.value, 10) });
+                }}
+                labelRowsPerPage="Filas por página:"
+                labelDisplayedRows={({ from, to, count }) => 
+                  `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                }
+                sx={{
+                  color: colorTokens.textSecondary,
+                  borderTop: `1px solid ${colorTokens.border}`,
+                  background: `${colorTokens.brand}03`,
+                  '& .MuiTablePagination-selectIcon': { color: colorTokens.textSecondary },
+                  '& .MuiTablePagination-actions button': { 
+                    color: colorTokens.textSecondary,
+                    '&:hover': {
+                      backgroundColor: `${colorTokens.brand}10`
+                    }
+                  }
+                }}
+              />
+            </>
+          )}
+        </Paper>
+      </Fade>
 
-      {/* 🎯 FAB PARA AGREGAR PROVEEDOR */}
+      {/* FAB PARA AGREGAR PROVEEDOR */}
       <Fab
-        color="primary"
         sx={{
           position: 'fixed',
           bottom: 24,
           right: 24,
-          background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-          color: darkProTokens.background,
+          background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+          color: colorTokens.textOnBrand,
           fontWeight: 700,
+          boxShadow: `0 8px 25px ${colorTokens.brand}40`,
           '&:hover': {
-            background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
-            transform: 'scale(1.1)'
-          }
+            background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
+            transform: 'scale(1.1)',
+            boxShadow: `0 12px 35px ${colorTokens.brand}60`
+          },
+          transition: 'all 0.3s ease'
         }}
         onClick={() => openSupplierDialog()}
       >
         <AddIcon />
       </Fab>
 
-      {/* 📝 MENÚ DE ACCIONES */}
+      {/* MENÚ DE ACCIONES */}
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
         PaperProps={{
           sx: {
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `1px solid ${darkProTokens.primary}30`,
+            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+            border: `1px solid ${colorTokens.brand}30`,
             borderRadius: 2,
-            color: darkProTokens.textPrimary
+            color: colorTokens.textPrimary
           }
         }}
       >
         <MenuItem onClick={() => openSupplierDialog(menuSupplier!)}>
           <ListItemIcon>
-            <EditIcon sx={{ color: darkProTokens.primary }} />
+            <EditIcon sx={{ color: colorTokens.brand }} />
           </ListItemIcon>
           <ListItemText>Editar Proveedor</ListItemText>
         </MenuItem>
@@ -899,41 +875,40 @@ export default function ProveedoresPage() {
         {menuSupplier?.is_active === false ? (
           <MenuItem onClick={() => handleRestore(menuSupplier.id)}>
             <ListItemIcon>
-              <RestoreIcon sx={{ color: darkProTokens.success }} />
+              <RestoreIcon sx={{ color: colorTokens.success }} />
             </ListItemIcon>
             <ListItemText>Restaurar Proveedor</ListItemText>
           </MenuItem>
         ) : (
           <MenuItem onClick={() => handleDelete(menuSupplier?.id!)}>
             <ListItemIcon>
-              <DeleteIcon sx={{ color: darkProTokens.error }} />
+              <DeleteIcon sx={{ color: colorTokens.danger }} />
             </ListItemIcon>
             <ListItemText>Eliminar Proveedor</ListItemText>
           </MenuItem>
         )}
 
         <MenuItem onClick={() => {
-          // Navegar a productos del proveedor
           router.push(`/dashboard/admin/catalogo/productos?supplier=${menuSupplier?.id}`);
           handleMenuClose();
         }}>
           <ListItemIcon>
             {menuSupplier?.is_active === false ? 
-              <VisibilityOffIcon sx={{ color: darkProTokens.warning }} /> : 
-              <VisibilityIcon sx={{ color: darkProTokens.info }} />
+              <VisibilityOffIcon sx={{ color: colorTokens.warning }} /> : 
+              <VisibilityIcon sx={{ color: colorTokens.info }} />
             }
           </ListItemIcon>
           <ListItemText>Ver Productos</ListItemText>
         </MenuItem>
       </Menu>
 
-      {/* 📝 DIALOG DE FORMULARIO */}
+      {/* DIALOG DE FORMULARIO */}
       <SupplierFormDialog
-  open={supplierDialogOpen}
-  onClose={closeSupplierDialog}
-  supplier={selectedSupplier}
-  onSave={handleSupplierSave}
-/>
+        open={supplierDialogOpen}
+        onClose={closeSupplierDialog}
+        supplier={selectedSupplier}
+        onSave={handleSupplierSave}
+      />
     </Box>
   );
 }

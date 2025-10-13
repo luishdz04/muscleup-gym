@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 // GET
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: { id: string } | Promise<{ id: string }> }
+) {
   try {
     const supabase = createServerSupabaseClient();
+    const { id } = await context.params;
     const { data: expense, error } = await supabase
       .from('expenses')
       .select(`
         *,
-        created_by(id, firstName, lastName, name, email)
+        created_by:Users!expenses_created_by_fkey(id, firstName, lastName, email)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !expense) {
@@ -24,7 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const expenseDetail = {
       ...expense,
       creator_name: expense.created_by
-        ? expense.created_by.name || `${expense.created_by.firstName || ''} ${expense.created_by.lastName || ''}`.trim() || expense.created_by.email || 'Usuario'
+        ? `${expense.created_by.firstName || ''} ${expense.created_by.lastName || ''}`.trim() || expense.created_by.email || 'Usuario'
         : 'Usuario',
       amount: parseFloat(expense.amount || '0')
     };
@@ -44,14 +48,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: { id: string } | Promise<{ id: string }> }
+) {
   try {
     const supabase = createServerSupabaseClient();
+    const { id } = await context.params;
 
     const { data: existingExpense, error: checkError } = await supabase
       .from('expenses')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (checkError || !existingExpense) {
@@ -61,7 +69,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const { error: deleteError } = await supabase
       .from('expenses')
       .delete()
-      .eq('id', params.id);
+  .eq('id', id);
 
     if (deleteError) {
       return NextResponse.json({
@@ -86,10 +94,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 }
 
 // PATCH
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(
+  request: NextRequest,
+  context: { params: { id: string } | Promise<{ id: string }> }
+) {
   try {
     const body = await request.json();
     const supabase = createServerSupabaseClient();
+    const { id } = await context.params;
 
     const updateData: any = {
       updated_at: new Date().toISOString()
@@ -105,7 +117,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { data: updatedExpense, error: updateError } = await supabase
       .from('expenses')
       .update(updateData)
-      .eq('id', params.id)
+  .eq('id', id)
       .select()
       .single();
 

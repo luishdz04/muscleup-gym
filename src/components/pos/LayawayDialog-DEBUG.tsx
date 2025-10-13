@@ -1,4 +1,4 @@
-// components/pos/LayawayDialog.tsx - VERSIÓN CORREGIDA v7.0 CON TIPOS INTEGRADOS
+// components/pos/LayawayDialog.tsx - VERSIÓN COMPLETA v10.2 MULTI-ALMACÉN
 
 'use client';
 
@@ -27,8 +27,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormControlLabel,
-  Switch,
   IconButton
 } from '@mui/material';
 import {
@@ -43,7 +41,8 @@ import {
   CreditCard as CardIcon,
   AccountBalance as BankIcon,
   Add as AddIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 
 // ✅ IMPORTS ENTERPRISE OBLIGATORIOS v7.0
@@ -61,22 +60,14 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 // ✅ TIPOS CENTRALIZADOS COMPLETOS v7.0
 import { 
-  Product, 
   CartItem, 
   Customer, 
   Coupon, 
   Totals,
-  PaymentCommission,
-  SaleItem,
-  SalePaymentDetail,
-  InventoryMovement,
-  LayawayStatusHistory,
-  PAYMENT_METHODS,
-  SALE_STATUSES,
-  PAYMENT_STATUSES,
-  MOVEMENT_TYPES
+  PaymentCommission
 } from '@/types/pos';
 
+// ✅ PROPS ACTUALIZADAS v10.2 - INCLUYE warehouseId
 interface LayawayDialogProps {
   open: boolean;
   onClose: () => void;
@@ -84,17 +75,16 @@ interface LayawayDialogProps {
   customer: Customer | null;
   coupon: Coupon | null;
   totals: Totals;
+  warehouseId: string; // ✅ CRÍTICO: Almacén donde se reserva el stock
   onSuccess: () => void;
 }
 
-// ✅ TIPOS DE PAGO PARA DEPÓSITO
 interface PaymentMethodForm {
   method: string;
   amount: number;
   reference?: string;
 }
 
-// ✅ CONSTANTES ENTERPRISE v7.0
 const DEPOSIT_PERCENTAGES = [30, 40, 50, 60, 70] as const;
 const LAYAWAY_DURATIONS = [
   { days: 7, label: '7 días' },
@@ -104,7 +94,6 @@ const LAYAWAY_DURATIONS = [
   { days: 60, label: '60 días' }
 ] as const;
 
-// ✅ MÉTODOS DE PAGO FALLBACK
 const PAYMENT_METHODS_FALLBACK = [
   { value: 'efectivo', label: 'Efectivo', icon: MoneyIcon },
   { value: 'transferencia', label: 'Transferencia', icon: BankIcon },
@@ -119,14 +108,13 @@ export default function LayawayDialog({
   customer,
   coupon,
   totals,
+  warehouseId,
   onSuccess
 }: LayawayDialogProps) {
-  // ✅ HOOKS ENTERPRISE v7.0
   const hydrated = useHydrated();
   const { addAuditFieldsFor, getCurrentUser } = useUserTracking();
   const supabase = createBrowserSupabaseClient();
   
-  // ✅ CARGAR COMISIONES DINÁMICAMENTE DESDE BD
   const {
     data: paymentCommissions,
     loading: commissionsLoading,
@@ -136,21 +124,16 @@ export default function LayawayDialog({
     selectQuery: '*'
   });
   
-  // ✅ ESTADOS PRINCIPALES v7.0
   const [depositPercentage, setDepositPercentage] = useState(50);
   const [layawayDays, setLayawayDays] = useState(30);
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);
-  
-  // ✅ ESTADOS DE PAGO DEL DEPÓSITO
-  const [showPaymentSection, setShowPaymentSection] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodForm[]>([
     { method: 'efectivo', amount: 0 }
   ]);
   const [mixedPayment, setMixedPayment] = useState(false);
   const [showCardOptions, setShowCardOptions] = useState(false);
 
-  // ✅ FORMATEAR PRECIO ESTABLE v7.0
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -158,7 +141,6 @@ export default function LayawayDialog({
     }).format(price);
   }, []);
 
-  // ✅ OBTENER COMISIÓN DE PAGO
   const getCommissionRate = useCallback((paymentMethod: string): number => {
     if (commissionsLoading || !paymentCommissions || commissionsError) return 0;
     const commission = paymentCommissions.find(
@@ -168,7 +150,6 @@ export default function LayawayDialog({
     return commission.commission_type === 'percentage' ? commission.commission_value : 0;
   }, [paymentCommissions, commissionsLoading, commissionsError]);
 
-  // ✅ MÉTODOS DE PAGO DISPONIBLES
   const availablePaymentMethods = useMemo(() => {
     if (!paymentCommissions || commissionsError) {
       return PAYMENT_METHODS_FALLBACK;
@@ -186,7 +167,6 @@ export default function LayawayDialog({
       });
   }, [paymentCommissions, commissionsError]);
 
-  // ✅ CÁLCULOS PRINCIPALES
   const depositAmount = useMemo(() => {
     return Math.round((totals.total * depositPercentage / 100) * 100) / 100;
   }, [totals.total, depositPercentage]);
@@ -200,7 +180,6 @@ export default function LayawayDialog({
     return addDaysToDate(today, layawayDays);
   }, [layawayDays]);
 
-  // ✅ CÁLCULOS DE PAGO DEL DEPÓSITO
   const totalPayments = useMemo(() => {
     return Math.round(paymentMethods.reduce((sum, pm) => sum + (pm.amount || 0), 0) * 100) / 100;
   }, [paymentMethods]);
@@ -219,18 +198,17 @@ export default function LayawayDialog({
     return Math.max(0, Math.round((totalPayments - finalDepositTotal) * 100) / 100);
   }, [totalPayments, finalDepositTotal]);
 
-  // ✅ VALIDACIONES
   const canCreateLayaway = useMemo(() => {
     return (
       customer !== null &&
       cart.length > 0 &&
       depositAmount > 0 &&
       !processing &&
-      totalPayments >= (finalDepositTotal - 0.001)
+      totalPayments >= (finalDepositTotal - 0.001) &&
+      !!warehouseId
     );
-  }, [customer, cart.length, depositAmount, processing, totalPayments, finalDepositTotal]);
+  }, [customer, cart.length, depositAmount, processing, totalPayments, finalDepositTotal, warehouseId]);
 
-  // ✅ LIMPIAR ESTADO DE PAGO MIXTO
   const resetToSimplePayment = useCallback((method: string) => {
     setMixedPayment(false);
     const rate = getCommissionRate(method);
@@ -241,13 +219,10 @@ export default function LayawayDialog({
     setPaymentMethods([{ method, amount: Math.round(amount * 100) / 100 }]);
   }, [depositAmount, getCommissionRate]);
 
-  // ✅ MANEJO DE MÉTODOS DE PAGO - IGUAL QUE PAYMENTDIALOG
   const updatePaymentMethod = useCallback((index: number, field: keyof PaymentMethodForm, value: any) => {
     if (!mixedPayment && field === 'method') {
-      // Modo individual: resetear completamente y auto-calcular
       resetToSimplePayment(value);
     } else if (mixedPayment) {
-      // MODO MIXTO: Aplicar misma lógica que PaymentDialog
       let updatedMethods = paymentMethods.map((pm, i) => 
         i === index ? { 
           ...pm, 
@@ -255,12 +230,9 @@ export default function LayawayDialog({
         } : pm
       );
 
-      // ✅ LÓGICA DE CASCADA COMO PAYMENTDIALOG
       if (paymentMethods.length >= 2) {
         const primaryMethod = updatedMethods[0];
         const secondaryMethod = updatedMethods[1];
-
-        // El monto del primer método se considera un pago "neto" directo al depósito
         const netValueCovered = primaryMethod.amount || 0;
         const netValueRemaining = Math.max(0, depositAmount - netValueCovered);
 
@@ -294,10 +266,8 @@ export default function LayawayDialog({
     resetToSimplePayment('efectivo');
   }, [resetToSimplePayment]);
 
-  // ✅ LIMPIAR ESTADO AL CERRAR
   const handleClose = useCallback(() => {
     if (processing) return;
-    
     setDepositPercentage(50);
     setLayawayDays(30);
     setNotes('');
@@ -308,10 +278,14 @@ export default function LayawayDialog({
     onClose();
   }, [onClose, processing]);
 
-  // ✅ PROCESAR APARTADO COMPLETO CON PAGO DE DEPÓSITO
   const processLayaway = useCallback(async () => {
     if (!canCreateLayaway || !customer) return;
     
+    if (!warehouseId) {
+      notify.error('⚠️ Error: Almacén no configurado. Contacta al administrador.');
+      return;
+    }
+
     setProcessing(true);
     
     try {
@@ -322,12 +296,12 @@ export default function LayawayDialog({
 
       const saleNumber = `APT-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       
-      // ✅ 1. CREAR APARTADO (SIN AUDITORÍA - SALES ES UPDATED_ONLY)
       const layawayData = {
         sale_number: saleNumber,
         customer_id: customer.id,
         cashier_id: currentCashier,
-        sale_type: 'layaway', // ✅ Usando constante de tipos centralizados
+        sale_type: 'layaway',
+        source_warehouse_id: warehouseId,
         subtotal: Math.round(totals.subtotal * 100) / 100,
         tax_amount: Math.round(totals.taxAmount * 100) / 100,
         discount_amount: Math.round(totals.discountAmount * 100) / 100,
@@ -335,13 +309,13 @@ export default function LayawayDialog({
         coupon_code: coupon?.code || null,
         total_amount: totals.total,
         required_deposit: depositAmount,
-        paid_amount: totalPayments, // ✅ Depósito pagado inmediatamente
+        paid_amount: depositAmount, // ✅ CORREGIDO: Valor NETO aplicado a la deuda (sin comisión)
         pending_amount: pendingAmount,
         deposit_percentage: depositPercentage,
-        status: 'pending', // ✅ Usando constante de tipos centralizados
-        payment_status: 'partial', // ✅ Depósito pagado
+        status: 'pending',
+        payment_status: 'partial',
         is_mixed_payment: mixedPayment,
-        payment_received: totalPayments,
+        payment_received: totalPayments, // Lo que el cliente entrega (con comisión)
         change_amount: changeAmount,
         commission_rate: depositAmount > 0 ? Math.round((totalCommissions / depositAmount * 100) * 100) / 100 : 0,
         commission_amount: totalCommissions,
@@ -349,7 +323,7 @@ export default function LayawayDialog({
         notes: notes.trim() || null,
         payment_plan_days: layawayDays,
         receipt_printed: false,
-        completed_at: null, // No completado aún
+        completed_at: null,
         created_at: getCurrentTimestamp()
       };
 
@@ -361,12 +335,12 @@ export default function LayawayDialog({
 
       if (layawayError) throw layawayError;
 
-      // ✅ 2. CREAR ITEMS DEL APARTADO (CORREGIDO product_sku)
       const layawayItemsData = cart.map(item => ({
         sale_id: layaway.id,
         product_id: item.product.id,
         product_name: item.product.name,
-        product_sku: item.product.sku, // ✅ CORREGIDO: undefined en lugar de null
+        product_sku: item.product.sku,
+        source_warehouse_id: warehouseId,
         quantity: item.quantity,
         unit_price: Math.round(item.unit_price * 100) / 100,
         total_price: Math.round(item.total_price * 100) / 100,
@@ -381,7 +355,6 @@ export default function LayawayDialog({
 
       if (itemsError) throw itemsError;
 
-      // ✅ 3. CREAR DETALLES DE PAGO DEL DEPÓSITO CON AUDITORÍA
       const paymentDetailsData = await Promise.all(
         paymentMethods.map(async (pm, index) => {
           const commissionRate = getCommissionRate(pm.method);
@@ -396,12 +369,11 @@ export default function LayawayDialog({
             commission_amount: Math.round(commissionAmount * 100) / 100,
             sequence_order: index + 1,
             payment_date: getCurrentTimestamp(),
-            is_partial_payment: true, // ✅ Marcar como pago parcial
-            payment_sequence: 1, // ✅ Primera secuencia de pago
+            is_partial_payment: true,
+            payment_sequence: 1,
             notes: `Depósito de apartado - ${depositPercentage}%`
           };
 
-          // Aplicar auditoría created_by para sale_payment_details
           return await addAuditFieldsFor('sale_payment_details', baseData, false);
         })
       );
@@ -412,45 +384,40 @@ export default function LayawayDialog({
 
       if (paymentsError) throw paymentsError;
 
-      // ✅ 4. RESERVAR INVENTARIO CON CONSTRAINT VÁLIDO
-      for (const item of cart) {
-        const { error: movementError } = await supabase
-          .from('inventory_movements')
-          .insert({
-            product_id: item.product.id,
-            movement_type: 'ajuste', // ✅ Usando constante de tipos centralizados
-            quantity: -item.quantity, // ✅ Negativo para reserva
-            previous_stock: item.product.current_stock,
-            new_stock: item.product.current_stock, // ✅ Stock no cambia físicamente, solo reserva
-            unit_cost: item.product.cost_price || 0,
-            total_cost: (item.product.cost_price || 0) * item.quantity,
-            reason: 'Apartado - Reserva',
-            reference_id: layaway.id,
-            notes: `Apartado ${saleNumber} - Reservado hasta ${expirationDate}`,
-            created_at: getCurrentTimestamp(),
-            created_by: currentCashier
-          });
+      const inventoryMovementsToReserve = cart.map(item => ({
+        product_id: item.product.id,
+        movement_type: 'reserva_apartado',
+        quantity: item.quantity,
+        target_warehouse_id: warehouseId,
+        reason: `Reserva para Apartado #${layaway.sale_number}`,
+        reference_id: layaway.id,
+        created_by: currentCashier,
+        created_at: getCurrentTimestamp()
+      }));
 
-        if (movementError) throw movementError;
+      const { error: movementsError } = await supabase
+        .from('inventory_movements')
+        .insert(inventoryMovementsToReserve);
+
+      if (movementsError) {
+        throw new Error(`Error al reservar el inventario: ${movementsError.message}`);
       }
 
-      // ✅ 5. CREAR HISTORIAL DE APARTADO CON AUDITORÍA
       const { error: historyError } = await supabase
         .from('layaway_status_history')
         .insert({
           layaway_id: layaway.id,
           previous_status: null,
-          new_status: 'pending', // ✅ Usando constante de tipos centralizados
+          new_status: 'pending',
           previous_paid_amount: 0,
-          new_paid_amount: totalPayments,
-          reason: `Apartado creado con depósito ${formatPrice(totalPayments)}`,
+          new_paid_amount: depositAmount, // ✅ CORREGIDO: Registrar valor neto abonado
+          reason: `Apartado creado con depósito de ${formatPrice(depositAmount)} (cobrado: ${formatPrice(totalPayments)} con comisión)`,
           created_at: getCurrentTimestamp(),
           created_by: currentCashier
         });
 
       if (historyError) throw historyError;
 
-      // ✅ 6. ACTUALIZAR CUPÓN SI APLICA
       if (coupon) {
         const { error: couponError } = await supabase
           .from('coupons')
@@ -463,7 +430,6 @@ export default function LayawayDialog({
         if (couponError) throw couponError;
       }
 
-      // ✅ ÉXITO COMPLETO
       notify.success(`Apartado creado: ${saleNumber}. Depósito cobrado: ${formatPrice(totalPayments)}`);
       onSuccess();
       handleClose();
@@ -471,7 +437,14 @@ export default function LayawayDialog({
     } catch (error: any) {
       console.error('Error processing layaway:', error);
       const errorMsg = error.message || 'Error al crear el apartado';
-      notify.error(`Error: ${errorMsg}`);
+      
+      if (errorMsg.includes('insufficient_stock')) {
+        notify.error('⚠️ Stock insuficiente para reservar. Verifica el inventario.');
+      } else if (errorMsg.includes('inventory_movements_movement_type_check')) {
+        notify.error('⚠️ Error de configuración en inventario. Contacta al administrador.');
+      } else {
+        notify.error(`Error: ${errorMsg}`);
+      }
     } finally {
       setProcessing(false);
     }
@@ -479,10 +452,9 @@ export default function LayawayDialog({
     canCreateLayaway, customer, totals, depositAmount, depositPercentage, pendingAmount,
     coupon, cart, layawayDays, expirationDate, notes, paymentMethods, mixedPayment,
     totalPayments, changeAmount, totalCommissions, getCommissionRate, formatPrice,
-    addAuditFieldsFor, getCurrentUser, supabase, onSuccess, handleClose
+    addAuditFieldsFor, getCurrentUser, supabase, onSuccess, handleClose, warehouseId
   ]);
 
-  // ✅ EFECTOS
   useEffect(() => {
     if (open && depositAmount > 0 && !commissionsLoading) {
       setQuickPayment();
@@ -504,15 +476,39 @@ export default function LayawayDialog({
     }
   }, [mixedPayment, depositAmount, setQuickPayment, paymentMethods.length]);
 
-  // ✅ SSR SAFETY v7.0
   if (!hydrated) {
     return (
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogContent>
-          <Box display="flex" justifyContent="center" py={4}>
+          <Box display="flex" justifyContent="center" alignItems="center" py={4} gap={2}>
             <CircularProgress sx={{ color: colorTokens.brand }} />
+            <Typography sx={{ color: colorTokens.textSecondary }}>
+              Cargando MuscleUp Gym...
+            </Typography>
           </Box>
         </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!warehouseId) {
+    return (
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogContent>
+          <Alert severity="error" icon={<WarningIcon />}>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              Almacén no configurado
+            </Typography>
+            <Typography variant="body2">
+              No se puede crear el apartado sin un almacén configurado.
+            </Typography>
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose} variant="contained" sx={{ background: colorTokens.danger }}>
+            Cerrar
+          </Button>
+        </DialogActions>
       </Dialog>
     );
   }
@@ -533,7 +529,6 @@ export default function LayawayDialog({
         }
       }}
     >
-      {/* ✅ HEADER CON BRANDING MUSCLEUP v7.0 */}
       <DialogTitle sx={{ 
         background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brand})`,
         color: colorTokens.textOnBrand,
@@ -558,38 +553,31 @@ export default function LayawayDialog({
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
-        {/* ✅ VALIDACIONES */}
         {!customer && (
           <Alert severity="error" sx={{ mb: 3 }}>
-            <Typography variant="body2">
-              Debes seleccionar un cliente antes de crear un apartado
-            </Typography>
+            Debes seleccionar un cliente antes de crear un apartado
           </Alert>
         )}
 
         {commissionsError && (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            <Typography variant="body2">
-              Error al cargar comisiones. Usando valores por defecto.
-            </Typography>
+            Error al cargar comisiones. Usando valores por defecto.
           </Alert>
         )}
 
         <Grid container spacing={3}>
-          {/* ✅ PANEL 1 - CONFIGURACIÓN DEL APARTADO */}
+          {/* PANEL 1 - CONFIGURACIÓN */}
           <Grid size={{ xs: 12, lg: 4 }}>
             <Paper sx={{
               p: 3,
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
               border: `1px solid ${colorTokens.border}`,
-              borderRadius: 2,
-              height: 'fit-content'
+              borderRadius: 2
             }}>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: colorTokens.textPrimary }}>
                 Configuración del Apartado
               </Typography>
 
-              {/* Cliente */}
               {customer && (
                 <Box sx={{ mb: 3, p: 2, backgroundColor: `${colorTokens.success}10`, borderRadius: 1 }}>
                   <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
@@ -604,7 +592,6 @@ export default function LayawayDialog({
                 </Box>
               )}
 
-              {/* Porcentaje de depósito */}
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" gutterBottom sx={{ color: colorTokens.textPrimary }}>
                   Depósito Requerido: {depositPercentage}%
@@ -620,7 +607,6 @@ export default function LayawayDialog({
                 />
               </Box>
 
-              {/* Duración */}
               <Box sx={{ mb: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ color: colorTokens.textSecondary }}>Duración</InputLabel>
@@ -642,7 +628,6 @@ export default function LayawayDialog({
                 </FormControl>
               </Box>
 
-              {/* Fecha de vencimiento */}
               <Box display="flex" alignItems="center" gap={1} sx={{ mb: 3, p: 2, backgroundColor: `${colorTokens.info}10`, borderRadius: 1 }}>
                 <EventIcon sx={{ color: colorTokens.info }} />
                 <Typography variant="body2" sx={{ color: colorTokens.info }}>
@@ -650,7 +635,6 @@ export default function LayawayDialog({
                 </Typography>
               </Box>
 
-              {/* Notas */}
               <TextField
                 fullWidth
                 multiline
@@ -664,14 +648,13 @@ export default function LayawayDialog({
             </Paper>
           </Grid>
 
-          {/* ✅ PANEL 2 - RESUMEN DE PRODUCTOS */}
+          {/* PANEL 2 - RESUMEN */}
           <Grid size={{ xs: 12, lg: 4 }}>
             <Paper sx={{
               p: 3,
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
               border: `1px solid ${colorTokens.border}`,
-              borderRadius: 2,
-              height: 'fit-content'
+              borderRadius: 2
             }}>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: colorTokens.textPrimary }}>
                 Productos del Apartado
@@ -702,7 +685,6 @@ export default function LayawayDialog({
 
               <Divider sx={{ my: 2, borderColor: colorTokens.divider }} />
 
-              {/* Totales */}
               <Box sx={{ space: 1 }}>
                 <Box display="flex" justifyContent="space-between">
                   <Typography sx={{ color: colorTokens.textSecondary }}>Subtotal:</Typography>
@@ -728,7 +710,6 @@ export default function LayawayDialog({
                 </Box>
               </Box>
 
-              {/* Desglose del apartado */}
               <Paper sx={{
                 p: 2,
                 background: `${colorTokens.warning}10`,
@@ -760,33 +741,19 @@ export default function LayawayDialog({
             </Paper>
           </Grid>
 
-          {/* ✅ PANEL 3 - PAGO DEL DEPÓSITO */}
+          {/* PANEL 3 - PAGO */}
           <Grid size={{ xs: 12, lg: 4 }}>
             <Paper sx={{
               p: 3,
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
               border: `1px solid ${colorTokens.border}`,
-              borderRadius: 2,
-              height: 'fit-content'
+              borderRadius: 2
             }}>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: colorTokens.textPrimary, textAlign: 'center' }}>
-                  Cobrar Depósito: {formatPrice(finalDepositTotal)}
-                </Typography>
-                
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <Typography variant="body2" fontWeight="bold">
-                    Selecciona el método de pago para cobrar el depósito del {depositPercentage}%
-                  </Typography>
-                </Alert>
-              </Box>
-
-              {/* Botones de método rápido */}
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2, color: colorTokens.textPrimary }}>
-                Método de Pago Rápido:
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, textAlign: 'center', color: colorTokens.textPrimary }}>
+                Cobrar Depósito: {formatPrice(finalDepositTotal)}
               </Typography>
-              
-              <Grid container spacing={1} sx={{ mb: 3 }}>
+
+              <Grid container spacing={1} sx={{ mb: 2 }}>
                 <Grid size={{ xs: 6 }}>
                   <Button
                     fullWidth
@@ -795,7 +762,7 @@ export default function LayawayDialog({
                       setShowCardOptions(false);
                       resetToSimplePayment('efectivo');
                     }}
-                    disabled={commissionsLoading || processing}
+                    disabled={processing}
                     startIcon={<MoneyIcon />}
                     sx={{
                       py: 1.5,
@@ -803,174 +770,10 @@ export default function LayawayDialog({
                         ? `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})` 
                         : 'transparent',
                       color: !mixedPayment && paymentMethods[0]?.method === 'efectivo' ? colorTokens.textOnBrand : colorTokens.textPrimary,
-                      borderColor: colorTokens.success,
-                      '&:hover': {
-                        background: !mixedPayment && paymentMethods[0]?.method === 'efectivo' 
-                          ? `linear-gradient(135deg, ${colorTokens.successHover}, ${colorTokens.success})` 
-                          : `${colorTokens.success}20`
-                      }
+                      borderColor: colorTokens.success
                     }}
                   >
-                    <Box display="flex" flexDirection="column" alignItems="center">
-                      <Typography variant="body2" fontWeight="bold">Efectivo</Typography>
-                      {getCommissionRate('efectivo') > 0 && (
-                        <Chip 
-                          label={`+${getCommissionRate('efectivo')}%`}
-                          size="small"
-                          sx={{ 
-                            mt: 0.5, 
-                            height: 16, 
-                            fontSize: '0.6rem',
-                            backgroundColor: 'rgba(255,255,255,0.2)',
-                            color: 'inherit'
-                          }}
-                        />
-                      )}
-                    </Box>
-                  </Button>
-                </Grid>
-                <Grid size={{ xs: 6 }}>
-                  <Button
-                    fullWidth
-                    variant={showCardOptions ? 'contained' : 'outlined'}
-                    onClick={() => {
-                      setShowCardOptions(!showCardOptions);
-                      if (!showCardOptions) {
-                        setMixedPayment(false);
-                      }
-                    }}
-                    disabled={commissionsLoading || processing}
-                    startIcon={<CardIcon />}
-                    sx={{
-                      py: 1.5,
-                      background: showCardOptions 
-                        ? `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})` 
-                        : 'transparent',
-                      color: showCardOptions ? colorTokens.textOnBrand : colorTokens.textPrimary,
-                      borderColor: colorTokens.info
-                    }}
-                  >
-                    Tarjeta
-                  </Button>
-                </Grid>
-                
-                {/* Opciones de tarjeta expandidas */}
-                {showCardOptions && (
-                  <>
-                    <Grid size={{ xs: 6 }}>
-                      <Button
-                        fullWidth
-                        variant={!mixedPayment && paymentMethods[0]?.method === 'debito' ? 'contained' : 'outlined'}
-                        onClick={() => {
-                          resetToSimplePayment('debito');
-                          setShowCardOptions(false);
-                        }}
-                        disabled={commissionsLoading || processing}
-                        startIcon={<CardIcon />}
-                        sx={{
-                          py: 1,
-                          background: !mixedPayment && paymentMethods[0]?.method === 'debito' 
-                            ? `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})` 
-                            : 'transparent',
-                          color: !mixedPayment && paymentMethods[0]?.method === 'debito' ? colorTokens.textOnBrand : colorTokens.textPrimary,
-                          borderColor: colorTokens.info,
-                          fontSize: '0.9rem'
-                        }}
-                      >
-                        <Box display="flex" flexDirection="column" alignItems="center">
-                          <Typography variant="body2" fontSize="0.9rem">Débito</Typography>
-                          {getCommissionRate('debito') > 0 && (
-                            <Chip 
-                              label={`+${getCommissionRate('debito')}%`}
-                              size="small"
-                              sx={{ 
-                                mt: 0.3, 
-                                height: 14, 
-                                fontSize: '0.5rem',
-                                backgroundColor: 'rgba(255,255,255,0.2)',
-                                color: 'inherit'
-                              }}
-                            />
-                          )}
-                        </Box>
-                      </Button>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Button
-                        fullWidth
-                        variant={!mixedPayment && paymentMethods[0]?.method === 'credito' ? 'contained' : 'outlined'}
-                        onClick={() => {
-                          resetToSimplePayment('credito');
-                          setShowCardOptions(false);
-                        }}
-                        disabled={commissionsLoading || processing}
-                        startIcon={<CardIcon />}
-                        sx={{
-                          py: 1,
-                          background: !mixedPayment && paymentMethods[0]?.method === 'credito' 
-                            ? `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})` 
-                            : 'transparent',
-                          color: !mixedPayment && paymentMethods[0]?.method === 'credito' ? colorTokens.textOnBrand : colorTokens.textPrimary,
-                          borderColor: colorTokens.info,
-                          fontSize: '0.9rem'
-                        }}
-                      >
-                        <Box display="flex" flexDirection="column" alignItems="center">
-                          <Typography variant="body2" fontSize="0.9rem">Crédito</Typography>
-                          {getCommissionRate('credito') > 0 && (
-                            <Chip 
-                              label={`+${getCommissionRate('credito')}%`}
-                              size="small"
-                              sx={{ 
-                                mt: 0.3, 
-                                height: 14, 
-                                fontSize: '0.5rem',
-                                backgroundColor: 'rgba(255,255,255,0.2)',
-                                color: 'inherit'
-                              }}
-                            />
-                          )}
-                        </Box>
-                      </Button>
-                    </Grid>
-                  </>
-                )}
-                
-                <Grid size={{ xs: 6 }}>
-                  <Button
-                    fullWidth
-                    variant={!mixedPayment && paymentMethods[0]?.method === 'transferencia' ? 'contained' : 'outlined'}
-                    onClick={() => {
-                      setShowCardOptions(false);
-                      resetToSimplePayment('transferencia');
-                    }}
-                    disabled={commissionsLoading || processing}
-                    startIcon={<BankIcon />}
-                    sx={{
-                      py: 1.5,
-                      background: !mixedPayment && paymentMethods[0]?.method === 'transferencia' 
-                        ? `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})` 
-                        : 'transparent',
-                      color: !mixedPayment && paymentMethods[0]?.method === 'transferencia' ? colorTokens.textOnBrand : colorTokens.textPrimary,
-                      borderColor: colorTokens.brand
-                    }}
-                  >
-                    <Box display="flex" flexDirection="column" alignItems="center">
-                      <Typography variant="body2" fontWeight="bold">Transferencia</Typography>
-                      {getCommissionRate('transferencia') > 0 && (
-                        <Chip 
-                          label={`+${getCommissionRate('transferencia')}%`}
-                          size="small"
-                          sx={{ 
-                            mt: 0.5, 
-                            height: 16, 
-                            fontSize: '0.6rem',
-                            backgroundColor: 'rgba(255,255,255,0.2)',
-                            color: 'inherit'
-                          }}
-                        />
-                      )}
-                    </Box>
+                    Efectivo
                   </Button>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
@@ -985,7 +788,7 @@ export default function LayawayDialog({
                         { method: 'debito', amount: 0 }
                       ]);
                     }}
-                    disabled={commissionsLoading || processing}
+                    disabled={processing}
                     startIcon={<PaymentIcon />}
                     sx={{
                       py: 1.5,
@@ -996,25 +799,14 @@ export default function LayawayDialog({
                       borderColor: colorTokens.warning
                     }}
                   >
-                    <Box display="flex" flexDirection="column" alignItems="center">
-                      <Typography variant="body2" fontWeight="bold">Mixto</Typography>
-                      <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.8 }}>
-                        Múltiples
-                      </Typography>
-                    </Box>
+                    Mixto
                   </Button>
                 </Grid>
               </Grid>
 
-              {/* Separador visual */}
               <Divider sx={{ my: 2, borderColor: colorTokens.divider }} />
-              
-              <Typography variant="body1" fontWeight="bold" sx={{ mb: 2, color: colorTokens.textPrimary, textAlign: 'center' }}>
-                Configurar Método de Pago:
-              </Typography>
 
-              {/* Métodos de pago */}
-              <Box sx={{ maxHeight: 250, overflow: 'auto' }}>
+              <Box sx={{ maxHeight: 250, overflow: 'auto', mb: 2 }}>
                 {paymentMethods.map((pm, index) => (
                   <Paper key={index} sx={{ p: 2, mb: 2, background: colorTokens.surfaceLevel2 }}>
                     <Grid container spacing={2} alignItems="center">
@@ -1048,7 +840,7 @@ export default function LayawayDialog({
                           label="Monto"
                           value={pm.amount || ''}
                           onChange={(e) => updatePaymentMethod(index, 'amount', e.target.value)}
-                          disabled={!mixedPayment || index > 0 || processing} // ✅ Solo primer método editable en mixto
+                          disabled={!mixedPayment || index > 0 || processing}
                           inputProps={{
                             step: "0.01",
                             min: "0"
@@ -1062,9 +854,9 @@ export default function LayawayDialog({
                           }}
                           helperText={
                             !mixedPayment 
-                              ? "Auto-calculado por método" 
+                              ? "Auto-calculado" 
                               : index === 0 
-                                ? "Ingresa monto del cliente" 
+                                ? "Ingresa monto" 
                                 : "Auto-calculado"
                           }
                         />
@@ -1093,7 +885,6 @@ export default function LayawayDialog({
                       )}
                     </Grid>
 
-                    {/* Comisión */}
                     {pm.amount > 0 && getCommissionRate(pm.method) > 0 && (
                       <Alert severity="info" sx={{ mt: 1, fontSize: '0.75rem' }}>
                         Comisión {getCommissionRate(pm.method)}%: {formatPrice((pm.amount * getCommissionRate(pm.method)) / 100)}
@@ -1103,7 +894,6 @@ export default function LayawayDialog({
                 ))}
               </Box>
 
-              {/* Agregar método */}
               {mixedPayment && (
                 <Button
                   variant="outlined"
@@ -1111,14 +901,13 @@ export default function LayawayDialog({
                   onClick={addPaymentMethod}
                   fullWidth
                   disabled={processing}
-                  sx={{ mt: 1, borderColor: colorTokens.info, color: colorTokens.info }}
+                  sx={{ mb: 2, borderColor: colorTokens.info, color: colorTokens.info }}
                 >
                   Agregar Método
                 </Button>
               )}
 
-              {/* Resumen de pago */}
-              <Box sx={{ mt: 3, p: 2, backgroundColor: `${colorTokens.brand}10`, borderRadius: 1 }}>
+              <Box sx={{ p: 2, backgroundColor: `${colorTokens.brand}10`, borderRadius: 1 }}>
                 <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
                   <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                     Depósito requerido:
@@ -1151,8 +940,7 @@ export default function LayawayDialog({
                 )}
               </Box>
 
-              {/* Validación de pago */}
-              {totalPayments < (finalDepositTotal - 0.001) && !commissionsLoading && (
+              {totalPayments < (finalDepositTotal - 0.001) && (
                 <Alert severity="warning" sx={{ mt: 2 }}>
                   Falta por pagar: {formatPrice(finalDepositTotal - totalPayments)}
                 </Alert>
@@ -1161,12 +949,9 @@ export default function LayawayDialog({
           </Grid>
         </Grid>
 
-        {/* Alertas finales */}
         <Alert severity="info" sx={{ mt: 3 }}>
-          <Typography variant="body2">
-            El apartado será creado con el depósito cobrado inmediatamente. 
-            El cliente tendrá hasta el <strong>{expirationDate}</strong> para completar el pago restante de <strong>{formatPrice(pendingAmount)}</strong>.
-          </Typography>
+          El apartado será creado con el depósito cobrado inmediatamente. 
+          El cliente tendrá hasta el <strong>{expirationDate}</strong> para completar el pago restante de <strong>{formatPrice(pendingAmount)}</strong>.
         </Alert>
       </DialogContent>
 

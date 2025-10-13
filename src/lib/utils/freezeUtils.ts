@@ -2,9 +2,8 @@ import {
   getMexicoToday, 
   getDaysBetweenMexicoDates, 
   formatDateForDB, 
-  createTimestampForDB,
-  debugDateInfo
-} from '@/lib/utils/dateUtils'; // 🔧 Cambiar a ruta absoluta
+  createTimestampForDB
+} from '@/utils/dateUtils';
 
 export interface FreezeResult {
   success: boolean;

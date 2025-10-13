@@ -189,6 +189,7 @@ export interface Customer {
   lastName?: string;
   email?: string;
   whatsapp?: string;
+  rol?: string; // ✅ Columna real en BD: "rol" (no "role")
   profilePictureUrl?: string;
   membership_type?: string;
   points_balance: number;

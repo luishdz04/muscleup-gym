@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -22,18 +22,18 @@ import {
   TableCell,
   TableBody,
   Pagination,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  CircularProgress,
-  Alert,
   Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Divider
+  Divider,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -60,6 +60,7 @@ import {
   CleaningServices as CleaningIcon,
   Campaign as CampaignIcon,
   Computer as ComputerIcon,
+  RestartAlt as RestartAltIcon,
   Refresh as RefreshIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
@@ -69,34 +70,13 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-
-// 🎨 DARK PRO SYSTEM - TOKENS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  roleAdmin: '#E91E63'
-};
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatPrice } from '@/utils/formatUtils';
+import { formatDateForDisplay, formatMexicoTime, formatTimestampForDisplay } from '@/utils/dateUtils';
+import Skeleton from '@mui/material/Skeleton';
 
 // ✅ INTERFACES
 interface Expense {
@@ -153,48 +133,11 @@ const EXPENSE_TYPES = {
   otros: { label: 'Otros', icon: CategoryIcon, color: '#795548' }
 } as const;
 
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
-  }).format(amount);
-}
-
-function formatDateTime(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Mexico_City',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  } catch (error) {
-    return dateString;
-  }
-}
-
-function formatDateLocal(dateString: string): string {
-  try {
-    const date = new Date(dateString + 'T12:00:00');
-    return date.toLocaleDateString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'America/Mexico_City'
-    });
-  } catch (error) {
-    return dateString;
-  }
-}
-
 export default function ExpensesHistoryPage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
+  useUserTracking();
+  const { toast } = useNotifications();
 
   // ✅ ESTADOS
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -217,8 +160,7 @@ export default function ExpensesHistoryPage() {
   const [totalExpenses, setTotalExpenses] = useState(0);
   const itemsPerPage = 10;
 
-  // Filtros
-  const [filters, setFilters] = useState<FilterState>({
+  const createDefaultFilters = (): FilterState => ({
     search: '',
     dateFrom: null,
     dateTo: null,
@@ -228,6 +170,9 @@ export default function ExpensesHistoryPage() {
     sortOrder: 'desc'
   });
 
+  // Filtros
+  const [filters, setFilters] = useState<FilterState>(() => createDefaultFilters());
+
   // Estadísticas
   const [stats, setStats] = useState<Stats>({
     totalExpenses: 0,
@@ -236,28 +181,36 @@ export default function ExpensesHistoryPage() {
     categoriesBreakdown: {}
   });
 
+  interface LoadExpensesOptions {
+    targetPage?: number;
+    appliedFilters?: FilterState;
+    notifyOnError?: boolean;
+  }
+
+  const skipAutoLoadRef = useRef(false);
+
   // ✅ FUNCIONES
-  const loadExpenses = async () => {
+  const loadExpenses = async ({ targetPage, appliedFilters, notifyOnError }: LoadExpensesOptions = {}): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
 
+      const effectivePage = typeof targetPage === 'number' ? targetPage : page;
+      const effectiveFilters = appliedFilters ?? filters;
+
       const params = new URLSearchParams();
-      params.append('page', page.toString());
+      params.append('page', effectivePage.toString());
       params.append('limit', itemsPerPage.toString());
-      params.append('sortBy', filters.sortBy);
-      params.append('sortOrder', filters.sortOrder);
+      params.append('sortBy', effectiveFilters.sortBy);
+      params.append('sortOrder', effectiveFilters.sortOrder);
 
-      if (filters.search) params.append('search', filters.search);
-      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom.toISOString().split('T')[0]);
-      if (filters.dateTo) params.append('dateTo', filters.dateTo.toISOString().split('T')[0]);
-      if (filters.expenseType !== 'all') params.append('expenseType', filters.expenseType);
-      if (filters.status !== 'all') params.append('status', filters.status);
+      if (effectiveFilters.search) params.append('search', effectiveFilters.search);
+      if (effectiveFilters.dateFrom) params.append('dateFrom', effectiveFilters.dateFrom.toISOString().split('T')[0]);
+      if (effectiveFilters.dateTo) params.append('dateTo', effectiveFilters.dateTo.toISOString().split('T')[0]);
+      if (effectiveFilters.expenseType !== 'all') params.append('expenseType', effectiveFilters.expenseType);
+      if (effectiveFilters.status !== 'all') params.append('status', effectiveFilters.status);
 
-      console.log('💸 Cargando historial de egresos:', params.toString());
-      console.log('📅 Timestamp:', new Date().toISOString());
-      console.log('🕐 Hora México:', new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }));
-      console.log('👤 Usuario actual: luishdz04');
+      console.log('Cargando historial de egresos:', params.toString());
 
       const response = await fetch(`/api/expenses/history?${params.toString()}`);
       const data = await response.json();
@@ -284,13 +237,22 @@ export default function ExpensesHistoryPage() {
         setTotalExpenses(data.pagination?.total || 0);
         setStats(validStats);
         
-        console.log('✅ Historial cargado:', validExpenses.length, 'egresos válidos');
+        console.log('Historial cargado:', validExpenses.length, 'egresos válidos');
+        return true;
       } else {
         setError(data.error || 'Error al cargar el historial');
+        if (notifyOnError) {
+          toast.error(data.error || 'No se pudo cargar el historial de egresos');
+        }
+        return false;
       }
     } catch (error) {
       console.error('Error cargando historial:', error);
       setError('Error al cargar el historial de egresos');
+      if (notifyOnError) {
+        toast.error('Error al cargar el historial de egresos');
+      }
+      return false;
     } finally {
       setLoading(false);
     }
@@ -299,7 +261,7 @@ export default function ExpensesHistoryPage() {
   const loadExpenseDetail = async (expenseId: string) => {
     try {
       setLoadingDetail(true);
-      console.log('🔍 Cargando detalle del egreso:', expenseId);
+      console.log('Cargando detalle del egreso:', expenseId);
 
       const response = await fetch(`/api/expenses/${expenseId}`);
       const data = await response.json();
@@ -307,7 +269,7 @@ export default function ExpensesHistoryPage() {
       if (data.success) {
         setSelectedExpense(data.expense);
         setDetailDialogOpen(true);
-        console.log('✅ Detalle cargado:', data.expense);
+        console.log('Detalle cargado:', data.expense);
       } else {
         setError(data.error || 'Error al cargar el detalle del egreso');
       }
@@ -327,22 +289,45 @@ export default function ExpensesHistoryPage() {
     setPage(1);
   };
 
-  const handleSearch = () => {
-    setPage(1);
-    loadExpenses();
+  const handleSearch = async () => {
+    const targetPage = 1;
+    skipAutoLoadRef.current = true;
+    setPage(targetPage);
+
+    const success = await loadExpenses({
+      targetPage,
+      appliedFilters: filters,
+      notifyOnError: true
+    });
+
+    if (success) {
+      toast.success('Filtros aplicados correctamente');
+    }
   };
 
-  const clearFilters = () => {
-    setFilters({
-      search: '',
-      dateFrom: null,
-      dateTo: null,
-      expenseType: 'all',
-      status: 'all',
-      sortBy: 'created_at',
-      sortOrder: 'desc'
+  const clearFilters = async () => {
+    const resetFilters = createDefaultFilters();
+    setFilters(resetFilters);
+
+    const targetPage = 1;
+    skipAutoLoadRef.current = true;
+    setPage(targetPage);
+
+    const success = await loadExpenses({
+      targetPage,
+      appliedFilters: resetFilters,
+      notifyOnError: true
     });
-    setPage(1);
+
+    if (success) {
+      toast.success('Filtros reiniciados');
+    }
+  };
+
+  const handlePageChange = async (_event: React.ChangeEvent<unknown>, newPage: number) => {
+    skipAutoLoadRef.current = true;
+    setPage(newPage);
+    await loadExpenses({ targetPage: newPage, notifyOnError: true });
   };
 
   const exportExpenses = async () => {
@@ -397,9 +382,7 @@ const handleDeleteExpense = async () => {
 
   try {
     setLoadingDelete(true);
-    console.log('🗑️ Eliminando egreso:', expenseToDelete);
-
-    // CORREGIDO: Usar endpoint de delete que sincroniza corte
+    console.log('Eliminando egreso:', expenseToDelete);
     const response = await fetch(`/api/expenses/delete/${expenseToDelete}`, {
       method: 'DELETE'
     });
@@ -410,13 +393,16 @@ const handleDeleteExpense = async () => {
       setExpenses(expenses.filter(expense => expense.id !== expenseToDelete));
       setDeleteDialogOpen(false);
       setExpenseToDelete(null);
-      loadExpenses();
+      await loadExpenses({ notifyOnError: true });
+      toast.success('Egreso eliminado correctamente');
     } else {
       setError(data.error || 'Error al eliminar el egreso');
+      toast.error(data.error || 'No se pudo eliminar el egreso');
     }
   } catch (error) {
     console.error('Error eliminando egreso:', error);
     setError('Error al eliminar el egreso');
+    toast.error('Error al eliminar el egreso');
   } finally {
     setLoadingDelete(false);
   }
@@ -427,18 +413,19 @@ const handleDeleteExpense = async () => {
     
     try {
       setLoadingUpdate(true);
-      console.log('✏️ Actualizando egreso:', editingExpense.id);
+      console.log('🔄 Actualizando egreso:', editingExpense.id);
       
-      const response = await fetch(`/api/expenses/${editingExpense.id}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/expenses/update/${editingExpense.id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          notes: editingExpense.notes,
+          expense_type: editingExpense.expense_type,
+          description: editingExpense.description,
           amount: editingExpense.amount,
-          status: editingExpense.status,
-          description: editingExpense.description
+          receipt_number: editingExpense.receipt_number,
+          notes: editingExpense.notes
         })
       });
       
@@ -447,13 +434,26 @@ const handleDeleteExpense = async () => {
       if (data.success) {
         setEditDialogOpen(false);
         setEditingExpense(null);
-        loadExpenses();
+        await loadExpenses({ notifyOnError: true });
+        
+        // Mostrar información de sincronización
+        if (data.sync_info?.synchronized) {
+          toast.success(`Egreso actualizado y corte ${data.sync_info.cut_number} sincronizado automáticamente`);
+          console.log('✅ Sincronización exitosa:', data.sync_info);
+        } else {
+          toast.success('Egreso actualizado correctamente');
+          if (data.sync_info?.reason) {
+            console.log('ℹ️ Sin sincronización:', data.sync_info.reason);
+          }
+        }
       } else {
         setError(data.error || 'Error al actualizar el egreso');
+        toast.error(data.error || 'No se pudo actualizar el egreso');
       }
     } catch (error) {
-      console.error('Error actualizando egreso:', error);
+      console.error('❌ Error actualizando egreso:', error);
       setError('Error al actualizar el egreso');
+      toast.error('Error al actualizar el egreso');
     } finally {
       setLoadingUpdate(false);
     }
@@ -461,29 +461,37 @@ const handleDeleteExpense = async () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadExpenses();
+    const success = await loadExpenses({ notifyOnError: true });
+    if (success) {
+      toast.success('Historial actualizado');
+    }
     setRefreshing(false);
   };
 
   // ✅ EFFECTS
   useEffect(() => {
+    if (skipAutoLoadRef.current) {
+      skipAutoLoadRef.current = false;
+      return;
+    }
+
     loadExpenses();
   }, [page, filters.sortBy, filters.sortOrder]);
 
   // ✅ FUNCIONES DE STATUS SEGURAS
   const getStatusColor = (status: string) => {
-    if (!status) return darkProTokens.textSecondary;
+    if (!status) return colorTokens.textSecondary;
     
     switch (status.toLowerCase()) {
       case 'active':
       case 'completed':
-        return darkProTokens.success;
+        return colorTokens.success;
       case 'pending':
-        return darkProTokens.warning;
+        return colorTokens.warning;
       case 'cancelled':
-        return darkProTokens.error;
+        return colorTokens.danger;
       default:
-        return darkProTokens.textSecondary;
+        return colorTokens.textSecondary;
     }
   };
 
@@ -548,12 +556,21 @@ const handleDeleteExpense = async () => {
     };
   };
 
+  // ✅ SSR Safety
+  if (!isHydrated) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Skeleton variant="rectangular" width="100%" height={600} sx={{ borderRadius: 2 }} />
+      </Box>
+    );
+  }
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <Box sx={{ 
         minHeight: '100vh',
-        background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
-        color: darkProTokens.textPrimary,
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
+        color: colorTokens.textPrimary,
         p: 4
       }}>
         {/* HEADER */}
@@ -562,15 +579,15 @@ const handleDeleteExpense = async () => {
             <IconButton
               onClick={() => router.push('/dashboard/admin/egresos')}
               sx={{ 
-                color: darkProTokens.textSecondary,
-                '&:hover': { color: darkProTokens.primary }
+                color: colorTokens.textSecondary,
+                '&:hover': { color: colorTokens.brand }
               }}
             >
               <ArrowBackIcon />
             </IconButton>
             
             <Avatar sx={{ 
-              bgcolor: darkProTokens.error, 
+              bgcolor: colorTokens.danger, 
               width: 60, 
               height: 60 
             }}>
@@ -578,11 +595,11 @@ const handleDeleteExpense = async () => {
             </Avatar>
             
             <Box>
-              <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+              <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
                 Historial de Egresos
               </Typography>
-              <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                💸 Gestión y análisis de todos los gastos registrados
+              <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+                Gestión y análisis de todos los gastos
               </Typography>
             </Box>
           </Box>
@@ -590,14 +607,14 @@ const handleDeleteExpense = async () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               variant="contained"
-              startIcon={refreshing ? <CircularProgress size={20} sx={{ color: darkProTokens.background }} /> : <RefreshIcon />}
+              startIcon={refreshing ? <CircularProgress size={20} sx={{ color: colorTokens.neutral0 }} /> : <RefreshIcon />}
               onClick={handleRefresh}
               disabled={refreshing}
               sx={{
-                backgroundColor: darkProTokens.info,
-                color: darkProTokens.background,
+                backgroundColor: colorTokens.info,
+                color: colorTokens.neutral0,
                 '&:hover': {
-                  backgroundColor: darkProTokens.infoHover
+                  backgroundColor: colorTokens.infoHover
                 }
               }}
             >
@@ -608,11 +625,11 @@ const handleDeleteExpense = async () => {
               startIcon={<DownloadIcon />}
               onClick={exportExpenses}
               sx={{
-                borderColor: darkProTokens.error,
-                color: darkProTokens.error,
+                borderColor: colorTokens.danger,
+                color: colorTokens.danger,
                 '&:hover': {
-                  borderColor: darkProTokens.errorHover,
-                  backgroundColor: `${darkProTokens.error}20`
+                  borderColor: colorTokens.dangerHover,
+                  backgroundColor: `${colorTokens.danger}20`
                 }
               }}
             >
@@ -625,13 +642,13 @@ const handleDeleteExpense = async () => {
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid size={{ xs: 12, md: 3 }}>
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `2px solid ${darkProTokens.error}40`,
+              background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+              border: `2px solid ${colorTokens.danger}40`,
               borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', p: 3 }}>
                 <Avatar sx={{ 
-                  bgcolor: darkProTokens.error, 
+                  bgcolor: colorTokens.danger, 
                   width: 48, 
                   height: 48,
                   mx: 'auto',
@@ -639,10 +656,10 @@ const handleDeleteExpense = async () => {
                 }}>
                   <MoneyOffIcon />
                 </Avatar>
-                <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.danger }}>
                   {stats.totalExpenses}
                 </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Total Egresos
                 </Typography>
               </CardContent>
@@ -651,13 +668,13 @@ const handleDeleteExpense = async () => {
 
           <Grid size={{ xs: 12, md: 3 }}>
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `2px solid ${darkProTokens.warning}40`,
+              background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+              border: `2px solid ${colorTokens.warning}40`,
               borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', p: 3 }}>
                 <Avatar sx={{ 
-                  bgcolor: darkProTokens.warning, 
+                  bgcolor: colorTokens.warning, 
                   width: 48, 
                   height: 48,
                   mx: 'auto',
@@ -665,10 +682,10 @@ const handleDeleteExpense = async () => {
                 }}>
                   <TrendingDownIcon />
                 </Avatar>
-                <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.warning }}>
                   {formatPrice(stats.totalAmount)}
                 </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Total Gastado
                 </Typography>
               </CardContent>
@@ -677,13 +694,13 @@ const handleDeleteExpense = async () => {
 
           <Grid size={{ xs: 12, md: 3 }}>
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `2px solid ${darkProTokens.info}40`,
+              background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+              border: `2px solid ${colorTokens.info}40`,
               borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', p: 3 }}>
                 <Avatar sx={{ 
-                  bgcolor: darkProTokens.info, 
+                  bgcolor: colorTokens.info, 
                   width: 48, 
                   height: 48,
                   mx: 'auto',
@@ -691,10 +708,10 @@ const handleDeleteExpense = async () => {
                 }}>
                   <AssessmentIcon />
                 </Avatar>
-                <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.info }}>
                   {formatPrice(stats.avgAmount)}
                 </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Promedio por Egreso
                 </Typography>
               </CardContent>
@@ -703,13 +720,13 @@ const handleDeleteExpense = async () => {
 
           <Grid size={{ xs: 12, md: 3 }}>
             <Card sx={{
-              background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-              border: `2px solid ${darkProTokens.primary}40`,
+              background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+              border: `2px solid ${colorTokens.brand}40`,
               borderRadius: 3
             }}>
               <CardContent sx={{ textAlign: 'center', p: 3 }}>
                 <Avatar sx={{ 
-                  bgcolor: darkProTokens.primary, 
+                  bgcolor: colorTokens.brand, 
                   width: 48, 
                   height: 48,
                   mx: 'auto',
@@ -717,10 +734,10 @@ const handleDeleteExpense = async () => {
                 }}>
                   <CategoryIcon />
                 </Avatar>
-                <Typography variant="h4" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.brand }}>
                   {Object.keys(stats.categoriesBreakdown).length}
                 </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Categorías Activas
                 </Typography>
               </CardContent>
@@ -731,14 +748,14 @@ const handleDeleteExpense = async () => {
         {/* DESGLOSE POR CATEGORÍAS - MUI MODERNO CON size */}
         {Object.keys(stats.categoriesBreakdown).length > 0 && (
           <Card sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-            border: `2px solid ${darkProTokens.primary}40`,
+            background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+            border: `2px solid ${colorTokens.brand}40`,
             borderRadius: 4,
             mb: 4
           }}>
             <CardContent sx={{ p: 4 }}>
-              <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.primary, mb: 3 }}>
-                📊 Desglose por Categorías
+              <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.brand, mb: 3 }}>
+                Desglose por Categorías
               </Typography>
               
               <Grid container spacing={2}>
@@ -752,7 +769,7 @@ const handleDeleteExpense = async () => {
                       <Grid size={{ xs: 12, md: 4, lg: 3 }} key={category}>
                         <Paper sx={{
                           p: 2,
-                          backgroundColor: darkProTokens.surfaceLevel4,
+                          backgroundColor: colorTokens.neutral400,
                           borderRadius: 2,
                           border: `1px solid ${categoryInfo.color}40`
                         }}>
@@ -771,7 +788,7 @@ const handleDeleteExpense = async () => {
                           <Typography variant="h6" sx={{ color: categoryInfo.color, fontWeight: 'bold' }}>
                             {formatPrice(data.amount || 0)}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             {data.count || 0} egreso{(data.count || 0) === 1 ? '' : 's'}
                           </Typography>
                         </Paper>
@@ -786,15 +803,15 @@ const handleDeleteExpense = async () => {
 
         {/* FILTROS - MUI MODERNO CON size */}
         <Card sx={{
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${darkProTokens.info}40`,
+          background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+          border: `2px solid ${colorTokens.info}40`,
           borderRadius: 4,
           mb: 4
         }}>
           <CardContent sx={{ p: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-              <FilterListIcon sx={{ color: darkProTokens.info }} />
-              <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+              <FilterListIcon sx={{ color: colorTokens.info }} />
+              <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.info }}>
                 Filtros de Búsqueda
               </Typography>
             </Box>
@@ -810,14 +827,14 @@ const handleDeleteExpense = async () => {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <SearchIcon sx={{ color: darkProTokens.textSecondary }} />
+                        <SearchIcon sx={{ color: colorTokens.textSecondary }} />
                       </InputAdornment>
                     ),
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     },
                   }}
                 />
@@ -831,8 +848,8 @@ const handleDeleteExpense = async () => {
                   sx={{
                     width: '100%',
                     '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     },
                   }}
                 />
@@ -846,8 +863,8 @@ const handleDeleteExpense = async () => {
                   sx={{
                     width: '100%',
                     '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     },
                   }}
                 />
@@ -855,13 +872,13 @@ const handleDeleteExpense = async () => {
 
               <Grid size={{ xs: 12, md: 2 }}>
                 <FormControl fullWidth>
-                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Categoría</InputLabel>
+                  <InputLabel sx={{ color: colorTokens.textSecondary }}>Categoría</InputLabel>
                   <Select
                     value={filters.expenseType}
                     onChange={(e) => handleFilterChange('expenseType', e.target.value)}
                     sx={{
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     }}
                   >
                     <MenuItem value="all">Todas</MenuItem>
@@ -885,13 +902,13 @@ const handleDeleteExpense = async () => {
 
               <Grid size={{ xs: 12, md: 2 }}>
                 <FormControl fullWidth>
-                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Estado</InputLabel>
+                  <InputLabel sx={{ color: colorTokens.textSecondary }}>Estado</InputLabel>
                   <Select
                     value={filters.status}
                     onChange={(e) => handleFilterChange('status', e.target.value)}
                     sx={{
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     }}
                   >
                     <MenuItem value="all">Todos</MenuItem>
@@ -903,16 +920,37 @@ const handleDeleteExpense = async () => {
                 </FormControl>
               </Grid>
 
-              <Grid size={{ xs: 12, md: 1 }}>
-                <Stack direction="row" spacing={1}>
+              <Grid size={{ xs: 12 }}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  sx={{
+                    width: '100%',
+                    flexWrap: 'wrap',
+                    justifyContent: { xs: 'stretch', sm: 'flex-end' },
+                    alignItems: { xs: 'stretch', sm: 'center' },
+                    mt: { xs: 1, md: 0 },
+                    background: `linear-gradient(135deg, ${colorTokens.neutral300}20, ${colorTokens.neutral400}30)`,
+                    borderRadius: 2,
+                    border: `1px solid ${colorTokens.neutral500}50`,
+                    p: { xs: 1.5, sm: 2 }
+                  }}
+                >
                   <Button
                     variant="contained"
+                    startIcon={<SearchIcon />}
                     onClick={handleSearch}
                     sx={{
-                      backgroundColor: darkProTokens.error,
-                      color: darkProTokens.textPrimary,
+                      width: { xs: '100%', sm: 'auto' },
+                      alignSelf: { xs: 'stretch', sm: 'center' },
+                      backgroundColor: colorTokens.danger,
+                      color: colorTokens.textPrimary,
+                      fontWeight: 600,
+                      minWidth: { sm: 160 },
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
                       '&:hover': {
-                        backgroundColor: darkProTokens.errorHover
+                        backgroundColor: colorTokens.dangerHover,
+                        boxShadow: '0 10px 20px rgba(0,0,0,0.2)'
                       }
                     }}
                   >
@@ -920,10 +958,20 @@ const handleDeleteExpense = async () => {
                   </Button>
                   <Button
                     variant="outlined"
+                    startIcon={<RestartAltIcon />}
                     onClick={clearFilters}
                     sx={{
-                      borderColor: darkProTokens.textSecondary,
-                      color: darkProTokens.textSecondary,
+                      width: { xs: '100%', sm: 'auto' },
+                      alignSelf: { xs: 'stretch', sm: 'center' },
+                      borderColor: colorTokens.textSecondary,
+                      color: colorTokens.textSecondary,
+                      fontWeight: 600,
+                      minWidth: { sm: 160 },
+                      '&:hover': {
+                        borderColor: colorTokens.textPrimary,
+                        color: colorTokens.textPrimary,
+                        backgroundColor: `${colorTokens.neutral400}60`
+                      }
                     }}
                   >
                     Limpiar
@@ -936,14 +984,14 @@ const handleDeleteExpense = async () => {
 
         {/* TABLA DE EGRESOS */}
         <Card sx={{
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${darkProTokens.error}40`,
+          background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
+          border: `2px solid ${colorTokens.danger}40`,
           borderRadius: 4
         }}>
           <CardContent sx={{ p: 0 }}>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-                <CircularProgress size={60} sx={{ color: darkProTokens.error }} />
+                <CircularProgress size={60} sx={{ color: colorTokens.danger }} />
               </Box>
             ) : error ? (
               <Box sx={{ p: 4 }}>
@@ -951,11 +999,11 @@ const handleDeleteExpense = async () => {
               </Box>
             ) : expenses.length === 0 ? (
               <Box sx={{ p: 8, textAlign: 'center' }}>
-                <MoneyOffIcon sx={{ fontSize: 80, color: darkProTokens.textDisabled, mb: 2 }} />
-                <Typography variant="h5" sx={{ color: darkProTokens.textDisabled, mb: 1 }}>
+                <MoneyOffIcon sx={{ fontSize: 80, color: colorTokens.textDisabled, mb: 2 }} />
+                <Typography variant="h5" sx={{ color: colorTokens.textDisabled, mb: 1 }}>
                   No hay egresos registrados
                 </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                   Los egresos aparecerán aquí una vez que sean creados
                 </Typography>
               </Box>
@@ -965,28 +1013,28 @@ const handleDeleteExpense = async () => {
                   <Table stickyHeader>
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ backgroundColor: darkProTokens.grayDark, color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                        <TableCell sx={{ backgroundColor: colorTokens.neutral600, color: colorTokens.textPrimary, fontWeight: 'bold' }}>
                           Fecha
                         </TableCell>
-                        <TableCell sx={{ backgroundColor: darkProTokens.grayDark, color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                        <TableCell sx={{ backgroundColor: colorTokens.neutral600, color: colorTokens.textPrimary, fontWeight: 'bold' }}>
                           Categoría
                         </TableCell>
-                        <TableCell sx={{ backgroundColor: darkProTokens.grayDark, color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                        <TableCell sx={{ backgroundColor: colorTokens.neutral600, color: colorTokens.textPrimary, fontWeight: 'bold' }}>
                           Descripción
                         </TableCell>
-                        <TableCell sx={{ backgroundColor: darkProTokens.grayDark, color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                        <TableCell sx={{ backgroundColor: colorTokens.neutral600, color: colorTokens.textPrimary, fontWeight: 'bold' }}>
                           Monto
                         </TableCell>
-                        <TableCell sx={{ backgroundColor: darkProTokens.grayDark, color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                        <TableCell sx={{ backgroundColor: colorTokens.neutral600, color: colorTokens.textPrimary, fontWeight: 'bold' }}>
                           Recibo
                         </TableCell>
-                        <TableCell sx={{ backgroundColor: darkProTokens.grayDark, color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                        <TableCell sx={{ backgroundColor: colorTokens.neutral600, color: colorTokens.textPrimary, fontWeight: 'bold' }}>
                           Estado
                         </TableCell>
-                        <TableCell sx={{ backgroundColor: darkProTokens.grayDark, color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                        <TableCell sx={{ backgroundColor: colorTokens.neutral600, color: colorTokens.textPrimary, fontWeight: 'bold' }}>
                           Responsable
                         </TableCell>
-                        <TableCell sx={{ backgroundColor: darkProTokens.grayDark, color: darkProTokens.textPrimary, fontWeight: 'bold' }}>
+                        <TableCell sx={{ backgroundColor: colorTokens.neutral600, color: colorTokens.textPrimary, fontWeight: 'bold' }}>
                           Acciones
                         </TableCell>
                       </TableRow>
@@ -1004,20 +1052,20 @@ const handleDeleteExpense = async () => {
                               key={expense.id}
                               sx={{ 
                                 '&:nth-of-type(odd)': { 
-                                  backgroundColor: darkProTokens.surfaceLevel3 
+                                  backgroundColor: colorTokens.neutral300 
                                 },
                                 '&:hover': {
-                                  backgroundColor: `${darkProTokens.error}10`
+                                  backgroundColor: `${colorTokens.danger}10`
                                 }
                               }}
                             >
-                              <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                              <TableCell sx={{ color: colorTokens.textSecondary }}>
                                 <Box>
                                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                    {formatDateLocal(expense.expense_date)}
+                                    {formatDateForDisplay(expense.expense_date)}
                                   </Typography>
-                                  <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                                    {formatDateTime(expense.expense_time)}
+                                  <Typography variant="caption" sx={{ color: colorTokens.textDisabled }}>
+                                    {formatMexicoTime(expense.expense_time)}
                                   </Typography>
                                 </Box>
                               </TableCell>
@@ -1035,35 +1083,35 @@ const handleDeleteExpense = async () => {
                                 />
                               </TableCell>
                               
-                              <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                              <TableCell sx={{ color: colorTokens.textPrimary }}>
                                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                   {expense.description}
                                 </Typography>
                                 {expense.notes && (
-                                  <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                                  <Typography variant="caption" sx={{ color: colorTokens.textDisabled }}>
                                     📝 {expense.notes.substring(0, 50)}{expense.notes.length > 50 ? '...' : ''}
                                   </Typography>
                                 )}
                               </TableCell>
                               
-                              <TableCell sx={{ color: darkProTokens.error, fontWeight: 'bold' }}>
+                              <TableCell sx={{ color: colorTokens.danger, fontWeight: 'bold' }}>
                                 {formatPrice(expense.amount)}
                               </TableCell>
                               
-                              <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                              <TableCell sx={{ color: colorTokens.textSecondary }}>
                                 {expense.receipt_number ? (
                                   <Chip
                                     label={expense.receipt_number}
                                     size="small"
                                     sx={{
-                                      backgroundColor: `${darkProTokens.info}20`,
-                                      color: darkProTokens.info,
+                                      backgroundColor: `${colorTokens.info}20`,
+                                      color: colorTokens.info,
                                       fontWeight: 600,
                                       fontFamily: 'monospace'
                                     }}
                                   />
                                 ) : (
-                                  <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                                  <Typography variant="caption" sx={{ color: colorTokens.textDisabled }}>
                                     Sin recibo
                                   </Typography>
                                 )}
@@ -1082,7 +1130,7 @@ const handleDeleteExpense = async () => {
                                 />
                               </TableCell>
                               
-                              <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                              <TableCell sx={{ color: colorTokens.textSecondary }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <PersonIcon sx={{ fontSize: 16 }} />
                                   <Typography variant="body2">
@@ -1099,9 +1147,9 @@ const handleDeleteExpense = async () => {
                                       onClick={() => loadExpenseDetail(expense.id)}
                                       disabled={loadingDetail}
                                       sx={{ 
-                                        color: darkProTokens.info,
+                                        color: colorTokens.info,
                                         '&:hover': { 
-                                          backgroundColor: `${darkProTokens.info}20` 
+                                          backgroundColor: `${colorTokens.info}20` 
                                         }
                                       }}
                                     >
@@ -1118,9 +1166,9 @@ const handleDeleteExpense = async () => {
                                       size="small"
                                       onClick={() => exportExpense(expense.id)}
                                       sx={{ 
-                                        color: darkProTokens.primary,
+                                        color: colorTokens.brand,
                                         '&:hover': { 
-                                          backgroundColor: `${darkProTokens.primary}20` 
+                                          backgroundColor: `${colorTokens.brand}20` 
                                         }
                                       }}
                                     >
@@ -1136,9 +1184,9 @@ const handleDeleteExpense = async () => {
                                         setEditDialogOpen(true);
                                       }}
                                       sx={{ 
-                                        color: darkProTokens.warning,
+                                        color: colorTokens.warning,
                                         '&:hover': { 
-                                          backgroundColor: `${darkProTokens.warning}20` 
+                                          backgroundColor: `${colorTokens.warning}20` 
                                         }
                                       }}
                                     >
@@ -1154,9 +1202,9 @@ const handleDeleteExpense = async () => {
                                         setDeleteDialogOpen(true);
                                       }}
                                       sx={{ 
-                                        color: darkProTokens.error,
+                                        color: colorTokens.danger,
                                         '&:hover': { 
-                                          backgroundColor: `${darkProTokens.error}20` 
+                                          backgroundColor: `${colorTokens.danger}20` 
                                         }
                                       }}
                                     >
@@ -1178,15 +1226,15 @@ const handleDeleteExpense = async () => {
                   <Pagination
                     count={totalPages}
                     page={page}
-                    onChange={(e, newPage) => setPage(newPage)}
+                    onChange={handlePageChange}
                     color="primary"
                     size="large"
                     sx={{
                       '& .MuiPaginationItem-root': {
-                        color: darkProTokens.textPrimary,
+                        color: colorTokens.textPrimary,
                         '&.Mui-selected': {
-                          backgroundColor: darkProTokens.error,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.danger,
+                          color: colorTokens.textPrimary,
                         },
                       },
                     }}
@@ -1205,8 +1253,8 @@ const handleDeleteExpense = async () => {
           fullWidth
           PaperProps={{
             sx: {
-              backgroundColor: darkProTokens.surfaceLevel2,
-              color: darkProTokens.textPrimary,
+              backgroundColor: colorTokens.neutral200,
+              color: colorTokens.textPrimary,
               borderRadius: 4
             }
           }}
@@ -1215,23 +1263,23 @@ const handleDeleteExpense = async () => {
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            borderBottom: `1px solid ${darkProTokens.grayMedium}`
+            borderBottom: `1px solid ${colorTokens.neutral500}`
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: darkProTokens.error }}>
+              <Avatar sx={{ bgcolor: colorTokens.danger }}>
                 <MoneyOffIcon />
               </Avatar>
               <Box>
-                <Typography variant="h6" fontWeight="bold">
+                <Typography component="span" variant="h6" fontWeight="bold">
                   Detalle del Egreso
                 </Typography>
-                <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
-                  {selectedExpense && formatDateLocal(selectedExpense.expense_date)}
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                  {selectedExpense && formatDateForDisplay(selectedExpense.expense_date)}
                 </Typography>
               </Box>
             </Box>
             <IconButton onClick={() => setDetailDialogOpen(false)}>
-              <CloseIcon sx={{ color: darkProTokens.textSecondary }} />
+              <CloseIcon sx={{ color: colorTokens.textSecondary }} />
             </IconButton>
           </DialogTitle>
 
@@ -1241,30 +1289,30 @@ const handleDeleteExpense = async () => {
                 {/* INFORMACIÓN PRINCIPAL */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Card sx={{
-                    backgroundColor: darkProTokens.surfaceLevel3,
-                    border: `1px solid ${darkProTokens.grayMedium}`,
+                    backgroundColor: colorTokens.neutral300,
+                    border: `1px solid ${colorTokens.neutral500}`,
                     borderRadius: 3
                   }}>
                     <CardContent>
-                      <Typography variant="h6" sx={{ color: darkProTokens.error, mb: 3 }}>
-                        💸 Información del Egreso
+                      <Typography variant="h6" sx={{ color: colorTokens.danger, mb: 3 }}>
+                        Información del Egreso
                       </Typography>
                       
                       <Stack spacing={2}>
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             Fecha del Egreso:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
-                            {formatDateLocal(selectedExpense.expense_date)}
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: colorTokens.textPrimary }}>
+                            {formatDateForDisplay(selectedExpense.expense_date)}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
-                            {formatDateTime(selectedExpense.expense_time)}
+                          <Typography variant="caption" sx={{ color: colorTokens.textDisabled }}>
+                            {formatMexicoTime(selectedExpense.expense_time)}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             Categoría:
                           </Typography>
                           <Box sx={{ mt: 0.5 }}>
@@ -1287,29 +1335,29 @@ const handleDeleteExpense = async () => {
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             Descripción:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: colorTokens.textPrimary }}>
                             {selectedExpense.description}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             Monto:
                           </Typography>
-                          <Typography variant="h4" sx={{ color: darkProTokens.error, fontWeight: 'bold' }}>
+                          <Typography variant="h4" sx={{ color: colorTokens.danger, fontWeight: 'bold' }}>
                             {formatPrice(selectedExpense.amount)}
                           </Typography>
                         </Box>
                         
                         {selectedExpense.receipt_number && (
                           <Box>
-                            <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                            <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                               Número de Recibo:
                             </Typography>
-                            <Typography variant="body1" sx={{ fontWeight: 600, fontFamily: 'monospace', color: darkProTokens.textPrimary }}>
+                            <Typography variant="body1" sx={{ fontWeight: 600, fontFamily: 'monospace', color: colorTokens.textPrimary }}>
                               {selectedExpense.receipt_number}
                             </Typography>
                           </Box>
@@ -1322,18 +1370,18 @@ const handleDeleteExpense = async () => {
                 {/* INFORMACIÓN ADICIONAL */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Card sx={{
-                    backgroundColor: darkProTokens.surfaceLevel3,
-                    border: `1px solid ${darkProTokens.grayMedium}`,
+                    backgroundColor: colorTokens.neutral300,
+                    border: `1px solid ${colorTokens.neutral500}`,
                     borderRadius: 3
                   }}>
                     <CardContent>
-                      <Typography variant="h6" sx={{ color: darkProTokens.info, mb: 3 }}>
+                      <Typography variant="h6" sx={{ color: colorTokens.info, mb: 3 }}>
                         📋 Información Adicional
                       </Typography>
                       
                       <Stack spacing={2}>
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             Estado:
                           </Typography>
                           <Box sx={{ mt: 0.5 }}>
@@ -1355,29 +1403,29 @@ const handleDeleteExpense = async () => {
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             Responsable:
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 600, color: darkProTokens.textPrimary }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: colorTokens.textPrimary }}>
                             {selectedExpense.creator_name || 'luishdz04'}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             Creado:
                           </Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                            {formatDateTime(selectedExpense.created_at)}
+                          <Typography variant="body2" sx={{ color: colorTokens.textPrimary }}>
+                            {formatTimestampForDisplay(selectedExpense.created_at)}
                           </Typography>
                         </Box>
                         
                         <Box>
-                          <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             Actualizado:
                           </Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.textPrimary }}>
-                            {formatDateTime(selectedExpense.updated_at)}
+                          <Typography variant="body2" sx={{ color: colorTokens.textPrimary }}>
+                            {formatTimestampForDisplay(selectedExpense.updated_at)}
                           </Typography>
                         </Box>
                       </Stack>
@@ -1389,20 +1437,20 @@ const handleDeleteExpense = async () => {
                 {selectedExpense.notes && (
                   <Grid size={{ xs: 12 }}>
                     <Card sx={{
-                      backgroundColor: darkProTokens.surfaceLevel3,
-                      border: `1px solid ${darkProTokens.grayMedium}`,
+                      backgroundColor: colorTokens.neutral300,
+                      border: `1px solid ${colorTokens.neutral500}`,
                       borderRadius: 3
                     }}>
                       <CardContent>
-                        <Typography variant="h6" sx={{ color: darkProTokens.warning, mb: 2 }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.warning, mb: 2 }}>
                           📝 Notas Adicionales
                         </Typography>
                         <Typography variant="body1" sx={{ 
-                          backgroundColor: darkProTokens.surfaceLevel4,
+                          backgroundColor: colorTokens.neutral400,
                           p: 2,
                           borderRadius: 2,
-                          borderLeft: `4px solid ${darkProTokens.warning}`,
-                          color: darkProTokens.textPrimary
+                          borderLeft: `4px solid ${colorTokens.warning}`,
+                          color: colorTokens.textPrimary
                         }}>
                           {selectedExpense.notes}
                         </Typography>
@@ -1414,13 +1462,13 @@ const handleDeleteExpense = async () => {
             )}
           </DialogContent>
 
-          <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
+          <DialogActions sx={{ p: 3, borderTop: `1px solid ${colorTokens.neutral500}` }}>
             <Button
               onClick={() => setDetailDialogOpen(false)}
               sx={{ 
-                color: darkProTokens.textSecondary,
+                color: colorTokens.textSecondary,
                 '&:hover': {
-                  backgroundColor: `${darkProTokens.textSecondary}20`
+                  backgroundColor: `${colorTokens.textSecondary}20`
                 }
               }}
             >
@@ -1435,8 +1483,8 @@ const handleDeleteExpense = async () => {
           onClose={() => setDeleteDialogOpen(false)}
           PaperProps={{
             sx: {
-              backgroundColor: darkProTokens.surfaceLevel2,
-              color: darkProTokens.textPrimary,
+              backgroundColor: colorTokens.neutral200,
+              color: colorTokens.textPrimary,
               borderRadius: 4
             }
           }}
@@ -1445,12 +1493,12 @@ const handleDeleteExpense = async () => {
             display: 'flex', 
             alignItems: 'center',
             gap: 2,
-            borderBottom: `1px solid ${darkProTokens.grayMedium}`
+            borderBottom: `1px solid ${colorTokens.neutral500}`
           }}>
-            <Avatar sx={{ bgcolor: darkProTokens.error }}>
+            <Avatar sx={{ bgcolor: colorTokens.danger }}>
               <WarningIcon />
             </Avatar>
-            <Typography variant="h6" fontWeight="bold">
+            <Typography component="span" variant="h6" fontWeight="bold">
               Confirmar Eliminación
             </Typography>
           </DialogTitle>
@@ -1459,18 +1507,18 @@ const handleDeleteExpense = async () => {
             <Typography variant="body1" sx={{ mb: 2 }}>
               ¿Estás seguro de que deseas eliminar este egreso?
             </Typography>
-            <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
               Esta acción no se puede deshacer. Se eliminarán todos los datos asociados a este egreso.
             </Typography>
           </DialogContent>
           
-          <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
+          <DialogActions sx={{ p: 3, borderTop: `1px solid ${colorTokens.neutral500}` }}>
             <Button
               onClick={() => setDeleteDialogOpen(false)}
               sx={{ 
-                color: darkProTokens.textSecondary,
+                color: colorTokens.textSecondary,
                 '&:hover': {
-                  backgroundColor: `${darkProTokens.textSecondary}20`
+                  backgroundColor: `${colorTokens.textSecondary}20`
                 }
               }}
             >
@@ -1482,10 +1530,10 @@ const handleDeleteExpense = async () => {
               startIcon={loadingDelete ? <CircularProgress size={20} /> : <DeleteIcon />}
               disabled={loadingDelete}
               sx={{
-                backgroundColor: darkProTokens.error,
-                color: darkProTokens.textPrimary,
+                backgroundColor: colorTokens.danger,
+                color: colorTokens.textPrimary,
                 '&:hover': {
-                  backgroundColor: darkProTokens.errorHover
+                  backgroundColor: colorTokens.dangerHover
                 }
               }}
             >
@@ -1502,8 +1550,8 @@ const handleDeleteExpense = async () => {
           fullWidth
           PaperProps={{
             sx: {
-              backgroundColor: darkProTokens.surfaceLevel2,
-              color: darkProTokens.textPrimary,
+              backgroundColor: colorTokens.neutral200,
+              color: colorTokens.textPrimary,
               borderRadius: 4
             }
           }}
@@ -1512,18 +1560,18 @@ const handleDeleteExpense = async () => {
             display: 'flex', 
             justifyContent: 'space-between',
             alignItems: 'center',
-            borderBottom: `1px solid ${darkProTokens.grayMedium}`
+            borderBottom: `1px solid ${colorTokens.neutral500}`
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: darkProTokens.warning }}>
+              <Avatar sx={{ bgcolor: colorTokens.warning }}>
                 <EditIcon />
               </Avatar>
-              <Typography variant="h6" fontWeight="bold">
+              <Typography component="span" variant="h6" fontWeight="bold">
                 Editar Egreso
               </Typography>
             </Box>
             <IconButton onClick={() => setEditDialogOpen(false)}>
-              <CloseIcon sx={{ color: darkProTokens.textSecondary }} />
+              <CloseIcon sx={{ color: colorTokens.textSecondary }} />
             </IconButton>
           </DialogTitle>
           
@@ -1540,8 +1588,8 @@ const handleDeleteExpense = async () => {
                   })}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     },
                   }}
                 />
@@ -1560,14 +1608,14 @@ const handleDeleteExpense = async () => {
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     },
                   }}
                 />
                 
                 <FormControl fullWidth>
-                  <InputLabel sx={{ color: darkProTokens.textSecondary }}>Estado</InputLabel>
+                  <InputLabel sx={{ color: colorTokens.textSecondary }}>Estado</InputLabel>
                   <Select
                     value={editingExpense.status}
                     onChange={(e) => setEditingExpense({
@@ -1575,8 +1623,8 @@ const handleDeleteExpense = async () => {
                       status: e.target.value
                     })}
                     sx={{
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     }}
                   >
                     <MenuItem value="active">Activo</MenuItem>
@@ -1598,8 +1646,8 @@ const handleDeleteExpense = async () => {
                   })}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkProTokens.surfaceLevel4,
-                      color: darkProTokens.textPrimary,
+                      backgroundColor: colorTokens.neutral400,
+                      color: colorTokens.textPrimary,
                     },
                   }}
                 />
@@ -1607,13 +1655,13 @@ const handleDeleteExpense = async () => {
             )}
           </DialogContent>
           
-          <DialogActions sx={{ p: 3, borderTop: `1px solid ${darkProTokens.grayMedium}` }}>
+          <DialogActions sx={{ p: 3, borderTop: `1px solid ${colorTokens.neutral500}` }}>
             <Button
               onClick={() => setEditDialogOpen(false)}
               sx={{ 
-                color: darkProTokens.textSecondary,
+                color: colorTokens.textSecondary,
                 '&:hover': {
-                  backgroundColor: `${darkProTokens.textSecondary}20`
+                  backgroundColor: `${colorTokens.textSecondary}20`
                 }
               }}
             >
@@ -1625,10 +1673,10 @@ const handleDeleteExpense = async () => {
               startIcon={loadingUpdate ? <CircularProgress size={20} /> : <EditIcon />}
               disabled={loadingUpdate}
               sx={{
-                backgroundColor: darkProTokens.warning,
-                color: darkProTokens.background,
+                backgroundColor: colorTokens.warning,
+                color: colorTokens.neutral0,
                 '&:hover': {
-                  backgroundColor: darkProTokens.warningHover
+                  backgroundColor: colorTokens.brandHover
                 }
               }}
             >
@@ -1640,3 +1688,6 @@ const handleDeleteExpense = async () => {
     </LocalizationProvider>
   );
 }
+
+
+

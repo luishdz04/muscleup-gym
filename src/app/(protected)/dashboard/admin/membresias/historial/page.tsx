@@ -1,4 +1,4 @@
-// pages/HistorialMembresiaPage.tsx - CÓDIGO ENTERPRISE v4.2 CORREGIDO
+// pages/HistorialMembresiaPage.tsx - CÓDIGO ENTERPRISE v6.0 CORREGIDO
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -54,7 +54,8 @@ import type {
   MembershipHistory, 
   StatusOption, 
   PaymentMethodOption, 
-  EditFormData 
+  EditFormData,
+  Plan
 } from '@/types/membership';
 
 // ICONOS
@@ -96,8 +97,8 @@ export default function HistorialMembresiaPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   
-  // ✅ AUDITORÍA AUTOMÁTICA ENTERPRISE
-  const { addAuditFields } = useUserTracking();
+  // ✅ AUDITORÍA AUTOMÁTICA ENTERPRISE v6.0
+  const { addAuditFieldsFor } = useUserTracking();
   
   // HOOKS PERSONALIZADOS - LÓGICA SEPARADA
   const {
@@ -160,6 +161,14 @@ export default function HistorialMembresiaPage() {
     getCurrentFrozenDays
   } = useBulkOperations(memberships, forceReloadMemberships);
 
+  const filterPlans = useMemo<Plan[]>(() =>
+    plans.map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      description: plan.description
+    })),
+  [plans]);
+
   // ESTADOS LOCALES
   const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
   const [page, setPage] = useState(0);
@@ -189,7 +198,7 @@ export default function HistorialMembresiaPage() {
     return statusOption?.icon || '📋';
   }, []);
 
-  // ✅ FUNCIONES DE CONGELAMIENTO CON NOTIFY UNIFICADO
+  // ✅ FUNCIONES DE CONGELAMIENTO CON AUDITORÍA v6.0
   const handleFreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setFreezeLoading(true);
@@ -199,8 +208,6 @@ export default function HistorialMembresiaPage() {
         return;
       }
 
-      // ✅ APLICAR AUDITORÍA AUTOMÁTICA
-      const auditedData = await addAuditFields({ status: 'frozen' }, true);
       await handleStatusChange(membership, 'frozen');
       
       notify.success('✅ Membresía congelada exitosamente');
@@ -211,7 +218,7 @@ export default function HistorialMembresiaPage() {
     } finally {
       setFreezeLoading(false);
     }
-  }, [handleStatusChange, addAuditFields]);
+  }, [handleStatusChange]);
 
   const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
@@ -222,8 +229,6 @@ export default function HistorialMembresiaPage() {
         return;
       }
 
-      // ✅ APLICAR AUDITORÍA AUTOMÁTICA
-      const auditedData = await addAuditFields({ status: 'active' }, true);
       await handleStatusChange(membership, 'active');
       
       notify.success('✅ Membresía reactivada exitosamente');
@@ -234,7 +239,7 @@ export default function HistorialMembresiaPage() {
     } finally {
       setUnfreezeLoading(false);
     }
-  }, [handleStatusChange, addAuditFields]);
+  }, [handleStatusChange]);
 
   // HANDLERS MEMOIZADOS PARA COMPONENTES
   const handleViewDetails = useCallback((membership: MembershipHistory) => {
@@ -262,19 +267,15 @@ export default function HistorialMembresiaPage() {
     setPage(0);
   }, []);
 
-  // ✅ HANDLER CORREGIDO PARA GUARDAR EDICIÓN CON AUDITORÍA
+  // ✅ HANDLER PARA GUARDAR EDICIÓN (hook ya tiene auditoría)
   const handleSaveEdit = useCallback(async (editDataFromModal: EditFormData) => {
     try {
-      // ✅ APLICAR AUDITORÍA AUTOMÁTICA A LOS DATOS DEL MODAL
-      const auditedData = await addAuditFields(editDataFromModal, true);
-      
-      await handleUpdateMembership(auditedData);
-      
+      await handleUpdateMembership(editDataFromModal);
       notify.success('✅ Membresía actualizada exitosamente');
     } catch (error: any) {
       notify.error(`❌ Error al actualizar: ${error.message}`);
     }
-  }, [handleUpdateMembership, addAuditFields]);
+  }, [handleUpdateMembership]);
 
   // HANDLERS PARA BULK OPERATIONS
   const handleBulkFreezeWrapper = useCallback((isManual: boolean) => {
@@ -594,7 +595,7 @@ export default function HistorialMembresiaPage() {
           onClearFilters={clearFilters}
           showFilters={showFilters}
           onToggleFilters={() => setShowFilters(!showFilters)}
-          plans={plans}
+          plans={filterPlans}
           hasActiveFilters={hasActiveFilters}
           statusOptions={statusOptions}
           paymentMethodOptions={paymentMethodOptions}
@@ -685,7 +686,7 @@ export default function HistorialMembresiaPage() {
         </CardContent>
       </Card>
 
-      {/* MENU DE ACCIONES */}
+      {/* ✅ MENU DE ACCIONES CORREGIDO - SIN FRAGMENTS */}
       <Menu
         anchorEl={actionMenuAnchor}
         open={Boolean(actionMenuAnchor)}
@@ -699,45 +700,45 @@ export default function HistorialMembresiaPage() {
         }}
       >
         <MenuList>
-          {selectedMembership?.status === 'active' && (
-            <>
-              <MenuItemComponent 
-                onClick={() => {
-                  if (selectedMembership) {
-                    handleFreezeMembership(selectedMembership);
-                  }
-                }}
-                disabled={freezeLoading}
-                sx={{ color: colorTokens.info }}
-              >
-                <ListItemIcon>
-                  {freezeLoading ? (
-                    <CircularProgress size={20} sx={{ color: colorTokens.info }} />
-                  ) : (
-                    <PauseIcon sx={{ color: colorTokens.info }} />
-                  )}
-                </ListItemIcon>
-                <ListItemText>
-                  {freezeLoading ? 'Congelando...' : '🧊 Congelar Membresía'}
-                </ListItemText>
-              </MenuItemComponent>
-              
-              <MenuItemComponent 
-                onClick={() => {
-                  if (selectedMembership) {
-                    handleStatusChange(selectedMembership, 'cancelled');
-                    setActionMenuAnchor(null);
-                  }
-                }}
-                sx={{ color: colorTokens.danger }}
-              >
-                <ListItemIcon>
-                  <BlockIcon sx={{ color: colorTokens.danger }} />
-                </ListItemIcon>
-                <ListItemText>🚫 Cancelar Membresía</ListItemText>
-              </MenuItemComponent>
-            </>
-          )}
+          {selectedMembership?.status === 'active' && [
+            <MenuItemComponent 
+              key="freeze"
+              onClick={() => {
+                if (selectedMembership) {
+                  handleFreezeMembership(selectedMembership);
+                }
+              }}
+              disabled={freezeLoading}
+              sx={{ color: colorTokens.info }}
+            >
+              <ListItemIcon>
+                {freezeLoading ? (
+                  <CircularProgress size={20} sx={{ color: colorTokens.info }} />
+                ) : (
+                  <PauseIcon sx={{ color: colorTokens.info }} />
+                )}
+              </ListItemIcon>
+              <ListItemText>
+                {freezeLoading ? 'Congelando...' : '🧊 Congelar Membresía'}
+              </ListItemText>
+            </MenuItemComponent>,
+            
+            <MenuItemComponent 
+              key="cancel"
+              onClick={() => {
+                if (selectedMembership) {
+                  handleStatusChange(selectedMembership, 'cancelled');
+                  setActionMenuAnchor(null);
+                }
+              }}
+              sx={{ color: colorTokens.danger }}
+            >
+              <ListItemIcon>
+                <BlockIcon sx={{ color: colorTokens.danger }} />
+              </ListItemIcon>
+              <ListItemText>🚫 Cancelar Membresía</ListItemText>
+            </MenuItemComponent>
+          ]}
           
           {selectedMembership?.status === 'frozen' && (
             <MenuItemComponent 
@@ -802,7 +803,7 @@ export default function HistorialMembresiaPage() {
         paymentMethodOptions={paymentMethodOptions}
       />
 
-      {/* ✅ MODAL DE EDICIÓN CON AUDITORÍA AUTOMÁTICA */}
+      {/* ✅ MODAL DE EDICIÓN */}
       <MembershipEditModal
         open={editDialogOpen}
         onClose={() => {
@@ -815,6 +816,7 @@ export default function HistorialMembresiaPage() {
         formatDisplayDate={formatDisplayDate}
         formatPrice={formatPrice}
         addDaysToDate={addDaysToDate}
+        plans={plans}
       />
     </Box>
   );

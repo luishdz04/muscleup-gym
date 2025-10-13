@@ -63,8 +63,9 @@ import FingerPrintIcon from '@mui/icons-material/Fingerprint';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// IMPORTAR COMPONENTE DE HUELLA
+// IMPORTAR COMPONENTES
 import FingerprintRegistration from './FingerprintRegistration';
+import PhotoCapture from '@/components/registro/PhotoCapture';
 
 // DARK PRO TOKENS
 const darkProTokens = {
@@ -288,6 +289,7 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
   
   // ESTADOS PARA DIALOGS
   const [fingerprintDialogOpen, setFingerprintDialogOpen] = useState(false);
+  const [photoCaptureOpen, setPhotoCaptureOpen] = useState(false);
   const [isDeletingFingerprint, setIsDeletingFingerprint] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   
@@ -491,8 +493,22 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
     }
   };
   
-  const handleHireDateChange = (date: dayjs.Dayjs | null) => {
+  const handleHireDateChange = (value: dayjs.Dayjs | Date | string | null | undefined) => {
+    // Convertir el valor a Dayjs independientemente del formato
+    let date: dayjs.Dayjs | null = null;
+    
+    if (value) {
+      if (dayjs.isDayjs(value)) {
+        date = value;
+      } else if (value instanceof Date) {
+        date = dayjs(value);
+      } else if (typeof value === 'string') {
+        date = dayjs(value);
+      }
+    }
+    
     setHireDate(date);
+    
     if (date && date.isValid()) {
       setFormData(prev => ({
         ...prev,
@@ -570,6 +586,55 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
     console.log('🔄 Foto empleado pendiente de subida');
     
     e.target.value = '';
+  };
+
+  // FUNCIONES DE CAPTURA DE FOTO
+  const handlePhotoCaptureOpen = () => {
+    setPhotoCaptureOpen(true);
+  };
+
+  const handlePhotoCaptureClose = () => {
+    setPhotoCaptureOpen(false);
+  };
+
+  const handlePhotoCapture = (file: File) => {
+    console.log('📸 Foto capturada desde cámara:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    });
+
+    // Limpiar errores previos
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.profilePicture;
+      return newErrors;
+    });
+
+    // Limpiar blob URL anterior
+    if (profilePicturePreview) {
+      cleanupBlobUrl(profilePicturePreview);
+    }
+
+    // Crear nueva blob URL
+    const objectUrl = URL.createObjectURL(file);
+    blobUrlsRef.current.add(objectUrl);
+
+    setProfilePicture(file);
+    setProfilePicturePreview(objectUrl);
+    setProfileImage(prev => ({
+      ...prev,
+      url: objectUrl,
+      isLoading: false,
+      isValid: true,
+      error: null,
+      isFromStorage: false
+    }));
+
+    setHasFormChanges(true);
+    setPhotoCaptureOpen(false);
+    
+    console.log('✅ Foto desde cámara lista para subir');
   };
 
   // FUNCIONES DE HUELLA DACTILAR
@@ -716,13 +781,31 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
       
       // SUBIR FOTO SI ES NECESARIA
       if (profilePicture) {
-        console.log('📤 Subiendo foto de empleado...');
+        console.log('📤 Subiendo nueva foto de empleado...');
         
         try {
+          // ✅ PASO 1: Eliminar foto anterior del storage si existe
+          if (originalFormData.profilePictureUrl && profileImage.fileName) {
+            console.log('🗑️ Eliminando foto anterior del storage...');
+            const supabase = createBrowserSupabaseClient();
+            const oldPath = `${userId}/${profileImage.fileName}`;
+            
+            const { error: deleteError } = await supabase.storage
+              .from('user-files')
+              .remove([oldPath]);
+            
+            if (deleteError) {
+              console.warn('⚠️ No se pudo eliminar la foto anterior:', deleteError.message);
+            } else {
+              console.log('✅ Foto anterior eliminada del storage');
+            }
+          }
+          
+          // ✅ PASO 2: Subir nueva foto
           const uploadResult = await uploadFileToStorage(profilePicture, userId, 'profile');
           if (uploadResult) {
             updatedFormData.profilePictureUrl = uploadResult.url;
-            console.log('✅ Foto empleado subida');
+            console.log('✅ Nueva foto empleado subida');
             
             setProfilePicturePreview(uploadResult.url);
             setProfileImage(prev => ({
@@ -1044,34 +1127,63 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
             />
           )}
 
-          <IconButton 
-            sx={{ 
-              position: 'absolute',
-              bottom: 0,
-              right: 0,
-              background: `linear-gradient(135deg, ${darkProTokens.roleStaff}, ${darkProTokens.roleStaffHover})`,
-              color: darkProTokens.background,
-              width: 32,
-              height: 32,
-              border: `2px solid ${darkProTokens.surfaceLevel1}`,
-              boxShadow: `0 3px 15px ${darkProTokens.roleStaff}40`,
-              '&:hover': { 
-                background: `linear-gradient(135deg, ${darkProTokens.roleStaffHover}, ${darkProTokens.roleStaff})`,
-                transform: 'scale(1.1)',
-                boxShadow: `0 4px 20px ${darkProTokens.roleStaff}60`,
-              },
-              transition: 'all 0.2s ease'
-            }}
-            component="label"
-          >
-            <input
-              hidden
-              accept="image/*"
-              type="file"
-              onChange={handleFileChange}
-            />
-            <PhotoCamera sx={{ fontSize: 16 }} />
-          </IconButton>
+          {/* Botón para subir desde archivo */}
+          <Tooltip title="Subir desde archivo">
+            <IconButton 
+              sx={{ 
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                background: `linear-gradient(135deg, ${darkProTokens.roleStaff}, ${darkProTokens.roleStaffHover})`,
+                color: darkProTokens.background,
+                width: 32,
+                height: 32,
+                border: `2px solid ${darkProTokens.surfaceLevel1}`,
+                boxShadow: `0 3px 15px ${darkProTokens.roleStaff}40`,
+                '&:hover': { 
+                  background: `linear-gradient(135deg, ${darkProTokens.roleStaffHover}, ${darkProTokens.roleStaff})`,
+                  transform: 'scale(1.1)',
+                  boxShadow: `0 4px 20px ${darkProTokens.roleStaff}60`,
+                },
+                transition: 'all 0.2s ease'
+              }}
+              component="label"
+            >
+              <input
+                hidden
+                accept="image/*"
+                type="file"
+                onChange={handleFileChange}
+              />
+              <PhotoCamera sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+
+          {/* Botón para capturar desde cámara */}
+          <Tooltip title="Capturar desde cámara">
+            <IconButton 
+              onClick={handlePhotoCaptureOpen}
+              sx={{ 
+                position: 'absolute',
+                bottom: 0,
+                right: 40,
+                background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
+                color: darkProTokens.background,
+                width: 32,
+                height: 32,
+                border: `2px solid ${darkProTokens.surfaceLevel1}`,
+                boxShadow: `0 3px 15px ${darkProTokens.primary}40`,
+                '&:hover': { 
+                  background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primary})`,
+                  transform: 'scale(1.1)',
+                  boxShadow: `0 4px 20px ${darkProTokens.primary}60`,
+                },
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <PhotoCamera sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
     );
@@ -2129,21 +2241,59 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
       </Snackbar>
 
       {/* MODAL DE REGISTRO DE HUELLA */}
-    {(formData.user_id || employee?.user_id) && (
-  <FingerprintRegistration
-    open={fingerprintDialogOpen}
-    onClose={handleFingerprintDialogClose}
-    user={{
-      id: formData.user_id || employee?.user_id || '',
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      fingerprint: formData.fingerprint
-    }}
-    userType="empleado"
-    onFingerprintDataReady={handleFingerprintDataReady}
-    onError={handleFingerprintError}
-  />
-)}
+      {(formData.user_id || employee?.user_id) && (
+        <FingerprintRegistration
+          open={fingerprintDialogOpen}
+          onClose={handleFingerprintDialogClose}
+          user={{
+            id: formData.user_id || employee?.user_id || '',
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            fingerprint: formData.fingerprint
+          }}
+          userType="empleado"
+          onFingerprintDataReady={handleFingerprintDataReady}
+          onError={handleFingerprintError}
+        />
+      )}
+
+      {/* MODAL DE CAPTURA DE FOTO */}
+      <Dialog
+        open={photoCaptureOpen}
+        onClose={handlePhotoCaptureClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Capturar Foto de Perfil
+          <IconButton
+            aria-label="close"
+            onClick={handlePhotoCaptureClose}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <PhotoCapture
+            onPhotoCapture={handlePhotoCapture}
+            previewUrl={formData.profilePictureUrl || null}
+            onClearPhoto={() => setFormData(prev => ({ ...prev, profilePictureUrl: '' }))}
+            label="Foto de perfil"
+            tooltip="Captura la foto usando tu cámara"
+            inputId="profile-photo-capture"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handlePhotoCaptureClose}>
+            Cancelar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }

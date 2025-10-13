@@ -1,5 +1,4 @@
 // src/app/(protected)/dashboard/admin/pos/page.tsx
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
@@ -21,7 +20,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Fab,
   FormControl,
   InputLabel,
   Select,
@@ -39,42 +37,43 @@ import {
   Delete as DeleteIcon,
   Payment as PaymentIcon,
   Bookmark as BookmarkIcon,
-  QrCodeScanner as ScannerIcon,
   Category as CategoryIcon,
   Refresh as RefreshIcon,
   Receipt as ReceiptIcon,
   Star as StarIcon,
   Warning as WarningIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  Warehouse as WarehouseIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
-// ✅ IMPORTS ENTERPRISE OBLIGATORIOS v7.0
+// ✅ IMPORTS ENTERPRISE v6.0
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
-import { useUserTracking } from '@/hooks/useUserTracking';
 import { 
   getCurrentTimestamp,
-  formatTimestampForDisplay,
-  formatDateForDisplay,
-  getTodayInMexico
+  getTodayInMexico,
+  getMexicoDateRange
 } from '@/utils/dateUtils';
 import { notify } from '@/utils/notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-// ✅ IMPORTS TIPOS CENTRALIZADOS v7.0
+// ✅ TIPOS CENTRALIZADOS
 import { Product, CartItem, Customer, Coupon, Totals, SalesStats } from '@/types/pos';
 
-// COMPONENTES ESPECÍFICOS DEL PROYECTO  
+// COMPONENTES ESPECÍFICOS
 import CustomerSelector from '@/components/pos/CustomerSelector';
 import PaymentDialog from '@/components/pos/PaymentDialog';
 import LayawayDialog from '@/components/pos/LayawayDialog-DEBUG';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
-// ✅ CONSTANTES ENTERPRISE v7.0
+// ✅ ALMACÉN FIJO DESDE ENV
+const FIXED_WAREHOUSE_ID = process.env.NEXT_PUBLIC_DEFAULT_WAREHOUSE_ID || '';
+
+// CONSTANTES
 const CATEGORIES = [
   'Suplementos',
   'Bebidas', 
@@ -89,9 +88,9 @@ const CATEGORIES = [
   'Otros'
 ] as const;
 
-// ✅ COMPONENTE PRODUCTCARD MEMOIZADO v7.0
-const ProductCard = memo<{ product: Product; onAddToCart: (product: Product) => void }>(
-  ({ product, onAddToCart }) => {
+// ✅ PRODUCTCARD MEMOIZADO CON SSR GUARD
+const ProductCard = memo<{ product: Product; onAddToCart: (product: Product) => void; hydrated: boolean }>(
+  ({ product, onAddToCart, hydrated }) => {
     const formatPrice = useCallback((price: number) => {
       return new Intl.NumberFormat('es-MX', {
         style: 'currency',
@@ -103,14 +102,17 @@ const ProductCard = memo<{ product: Product; onAddToCart: (product: Product) => 
       onAddToCart(product);
     }, [product, onAddToCart]);
 
+    const CardWrapper = hydrated ? motion.div : 'div';
+    const cardProps = hydrated ? {
+      layout: true,
+      initial: { opacity: 0, scale: 0.9 },
+      animate: { opacity: 1, scale: 1 },
+      whileHover: { scale: 1.02 },
+      whileTap: { scale: 0.98 }
+    } : {};
+
     return (
-      <motion.div
-        layout
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
+      <CardWrapper {...cardProps}>
         <Card
           sx={{
             height: '100%',
@@ -207,7 +209,7 @@ const ProductCard = memo<{ product: Product; onAddToCart: (product: Product) => 
             </Box>
           </CardContent>
         </Card>
-      </motion.div>
+      </CardWrapper>
     );
   }
 );
@@ -215,25 +217,31 @@ const ProductCard = memo<{ product: Product; onAddToCart: (product: Product) => 
 ProductCard.displayName = 'ProductCard';
 
 export default function POSPage() {
-  // ✅ ORDEN ESTABLE DE HOOKS - SIEMPRE AL INICIO v7.0
+  // ✅ HOOKS ESTABLES
   const router = useRouter();
   const hydrated = useHydrated();
-  const { addAuditFieldsFor, getCurrentUser } = useUserTracking();
-  const { toast, alert } = useNotifications();
+  const { toast } = useNotifications();
   const supabase = createBrowserSupabaseClient();
 
-  // ✅ ESTADOS PRINCIPALES ESTABLES v7.0 - TODOS AL INICIO
+  // ✅ ALMACÉN FIJO - NO ES ESTADO
+  const activeWarehouseId = FIXED_WAREHOUSE_ID;
+
+  // ✅ ESTADO DE PRODUCTOS
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+
+  // ESTADOS PRINCIPALES
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 
-  // Estados de filtros y búsqueda
+  // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [couponCode, setCouponCode] = useState('');
 
-  // Estados de dialogs  
+  // Estados de dialogs
   const [customerSelectorOpen, setCustomerSelectorOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [layawayDialogOpen, setLayawayDialogOpen] = useState(false);
@@ -246,51 +254,59 @@ export default function POSPage() {
     topProducts: []
   });
 
-  // ✅ CALLBACKS ESTABLES PARA CRUD - DEFINIR ANTES DE USEENTITYCRUD v7.0
-  const handleProductError = useCallback((error: string) => {
-    toast.error(`Error en productos: ${error}`);
-  }, [toast]);
-
-  const handleProductSuccess = useCallback((message: string) => {
-    toast.success(message);
-  }, [toast]);
-
-  const handleCouponError = useCallback((error: string) => {
-    toast.error(`Error en cupones: ${error}`);
-  }, [toast]);
-
-  // ✅ CRUD ENTERPRISE v7.0 - DESPUÉS DE CALLBACKS ESTABLES
-  const {
-    data: products,
-    loading: productsLoading,
-    createItem: createProduct,
-    updateItem: updateProduct,
-    refreshData: refreshProducts,
-    stats: productStats
-  } = useEntityCRUD<Product>({
-    tableName: 'products', // Detecta snake_case automáticamente
-    selectQuery: `
-      *,
-      suppliers!supplier_id (
-        id,
-        company_name,
-        contact_person
-      )
-    `,
-    onError: handleProductError,
-    onSuccess: handleProductSuccess
-  });
-
+  // ✅ CRUD PARA COUPONS
   const {
     data: coupons,
     loading: couponsLoading
   } = useEntityCRUD<Coupon>({
-    tableName: 'coupons', // Detecta created_only automáticamente  
-    selectQuery: '*',
-    onError: handleCouponError
+    tableName: 'coupons',
+    selectQuery: '*'
   });
 
-  // ✅ FUNCIONES ESTABLES MEMOIZADAS v7.0
+  // ✅ CARGAR PRODUCTOS DEL ALMACÉN FIJO
+  const loadProductsFromWarehouse = useCallback(async () => {
+    if (!FIXED_WAREHOUSE_ID) {
+      notify.error('Almacén no configurado - contacta al administrador');
+      setProducts([]);
+      return;
+    }
+
+    setProductsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_products_for_pos', {
+        p_warehouse_id: FIXED_WAREHOUSE_ID
+      });
+
+      if (error) {
+        console.error('Error loading products:', error);
+        notify.error('Error al cargar productos del almacén');
+        setProducts([]);
+      } else {
+        setProducts(data || []);
+        console.log(`✅ ${data?.length || 0} productos cargados del almacén`);
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
+      notify.error('Error inesperado al cargar productos');
+      setProducts([]);
+    } finally {
+      setProductsLoading(false);
+    }
+  }, [supabase]);
+
+  // ✅ RECARGAR PRODUCTOS
+  const refreshProducts = useCallback(() => {
+    loadProductsFromWarehouse();
+  }, [loadProductsFromWarehouse]);
+
+  // ✅ CARGAR PRODUCTOS AL INICIO
+  useEffect(() => {
+    if (hydrated && FIXED_WAREHOUSE_ID) {
+      loadProductsFromWarehouse();
+    }
+  }, [hydrated, loadProductsFromWarehouse]);
+
+  // FUNCIONES HELPER
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -298,18 +314,28 @@ export default function POSPage() {
     }).format(price);
   }, []);
 
-  // Cargar estadísticas de ventas con dateUtils v7.0
+  // Cargar estadísticas de ventas
   const loadSalesStats = useCallback(async () => {
     try {
       const today = getTodayInMexico();
+      const { startISO, endISO } = getMexicoDateRange(today);
+      
+      console.log('🔍 Cargando ventas del día:', {
+        fecha_mexico: today,
+        rango_utc_inicio: startISO,
+        rango_utc_fin: endISO
+      });
+      
       const { data, error } = await supabase
         .from('sales')
         .select('total_amount, created_at')
-        .gte('created_at', today + 'T00:00:00')
-        .lte('created_at', today + 'T23:59:59')
+        .gte('created_at', startISO)
+        .lte('created_at', endISO)
         .eq('status', 'completed');
         
       if (error) throw error;
+      
+      console.log('✅ Ventas encontradas:', data?.length || 0, 'ventas');
       
       const dailySales = data?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0;
       const dailyTransactions = data?.length || 0;
@@ -323,14 +349,13 @@ export default function POSPage() {
       });
     } catch (error) {
       console.error('Error loading sales stats:', error);
-      toast.error('Error al cargar estadísticas de ventas');
     }
-  }, [supabase, toast]);
+  }, [supabase]);
 
-  // ✅ AGREGAR AL CARRITO OPTIMIZADO v7.0
+  // AGREGAR AL CARRITO
   const addToCart = useCallback((product: Product, quantity: number = 1) => {
     if (product.current_stock < quantity) {
-      toast.error('Stock insuficiente');
+      toast.error('Stock insuficiente en este almacén');
       return;
     }
     
@@ -339,7 +364,7 @@ export default function POSPage() {
       
       if (existingItem) {
         if (existingItem.quantity + quantity > product.current_stock) {
-          toast.error('Stock insuficiente');
+          toast.error('Stock insuficiente en este almacén');
           return prev;
         }
         
@@ -378,7 +403,7 @@ export default function POSPage() {
     toast.success(`${product.name} agregado al carrito`);
   }, [toast]);
 
-  // ✅ ACTUALIZAR CANTIDAD EN CARRITO v7.0
+  // ACTUALIZAR CANTIDAD
   const updateCartItemQuantity = useCallback((productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       setCart(prev => prev.filter(item => item.product.id !== productId));
@@ -389,7 +414,7 @@ export default function POSPage() {
       prev.map(item => {
         if (item.product.id === productId) {
           if (newQuantity > item.product.current_stock) {
-            toast.error('Stock insuficiente');
+            toast.error('Stock insuficiente en este almacén');
             return item;
           }
           
@@ -410,12 +435,12 @@ export default function POSPage() {
     );
   }, [toast]);
 
-  // ✅ REMOVER DEL CARRITO v7.0
+  // REMOVER DEL CARRITO
   const removeFromCart = useCallback((productId: string) => {
     setCart(prev => prev.filter(item => item.product.id !== productId));
   }, []);
 
-  // ✅ LIMPIAR CARRITO v7.0
+  // LIMPIAR CARRITO
   const clearCart = useCallback(() => {
     setCart([]);
     setSelectedCustomer(null);
@@ -424,7 +449,7 @@ export default function POSPage() {
     toast.success('Carrito limpiado');
   }, [toast]);
 
-  // ✅ CALCULAR DESCUENTO DE CUPÓN ESTABLE v7.0
+  // CALCULAR DESCUENTO DE CUPÓN
   const calculateCouponDiscount = useCallback((subtotal: number): number => {
     if (!appliedCoupon) return 0;
     
@@ -435,7 +460,7 @@ export default function POSPage() {
     }
   }, [appliedCoupon]);
 
-  // ✅ TOTALES ESTABLES OPTIMIZADOS v7.0  
+  // TOTALES
   const totals = useMemo<Totals>(() => {
     const subtotal = cart.reduce((sum, item) => sum + item.total_price, 0);
     const taxAmount = cart.reduce((sum, item) => sum + item.tax_amount, 0);
@@ -452,7 +477,7 @@ export default function POSPage() {
     };
   }, [cart, appliedCoupon, calculateCouponDiscount]);
 
-  // ✅ APLICAR CUPÓN CON VALIDACIÓN ENTERPRISE v7.0 - FIXED CURRENT_USES
+  // APLICAR CUPÓN
   const applyCoupon = useCallback(async () => {
     if (!couponCode.trim()) {
       toast.error('Ingresa un código de cupón');
@@ -482,7 +507,6 @@ export default function POSPage() {
         return;
       }
       
-      // ✅ FIXED: Validación safe de current_uses
       if (coupon.max_uses && (coupon.current_uses || 0) >= coupon.max_uses) {
         toast.error('Cupón agotado');
         return;
@@ -502,14 +526,14 @@ export default function POSPage() {
     }
   }, [couponCode, coupons, totals.subtotal, toast, formatPrice, calculateCouponDiscount]);
 
-  // ✅ REMOVER CUPÓN v7.0
+  // REMOVER CUPÓN
   const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);
     setCouponCode('');
     toast.success('Cupón removido');
   }, [toast]);
 
-  // ✅ MANEJAR ÉXITO DE VENTA v7.0
+  // MANEJAR ÉXITO DE VENTA
   const handleSaleSuccess = useCallback(() => {
     clearCart();
     refreshProducts();
@@ -517,13 +541,13 @@ export default function POSPage() {
     toast.success('Venta completada exitosamente');
   }, [clearCart, refreshProducts, loadSalesStats, toast]);
 
-  // ✅ OBJETOS ESTABLES PARA DIALOGS v7.0
+  // OBJETOS ESTABLES PARA DIALOGS
   const stableCart = useMemo(() => cart, [cart]);
   const stableCustomer = useMemo(() => selectedCustomer, [selectedCustomer]);
   const stableCoupon = useMemo(() => appliedCoupon, [appliedCoupon]);
   const stableTotals = useMemo(() => totals, [totals]);
 
-  // ✅ FILTRADO DE PRODUCTOS OPTIMIZADO v7.0
+  // FILTRADO DE PRODUCTOS
   useEffect(() => {
     let filtered = products.filter(product => 
       product.is_active && product.current_stock > 0
@@ -546,21 +570,21 @@ export default function POSPage() {
     setFilteredProducts(filtered);
   }, [products, searchTerm, categoryFilter]);
 
-  // ✅ CARGAR DATOS INICIALES v7.0
+  // CARGAR DATOS INICIALES
   useEffect(() => {
     if (hydrated) {
       loadSalesStats();
     }
   }, [hydrated, loadSalesStats]);
 
-  // ✅ CERRAR LAYAWAY DIALOG CUANDO CARRITO VACÍO
+  // CERRAR LAYAWAY SI CARRITO VACÍO
   useEffect(() => {
     if (cart.length === 0 && layawayDialogOpen) {
       setLayawayDialogOpen(false);
     }
   }, [cart.length, layawayDialogOpen]);
 
-  // ✅ SSR SAFETY MUSCLEUP - DESPUÉS DE TODOS LOS HOOKS v7.0
+  // SSR SAFETY
   if (!hydrated) {
     return (
       <Box sx={{ 
@@ -594,9 +618,9 @@ export default function POSPage() {
         }}
       >
         <Grid container spacing={3}>
-          {/* ✅ PANEL IZQUIERDO - PRODUCTOS v7.0 */}
+          {/* PANEL IZQUIERDO - PRODUCTOS */}
           <Grid size={{ xs: 12, lg: 8 }}>
-            {/* Header con branding MuscleUp */}
+            {/* Header */}
             <Paper sx={{
               p: 4,
               mb: 4,
@@ -640,12 +664,7 @@ export default function POSPage() {
                       px: 3,
                       py: 1.5,
                       borderRadius: 3,
-                      fontWeight: 600,
-                      '&:hover': {
-                        borderColor: colorTokens.brand,
-                        backgroundColor: colorTokens.hoverOverlay,
-                        transform: 'translateY(-2px)'
-                      }
+                      fontWeight: 600
                     }}
                     variant="outlined"
                   >
@@ -663,12 +682,7 @@ export default function POSPage() {
                       px: 3,
                       py: 1.5,
                       borderRadius: 3,
-                      fontWeight: 600,
-                      '&:hover': {
-                        borderColor: colorTokens.brand,
-                        backgroundColor: colorTokens.hoverOverlay,
-                        transform: 'translateY(-2px)'
-                      }
+                      fontWeight: 600
                     }}
                   >
                     Actualizar
@@ -676,7 +690,45 @@ export default function POSPage() {
                 </Box>
               </Box>
 
-              {/* ✅ ESTADÍSTICAS CON COLORTOKENS v7.0 */}
+              {/* ✅ ALERTA DE ALMACÉN FIJO */}
+              {!FIXED_WAREHOUSE_ID ? (
+                <Alert 
+                  severity="error"
+                  icon={<WarehouseIcon />}
+                  sx={{ 
+                    mb: 3,
+                    backgroundColor: `${colorTokens.danger}10`,
+                    border: `2px solid ${colorTokens.danger}40`,
+                    color: colorTokens.textPrimary,
+                    '& .MuiAlert-icon': { color: colorTokens.danger }
+                  }}
+                >
+                  <Typography variant="body1" fontWeight="bold">
+                    ⚠️ Almacén no configurado
+                  </Typography>
+                  <Typography variant="body2">
+                    Configura NEXT_PUBLIC_DEFAULT_WAREHOUSE_ID en .env.local
+                  </Typography>
+                </Alert>
+              ) : (
+                <Alert 
+                  severity="success"
+                  icon={<WarehouseIcon />}
+                  sx={{ 
+                    mb: 3,
+                    backgroundColor: `${colorTokens.success}10`,
+                    border: `1px solid ${colorTokens.success}40`,
+                    color: colorTokens.textPrimary,
+                    '& .MuiAlert-icon': { color: colorTokens.success }
+                  }}
+                >
+                  <Typography variant="body2">
+                    Vendiendo desde: <strong>STORE MUP PRINICIPAL</strong> (ID: {FIXED_WAREHOUSE_ID.slice(0, 8)}...)
+                  </Typography>
+                </Alert>
+              )}
+
+              {/* ESTADÍSTICAS */}
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Card sx={{ 
@@ -747,7 +799,7 @@ export default function POSPage() {
               </Grid>
             </Paper>
 
-            {/* ✅ FILTROS CON COLORTOKENS v7.0 */}
+            {/* FILTROS */}
             <Paper
               sx={{
                 p: 3,
@@ -765,6 +817,7 @@ export default function POSPage() {
                     placeholder="Buscar productos..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    disabled={!FIXED_WAREHOUSE_ID}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -782,12 +835,6 @@ export default function POSPage() {
                         color: colorTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: colorTokens.border
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: colorTokens.brand
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: colorTokens.brand
                         }
                       }
                     }}
@@ -805,16 +852,11 @@ export default function POSPage() {
                       value={categoryFilter}
                       label="Categoría"
                       onChange={(e) => setCategoryFilter(e.target.value)}
+                      disabled={!FIXED_WAREHOUSE_ID}
                       sx={{
                         color: colorTokens.textPrimary,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: colorTokens.border
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: colorTokens.brand
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: colorTokens.brand
                         }
                       }}
                     >
@@ -839,7 +881,7 @@ export default function POSPage() {
               </Grid>
             </Paper>
 
-            {/* ✅ GRID DE PRODUCTOS v7.0 */}
+            {/* GRID DE PRODUCTOS */}
             <Paper
               sx={{
                 p: 3,
@@ -849,9 +891,22 @@ export default function POSPage() {
                 color: colorTokens.textPrimary
               }}
             >
-              {productsLoading ? (
-                <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+              {!FIXED_WAREHOUSE_ID ? (
+                <Box textAlign="center" py={8}>
+                  <WarehouseIcon sx={{ fontSize: 100, color: colorTokens.textSecondary, mb: 3 }} />
+                  <Typography variant="h5" sx={{ color: colorTokens.textPrimary }} gutterBottom>
+                    Almacén no configurado
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
+                    Configura la variable de entorno para comenzar
+                  </Typography>
+                </Box>
+              ) : productsLoading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px" flexDirection="column" gap={2}>
                   <CircularProgress sx={{ color: colorTokens.brand }} size={60} thickness={4} />
+                  <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
+                    Cargando productos del almacén...
+                  </Typography>
                 </Box>
               ) : filteredProducts.length === 0 ? (
                 <Box textAlign="center" py={4}>
@@ -861,7 +916,7 @@ export default function POSPage() {
                   </Typography>
                   <Typography variant="body2" sx={{ color: colorTokens.textMuted }}>
                     {products.length === 0
-                      ? 'No hay productos disponibles'
+                      ? 'No hay productos con stock en este almacén'
                       : 'Intenta ajustar los filtros de búsqueda'
                     }
                   </Typography>
@@ -870,7 +925,7 @@ export default function POSPage() {
                 <Grid container spacing={2}>
                   {filteredProducts.map(product => (
                     <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
-                      <ProductCard product={product} onAddToCart={addToCart} />
+                      <ProductCard product={product} onAddToCart={addToCart} hydrated={hydrated} />
                     </Grid>
                   ))}
                 </Grid>
@@ -878,7 +933,7 @@ export default function POSPage() {
             </Paper>
           </Grid>
 
-          {/* ✅ PANEL DERECHO - CARRITO v7.0 */}
+          {/* PANEL DERECHO - CARRITO */}
           <Grid size={{ xs: 12, lg: 4 }}>
             <Paper
               sx={{
@@ -936,17 +991,6 @@ export default function POSPage() {
                           <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                             {selectedCustomer.email || selectedCustomer.whatsapp}
                           </Typography>
-                          {selectedCustomer.membership_type && (
-                            <Chip
-                              label={selectedCustomer.membership_type}
-                              size="small"
-                              sx={{ 
-                                ml: 1,
-                                backgroundColor: `${colorTokens.brand}20`,
-                                color: colorTokens.brand
-                              }}
-                            />
-                          )}
                         </Box>
                       </Box>
                       <IconButton
@@ -966,11 +1010,7 @@ export default function POSPage() {
                     onClick={() => setCustomerSelectorOpen(true)}
                     sx={{
                       borderColor: colorTokens.brand,
-                      color: colorTokens.brand,
-                      '&:hover': {
-                        bgcolor: colorTokens.hoverOverlay,
-                        borderColor: colorTokens.brand
-                      }
+                      color: colorTokens.brand
                     }}
                   >
                     Seleccionar Cliente (Opcional)
@@ -1026,12 +1066,6 @@ export default function POSPage() {
                           color: colorTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
                             borderColor: colorTokens.border
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: colorTokens.brand
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: colorTokens.brand
                           }
                         }
                       }}
@@ -1067,111 +1101,113 @@ export default function POSPage() {
                 ) : (
                   <List dense>
                     <AnimatePresence mode="wait">
-                      {cart.map((item, index) => (
-                        <motion.div
-                          key={item.product.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                        >
-                          <ListItem
-                            sx={{
-                              border: `1px solid ${colorTokens.border}`,
-                              borderRadius: 1,
-                              mb: 1,
-                              background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
-                              position: 'relative',
-                              minHeight: 70,
-                              pr: 14 // Espacio para botones
-                            }}
-                          >
-                            <ListItemText
-                              primary={item.product.name}
-                              secondary={`${formatPrice(item.unit_price)} x ${item.quantity} • Stock: ${item.product.current_stock} ${item.product.unit}`}
-                              primaryTypographyProps={{
-                                variant: 'subtitle2',
-                                fontWeight: 'bold',
-                                noWrap: true,
-                                component: 'div',
-                                sx: { color: colorTokens.textPrimary }
-                              }}
-                              secondaryTypographyProps={{
-                                variant: 'body2',
-                                component: 'div',
-                                sx: {
-                                  color: colorTokens.brand,
-                                  fontWeight: 'bold'
-                                }
-                              }}
-                            />
+                      {cart.map((item, index) => {
+                        const ItemWrapper = hydrated ? motion.div : 'div';
+                        const itemProps = hydrated ? {
+                          initial: { opacity: 0, x: -20 },
+                          animate: { opacity: 1, x: 0 },
+                          exit: { opacity: 0, x: 20 },
+                          transition: { duration: 0.3, delay: index * 0.05 }
+                        } : {};
 
-                            {/* Controles de cantidad */}
-                            <Box
+                        return (
+                          <ItemWrapper key={item.product.id} {...itemProps}>
+                            <ListItem
                               sx={{
-                                position: 'absolute',
-                                right: 8,
-                                top: 8,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.5
+                                border: `1px solid ${colorTokens.border}`,
+                                borderRadius: 1,
+                                mb: 1,
+                                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
+                                position: 'relative',
+                                minHeight: 70,
+                                pr: 14
                               }}
                             >
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  updateCartItemQuantity(item.product.id, item.quantity - 1)
-                                }
-                                disabled={item.quantity <= 1}
-                                sx={{ color: colorTokens.textSecondary }}
-                              >
-                                <RemoveIcon />
-                              </IconButton>
-                              <Typography
-                                variant="body2"
-                                fontWeight="bold"
-                                sx={{ 
-                                  minWidth: 20, 
-                                  textAlign: 'center',
-                                  color: colorTokens.textPrimary
+                              <ListItemText
+                                primary={item.product.name}
+                                secondary={`${formatPrice(item.unit_price)} x ${item.quantity} • Stock: ${item.product.current_stock} ${item.product.unit}`}
+                                primaryTypographyProps={{
+                                  variant: 'subtitle2',
+                                  fontWeight: 'bold',
+                                  noWrap: true,
+                                  component: 'div',
+                                  sx: { color: colorTokens.textPrimary }
+                                }}
+                                secondaryTypographyProps={{
+                                  variant: 'body2',
+                                  component: 'div',
+                                  sx: {
+                                    color: colorTokens.brand,
+                                    fontWeight: 'bold'
+                                  }
+                                }}
+                              />
+
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  right: 8,
+                                  top: 8,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 0.5
                                 }}
                               >
-                                {item.quantity}
-                              </Typography>
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  updateCartItemQuantity(item.product.id, item.quantity + 1)
-                                }
-                                disabled={item.quantity >= item.product.current_stock}
-                                sx={{ color: colorTokens.textSecondary }}
-                              >
-                                <AddIcon />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => removeFromCart(item.product.id)}
-                                sx={{ color: colorTokens.danger }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    updateCartItemQuantity(item.product.id, item.quantity - 1)
+                                  }
+                                  disabled={item.quantity <= 1}
+                                  sx={{ color: colorTokens.textSecondary }}
+                                >
+                                  <RemoveIcon />
+                                </IconButton>
+                                <Typography
+                                  variant="body2"
+                                  fontWeight="bold"
+                                  sx={{ 
+                                    minWidth: 20, 
+                                    textAlign: 'center',
+                                    color: colorTokens.textPrimary
+                                  }}
+                                >
+                                  {item.quantity}
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    updateCartItemQuantity(item.product.id, item.quantity + 1)
+                                  }
+                                  disabled={item.quantity >= item.product.current_stock}
+                                  sx={{ color: colorTokens.textSecondary }}
+                                >
+                                  <AddIcon />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => removeFromCart(item.product.id)}
+                                  sx={{ color: colorTokens.danger }}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Box>
 
-                            {/* Precio total */}
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                right: 8,
-                                bottom: 8
-                              }}
-                            >
-                              <Typography variant="body2" fontWeight="bold" sx={{ color: colorTokens.brand }}>
-                                {formatPrice(item.total_price)}
-                              </Typography>
-                            </Box>
-                          </ListItem>
-                        </motion.div>
-                      ))}
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  right: 8,
+                                  bottom: 8
+                                }}
+                              >
+                                <Typography variant="body2" fontWeight="bold" sx={{ color: colorTokens.brand }}>
+                                  {formatPrice(item.total_price)}
+                                </Typography>
+                              </Box>
+                            </ListItem>
+                          </ItemWrapper>
+                        );
+                      })}
                     </AnimatePresence>
                   </List>
                 )}
@@ -1220,11 +1256,7 @@ export default function POSPage() {
                         disabled={!selectedCustomer}
                         sx={{
                           borderColor: colorTokens.warning,
-                          color: colorTokens.warning,
-                          '&:hover': {
-                            bgcolor: `${colorTokens.warning}20`,
-                            borderColor: colorTokens.warning
-                          }
+                          color: colorTokens.warning
                         }}
                       >
                         Apartar
@@ -1254,12 +1286,11 @@ export default function POSPage() {
                         mt: 2,
                         backgroundColor: `${colorTokens.info}10`,
                         color: colorTokens.textPrimary,
-                        border: `1px solid ${colorTokens.info}30`,
-                        '& .MuiAlert-icon': { color: colorTokens.info }
+                        border: `1px solid ${colorTokens.info}30`
                       }}
                     >
                       <Typography variant="body2">
-                        💡 Para crear apartados, primero selecciona un cliente
+                        Para crear apartados, primero selecciona un cliente
                       </Typography>
                     </Alert>
                   )}
@@ -1269,7 +1300,7 @@ export default function POSPage() {
           </Grid>
         </Grid>
 
-        {/* ✅ DIALOGS ENTERPRISE v7.0 */}
+        {/* DIALOGS */}
         <CustomerSelector
           open={customerSelectorOpen}
           onClose={() => setCustomerSelectorOpen(false)}
@@ -1286,64 +1317,20 @@ export default function POSPage() {
           customer={stableCustomer}
           coupon={stableCoupon}
           totals={stableTotals}
+          warehouseId={activeWarehouseId}
           onSuccess={handleSaleSuccess}
         />
 
         <LayawayDialog
           open={layawayDialogOpen}
-          onClose={() => {
-            console.log('🔐 Cerrando LayawayDialog');
-            setLayawayDialogOpen(false);
-          }}
+          onClose={() => setLayawayDialogOpen(false)}
           cart={stableCart}
           customer={stableCustomer}
           coupon={stableCoupon}
           totals={stableTotals}
-          onSuccess={() => {
-            console.log('✅ LayawayDialog Success');
-            handleSaleSuccess();
-          }}
+          warehouseId={activeWarehouseId}
+          onSuccess={handleSaleSuccess}
         />
-
-        {/* ✅ FAB SCANNER v7.0 */}
-        <Fab
-          aria-label="scanner"
-          sx={{
-            position: 'fixed',
-            bottom: 24,
-            left: 24,
-            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
-            color: colorTokens.textOnBrand,
-            '&:hover': {
-              background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brandActive})`,
-              transform: 'scale(1.1)'
-            }
-          }}
-          onClick={() => toast.success('Scanner en desarrollo')}
-        >
-          <ScannerIcon />
-        </Fab>
-
-        {/* ✅ ESTILOS CSS MUSCLEUP v7.0 */}
-        <style jsx>{`
-          ::-webkit-scrollbar {
-            width: 8px;
-          }
-          
-          ::-webkit-scrollbar-track {
-            background: ${colorTokens.surfaceLevel1};
-            border-radius: 4px;
-          }
-          
-          ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover});
-            border-radius: 4px;
-          }
-          
-          ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brandActive});
-          }
-        `}</style>
       </Box>
     </ErrorBoundary>
   );

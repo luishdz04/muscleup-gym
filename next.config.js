@@ -5,6 +5,8 @@ const withPWA = require('next-pwa')({
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
   buildExcludes: [/middleware-manifest.json$/],
+  // Reducir el tamaño de los archivos de workbox para evitar warnings de webpack
+  maximumFileSizeToCacheInBytes: 3000000, // 3MB
   runtimeCaching: [
     {
       urlPattern: /^https?.*/,
@@ -48,6 +50,17 @@ const nextConfig = {
   },
   // 📦 CONFIGURACIÓN DE SALIDA
   output: 'standalone',
+  
+  // 🔇 SUPRIMIR WARNINGS DE WEBPACK (OPCIONAL)
+  webpack: (config, { isServer }) => {
+    // Reducir nivel de logs solo para warnings de caché
+    if (!isServer) {
+      config.infrastructureLogging = {
+        level: 'error',
+      };
+    }
+    return config;
+  },
 };
 
 module.exports = withPWA(nextConfig);

@@ -64,106 +64,35 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { colorTokens } from '@/theme';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useUserTracking } from '@/hooks/useUserTracking';
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatCurrency } from '@/utils/formHelpers';
+import { getTodayInMexico, formatDateLong, formatMexicoTime } from '@/utils/dateUtils';
 
-// 🎨 DARK PRO SYSTEM - TOKENS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  roleAdmin: '#E91E63'
-};
+const formatPrice = (amount: number): string => formatCurrency(Number.isFinite(amount) ? amount : 0);
 
-// ✅ FUNCIONES LOCALES PARA FECHAS MÉXICO
-function getMexicoDateLocal(): string {
-  const now = new Date();
-  const mexicoDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-  const year = mexicoDate.getFullYear();
-  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatMexicoTimeLocal(date: Date): string {
-  return date.toLocaleString('es-MX', {
-    timeZone: 'America/Mexico_City',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true
-  });
-}
-
-function formatDateLocal(dateString: string): string {
+function formatDateTime(dateString: string): string {
   try {
-    const date = new Date(dateString + 'T12:00:00');
-    return date.toLocaleDateString('es-MX', {
-      weekday: 'long',
+    const date = new Date(dateString);
+    return formatMexicoTime(date, {
+      day: '2-digit',
+      month: 'short',
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'America/Mexico_City'
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     });
   } catch (error) {
-    console.error('❌ Error formateando fecha:', dateString, error);
-    const date = new Date(dateString + 'T12:00:00');
-    const months = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ];
-    const weekdays = [
-      'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
-    ];
-    const weekday = weekdays[date.getDay()];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    return `${weekday}, ${day} de ${month} de ${year}`;
+    return dateString;
   }
 }
 
-// 🔍 DETECTOR DE RANGO
-function getMexicoDateRangeDisplay(dateString: string): string {
-  try {
-    const date = new Date(dateString + 'T12:00:00');
-    const day = date.getDate();
-    const month = date.toLocaleDateString('es-MX', { 
-      month: 'long',
-      timeZone: 'America/Mexico_City' 
-    });
-    const year = date.getFullYear();
-    
-    return `${day} de ${month} de ${year}, 00:00 - ${day} de ${month} de ${year}, 23:59`;
-  } catch (error) {
-    return `${dateString} 00:00 - ${dateString} 23:59`;
-  }
-}
-
-// ✅ FUNCIÓN ACTUALIZADA PARA COINCIDIR CON dateHelpers
 function createTimestampForDB(): string {
   const now = new Date();
   const mexicoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
   
-  // Crear timestamp con offset México (-06:00)
   const year = mexicoTime.getFullYear();
   const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
   const day = String(mexicoTime.getDate()).padStart(2, '0');
@@ -172,31 +101,6 @@ function createTimestampForDB(): string {
   const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
   
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
-}
-
-function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
-  }).format(amount);
-}
-
-function formatDateTime(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      timeZone: 'America/Mexico_City',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  } catch (error) {
-    return dateString;
-  }
 }
 
 // ✅ INTERFACES
@@ -314,15 +218,14 @@ interface ExpensesSummary {
 
 export default function NuevoCorteePage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
+  useUserTracking();
+  const { toast } = useNotifications();
   
   // ✅ ESTADOS
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const mexicoDateString = getMexicoDateLocal();
+    const mexicoDateString = getTodayInMexico();
     const mexicoDate = new Date(mexicoDateString + 'T12:00:00');
-    
-    console.log('🇲🇽 Fecha actual México (crear corte):', mexicoDateString);
-    console.log('🌍 Fecha actual UTC:', new Date().toISOString().split('T')[0]);
-    
     return mexicoDate;
   });
   
@@ -379,9 +282,7 @@ export default function NuevoCorteePage() {
       
       if (data.success && data.user) {
         setCurrentUser(data.user);
-        console.log('👤 Usuario autenticado cargado:', data.user);
       } else {
-        console.warn('⚠️ No se pudo cargar usuario autenticado');
         // Fallback con datos conocidos
         setCurrentUser({
           id: 'unknown',
@@ -426,7 +327,6 @@ export default function NuevoCorteePage() {
   const loadExpensesForDate = async (dateString: string) => {
     try {
       setLoadingExpenses(true);
-      console.log('💸 Cargando egresos para fecha:', dateString);
       
       const response = await fetch(`/api/expenses/daily?date=${dateString}`);
       const data = await response.json();
@@ -434,13 +334,6 @@ export default function NuevoCorteePage() {
       if (response.ok && data.success) {
         const totalExpenses = parseFloat(data.summary?.total_amount?.toString() || '0');
         const expenseCount = data.summary?.total_expenses || 0;
-        
-        console.log('💸 Egresos cargados automáticamente:', {
-          fecha: dateString,
-          total_amount: totalExpenses,
-          cantidad: expenseCount,
-          raw_data: data.summary
-        });
         
         // ✅ ACTUALIZAR DE FORMA QUE FORCE RE-RENDER CORRECTAMENTE
         setEditableData(prev => {
@@ -464,7 +357,7 @@ export default function NuevoCorteePage() {
         });
         
       } else {
-        console.log('ℹ️ No hay egresos para esta fecha');
+
         setEditableData(prev => ({
           ...prev,
           expenses_amount: 0
@@ -491,7 +384,7 @@ export default function NuevoCorteePage() {
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
-      const mexicoTime = formatMexicoTimeLocal(now);
+      const mexicoTime = formatMexicoTime(now);
       setCurrentTime(mexicoTime);
     };
     
@@ -515,7 +408,7 @@ export default function NuevoCorteePage() {
 
   // ✅ NUEVO: Effect para debugging cuando cambien los egresos
   useEffect(() => {
-    console.log('♻️ Recalculando totales por cambio en expenses_amount:', editableData.expenses_amount);
+
   }, [editableData.expenses_amount]);
 
   // ✅ FUNCIÓN CORREGIDA: calculateTotals
@@ -569,10 +462,13 @@ export default function NuevoCorteePage() {
       setLoadingDetails(true);
       const dateString = date.toISOString().split('T')[0];
       
-      console.log('🔍 Cargando detalles reales de transacciones para fecha:', dateString);
+
       
       const response = await fetch(`/api/cuts/transaction-details?date=${dateString}`);
       const data = await response.json();
+      
+
+
       
       if (data.success) {
         const details: TransactionDetail[] = [
@@ -633,11 +529,16 @@ export default function NuevoCorteePage() {
           }))
         ];
         
+
+
+
+
+        
         // Ordenar por fecha de creación (más reciente primero)
         details.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         
         setTransactionDetails(details);
-        console.log('✅ Detalles reales cargados:', details.length, 'transacciones');
+
       } else {
         console.error('Error cargando detalles:', data.error);
         setTransactionDetails([]);
@@ -656,7 +557,7 @@ export default function NuevoCorteePage() {
       setError(null);
       
       const dateString = date.toISOString().split('T')[0];
-      console.log('🔍 Cargando datos para fecha México:', dateString);
+
       
       const response = await fetch(`/api/cuts/daily-data?date=${dateString}`);
       const data = await response.json();
@@ -786,7 +687,7 @@ export default function NuevoCorteePage() {
         final_balance: totals.final_balance
       };
       
-      console.log('📊 Creando corte con datos:', cutData);
+
       
       const response = await fetch('/api/cuts/create', {
         method: 'POST',
@@ -822,9 +723,13 @@ export default function NuevoCorteePage() {
     }));
   };
 
-  const handleDateChange = (newDate: Date | null) => {
-    if (newDate) {
+  const handleDateChange = (newDate: any) => {
+    if (newDate && newDate instanceof Date) {
       setSelectedDate(newDate);
+      setSuccess(null);
+      setError(null);
+    } else if (newDate && typeof newDate === 'object' && '$d' in newDate) {
+      setSelectedDate(newDate.$d as Date);
       setSuccess(null);
       setError(null);
     }
@@ -840,15 +745,15 @@ export default function NuevoCorteePage() {
   const getPaymentMethodColor = (method: string) => {
     switch (method?.toLowerCase()) {
       case 'efectivo':
-        return darkProTokens.primary;
+        return colorTokens.brand;
       case 'transferencia':
-        return darkProTokens.info;
+        return colorTokens.info;
       case 'debito':
-        return darkProTokens.success;
+        return colorTokens.success;
       case 'credito':
-        return darkProTokens.error;
+        return colorTokens.danger;
       default:
-        return darkProTokens.textSecondary;
+        return colorTokens.textSecondary;
     }
   };
 
@@ -871,41 +776,41 @@ export default function NuevoCorteePage() {
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <Box sx={{ 
         minHeight: '100vh',
-        background: `linear-gradient(135deg, ${darkProTokens.background}, ${darkProTokens.surfaceLevel1})`,
-        color: darkProTokens.textPrimary,
+        background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.surfaceLevel1})`,
+        color: colorTokens.textPrimary,
         p: 4,
         // ✅ CSS GLOBAL PARA DATEPICKER
         '& .MuiPickersLayout-root': {
-          backgroundColor: darkProTokens.surfaceLevel2,
+          backgroundColor: colorTokens.surfaceLevel2,
         },
         '& .MuiDayCalendar-weekContainer': {
           '& .MuiPickersDay-root': {
-            color: darkProTokens.textPrimary,
+            color: colorTokens.textPrimary,
             '&:hover': {
-              backgroundColor: `${darkProTokens.primary}30`,
+              backgroundColor: `${colorTokens.brand}30`,
             },
             '&.Mui-selected': {
-              backgroundColor: darkProTokens.primary,
-              color: darkProTokens.background,
+              backgroundColor: colorTokens.brand,
+              color: colorTokens.neutral0,
             },
           },
         },
         '& .MuiPickersCalendarHeader-root': {
           '& .MuiPickersCalendarHeader-label': {
-            color: darkProTokens.textPrimary,
+            color: colorTokens.textPrimary,
           },
           '& .MuiIconButton-root': {
-            color: darkProTokens.textPrimary,
+            color: colorTokens.textPrimary,
           },
         },
         '& .MuiPickersDay-today': {
-          borderColor: darkProTokens.primary,
+          borderColor: colorTokens.brand,
         },
         '& .MuiTypography-caption': {
-          color: darkProTokens.textSecondary,
+          color: colorTokens.textSecondary,
         },
         '& .MuiPickersLayout-contentWrapper': {
-          backgroundColor: darkProTokens.surfaceLevel2,
+          backgroundColor: colorTokens.surfaceLevel2,
         }
       }}>
         {/* HEADER CON DETECTOR DE RANGO */}
@@ -914,15 +819,15 @@ export default function NuevoCorteePage() {
             <IconButton
               onClick={() => router.push('/dashboard/admin/cortes')}
               sx={{ 
-                color: darkProTokens.textSecondary,
-                '&:hover': { color: darkProTokens.primary }
+                color: colorTokens.textSecondary,
+                '&:hover': { color: colorTokens.brand }
               }}
             >
               <ArrowBackIcon />
             </IconButton>
             
             <Avatar sx={{ 
-              bgcolor: darkProTokens.roleAdmin, 
+              bgcolor: colorTokens.brand, 
               width: 60, 
               height: 60 
             }}>
@@ -930,12 +835,12 @@ export default function NuevoCorteePage() {
             </Avatar>
             
             <Box>
-              <Typography variant="h3" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+              <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
                 Crear Nuevo Corte
               </Typography>
               
-              <Typography variant="h6" sx={{ color: darkProTokens.textSecondary }}>
-                📅 {formatDateLocal(selectedDate.toISOString().split('T')[0])} • ⏰ {currentTime}
+              <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+                📅 {formatDateLong(selectedDate.toISOString().split('T')[0])} • ⏰ {currentTime}
               </Typography>
               
               {/* 🔍 DETECTOR DE RANGO INTELIGENTE */}
@@ -945,19 +850,15 @@ export default function NuevoCorteePage() {
                 gap: 1, 
                 mt: 1,
                 p: 1.5,
-                backgroundColor: `${darkProTokens.info}15`,
+                backgroundColor: `${colorTokens.info}15`,
                 borderRadius: 2,
-                border: `1px solid ${darkProTokens.info}30`
+                border: `1px solid ${colorTokens.info}30`
               }}>
-                <DateRangeIcon sx={{ color: darkProTokens.info, fontSize: 18 }} />
-                <Typography variant="body2" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
-                  📊 Rango de datos: {getMexicoDateRangeDisplay(selectedDate.toISOString().split('T')[0])}
+                <DateRangeIcon sx={{ color: colorTokens.info, fontSize: 18 }} />
+                <Typography variant="body2" sx={{ color: colorTokens.info, fontWeight: 600 }}>
+                  📊 Rango de datos: {formatDateLong(selectedDate.toISOString().split('T')[0])}
                 </Typography>
               </Box>
-              
-              <Typography variant="caption" sx={{ color: darkProTokens.textDisabled, mt: 0.5, display: 'block' }}>
-                🇲🇽 Zona horaria: México • {isManualMode ? '🔧 Modo Manual' : '🤖 Modo Automático'}
-              </Typography>
             </Box>
           </Box>
           
@@ -971,10 +872,10 @@ export default function NuevoCorteePage() {
                   disabled={!dataHasContent}
                   sx={{
                     '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: darkProTokens.warning,
+                      color: colorTokens.warning,
                     },
                     '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                      backgroundColor: darkProTokens.warning,
+                      backgroundColor: colorTokens.warning,
                     },
                   }}
                 />
@@ -987,7 +888,7 @@ export default function NuevoCorteePage() {
                   </Typography>
                 </Box>
               }
-              sx={{ color: darkProTokens.textSecondary }}
+              sx={{ color: colorTokens.textSecondary }}
             />
           </Box>
         </Box>
@@ -1045,26 +946,26 @@ export default function NuevoCorteePage() {
 
         <Grid container spacing={4}>
           {/* CONFIGURACIÓN DEL CORTE */}
-          <Grid size={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
             >
               <Card sx={{
-                background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                border: `2px solid ${darkProTokens.roleAdmin}40`,
+                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                border: `2px solid ${colorTokens.brand}40`,
                 borderRadius: 4,
                 height: 'fit-content'
               }}>
                 <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin, mb: 3 }}>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.brand, mb: 3 }}>
                     ⚙️ Configuración del Corte
                   </Typography>
                   
                   {/* SELECTOR DE FECHA CON CSS CORREGIDO */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       📅 Fecha del Corte
                     </Typography>
                     <DatePicker
@@ -1076,65 +977,65 @@ export default function NuevoCorteePage() {
                       sx={{
                         width: '100%',
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.neutral300,
+                          color: colorTokens.textPrimary,
                           '& fieldset': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: colorTokens.neutral500,
                           },
                           '&:hover fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                           '&.Mui-focused fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                         },
                         '& .MuiInputLabel-root': {
-                          color: darkProTokens.textSecondary,
+                          color: colorTokens.textSecondary,
                           '&.Mui-focused': {
-                            color: darkProTokens.primary,
+                            color: colorTokens.brand,
                           },
                         },
                         '& .MuiSvgIcon-root': {
-                          color: darkProTokens.primary,
+                          color: colorTokens.brand,
                         },
                         '& .MuiInputBase-input': {
-                          color: darkProTokens.textPrimary,
+                          color: colorTokens.textPrimary,
                         },
                       }}
                     />
-                    <Typography variant="caption" sx={{ color: darkProTokens.textDisabled, mt: 1, display: 'block' }}>
+                    <Typography variant="caption" sx={{ color: colorTokens.textDisabled, mt: 1, display: 'block' }}>
                       💡 Puedes seleccionar cualquier fecha pasada sin límite
                     </Typography>
                   </Box>
 
-                  <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
+                  <Divider sx={{ backgroundColor: colorTokens.neutral500, my: 3 }} />
 
                   {/* INFORMACIÓN DEL CORTE */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       📋 Información del Corte
                     </Typography>
                     
                     <Stack spacing={2}>
                       <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                           Nombre del corte:
                         </Typography>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 600 }}>
-                          Corte {formatDateLocal(selectedDate.toISOString().split('T')[0])}
+                        <Typography variant="h6" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+                          Corte {formatDateLong(selectedDate.toISOString().split('T')[0])}
                         </Typography>
                       </Box>
 
                       <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                           Responsable:
                         </Typography>
                         {/* ✅ RESPONSABLE DINÁMICO */}
                         <Chip
                           label={getCurrentUserDisplayName()}
                           sx={{
-                            backgroundColor: `${darkProTokens.info}20`,
-                            color: darkProTokens.info,
+                            backgroundColor: `${colorTokens.info}20`,
+                            color: colorTokens.info,
                             fontWeight: 600,
                             mt: 0.5
                           }}
@@ -1142,15 +1043,15 @@ export default function NuevoCorteePage() {
                       </Box>
                       
                       <Box>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                           Tipo de corte:
                         </Typography>
                         <Chip
                           icon={isManualMode ? <BuildIcon /> : <AutoModeIcon />}
                           label={isManualMode ? 'Manual' : 'Automático'}
                           sx={{
-                            backgroundColor: isManualMode ? `${darkProTokens.warning}20` : `${darkProTokens.success}20`,
-                            color: isManualMode ? darkProTokens.warning : darkProTokens.success,
+                            backgroundColor: isManualMode ? `${colorTokens.warning}20` : `${colorTokens.success}20`,
+                            color: isManualMode ? colorTokens.warning : colorTokens.success,
                             fontWeight: 600,
                             mt: 0.5
                           }}
@@ -1159,24 +1060,24 @@ export default function NuevoCorteePage() {
                     </Stack>
                   </Box>
 
-                  <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
+                  <Divider sx={{ backgroundColor: colorTokens.neutral500, my: 3 }} />
 
                   {/* ✅ SECCIÓN DE GASTOS COMPLETAMENTE AUTOMÁTICA */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       💸 Gastos del Día
                     </Typography>
                     
                     {/* ℹ️ INFORMACIÓN DE GASTOS AUTOMÁTICOS (SIN CAMPO EDITABLE) */}
                     <Box sx={{ 
                       p: 3, 
-                      backgroundColor: `${darkProTokens.info}15`,
+                      backgroundColor: `${colorTokens.info}15`,
                       borderRadius: 3,
-                      border: `2px dashed ${darkProTokens.info}60`
+                      border: `2px dashed ${colorTokens.info}60`
                     }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                         <Avatar sx={{ 
-                          bgcolor: darkProTokens.info, 
+                          bgcolor: colorTokens.info, 
                           width: 40, 
                           height: 40 
                         }}>
@@ -1184,19 +1085,19 @@ export default function NuevoCorteePage() {
                         </Avatar>
                         <Box sx={{ flex: 1 }}>
                           <Typography variant="h5" sx={{ 
-                            color: editableData.expenses_amount > 0 ? darkProTokens.error : darkProTokens.success, 
+                            color: editableData.expenses_amount > 0 ? colorTokens.danger : colorTokens.success, 
                             fontWeight: 'bold' 
                           }}>
                             {formatPrice(editableData.expenses_amount || 0)}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: darkProTokens.info, fontWeight: 600 }}>
+                          <Typography variant="body2" sx={{ color: colorTokens.info, fontWeight: 600 }}>
                             💸 Calculado automáticamente
                           </Typography>
                         </Box>
-                        {loadingExpenses && <CircularProgress size={20} sx={{ color: darkProTokens.info }} />}
+                        {loadingExpenses && <CircularProgress size={20} sx={{ color: colorTokens.info }} />}
                       </Box>
                       
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                         📊 Suma de todos los egresos registrados para: {selectedDate.toISOString().split('T')[0]}
                       </Typography>
                       
@@ -1206,8 +1107,8 @@ export default function NuevoCorteePage() {
                             <Chip
                               label={`✅ ${expensesSummary.total_expenses} egreso${expensesSummary.total_expenses === 1 ? '' : 's'} encontrado${expensesSummary.total_expenses === 1 ? '' : 's'}`}
                               sx={{
-                                backgroundColor: `${darkProTokens.success}20`,
-                                color: darkProTokens.success,
+                                backgroundColor: `${colorTokens.success}20`,
+                                color: colorTokens.success,
                                 fontWeight: 600
                               }}
                             />
@@ -1215,8 +1116,8 @@ export default function NuevoCorteePage() {
                             <Chip
                               label="ℹ️ No hay egresos para esta fecha"
                               sx={{
-                                backgroundColor: `${darkProTokens.textDisabled}20`,
-                                color: darkProTokens.textDisabled,
+                                backgroundColor: `${colorTokens.textDisabled}20`,
+                                color: colorTokens.textDisabled,
                                 fontWeight: 600
                               }}
                             />
@@ -1230,12 +1131,12 @@ export default function NuevoCorteePage() {
                         onClick={() => loadExpensesForDate(selectedDate.toISOString().split('T')[0])}
                         disabled={loadingExpenses}
                         sx={{ 
-                          color: darkProTokens.info, 
-                          backgroundColor: `${darkProTokens.info}20`,
+                          color: colorTokens.info, 
+                          backgroundColor: `${colorTokens.info}20`,
                           textTransform: 'none',
                           fontSize: '0.75rem',
                           '&:hover': {
-                            backgroundColor: `${darkProTokens.info}30`
+                            backgroundColor: `${colorTokens.info}30`
                           }
                         }}
                       >
@@ -1244,11 +1145,11 @@ export default function NuevoCorteePage() {
                     </Box>
                   </Box>
 
-                  <Divider sx={{ backgroundColor: darkProTokens.grayMedium, my: 3 }} />
+                  <Divider sx={{ backgroundColor: colorTokens.neutral500, my: 3 }} />
 
                   {/* OBSERVACIONES */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       📝 Observaciones (Opcional)
                     </Typography>
                     <TextField
@@ -1260,20 +1161,20 @@ export default function NuevoCorteePage() {
                       placeholder="Agregar comentarios o notas sobre este corte..."
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: darkProTokens.surfaceLevel4,
-                          color: darkProTokens.textPrimary,
+                          backgroundColor: colorTokens.neutral300,
+                          color: colorTokens.textPrimary,
                           '& fieldset': {
-                            borderColor: darkProTokens.grayMedium,
+                            borderColor: colorTokens.neutral500,
                           },
                           '&:hover fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                           '&.Mui-focused fieldset': {
-                            borderColor: darkProTokens.primary,
+                            borderColor: colorTokens.brand,
                           },
                         },
                         '& .MuiInputBase-input::placeholder': {
-                          color: darkProTokens.textDisabled,
+                          color: colorTokens.textDisabled,
                         },
                       }}
                     />
@@ -1281,58 +1182,34 @@ export default function NuevoCorteePage() {
 
                   {/* ✅ TOTALES CALCULADOS CON DEBUGGING MEJORADO */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
                       🧮 Resumen Calculado
                     </Typography>
                     
-                    {/* ✅ DEBUGGING TEMPORAL EN DESARROLLO */}
-                    {process.env.NODE_ENV === 'development' && (
-                      <Box sx={{ 
-                        p: 2, 
-                        mb: 2,
-                        backgroundColor: `${darkProTokens.warning}10`,
-                        borderRadius: 2,
-                        border: `1px solid ${darkProTokens.warning}30`
-                      }}>
-                        <Typography variant="caption" sx={{ color: darkProTokens.warning, fontWeight: 600, display: 'block' }}>
-                          🐛 DEBUG INFO:
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
-                          expenses_amount: {editableData.expenses_amount}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
-                          final_balance: {totals.final_balance}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: darkProTokens.textSecondary, display: 'block' }}>
-                          cálculo: {totals.grand_total} - {editableData.expenses_amount} = {totals.final_balance}
-                        </Typography>
-                      </Box>
-                    )}
-                    
                     <Stack spacing={1}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                           Total Bruto:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.brand, fontWeight: 600 }}>
                           {formatPrice(totals.grand_total)}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" sx={{ color: darkProTokens.textDisabled }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.textDisabled }}>
                           Gastos:
                         </Typography>
-                        <Typography variant="body2" sx={{ color: darkProTokens.error, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.danger, fontWeight: 600 }}>
                           -{formatPrice(editableData.expenses_amount)}
                         </Typography>
                       </Box>
-                      <Divider sx={{ backgroundColor: darkProTokens.grayMedium }} />
+                      <Divider sx={{ backgroundColor: colorTokens.neutral500 }} />
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, fontWeight: 700 }}>
+                        <Typography variant="h6" sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
                           Balance Final:
                         </Typography>
                         <Typography variant="h6" sx={{ 
-                          color: totals.final_balance >= 0 ? darkProTokens.success : darkProTokens.error, 
+                          color: totals.final_balance >= 0 ? colorTokens.success : colorTokens.danger, 
                           fontWeight: 700 
                         }}>
                           {formatPrice(totals.final_balance)}
@@ -1348,12 +1225,12 @@ export default function NuevoCorteePage() {
                       fullWidth
                       onClick={() => router.push('/dashboard/admin/cortes')}
                       sx={{
-                        borderColor: darkProTokens.textSecondary,
-                        color: darkProTokens.textSecondary,
+                        borderColor: colorTokens.textSecondary,
+                        color: colorTokens.textSecondary,
                         py: 1.5,
                         '&:hover': {
-                          borderColor: darkProTokens.textPrimary,
-                          backgroundColor: `${darkProTokens.textSecondary}20`
+                          borderColor: colorTokens.textPrimary,
+                          backgroundColor: `${colorTokens.textSecondary}20`
                         }
                       }}
                     >
@@ -1367,13 +1244,13 @@ export default function NuevoCorteePage() {
                       disabled={creating || loading}
                       startIcon={creating ? <CircularProgress size={20} /> : <SaveIcon />}
                       sx={{
-                        background: `linear-gradient(135deg, ${darkProTokens.roleAdmin}, ${darkProTokens.primaryHover})`,
-                        color: darkProTokens.textPrimary,
+                        background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                        color: colorTokens.textPrimary,
                         py: 1.5,
                         fontWeight: 700,
                         '&:disabled': {
-                          background: darkProTokens.grayMedium,
-                          color: darkProTokens.textDisabled
+                          background: colorTokens.neutral500,
+                          color: colorTokens.textDisabled
                         }
                       }}
                     >
@@ -1386,10 +1263,10 @@ export default function NuevoCorteePage() {
           </Grid>
 
           {/* RESTO DEL CONTENIDO (DATOS EDITABLES Y HISTORIAL) */}
-          <Grid size={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             {loading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-                <CircularProgress size={60} sx={{ color: darkProTokens.roleAdmin }} />
+                <CircularProgress size={60} sx={{ color: colorTokens.brand }} />
               </Box>
             )}
 
@@ -1402,23 +1279,23 @@ export default function NuevoCorteePage() {
                 <Stack spacing={3}>
                   {/* SECCIÓN POS */}
                   <Card sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                    border: `2px solid ${darkProTokens.info}40`,
+                    background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                    border: `2px solid ${colorTokens.info}40`,
                     borderRadius: 4
                   }}>
                     <CardContent sx={{ p: 4 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                        <Avatar sx={{ bgcolor: darkProTokens.info }}>
+                        <Avatar sx={{ bgcolor: colorTokens.info }}>
                           <ReceiptIcon />
                         </Avatar>
-                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.info }}>
                           💼 Punto de Venta
                         </Typography>
                         <Chip
                           label={formatPrice(totals.pos_total)}
                           sx={{
-                            backgroundColor: `${darkProTokens.info}20`,
-                            color: darkProTokens.info,
+                            backgroundColor: `${colorTokens.info}20`,
+                            color: colorTokens.info,
                             fontWeight: 700,
                             fontSize: '1rem'
                           }}
@@ -1429,18 +1306,18 @@ export default function NuevoCorteePage() {
                             color="primary"
                             sx={{
                               '& .MuiBadge-badge': {
-                                backgroundColor: darkProTokens.success,
-                                color: darkProTokens.textPrimary
+                                backgroundColor: colorTokens.success,
+                                color: colorTokens.textPrimary
                               }
                             }}
                           >
-                            <LocalOfferIcon sx={{ color: darkProTokens.success }} />
+                            <LocalOfferIcon sx={{ color: colorTokens.success }} />
                           </Badge>
                         )}
                       </Box>
                       
                       <Grid container spacing={3}>
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Efectivo"
@@ -1453,17 +1330,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.primary,
+                                color: colorTokens.brand,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Transferencia"
@@ -1476,17 +1353,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.info,
+                                color: colorTokens.info,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Tarjeta Débito"
@@ -1499,17 +1376,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.success,
+                                color: colorTokens.success,
                               },
                             }}
                           />
                         </Grid>
                         
-                                                <Grid size={12} sm={6} md={3}>
+                                                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Tarjeta Crédito"
@@ -1522,17 +1399,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.error,
+                                color: colorTokens.danger,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                           <TextField
                             fullWidth
                             label="Transacciones"
@@ -1542,11 +1419,11 @@ export default function NuevoCorteePage() {
                             inputProps={{ min: "0" }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.textSecondary,
+                                color: colorTokens.textSecondary,
                               },
                             }}
                           />
@@ -1557,23 +1434,23 @@ export default function NuevoCorteePage() {
 
                   {/* SECCIÓN ABONOS */}
                   <Card sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                    border: `2px solid ${darkProTokens.warning}40`,
+                    background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                    border: `2px solid ${colorTokens.warning}40`,
                     borderRadius: 4
                   }}>
                     <CardContent sx={{ p: 4 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                        <Avatar sx={{ bgcolor: darkProTokens.warning }}>
+                        <Avatar sx={{ bgcolor: colorTokens.warning }}>
                           <SavingsIcon />
                         </Avatar>
-                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.warning }}>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.warning }}>
                           💰 Abonos / Apartados
                         </Typography>
                         <Chip
                           label={formatPrice(totals.abonos_total)}
                           sx={{
-                            backgroundColor: `${darkProTokens.warning}20`,
-                            color: darkProTokens.warning,
+                            backgroundColor: `${colorTokens.warning}20`,
+                            color: colorTokens.warning,
                             fontWeight: 700,
                             fontSize: '1rem'
                           }}
@@ -1584,18 +1461,18 @@ export default function NuevoCorteePage() {
                             color="primary"
                             sx={{
                               '& .MuiBadge-badge': {
-                                backgroundColor: darkProTokens.success,
-                                color: darkProTokens.textPrimary
+                                backgroundColor: colorTokens.success,
+                                color: colorTokens.textPrimary
                               }
                             }}
                           >
-                            <LocalOfferIcon sx={{ color: darkProTokens.success }} />
+                            <LocalOfferIcon sx={{ color: colorTokens.success }} />
                           </Badge>
                         )}
                       </Box>
                       
                       <Grid container spacing={3}>
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Efectivo"
@@ -1608,17 +1485,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.primary,
+                                color: colorTokens.brand,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Transferencia"
@@ -1631,17 +1508,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.info,
+                                color: colorTokens.info,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Tarjeta Débito"
@@ -1654,17 +1531,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.success,
+                                color: colorTokens.success,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Tarjeta Crédito"
@@ -1677,17 +1554,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.error,
+                                color: colorTokens.danger,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                           <TextField
                             fullWidth
                             label="Transacciones"
@@ -1697,11 +1574,11 @@ export default function NuevoCorteePage() {
                             inputProps={{ min: "0" }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.textSecondary,
+                                color: colorTokens.textSecondary,
                               },
                             }}
                           />
@@ -1712,23 +1589,23 @@ export default function NuevoCorteePage() {
 
                   {/* SECCIÓN MEMBRESÍAS */}
                   <Card sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                    border: `2px solid ${darkProTokens.success}40`,
+                    background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                    border: `2px solid ${colorTokens.success}40`,
                     borderRadius: 4
                   }}>
                     <CardContent sx={{ p: 4 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                        <Avatar sx={{ bgcolor: darkProTokens.success }}>
+                        <Avatar sx={{ bgcolor: colorTokens.success }}>
                           <AssessmentIcon />
                         </Avatar>
-                        <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.success }}>
                           🎫 Membresías
                         </Typography>
                         <Chip
                           label={formatPrice(totals.membership_total)}
                           sx={{
-                            backgroundColor: `${darkProTokens.success}20`,
-                            color: darkProTokens.success,
+                            backgroundColor: `${colorTokens.success}20`,
+                            color: colorTokens.success,
                             fontWeight: 700,
                             fontSize: '1rem'
                           }}
@@ -1739,18 +1616,18 @@ export default function NuevoCorteePage() {
                             color="primary"
                             sx={{
                               '& .MuiBadge-badge': {
-                                backgroundColor: darkProTokens.success,
-                                color: darkProTokens.textPrimary
+                                backgroundColor: colorTokens.success,
+                                color: colorTokens.textPrimary
                               }
                             }}
                           >
-                            <LocalOfferIcon sx={{ color: darkProTokens.success }} />
+                            <LocalOfferIcon sx={{ color: colorTokens.success }} />
                           </Badge>
                         )}
                       </Box>
                       
                       <Grid container spacing={3}>
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Efectivo"
@@ -1763,17 +1640,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.primary,
+                                color: colorTokens.brand,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Transferencia"
@@ -1786,17 +1663,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.info,
+                                color: colorTokens.info,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Tarjeta Débito"
@@ -1809,17 +1686,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.success,
+                                color: colorTokens.success,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <TextField
                             fullWidth
                             label="Tarjeta Crédito"
@@ -1832,17 +1709,17 @@ export default function NuevoCorteePage() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.error,
+                                color: colorTokens.danger,
                               },
                             }}
                           />
                         </Grid>
                         
-                        <Grid size={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                           <TextField
                             fullWidth
                             label="Transacciones"
@@ -1852,11 +1729,11 @@ export default function NuevoCorteePage() {
                             inputProps={{ min: "0" }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                backgroundColor: darkProTokens.surfaceLevel4,
-                                color: darkProTokens.textPrimary,
+                                backgroundColor: colorTokens.neutral300,
+                                color: colorTokens.textPrimary,
                               },
                               '& .MuiInputLabel-root': {
-                                color: darkProTokens.textSecondary,
+                                color: colorTokens.textSecondary,
                               },
                             }}
                           />
@@ -1867,26 +1744,26 @@ export default function NuevoCorteePage() {
 
                   {/* RESUMEN FINAL */}
                   <Card sx={{
-                    background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                    border: `2px solid ${darkProTokens.primary}40`,
+                    background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                    border: `2px solid ${colorTokens.brand}40`,
                     borderRadius: 4
                   }}>
                     <CardContent sx={{ p: 4 }}>
-                      <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.primary, mb: 3 }}>
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.brand, mb: 3 }}>
                         💳 Resumen por Métodos de Pago
                       </Typography>
                       
                       <Grid container spacing={3}>
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
-                            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                            border: `2px solid ${darkProTokens.primary}40`,
+                            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral300})`,
+                            border: `2px solid ${colorTokens.brand}40`,
                             borderRadius: 3
                           }}>
                             <Avatar sx={{ 
-                              bgcolor: darkProTokens.primary, 
+                              bgcolor: colorTokens.brand, 
                               width: 48, 
                               height: 48,
                               mx: 'auto',
@@ -1894,25 +1771,25 @@ export default function NuevoCorteePage() {
                             }}>
                               <AttachMoneyIcon />
                             </Avatar>
-                            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.primary }}>
+                            <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.brand }}>
                               {formatPrice(totals.total_efectivo)}
                             </Typography>
-                            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
+                            <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary }}>
                               Efectivo
                             </Typography>
                           </Paper>
                         </Grid>
 
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
-                            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                            border: `2px solid ${darkProTokens.info}40`,
+                            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral300})`,
+                            border: `2px solid ${colorTokens.info}40`,
                             borderRadius: 3
                           }}>
                             <Avatar sx={{ 
-                              bgcolor: darkProTokens.info, 
+                              bgcolor: colorTokens.info, 
                               width: 48, 
                               height: 48,
                               mx: 'auto',
@@ -1920,25 +1797,25 @@ export default function NuevoCorteePage() {
                             }}>
                               <AccountBalanceIcon />
                             </Avatar>
-                            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.info }}>
+                            <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.info }}>
                               {formatPrice(totals.total_transferencia)}
                             </Typography>
-                            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
+                            <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary }}>
                               Transferencia
                             </Typography>
                           </Paper>
                         </Grid>
 
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
-                            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                            border: `2px solid ${darkProTokens.success}40`,
+                            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral300})`,
+                            border: `2px solid ${colorTokens.success}40`,
                             borderRadius: 3
                           }}>
                             <Avatar sx={{ 
-                              bgcolor: darkProTokens.success, 
+                              bgcolor: colorTokens.success, 
                               width: 48, 
                               height: 48,
                               mx: 'auto',
@@ -1946,25 +1823,25 @@ export default function NuevoCorteePage() {
                             }}>
                               <CreditCardIcon />
                             </Avatar>
-                            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                            <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.success }}>
                               {formatPrice(totals.total_debito)}
                             </Typography>
-                            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
+                            <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary }}>
                               Tarjeta Débito
                             </Typography>
                           </Paper>
                         </Grid>
 
-                        <Grid size={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
-                            background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-                            border: `2px solid ${darkProTokens.error}40`,
+                            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral300})`,
+                            border: `2px solid ${colorTokens.danger}40`,
                             borderRadius: 3
                           }}>
                             <Avatar sx={{ 
-                              bgcolor: darkProTokens.error, 
+                              bgcolor: colorTokens.danger, 
                               width: 48, 
                               height: 48,
                               mx: 'auto',
@@ -1972,10 +1849,10 @@ export default function NuevoCorteePage() {
                             }}>
                               <CreditCardIcon />
                             </Avatar>
-                            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.error }}>
+                            <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.danger }}>
                               {formatPrice(totals.total_credito)}
                             </Typography>
-                            <Typography variant="subtitle1" sx={{ color: darkProTokens.textSecondary }}>
+                            <Typography variant="subtitle1" sx={{ color: colorTokens.textSecondary }}>
                               Tarjeta Crédito
                             </Typography>
                           </Paper>
@@ -1987,32 +1864,32 @@ export default function NuevoCorteePage() {
                   {/* SECCIÓN DE HISTORIAL REAL DE TRANSACCIONES */}
                   {dataHasContent && transactionDetails.length > 0 && (
                     <Card sx={{
-                      background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-                      border: `2px solid ${darkProTokens.roleAdmin}40`,
+                      background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+                      border: `2px solid ${colorTokens.brand}40`,
                       borderRadius: 4
                     }}>
                       <CardContent sx={{ p: 4 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Avatar sx={{ bgcolor: darkProTokens.roleAdmin }}>
+                            <Avatar sx={{ bgcolor: colorTokens.brand }}>
                               <VisibilityIcon />
                             </Avatar>
-                            <Typography variant="h5" fontWeight="bold" sx={{ color: darkProTokens.roleAdmin }}>
+                            <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.brand }}>
                               📋 Historial Detallado del Día
                             </Typography>
                             <Chip
                               label={`${transactionDetails.length} transacciones`}
                               sx={{
-                                backgroundColor: `${darkProTokens.roleAdmin}20`,
-                                color: darkProTokens.roleAdmin,
+                                backgroundColor: `${colorTokens.brand}20`,
+                                color: colorTokens.brand,
                                 fontWeight: 700
                               }}
                             />
                             <Chip
                               label={formatPrice(transactionDetails.reduce((sum, t) => sum + t.amount, 0))}
                               sx={{
-                                backgroundColor: `${darkProTokens.success}20`,
-                                color: darkProTokens.success,
+                                backgroundColor: `${colorTokens.success}20`,
+                                color: colorTokens.success,
                                 fontWeight: 700
                               }}
                             />
@@ -2023,11 +1900,11 @@ export default function NuevoCorteePage() {
                             startIcon={showDetails ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                             onClick={() => setShowDetails(!showDetails)}
                             sx={{
-                              borderColor: darkProTokens.roleAdmin,
-                              color: darkProTokens.roleAdmin,
+                              borderColor: colorTokens.brand,
+                              color: colorTokens.brand,
                               '&:hover': {
-                                borderColor: darkProTokens.roleAdmin,
-                                backgroundColor: `${darkProTokens.roleAdmin}20`
+                                borderColor: colorTokens.brand,
+                                backgroundColor: `${colorTokens.brand}20`
                               }
                             }}
                           >
@@ -2044,14 +1921,14 @@ export default function NuevoCorteePage() {
                               sx={{
                                 mb: 3,
                                 '& .MuiTab-root': {
-                                  color: darkProTokens.textSecondary,
+                                  color: colorTokens.textSecondary,
                                   fontWeight: 600,
                                   '&.Mui-selected': {
-                                    color: darkProTokens.primary
+                                    color: colorTokens.brand
                                   }
                                 },
                                 '& .MuiTabs-indicator': {
-                                  backgroundColor: darkProTokens.primary
+                                  backgroundColor: colorTokens.brand
                                 }
                               }}
                             >
@@ -2084,11 +1961,11 @@ export default function NuevoCorteePage() {
                             {/* TABLA DE TRANSACCIONES REALES POR TAB */}
                             {loadingDetails ? (
                               <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                                <CircularProgress sx={{ color: darkProTokens.roleAdmin }} />
+                                <CircularProgress sx={{ color: colorTokens.brand }} />
                               </Box>
                             ) : (
                               <TableContainer component={Paper} sx={{ 
-                                backgroundColor: darkProTokens.surfaceLevel4,
+                                backgroundColor: colorTokens.neutral300,
                                 borderRadius: 2,
                                 maxHeight: 600,
                                 overflow: 'auto'
@@ -2096,41 +1973,41 @@ export default function NuevoCorteePage() {
                                 <Table stickyHeader>
                                   <TableHead>
                                     <TableRow>
-                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
+                                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }}>
                                         #ID
                                       </TableCell>
-                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
+                                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }}>
                                         {selectedTab === 0 ? 'Producto' : selectedTab === 1 ? 'Concepto' : 'Membresía'}
                                       </TableCell>
-                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
+                                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                           <PersonIcon sx={{ fontSize: 16 }} />
                                           Cliente
                                         </Box>
                                       </TableCell>
                                       {selectedTab === 0 && (
-                                        <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
+                                        <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }}>
                                           Cant.
                                         </TableCell>
                                       )}
                                       {selectedTab === 2 && (
-                                        <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
+                                        <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }}>
                                           Duración
                                         </TableCell>
                                       )}
-                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
+                                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }}>
                                         Método de Pago
                                       </TableCell>
-                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }} align="right">
+                                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }} align="right">
                                         Monto
                                       </TableCell>
-                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
+                                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                           <ScheduleIcon sx={{ fontSize: 16 }} />
                                           Fecha y Hora
                                         </Box>
                                       </TableCell>
-                                      <TableCell sx={{ color: darkProTokens.textPrimary, fontWeight: 'bold', backgroundColor: darkProTokens.grayDark }}>
+                                      <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 'bold', backgroundColor: colorTokens.neutral400 }}>
                                         Estado
                                       </TableCell>
                                     </TableRow>
@@ -2144,18 +2021,18 @@ export default function NuevoCorteePage() {
                                         key={transaction.id}
                                         sx={{ 
                                           '&:nth-of-type(odd)': { 
-                                            backgroundColor: darkProTokens.surfaceLevel3 
+                                            backgroundColor: colorTokens.surfaceLevel3 
                                           },
                                           '&:hover': {
-                                            backgroundColor: `${darkProTokens.primary}10`
+                                            backgroundColor: `${colorTokens.brand}10`
                                           }
                                         }}
                                       >
-                                        <TableCell sx={{ color: darkProTokens.textSecondary, fontFamily: 'monospace' }}>
+                                        <TableCell sx={{ color: colorTokens.textSecondary, fontFamily: 'monospace' }}>
                                           #{transaction.id.slice(-8)}
                                         </TableCell>
                                         
-                                        <TableCell sx={{ color: darkProTokens.textPrimary }}>
+                                        <TableCell sx={{ color: colorTokens.textPrimary }}>
                                           <Box>
                                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                               {selectedTab === 0 
@@ -2171,28 +2048,28 @@ export default function NuevoCorteePage() {
                                                   size="small"
                                                   sx={{
                                                     ml: 1,
-                                                    backgroundColor: `${darkProTokens.info}20`,
-                                                    color: darkProTokens.info,
+                                                    backgroundColor: `${colorTokens.info}20`,
+                                                    color: colorTokens.info,
                                                     fontSize: '0.7rem'
                                                   }}
                                                 />
                                               )}
                                             </Typography>
                                             {transaction.notes && (
-                                              <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                                              <Typography variant="caption" sx={{ color: colorTokens.textDisabled }}>
                                                 {transaction.notes}
                                               </Typography>
                                             )}
                                           </Box>
                                         </TableCell>
                                         
-                                        <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                        <TableCell sx={{ color: colorTokens.textSecondary }}>
                                           <Box>
                                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                               {transaction.customer_name || 'Cliente General'}
                                             </Typography>
                                             {transaction.customer_phone && (
-                                              <Typography variant="caption" sx={{ color: darkProTokens.textDisabled }}>
+                                              <Typography variant="caption" sx={{ color: colorTokens.textDisabled }}>
                                                 📞 {transaction.customer_phone}
                                               </Typography>
                                             )}
@@ -2200,13 +2077,13 @@ export default function NuevoCorteePage() {
                                         </TableCell>
                                         
                                         {selectedTab === 0 && (
-                                          <TableCell sx={{ color: darkProTokens.textSecondary, textAlign: 'center' }}>
+                                          <TableCell sx={{ color: colorTokens.textSecondary, textAlign: 'center' }}>
                                             <Chip
                                               label={`${transaction.quantity || 1}x`}
                                               size="small"
                                               sx={{
-                                                backgroundColor: `${darkProTokens.info}20`,
-                                                color: darkProTokens.info,
+                                                backgroundColor: `${colorTokens.info}20`,
+                                                color: colorTokens.info,
                                                 fontWeight: 600
                                               }}
                                             />
@@ -2214,13 +2091,13 @@ export default function NuevoCorteePage() {
                                         )}
                                         
                                         {selectedTab === 2 && (
-                                          <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                          <TableCell sx={{ color: colorTokens.textSecondary }}>
                                             <Chip
                                               label={transaction.membership_duration || 'N/A'}
                                               size="small"
                                               sx={{
-                                                backgroundColor: `${darkProTokens.success}20`,
-                                                color: darkProTokens.success,
+                                                backgroundColor: `${colorTokens.success}20`,
+                                                color: colorTokens.success,
                                                 fontWeight: 600
                                               }}
                                             />
@@ -2240,7 +2117,7 @@ export default function NuevoCorteePage() {
                                         </TableCell>
                                         
                                         {/* ✅ CELDA DE MONTO CORREGIDA */}
-                                        <TableCell align="right" sx={{ color: darkProTokens.success, fontWeight: 'bold' }}>
+                                        <TableCell align="right" sx={{ color: colorTokens.success, fontWeight: 'bold' }}>
                                           <Box>
                                             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                               {formatPrice(transaction.amount)}
@@ -2249,7 +2126,7 @@ export default function NuevoCorteePage() {
                                             {/* ✅ COMISIÓN COMO INFORMACIÓN ADICIONAL */}
                                             {transaction.commission_amount && transaction.commission_amount > 0 && (
                                               <Typography variant="caption" sx={{ 
-                                                color: darkProTokens.warning,
+                                                color: colorTokens.warning,
                                                 display: 'block'
                                               }}>
                                                 {formatPrice(transaction.commission_amount)} comisión
@@ -2258,7 +2135,7 @@ export default function NuevoCorteePage() {
                                           </Box>
                                         </TableCell>
                                         
-                                        <TableCell sx={{ color: darkProTokens.textSecondary }}>
+                                        <TableCell sx={{ color: colorTokens.textSecondary }}>
                                           <Typography variant="body2">
                                             {formatDateTime(transaction.created_at)}
                                           </Typography>
@@ -2276,16 +2153,16 @@ export default function NuevoCorteePage() {
                                             sx={{
                                               backgroundColor: 
                                                 transaction.status === 'completed' || transaction.status === 'active' 
-                                                  ? `${darkProTokens.success}20` 
+                                                  ? `${colorTokens.success}20` 
                                                   : transaction.status === 'pending' 
-                                                    ? `${darkProTokens.warning}20`
-                                                    : `${darkProTokens.error}20`,
+                                                    ? `${colorTokens.warning}20`
+                                                    : `${colorTokens.danger}20`,
                                               color: 
                                                 transaction.status === 'completed' || transaction.status === 'active' 
-                                                  ? darkProTokens.success 
+                                                  ? colorTokens.success 
                                                   : transaction.status === 'pending' 
-                                                    ? darkProTokens.warning
-                                                    : darkProTokens.error,
+                                                    ? colorTokens.warning
+                                                    : colorTokens.danger,
                                               fontWeight: 600
                                             }}
                                           />
@@ -2302,7 +2179,7 @@ export default function NuevoCorteePage() {
                                           colSpan={selectedTab === 0 ? 8 : selectedTab === 2 ? 8 : 7} 
                                           sx={{ 
                                             textAlign: 'center', 
-                                            color: darkProTokens.textDisabled,
+                                            color: colorTokens.textDisabled,
                                             py: 4
                                           }}
                                         >
@@ -2311,7 +2188,7 @@ export default function NuevoCorteePage() {
                                               No hay transacciones de este tipo
                                             </Typography>
                                             <Typography variant="body2">
-                                              Para el día {formatDateLocal(selectedDate.toISOString().split('T')[0])}
+                                              Para el día {formatDateLong(selectedDate.toISOString().split('T')[0])}
                                             </Typography>
                                           </Box>
                                         </TableCell>
@@ -2335,11 +2212,11 @@ export default function NuevoCorteePage() {
                                 <Box sx={{ 
                                   mt: 3, 
                                   p: 3, 
-                                  backgroundColor: darkProTokens.surfaceLevel3, 
+                                  backgroundColor: colorTokens.surfaceLevel3, 
                                   borderRadius: 2,
-                                  border: `1px solid ${darkProTokens.grayMedium}`
+                                  border: `1px solid ${colorTokens.neutral500}`
                                 }}>
-                                  <Typography variant="h6" sx={{ color: darkProTokens.textPrimary, mb: 2 }}>
+                                  <Typography variant="h6" sx={{ color: colorTokens.textPrimary, mb: 2 }}>
                                     📊 Resumen de {
                                       selectedTab === 0 ? 'Punto de Venta' : 
                                       selectedTab === 1 ? 'Abonos' : 'Membresías'
@@ -2347,54 +2224,54 @@ export default function NuevoCorteePage() {
                                   </Typography>
                                   
                                   <Grid container spacing={2}>
-                                    <Grid size={12} sm={3}>
+                                    <Grid size={{ xs: 12, sm: 3 }}>
                                       <Box sx={{ textAlign: 'center' }}>
                                         <Typography variant="h5" sx={{ 
-                                          color: darkProTokens.primary, 
+                                          color: colorTokens.brand, 
                                           fontWeight: 'bold' 
                                         }}>
                                           {tabTransactions.length}
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                                           Transacciones
                                         </Typography>
                                       </Box>
                                     </Grid>
-                                    <Grid size={12} sm={3}>
+                                    <Grid size={{ xs: 12, sm: 3 }}>
                                       <Box sx={{ textAlign: 'center' }}>
                                         <Typography variant="h5" sx={{ 
-                                          color: darkProTokens.success, 
+                                          color: colorTokens.success, 
                                           fontWeight: 'bold' 
                                         }}>
                                           {formatPrice(tabTotal)}
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                                           Total Generado
                                         </Typography>
                                       </Box>
                                     </Grid>
-                                    <Grid size={12} sm={3}>
+                                    <Grid size={{ xs: 12, sm: 3 }}>
                                       <Box sx={{ textAlign: 'center' }}>
                                         <Typography variant="h5" sx={{ 
-                                          color: darkProTokens.info, 
+                                          color: colorTokens.info, 
                                           fontWeight: 'bold' 
                                         }}>
                                           {tabTransactions.length > 0 ? formatPrice(tabTotal / tabTransactions.length) : '$0.00'}
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                                           Promedio por Transacción
                                         </Typography>
                                       </Box>
                                     </Grid>
-                                    <Grid size={12} sm={3}>
+                                    <Grid size={{ xs: 12, sm: 3 }}>
                                       <Box sx={{ textAlign: 'center' }}>
                                         <Typography variant="h5" sx={{ 
-                                          color: darkProTokens.warning, 
+                                          color: colorTokens.warning, 
                                           fontWeight: 'bold' 
                                         }}>
                                           {formatPrice(tabCommissions)}
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: darkProTokens.textSecondary }}>
+                                        <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
                                           Total Comisiones
                                         </Typography>
                                       </Box>
@@ -2418,3 +2295,7 @@ export default function NuevoCorteePage() {
   );
 }
                 
+
+
+
+

@@ -3,118 +3,125 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET(req: NextRequest) {
   try {
-    console.log('🔍 Iniciando consulta de empleados...');
+    console.log('� Nueva lógica de API: Iniciando consulta de usuarios y empleados...');
     
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status'); // active, inactive, suspended
-    const position = searchParams.get('position');
-    const department = searchParams.get('department');
+    const statusFilter = searchParams.get('status');
+    const positionFilter = searchParams.get('position');
+    const departmentFilter = searchParams.get('department');
+    const roleFilter = searchParams.get('role');
 
-    // PRIMERA CONSULTA: Obtener empleados con filtros
-    let employeesQuery = supabaseAdmin
-      .from('employees')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    // Aplicar filtros opcionales
-    if (status) {
-      employeesQuery = employeesQuery.eq('status', status);
-    }
-    if (position) {
-      employeesQuery = employeesQuery.eq('position', position);
-    }
-    if (department) {
-      employeesQuery = employeesQuery.eq('department', department);
-    }
-
-    const { data: employees, error } = await employeesQuery;
-
-    if (error) {
-      console.error('❌ Error en query employees:', error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    console.log('📊 Empleados encontrados:', employees?.length || 0);
-    
-    if (!employees || employees.length === 0) {
-      return NextResponse.json({ 
-        employees: [], 
-        total: 0,
-        debug: 'No hay empleados en la tabla'
-      });
-    }
-
-    // SEGUNDA CONSULTA: Obtener datos básicos de Users por separado
-    const userIds = employees.map(emp => emp.user_id);
-    console.log('👥 User IDs a buscar:', userIds);
-
-    const { data: users, error: usersError } = await supabaseAdmin
+    // 1. Obtener solo usuarios que son 'admin' o 'empleado'.
+    let usersQuery = supabaseAdmin
       .from('Users')
-      .select('id, firstName, lastName, email, createdAt')
-      .in('id', userIds);
+      .select('id, firstName, lastName, email, createdAt, rol')
+      .in('rol', ['admin', 'empleado']) // <-- FILTRO CLAVE: Solo roles de equipo
+      .order('createdAt', { ascending: false });
+
+    // Si el frontend envía un filtro de rol específico ('admin' o 'empleado'), lo aplicamos.
+    if (roleFilter) {
+      usersQuery = usersQuery.eq('rol', roleFilter);
+    }
+
+    const { data: users, error: usersError } = await usersQuery;
 
     if (usersError) {
       console.error('❌ Error en query Users:', usersError);
       return NextResponse.json({ error: usersError.message }, { status: 400 });
     }
 
-    console.log('👤 Users encontrados:', users?.length || 0);
+    if (!users || users.length === 0) {
+      console.log('🤷 No se encontraron usuarios con los filtros aplicados.');
+      return NextResponse.json({ employees: [], total: 0 });
+    }
+    
+    console.log(`👤 Encontrados ${users.length} usuarios en la tabla 'Users'.`);
+    
+    // DEBUG: Ver qué usuarios y roles se están trayendo
+    console.log('🔍 DEBUG - Usuarios obtenidos:');
+    users.forEach((user, index) => {
+      console.log(`  ${index + 1}. ${user.firstName} ${user.lastName} - Email: ${user.email} - Rol: "${user.rol}" (tipo: ${typeof user.rol})`);
+    });
 
-    // TERCERA PASO: Combinar datos manualmente
-    const formattedEmployees = employees.map(emp => {
-      const user = users?.find(u => u.id === emp.user_id);
+    // 2. Obtener todos los registros de empleados correspondientes a esos usuarios.
+    const userIds = users.map(u => u.id);
+    const { data: employees, error: employeesError } = await supabaseAdmin
+      .from('employees')
+      .select('*')
+      .in('user_id', userIds);
+
+    if (employeesError) {
+      console.error('❌ Error en query employees:', employeesError);
+      return NextResponse.json({ error: employeesError.message }, { status: 400 });
+    }
+    
+    console.log(`� Encontrados ${employees?.length || 0} registros en la tabla 'employees'.`);
+
+    // 3. Crear un mapa de empleados para una búsqueda eficiente.
+    const employeesMap = new Map(employees?.map(emp => [emp.user_id, emp]));
+
+    // 4. Combinar datos de usuarios y empleados.
+    let combinedData = users.map(user => {
+      const employeeData = employeesMap.get(user.id);
       
-      if (!user) {
-        console.warn(`⚠️ No se encontró usuario para employee: ${emp.user_id}`);
-        return null;
-      }
-
       return {
-        id: emp.id,        // ✅ CORREGIDO: Usar el ID real del empleado
-        user_id: emp.user_id, // ✅ Mantener user_id como referencia separada
+        id: employeeData?.id ?? null, // ID de la tabla 'employees', puede ser null
+        user_id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: emp.phone,
-        position: emp.position,
-        department: emp.department,
-        status: emp.status,
-        salary: emp.salary,
-        hireDate: emp.hire_date,
-        profilePictureUrl: emp.profile_picture_url, // ✅ CORREGIDO: Tomamos de employees, no de Users
-        fingerprint: emp.fingerprint,
+        rol: user.rol as 'admin' | 'empleado',
+        phone: employeeData?.phone ?? null,
+        position: employeeData?.position ?? null,
+        department: employeeData?.department ?? null,
+        status: employeeData?.status ?? 'active', // Default a 'active' si no hay ficha
+        salary: employeeData?.salary ?? null,
+        hireDate: employeeData?.hire_date ?? null,
+        profilePictureUrl: employeeData?.profile_picture_url ?? null,
+        fingerprint: employeeData?.fingerprint ?? false,
         emergencyContact: {
-          name: emp.emergency_contact_name,
-          phone: emp.emergency_contact_phone,
-          relationship: emp.emergency_contact_relationship
+          name: employeeData?.emergency_contact_name ?? null,
+          phone: employeeData?.emergency_contact_phone ?? null,
+          relationship: employeeData?.emergency_contact_relationship ?? null,
         },
         address: {
-          street: emp.street,
-          number: emp.number,
-          neighborhood: emp.neighborhood,
-          city: emp.city,
-          state: emp.state,
-          postalCode: emp.postal_code
+          street: employeeData?.street ?? null,
+          number: employeeData?.number ?? null,
+          neighborhood: employeeData?.neighborhood ?? null,
+          city: employeeData?.city ?? null,
+          state: employeeData?.state ?? null,
+          postalCode: employeeData?.postal_code ?? null,
         },
-        birthDate: emp.birth_date,
-        gender: emp.gender,
-        maritalStatus: emp.marital_status,
-        createdAt: emp.created_at,
-        updatedAt: emp.updated_at,
-        createdBy: emp.created_by
+        birthDate: employeeData?.birth_date ?? null,
+        gender: employeeData?.gender ?? null,
+        maritalStatus: employeeData?.marital_status ?? null,
+        createdAt: user.createdAt,
+        updatedAt: employeeData?.updated_at ?? null,
+        createdBy: employeeData?.created_by ?? null,
+        hasEmployeeRecord: !!employeeData, // Booleano que indica si existe la ficha
       };
-    }).filter(Boolean);
+    });
 
-    console.log('✅ Empleados formateados:', formattedEmployees.length);
+    // 5. Aplicar filtros de estado, puesto y departamento en memoria.
+    if (statusFilter) {
+      combinedData = combinedData.filter(e => e.status === statusFilter);
+    }
+    if (positionFilter) {
+      combinedData = combinedData.filter(e => e.position === positionFilter);
+    }
+    if (departmentFilter) {
+      combinedData = combinedData.filter(e => e.department === departmentFilter);
+    }
+
+    console.log(`✅ Final: ${combinedData.length} registros después de combinar y filtrar.`);
 
     return NextResponse.json({ 
-      employees: formattedEmployees,
-      total: formattedEmployees.length,
-      debug: `${employees.length} empleados, ${users?.length} usuarios, foto desde employees.profile_picture_url`
+      employees: combinedData,
+      total: combinedData.length,
     });
 
   } catch (error) {
-    console.error('💥 Error general:', error);
+    console.error('💥 Error general en la API de empleados:', error);
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     
     return NextResponse.json(

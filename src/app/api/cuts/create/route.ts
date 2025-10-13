@@ -1,29 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-
-// ✅ IMPLEMENTAR LA MISMA LÓGICA QUE dateHelpers (SIN IMPORTAR)
-function toMexicoTimestamp(date: Date): string {
-  // Simular la función format con timeZone México
-  const mexicoTime = new Date(date.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-  
-  // Crear el timestamp con offset México (-06:00)
-  const year = mexicoTime.getFullYear();
-  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
-  const day = String(mexicoTime.getDate()).padStart(2, '0');
-  const hours = String(mexicoTime.getHours()).padStart(2, '0');
-  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
-  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
-  
-  // Formato: "2025-06-14T16:22:07-06:00" (hora México con offset)
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`;
-}
-
-// ✅ FUNCIÓN ALTERNATIVA PARA TIMESTAMP UTC CON HORA MÉXICO
-function getMexicoTimestampUTC(): string {
-  const now = new Date();
-  const mexicoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-  return mexicoTime.toISOString();
-}
+import { getMexicoDateTimeInfo } from '@/utils/dateUtils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -124,15 +101,16 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // ✅ USAR LÓGICA DE dateHelpers - TIMESTAMP CON OFFSET MÉXICO
+    // ✅ USAR FUNCIÓN CENTRALIZADA DE dateUtils
     const now = new Date();
-    const mexicoTimestamp = created_at_mexico || toMexicoTimestamp(now);
+    const mexicoInfo = getMexicoDateTimeInfo(now);
+    const mexicoTimestamp = created_at_mexico || mexicoInfo.isoString;
     
-    console.log('🇲🇽 Aplicando lógica de dateHelpers:', {
+    console.log('🇲🇽 Timestamp México (dateUtils):', {
       utc_actual: now.toISOString(),
       mexico_timestamp: mexicoTimestamp,
-      utc_input: new Date().toISOString(),
-      nota: 'Usando toMexicoTimestamp con offset -06:00'
+      mexico_date: mexicoInfo.date,
+      mexico_time: mexicoInfo.time
     });
     
     // 🔢 GENERAR NÚMERO DE CORTE
@@ -247,7 +225,7 @@ export async function POST(request: NextRequest) {
       cut: newCut
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Error en API create cut:', error);
     return NextResponse.json(
       { 

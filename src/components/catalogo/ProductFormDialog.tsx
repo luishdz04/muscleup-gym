@@ -1,3 +1,4 @@
+// src/components/catalogo/ProductFormDialog.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -17,12 +18,10 @@ import {
   FormControlLabel,
   Typography,
   Box,
-  Chip,
   InputAdornment,
   Alert,
   CircularProgress,
   Autocomplete,
-  Divider,
   Card,
   CardContent
 } from '@mui/material';
@@ -36,68 +35,15 @@ import {
   ViewStream as BarcodeIcon,
   Description as DescriptionIcon
 } from '@mui/icons-material';
+
+// ✅ IMPORTS ENTERPRISE v6.0
+import { colorTokens } from '@/theme';
+import { notify } from '@/utils/notifications';
+import { getCurrentTimestamp } from '@/utils/dateUtils';
 import { useSuppliers, useProducts } from '@/hooks/useCatalog';
 import { Product } from '@/services/catalogService';
 
-// ✅ AGREGAR ESTA INTERFAZ AQUÍ
-interface FormDataType {
-  name: string;
-  description: string;
-  sku: string;
-  barcode: string;
-  category: string;
-  subcategory: string;
-  brand: string;
-  cost_price: number;
-  sale_price: number;
-  profit_margin: number;
-  current_stock: number;
-  min_stock: number;
-  max_stock: number;
-  unit: string;
-  supplier_id: string;
-  location: string;
-  expiry_date: string | null; // ✅ ESTO ES LO CLAVE
-  is_active: boolean;
-  is_taxable: boolean;
-  tax_rate: number;
-}
-
-
-// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
-
-// 🎯 CATEGORÍAS PREDEFINIDAS
+// CATEGORÍAS Y UNIDADES PREDEFINIDAS
 const PRODUCT_CATEGORIES = [
   'Electrodomésticos',
   'Electrónicos',
@@ -115,7 +61,6 @@ const PRODUCT_CATEGORIES = [
   'Otros'
 ];
 
-// 🎯 UNIDADES PREDEFINIDAS
 const PRODUCT_UNITS = [
   'pieza',
   'kilogramo',
@@ -134,7 +79,7 @@ const PRODUCT_UNITS = [
   'bolsa'
 ];
 
-// 🎯 ESTADO INICIAL DEL FORMULARIO - CENTRALIZADO
+// ✅ ESTADO INICIAL - min_stock y max_stock con valores por defecto (no mostrados en UI)
 const INITIAL_FORM_STATE = {
   name: '',
   description: '',
@@ -146,18 +91,38 @@ const INITIAL_FORM_STATE = {
   cost_price: 0,
   sale_price: 0,
   profit_margin: 0,
-  current_stock: 0,
-  min_stock: 0,
-  max_stock: 1000,
+  min_stock: 0,        // ✅ Valor por defecto - no mostrado
+  max_stock: 1000,     // ✅ Valor por defecto - no mostrado
   unit: 'pieza',
   supplier_id: '',
   location: '',
-  expiry_date:  null, // ✅ Cambiar de '' a null
+  expiry_date: null as string | null,
   is_active: true,
   is_taxable: true,
   tax_rate: 16
 };
 
+interface FormDataType {
+  name: string;
+  description: string;
+  sku: string;
+  barcode: string;
+  category: string;
+  subcategory: string;
+  brand: string;
+  cost_price: number;
+  sale_price: number;
+  profit_margin: number;
+  min_stock: number;
+  max_stock: number;
+  unit: string;
+  supplier_id: string;
+  location: string;
+  expiry_date: string | null;
+  is_active: boolean;
+  is_taxable: boolean;
+  tax_rate: number;
+}
 
 interface ProductFormDialogProps {
   open: boolean;
@@ -173,7 +138,7 @@ export default function ProductFormDialog({
   onSave
 }: ProductFormDialogProps) {
   
-  // 🎯 HOOKS PARA DATOS
+  // HOOKS
   const { 
     suppliers, 
     loading: suppliersLoading 
@@ -187,12 +152,12 @@ export default function ProductFormDialog({
     updateProduct 
   } = useProducts();
 
-  // 🎯 ESTADO DEL FORMULARIO
-const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
+  // ESTADO
+  const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  // 🎯 EFECTOS - CARGAR DATOS DEL PRODUCTO SI EXISTE
+  // CARGAR DATOS DEL PRODUCTO
   useEffect(() => {
     if (product) {
       setFormData({
@@ -206,13 +171,12 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
         cost_price: product.cost_price || 0,
         sale_price: product.sale_price || 0,
         profit_margin: product.profit_margin || 0,
-        current_stock: product.current_stock || 0,
         min_stock: product.min_stock || 0,
         max_stock: product.max_stock || 1000,
         unit: product.unit || 'pieza',
         supplier_id: product.supplier_id || '',
         location: product.location || '',
-        expiry_date: product.expiry_date, // ✅ Sin || ''
+        expiry_date: product.expiry_date,
         is_active: product.is_active !== false,
         is_taxable: product.is_taxable !== false,
         tax_rate: product.tax_rate || 16
@@ -223,7 +187,7 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
     setErrors({});
   }, [product, open]);
 
-  // 🎯 CALCULAR MARGEN DE GANANCIA AUTOMÁTICAMENTE
+  // CALCULAR MARGEN AUTOMÁTICAMENTE
   useEffect(() => {
     if (formData.cost_price > 0 && formData.sale_price > 0) {
       const margin = ((formData.sale_price - formData.cost_price) / formData.cost_price) * 100;
@@ -231,7 +195,7 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
     }
   }, [formData.cost_price, formData.sale_price]);
 
-  // 🎯 VALIDACIONES
+  // VALIDACIONES
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -255,18 +219,6 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
       newErrors.sale_price = 'El precio de venta no puede ser menor al precio de costo';
     }
 
-    if (formData.current_stock < 0) {
-      newErrors.current_stock = 'El stock actual no puede ser negativo';
-    }
-
-    if (formData.min_stock < 0) {
-      newErrors.min_stock = 'El stock mínimo no puede ser negativo';
-    }
-
-    if (formData.max_stock <= formData.min_stock) {
-      newErrors.max_stock = 'El stock máximo debe ser mayor al stock mínimo';
-    }
-
     if (formData.sku && formData.sku.length < 3) {
       newErrors.sku = 'El SKU debe tener al menos 3 caracteres';
     }
@@ -279,7 +231,7 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
     return Object.keys(newErrors).length === 0;
   };
 
-  // 🎯 MANEJAR CAMBIOS EN EL FORMULARIO
+  // HANDLERS
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -287,16 +239,14 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
     }
   };
 
-  // 🎯 MANEJAR GUARDAR - CORREGIDO PARA USAR LOS HOOKS
   const handleSave = async () => {
     if (!validateForm()) return;
 
     setLoading(true);
     try {
-      // ✅ LIMPIAR DATOS ANTES DE ENVIAR
+      // ✅ DATOS LIMPIOS - min_stock y max_stock se envían con valores por defecto
       const cleanedData = {
         ...formData,
-        // Convertir cadenas vacías a undefined para campos opcionales
         sku: formData.sku.trim() || undefined,
         barcode: formData.barcode.trim() || undefined,
         description: formData.description.trim() || undefined,
@@ -304,29 +254,25 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
         brand: formData.brand.trim() || undefined,
         supplier_id: formData.supplier_id || undefined,
         location: formData.location.trim() || undefined,
-        expiry_date: formData.expiry_date, // ✅ Ya es string | null, no necesita conversión
+        expiry_date: formData.expiry_date
       };
 
       let result;
       
       if (product) {
-        // ✅ ACTUALIZAR PRODUCTO EXISTENTE
         result = await updateProduct(product.id, cleanedData);
       } else {
-        // ✅ CREAR NUEVO PRODUCTO  
         result = await createProduct(cleanedData);
       }
       
       if (result.success) {
-        onSave(); // Recargar la lista en el componente padre
-        onClose(); // Cerrar el diálogo
-      } else {
-        // El hook ya maneja las notificaciones de error
-        console.error('Error al guardar:', result.error);
+        onSave();
+        onClose();
       }
       
     } catch (error) {
       console.error('Error inesperado al guardar producto:', error);
+      notify.error('Error inesperado al guardar producto');
     } finally {
       setLoading(false);
     }
@@ -340,24 +286,24 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
       fullWidth
       PaperProps={{
         sx: {
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${darkProTokens.primary}30`,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `2px solid ${colorTokens.brand}30`,
           borderRadius: 4,
-          color: darkProTokens.textPrimary
+          color: colorTokens.textPrimary
         }
       }}
     >
       <DialogTitle 
         component="div"
         sx={{ 
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-          borderBottom: `1px solid ${darkProTokens.primary}30`,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral400})`,
+          borderBottom: `1px solid ${colorTokens.border}`,
           display: 'flex',
           alignItems: 'center',
           gap: 2
         }}
       >
-        <InventoryIcon sx={{ color: darkProTokens.primary }} />
+        <InventoryIcon sx={{ color: colorTokens.brand }} />
         <Typography variant="h6" fontWeight="bold">
           {product ? 'Editar Producto' : 'Nuevo Producto'}
         </Typography>
@@ -365,16 +311,16 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
 
       <DialogContent sx={{ p: 4 }}>
         <Grid container spacing={3}>
-          {/* 📋 INFORMACIÓN BÁSICA */}
+          {/* INFORMACIÓN BÁSICA */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -385,7 +331,7 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                 </Typography>
                 
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 8 }}>
+                  <Grid size={{ xs: 12, md: 7 }}>
                     <TextField
                       fullWidth
                       label="Nombre del Producto *"
@@ -395,20 +341,20 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                       helperText={errors.name}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
                   </Grid>
                   
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <TextField
                       fullWidth
                       label="Marca"
@@ -416,16 +362,56 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                       onChange={(e) => handleChange('brand', e.target.value)}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 2 }}>
+                    <Autocomplete
+                      freeSolo
+                      options={PRODUCT_UNITS}
+                      value={formData.unit}
+                      onChange={(_, newValue) => handleChange('unit', newValue || 'pieza')}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Unidad"
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              color: colorTokens.textPrimary,
+                              '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                              '&:hover fieldset': { borderColor: colorTokens.brand },
+                              '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                            },
+                            '& .MuiInputLabel-root': { 
+                              color: colorTokens.textSecondary,
+                              '&.Mui-focused': { color: colorTokens.brand }
+                            }
+                          }}
+                        />
+                      )}
+                      PaperComponent={({ children, ...props }) => (
+                        <Box
+                          {...props}
+                          sx={{
+                            background: colorTokens.surfaceLevel2,
+                            border: `1px solid ${colorTokens.brand}30`,
+                            borderRadius: 2,
+                            color: colorTokens.textPrimary
+                          }}
+                        >
+                          {children}
+                        </Box>
+                      )}
                     />
                   </Grid>
 
@@ -439,14 +425,14 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                       rows={3}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -456,16 +442,16 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
             </Card>
           </Grid>
 
-          {/* 🏷️ CÓDIGOS Y CATEGORÍAS */}
+          {/* CÓDIGOS Y CATEGORÍAS */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -487,20 +473,20 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <BarcodeIcon sx={{ color: darkProTokens.primary }} />
+                            <BarcodeIcon sx={{ color: colorTokens.brand }} />
                           </InputAdornment>
                         ),
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -514,14 +500,14 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                       onChange={(e) => handleChange('barcode', e.target.value)}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -541,14 +527,14 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                           helperText={errors.category}
                           sx={{
                             '& .MuiOutlinedInput-root': {
-                              color: darkProTokens.textPrimary,
-                              '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                              '&:hover fieldset': { borderColor: darkProTokens.primary },
-                              '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                              color: colorTokens.textPrimary,
+                              '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                              '&:hover fieldset': { borderColor: colorTokens.brand },
+                              '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                             },
                             '& .MuiInputLabel-root': { 
-                              color: darkProTokens.textSecondary,
-                              '&.Mui-focused': { color: darkProTokens.primary }
+                              color: colorTokens.textSecondary,
+                              '&.Mui-focused': { color: colorTokens.brand }
                             }
                           }}
                         />
@@ -557,10 +543,10 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                         <Box
                           {...props}
                           sx={{
-                            background: darkProTokens.surfaceLevel2,
-                            border: `1px solid ${darkProTokens.primary}30`,
+                            background: colorTokens.surfaceLevel2,
+                            border: `1px solid ${colorTokens.brand}30`,
                             borderRadius: 2,
-                            color: darkProTokens.textPrimary
+                            color: colorTokens.textPrimary
                           }}
                         >
                           {children}
@@ -577,14 +563,14 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                       onChange={(e) => handleChange('subcategory', e.target.value)}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -594,16 +580,16 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
             </Card>
           </Grid>
 
-          {/* 💰 PRECIOS Y COSTOS */}
+          {/* PRECIOS Y COSTOS */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -628,14 +614,14 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -655,14 +641,14 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -671,15 +657,15 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                   <Grid size={{ xs: 12 }}>
                     <Box sx={{ 
                       p: 2, 
-                      background: `${darkProTokens.success}10`,
-                      border: `1px solid ${darkProTokens.success}30`,
+                      background: `${colorTokens.success}10`,
+                      border: `1px solid ${colorTokens.success}30`,
                       borderRadius: 2,
                       textAlign: 'center'
                     }}>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: darkProTokens.success }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.success }}>
                         Margen de Ganancia: {formData.profit_margin.toFixed(2)}%
                       </Typography>
-                      <Typography variant="caption" sx={{ color: darkProTokens.textSecondary }}>
+                      <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
                         Ganancia por unidad: ${(formData.sale_price - formData.cost_price).toFixed(2)}
                       </Typography>
                     </Box>
@@ -693,16 +679,16 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                           onChange={(e) => handleChange('is_taxable', e.target.checked)}
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': {
-                              color: darkProTokens.primary,
+                              color: colorTokens.brand,
                             },
                             '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                              backgroundColor: darkProTokens.primary,
+                              backgroundColor: colorTokens.brand,
                             },
                           }}
                         />
                       }
                       label="Producto Gravado"
-                      sx={{ color: darkProTokens.textPrimary }}
+                      sx={{ color: colorTokens.textPrimary }}
                     />
                   </Grid>
 
@@ -721,14 +707,14 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                         }}
                         sx={{
                           '& .MuiOutlinedInput-root': {
-                            color: darkProTokens.textPrimary,
-                            '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                            '&:hover fieldset': { borderColor: darkProTokens.primary },
-                            '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                            color: colorTokens.textPrimary,
+                            '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                            '&:hover fieldset': { borderColor: colorTokens.brand },
+                            '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                           },
                           '& .MuiInputLabel-root': { 
-                            color: darkProTokens.textSecondary,
-                            '&.Mui-focused': { color: darkProTokens.primary }
+                            color: colorTokens.textSecondary,
+                            '&.Mui-focused': { color: colorTokens.brand }
                           }
                         }}
                       />
@@ -739,153 +725,16 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
             </Card>
           </Grid>
 
-          {/* 📦 INVENTARIO */}
-          <Grid size={{ xs: 12, md: 6 }}>
+          {/* PROVEEDOR Y OTROS */}
+          <Grid size={{ xs: 12 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}>
-                  <InventoryIcon />
-                  Control de Inventario
-                </Typography>
-                
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="Stock Actual"
-                      value={formData.current_stock}
-                      onChange={(e) => handleChange('current_stock', parseInt(e.target.value) || 0)}
-                      error={!!errors.current_stock}
-                      helperText={errors.current_stock || (product ? 'Solo lectura - usar ajuste de stock' : '')}
-                      disabled={!!product} // Solo lectura en edición
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
-                        },
-                        '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                    />
-                  </Grid>
-                  
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Autocomplete
-                      freeSolo
-                      options={PRODUCT_UNITS}
-                      value={formData.unit}
-                      onChange={(_, newValue) => handleChange('unit', newValue || 'pieza')}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Unidad de Medida"
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              color: darkProTokens.textPrimary,
-                              '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                              '&:hover fieldset': { borderColor: darkProTokens.primary },
-                              '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
-                            },
-                            '& .MuiInputLabel-root': { 
-                              color: darkProTokens.textSecondary,
-                              '&.Mui-focused': { color: darkProTokens.primary }
-                            }
-                          }}
-                        />
-                      )}
-                      PaperComponent={({ children, ...props }) => (
-                        <Box
-                          {...props}
-                          sx={{
-                            background: darkProTokens.surfaceLevel2,
-                            border: `1px solid ${darkProTokens.primary}30`,
-                            borderRadius: 2,
-                            color: darkProTokens.textPrimary
-                          }}
-                        >
-                          {children}
-                        </Box>
-                      )}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="Stock Mínimo"
-                      value={formData.min_stock}
-                      onChange={(e) => handleChange('min_stock', parseInt(e.target.value) || 0)}
-                      error={!!errors.min_stock}
-                      helperText={errors.min_stock || 'Nivel de alerta'}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
-                        },
-                        '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                    />
-                  </Grid>
-                  
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="Stock Máximo"
-                      value={formData.max_stock}
-                      onChange={(e) => handleChange('max_stock', parseInt(e.target.value) || 1000)}
-                      error={!!errors.max_stock}
-                      helperText={errors.max_stock || 'Capacidad máxima'}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
-                        },
-                        '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
-                        }
-                      }}
-                    />
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* 🏢 PROVEEDOR Y OTROS */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
-              borderRadius: 3
-            }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -896,11 +745,11 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                 </Typography>
                 
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 12 }}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <FormControl fullWidth>
                       <InputLabel sx={{ 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
+                        color: colorTokens.textSecondary,
+                        '&.Mui-focused': { color: colorTokens.brand }
                       }}>
                         Proveedor
                       </InputLabel>
@@ -910,23 +759,23 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                         onChange={(e) => handleChange('supplier_id', e.target.value)}
                         disabled={suppliersLoading}
                         sx={{
-                          color: darkProTokens.textPrimary,
+                          color: colorTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
+                            borderColor: `${colorTokens.brand}30`
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
+                            borderColor: colorTokens.brand
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
+                            borderColor: colorTokens.brand
                           }
                         }}
                         MenuProps={{
                           PaperProps: {
                             sx: {
-                              background: darkProTokens.surfaceLevel2,
-                              border: `1px solid ${darkProTokens.primary}30`,
-                              color: darkProTokens.textPrimary
+                              background: colorTokens.surfaceLevel2,
+                              border: `1px solid ${colorTokens.brand}30`,
+                              color: colorTokens.textPrimary
                             }
                           }
                         }}
@@ -943,46 +792,46 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                     </FormControl>
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 6 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <TextField
                       fullWidth
                       label="Ubicación/Anaquel"
                       value={formData.location}
                       onChange={(e) => handleChange('location', e.target.value)}
-                      placeholder="Ej: A1, Zona B, etc."
+                      placeholder="Ej: A1, Zona B"
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 6 }}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <TextField
                       fullWidth
                       type="date"
                       label="Fecha de Vencimiento"
-                      value={formData.expiry_date || ''} // ✅ Aquí SÍ convertir null a string vacía para el input
-                      onChange={(e) => handleChange('expiry_date', e.target.value || null)} // ✅ Convertir string vacía a null
+                      value={formData.expiry_date || ''}
+                      onChange={(e) => handleChange('expiry_date', e.target.value || null)}
                       InputLabelProps={{ shrink: true }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -996,25 +845,38 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
                           onChange={(e) => handleChange('is_active', e.target.checked)}
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': {
-                              color: darkProTokens.primary,
+                              color: colorTokens.brand,
                             },
                             '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                              backgroundColor: darkProTokens.primary,
+                              backgroundColor: colorTokens.brand,
                             },
                           }}
                         />
                       }
                       label="Producto Activo"
-                      sx={{ color: darkProTokens.textPrimary }}
+                      sx={{ color: colorTokens.textPrimary }}
                     />
                   </Grid>
+
+                  {/* ✅ MENSAJE INFORMATIVO PARA PRODUCTOS NUEVOS */}
+                  {!product && (
+                    <Grid size={{ xs: 12 }}>
+                      <Alert severity="info" sx={{ 
+                        backgroundColor: `${colorTokens.info}10`,
+                        border: `1px solid ${colorTokens.info}30`,
+                        borderRadius: 2
+                      }}>
+                        <strong>Gestión de Inventario:</strong> El producto se creará sin stock inicial. Para agregar inventario, dirígete al módulo de <strong>Inventario</strong> y registra un movimiento de entrada.
+                      </Alert>
+                    </Grid>
+                  )}
                 </Grid>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
-        {/* 🚨 ERRORES GENERALES */}
+        {/* ERRORES GENERALES */}
         {Object.keys(errors).length > 0 && (
           <Alert severity="error" sx={{ mt: 3 }}>
             Por favor, corrige los errores en el formulario antes de continuar.
@@ -1024,7 +886,7 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
 
       <DialogActions sx={{ 
         p: 3, 
-        borderTop: `1px solid ${darkProTokens.grayDark}`,
+        borderTop: `1px solid ${colorTokens.border}`,
         gap: 2
       }}>
         <Button
@@ -1032,8 +894,8 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
           disabled={loading}
           startIcon={<CloseIcon />}
           sx={{ 
-            color: darkProTokens.textSecondary,
-            borderColor: `${darkProTokens.textSecondary}60`,
+            color: colorTokens.textSecondary,
+            borderColor: `${colorTokens.textSecondary}60`,
             px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
           }}
         >
@@ -1045,17 +907,21 @@ const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
           startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
           variant="contained"
           sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-            color: darkProTokens.background,
+            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+            color: colorTokens.textOnBrand,
             fontWeight: 700,
             px: 4, py: 1.5, borderRadius: 3,
+            boxShadow: `0 4px 20px ${colorTokens.brand}40`,
             '&:hover': {
-              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+              background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
+              transform: 'translateY(-2px)',
+              boxShadow: `0 6px 25px ${colorTokens.brand}50`
             },
             '&:disabled': {
-              background: darkProTokens.primaryDisabled,
-              color: darkProTokens.textDisabled
-            }
+              background: colorTokens.neutral400,
+              color: colorTokens.textMuted
+            },
+            transition: 'all 0.3s ease'
           }}
         >
           {loading ? 'Guardando...' : (product ? 'Actualizar' : 'Crear')} Producto

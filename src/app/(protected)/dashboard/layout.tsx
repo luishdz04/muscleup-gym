@@ -14,8 +14,15 @@ export default async function ProtectedDashboardLayout({ children }: { children:
   
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+      // ✅ MÉTODO MODERNO: getAll (reemplaza get)
+      getAll() {
+        return cookieStore.getAll();
+      },
+      // ✅ MÉTODO MODERNO: setAll
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options);
+        });
       },
     },
   });

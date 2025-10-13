@@ -156,111 +156,60 @@ export async function PUT(
     
     // Si es cliente, actualizar datos adicionales en las tablas relacionadas
     if (updatedUser.rol === 'cliente') {
-      // Actualizar dirección
+      // ✅ UPSERT dirección - actualiza si existe, inserta si no existe (basado en userId UNIQUE)
       if (address) {
-        // Verificar si ya existe dirección
-        const { data: existingAddress } = await supabaseAdmin
+        const addressData = {
+          ...address,
+          userId: id
+        };
+        
+        const { error: addressError } = await supabaseAdmin
           .from('addresses')
-          .select('id')
-          .eq('userId', id)
-          .single();
+          .upsert([addressData], { 
+            onConflict: 'userId',
+            ignoreDuplicates: false // Actualizar si existe
+          });
         
-        if (existingAddress) {
-          // Actualizar
-          const { error: addressError } = await supabaseAdmin
-            .from('addresses')
-            .update(address)
-            .eq('userId', id);
-          
-          if (addressError) {
-            console.error("Error al actualizar dirección:", addressError);
-          }
-        } else {
-          // Insertar
-          const addressData = {
-            ...address,
-            userId: id
-          };
-          
-          const { error: addressError } = await supabaseAdmin
-            .from('addresses')
-            .insert([addressData]);
-          
-          if (addressError) {
-            console.error("Error al crear dirección:", addressError);
-          }
+        if (addressError) {
+          console.error("Error al guardar dirección:", addressError);
         }
       }
       
-      // Actualizar contacto de emergencia
+      // ✅ UPSERT contacto de emergencia
       if (emergency) {
-        // Verificar si ya existe contacto
-        const { data: existingEmergency } = await supabaseAdmin
-          .from('emergency_contacts')
-          .select('id')
-          .eq('userId', id)
-          .single();
+        const emergencyData = {
+          ...emergency,
+          userId: id
+        };
         
-        if (existingEmergency) {
-          // Actualizar
-          const { error: emergencyError } = await supabaseAdmin
-            .from('emergency_contacts')
-            .update(emergency)
-            .eq('userId', id);
-          
-          if (emergencyError) {
-            console.error("Error al actualizar contacto de emergencia:", emergencyError);
-          }
-        } else {
-          // Insertar
-          const emergencyData = {
-            ...emergency,
-            userId: id
-          };
-          
-          const { error: emergencyError } = await supabaseAdmin
-            .from('emergency_contacts')
-            .insert([emergencyData]);
-          
-          if (emergencyError) {
-            console.error("Error al crear contacto de emergencia:", emergencyError);
-          }
+        const { error: emergencyError } = await supabaseAdmin
+          .from('emergency_contacts')
+          .upsert([emergencyData], { 
+            onConflict: 'userId',
+            ignoreDuplicates: false
+          });
+        
+        if (emergencyError) {
+          console.error("Error al guardar contacto de emergencia:", emergencyError);
         }
       }
       
-      // Actualizar información de membresía
+      // ✅ UPSERT información de membresía
       if (membership) {
-        // Verificar si ya existe información
-        const { data: existingMembership } = await supabaseAdmin
-          .from('membership_info')
-          .select('id')
-          .eq('userId', id)
-          .single();
+        const membershipData = {
+          ...membership,
+          userId: id
+        };
         
-        if (existingMembership) {
-          // Actualizar
-          const { error: membershipError } = await supabaseAdmin
-            .from('membership_info')
-            .update(membership)
-            .eq('userId', id);
-          
-          if (membershipError) {
-            console.error("Error al actualizar información de membresía:", membershipError);
-          }
-        } else {
-          // Insertar
-          const membershipData = {
-            ...membership,
-            userId: id
-          };
-          
-          const { error: membershipError } = await supabaseAdmin
-            .from('membership_info')
-            .insert([membershipData]);
-          
-          if (membershipError) {
-            console.error("Error al crear información de membresía:", membershipError);
-          }
+        const { error: membershipError } = await supabaseAdmin
+          .from('membership_info')
+          .upsert([membershipData], { 
+            onConflict: 'userId',
+            ignoreDuplicates: false
+          });
+        
+        if (membershipError) {
+          console.error("Error al guardar información de membresía:", membershipError);
         }
       }
     }

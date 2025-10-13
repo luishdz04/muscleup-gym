@@ -203,6 +203,12 @@ export default function FingerprintRegistration({
   const initializationRef = useRef(false);
   const selectedFingerRef = useRef<number | null>(null);
   
+  // ✅ Refs para funciones que cambian frecuentemente (optimización)
+  const startSingleCaptureRef = useRef<((captureNumber: number) => void) | null>(null);
+  const processFinalTemplateRef = useRef<(() => void) | null>(null);
+  const stopTimersRef = useRef<(() => void) | null>(null);
+  const handleWebSocketMessageRef = useRef<((message: WebSocketMessage) => void) | null>(null);
+  
   // 🎯 CONFIGURACIÓN WEBSOCKET
   const WS_URL = 'ws://localhost:8085/ws/';
   const RECONNECT_INTERVAL = 3000;
@@ -229,6 +235,11 @@ export default function FingerprintRegistration({
       totalTimerRef.current = null;
     }
   }, []);
+  
+  // ✅ Actualizar ref cuando stopTimers cambie
+  useEffect(() => {
+    stopTimersRef.current = stopTimers;
+  }, [stopTimers]);
 
   // 🔄 REINICIAR PROCESO
   const resetProcess = useCallback(() => {
@@ -387,7 +398,9 @@ export default function FingerprintRegistration({
             setCurrentStep('ready');
             setMessage('¡Datos de huella listos! Presione "Confirmar" para agregar al formulario.');
             setIsProcessing(false);
-            stopTimers();
+            
+            // Usar ref en lugar de dependencia directa
+            stopTimersRef.current?.();
             
             return 100;
           }
@@ -397,7 +410,12 @@ export default function FingerprintRegistration({
       
       return currentResults;
     });
-  }, [totalTime, stopTimers]);
+  }, [totalTime]);
+  
+  // ✅ Actualizar ref cuando processFinalTemplate cambie
+  useEffect(() => {
+    processFinalTemplateRef.current = processFinalTemplate;
+  }, [processFinalTemplate]);
 
   const startSingleCapture = useCallback((captureNumber: number) => {
     console.log(`🚀 Iniciando captura ${captureNumber}/3`);
@@ -408,7 +426,7 @@ export default function FingerprintRegistration({
       setError('Error: Se perdió la selección del dedo');
       setIsProcessing(false);
       setCurrentStep('selection');
-      stopTimers();
+      stopTimersRef.current?.();
       return;
     }
     
@@ -418,13 +436,27 @@ export default function FingerprintRegistration({
     setProgress(0);
     setCaptureStartTime(Date.now());
     
+    // ✅ FORMATO CORRECTO COMPATIBLE CON EL SERVIDOR
     const captureCommand = {
-      action: 'capture_fingerprint',
-      userId: user.id,
-      userName: `${user.firstName} ${user.lastName}`,
-      fingerIndex: fingerIndex,
-      captureNumber: captureNumber,
-      timestamp: Date.now()
+      type: 'capture_fingerprint',
+      data: { // ✅ CRÍTICO: Anidar los datos para compatibilidad con el backend
+        userId: user.id,
+        userName: `${user.firstName} ${user.lastName}`,
+        fingerIndex: fingerIndex,
+        captureNumber: captureNumber,
+        options: {
+          timeout: 15000,
+          qualityThreshold: 60
+        },
+        client_info: {
+          client_id: `fingerprint_registration_${user.id}`,
+          location: 'Registro de Usuario',
+          timestamp: new Date().toISOString(),
+          mode: 'enrollment',
+          capture_number: captureNumber,
+          total_captures: 3
+        }
+      }
     };
     
     console.log(`📤 Enviando comando de captura ${captureNumber}/3:`, captureCommand);
@@ -440,9 +472,14 @@ export default function FingerprintRegistration({
       setError('Error de comunicación con el sensor');
       setIsProcessing(false);
       setCurrentStep('selection');
-      stopTimers();
+      stopTimersRef.current?.();
     }
-  }, [selectedFinger, user, stopTimers]);
+  }, [selectedFinger, user]);
+  
+  // ✅ Actualizar ref cuando startSingleCapture cambie
+  useEffect(() => {
+    startSingleCaptureRef.current = startSingleCapture;
+  }, [startSingleCapture]);
 
   const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
     console.log('📨 Mensaje recibido:', message);
@@ -474,34 +511,47 @@ export default function FingerprintRegistration({
         break;
         
       case 'capture_result':
-        if (message.data?.success && message.data?.data) {
+      case 'fingerprint_captured':  // ✅ Agregar caso alternativo del servidor
+        // ✅ Soportar múltiples formatos de respuesta
+        const captureData = message.data?.data || message.data;
+        const isSuccess = message.data?.success !== false && message.success !== false;
+        
+        if (isSuccess && captureData && (captureData.template || captureData.fingerprintData)) {
           const qualityMap: { [key: string]: number } = {
-            'excellent': 98, 'good': 85, 'fair': 75, 'poor': 50
+            'excellent': 98, 'very_good': 92, 'good': 85, 'fair': 75, 'poor': 50
           };
-          const qualityScore = qualityMap[message.data.data.quality] || 85;
+          
+          // ✅ Extraer datos del template (soportar múltiples formatos)
+          const templateData = captureData.fingerprintData || captureData;
+          const quality = templateData.quality || 'good';
+          const qualityScore = qualityMap[quality.toLowerCase()] || 85;
           
           const captureResult: CaptureResult = {
             success: true,
-            template: message.data.data.template,
-            templateSize: message.data.data.templateSize || 0,
-            quality: message.data.data.quality || 'good',
+            template: templateData.template || templateData.templateData,
+            templateSize: templateData.templateSize || templateData.size || 0,
+            quality: quality,
             qualityScore: qualityScore,
             captureTime: Date.now() - captureStartTime,
-            fingerprintId: message.data.data.fingerprintId || `fp_${Date.now()}`
+            fingerprintId: templateData.fingerprintId || templateData.id || `fp_${Date.now()}`
           };
           
-          console.log(`✅ Captura ${currentCapture + 1}/3 exitosa - Calidad: ${qualityScore}%`);
+          console.log(`✅ Captura ${currentCapture + 1}/3 exitosa - Calidad: ${qualityScore}%`, captureResult);
           
           setCaptureResults(prev => {
             const newResults = [...prev, captureResult];
             const capturesCompleted = newResults.length;
             
+            console.log(`📊 Capturas completadas: ${capturesCompleted}/3`);
+            
+            // ✅ Usar refs para evitar dependencias
             setTimeout(() => {
               if (capturesCompleted < 3) {
-                startSingleCapture(capturesCompleted + 1);
+                console.log(`🔄 Iniciando siguiente captura: ${capturesCompleted + 1}/3`);
+                startSingleCaptureRef.current?.(capturesCompleted + 1);
               } else {
-                console.log('🎊 Todas las capturas completadas');
-                processFinalTemplate();
+                console.log('🎊 Todas las capturas completadas - Procesando templates');
+                processFinalTemplateRef.current?.();
               }
             }, capturesCompleted < 3 ? 1500 : 500);
             
@@ -509,11 +559,18 @@ export default function FingerprintRegistration({
           });
           
         } else {
-          console.error('❌ Error en captura:', message.data?.error || message.error);
-          setError(message.data?.error || message.error || 'Error en captura de huella');
+          // ✅ LÓGICA DE ERROR MEJORADA
+          const errorPayload = message.data || message;
+          const errorMsg = errorPayload.error || (typeof errorPayload === 'string' ? errorPayload : 'Error en captura de huella');
+          
+          console.error('❌ Fallo en el proceso de captura reportado por el servidor.');
+          console.error('   Mensaje:', errorMsg);
+          console.error('   Payload completo:', message);
+
+          setError(`Fallo del sensor: ${errorMsg}`);
           setIsProcessing(false);
           setCurrentStep('selection');
-          stopTimers();
+          stopTimersRef.current?.();
         }
         break;
         
@@ -532,49 +589,46 @@ export default function FingerprintRegistration({
         setError(message.data?.error || message.message || message.error || 'Error de comunicación');
         setIsProcessing(false);
         setCurrentStep('selection');
-        stopTimers();
+        stopTimersRef.current?.();
         break;
         
       default:
         console.log('📝 Mensaje no manejado:', message.type);
     }
-  }, [captureStartTime, stopTimers, startSingleCapture, processFinalTemplate, currentCapture]);
+  }, [captureStartTime, currentCapture]);
+  
+  // ✅ Actualizar ref cuando handleWebSocketMessage cambie
+  useEffect(() => {
+    handleWebSocketMessageRef.current = handleWebSocketMessage;
+  }, [handleWebSocketMessage]);
 
-  // WebSocket connection logic
-  const attemptReconnect = useCallback(() => {
-    if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-      reconnectAttemptsRef.current++;
-      console.log(`🔄 Reintentando conexión (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`);
-      
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connectWebSocket();
-      }, RECONNECT_INTERVAL);
-    } else {
-      setWsError('No se pudo establecer conexión con el sensor biométrico');
-      setWsReconnecting(false);
-    }
-  }, []);
-
+  // ✅ FUNCIÓN SIMPLIFICADA PARA RECONECTAR MANUALMENTE (SOLO PARA BOTÓN DE ERROR)
   const connectWebSocket = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('⚠️ Ya hay una conexión WebSocket activa');
+      return;
+    }
+
     try {
-      console.log('🔌 Conectando a ZK Access Agent...');
+      console.log('🔌 Reconectando manualmente a ZK Access Agent...');
       setWsReconnecting(true);
       setWsError(null);
+      reconnectAttemptsRef.current = 0;
       
       wsRef.current = new WebSocket(WS_URL);
       
       wsRef.current.onopen = () => {
-        console.log('✅ WebSocket conectado al ZK Access Agent');
+        console.log('✅ WebSocket reconectado al ZK Access Agent');
         setWsConnected(true);
         setWsReconnecting(false);
         setWsError(null);
-        reconnectAttemptsRef.current = 0;
       };
       
       wsRef.current.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          handleWebSocketMessage(message);
+          // ✅ USAR REF en lugar de función directa
+          handleWebSocketMessageRef.current?.(message);
         } catch (error) {
           console.error('❌ Error parseando mensaje WebSocket:', error);
         }
@@ -585,11 +639,6 @@ export default function FingerprintRegistration({
         setWsConnected(false);
         setWsReconnecting(false);
         setDeviceConnected(false);
-        
-        if (event.code !== 1000 && initializationRef.current) {
-          setWsError('Conexión perdida con el sensor biométrico');
-          attemptReconnect();
-        }
       };
       
       wsRef.current.onerror = (error) => {
@@ -605,7 +654,7 @@ export default function FingerprintRegistration({
       setWsError('No se pudo conectar al sensor biométrico');
       setWsReconnecting(false);
     }
-  }, [handleWebSocketMessage, attemptReconnect]);
+  }, []); // ✅ SIN DEPENDENCIAS
 
   // ✅ FUNCIÓN DE INICIO SIMPLIFICADA
   const startMultipleCaptureProcess = useCallback(() => {
@@ -638,20 +687,132 @@ export default function FingerprintRegistration({
     
   }, [selectedFinger, wsConnected, deviceConnected, startTotalTimer, startSingleCapture]);
 
-  // useEffect para inicialización
+  // ✅ useEffect para inicialización - SIN DEPENDENCIA DE handleWebSocketMessage
   useEffect(() => {
     if (open && !initializationRef.current) {
       console.log('🚀 Inicializando modal de captura múltiple...');
       initializationRef.current = true;
       
-      resetProcess();
+      // ✅ Resetear sin usar la función (evitar dependencia)
+      setCurrentStep('selection');
+      setSelectedFinger(null);
+      selectedFingerRef.current = null;
+      setProgress(0);
+      setMessage('');
+      setError(null);
+      setCurrentCapture(0);
+      setCaptureResults([]);
+      setFinalQuality(null);
+      setCombinedTemplate(null);
+      setElapsedTime(0);
+      setTotalTime(0);
+      setIsProcessing(false);
       
-      const connectTimeout = setTimeout(() => {
-        connectWebSocket();
-      }, 100);
+      // ✅ Conectar INMEDIATAMENTE sin setTimeout
+      console.log('🔌 Conectando a ZK Access Agent...');
+      setWsReconnecting(true);
+      setWsError(null);
+      
+      wsRef.current = new WebSocket(WS_URL);
+      
+      wsRef.current.onopen = () => {
+        console.log('✅ WebSocket conectado al ZK Access Agent');
+        setWsConnected(true);
+        setWsReconnecting(false);
+        setWsError(null);
+        reconnectAttemptsRef.current = 0;
+      };
+      
+      wsRef.current.onmessage = (event) => {
+        try {
+          const message: WebSocketMessage = JSON.parse(event.data);
+          // ✅ USAR REF en lugar de función directa
+          handleWebSocketMessageRef.current?.(message);
+        } catch (error) {
+          console.error('❌ Error parseando mensaje WebSocket:', error);
+        }
+      };
+      
+      wsRef.current.onclose = (event) => {
+        console.log('🔌 WebSocket desconectado:', event.code, event.reason);
+        setWsConnected(false);
+        setWsReconnecting(false);
+        setDeviceConnected(false);
+        
+        if (event.code !== 1000 && initializationRef.current) {
+          setWsError('Conexión perdida con el sensor biométrico');
+          
+          // Intentar reconectar
+          if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttemptsRef.current++;
+            console.log(`🔄 Reintentando conexión (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`);
+            
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (initializationRef.current) {
+                console.log('🔌 Reconectando a ZK Access Agent...');
+                setWsReconnecting(true);
+                setWsError(null);
+                
+                const newWs = new WebSocket(WS_URL);
+                
+                // ✅ CRÍTICO: Configurar TODOS los event handlers para la reconexión
+                newWs.onopen = () => {
+                  console.log('✅ WebSocket reconectado exitosamente');
+                  setWsConnected(true);
+                  setWsReconnecting(false);
+                  setWsError(null);
+                  reconnectAttemptsRef.current = 0;
+                };
+                
+                newWs.onmessage = (ev) => {
+                  try {
+                    const msg: WebSocketMessage = JSON.parse(ev.data);
+                    // ✅ USAR REF en lugar de función directa
+                    handleWebSocketMessageRef.current?.(msg);
+                  } catch (err) {
+                    console.error('❌ Error parseando mensaje WebSocket:', err);
+                  }
+                };
+                
+                newWs.onclose = (ev) => {
+                  console.log('🔌 WebSocket reconectado se desconectó:', ev.code, ev.reason);
+                  setWsConnected(false);
+                  setWsReconnecting(false);
+                  setDeviceConnected(false);
+                };
+                
+                newWs.onerror = (err) => {
+                  console.error('❌ Error en WebSocket reconectado:', err);
+                  setWsError('Error de conexión con el sensor biométrico');
+                  setWsConnected(false);
+                  setWsReconnecting(false);
+                  setDeviceConnected(false);
+                };
+                
+                wsRef.current = newWs;
+              }
+            }, RECONNECT_INTERVAL);
+          } else {
+            setWsError('No se pudo establecer conexión con el sensor biométrico');
+            setWsReconnecting(false);
+          }
+        }
+      };
+      
+      wsRef.current.onerror = (error) => {
+        console.error('❌ Error WebSocket:', error);
+        setWsError('Error de conexión con el sensor biométrico');
+        setWsConnected(false);
+        setWsReconnecting(false);
+        setDeviceConnected(false);
+      };
       
       return () => {
-        clearTimeout(connectTimeout);
+        // Cleanup
+        if (wsRef.current) {
+          wsRef.current.close(1000, 'Component closing');
+          wsRef.current = null;
+        }
       };
     }
     
@@ -669,9 +830,17 @@ export default function FingerprintRegistration({
         reconnectTimeoutRef.current = null;
       }
       
-      stopTimers();
+      // Limpiar timers
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (totalTimerRef.current) {
+        clearInterval(totalTimerRef.current);
+        totalTimerRef.current = null;
+      }
     }
-  }, [open, resetProcess, connectWebSocket, stopTimers]);
+  }, [open]); // ✅ SOLO DEPENDE DE 'open'
 
   const getCurrentStepInfo = () => {
     return PROCESS_STEPS.find(step => step.id === currentStep) || PROCESS_STEPS[0];

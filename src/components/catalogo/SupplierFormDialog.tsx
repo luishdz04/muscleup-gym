@@ -1,4 +1,4 @@
-// 📁 src/app/dashboard/admin/catalogo/proveedores/components/SupplierFormDialog.tsx
+// src/components/catalogo/SupplierFormDialog.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -23,7 +23,6 @@ import {
   Alert,
   CircularProgress,
   Autocomplete,
-  Divider,
   Card,
   CardContent,
   Rating,
@@ -40,46 +39,16 @@ import {
   Language as WebsiteIcon,
   Home as AddressIcon,
   CreditCard as CreditIcon,
-  Star as StarIcon,
-  Category as CategoryIcon,
-  Schedule as DeliveryIcon
+  Star as StarIcon
 } from '@mui/icons-material';
-import { Supplier } from '@/services/catalogService'; // Mejora #3: Tipado fuerte
 
-// 🎨 DARK PRO SYSTEM - TOKENS CENTRALIZADOS
-const darkProTokens = {
-  background: '#000000',
-  surfaceLevel1: '#121212',
-  surfaceLevel2: '#1E1E1E',
-  surfaceLevel3: '#252525',
-  surfaceLevel4: '#2E2E2E',
-  grayDark: '#333333',
-  grayMedium: '#444444',
-  grayLight: '#555555',
-  grayMuted: '#777777',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#CCCCCC',
-  textDisabled: '#888888',
-  primary: '#FFCC00',
-  primaryHover: '#E6B800',
-  primaryActive: '#CCAA00',
-  primaryDisabled: 'rgba(255,204,0,0.3)',
-  success: '#388E3C',
-  successHover: '#2E7D32',
-  error: '#D32F2F',
-  errorHover: '#B71C1C',
-  warning: '#FFB300',
-  warningHover: '#E6A700',
-  info: '#1976D2',
-  infoHover: '#1565C0',
-  hoverOverlay: 'rgba(255,204,0,0.05)',
-  activeOverlay: 'rgba(255,204,0,0.1)',
-  borderDefault: '#333333',
-  borderHover: '#FFCC00',
-  borderActive: '#E6B800'
-};
+// ✅ IMPORTS ENTERPRISE v6.0
+import { colorTokens } from '@/theme';
+import { notify } from '@/utils/notifications';
+import { useSuppliers } from '@/hooks/useCatalog';
+import { Supplier } from '@/services/catalogService';
 
-// 🎯 CATEGORÍAS PREDEFINIDAS PARA PROVEEDORES
+// CATEGORÍAS PREDEFINIDAS PARA PROVEEDORES
 const SUPPLIER_CATEGORIES = [
   'Tecnología',
   'Alimentos y Bebidas',
@@ -98,7 +67,7 @@ const SUPPLIER_CATEGORIES = [
   'Otros'
 ];
 
-// 🎯 TÉRMINOS DE PAGO PREDEFINIDOS
+// TÉRMINOS DE PAGO PREDEFINIDOS
 const PAYMENT_TERMS = [
   'contado',
   '15 días',
@@ -109,7 +78,7 @@ const PAYMENT_TERMS = [
   'personalizado'
 ];
 
-// 🎯 ESTADOS DE MÉXICO
+// ESTADOS DE MÉXICO
 const MEXICO_STATES = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas',
   'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango', 'Guanajuato',
@@ -118,7 +87,7 @@ const MEXICO_STATES = [
   'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán', 'Zacatecas'
 ];
 
-// 🎯 ESTADO INICIAL DEL FORMULARIO - CENTRALIZADO (Mejora #1)
+// ESTADO INICIAL DEL FORMULARIO
 const INITIAL_FORM_STATE = {
   company_name: '',
   contact_person: '',
@@ -147,7 +116,7 @@ const INITIAL_FORM_STATE = {
 interface SupplierFormDialogProps {
   open: boolean;
   onClose: () => void;
-  supplier?: Supplier | null; // Mejora #3: Tipado fuerte
+  supplier?: Supplier | null;
   onSave: () => void;
 }
 
@@ -158,12 +127,15 @@ export default function SupplierFormDialog({
   onSave
 }: SupplierFormDialogProps) {
   
-  // 🎯 ESTADO DEL FORMULARIO - USA CONSTANTE CENTRALIZADA
+  // HOOKS
+  const { createSupplier, updateSupplier } = useSuppliers();
+  
+  // ESTADO
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  // 🎯 EFECTOS - SIMPLIFICADO (Mejora #1)
+  // CARGAR DATOS DEL PROVEEDOR
   useEffect(() => {
     if (supplier) {
       setFormData({
@@ -191,13 +163,12 @@ export default function SupplierFormDialog({
         notes: supplier.notes || ''
       });
     } else {
-      // ✅ REUTILIZA LA CONSTANTE EN LUGAR DE DUPLICAR
       setFormData(INITIAL_FORM_STATE);
     }
     setErrors({});
   }, [supplier, open]);
 
-  // 🎯 VALIDACIONES
+  // VALIDACIONES
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -241,7 +212,7 @@ export default function SupplierFormDialog({
     return Object.keys(newErrors).length === 0;
   };
 
-  // 🎯 VALIDADORES
+  // VALIDADORES
   const isValidEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -266,7 +237,7 @@ export default function SupplierFormDialog({
     }
   };
 
-  // 🎯 MANEJAR CAMBIOS EN EL FORMULARIO
+  // HANDLERS
   const handleChange = (field: string, value: any) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
@@ -286,42 +257,41 @@ export default function SupplierFormDialog({
     }
   };
 
-  // 🎯 MANEJAR GUARDAR
   const handleSave = async () => {
     if (!validateForm()) return;
 
     setLoading(true);
     try {
-      // Preparar datos con RFC en mayúsculas
       const dataToSave = {
         ...formData,
-        rfc: formData.rfc.toUpperCase()
+        rfc: formData.rfc.toUpperCase(),
+        email: formData.email.trim() || undefined,
+        phone: formData.phone.trim() || undefined,
+        whatsapp: formData.whatsapp.trim() || undefined,
+        website: formData.website.trim() || undefined,
+        contact_person: formData.contact_person.trim() || undefined,
+        notes: formData.notes.trim() || undefined
       };
 
-      // Aquí se llamaría al hook de proveedores para crear/actualizar
-      // const result = supplier 
-      //   ? await updateSupplier(supplier.id, dataToSave)
-      //   : await createSupplier(dataToSave);
+      let result;
       
-      // Simular operación
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (supplier) {
+        result = await updateSupplier(supplier.id, dataToSave);
+      } else {
+        result = await createSupplier(dataToSave);
+      }
       
-      onSave();
-      onClose();
+      if (result.success) {
+        onSave();
+        onClose();
+      }
+      
     } catch (error) {
-      console.error('Error al guardar proveedor:', error);
+      console.error('Error inesperado al guardar proveedor:', error);
+      notify.error('Error inesperado al guardar proveedor');
     } finally {
       setLoading(false);
     }
-  };
-
-  // 🎯 FORMATEAR TELÉFONO
-  const formatPhone = (phone: string): string => {
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length === 10) {
-      return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-    }
-    return phone;
   };
 
   return (
@@ -332,21 +302,24 @@ export default function SupplierFormDialog({
       fullWidth
       PaperProps={{
         sx: {
-          background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel2}, ${darkProTokens.surfaceLevel3})`,
-          border: `2px solid ${darkProTokens.primary}30`,
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+          border: `2px solid ${colorTokens.brand}30`,
           borderRadius: 4,
-          color: darkProTokens.textPrimary
+          color: colorTokens.textPrimary
         }
       }}
     >
-      <DialogTitle sx={{ 
-        background: `linear-gradient(135deg, ${darkProTokens.surfaceLevel3}, ${darkProTokens.surfaceLevel4})`,
-        borderBottom: `1px solid ${darkProTokens.primary}30`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2
-      }}>
-        <BusinessIcon sx={{ color: darkProTokens.primary }} />
+      <DialogTitle 
+        component="div"
+        sx={{ 
+          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.neutral400})`,
+          borderBottom: `1px solid ${colorTokens.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2
+        }}
+      >
+        <BusinessIcon sx={{ color: colorTokens.brand }} />
         <Typography variant="h6" fontWeight="bold">
           {supplier ? 'Editar Proveedor' : 'Nuevo Proveedor'}
         </Typography>
@@ -354,16 +327,16 @@ export default function SupplierFormDialog({
 
       <DialogContent sx={{ p: 4 }}>
         <Grid container spacing={3}>
-          {/* 🏢 INFORMACIÓN DE LA EMPRESA */}
+          {/* INFORMACIÓN DE LA EMPRESA */}
           <Grid size={{ xs: 12 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -384,14 +357,14 @@ export default function SupplierFormDialog({
                       helperText={errors.company_name}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -408,28 +381,25 @@ export default function SupplierFormDialog({
                       placeholder="XAXX010101000"
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
                   </Grid>
 
                   <Grid size={{ xs: 12 }}>
-                    {/* ✅ AUTOCOMPLETE SIMPLIFICADO (Mejora #2) */}
                     <Autocomplete
                       multiple
                       options={SUPPLIER_CATEGORIES}
-                      value={formData.categories} // ✅ Directo de formData
-                      onChange={(_, newValue) => {
-                        handleChange('categories', newValue); // ✅ Una sola fuente de verdad
-                      }}
+                      value={formData.categories}
+                      onChange={(_, newValue) => handleChange('categories', newValue)}
                       renderInput={(params) => (
                         <TextField
                           {...params}
@@ -437,14 +407,14 @@ export default function SupplierFormDialog({
                           placeholder="Selecciona las categorías del proveedor"
                           sx={{
                             '& .MuiOutlinedInput-root': {
-                              color: darkProTokens.textPrimary,
-                              '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                              '&:hover fieldset': { borderColor: darkProTokens.primary },
-                              '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                              color: colorTokens.textPrimary,
+                              '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                              '&:hover fieldset': { borderColor: colorTokens.brand },
+                              '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                             },
                             '& .MuiInputLabel-root': { 
-                              color: darkProTokens.textSecondary,
-                              '&.Mui-focused': { color: darkProTokens.primary }
+                              color: colorTokens.textSecondary,
+                              '&.Mui-focused': { color: colorTokens.brand }
                             }
                           }}
                         />
@@ -458,10 +428,10 @@ export default function SupplierFormDialog({
                               label={option}
                               {...chipProps}
                               sx={{
-                                backgroundColor: `${darkProTokens.info}20`,
-                                color: darkProTokens.info,
-                                border: `1px solid ${darkProTokens.info}40`,
-                                '& .MuiChip-deleteIcon': { color: darkProTokens.info }
+                                backgroundColor: `${colorTokens.info}20`,
+                                color: colorTokens.info,
+                                border: `1px solid ${colorTokens.info}40`,
+                                '& .MuiChip-deleteIcon': { color: colorTokens.info }
                               }}
                             />
                           );
@@ -471,10 +441,10 @@ export default function SupplierFormDialog({
                         <Box
                           {...props}
                           sx={{
-                            background: darkProTokens.surfaceLevel2,
-                            border: `1px solid ${darkProTokens.primary}30`,
+                            background: colorTokens.surfaceLevel2,
+                            border: `1px solid ${colorTokens.brand}30`,
                             borderRadius: 2,
-                            color: darkProTokens.textPrimary
+                            color: colorTokens.textPrimary
                           }}
                         >
                           {children}
@@ -487,16 +457,16 @@ export default function SupplierFormDialog({
             </Card>
           </Grid>
 
-          {/* 👤 INFORMACIÓN DE CONTACTO */}
+          {/* INFORMACIÓN DE CONTACTO */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -515,14 +485,14 @@ export default function SupplierFormDialog({
                       onChange={(e) => handleChange('contact_person', e.target.value)}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -540,20 +510,20 @@ export default function SupplierFormDialog({
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <EmailIcon sx={{ color: darkProTokens.primary }} />
+                            <EmailIcon sx={{ color: colorTokens.brand }} />
                           </InputAdornment>
                         ),
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -571,20 +541,20 @@ export default function SupplierFormDialog({
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <PhoneIcon sx={{ color: darkProTokens.success }} />
+                            <PhoneIcon sx={{ color: colorTokens.success }} />
                           </InputAdornment>
                         ),
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -602,20 +572,20 @@ export default function SupplierFormDialog({
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <WhatsAppIcon sx={{ color: darkProTokens.success }} />
+                            <WhatsAppIcon sx={{ color: colorTokens.success }} />
                           </InputAdornment>
                         ),
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -633,20 +603,20 @@ export default function SupplierFormDialog({
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <WebsiteIcon sx={{ color: darkProTokens.info }} />
+                            <WebsiteIcon sx={{ color: colorTokens.info }} />
                           </InputAdornment>
                         ),
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -656,16 +626,16 @@ export default function SupplierFormDialog({
             </Card>
           </Grid>
 
-          {/* 🏠 DIRECCIÓN */}
+          {/* DIRECCIÓN */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -685,14 +655,14 @@ export default function SupplierFormDialog({
                       placeholder="Av. Principal #123, Col. Centro"
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -706,14 +676,14 @@ export default function SupplierFormDialog({
                       onChange={(e) => handleChange('address.city', e.target.value)}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -730,14 +700,14 @@ export default function SupplierFormDialog({
                           label="Estado"
                           sx={{
                             '& .MuiOutlinedInput-root': {
-                              color: darkProTokens.textPrimary,
-                              '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                              '&:hover fieldset': { borderColor: darkProTokens.primary },
-                              '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                              color: colorTokens.textPrimary,
+                              '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                              '&:hover fieldset': { borderColor: colorTokens.brand },
+                              '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                             },
                             '& .MuiInputLabel-root': { 
-                              color: darkProTokens.textSecondary,
-                              '&.Mui-focused': { color: darkProTokens.primary }
+                              color: colorTokens.textSecondary,
+                              '&.Mui-focused': { color: colorTokens.brand }
                             }
                           }}
                         />
@@ -746,10 +716,10 @@ export default function SupplierFormDialog({
                         <Box
                           {...props}
                           sx={{
-                            background: darkProTokens.surfaceLevel2,
-                            border: `1px solid ${darkProTokens.primary}30`,
+                            background: colorTokens.surfaceLevel2,
+                            border: `1px solid ${colorTokens.brand}30`,
                             borderRadius: 2,
-                            color: darkProTokens.textPrimary
+                            color: colorTokens.textPrimary
                           }}
                         >
                           {children}
@@ -767,14 +737,14 @@ export default function SupplierFormDialog({
                       placeholder="12345"
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -789,14 +759,14 @@ export default function SupplierFormDialog({
                       disabled
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -806,16 +776,16 @@ export default function SupplierFormDialog({
             </Card>
           </Grid>
 
-          {/* 💳 TÉRMINOS COMERCIALES */}
+          {/* TÉRMINOS COMERCIALES */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -829,8 +799,8 @@ export default function SupplierFormDialog({
                   <Grid size={{ xs: 12 }}>
                     <FormControl fullWidth>
                       <InputLabel sx={{ 
-                        color: darkProTokens.textSecondary,
-                        '&.Mui-focused': { color: darkProTokens.primary }
+                        color: colorTokens.textSecondary,
+                        '&.Mui-focused': { color: colorTokens.brand }
                       }}>
                         Términos de Pago
                       </InputLabel>
@@ -839,23 +809,23 @@ export default function SupplierFormDialog({
                         label="Términos de Pago"
                         onChange={(e) => handleChange('payment_terms', e.target.value)}
                         sx={{
-                          color: darkProTokens.textPrimary,
+                          color: colorTokens.textPrimary,
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: `${darkProTokens.primary}30`
+                            borderColor: `${colorTokens.brand}30`
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
+                            borderColor: colorTokens.brand
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: darkProTokens.primary
+                            borderColor: colorTokens.brand
                           }
                         }}
                         MenuProps={{
                           PaperProps: {
                             sx: {
-                              background: darkProTokens.surfaceLevel2,
-                              border: `1px solid ${darkProTokens.primary}30`,
-                              color: darkProTokens.textPrimary
+                              background: colorTokens.surfaceLevel2,
+                              border: `1px solid ${colorTokens.brand}30`,
+                              color: colorTokens.textPrimary
                             }
                           }
                         }}
@@ -879,18 +849,18 @@ export default function SupplierFormDialog({
                       error={!!errors.credit_limit}
                       helperText={errors.credit_limit}
                       InputProps={{
-                        startAdornment: <Box sx={{ color: darkProTokens.textSecondary, mr: 1 }}>$</Box>,
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -905,20 +875,20 @@ export default function SupplierFormDialog({
                       onChange={(e) => handleChange('current_balance', parseFloat(e.target.value) || 0)}
                       error={!!errors.current_balance}
                       helperText={errors.current_balance || 'Saldo pendiente de pago'}
-                      disabled={!!supplier} // Solo lectura en edición
+                      disabled={!!supplier}
                       InputProps={{
-                        startAdornment: <Box sx={{ color: darkProTokens.textSecondary, mr: 1 }}>$</Box>,
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
                       }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -928,16 +898,16 @@ export default function SupplierFormDialog({
             </Card>
           </Grid>
 
-          {/* ⭐ CALIFICACIÓN Y OTROS */}
+          {/* CALIFICACIÓN Y OTROS */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
-              background: `${darkProTokens.surfaceLevel1}`, 
-              border: `1px solid ${darkProTokens.grayDark}`,
+              background: colorTokens.surfaceLevel1, 
+              border: `1px solid ${colorTokens.border}`,
               borderRadius: 3
             }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ 
-                  color: darkProTokens.primary, 
+                  color: colorTokens.brand, 
                   mb: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -950,7 +920,7 @@ export default function SupplierFormDialog({
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12 }}>
                     <Box>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
                         Calificación del Proveedor
                       </Typography>
                       <Box display="flex" alignItems="center" gap={2}>
@@ -960,14 +930,14 @@ export default function SupplierFormDialog({
                           size="large"
                           sx={{
                             '& .MuiRating-iconFilled': {
-                              color: darkProTokens.primary,
+                              color: colorTokens.brand,
                             },
                             '& .MuiRating-iconEmpty': {
-                              color: `${darkProTokens.primary}40`,
+                              color: `${colorTokens.brand}40`,
                             },
                           }}
                         />
-                        <Typography variant="body1" fontWeight="bold" sx={{ color: darkProTokens.textPrimary }}>
+                        <Typography variant="body1" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
                           {formData.rating}/5
                         </Typography>
                       </Box>
@@ -976,7 +946,7 @@ export default function SupplierFormDialog({
 
                   <Grid size={{ xs: 12 }}>
                     <Box>
-                      <Typography variant="body2" sx={{ color: darkProTokens.textSecondary, mb: 1 }}>
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
                         Tiempo de Entrega (días): {formData.delivery_time}
                       </Typography>
                       <Slider
@@ -992,21 +962,21 @@ export default function SupplierFormDialog({
                           { value: 30, label: '30' }
                         ]}
                         sx={{
-                          color: darkProTokens.primary,
+                          color: colorTokens.brand,
                           '& .MuiSlider-thumb': {
-                            backgroundColor: darkProTokens.primary,
+                            backgroundColor: colorTokens.brand,
                           },
                           '& .MuiSlider-track': {
-                            backgroundColor: darkProTokens.primary,
+                            backgroundColor: colorTokens.brand,
                           },
                           '& .MuiSlider-rail': {
-                            backgroundColor: `${darkProTokens.primary}30`,
+                            backgroundColor: `${colorTokens.brand}30`,
                           },
                           '& .MuiSlider-mark': {
-                            backgroundColor: darkProTokens.textSecondary,
+                            backgroundColor: colorTokens.textSecondary,
                           },
                           '& .MuiSlider-markLabel': {
-                            color: darkProTokens.textSecondary,
+                            color: colorTokens.textSecondary,
                           },
                         }}
                       />
@@ -1021,16 +991,16 @@ export default function SupplierFormDialog({
                           onChange={(e) => handleChange('is_active', e.target.checked)}
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': {
-                              color: darkProTokens.primary,
+                              color: colorTokens.brand,
                             },
                             '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                              backgroundColor: darkProTokens.primary,
+                              backgroundColor: colorTokens.brand,
                             },
                           }}
                         />
                       }
                       label="Proveedor Activo"
-                      sx={{ color: darkProTokens.textPrimary }}
+                      sx={{ color: colorTokens.textPrimary }}
                     />
                   </Grid>
 
@@ -1045,14 +1015,14 @@ export default function SupplierFormDialog({
                       placeholder="Información adicional sobre el proveedor..."
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          color: darkProTokens.textPrimary,
-                          '& fieldset': { borderColor: `${darkProTokens.primary}30` },
-                          '&:hover fieldset': { borderColor: darkProTokens.primary },
-                          '&.Mui-focused fieldset': { borderColor: darkProTokens.primary }
+                          color: colorTokens.textPrimary,
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
                         },
                         '& .MuiInputLabel-root': { 
-                          color: darkProTokens.textSecondary,
-                          '&.Mui-focused': { color: darkProTokens.primary }
+                          color: colorTokens.textSecondary,
+                          '&.Mui-focused': { color: colorTokens.brand }
                         }
                       }}
                     />
@@ -1063,7 +1033,7 @@ export default function SupplierFormDialog({
           </Grid>
         </Grid>
 
-        {/* 🚨 ERRORES GENERALES */}
+        {/* ERRORES GENERALES */}
         {Object.keys(errors).length > 0 && (
           <Alert severity="error" sx={{ mt: 3 }}>
             Por favor, corrige los errores en el formulario antes de continuar.
@@ -1073,7 +1043,7 @@ export default function SupplierFormDialog({
 
       <DialogActions sx={{ 
         p: 3, 
-        borderTop: `1px solid ${darkProTokens.grayDark}`,
+        borderTop: `1px solid ${colorTokens.border}`,
         gap: 2
       }}>
         <Button
@@ -1081,8 +1051,8 @@ export default function SupplierFormDialog({
           disabled={loading}
           startIcon={<CloseIcon />}
           sx={{ 
-            color: darkProTokens.textSecondary,
-            borderColor: `${darkProTokens.textSecondary}60`,
+            color: colorTokens.textSecondary,
+            borderColor: `${colorTokens.textSecondary}60`,
             px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
           }}
         >
@@ -1094,17 +1064,21 @@ export default function SupplierFormDialog({
           startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
           variant="contained"
           sx={{
-            background: `linear-gradient(135deg, ${darkProTokens.primary}, ${darkProTokens.primaryHover})`,
-            color: darkProTokens.background,
+            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+            color: colorTokens.textOnBrand,
             fontWeight: 700,
             px: 4, py: 1.5, borderRadius: 3,
+            boxShadow: `0 4px 20px ${colorTokens.brand}40`,
             '&:hover': {
-              background: `linear-gradient(135deg, ${darkProTokens.primaryHover}, ${darkProTokens.primaryActive})`,
+              background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
+              transform: 'translateY(-2px)',
+              boxShadow: `0 6px 25px ${colorTokens.brand}50`
             },
             '&:disabled': {
-              background: darkProTokens.primaryDisabled,
-              color: darkProTokens.textDisabled
-            }
+              background: colorTokens.neutral400,
+              color: colorTokens.textMuted
+            },
+            transition: 'all 0.3s ease'
           }}
         >
           {loading ? 'Guardando...' : (supplier ? 'Actualizar' : 'Crear')} Proveedor

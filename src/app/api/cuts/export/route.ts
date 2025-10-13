@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 export async function GET(request: NextRequest) {
   try {
@@ -103,13 +103,39 @@ export async function GET(request: NextRequest) {
       'Actualizado': new Date(cut.updated_at).toLocaleString('es-MX')
     })) || [];
 
-    // Crear libro de Excel
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Cortes');
+    // Crear workbook con ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'MuscleUp GYM';
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet('Cortes');
+
+    // Definir columnas
+    worksheet.columns = Object.keys(exportData[0] || {}).map(key => ({
+      header: key,
+      key: key.toLowerCase().replace(/\s+/g, '_'),
+      width: 15
+    }));
+
+    // Agregar datos
+    exportData.forEach(row => {
+      const rowData: any = {};
+      Object.entries(row).forEach(([key, value]) => {
+        rowData[key.toLowerCase().replace(/\s+/g, '_')] = value;
+      });
+      worksheet.addRow(rowData);
+    });
+
+    // Estilo para el header
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2ECC71' }
+    };
 
     // Generar buffer
-    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    const excelBuffer = await workbook.xlsx.writeBuffer();
 
     console.log('✅ Excel generado con', exportData.length, 'cortes');
 

@@ -113,7 +113,8 @@
     border-radius: 0.375rem 0 0 0 !important;
   }
   
-  .phoneInputContainer :global(.react-tel-input .selected-flag:hover, .react-tel-input .selected-flag:focus) {
+  .phoneInputContainer :global(.react-tel-input .selected-flag:hover),
+  .phoneInputContainer :global(.react-tel-input .selected-flag:focus) {
     background-color: rgba(55, 65, 81, 0.7) !important;
   }
   

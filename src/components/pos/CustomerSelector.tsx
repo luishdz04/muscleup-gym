@@ -73,6 +73,7 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
       lastName,
       email,
       whatsapp,
+      rol,
       membership_type,
       points_balance,
       total_purchases,
@@ -80,6 +81,17 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
     `,
     onError: handleError
   });
+
+  // ✅ FILTRAR SOLO CLIENTES (ROL "cliente") v7.0
+  const onlyClients = useMemo(() => {
+    const clients = customers.filter(user => user.rol === 'cliente');
+    console.log('👥 Filtrado de clientes:', {
+      total_usuarios: customers.length,
+      solo_clientes: clients.length,
+      filtrados: customers.length - clients.length
+    });
+    return clients;
+  }, [customers]);
 
   // ✅ FORMATEAR PRECIO ESTABLE v7.0 - ANTES DEL CONDITIONAL RETURN
   const formatPrice = useCallback((price: number) => {
@@ -103,16 +115,16 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
 
   // ✅ FILTRAR CLIENTES OPTIMIZADO v7.0 - ANTES DEL CONDITIONAL RETURN
   const filteredCustomers = useMemo(() => {
-    if (!searchTerm.trim()) return customers;
+    if (!searchTerm.trim()) return onlyClients;
     
     const searchLower = searchTerm.toLowerCase();
-    return customers.filter(customer => 
+    return onlyClients.filter(customer => 
       customer.firstName.toLowerCase().includes(searchLower) ||
       (customer.lastName && customer.lastName.toLowerCase().includes(searchLower)) ||
       (customer.email && customer.email.toLowerCase().includes(searchLower)) ||
       (customer.whatsapp && customer.whatsapp.includes(searchTerm))
     );
-  }, [customers, searchTerm]);
+  }, [onlyClients, searchTerm]);
 
   // ✅ SSR SAFETY v7.0 - DESPUÉS DE TODOS LOS HOOKS
   if (!hydrated) {
@@ -155,7 +167,7 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
         Seleccionar Cliente
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
           <Chip
-            label={`${stats.total} clientes`}
+            label={`${onlyClients.length} clientes`}
             size="small"
             sx={{
               backgroundColor: 'rgba(0,0,0,0.2)',
