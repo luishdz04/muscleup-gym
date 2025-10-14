@@ -990,8 +990,8 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     switch (step) {
       case 0:
         return (
-          <Box sx={{ mt: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+          <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 2, sm: 2.5, md: 3 } }}>
               <Box sx={{ position: 'relative' }}>
                 <Avatar
                   src={
@@ -1002,23 +1002,24 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                         : undefined
                   }
                   sx={{
-                    width: 120,
-                    height: 120,
+                    width: { xs: 80, sm: 100, md: 120 },
+                    height: { xs: 80, sm: 100, md: 120 },
                     bgcolor: colorTokens.brand,
-                    fontSize: '2rem',
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
                     fontWeight: 700,
                     border: `4px solid ${colorTokens.brand}40`
                   }}
                 >
                   {formData.firstName?.charAt(0)}{formData.lastName?.charAt(0)}
                 </Avatar>
-                
+
                 <IconButton
                   component="label"
+                  size={isMobile ? "small" : "medium"}
                   sx={{
                     position: 'absolute',
-                    bottom: -8,
-                    right: 8,
+                    bottom: { xs: -4, sm: -6, md: -8 },
+                    right: { xs: 4, sm: 6, md: 8 },
                     bgcolor: colorTokens.brand,
                     color: colorTokens.textOnBrand,
                     '&:hover': {
@@ -1026,7 +1027,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     }
                   }}
                 >
-                  <PhotoCameraIcon />
+                  <PhotoCameraIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem', md: '1.4rem' } }} />
                   <input
                     type="file"
                     hidden
@@ -1034,14 +1035,15 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                     onChange={handleFileChange('profilePicture')}
                   />
                 </IconButton>
-                
+
                 {hasExistingProfilePicture && !profilePicture && (
                   <IconButton
                     onClick={() => handleDeleteExistingFile('profilePicture')}
+                    size={isMobile ? "small" : "medium"}
                     sx={{
                       position: 'absolute',
-                      bottom: -8,
-                      left: 8,
+                      bottom: { xs: -4, sm: -6, md: -8 },
+                      left: { xs: 4, sm: 6, md: 8 },
                       bgcolor: colorTokens.danger,
                       color: colorTokens.neutral1200,
                       '&:hover': {
@@ -1049,7 +1051,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
                       }
                     }}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem', md: '1.4rem' } }} />
                   </IconButton>
                 )}
               </Box>
@@ -1437,16 +1439,17 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
           return renderStepContent(steps.length - 1);
         }
         return (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.warning, 
-              fontWeight: 700, 
-              mb: 3,
+          <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
+            <Typography variant="h6" sx={{
+              color: colorTokens.warning,
+              fontWeight: 700,
+              mb: { xs: 2, sm: 2.5, md: 3 },
+              fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.25rem' },
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: { xs: 0.75, sm: 1 }
             }}>
-              <LocationOnIcon />
+              <LocationOnIcon sx={{ fontSize: { xs: '1.3rem', sm: '1.4rem', md: '1.5rem' } }} />
               Información de Dirección
             </Typography>
             
@@ -1573,16 +1576,17 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
           return renderStepContent(steps.length - 1);
         }
         return (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.danger, 
-              fontWeight: 700, 
-              mb: 3,
+          <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
+            <Typography variant="h6" sx={{
+              color: colorTokens.danger,
+              fontWeight: 700,
+              mb: { xs: 2, sm: 2.5, md: 3 },
+              fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.25rem' },
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: { xs: 0.75, sm: 1 }
             }}>
-              <LocalHospitalIcon />
+              <LocalHospitalIcon sx={{ fontSize: { xs: '1.3rem', sm: '1.4rem', md: '1.5rem' } }} />
               Contacto de Emergencia
             </Typography>
             
@@ -1678,16 +1682,17 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
           return renderStepContent(steps.length - 1);
         }
         return (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" sx={{ 
-              color: '#9C27B0', 
-              fontWeight: 700, 
-              mb: 3,
+          <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
+            <Typography variant="h6" sx={{
+              color: '#9C27B0',
+              fontWeight: 700,
+              mb: { xs: 2, sm: 2.5, md: 3 },
+              fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.25rem' },
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: { xs: 0.75, sm: 1 }
             }}>
-              <FitnessCenterIcon />
+              <FitnessCenterIcon sx={{ fontSize: { xs: '1.3rem', sm: '1.4rem', md: '1.5rem' } }} />
               Información de Membresía
             </Typography>
             
@@ -1767,16 +1772,17 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
 
       default:
         return (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.info, 
-              fontWeight: 700, 
-              mb: 3,
+          <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
+            <Typography variant="h6" sx={{
+              color: colorTokens.info,
+              fontWeight: 700,
+              mb: { xs: 2, sm: 2.5, md: 3 },
+              fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.25rem' },
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: { xs: 0.75, sm: 1 }
             }}>
-              <AssignmentIcon />
+              <AssignmentIcon sx={{ fontSize: { xs: '1.3rem', sm: '1.4rem', md: '1.5rem' } }} />
               Archivos y Documentos
             </Typography>
             
@@ -2061,14 +2067,16 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
       onClose={handleClose}
       maxWidth="lg"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
           background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
           backdropFilter: 'blur(20px)',
           border: `1px solid ${colorTokens.neutral500}`,
-          borderRadius: 3,
+          borderRadius: { xs: 0, sm: 3 },
           color: colorTokens.neutral1200,
-          maxHeight: '95vh'
+          maxHeight: { xs: '100vh', sm: '95vh' },
+          m: { xs: 0, sm: 2 }
         }
       }}
     >
@@ -2076,115 +2084,140 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexDirection: { xs: 'column', sm: 'row' },
         borderBottom: `1px solid ${colorTokens.neutral500}`,
         bgcolor: `${colorTokens.brand}15`,
-        p: 3
+        p: { xs: 2, sm: 2.5, md: 3 },
+        gap: { xs: 2, sm: 0 }
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <RocketLaunchIcon sx={{ color: colorTokens.brand, fontSize: 32 }} />
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.neutral1200 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', sm: 'auto' } }}>
+          <RocketLaunchIcon sx={{ color: colorTokens.brand, fontSize: { xs: 28, sm: 30, md: 32 } }} />
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{
+              fontWeight: 700,
+              color: colorTokens.neutral1200,
+              fontSize: { xs: '1.25rem', sm: '1.4rem', md: '1.5rem' }
+            }}>
               {user ? 'Editar Usuario' : 'Nuevo Usuario'}
             </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
+            <Typography variant="body2" sx={{
+              color: colorTokens.neutral900,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
               {user ? `Modificando: ${user.firstName} ${user.lastName}` : 'Creando nuevo perfil de usuario'}
             </Typography>
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, flexWrap: 'wrap', justifyContent: { xs: 'flex-end', sm: 'flex-start' } }}>
           {hasChanges && (
             <Chip
-              icon={<UpdateIcon />}
-              label="Cambios pendientes"
+              icon={<UpdateIcon sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }} />}
+              label={<Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Cambios pendientes</Box>}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.warning}20`,
                 color: colorTokens.warning,
                 border: `1px solid ${colorTokens.warning}40`,
-                fontWeight: 600
+                fontWeight: 600,
+                height: { xs: '24px', sm: '26px' },
+                fontSize: { xs: '0.7rem', sm: '0.8rem' },
+                '& .MuiChip-label': { px: { xs: 0.5, sm: 1 } }
               }}
             />
           )}
-          
+
           {hasExistingProfilePicture && (
             <Chip
-              icon={<PhotoCameraIcon />}
+              icon={<PhotoCameraIcon sx={{ fontSize: { xs: '0.85rem', sm: '0.95rem' } }} />}
               label="Foto"
               size="small"
               sx={{
                 bgcolor: `${colorTokens.success}20`,
                 color: colorTokens.success,
-                border: `1px solid ${colorTokens.success}40`
+                border: `1px solid ${colorTokens.success}40`,
+                height: { xs: '22px', sm: '24px' },
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                '& .MuiChip-label': { px: { xs: 0.5, sm: 0.75 } }
               }}
             />
           )}
-          
+
           {hasExistingSignature && (
             <Chip
-              icon={<AssignmentIcon />}
+              icon={<AssignmentIcon sx={{ fontSize: { xs: '0.85rem', sm: '0.95rem' } }} />}
               label="Firma"
               size="small"
               sx={{
                 bgcolor: `${colorTokens.success}20`,
                 color: colorTokens.success,
-                border: `1px solid ${colorTokens.success}40`
+                border: `1px solid ${colorTokens.success}40`,
+                height: { xs: '22px', sm: '24px' },
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                '& .MuiChip-label': { px: { xs: 0.5, sm: 0.75 } }
               }}
             />
           )}
-          
+
           {hasExistingContract && (
             <Chip
-              icon={<DescriptionIcon />}
+              icon={<DescriptionIcon sx={{ fontSize: { xs: '0.85rem', sm: '0.95rem' } }} />}
               label="PDF"
               size="small"
               sx={{
                 bgcolor: `${colorTokens.success}20`,
                 color: colorTokens.success,
-                border: `1px solid ${colorTokens.success}40`
+                border: `1px solid ${colorTokens.success}40`,
+                height: { xs: '22px', sm: '24px' },
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                '& .MuiChip-label': { px: { xs: 0.5, sm: 0.75 } }
               }}
             />
           )}
-          
-          <IconButton 
+
+          <IconButton
             onClick={handleClose}
-            sx={{ 
+            size={isMobile ? "small" : "medium"}
+            sx={{
               color: colorTokens.neutral900,
-              '&:hover': { 
+              '&:hover': {
                 color: colorTokens.neutral1200,
                 bgcolor: `${colorTokens.brand}20`
               }
             }}
           >
-            <CloseIcon />
+            <CloseIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.4rem' } }} />
           </IconButton>
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 0 }}>
-        <Box sx={{ p: 3 }}>
-          <Stepper 
-            activeStep={activeStep} 
+      <DialogContent sx={{ p: 0, maxWidth: '100%', overflowX: 'hidden' }}>
+        <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+          <Stepper
+            activeStep={activeStep}
             orientation={isMobile ? "vertical" : "horizontal"}
             sx={{
-              '& .MuiStepLabel-label': { 
+              '& .MuiStepLabel-label': {
                 color: colorTokens.neutral900,
-                '&.Mui-active': { 
+                fontSize: { xs: '0.8rem', sm: '0.875rem', md: '0.95rem' },
+                '&.Mui-active': {
                   color: colorTokens.brand,
-                  fontWeight: 600 
+                  fontWeight: 600
                 },
-                '&.Mui-completed': { 
+                '&.Mui-completed': {
                   color: colorTokens.success,
-                  fontWeight: 600 
+                  fontWeight: 600
                 }
               },
               '& .MuiStepIcon-root': {
                 color: colorTokens.neutral400,
-                '&.Mui-active': { 
+                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                '&.Mui-active': {
                   color: colorTokens.brand,
                   filter: `drop-shadow(0 0 8px ${colorTokens.brand}60)`
                 },
-                '&.Mui-completed': { 
+                '&.Mui-completed': {
                   color: colorTokens.success,
                   filter: `drop-shadow(0 0 8px ${colorTokens.success}60)`
                 }
@@ -2204,20 +2237,22 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
           </Stepper>
 
           {!isMobile && (
-            <Box sx={{ mt: 4 }}>
+            <Box sx={{ mt: { xs: 2, sm: 3, md: 4 } }}>
               {renderStepContent(activeStep)}
             </Box>
           )}
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ 
-        p: 3, 
+      <DialogActions sx={{
+        p: { xs: 2, sm: 2.5, md: 3 },
         borderTop: `1px solid ${colorTokens.neutral500}`,
         bgcolor: colorTokens.neutral100,
         display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        gap: { xs: 2, sm: 0 }
       }}>
         <Box>
           {!isMobile && (
@@ -2258,21 +2293,24 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
           )}
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, alignItems: 'center', width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'stretch', sm: 'flex-start' } }}>
           <Button
             onClick={handleClose}
             disabled={loading}
-            sx={{ 
+            sx={{
               color: colorTokens.neutral900,
-              '&:hover': { 
-                color: colorTokens.neutral1200, 
-                bgcolor: `${colorTokens.brand}20` 
+              fontSize: { xs: '0.85rem', sm: '0.9rem' },
+              px: { xs: 2, sm: 2.5 },
+              flex: { xs: 1, sm: 'none' },
+              '&:hover': {
+                color: colorTokens.neutral1200,
+                bgcolor: `${colorTokens.brand}20`
               }
             }}
           >
             Cancelar
           </Button>
-          
+
           <Button
             variant="contained"
             onClick={handleSubmit}
@@ -2281,17 +2319,20 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
               loading || fileUploading ? (
                 <CircularProgress size={20} sx={{ color: colorTokens.neutral1200 }} />
               ) : (
-                <SaveIcon />
+                <SaveIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
               )
             }
             sx={{
               background: `linear-gradient(135deg, ${colorTokens.success}, #2E7D32)`,
               color: colorTokens.neutral1200,
               fontWeight: 600,
-              px: 3,
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1, sm: 1.25 },
               borderRadius: 2,
               boxShadow: `0 4px 20px ${colorTokens.success}40`,
-              minWidth: '180px',
+              minWidth: { xs: 'auto', sm: '180px' },
+              flex: { xs: 2, sm: 'none' },
+              fontSize: { xs: '0.85rem', sm: '0.95rem' },
               '&:hover': {
                 background: `linear-gradient(135deg, #2E7D32, ${colorTokens.success})`,
                 transform: 'translateY(-2px)',
@@ -2305,12 +2346,17 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
               }
             }}
           >
-            {loading || fileUploading
-              ? 'Guardando...'
-              : user 
-                ? 'Actualizar Usuario'
-                : 'Crear Usuario'
-            }
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {loading || fileUploading
+                ? 'Guardando...'
+                : user
+                  ? 'Actualizar Usuario'
+                  : 'Crear Usuario'
+              }
+            </Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+              {loading || fileUploading ? 'Guardando...' : 'Guardar'}
+            </Box>
           </Button>
         </Box>
       </DialogActions>
