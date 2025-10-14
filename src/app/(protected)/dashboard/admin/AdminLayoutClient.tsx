@@ -134,21 +134,30 @@ import BackupIcon from '@mui/icons-material/Backup';
 import SystemUpdateIcon from '@mui/icons-material/SystemUpdate';
 
 const drawerWidth = 290;
+const mobileDrawerWidth = 280;
 
 // 🎨 ESTILOS PERSONALIZADOS CON THEME CENTRALIZADO v7.0
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
   flexGrow: 1,
-  padding: theme.spacing(3),
+  padding: theme.spacing(2), // Reducido para móviles
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(3),
+  },
   transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  marginLeft: `-${drawerWidth}px`,
+  // En móvil NO hay margin left
+  marginLeft: 0,
+  // En desktop SÍ hay margin left cuando está cerrado
+  [theme.breakpoints.up('lg')]: {
+    marginLeft: open ? 0 : `-${drawerWidth}px`,
+  },
   backgroundColor: colorTokens.neutral0,
   backgroundImage: `
-    radial-gradient(circle at 25px 25px, ${colorTokens.brand}18 2%, transparent 0%), 
+    radial-gradient(circle at 25px 25px, ${colorTokens.brand}18 2%, transparent 0%),
     radial-gradient(circle at 75px 75px, ${colorTokens.brand}0D 2%, transparent 0%)
   `,
   backgroundSize: '100px 100px',
@@ -159,7 +168,6 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
-    marginLeft: 0,
   }),
 }));
 
@@ -820,14 +828,17 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             />
           )}
           
-          <Toolbar sx={{ minHeight: '100px !important', px: { xs: 2, sm: 3 } }}>
+          <Toolbar sx={{
+            minHeight: { xs: '64px', sm: '80px', md: '100px' },
+            px: { xs: 1.5, sm: 2, md: 3 }
+          }}>
             <IconButton
               color="inherit"
               aria-label={drawerOpen ? "cerrar menú" : "abrir menú"}
               onClick={() => setDrawerOpen(!drawerOpen)}
               edge="start"
-              sx={{ 
-                mr: 2,
+              sx={{
+                mr: { xs: 1, sm: 2 },
                 backgroundColor: alpha(colorTokens.brand, 0.1),
                 '&:hover': {
                   backgroundColor: alpha(colorTokens.brand, 0.2),
@@ -836,37 +847,38 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             >
               <MenuIcon />
             </IconButton>
-            
-            {/* ÁREA DEL LOGO MEJORADA */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
-              <Box 
+
+            {/* ÁREA DEL LOGO MEJORADA Y RESPONSIVA */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 2, md: 3 } }}>
+              <Box
                 component={motion.img}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4 }}
                 whileHover={{ scale: 1.02 }}
-                sx={{ 
-                  height: 65,
+                sx={{
+                  height: { xs: 40, sm: 50, md: 65 },
                   width: 'auto',
-                  mr: 2,
+                  mr: { xs: 1, sm: 1.5, md: 2 },
                   cursor: 'pointer'
                 }}
                 src="/logo.png"
                 alt="Muscle Up Gym"
                 onClick={() => router.push('/dashboard/admin/dashboard')}
               />
-              
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+
+              {/* Texto completo solo en tablets y desktop */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IntegrationInstructionsIcon 
-                    sx={{ 
-                      color: colorTokens.brand, 
+                  <IntegrationInstructionsIcon
+                    sx={{
+                      color: colorTokens.brand,
                       fontSize: 24
-                    }} 
+                    }}
                   />
-                  <Typography 
-                    variant="h5" 
-                    sx={{ 
+                  <Typography
+                    variant="h5"
+                    sx={{
                       color: colorTokens.textPrimary,
                       fontWeight: 700,
                       letterSpacing: 1.5,
@@ -890,38 +902,55 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                   />
                 </Box>
               </Box>
+
+              {/* Solo chip SGI en móviles */}
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Chip
+                  size="small"
+                  label="SGI"
+                  sx={{
+                    backgroundColor: colorTokens.brand,
+                    color: colorTokens.black,
+                    fontWeight: 800,
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    height: { xs: '22px', sm: '24px' },
+                    minWidth: { xs: '40px', sm: '45px' }
+                  }}
+                />
+              </Box>
             </Box>
             
             {/* ✅ BUSCADOR ELIMINADO - Sin funcionalidad implementada */}
             
             <Box sx={{ flexGrow: 1 }} />
             
-            {/* 🔔 ÁREA DE NOTIFICACIONES Y USUARIO */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* 🔔 ÁREA DE NOTIFICACIONES Y USUARIO - RESPONSIVE */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
               <Tooltip title={unreadCount > 0 ? `${unreadCount} notificaciones sin leer` : 'Sin notificaciones'}>
-                <IconButton 
-                  color="inherit" 
+                <IconButton
+                  color="inherit"
                   onClick={(e) => setNotificationsMenuAnchor(e.currentTarget)}
-                  sx={{ 
-                    mr: 1,
+                  sx={{
+                    mr: { xs: 0.5, sm: 1 },
                     position: 'relative',
+                    padding: { xs: '6px', sm: '8px' },
                     '&:hover': {
                       backgroundColor: alpha(colorTokens.brand, 0.1),
                     }
                   }}
                   aria-label="mostrar notificaciones"
                 >
-                  <Badge 
-                    badgeContent={unreadCount} 
+                  <Badge
+                    badgeContent={unreadCount}
                     max={99}
                     sx={{
                       '& .MuiBadge-badge': {
                         background: `linear-gradient(135deg, ${colorTokens.danger}, #ff6666)`,
                         color: colorTokens.white,
                         fontWeight: 800,
-                        fontSize: '0.7rem',
-                        minWidth: '20px',
-                        height: '20px',
+                        fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                        minWidth: { xs: '18px', sm: '20px' },
+                        height: { xs: '18px', sm: '20px' },
                         borderRadius: '10px',
                         padding: '0 6px',
                         top: '3px',
@@ -932,11 +961,15 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                       }
                     }}
                   >
-                    <NotificationsIcon sx={{ color: colorTokens.brand, fontSize: 28 }} />
+                    <NotificationsIcon sx={{
+                      color: colorTokens.brand,
+                      fontSize: { xs: 22, sm: 26, md: 28 }
+                    }} />
                   </Badge>
                 </IconButton>
               </Tooltip>
-              
+
+              {/* Chip de bienvenida solo en desktop */}
               <Chip
                 size="small"
                 label={`Bienvenido, ${user?.firstName || 'Admin'}`}
@@ -945,12 +978,13 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                   color: colorTokens.brand,
                   border: `1px solid ${alpha(colorTokens.brand, 0.3)}`,
                   fontWeight: 600,
-                  display: { xs: 'none', md: 'flex' }
+                  display: { xs: 'none', lg: 'flex' }
                 }}
               />
-              
+
+              {/* Avatar de usuario */}
               <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
-                <IconButton 
+                <IconButton
                   component={motion.button}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -959,21 +993,22 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                   edge="end"
                   aria-label="cuenta de usuario"
                   aria-haspopup="true"
-                  sx={{ 
+                  sx={{
                     bgcolor: alpha(colorTokens.brand, 0.2),
-                    ml: 1,
+                    ml: { xs: 0.5, sm: 1 },
                     border: `2px solid ${alpha(colorTokens.brand, 0.3)}`,
+                    padding: { xs: '4px', sm: '6px' },
                     '&:hover': {
                       bgcolor: alpha(colorTokens.brand, 0.3),
                     }
                   }}
                 >
-                  <Avatar 
-                    alt={user?.firstName || "Usuario"} 
+                  <Avatar
+                    alt={user?.firstName || "Usuario"}
                     src={user?.profilePictureUrl || ""}
-                    sx={{ 
-                      width: 40, 
-                      height: 40,
+                    sx={{
+                      width: { xs: 32, sm: 36, md: 40 },
+                      height: { xs: 32, sm: 36, md: 40 },
                       border: `2px solid ${alpha(colorTokens.brand, 0.5)}`
                     }}
                   >
@@ -1151,10 +1186,10 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         {/* 📂 MENÚ LATERAL CON THEME CENTRALIZADO v7.0 */}
         <Drawer
           sx={{
-            width: drawerWidth,
+            width: isMobile ? mobileDrawerWidth : drawerWidth,
             flexShrink: 0,
             '& .MuiDrawer-paper': {
-              width: drawerWidth,
+              width: isMobile ? mobileDrawerWidth : drawerWidth,
               boxSizing: 'border-box',
               background: `linear-gradient(180deg, ${colorTokens.neutral50} 0%, ${colorTokens.neutral100} 100%)`,
               color: colorTokens.textPrimary,
@@ -1172,10 +1207,10 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
           onClose={() => setDrawerOpen(false)}
         >
           {/* HEADER DEL DRAWER */}
-          <DrawerHeader sx={{ 
+          <DrawerHeader sx={{
             background: `linear-gradient(135deg, ${alpha(colorTokens.neutral100, 0.9)} 0%, ${alpha(colorTokens.neutral200, 0.8)} 100%)`,
             borderBottom: `1px solid ${alpha(colorTokens.brand, 0.15)}`,
-            minHeight: '100px !important',
+            minHeight: { xs: '64px', sm: '80px', md: '100px' },
             px: 2
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', pl: 0 }}>
@@ -1568,7 +1603,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         
         {/* 📄 CONTENIDO PRINCIPAL */}
         <Main open={drawerOpen && !isMobile}>
-          <Box sx={{ minHeight: '100px' }} /> {/* Spacer para AppBar */}
+          <Box sx={{ minHeight: { xs: '64px', sm: '80px', md: '100px' } }} /> {/* Spacer para AppBar */}
           <Container maxWidth="xl" disableGutters>
             {/* 🍞 BREADCRUMBS */}
             {generateBreadcrumbs()}

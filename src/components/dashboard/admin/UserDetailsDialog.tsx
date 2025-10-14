@@ -141,28 +141,37 @@ const UserDetailsDialog = memo<UserDetailsDialogProps>(({
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      fullScreen={false} // Permitir fullScreen en móviles si es necesario
       PaperProps={{
         sx: {
           background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
           border: `1px solid ${colorTokens.neutral400}`,
-          borderRadius: 3,
+          borderRadius: { xs: 0, sm: 3 },
           backdropFilter: 'blur(20px)',
+          maxHeight: { xs: '100vh', sm: '95vh' },
+          m: { xs: 0, sm: 2 }
         }
       }}
     >
-      {/* HEADER CON INFORMACIÓN PRINCIPAL */}
-      <DialogTitle sx={{ 
+      {/* HEADER CON INFORMACIÓN PRINCIPAL - RESPONSIVE */}
+      <DialogTitle sx={{
         background: `linear-gradient(135deg, ${colorTokens.neutral300}, ${colorTokens.neutral400})`,
         color: colorTokens.neutral1200,
         borderBottom: `1px solid ${colorTokens.neutral500}`,
-        position: 'relative'
+        position: 'relative',
+        p: { xs: 2, sm: 2.5, md: 3 }
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'center', sm: 'flex-start' },
+          gap: { xs: 2, sm: 2.5, md: 3 }
+        }}>
           <Avatar
             src={user.profilePictureUrl}
             sx={{
-              width: 80,
-              height: 80,
+              width: { xs: 60, sm: 70, md: 80 },
+              height: { xs: 60, sm: 70, md: 80 },
               bgcolor: getRoleColor(user.rol),
               border: `3px solid ${getRoleColor(user.rol)}`,
               boxShadow: `0 4px 20px ${getRoleColor(user.rol)}30`,
@@ -170,28 +179,39 @@ const UserDetailsDialog = memo<UserDetailsDialogProps>(({
           >
             {user.firstName?.[0]?.toUpperCase() || '?'}
           </Avatar>
-          
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h4" sx={{ 
-              color: colorTokens.neutral1200, 
+
+          <Box sx={{ flex: 1, textAlign: { xs: 'center', sm: 'left' }, width: { xs: '100%', sm: 'auto' } }}>
+            <Typography variant="h4" sx={{
+              color: colorTokens.neutral1200,
               fontWeight: 700,
-              mb: 1
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
             }}>
               {user.firstName} {user.lastName}
             </Typography>
             
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: { xs: 'center', sm: 'flex-start' },
+              gap: { xs: 1, sm: 1.5, md: 2 },
+              mb: { xs: 1.5, sm: 2 },
+              flexWrap: 'wrap'
+            }}>
               <Chip
                 icon={getRoleIcon(user.rol)}
                 label={getRoleLabel(user.rol)}
+                size="small"
                 sx={{
                   bgcolor: `${getRoleColor(user.rol)}20`,
                   color: getRoleColor(user.rol),
                   border: `1px solid ${getRoleColor(user.rol)}40`,
                   fontWeight: 600,
+                  fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                  height: { xs: '26px', sm: '28px' }
                 }}
               />
-              
+
               {user.isMinor && (
                 <Chip
                   label="Menor de Edad"
@@ -200,47 +220,62 @@ const UserDetailsDialog = memo<UserDetailsDialogProps>(({
                     bgcolor: `${colorTokens.warning}20`,
                     color: colorTokens.warning,
                     border: `1px solid ${colorTokens.warning}40`,
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    height: { xs: '24px', sm: '26px' }
                   }}
                 />
               )}
-              
+
               {user.fingerprint && (
                 <Chip
-                  icon={<FingerprintIcon />}
+                  icon={<FingerprintIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />}
                   label="Verificado"
                   size="small"
                   sx={{
                     bgcolor: `${colorTokens.success}20`,
                     color: colorTokens.success,
                     border: `1px solid ${colorTokens.success}40`,
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    height: { xs: '24px', sm: '26px' }
                   }}
                 />
               )}
 
               {profileComplete && (
                 <Chip
-                  icon={<CheckCircleIcon />}
+                  icon={<CheckCircleIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />}
                   label="Perfil Completo"
                   size="small"
                   sx={{
                     bgcolor: `${colorTokens.brand}20`,
                     color: colorTokens.brand,
                     border: `1px solid ${colorTokens.brand}40`,
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    height: { xs: '24px', sm: '26px' }
                   }}
                 />
               )}
             </Box>
 
-            {/* PROGRESO DE COMPLETITUD */}
-            <Box sx={{ mb: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral1000 }}>
+            {/* PROGRESO DE COMPLETITUD - RESPONSIVE */}
+            <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: { xs: 0.75, sm: 1 }
+              }}>
+                <Typography variant="body2" sx={{
+                  color: colorTokens.neutral1000,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                }}>
                   Completitud del Perfil
                 </Typography>
-                <Typography variant="body2" sx={{ 
-                  color: completeness >= 80 ? colorTokens.success : 
+                <Typography variant="body2" sx={{
+                  color: completeness >= 80 ? colorTokens.success :
                          completeness >= 50 ? colorTokens.warning : colorTokens.danger,
-                  fontWeight: 600 
+                  fontWeight: 600,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
                 }}>
                   {completeness}%
                 </Typography>
@@ -249,24 +284,25 @@ const UserDetailsDialog = memo<UserDetailsDialogProps>(({
                 variant="determinate"
                 value={completeness}
                 sx={{
-                  height: 8,
+                  height: { xs: 6, sm: 8 },
                   borderRadius: 4,
                   bgcolor: colorTokens.neutral400,
                   '& .MuiLinearProgress-bar': {
-                    bgcolor: completeness >= 80 ? colorTokens.success : 
+                    bgcolor: completeness >= 80 ? colorTokens.success :
                             completeness >= 50 ? colorTokens.warning : colorTokens.danger,
                     borderRadius: 4,
                   }
                 }}
               />
-              
-              <Typography variant="caption" sx={{ 
-                color: colorTokens.neutral900, 
-                mt: 1, 
-                display: 'block' 
+
+              <Typography variant="caption" sx={{
+                color: colorTokens.neutral900,
+                mt: { xs: 0.75, sm: 1 },
+                display: 'block',
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }
               }}>
                 {Math.round((completeness / 100) * 8)} de 8 campos requeridos completados
-                {!profileComplete && completeness < 100 && 
+                {!profileComplete && completeness < 100 &&
                   ` (falta${completeness < 50 ? 'n varios campos' : completeness < 80 ? 'n algunos campos' : ' completar campos pendientes'})`
                 }
               </Typography>
@@ -288,26 +324,30 @@ const UserDetailsDialog = memo<UserDetailsDialogProps>(({
         </IconButton>
       </DialogTitle>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <DialogContent sx={{ p: 3 }}>
-        <Grid container spacing={3}>
-          {/* INFORMACIÓN PERSONAL */}
+      {/* CONTENIDO PRINCIPAL - RESPONSIVE */}
+      <DialogContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+          {/* INFORMACIÓN PERSONAL - RESPONSIVE */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Paper sx={{
-              p: 3,
+              p: { xs: 2, sm: 2.5, md: 3 },
               bgcolor: `${colorTokens.neutral100}80`,
               border: `1px solid ${colorTokens.neutral400}`,
               borderRadius: 2,
               height: 'fit-content'
             }}>
-              <Typography variant="h6" sx={{ 
-                color: colorTokens.neutral1200, 
-                mb: 2,
+              <Typography variant="h6" sx={{
+                color: colorTokens.neutral1200,
+                mb: { xs: 1.5, sm: 2 },
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1
+                gap: 1,
+                fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
               }}>
-                <PersonIcon sx={{ color: colorTokens.brand }} />
+                <PersonIcon sx={{
+                  color: colorTokens.brand,
+                  fontSize: { xs: 20, sm: 22, md: 24 }
+                }} />
                 Información Personal
               </Typography>
               
@@ -520,18 +560,24 @@ const UserDetailsDialog = memo<UserDetailsDialogProps>(({
         </Grid>
       </DialogContent>
 
-      {/* ACCIONES */}
-      <DialogActions sx={{ 
-        p: 3, 
+      {/* ACCIONES - RESPONSIVE */}
+      <DialogActions sx={{
+        p: { xs: 2, sm: 2.5, md: 3 },
         borderTop: `1px solid ${colorTokens.neutral500}`,
-        bgcolor: `${colorTokens.neutral300}80`
+        bgcolor: `${colorTokens.neutral300}80`,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 1, sm: 0 }
       }}>
         <Button
           onClick={onClose}
           variant="outlined"
+          fullWidth={false}
           sx={{
             color: colorTokens.neutral1000,
             borderColor: colorTokens.neutral500,
+            fontSize: { xs: '0.8rem', sm: '0.875rem' },
+            px: { xs: 2, sm: 2.5, md: 3 },
+            width: { xs: '100%', sm: 'auto' },
             '&:hover': {
               borderColor: colorTokens.neutral700,
               bgcolor: `${colorTokens.neutral500}20`
@@ -540,14 +586,17 @@ const UserDetailsDialog = memo<UserDetailsDialogProps>(({
         >
           Cerrar
         </Button>
-        
+
         {onEdit && (
           <Button
             onClick={() => onEdit(user)}
             variant="contained"
-            startIcon={<EditIcon />}
+            startIcon={<EditIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
             sx={{
               bgcolor: colorTokens.brand,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              px: { xs: 2, sm: 2.5, md: 3 },
+              width: { xs: '100%', sm: 'auto' },
               '&:hover': { bgcolor: colorTokens.brandHover }
             }}
           >

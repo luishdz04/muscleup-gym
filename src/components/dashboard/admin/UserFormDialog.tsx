@@ -726,26 +726,68 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
   const saveRelatedData = useCallback(async (userId: string) => {
     try {
       if (formData.rol === 'cliente') {
-        await supabase
+        // ✅ DIRECCIÓN - Verificar si existe primero
+        const { data: existingAddress } = await supabase
           .from('addresses')
-          .upsert({
-            userId,
-            ...addressData
-          });
+          .select('id')
+          .eq('userId', userId)
+          .maybeSingle();
 
-        await supabase
+        if (existingAddress) {
+          await supabase
+            .from('addresses')
+            .update(addressData)
+            .eq('userId', userId);
+        } else {
+          await supabase
+            .from('addresses')
+            .insert({
+              userId,
+              ...addressData
+            });
+        }
+
+        // ✅ CONTACTO DE EMERGENCIA - Verificar si existe primero
+        const { data: existingEmergency } = await supabase
           .from('emergency_contacts')
-          .upsert({
-            userId,
-            ...emergencyData
-          });
+          .select('id')
+          .eq('userId', userId)
+          .maybeSingle();
 
-        await supabase
+        if (existingEmergency) {
+          await supabase
+            .from('emergency_contacts')
+            .update(emergencyData)
+            .eq('userId', userId);
+        } else {
+          await supabase
+            .from('emergency_contacts')
+            .insert({
+              userId,
+              ...emergencyData
+            });
+        }
+
+        // ✅ INFO DE MEMBRESÍA - Verificar si existe primero
+        const { data: existingMembership } = await supabase
           .from('membership_info')
-          .upsert({
-            userId,
-            ...membershipData
-          });
+          .select('id')
+          .eq('userId', userId)
+          .maybeSingle();
+
+        if (existingMembership) {
+          await supabase
+            .from('membership_info')
+            .update(membershipData)
+            .eq('userId', userId);
+        } else {
+          await supabase
+            .from('membership_info')
+            .insert({
+              userId,
+              ...membershipData
+            });
+        }
       }
     } catch (error) {
       console.error('Error guardando datos relacionados:', error);

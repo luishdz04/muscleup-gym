@@ -532,79 +532,74 @@ const UsersPage = memo(() => {
   }
 
   return (
-    <Box sx={{ 
-      p: 3, 
+    <Box sx={{
+      p: { xs: 1.5, sm: 2, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh',
       color: colorTokens.neutral1200
     }}>
-      {/* 🐛 PANEL DE DEBUG TEMPORAL */}
-      {process.env.NODE_ENV === 'development' && (
-        <Paper sx={{ p: 2, mb: 2, bgcolor: '#ffeb3b', border: '2px solid #f57c00' }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-            🐛 DEBUG INFO:
-          </Typography>
-          <Typography variant="body2">
-            • Total users raw: {users.length}<br/>
-            • Normalized users: {normalizedUsers.length}<br/>
-            • Client users: {clientUsers.length}<br/>
-            • Filtered users: {filteredUsers.length}<br/>
-            • Loading: {loading ? 'Sí' : 'No'}<br/>
-            • Initial load: {initialLoad ? 'Sí' : 'No'}<br/>
-            • Error: {error || 'Ninguno'}<br/>
-            • Hydrated: {hydrated ? 'Sí' : 'No'}
-          </Typography>
-        </Paper>
-      )}
-      
       {/* PANEL DE CONTROL SUPERIOR */}
       <Paper sx={{
-        p: 3,
-        mb: 3,
+        p: { xs: 2, sm: 2.5, md: 3 },
+        mb: { xs: 2, sm: 2.5, md: 3 },
         background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
         border: `1px solid ${colorTokens.neutral400}`,
         borderRadius: 3,
         backdropFilter: 'blur(10px)'
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          mb: 3,
-          flexWrap: 'wrap',
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          mb: { xs: 2, sm: 2.5, md: 3 },
+          flexDirection: { xs: 'column', md: 'row' },
           gap: 2
         }}>
-          <Box>
-            <Typography variant="h4" sx={{ 
+          <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
+            <Typography variant="h4" sx={{
               color: colorTokens.brand,
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              textShadow: `0 0 20px ${colorTokens.brand}40`
+              gap: { xs: 1, sm: 1.5, md: 2 },
+              textShadow: `0 0 20px ${colorTokens.brand}40`,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
             }}>
-              <DashboardIcon sx={{ fontSize: 40, color: colorTokens.brand }} />
+              <DashboardIcon sx={{ fontSize: { xs: 28, sm: 34, md: 40 }, color: colorTokens.brand }} />
               Gestión de Clientes MUP
             </Typography>
-            <Typography variant="body1" sx={{ color: colorTokens.neutral1000, mt: 1 }}>
+            <Typography variant="body1" sx={{
+              color: colorTokens.neutral1000,
+              mt: 1,
+              fontSize: { xs: '0.875rem', sm: '0.9rem', md: '1rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
               Panel especializado para seguimiento integral de clientes y su progreso
             </Typography>
             
-            <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center', flexWrap: 'wrap' }}>
               <Chip
                 label={`Clientes activos: ${clientUsers.length}`}
                 size="small"
                 variant="filled"
-                sx={{ 
+                sx={{
                   bgcolor: colorTokens.brand,
                   color: colorTokens.textOnBrand,
-                  fontWeight: 600
+                  fontWeight: 600,
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' }
                 }}
               />
             </Box>
           </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+
+          <Box sx={{
+            display: 'flex',
+            gap: { xs: 1, sm: 1.5, md: 2 },
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            width: { xs: '100%', md: 'auto' },
+            justifyContent: { xs: 'flex-start', md: 'flex-end' }
+          }}>
             <Chip
               icon={syncing || loading ? 
                 <CircularProgress size={16} sx={{ color: colorTokens.neutral1200 }} /> : 
@@ -626,31 +621,37 @@ const UsersPage = memo(() => {
             
             <Button
               size="small"
-              startIcon={<ClearAllIcon />}
+              startIcon={<ClearAllIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
               onClick={cleanupCache}
               variant="outlined"
               disabled={loading}
-              sx={{ 
+              sx={{
                 color: colorTokens.brand,
                 borderColor: `${colorTokens.brand}40`,
+                fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' },
+                px: { xs: 1.5, sm: 2 },
+                py: { xs: 0.5, sm: 0.75 },
                 '&:hover': {
                   borderColor: colorTokens.brand,
                   bgcolor: `${colorTokens.brand}10`
                 }
               }}
             >
-              Limpiar Caché
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Limpiar Caché</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Caché</Box>
             </Button>
-            
+
             <Button
               variant="contained"
-              startIcon={<AddIcon />}
+              startIcon={<AddIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={() => handleOpenFormDialog()}
               disabled={loading}
               sx={{
                 background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success})`,
                 fontWeight: 600,
-                px: 3,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 0.75, sm: 1 },
+                fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.875rem' },
                 borderRadius: 2,
                 boxShadow: `0 4px 20px ${colorTokens.success}40`,
                 '&:hover': {
@@ -660,24 +661,29 @@ const UsersPage = memo(() => {
                 transition: 'all 0.3s ease'
               }}
             >
-              Nuevo Usuario
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Nuevo Usuario</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Nuevo</Box>
             </Button>
           </Box>
         </Box>
         
-        {/* ✅ CONTROLES DE BÚSQUEDA Y FILTROS MEJORADOS */}
-        <Box sx={{ mb: 3 }}>
-          <Grid container spacing={2} alignItems="center">
+        {/* ✅ CONTROLES DE BÚSQUEDA Y FILTROS MEJORADOS - RESPONSIVE */}
+        <Box sx={{ mb: { xs: 2, sm: 2.5, md: 3 } }}>
+          <Grid container spacing={{ xs: 1.5, sm: 2 }} alignItems="center">
             <Grid size={{ xs: 12, md: 5 }}>
               <TextField
                 fullWidth
                 placeholder="Buscar por nombre, apellido o email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                size="small"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: colorTokens.neutral800 }} />
+                      <SearchIcon sx={{
+                        color: colorTokens.neutral800,
+                        fontSize: { xs: 18, sm: 20 }
+                      }} />
                     </InputAdornment>
                   ),
                 }}
@@ -685,6 +691,7 @@ const UsersPage = memo(() => {
                   '& .MuiOutlinedInput-root': {
                     bgcolor: colorTokens.neutral100,
                     color: colorTokens.neutral1200,
+                    fontSize: { xs: '0.875rem', sm: '0.95rem' },
                     '& fieldset': { borderColor: colorTokens.neutral400 },
                     '&:hover fieldset': { borderColor: colorTokens.brand },
                     '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
@@ -692,10 +699,10 @@ const UsersPage = memo(() => {
                 }}
               />
             </Grid>
-            
-            <Grid size={{ xs: 12, md: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel>Ordenar por</InputLabel>
+
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ fontSize: { xs: '0.875rem', sm: '0.95rem' } }}>Ordenar por</InputLabel>
                 <Select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
@@ -703,14 +710,15 @@ const UsersPage = memo(() => {
                   sx={{
                     bgcolor: colorTokens.neutral100,
                     color: colorTokens.neutral1200,
-                    '& .MuiOutlinedInput-notchedOutline': { 
-                      borderColor: colorTokens.neutral400 
+                    fontSize: { xs: '0.875rem', sm: '0.95rem' },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colorTokens.neutral400
                     },
-                    '&:hover .MuiOutlinedInput-notchedOutline': { 
-                      borderColor: colorTokens.brand 
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colorTokens.brand
                     },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
-                      borderColor: colorTokens.brand 
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colorTokens.brand
                     }
                   }}
                 >
@@ -721,55 +729,71 @@ const UsersPage = memo(() => {
                 </Select>
               </FormControl>
             </Grid>
-            
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+
+            <Grid size={{ xs: 12, sm: 6, md: 5 }}>
+              <Box sx={{
+                display: 'flex',
+                gap: { xs: 0.75, sm: 1 },
+                flexWrap: 'wrap'
+              }}>
                 <Button
                   variant="outlined"
-                  startIcon={<FilterListIcon />}
+                  size="small"
+                  startIcon={<FilterListIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
                   onClick={handleAdvancedSearch}
                   disabled={loading}
                   sx={{
                     color: colorTokens.brand,
                     borderColor: colorTokens.brand,
+                    fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                    px: { xs: 1.5, sm: 2 },
+                    minWidth: { xs: 'auto', sm: '100px' },
                     '&:hover': {
                       bgcolor: `${colorTokens.brand}10`
                     }
                   }}
                 >
-                  Buscar
+                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Buscar</Box>
                 </Button>
-                
+
                 <Button
                   variant="outlined"
-                  startIcon={<RefreshIcon />}
+                  size="small"
+                  startIcon={<RefreshIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
                   onClick={handleManualRefresh}
                   disabled={loading}
                   sx={{
                     color: colorTokens.info,
                     borderColor: colorTokens.info,
+                    fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                    px: { xs: 1.5, sm: 2 },
+                    minWidth: { xs: 'auto', sm: '100px' },
                     '&:hover': {
                       bgcolor: `${colorTokens.info}10`
                     }
                   }}
                 >
-                  Actualizar
+                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Actualizar</Box>
                 </Button>
-                
+
                 {searchTerm && (
                   <Button
                     variant="outlined"
-                    startIcon={<ClearAllIcon />}
+                    size="small"
+                    startIcon={<ClearAllIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
                     onClick={handleClearFilters}
                     sx={{
                       color: colorTokens.warning,
                       borderColor: colorTokens.warning,
+                      fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                      px: { xs: 1.5, sm: 2 },
+                      minWidth: { xs: 'auto', sm: '100px' },
                       '&:hover': {
                         bgcolor: `${colorTokens.warning}10`
                       }
                     }}
                   >
-                    Limpiar
+                    <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Limpiar</Box>
                   </Button>
                 )}
               </Box>
@@ -777,19 +801,25 @@ const UsersPage = memo(() => {
           </Grid>
         </Box>
         
-        {/* INFORMACIÓN DE RESULTADOS Y ESTADÍSTICAS */}
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          p: 3,
+        {/* INFORMACIÓN DE RESULTADOS Y ESTADÍSTICAS - RESPONSIVE */}
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          p: { xs: 2, sm: 2.5, md: 3 },
+          gap: { xs: 2, md: 0 },
           bgcolor: `${colorTokens.success}10`,
           borderRadius: 2,
           border: `1px solid ${colorTokens.success}30`,
           backdropFilter: 'blur(5px)'
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap' }}>
+            <Typography sx={{
+              color: colorTokens.neutral1200,
+              fontWeight: 600,
+              fontSize: { xs: '0.875rem', sm: '0.95rem', md: '1rem' }
+            }}>
               Total: {userStats.isFiltered ? (
                 <>{userStats.totalFiltered} de {userStats.totalUsers}</>
               ) : (
@@ -799,61 +829,77 @@ const UsersPage = memo(() => {
             {userStats.isFiltered && (
               <Button
                 size="small"
-                startIcon={<ClearAllIcon />}
+                startIcon={<ClearAllIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
                 onClick={handleClearFilters}
                 variant="outlined"
                 sx={{
                   color: colorTokens.warning,
                   borderColor: colorTokens.warning,
+                  fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                  px: { xs: 1.5, sm: 2 },
                   '&:hover': {
                     bgcolor: `${colorTokens.warning}10`,
                   }
                 }}
               >
-                Limpiar Filtros
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Limpiar Filtros</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Limpiar</Box>
               </Button>
             )}
           </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+
+          <Box sx={{
+            display: 'flex',
+            gap: { xs: 1, sm: 1.5, md: 2 },
+            flexWrap: 'wrap',
+            width: { xs: '100%', md: 'auto' }
+          }}>
             <Chip
-              icon={<PhotoCameraIcon />}
+              icon={<PhotoCameraIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
               label={`${userStats.completionRate.profilePicture}% con fotos`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.success}20`,
                 color: colorTokens.success,
                 border: `1px solid ${colorTokens.success}40`,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' }
               }}
             />
             <Chip
-              icon={<FingerprintIcon />}
-              label={`${clientsWithFingerprint} huellas registradas`}
+              icon={<FingerprintIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+              label={`${clientsWithFingerprint} huellas`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.warning}20`,
                 color: colorTokens.warning,
                 border: `1px solid ${colorTokens.warning}40`,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' }
               }}
             />
             <Chip
-              icon={<EmailIcon />}
-              label={`${clientsWithEmailSent} correos enviados`}
+              icon={<EmailIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+              label={`${clientsWithEmailSent} correos`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.info}20`,
                 color: colorTokens.info,
                 border: `1px solid ${colorTokens.info}40`,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' }
               }}
             />
             <Chip
-              icon={<CheckCircleIcon />}
-              label={`${clientsWithWhatsAppSent} WhatsApp enviados`}
+              icon={<CheckCircleIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+              label={`${clientsWithWhatsAppSent} WhatsApp`}
               size="small"
               sx={{
                 bgcolor: `${colorTokens.brand}20`,
                 color: colorTokens.brand,
                 border: `1px solid ${colorTokens.brand}40`,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' }
               }}
             />
           </Box>
@@ -869,29 +915,30 @@ const UsersPage = memo(() => {
 
       {/* DISTRIBUCIÓN DE CLIENTES */}
       <Paper sx={{
-        p: 3,
-        mb: 3,
+        p: { xs: 2, sm: 2.5, md: 3 },
+        mb: { xs: 2, sm: 2.5, md: 3 },
         background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
         border: `1px solid ${colorTokens.neutral400}`,
         borderRadius: 3,
         backdropFilter: 'blur(10px)'
       }}>
-        <Typography variant="h6" sx={{ 
-          color: colorTokens.neutral1200, 
-          mb: 3, 
+        <Typography variant="h6" sx={{
+          color: colorTokens.neutral1200,
+          mb: { xs: 2, sm: 2.5, md: 3 },
           fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
-          gap: 1
+          gap: 1,
+          fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
         }}>
           Distribución de Clientes
         </Typography>
-        
-        <Grid container spacing={3}>
+
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <Box sx={{ 
-              p: 2, 
-              borderRadius: 2, 
+            <Box sx={{
+              p: { xs: 1.5, sm: 2, md: 2.5 },
+              borderRadius: 2,
               bgcolor: `${colorTokens.brand}10`,
               border: `1px solid ${colorTokens.brand}30`,
               textAlign: 'center',
@@ -901,22 +948,33 @@ const UsersPage = memo(() => {
                 boxShadow: `0 4px 20px ${colorTokens.brand}20`
               }
             }}>
-              <Typography variant="h4" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
+              <Typography variant="h4" sx={{
+                color: colorTokens.brand,
+                fontWeight: 700,
+                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
+              }}>
                 {clientsWithContracts}
               </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+              <Typography variant="body2" sx={{
+                color: colorTokens.neutral1200,
+                fontWeight: 600,
+                fontSize: { xs: '0.8rem', sm: '0.875rem' }
+              }}>
                 Contrato firmado
               </Typography>
-              <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
+              <Typography variant="caption" sx={{
+                color: colorTokens.neutral1000,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }
+              }}>
                 {userStats.totalUsers > 0 ? Math.round((clientsWithContracts / userStats.totalUsers) * 100) : 0}% del total
               </Typography>
             </Box>
           </Grid>
 
           <Grid size={{ xs: 12, md: 4 }}>
-            <Box sx={{ 
-              p: 2, 
-              borderRadius: 2, 
+            <Box sx={{
+              p: { xs: 1.5, sm: 2, md: 2.5 },
+              borderRadius: 2,
               bgcolor: `${colorTokens.info}10`,
               border: `1px solid ${colorTokens.info}30`,
               transition: 'all 0.3s ease',
@@ -925,34 +983,53 @@ const UsersPage = memo(() => {
                 boxShadow: `0 4px 20px ${colorTokens.info}20`
               }
             }}>
-              <Typography variant="h4" sx={{ color: colorTokens.info, fontWeight: 700, textAlign: 'center' }}>
+              <Typography variant="h4" sx={{
+                color: colorTokens.info,
+                fontWeight: 700,
+                textAlign: 'center',
+                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
+              }}>
                 {genderStats.total}
               </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600, textAlign: 'center' }}>
+              <Typography variant="body2" sx={{
+                color: colorTokens.neutral1200,
+                fontWeight: 600,
+                textAlign: 'center',
+                fontSize: { xs: '0.8rem', sm: '0.875rem' }
+              }}>
                 Distribución por género
               </Typography>
               <Box sx={{
-                mt: 1.5,
+                mt: { xs: 1, sm: 1.5 },
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 0.75,
+                gap: { xs: 0.5, sm: 0.75 },
                 color: colorTokens.neutral1000
               }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <MaleIcon sx={{ fontSize: 18, color: colorTokens.info }} />
-                  <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 } }}>
+                  <MaleIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: colorTokens.info }} />
+                  <Typography variant="caption" sx={{
+                    fontWeight: 600,
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                  }}>
                     Hombres: {genderStats.masculino} ({genderStats.masculinoPct}%)
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <FemaleIcon sx={{ fontSize: 18, color: colorTokens.brand }} />
-                  <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 } }}>
+                  <FemaleIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: colorTokens.brand }} />
+                  <Typography variant="caption" sx={{
+                    fontWeight: 600,
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                  }}>
                     Mujeres: {genderStats.femenino} ({genderStats.femeninoPct}%)
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <TransgenderIcon sx={{ fontSize: 18, color: colorTokens.warning }} />
-                  <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 } }}>
+                  <TransgenderIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: colorTokens.warning }} />
+                  <Typography variant="caption" sx={{
+                    fontWeight: 600,
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                  }}>
                     Otro/No especificado: {genderStats.otro} ({genderStats.otroPct}%)
                   </Typography>
                 </Box>
@@ -961,9 +1038,9 @@ const UsersPage = memo(() => {
           </Grid>
 
           <Grid size={{ xs: 12, md: 4 }}>
-            <Box sx={{ 
-              p: 2, 
-              borderRadius: 2, 
+            <Box sx={{
+              p: { xs: 1.5, sm: 2, md: 2.5 },
+              borderRadius: 2,
               bgcolor: `${colorTokens.success}10`,
               border: `1px solid ${colorTokens.success}30`,
               textAlign: 'center',
@@ -973,13 +1050,24 @@ const UsersPage = memo(() => {
                 boxShadow: `0 4px 20px ${colorTokens.success}20`
               }
             }}>
-              <Typography variant="h4" sx={{ color: colorTokens.success, fontWeight: 700 }}>
+              <Typography variant="h4" sx={{
+                color: colorTokens.success,
+                fontWeight: 700,
+                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
+              }}>
                 {clientsWithPhotos}
               </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+              <Typography variant="body2" sx={{
+                color: colorTokens.neutral1200,
+                fontWeight: 600,
+                fontSize: { xs: '0.8rem', sm: '0.875rem' }
+              }}>
                 Foto de perfil cargada
               </Typography>
-              <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
+              <Typography variant="caption" sx={{
+                color: colorTokens.neutral1000,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }
+              }}>
                 {userStats.totalUsers > 0 ? Math.round((clientsWithPhotos / userStats.totalUsers) * 100) : 0}% del total
               </Typography>
             </Box>

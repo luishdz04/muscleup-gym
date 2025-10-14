@@ -163,15 +163,15 @@ const UserTableRow = memo<UserTableRowProps>(({
         }
       }}
     >
-      {/* COLUMNA USUARIO */}
-      <TableCell sx={{ minWidth: 240 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      {/* COLUMNA USUARIO - RESPONSIVE */}
+      <TableCell sx={{ minWidth: { xs: 200, sm: 220, md: 240 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
           <Box sx={{ position: 'relative' }}>
             <Avatar
               src={user.profilePictureUrl?.startsWith('http') ? user.profilePictureUrl : undefined}
               sx={{
-                width: 48,
-                height: 48,
+                width: { xs: 40, sm: 44, md: 48 },
+                height: { xs: 40, sm: 44, md: 48 },
                 bgcolor: memoizedValues.roleColor,
                 color: colorTokens.neutral1200,
                 border: `2px solid ${memoizedValues.roleColor}`,
@@ -210,12 +210,12 @@ const UserTableRow = memo<UserTableRowProps>(({
           </Box>
           
           <Box sx={{ flex: 1 }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                color: colorTokens.neutral1200, 
+            <Typography
+              variant="h6"
+              sx={{
+                color: colorTokens.neutral1200,
                 fontWeight: 600,
-                fontSize: '1rem',
+                fontSize: { xs: '0.875rem', sm: '0.95rem', md: '1rem' },
                 lineHeight: 1.2,
                 mb: 0.5
               }}
@@ -412,7 +412,7 @@ const UserTableRow = memo<UserTableRowProps>(({
         </Box>
       </TableCell>
       
-      {/* COLUMNA ACCIONES */}
+      {/* COLUMNA ACCIONES - RESPONSIVE */}
       <TableCell sx={{ textAlign: 'center' }}>
         <ButtonGroup
           variant="outlined"
@@ -421,8 +421,8 @@ const UserTableRow = memo<UserTableRowProps>(({
             '& .MuiButton-root': {
               borderColor: colorTokens.neutral400,
               color: colorTokens.neutral900,
-              minWidth: '36px',
-              height: '36px',
+              minWidth: { xs: '32px', sm: '34px', md: '36px' },
+              height: { xs: '32px', sm: '34px', md: '36px' },
               transition: 'all 0.2s ease',
               '&:hover': {
                 transform: 'translateY(-2px)',
@@ -442,10 +442,10 @@ const UserTableRow = memo<UserTableRowProps>(({
                 }
               }}
             >
-              <VisibilityIcon sx={{ fontSize: '1.1rem' }} />
+              <VisibilityIcon sx={{ fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' } }} />
             </Button>
           </Tooltip>
-          
+
           <Tooltip title="Editar usuario">
             <Button
               onClick={handleEdit}
@@ -457,10 +457,10 @@ const UserTableRow = memo<UserTableRowProps>(({
                 }
               }}
             >
-              <EditIcon sx={{ fontSize: '1.1rem' }} />
+              <EditIcon sx={{ fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' } }} />
             </Button>
           </Tooltip>
-          
+
           <Tooltip title="Eliminar usuario">
             <Button
               onClick={handleDelete}
@@ -472,7 +472,7 @@ const UserTableRow = memo<UserTableRowProps>(({
                 }
               }}
             >
-              <DeleteIcon sx={{ fontSize: '1.1rem' }} />
+              <DeleteIcon sx={{ fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' } }} />
             </Button>
           </Tooltip>
         </ButtonGroup>
