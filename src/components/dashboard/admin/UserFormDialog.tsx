@@ -2251,49 +2251,69 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
         display: 'flex',
         flexDirection: { xs: 'column', sm: 'row' },
         justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: { xs: 2, sm: 0 }
+        alignItems: 'stretch',
+        gap: { xs: 1.5, sm: 0 }
       }}>
-        <Box>
-          {!isMobile && (
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                disabled={isFirstStep}
-                onClick={handleBack}
-                startIcon={<ArrowBackIcon />}
-                sx={{ 
-                  color: colorTokens.neutral900,
-                  '&:hover': {
-                    color: colorTokens.neutral1200,
-                    bgcolor: `${colorTokens.brand}20`
-                  }
-                }}
-              >
-                Anterior
-              </Button>
-              
-              {!isLastStep && (
-                <Button
-                  variant="outlined"
-                  onClick={handleNext}
-                  endIcon={<ArrowForwardIcon />}
-                  sx={{
-                    borderColor: `${colorTokens.brand}60`,
-                    color: colorTokens.brand,
-                    '&:hover': {
-                      borderColor: colorTokens.brand,
-                      bgcolor: `${colorTokens.brand}10`
-                    }
-                  }}
-                >
-                  Siguiente
-                </Button>
-              )}
-            </Box>
+        {/* Botones de navegación (Anterior/Siguiente) - Responsive */}
+        <Box sx={{
+          display: 'flex',
+          gap: { xs: 1, sm: 1 },
+          width: { xs: '100%', sm: 'auto' },
+          order: { xs: 1, sm: 0 }
+        }}>
+          <Button
+            disabled={isFirstStep}
+            onClick={handleBack}
+            startIcon={<ArrowBackIcon sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }} />}
+            sx={{
+              color: colorTokens.neutral900,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              px: { xs: 1.5, sm: 2 },
+              flex: { xs: 1, sm: 'none' },
+              minWidth: { xs: 'auto', sm: '100px' },
+              '&:hover': {
+                color: colorTokens.neutral1200,
+                bgcolor: `${colorTokens.brand}20`
+              }
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Anterior</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Atrás</Box>
+          </Button>
+
+          {!isLastStep && (
+            <Button
+              variant="outlined"
+              onClick={handleNext}
+              endIcon={<ArrowForwardIcon sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }} />}
+              sx={{
+                borderColor: `${colorTokens.brand}60`,
+                color: colorTokens.brand,
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                px: { xs: 1.5, sm: 2 },
+                flex: { xs: 1, sm: 'none' },
+                minWidth: { xs: 'auto', sm: '120px' },
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: colorTokens.brand,
+                  bgcolor: `${colorTokens.brand}10`
+                }
+              }}
+            >
+              Siguiente
+            </Button>
           )}
         </Box>
 
-        <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, alignItems: 'center', width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'stretch', sm: 'flex-start' } }}>
+        {/* Botones de acción (Cancelar/Guardar) - Responsive */}
+        <Box sx={{
+          display: 'flex',
+          gap: { xs: 1.5, sm: 2 },
+          alignItems: 'center',
+          width: { xs: '100%', sm: 'auto' },
+          justifyContent: { xs: 'stretch', sm: 'flex-start' },
+          order: { xs: 2, sm: 1 }
+        }}>
           <Button
             onClick={handleClose}
             disabled={loading}
