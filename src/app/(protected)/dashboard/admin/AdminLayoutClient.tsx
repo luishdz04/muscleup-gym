@@ -163,6 +163,9 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   backgroundSize: '100px 100px',
   minHeight: '100vh',
   color: colorTokens.textPrimary,
+  // ✅ FIX: Prevent horizontal overflow on mobile
+  maxWidth: '100vw',
+  overflowX: 'hidden',
   ...(open && {
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
@@ -800,7 +803,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
 
   return (
     <>
-      <Box sx={{ display: 'flex' }}>
+      <Box sx={{ display: 'flex', maxWidth: '100vw', overflowX: 'hidden' }}>
         {/* 🏢 BARRA SUPERIOR CON THEME CENTRALIZADO v7.0 */}
         <AppBar 
           position="fixed" 

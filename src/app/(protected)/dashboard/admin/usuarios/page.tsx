@@ -536,7 +536,9 @@ const UsersPage = memo(() => {
       p: { xs: 1.5, sm: 2, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh',
-      color: colorTokens.neutral1200
+      color: colorTokens.neutral1200,
+      maxWidth: '100%',
+      overflowX: 'hidden'
     }}>
       {/* PANEL DE CONTROL SUPERIOR */}
       <Paper sx={{
