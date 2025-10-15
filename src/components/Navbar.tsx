@@ -17,22 +17,16 @@ const navItems = [
 
 const actionItems = [
   { href: '/login', label: 'Acceso MUP', style: 'outline' },
-  { href: '/registro/paso1', label: 'Registro MUP', style: 'solid' },
+  { href: '/registro', label: 'Registro MUP', style: 'solid' },
 ];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Detectar scroll para cambiar estilo del navbar
+  // Detectar montaje para evitar errores de hidratación
   useEffect(() => {
-    const handleScroll = () => {
-      const isScrolled = window.scrollY > 10;
-      setScrolled(isScrolled);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    setMounted(true);
   }, []);
 
   // Cerrar menú móvil al hacer clic en un enlace
@@ -40,9 +34,14 @@ export default function Navbar() {
     setIsOpen(false);
   };
 
+  // Si no está montado, solo renderizar espaciador para evitar errores de hidratación
+  if (!mounted) {
+    return <div className="h-16 lg:h-20" />;
+  }
+
   return (
     <>
-     <motion.nav 
+     <motion.nav
   className="fixed top-0 left-0 right-0 z-50 bg-black shadow-lg border-b border-yellow-400/20"
   initial={{ y: -100 }}
   animate={{ y: 0 }}

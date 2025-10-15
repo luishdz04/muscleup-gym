@@ -132,7 +132,7 @@ export default function PlanesPage() {
   const router = useRouter();
 
   const handleInscribirse = () => {
-    router.push('/registro/paso1');
+    router.push('/registro');
   };
 
   // Animaciones para el contenedor

@@ -79,7 +79,7 @@ export default function Hero() {
           className="relative z-40 flex justify-center"
         >
           <motion.a
-            href="/registro/paso1"
+            href="/registro"
             className="relative inline-block group overflow-hidden"
             whileHover={{ scale: [1, 1.05] }}
             whileTap={{ scale: 0.98 }}

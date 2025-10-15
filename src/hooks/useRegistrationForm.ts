@@ -401,80 +401,69 @@ export const useRegistrationForm = () => {
         return;
       }
 
-      // ✅ CONSTRUIR DATOS ENTERPRISE
-      const baseUserData = {
-        // Información personal
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        password: data.password,
-        whatsapp: data.whatsapp,
-        birthDate: data.birthDate, // Ya en formato YYYY-MM-DD correcto
-        
-        // Dirección
-        street: data.street,
-        number: data.number,
-        neighborhood: data.neighborhood,
-        state: data.state,
-        city: data.city,
-        postalCode: data.postalCode,
-        country: data.country || 'México',
-        gender: data.gender,
-        maritalStatus: data.maritalStatus,
-        
-        // Información de emergencia
-        emergencyName: data.emergencyName,
-        emergencyPhone: data.emergencyPhone,
-        medicalCondition: data.medicalCondition,
-        bloodType: data.bloodType,
-        
-        // Información de membresía
-        referredBy: data.referredBy,
-        mainMotivation: data.mainMotivation,
-        receivePlans: data.receivePlans,
-        trainingLevel: data.trainingLevel,
-        
-        // Estados y configuración
-        acceptedRules: data.acceptedRules,
+      // ✅ CONSTRUIR DATOS EN EL FORMATO QUE ESPERA EL API
+      const payloadData = {
+        // ✅ Información personal agrupada
+        personalInfo: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password,
+          whatsapp: data.whatsapp,
+          birthDate: data.birthDate, // Ya en formato YYYY-MM-DD correcto
+
+          // Dirección dentro de personalInfo
+          street: data.street,
+          number: data.number,
+          neighborhood: data.neighborhood,
+          state: data.state,
+          city: data.city,
+          postalCode: data.postalCode,
+          country: data.country || 'México',
+          gender: data.gender,
+          maritalStatus: data.maritalStatus,
+        },
+
+        // ✅ Contacto de emergencia agrupado
+        emergencyContact: {
+          name: data.emergencyName,
+          phone: data.emergencyPhone,
+          medicalCondition: data.medicalCondition,
+          bloodType: data.bloodType,
+        },
+
+        // ✅ Información de membresía agrupada
+        membershipData: {
+          referredBy: data.referredBy,
+          mainMotivation: data.mainMotivation,
+          receivePlans: data.receivePlans,
+          trainingLevel: data.trainingLevel,
+        },
+
+        // ✅ Archivos procesados (base64)
+        profilePhoto: profilePhotoBase64,
+        signature: signatureDataUrl,
+        ...(tutorINEBase64 && { tutorINE: tutorINEBase64 }),
+
+        // ✅ Estados y configuración
         isMinor: showTutorField,
-        
-        // URLs de archivos procesados
-        profilePictureUrl: profilePhotoBase64,
-        signatureUrl: signatureDataUrl,
-        ...(tutorINEBase64 && { tutorINEUrl: tutorINEBase64 }),
-        
-        // Estados de proceso
-        registrationCompleted: true,
-        registrationCompletedAt: getUTCTimestamp(), // ✅ UTC timestamp
-        pendingWelcomeEmail: true,
-        emailConfirmed: false,
-        fingerprint: false,
-        emailSent: false,
-        whatsappSent: false,
-        processingErrors: false,
-        
-        // Sistema de puntos (valores iniciales)
-        points_balance: 0,
-        total_purchases: 0,
-        rol: 'cliente'
+
+        // ✅ Metadata adicional
+        metadata: {
+          acceptedRules: data.acceptedRules,
+          registrationSource: 'web_form',
+          registrationTimestamp: getUTCTimestamp(),
+        }
       };
 
-      // ✅ APLICAR AUDITORÍA ENTERPRISE AUTOMÁTICA
-      const userDataWithAudit = await addAuditFields(baseUserData, false);
+      console.log('Datos con auditoría:', payloadData);
 
-      console.log('Datos con auditoría:', {
-        ...userDataWithAudit,
-        profilePictureUrl: '[BASE64_DATA]', // No logear base64 completo
-        signatureUrl: '[BASE64_DATA]',
-        ...(tutorINEBase64 && { tutorINEUrl: '[BASE64_DATA]' })
-      });
-
-      // Llamada al API con datos enterprise
+      // Llamada al API con datos en formato correcto
       try {
         const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(userDataWithAudit), // ✅ Datos con auditoría
+          body: JSON.stringify(payloadData), // ✅ Datos en formato correcto
           cache: 'no-store'
         });
 

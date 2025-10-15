@@ -454,7 +454,7 @@ export default function SobreNosotrosPage() {
             <motion.button
               whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(255, 204, 0, 0.3)" }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => window.location.href = '/registro/paso1'}
+              onClick={() => window.location.href = '/registro'}
               className="bg-gradient-to-r from-brand to-brand/80 text-black font-bold 
                        py-4 px-8 sm:py-5 sm:px-10 rounded-full text-lg sm:text-xl 
                        shadow-lg hover:shadow-brand/50 transition-all duration-300

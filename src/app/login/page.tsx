@@ -307,7 +307,7 @@ export default function Login() {
           </Box>
           
           <Box sx={{ mt: 4, textAlign: 'center' }}>
-            <Link href="/registro/paso1" style={{ textDecoration: 'none' }}>
+            <Link href="/registro" style={{ textDecoration: 'none' }}>
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center',
