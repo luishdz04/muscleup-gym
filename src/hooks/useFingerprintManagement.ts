@@ -285,7 +285,7 @@ export const useFingerprintManagement = ({
   // Función para sincronizar con F22
   const syncFingerprintToF22Service = useCallback(async (
     templateData: any,
-    wsUrl: string = process.env.NEXT_PUBLIC_F22_WEBSOCKET_URL || 'ws://127.0.0.1:8085/ws/'
+    wsUrl: string = process.env.NEXT_PUBLIC_F22_WEBSOCKET_URL || 'ws://127.0.0.1:9000/ws/'
   ): Promise<{ 
     success: boolean; 
     uid?: number; 
@@ -482,7 +482,7 @@ export const useFingerprintManagement = ({
     deviceUserId: string,
     userId: string,
     fingerIndex?: number,
-    wsUrl: string = process.env.NEXT_PUBLIC_F22_WEBSOCKET_URL || 'ws://127.0.0.1:8085/ws/'
+    wsUrl: string = process.env.NEXT_PUBLIC_F22_WEBSOCKET_URL || 'ws://127.0.0.1:9000/ws/'
   ): Promise<{ 
     success: boolean; 
     error?: string; 
