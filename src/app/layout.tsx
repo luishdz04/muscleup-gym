@@ -41,7 +41,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
-      <body className="flex flex-col min-h-screen bg-black text-white">
+      <body className="relative flex flex-col min-h-screen bg-black text-white">
         <MUIThemeProvider>
           {/* 2. AÑADE EL COMPONENTE AQUÍ */}          
           <Navbar />

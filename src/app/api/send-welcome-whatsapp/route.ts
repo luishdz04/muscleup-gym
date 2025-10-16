@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/utils/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import twilio from 'twilio';
 
 export async function POST(req: NextRequest) {

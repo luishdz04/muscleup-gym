@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './lib/supabase/config';
 
 // Función para actualizar la cookie de sesión
 async function updateSession(request: NextRequest) {
@@ -8,9 +7,18 @@ async function updateSession(request: NextRequest) {
     request: { headers: request.headers },
   });
 
+  // Usar variables de entorno directamente en el middleware (evita problemas con Next.js 15)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('❌ Middleware - Missing Supabase credentials');
+    return response;
+  }
+
   const supabase = createServerClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         // ✅ MÉTODO MODERNO: getAll (reemplaza get)

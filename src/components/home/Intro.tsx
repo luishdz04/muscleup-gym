@@ -297,7 +297,7 @@ export default function Intro() {
   const isHeaderInView = useInView(headerRef, { once: true });
 
   return (
-    <section id="intro" className="bg-black">
+    <section id="intro" className="relative bg-black">
       {/* Encabezado - Completamente Responsivo */}
       <motion.div 
         ref={headerRef}

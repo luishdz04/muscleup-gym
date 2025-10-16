@@ -1,5 +1,5 @@
 // hooks/useRegistrarMembresia.ts - ENTERPRISE v6.0 REFACTORIZADO NUEVO ESQUEMA BD
-import { useState, useEffect, useCallback, useMemo, useReducer } from 'react';
+import { useState, useEffect, useCallback, useMemo, useReducer, useRef } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 // ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
@@ -950,8 +950,14 @@ export const useRegistrarMembresia = () => {
     notify.success('Formulario reiniciado');
   }, [dispatch]);
 
-  // ✅ CARGAR DATOS INICIAL
+  // ✅ CARGAR DATOS INICIAL - CON CONTROL DE EJECUCIÓN ÚNICA
+  const hasLoadedData = useRef(false);
+
   useEffect(() => {
+    // ✅ Solo cargar una vez, prevenir duplicados
+    if (hasLoadedData.current) return;
+    hasLoadedData.current = true;
+
     const loadData = async () => {
       setLoadingPlans(true);
       try {
@@ -964,7 +970,7 @@ export const useRegistrarMembresia = () => {
         if (plansError) throw plansError;
         setPlans(plansData || []);
 
-        const { data: commissionsData, error: commissionsError } = await supabase
+        const { data: commissionsData, error: commissionsError} = await supabase
           .from('payment_commissions')
           .select('*')
           .eq('is_active', true);
@@ -982,7 +988,7 @@ export const useRegistrarMembresia = () => {
     };
 
     loadData();
-  }, [supabase]);
+  }, []); // ✅ Dependencias vacías - solo una vez
 
   return {
     // Estados principales

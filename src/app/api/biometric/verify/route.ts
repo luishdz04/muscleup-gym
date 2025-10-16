@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@/lib/supabase/route-handler';
 
 // 🎯 TIPOS PARA LA API DE VERIFICACIÓN
 interface VerifyRequest {
@@ -51,7 +50,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<VerifyRes
     console.log('🔍 API: Procesando verificación biométrica...');
     
     // ✅ CORRECTO PARA NEXTJS 15: cookies() retorna la promesa directamente
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     
@@ -181,7 +180,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log('📊 API: Obteniendo estado de verificaciones...');
     
     // ✅ CORRECTO PARA NEXTJS 15: cookies() retorna la promesa directamente
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     

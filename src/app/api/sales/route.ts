@@ -1,10 +1,9 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@/lib/supabase/route-handler';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');

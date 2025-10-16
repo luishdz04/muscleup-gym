@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@/lib/supabase/route-handler';
 
 // 🎯 TIPOS PARA LA API DE CONEXIÓN
 interface ConnectRequest {
@@ -55,7 +54,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ConnectRe
     console.log('🔌 API: Gestionando conexión de dispositivo...');
     
     // ✅ CORRECTO PARA NEXTJS 15: cookies() retorna la promesa directamente
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     
@@ -157,7 +156,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log('📊 API: Obteniendo estado de conexiones...');
     
     // ✅ CORRECTO PARA NEXTJS 15: cookies() retorna la promesa directamente
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     

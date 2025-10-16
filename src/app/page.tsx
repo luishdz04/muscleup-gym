@@ -7,12 +7,12 @@ import InfoTabs from '@/components/home/InfoTabs';
 
 export default function HomePage() {
   return (
-    <>
+    <div className="relative">
       <Hero />
       <Intro />
       <Testimonials />
       <Gallery />
       <InfoTabs />
-    </>
+    </div>
   );
 }

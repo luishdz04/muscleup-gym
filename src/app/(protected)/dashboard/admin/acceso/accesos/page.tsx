@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Typography, Paper, Button, CircularProgress, Alert, Card, CardContent, Divider, Chip, Badge, Tooltip, IconButton } from '@mui/material';
 import { CheckCircle, Error, Fingerprint as FingerprintIcon, PersonSearch, Security, History, Info } from '@mui/icons-material';
 import { green, red, blue, grey, orange } from '@mui/material/colors';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 // Datos del sistema actualizados
 const CURRENT_DATE = '2025-06-17 15:26:36';
@@ -38,7 +38,7 @@ export default function AccessVerificationPage() {
   const isConnecting = useRef(false);
   const manualDisconnect = useRef(false);
   const isComponentMounted = useRef(true);
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserSupabaseClient();
   
   // Cargar huellas registradas desde Supabase
   const loadRegisteredFingerprints = useCallback(async () => {
@@ -775,28 +775,41 @@ export default function AccessVerificationPage() {
   
   // UI Principal
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 1.5, sm: 2, md: 3 } }}>
+      <Typography variant="h4" sx={{
+        mb: { xs: 2, sm: 2.5, md: 3 },
+        fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+      }}>
         Verificación de Acceso por Huella
       </Typography>
-      
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+
+      <Box sx={{
+        display: 'flex',
+        gap: { xs: 1.5, sm: 2 },
+        flexDirection: { xs: 'column', lg: 'row' },
+        flexWrap: 'wrap'
+      }}>
         {/* Panel de verificación */}
-        <Paper 
-          elevation={3} 
-          sx={{ 
+        <Paper
+          elevation={3}
+          sx={{
             flex: '1 1 350px',
-            minHeight: 400,
+            minHeight: { xs: 350, sm: 400 },
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            width: { xs: '100%', lg: 'auto' }
           }}
         >
-          <Box sx={{ p: 2, borderBottom: `1px solid ${grey[200]}`, bgcolor: 'background.paper' }}>
-            <Typography variant="h6">
+          <Box sx={{
+            p: { xs: 1.5, sm: 2 },
+            borderBottom: `1px solid ${grey[200]}`,
+            bgcolor: 'background.paper'
+          }}>
+            <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' } }}>
               Verificación de Acceso
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
               Control de Acceso por Huella Digital
             </Typography>
           </Box>
@@ -842,21 +855,29 @@ export default function AccessVerificationPage() {
         </Paper>
         
         {/* Historial de accesos */}
-        <Paper 
-          elevation={3} 
-          sx={{ 
+        <Paper
+          elevation={3}
+          sx={{
             flex: '1 1 350px',
-            minHeight: 400,
+            minHeight: { xs: 350, sm: 400 },
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            width: { xs: '100%', lg: 'auto' }
           }}
         >
-          <Box sx={{ p: 2, borderBottom: `1px solid ${grey[200]}`, bgcolor: 'background.paper', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">
-              Historial de Accesos Recientes
+          <Box sx={{
+            p: { xs: 1.5, sm: 2 },
+            borderBottom: `1px solid ${grey[200]}`,
+            bgcolor: 'background.paper',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' } }}>
+              Historial de Accesos
             </Typography>
             <Badge badgeContent={logs.length} color="primary" max={99}>
-              <History />
+              <History sx={{ fontSize: { xs: 20, sm: 24 } }} />
             </Badge>
           </Box>
           
@@ -888,26 +909,37 @@ export default function AccessVerificationPage() {
       </Box>
       
       {/* Panel de información */}
-      <Card sx={{ mt: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">
+      <Card sx={{ mt: { xs: 2, sm: 2.5, md: 3 } }}>
+        <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: { xs: 1, sm: 0 }
+          }}>
+            <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' } }}>
               Información del Sistema de Verificación
             </Typography>
-            
+
             <Tooltip title="Información de huellas registradas">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <FingerprintIcon color="primary" />
-                <Typography variant="body2" color="primary.main">
+                <FingerprintIcon color="primary" sx={{ fontSize: { xs: 20, sm: 24 } }} />
+                <Typography variant="body2" color="primary.main" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                   {fingerprintTemplates.length} huellas registradas
                 </Typography>
               </Box>
             </Tooltip>
           </Box>
-          
-          <Divider sx={{ my: 1 }} />
-          
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+
+          <Divider sx={{ my: { xs: 1, sm: 1.5, md: 2 } }} />
+
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            flexWrap: 'wrap',
+            gap: { xs: 1.5, sm: 2 }
+          }}>
             <Box sx={{ flex: '1 1 300px' }}>
               <Typography variant="subtitle2" gutterBottom>
                 Funcionamiento del Sistema

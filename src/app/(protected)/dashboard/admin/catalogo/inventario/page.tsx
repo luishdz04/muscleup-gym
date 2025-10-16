@@ -1,7 +1,7 @@
 // src/app/(protected)/dashboard/admin/catalogo/inventario/page.tsx
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -416,12 +416,15 @@ export default function InventarioPage() {
     }
   }, [reloadWarehouses, reloadProducts, reloadMovements]);
 
-  // Effects
+  // Effects - CON CONTROL DE EJECUCIÓN ÚNICA
+  const hasLoadedInitialData = useRef(false);
+
   useEffect(() => {
-    if (hydrated) {
-      loadInitialData();
-    }
-  }, [hydrated, loadInitialData]);
+    if (!hydrated || hasLoadedInitialData.current) return;
+    hasLoadedInitialData.current = true;
+
+    loadInitialData();
+  }, [hydrated]); // ✅ Removido loadInitialData de dependencies
 
   useEffect(() => {
     if (selectedWarehouse) {
@@ -833,23 +836,25 @@ export default function InventarioPage() {
   }
 
   return (
-    <Box sx={{ 
+    <Box sx={{
       minHeight: '100vh',
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       color: colorTokens.textPrimary,
-      p: 3,
+      p: { xs: 1.5, sm: 2, md: 3 },
       position: 'relative'
     }}>
-      {/* Speed Dial - Solo acciones necesarias */}
+      {/* Speed Dial - Solo acciones necesarias - Responsive */}
       <SpeedDial
         ariaLabel="Acciones Rápidas"
-        sx={{ 
-          position: 'fixed', 
-          bottom: 32, 
-          right: 32,
+        sx={{
+          position: 'fixed',
+          bottom: { xs: 16, sm: 24, md: 32 },
+          right: { xs: 16, sm: 24, md: 32 },
           '& .MuiFab-primary': {
             background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
-            color: colorTokens.textOnBrand
+            color: colorTokens.textOnBrand,
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 }
           }
         }}
         icon={<SpeedDialIcon icon={<InventoryIcon />} openIcon={<SettingsIcon />} />}

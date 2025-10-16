@@ -1,5 +1,4 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@/lib/supabase/route-handler';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -11,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ users: [] });
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     
     // Verificar autenticación
     const { data: { session } } = await supabase.auth.getSession();

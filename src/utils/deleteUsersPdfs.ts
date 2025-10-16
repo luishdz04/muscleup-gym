@@ -1,5 +1,5 @@
 // utils/deleteUserPdfs.ts
-import { supabaseAdmin } from '@/utils/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export const deleteAllUserPdfs = async (userId: string): Promise<void> => {
   try {

@@ -1,7 +1,7 @@
 // hooks/useMembershipStats.ts - v6.0 CORREGIDO ESQUEMA BD ACTUALIZADO
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 // ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
@@ -204,9 +204,12 @@ export const useMembershipStats = () => {
     return loadData(true);
   }, [hydrated, loadData]);
 
-  // ✅ INICIALIZACIÓN SSR SAFE v6.0
+  // ✅ INICIALIZACIÓN SSR SAFE v6.0 - CON CONTROL DE EJECUCIÓN ÚNICA
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || hasInitialized.current) return;
+    hasInitialized.current = true;
 
     let isMounted = true;
 
@@ -228,7 +231,7 @@ export const useMembershipStats = () => {
     return () => {
       isMounted = false;
     };
-  }, [hydrated, loadData]);
+  }, [hydrated]); // ✅ Removido loadData de dependencies
 
   // ✅ RETURN CON FUNCIONES DATEUTILS
   return useMemo(() => ({

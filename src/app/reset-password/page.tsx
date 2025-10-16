@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Container, TextField, Button, Typography, Alert, Paper } from '@mui/material';
-import { createClient } from '@/utils/supabase-client';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
 export default function ResetPassword() {
@@ -12,7 +12,7 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
     const checkSession = async () => {

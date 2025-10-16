@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@/lib/supabase/route-handler';
 
 interface EnrollRequest {
     userId: string;
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<EnrollRes
     console.log('👆 API: Iniciando enrollment de huella...');
     
     // ✅ CORRECTO PARA NEXTJS 15: cookies() retorna la promesa directamente
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     
@@ -243,7 +242,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log('📊 API: Obteniendo estado de enrollment...');
     
     // ✅ CORRECTO PARA NEXTJS 15: cookies() retorna la promesa directamente
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     
@@ -349,7 +348,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     console.log('🛑 API: Cancelando enrollment...');
     
     // ✅ CORRECTO PARA NEXTJS 15: cookies() retorna la promesa directamente
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient(request);
     
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     

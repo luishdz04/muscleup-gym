@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/utils/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 // ✅ IMPORTACIONES OBLIGATORIAS DE DATEUTILS
 import { getCurrentTimestamp, formatTimestampForDisplay } from '@/utils/dateUtils';
 

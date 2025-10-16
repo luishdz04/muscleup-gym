@@ -12,6 +12,7 @@ import {
   AtSymbolIcon,
   GlobeAltIcon,
 } from '@heroicons/react/24/outline';
+import { useHydrated } from '@/hooks/useHydrated';
 
 // ==========================================
 // 📝 CONFIGURACIÓN - EDITA AQUÍ TUS DATOS
@@ -307,11 +308,21 @@ export default function InfoTabs() {
   const [active, setActive] = useState<TabKey>('horarios');
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-10%" });
+  const hydrated = useHydrated();
 
   // 🤖 CÁLCULO AUTOMÁTICO DEL DÍA ACTUAL
+  // ✅ Solo se calcula del lado del cliente después de la hidratación
   const schedule = useMemo(() => {
+    // Si aún no está hidratado, retornar schedule sin marcar ningún día como "hoy"
+    if (!hydrated) {
+      return baseSchedule.map(item => ({
+        ...item,
+        isToday: false
+      }));
+    }
+
     const currentDayIndex = getCurrentDayIndex();
-    
+
     // 🐛 Debug info - Puedes quitar esto en producción
     console.log('🗓️ Día actual detectado:', {
       dayIndex: currentDayIndex,
@@ -323,7 +334,7 @@ export default function InfoTabs() {
       ...item,
       isToday: item.dayIndex === currentDayIndex
     }));
-  }, []); // El array vacío significa que solo se calcula una vez al montar el componente
+  }, [hydrated]); // Se recalcula cuando cambia el estado de hidratación
 
   // Variantes de animación para el contenido de las pestañas
   const tabContentVariants = {

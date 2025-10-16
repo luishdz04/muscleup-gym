@@ -40,12 +40,11 @@
 }
 
 /* ============================================================================
-   ANIMACIONES REQUERIDAS POR TREMOR (Accordion, Dialog, etc.)
-   Según la guía oficial: https://tremor.so/docs/ui/accordion
+   ANIMACIONES PARA COMPONENTES RADIX UI (Accordion, Dialog, etc.)
    ============================================================================ */
 @layer base {
   :root {
-    /* Variables CSS para animaciones de Tremor */
+    /* Variables CSS para animaciones de componentes */
     --animate-accordion-open: accordionOpen 150ms cubic-bezier(0.16, 1, 0.3, 1);
     --animate-accordion-close: accordionClose 150ms cubic-bezier(0.16, 1, 0.3, 1);
     --animate-dialog-overlay-show: dialogOverlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
