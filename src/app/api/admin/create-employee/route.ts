@@ -165,20 +165,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Insertar en tabla Users (SOLO DATOS BÁSICOS - SIN FOTO)
-    console.log('👤 Insertando en tabla Users (sin foto)...');
+    // 4. Insertar en tabla Users (SOLO ID - RELACIÓN CON AUTH)
+    console.log('👤 Insertando en tabla Users (solo ID para relación)...');
     const { error: userError } = await supabaseAdmin
       .from('Users')
       .insert({
         id: userId,
-        firstName,
-        lastName,
-        email,
-        rol: rol, // Usar el rol recibido del formulario
-        // SIN profilePictureUrl - la foto va en employees
-        emailConfirmed: true,
-        registrationCompleted: true,
-        registrationCompletedAt: new Date().toISOString()
+        // ⚠️ SOLO ID - Todos los demás datos van en employees
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: createdBy || null
       });
 
     if (userError) {
@@ -190,23 +186,32 @@ export async function POST(req: NextRequest) {
           .from('user-files')
           .remove([uploadedFilePath]);
       }
-      return NextResponse.json({ 
-        error: `Error al crear usuario en base de datos: ${userError.message}` 
+      return NextResponse.json({
+        error: `Error al crear usuario en base de datos: ${userError.message}`
       }, { status: 400 });
     }
 
-    console.log('✅ Usuario insertado en tabla Users');
+    console.log('✅ Usuario insertado en tabla Users (solo relación)');
 
     // 5. Insertar en tabla employees (CON TODOS LOS DATOS + FOTO)
-    console.log('👨‍💼 Insertando en tabla employees (con foto):', profilePictureUrl);
+    console.log('👨‍💼 Insertando en tabla employees (TODOS los datos + foto):', profilePictureUrl);
     const { error: employeeError } = await supabaseAdmin
       .from('employees')
       .insert({
         user_id: userId,
+
+        // ✅ DATOS PERSONALES (que antes estaban en Users)
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+
+        // ✅ DATOS ADICIONALES
         birth_date: birthDate || null,
         gender: gender || null,
         marital_status: maritalStatus || null,
         phone: phone || null,
+
+        // ✅ DIRECCIÓN
         street: street || null,
         number: number || null,
         neighborhood: neighborhood || null,
@@ -214,14 +219,22 @@ export async function POST(req: NextRequest) {
         state: state || null,
         postal_code: postalCode || null,
         country: 'México',
+
+        // ✅ DATOS LABORALES
         position,
         department: department || null,
         salary: salary ? parseFloat(salary) : null,
         status: 'active',
+
+        // ✅ CONTACTO DE EMERGENCIA
         emergency_contact_name: emergencyContactName || null,
         emergency_contact_phone: emergencyContactPhone || null,
         emergency_contact_relationship: emergencyContactRelationship || null,
-        profile_picture_url: profilePictureUrl, // LA FOTO VA AQUÍ EN EMPLOYEES
+
+        // ✅ FOTO
+        profile_picture_url: profilePictureUrl,
+
+        // ✅ AUDITORÍA
         created_by: createdBy || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

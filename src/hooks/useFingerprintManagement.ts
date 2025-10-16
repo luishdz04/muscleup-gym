@@ -500,15 +500,136 @@ export const useFingerprintManagement = ({
     });
   }, []);
 
-  // Función para eliminar huella del F22
+  // ✅ NUEVA FUNCIÓN: Obtener información de usuario en F22
+  const getUserInfoFromF22 = useCallback(async (
+    deviceUserId: string,
+    wsUrl: string = process.env.NEXT_PUBLIC_F22_WEBSOCKET_URL || 'ws://127.0.0.1:9000/ws/'
+  ): Promise<{
+    success: boolean;
+    data?: {
+      device_user_id: number;
+      name: string;
+      fingerprints: Array<{ finger_index: number; exists: boolean }>;
+      total_fingerprints: number;
+      device_id: string;
+    };
+    error?: string;
+  }> => {
+    return new Promise((resolve, reject) => {
+      let ws: WebSocket | null = null;
+      let timeoutId: NodeJS.Timeout | null = null;
+      let isResolved = false;
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        }
+        ws = null;
+      };
+
+      const resolveOnce = (result: any) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          resolve(result);
+        }
+      };
+
+      const rejectOnce = (error: Error) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          reject(error);
+        }
+      };
+
+      try {
+        console.log('ℹ️ [F22-INFO] Obteniendo información de usuario...', { deviceUserId });
+
+        ws = new WebSocket(wsUrl);
+
+        timeoutId = setTimeout(() => {
+          rejectOnce(new Error(`Timeout obteniendo info del F22 (${WS_TIMEOUT/1000}s)`));
+        }, WS_TIMEOUT);
+
+        ws.onopen = () => {
+          console.log('🔌 [F22-INFO] WebSocket conectado');
+
+          const command = {
+            type: 'biometric',
+            action: 'get_user_info',
+            requestId: `info_${Date.now()}`,
+            data: {
+              device_user_id: parseInt(deviceUserId)
+            }
+          };
+
+          console.log('📤 [F22-INFO] Enviando comando:', JSON.stringify(command));
+          ws!.send(JSON.stringify(command));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const response = JSON.parse(event.data);
+            console.log('📨 [F22-INFO] Respuesta:', response.type);
+
+            if (response.type === 'get_user_info_result') {
+              const responseData = response.data || {};
+
+              if (responseData.success) {
+                console.log('✅ [F22-INFO] Información obtenida:', responseData.data);
+                resolveOnce({
+                  success: true,
+                  data: responseData.data
+                });
+              } else {
+                rejectOnce(new Error(responseData.error || 'Error obteniendo información'));
+              }
+            }
+            else if (response.type === 'error' || response.type === 'command_error') {
+              const errorMsg = response.data?.error || response.error || 'Error desconocido';
+              console.error('❌ [F22-INFO] Error:', errorMsg);
+              rejectOnce(new Error(errorMsg));
+            }
+
+          } catch (parseError) {
+            console.error('❌ [F22-INFO] Error parseando respuesta:', parseError);
+            rejectOnce(new Error('Error en comunicación con F22'));
+          }
+        };
+
+        ws.onclose = (event) => {
+          console.log('🔌 [F22-INFO] WebSocket cerrado:', event.code);
+          if (!isResolved && event.code !== 1000) {
+            rejectOnce(new Error(`Conexión perdida con F22 (código: ${event.code})`));
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('❌ [F22-INFO] Error WebSocket:', error);
+          rejectOnce(new Error('Error de conexión con servicio F22'));
+        };
+
+      } catch (error: any) {
+        console.error('💥 [F22-INFO] Error crítico:', error);
+        rejectOnce(error);
+      }
+    });
+  }, []);
+
+  // Función para eliminar huella del F22 (delete_user - específica)
   const deleteFingerprintFromF22Service = useCallback(async (
     deviceUserId: string,
     userId: string,
     fingerIndex?: number,
     wsUrl: string = process.env.NEXT_PUBLIC_F22_WEBSOCKET_URL || 'ws://127.0.0.1:9000/ws/'
-  ): Promise<{ 
-    success: boolean; 
-    error?: string; 
+  ): Promise<{
+    success: boolean;
+    error?: string;
     deletedTemplates?: number;
     userDeleted?: boolean;
   }> => {
@@ -559,71 +680,51 @@ export const useFingerprintManagement = ({
         }, WS_TIMEOUT);
         
         ws.onopen = () => {
-          console.log('🔌 [F22-DELETE] WebSocket conectado');
+          console.log('🔌 [F22-DELETE] WebSocket conectado, enviando comando...');
+
+          const deleteCommand = {
+            type: 'biometric',
+            action: 'delete_user',
+            requestId: `delete_${Date.now()}`,
+            data: {
+              device_user_id: parseInt(deviceUserId),
+              userId: userId,
+              finger_index: fingerIndex !== undefined ? fingerIndex : null,
+              deleteAll: fingerIndex === undefined || fingerIndex === null
+            }
+          };
+
+          console.log('📤 [F22-DELETE] Comando enviado:', JSON.stringify(deleteCommand));
+          ws!.send(JSON.stringify(deleteCommand));
         };
-        
+
         ws.onmessage = (event) => {
           try {
             const response = JSON.parse(event.data);
-            console.log('📨 [F22-DELETE] Respuesta:', response.type, response.action);
-            
-            if (response.type === 'welcome' && response.action === 'connected') {
-              console.log('🎉 [F22-DELETE] Enviando comando de eliminación...');
-              
-              const deleteCommand = {
-                type: 'device',
-                action: 'delete_fingerprint',
-                data: {
-                  deviceType: 'F22',
-                  deviceId: 'F22_001',
-                  deviceUserId: parseInt(deviceUserId),
-                  userId: userId,
-                  fingerIndex: fingerIndex !== undefined ? fingerIndex : null,
-                  deleteAll: fingerIndex === undefined || fingerIndex === null
-                }
-              };
-              
-              console.log('📤 [F22-DELETE] Comando enviado:', JSON.stringify(deleteCommand));
-              ws!.send(JSON.stringify(deleteCommand));
-            }
-            
-            else if (
-              response.type === 'delete_fingerprint_result' || 
-              response.type === 'delete_user_result' ||
-              response.type === 'device_response' ||
-              (response.type === 'device' && response.action === 'delete_fingerprint')
-            ) {
+            console.log('📨 [F22-DELETE] Respuesta:', response.type);
+
+            if (response.type === 'delete_user_result') {
               const responseData = response.data || {};
-              
-              if (responseData.success || responseData.isSuccess) {
+
+              if (responseData.success) {
                 console.log('✅ [F22-DELETE] Eliminación exitosa:', responseData);
                 resolveOnce({
                   success: true,
-                  deletedTemplates: responseData.deletedTemplates || 
-                                   responseData.deleted_templates || 
-                                   responseData.deletedCount || 
-                                   responseData.deleted_count || 0,
-                  userDeleted: responseData.userDeleted || 
-                              responseData.user_deleted || false
+                  deletedTemplates: responseData.data?.deleted_templates || 0,
+                  userDeleted: responseData.data?.user_deleted || false
                 });
               } else {
-                const errorMsg = responseData.error || 
-                               responseData.message || 
-                               'Error desconocido en eliminación';
+                const errorMsg = responseData.error || 'Error desconocido en eliminación';
                 console.error('❌ [F22-DELETE] Error en respuesta:', errorMsg);
                 rejectOnce(new Error(errorMsg));
               }
             }
-            
             else if (response.type === 'error' || response.type === 'command_error') {
-              const errorMsg = response.data?.error || 
-                             response.message || 
-                             response.error || 
-                             'Error desconocido';
+              const errorMsg = response.data?.error || response.error || 'Error desconocido';
               console.error('❌ [F22-DELETE] Error del servidor:', errorMsg);
               rejectOnce(new Error(errorMsg));
             }
-            
+
           } catch (parseError) {
             console.error('❌ [F22-DELETE] Error parseando respuesta:', parseError);
             rejectOnce(new Error('Error en comunicación con F22'));
@@ -645,6 +746,130 @@ export const useFingerprintManagement = ({
         
       } catch (error: any) {
         console.error('💥 [F22-DELETE] Error crítico:', error);
+        rejectOnce(error);
+      }
+    });
+  }, []);
+
+  // ✅ NUEVA FUNCIÓN: Eliminar usuario COMPLETO del F22 (delete_user_complete)
+  const deleteUserCompleteFromF22 = useCallback(async (
+    deviceUserId: string,
+    userId: string,
+    wsUrl: string = process.env.NEXT_PUBLIC_F22_WEBSOCKET_URL || 'ws://127.0.0.1:9000/ws/'
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    deleted?: boolean;
+    message?: string;
+  }> => {
+    return new Promise((resolve, reject) => {
+      let ws: WebSocket | null = null;
+      let timeoutId: NodeJS.Timeout | null = null;
+      let isResolved = false;
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        }
+        ws = null;
+      };
+
+      const resolveOnce = (result: any) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          resolve(result);
+        }
+      };
+
+      const rejectOnce = (error: Error) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          reject(error);
+        }
+      };
+
+      try {
+        console.log('🗑️ [F22-DELETE-COMPLETE] Iniciando eliminación completa...', {
+          deviceUserId,
+          userId
+        });
+
+        ws = new WebSocket(wsUrl);
+
+        timeoutId = setTimeout(() => {
+          rejectOnce(new Error(`Timeout eliminando usuario completo (${WS_TIMEOUT/1000}s)`));
+        }, WS_TIMEOUT);
+
+        ws.onopen = () => {
+          console.log('🔌 [F22-DELETE-COMPLETE] WebSocket conectado, enviando comando...');
+
+          const deleteCommand = {
+            type: 'biometric',
+            action: 'delete_user_complete',
+            requestId: `delete_complete_${Date.now()}`,
+            data: {
+              device_user_id: parseInt(deviceUserId),
+              userId: userId
+            }
+          };
+
+          console.log('📤 [F22-DELETE-COMPLETE] Comando enviado:', JSON.stringify(deleteCommand));
+          ws!.send(JSON.stringify(deleteCommand));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const response = JSON.parse(event.data);
+            console.log('📨 [F22-DELETE-COMPLETE] Respuesta:', response.type);
+
+            if (response.type === 'delete_user_complete_result') {
+              const responseData = response.data || {};
+
+              if (responseData.success) {
+                console.log('✅ [F22-DELETE-COMPLETE] Usuario eliminado completamente:', responseData);
+                resolveOnce({
+                  success: true,
+                  deleted: responseData.data?.deleted || true,
+                  message: responseData.data?.message || 'Usuario eliminado completamente (información + huellas)'
+                });
+              } else {
+                const errorMsg = responseData.error || 'Error desconocido';
+                console.error('❌ [F22-DELETE-COMPLETE] Error:', errorMsg);
+                rejectOnce(new Error(errorMsg));
+              }
+            }
+            else if (response.type === 'error' || response.type === 'command_error') {
+              const errorMsg = response.data?.error || response.error || 'Error desconocido';
+              console.error('❌ [F22-DELETE-COMPLETE] Error del servidor:', errorMsg);
+              rejectOnce(new Error(errorMsg));
+            }
+
+          } catch (parseError) {
+            console.error('❌ [F22-DELETE-COMPLETE] Error parseando respuesta:', parseError);
+            rejectOnce(new Error('Error en comunicación con F22'));
+          }
+        };
+
+        ws.onclose = (event) => {
+          console.log('🔌 [F22-DELETE-COMPLETE] WebSocket cerrado:', event.code);
+          if (!isResolved && event.code !== 1000) {
+            rejectOnce(new Error(`Conexión perdida con F22 (código: ${event.code})`));
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('❌ [F22-DELETE-COMPLETE] Error WebSocket:', error);
+          rejectOnce(new Error('Error de conexión con servicio F22'));
+        };
+
+      } catch (error: any) {
+        console.error('💥 [F22-DELETE-COMPLETE] Error crítico:', error);
         rejectOnce(error);
       }
     });
@@ -1178,21 +1403,26 @@ export const useFingerprintManagement = ({
     fingerprintState,
     isDeletingFingerprint,
     fingerprintDialogOpen,
-    
+
     // Manejadores principales
     handleFingerprintDialogOpen,
     handleFingerprintDialogClose,
     handleFingerprintDataReady,
     handleDeleteFingerprint,
     handleDeleteAllFingerprints,
-    
+
     // Funciones de procesamiento
     processPendingFingerprint,
-    
+
     // Funciones de utilidad
     resetFingerprintState,
     initializeWithFingerprint,
-    
+
+    // ✅ NUEVAS FUNCIONES F22
+    getUserInfoFromF22,
+    deleteFingerprintFromF22Service,
+    deleteUserCompleteFromF22,
+
     // Estados computados
     hasPendingFingerprint: fingerprintState.status === 'captured' && !!fingerprintState.pendingData,
     isSyncing: fingerprintState.syncStatus === 'syncing' || isDeletingFingerprint

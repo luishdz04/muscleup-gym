@@ -255,6 +255,8 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
     handleFingerprintDialogOpen,
     handleFingerprintDialogClose,
     handleFingerprintDataReady,
+    handleDeleteFingerprint,
+    handleDeleteAllFingerprints,
     processPendingFingerprint,
     hasPendingFingerprint,
     isSyncing: isFingerprintSyncing
@@ -1273,6 +1275,66 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
               {isSyncing ? 'Sincronizando...' : hasFingerprintInDB ? 'Reemplazar' : 'Registrar'}
             </Button>
           </Tooltip>
+
+          {hasFingerprintInDB && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Tooltip title="Eliminar huella específica del empleado">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleDeleteFingerprint}
+                  disabled={isSyncing}
+                  startIcon={<DeleteIcon />}
+                  sx={{
+                    borderColor: darkProTokens.error,
+                    color: darkProTokens.error,
+                    fontSize: '0.7rem',
+                    px: 1,
+                    minWidth: '90px',
+                    '&:hover': {
+                      bgcolor: `${darkProTokens.error}20`,
+                      borderColor: darkProTokens.errorHover,
+                      color: darkProTokens.errorHover
+                    },
+                    '&:disabled': {
+                      borderColor: darkProTokens.grayMedium,
+                      color: darkProTokens.textDisabled
+                    }
+                  }}
+                >
+                  Eliminar
+                </Button>
+              </Tooltip>
+
+              <Tooltip title="Eliminar TODAS las huellas del empleado">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleDeleteAllFingerprints}
+                  disabled={isSyncing}
+                  startIcon={<DeleteIcon />}
+                  sx={{
+                    borderColor: darkProTokens.warning,
+                    color: darkProTokens.warning,
+                    fontSize: '0.7rem',
+                    px: 1,
+                    minWidth: '100px',
+                    '&:hover': {
+                      bgcolor: `${darkProTokens.warning}20`,
+                      borderColor: darkProTokens.warningHover,
+                      color: darkProTokens.warningHover
+                    },
+                    '&:disabled': {
+                      borderColor: darkProTokens.grayMedium,
+                      color: darkProTokens.textDisabled
+                    }
+                  }}
+                >
+                  Todas
+                </Button>
+              </Tooltip>
+            </Box>
+          )}
         </Box>
       </Box>
     );

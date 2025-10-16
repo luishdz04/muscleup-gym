@@ -382,19 +382,141 @@ const UsersPage = memo(() => {
   }, [handleOpenFormDialog]);
 
   const handleDeleteUser = useCallback(async (user: User) => {
-    // ✅ CORREGIDO: alert.deleteConfirm usa 1 parámetro según API useNotifications
-    const confirmed = await alert.deleteConfirm(
-      `¿Eliminar usuario ${user.firstName} ${user.lastName}? Esta acción eliminará todos los datos relacionados y no se puede deshacer.`
-    );
-    
-    if (confirmed) {
-      try {
-        await deleteItem(user.id);
-        toast.success(`Usuario ${user.firstName} eliminado exitosamente`);
-      } catch (error: any) {
-        console.error('Error deleting user:', error);
-        toast.error('Error al eliminar usuario: ' + error.message);
+    try {
+      // ✅ PASO 1: Obtener información del usuario en F22 si tiene huella
+      let deviceUserId: string | null = null;
+      let fingerprintInfo: any = null;
+
+      if (user.fingerprint) {
+        console.log('🔍 [DELETE-USER] Usuario tiene huella registrada, obteniendo info del F22...');
+
+        try {
+          const response = await fetch(
+            `/api/biometric/fingerprint?userId=${user.id}&getDeviceId=true`,
+            { method: 'GET' }
+          );
+
+          if (response.ok) {
+            fingerprintInfo = await response.json();
+            deviceUserId = fingerprintInfo.device_user_id;
+
+            console.log('📊 [DELETE-USER] Información de huella obtenida:', {
+              device_user_id: deviceUserId,
+              finger_index: fingerprintInfo.finger_index,
+              finger_name: fingerprintInfo.finger_name
+            });
+          }
+        } catch (infoError) {
+          console.warn('⚠️ [DELETE-USER] No se pudo obtener info de F22:', infoError);
+        }
       }
+
+      // ✅ PASO 2: Confirmar eliminación con información completa
+      const message = deviceUserId
+        ? `¿Eliminar usuario ${user.firstName} ${user.lastName}?\n\n` +
+          `⚠️ ESTA ACCIÓN:\n` +
+          `• Eliminará todos los datos de la base de datos\n` +
+          `• Eliminará el usuario COMPLETO del F22 (ID: ${deviceUserId})\n` +
+          `• Eliminará TODAS las huellas registradas\n` +
+          `• NO se puede deshacer\n\n` +
+          `¿Continuar?`
+        : `¿Eliminar usuario ${user.firstName} ${user.lastName}?\n\n` +
+          `Esta acción eliminará todos los datos relacionados y no se puede deshacer.`;
+
+      const confirmed = await alert.deleteConfirm(message);
+
+      if (!confirmed) {
+        return;
+      }
+
+      // ✅ PASO 3: Eliminar de BD primero
+      console.log('💾 [DELETE-USER] Eliminando usuario de base de datos...');
+      await deleteItem(user.id);
+      console.log('✅ [DELETE-USER] Usuario eliminado de BD');
+
+      // ✅ PASO 4: Si tenía huella, eliminar del F22 usando delete_user_complete
+      if (deviceUserId && user.fingerprint) {
+        try {
+          console.log('🗑️ [DELETE-USER] Eliminando usuario completo del F22...');
+
+          const wsUrl = process.env.NEXT_PUBLIC_F22_WEBSOCKET_URL || 'ws://127.0.0.1:9000/ws/';
+          const ws = new WebSocket(wsUrl);
+
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              ws.close();
+              reject(new Error('Timeout eliminando del F22'));
+            }, 30000);
+
+            ws.onopen = () => {
+              console.log('🔌 [DELETE-USER] Conectado a F22, enviando comando...');
+
+              ws.send(JSON.stringify({
+                type: 'biometric',
+                action: 'delete_user_complete',
+                requestId: `delete_complete_${Date.now()}`,
+                data: {
+                  device_user_id: parseInt(deviceUserId!),
+                  userId: user.id
+                }
+              }));
+            };
+
+            ws.onmessage = (event) => {
+              try {
+                const response = JSON.parse(event.data);
+                console.log('📨 [DELETE-USER] Respuesta F22:', response.type);
+
+                if (response.type === 'delete_user_complete_result') {
+                  clearTimeout(timeout);
+                  ws.close();
+
+                  if (response.data?.success) {
+                    console.log('✅ [DELETE-USER] Usuario eliminado del F22');
+                    resolve();
+                  } else {
+                    reject(new Error(response.data?.error || 'Error eliminando del F22'));
+                  }
+                }
+              } catch (parseError) {
+                console.error('❌ [DELETE-USER] Error parseando respuesta:', parseError);
+              }
+            };
+
+            ws.onerror = (error) => {
+              clearTimeout(timeout);
+              console.error('❌ [DELETE-USER] Error WebSocket:', error);
+              reject(new Error('Error de conexión con F22'));
+            };
+
+            ws.onclose = (event) => {
+              clearTimeout(timeout);
+              if (event.code !== 1000 && !event.wasClean) {
+                reject(new Error('Conexión cerrada inesperadamente'));
+              }
+            };
+          });
+
+          toast.success(
+            `✅ Usuario ${user.firstName} eliminado completamente\n` +
+            `• Datos eliminados de BD\n` +
+            `• Usuario eliminado del F22 (ID: ${deviceUserId})`
+          );
+
+        } catch (f22Error: any) {
+          console.warn('⚠️ [DELETE-USER] Error eliminando del F22:', f22Error.message);
+          toast.warning(
+            `⚠️ Usuario eliminado de BD pero error en F22:\n${f22Error.message}\n\n` +
+            `Puede ser necesario eliminar manualmente del dispositivo.`
+          );
+        }
+      } else {
+        toast.success(`Usuario ${user.firstName} eliminado exitosamente`);
+      }
+
+    } catch (error: any) {
+      console.error('💥 [DELETE-USER] Error crítico:', error);
+      toast.error('Error al eliminar usuario: ' + error.message);
     }
   }, [deleteItem, alert, toast]);
 
