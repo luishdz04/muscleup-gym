@@ -225,25 +225,17 @@ const menuItems: MenuItem[] = [
   section: 'empleados',
   description: 'Gestión de personal interno',
   items: [
-    { 
-      text: 'Dashboard Empleados', 
-      path: '/dashboard/admin/empleados', 
-      icon: <DashboardIcon />,
-      parent: 'empleados',
-      section: 'empleados-dashboard',
-      description: 'Vista general del personal'
-    },
-    { 
-      text: 'Registrar Empleado', 
-      path: '/dashboard/admin/empleados/registrar', 
+    {
+      text: 'Registrar Empleado',
+      path: '/dashboard/admin/empleados/registrar',
       icon: <PersonAddIcon />,
       parent: 'empleados',
       section: 'registrar-empleado',
       description: 'Agregar nuevo empleado'
     },
-    { 
-      text: 'Lista de Empleados', 
-      path: '/dashboard/admin/empleados/lista', 
+    {
+      text: 'Lista de Empleados',
+      path: '/dashboard/admin/empleados/lista',
       icon: <PeopleIcon />,
       parent: 'empleados',
       section: 'lista-empleados',
