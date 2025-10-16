@@ -100,22 +100,42 @@ export const useFingerprintManagement = ({
       });
       
       const supabase = createBrowserSupabaseClient();
-      
-      // ✅ Usar .maybeSingle() para evitar error cuando no existe
+
+      // ✅ PASO 1: Verificar si el device_user_id ya está en uso por OTRO usuario
+      const { data: deviceIdInUse, error: deviceIdCheckError } = await supabase
+        .from('device_user_mappings')
+        .select('user_id, device_user_id')
+        .eq('device_id', deviceId)
+        .eq('device_user_id', deviceUserId)
+        .maybeSingle();
+
+      if (deviceIdCheckError) {
+        console.error('❌ [MAPPING] Error verificando device_user_id en uso:', deviceIdCheckError);
+        throw deviceIdCheckError;
+      }
+
+      if (deviceIdInUse && deviceIdInUse.user_id !== userId) {
+        // El device_user_id ya está siendo usado por OTRO usuario
+        const errorMsg = `El device_user_id ${deviceUserId} ya está asignado a otro usuario (${deviceIdInUse.user_id})`;
+        console.error('❌ [MAPPING]', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      // ✅ PASO 2: Verificar si ESTE usuario ya tiene un mapping
       const { data: existing, error: checkError } = await supabase
         .from('device_user_mappings')
         .select('*')
         .eq('user_id', userId)
         .eq('device_id', deviceId)
         .maybeSingle();
-      
+
       if (checkError) {
         console.error('❌ [MAPPING] Error verificando mapping existente:', checkError);
         throw checkError;
       }
-      
+
       if (existing) {
-        console.log('📝 [MAPPING] Actualizando mapping existente...');
+        console.log('📝 [MAPPING] Usuario ya tiene mapping, actualizando...');
         const { error: updateError } = await supabase
           .from('device_user_mappings')
           .update({
@@ -124,15 +144,15 @@ export const useFingerprintManagement = ({
             updated_at: getCurrentTimestamp()
           })
           .eq('id', existing.id);
-        
+
         if (updateError) throw updateError;
-        
+
         console.log('✅ [MAPPING] Mapping actualizado exitosamente');
       } else {
         console.log('🆕 [MAPPING] Creando nuevo mapping...');
-        
+
         const currentTime = getCurrentTimestamp();
-        
+
         const { error: insertError } = await supabase
           .from('device_user_mappings')
           .insert({
@@ -143,9 +163,12 @@ export const useFingerprintManagement = ({
             created_at: currentTime,
             updated_at: currentTime
           });
-        
-        if (insertError) throw insertError;
-        
+
+        if (insertError) {
+          console.error('❌ [MAPPING] Error insertando:', insertError);
+          throw insertError;
+        }
+
         console.log('✅ [MAPPING] Mapping creado exitosamente');
       }
       

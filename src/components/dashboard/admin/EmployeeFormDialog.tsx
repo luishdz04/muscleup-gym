@@ -67,6 +67,9 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import FingerprintRegistration from './FingerprintRegistration';
 import PhotoCapture from '@/components/registro/PhotoCapture';
 
+// ✅ IMPORTAR HOOK DE GESTION DE HUELLAS
+import { useFingerprintManagement } from '@/hooks/useFingerprintManagement';
+
 // DARK PRO TOKENS
 const darkProTokens = {
   background: '#000000',
@@ -126,16 +129,8 @@ interface Employee {
   fingerprint: boolean;
 }
 
-interface FingerprintState {
-  status: 'none' | 'captured' | 'saving' | 'saved' | 'error';
-  deviceUserId: string | null;
-  fingerIndex: number | null;
-  fingerName: string | null;
-  message: string | null;
-  error: string | null;
-  syncStatus: 'idle' | 'syncing' | 'success' | 'error';
-  pendingData: any | null;
-}
+// ⚠️ INTERFAZ REMOVIDA - Ahora se usa el hook useFingerprintManagement
+// que ya incluye esta interfaz internamente
 
 interface ImageState {
   url: string;
@@ -252,17 +247,29 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
     status: 'activo',
     fingerprint: false
   });
-  
-  // ESTADO DE HUELLA
-  const [fingerprintState, setFingerprintState] = useState<FingerprintState>({
-    status: 'none',
-    deviceUserId: null,
-    fingerIndex: null,
-    fingerName: null,
-    message: null,
-    error: null,
-    syncStatus: 'idle',
-    pendingData: null
+
+  // ✅ USAR HOOK DE GESTION DE HUELLAS (reemplaza estado manual)
+  const {
+    fingerprintState,
+    fingerprintDialogOpen,
+    handleFingerprintDialogOpen,
+    handleFingerprintDialogClose,
+    handleFingerprintDataReady,
+    processPendingFingerprint,
+    hasPendingFingerprint,
+    isSyncing: isFingerprintSyncing
+  } = useFingerprintManagement({
+    userId: formData.user_id || employee?.user_id,
+    onFingerprintChange: (hasFingerprint) => {
+      setFormData(prev => ({ ...prev, fingerprint: hasFingerprint }));
+      setHasFormChanges(true);
+    },
+    onError: (message) => {
+      setErrors(prev => ({ ...prev, fingerprint: message }));
+    },
+    onSuccess: (message) => {
+      console.log('✅ [EMPLOYEE] Huella procesada:', message);
+    }
   });
   
   // ESTADOS DE CONTROL
@@ -286,11 +293,11 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>('');
   const [hireDate, setHireDate] = useState<dayjs.Dayjs | null>(null);
   const [initializationComplete, setInitializationComplete] = useState(false);
-  
+
   // ESTADOS PARA DIALOGS
-  const [fingerprintDialogOpen, setFingerprintDialogOpen] = useState(false);
+  // ⚠️ fingerprintDialogOpen REMOVIDO - Viene del hook useFingerprintManagement
   const [photoCaptureOpen, setPhotoCaptureOpen] = useState(false);
-  const [isDeletingFingerprint, setIsDeletingFingerprint] = useState(false);
+  // ⚠️ isDeletingFingerprint REMOVIDO - Viene del hook useFingerprintManagement
   const [saveSuccess, setSaveSuccess] = useState(false);
   
   // FUNCIONES DE LIMPIEZA
@@ -637,77 +644,11 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
     console.log('✅ Foto desde cámara lista para subir');
   };
 
-  // FUNCIONES DE HUELLA DACTILAR
-  const handleFingerprintError = useCallback((message: string) => {
-    setFingerprintState(prev => ({
-      ...prev,
-      status: 'error',
-      error: message,
-      message: null,
-      syncStatus: 'idle'
-    }));
-    
-    setTimeout(() => {
-      if (mountedRef.current) {
-        setFingerprintState(prev => ({
-          ...prev,
-          error: null
-        }));
-      }
-    }, 5000);
-  }, []);
-
-  const handleFingerprintDialogOpen = useCallback(() => {
-    if (!formData.user_id && !employee?.user_id) {
-      handleFingerprintError('Se requiere un empleado válido para registrar huella');
-      return;
-    }
-    setFingerprintDialogOpen(true);
-  }, [formData.user_id, employee?.user_id, handleFingerprintError]);
-
-  const handleFingerprintDialogClose = useCallback(() => {
-    setFingerprintDialogOpen(false);
-  }, []);
-
-  const handleFingerprintDataReady = useCallback(async (fingerprintData: any) => {
-    try {
-      console.log('📥 Huella empleado capturada, almacenando temporalmente...', {
-        device_user_id: fingerprintData.device_user_id,
-        finger_index: fingerprintData.finger_index,
-        finger_name: fingerprintData.finger_name
-      });
-      
-      if (!fingerprintData.template) {
-        throw new Error('Template de huella vacío');
-      }
-      
-      if (!fingerprintData.device_user_id) {
-        throw new Error('device_user_id requerido');
-      }
-      
-      setFingerprintState({
-        status: 'captured',
-        deviceUserId: fingerprintData.device_user_id,
-        fingerIndex: fingerprintData.finger_index,
-        fingerName: fingerprintData.finger_name,
-        message: `🎉 ¡Huella empleado ${fingerprintData.finger_name} capturada! Presiona "Guardar Empleado" para almacenar.`,
-        error: null,
-        syncStatus: 'idle',
-        pendingData: {
-          ...fingerprintData,
-          captured_at: new Date().toISOString()
-        }
-      });
-      
-      setHasFormChanges(true);
-      
-      console.log('✅ Huella empleado almacenada temporalmente');
-      
-    } catch (error: any) {
-      console.error('❌ Error procesando huella empleado:', error);
-      handleFingerprintError(`Error: ${error.message}`);
-    }
-  }, [handleFingerprintError]);
+  // ⚠️ FUNCIONES DE HUELLA REMOVIDAS - Ahora se usan del hook useFingerprintManagement
+  // - handleFingerprintError -> Gestionado internamente por el hook
+  // - handleFingerprintDialogOpen -> Viene del hook
+  // - handleFingerprintDialogClose -> Viene del hook
+  // - handleFingerprintDataReady -> Viene del hook
 
   // VALIDACIÓN
   const validateForm = (): boolean => {
@@ -822,12 +763,26 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
         }
       }
       
+      // ✅ PROCESAR HUELLA PENDIENTE (sincronizar con F22)
+      if (hasPendingFingerprint) {
+        console.log('🖐️ [EMPLOYEE] Procesando huella pendiente de empleado...');
+        const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+
+        try {
+          await processPendingFingerprint(fullName);
+          console.log('✅ [EMPLOYEE] Huella sincronizada con F22');
+        } catch (f22Error: any) {
+          console.warn('⚠️ [EMPLOYEE] Error en F22, pero continuando guardado:', f22Error);
+          // ⚠️ No bloquear el guardado si falla F22, solo advertir
+        }
+      }
+
       // PREPARAR DATOS FINALES
       const employeeData = {
         ...updatedFormData,
         fingerprintData: fingerprintState.pendingData
       };
-      
+
       // GUARDAR EMPLEADO
       console.log('💾 Guardando empleado en BD...');
       await onSave(employeeData);
@@ -839,19 +794,9 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
       setFormData(updatedFormData);
       setOriginalFormData({...updatedFormData});
       setHasFormChanges(false);
-      
-      // LIMPIAR ESTADO DE HUELLA
-      setFingerprintState({
-        status: 'saved',
-        deviceUserId: null,
-        fingerIndex: null,
-        fingerName: null,
-        message: null,
-        error: null,
-        syncStatus: 'success',
-        pendingData: null
-      });
-      
+
+      // ⚠️ ESTADO DE HUELLA - Gestionado automáticamente por el hook useFingerprintManagement
+
       setSaveSuccess(true);
       
       console.log('🎉 Proceso de empleado completado exitosamente');
@@ -869,23 +814,24 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
   // DETECCIÓN DE CAMBIOS
   const detectChanges = useCallback(() => {
     if (!initializationComplete) return false;
-    
+
     const fieldsToCompare = [
-      'firstName', 'lastName', 'email', 'phone', 'position', 
+      'firstName', 'lastName', 'email', 'phone', 'position',
       'department', 'salary', 'hireDate', 'status', 'fingerprint'
     ];
-    
+
     const dataChanged = fieldsToCompare.some(field => {
       const current = formData[field as keyof Employee];
       const original = originalFormData[field as keyof Employee];
       return current !== original;
     });
-    
+
     const newFilesAdded = profilePicture !== null;
-    const fingerprintPending = fingerprintState.status === 'captured' && !!fingerprintState.pendingData;
-    
+    // ✅ Usar hasPendingFingerprint del hook
+    const fingerprintPending = hasPendingFingerprint;
+
     return dataChanged || newFilesAdded || fingerprintPending;
-  }, [formData, originalFormData, profilePicture, fingerprintState, initializationComplete]);
+  }, [formData, originalFormData, profilePicture, hasPendingFingerprint, initializationComplete]);
 
   // useEffect para detectar cambios
   useEffect(() => {
@@ -950,18 +896,8 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
       
       setProfilePicturePreview('');
       setProfilePicture(null);
-      
-      // Limpiar estado de huella
-      setFingerprintState({
-        status: 'none',
-        deviceUserId: null,
-        fingerIndex: null,
-        fingerName: null,
-        message: null,
-        error: null,
-        syncStatus: 'idle',
-        pendingData: null
-      });
+
+      // ⚠️ Estado de huella - Gestionado por el hook useFingerprintManagement
       
       // CARGAR DATOS DEL EMPLEADO EXISTENTE
       console.log('📋 [INIT] Cargando datos del empleado:', {
@@ -1001,14 +937,7 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
         setHireDate(null);
       }
       
-      // Estado de huella
-      if (employee.fingerprint) {
-        console.log('🖐️ [INIT] Empleado tiene huella registrada');
-        setFingerprintState(prev => ({
-          ...prev,
-          status: 'saved'
-        }));
-      }
+      // ⚠️ Estado de huella - El hook lo maneja automáticamente
       
       // Cargar archivos existentes si existe user_id
       if (employee.user_id) {
@@ -1192,16 +1121,15 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
   // COMPONENTE DE CONTROL DE HUELLA
   const FingerprintControl = () => {
     const hasFingerprintInDB = formData.fingerprint;
-    const hasPendingFingerprint = fingerprintState.status === 'captured';
-    const isSyncing = fingerprintState.syncStatus === 'syncing';
-    const isDeleting = isDeletingFingerprint;
+    const hasPendingFp = hasPendingFingerprint; // Del hook
+    const isSyncing = isFingerprintSyncing; // Del hook
     
     const getStatusColor = () => {
       if (hasFingerprintInDB) return darkProTokens.success;
-      if (hasPendingFingerprint) return darkProTokens.warning;
+      if (hasPendingFp) return darkProTokens.warning;
       return darkProTokens.error;
     };
-    
+
     const getStatusIcon = () => {
       if (hasFingerprintInDB && fingerprintState.syncStatus === 'success') {
         return <VerifiedIcon sx={{ color: darkProTokens.success, fontSize: '1rem' }} />;
@@ -1209,12 +1137,12 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
       if (hasFingerprintInDB) {
         return <SecurityIcon sx={{ color: darkProTokens.info, fontSize: '1rem' }} />;
       }
-      if (hasPendingFingerprint) {
+      if (hasPendingFp) {
         return <AccessTimeIcon sx={{ color: darkProTokens.warning, fontSize: '1rem' }} />;
       }
       return <ErrorIcon sx={{ color: darkProTokens.error, fontSize: '1rem' }} />;
     };
-    
+
     const getStatusText = () => {
       if (hasFingerprintInDB && fingerprintState.syncStatus === 'success') {
         return 'Empleado registrado + F22 sincronizado';
@@ -1222,7 +1150,7 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
       if (hasFingerprintInDB) {
         return 'Empleado registrado en BD';
       }
-      if (hasPendingFingerprint) {
+      if (hasPendingFp) {
         return 'Huella capturada - Pendiente de guardar';
       }
       return 'Sin huella registrada';
@@ -1289,7 +1217,7 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
               </Typography>
             )}
             
-            {hasPendingFingerprint && (
+            {hasPendingFp && (
               <Box sx={{ mt: 0.5 }}>
                 <Chip
                   icon={<UpdateIcon />}
@@ -1319,7 +1247,7 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
               variant="contained"
               size="small"
               onClick={handleFingerprintDialogOpen}
-              disabled={!formData.user_id && !employee?.user_id || isDeleting || isSyncing}
+              disabled={!formData.user_id && !employee?.user_id || isSyncing}
               startIcon={
                 isSyncing ? <CircularProgress size={14} /> : <FingerPrintIcon />
               }
@@ -1809,8 +1737,8 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
             <Chip
               icon={<UpdateIcon />}
               label={
-                fingerprintState.status === 'captured' ? 
-                'Cambios + Huella pendiente' : 
+                hasPendingFingerprint ?
+                'Cambios + Huella pendiente' :
                 'Cambios pendientes'
               }
               size="small"
@@ -2072,7 +2000,7 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
 
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           {/* Indicadores de cambios */}
-          {(profilePicture || fingerprintState.status === 'captured') && (
+          {(profilePicture || hasPendingFingerprint) && (
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {profilePicture && (
                 <Chip
@@ -2092,8 +2020,8 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
                   }}
                 />
               )}
-              
-              {fingerprintState.status === 'captured' && (
+
+              {hasPendingFingerprint && (
                 <Chip
                   icon={<FingerPrintIcon />}
                   label={`${fingerprintState.fingerName || 'Huella'} capturada`}
@@ -2253,7 +2181,6 @@ export default function EmployeeFormDialog({ open, onClose, employee, onSave }: 
           }}
           userType="empleado"
           onFingerprintDataReady={handleFingerprintDataReady}
-          onError={handleFingerprintError}
         />
       )}
 
