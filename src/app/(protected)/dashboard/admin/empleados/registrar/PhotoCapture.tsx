@@ -209,28 +209,38 @@ export default function PhotoCapture({
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom sx={{ color: darkProTokens.primary, fontWeight: 600 }}>
+      <Typography variant="h6" gutterBottom sx={{
+        color: darkProTokens.primary,
+        fontWeight: 600,
+        fontSize: { xs: '1rem', sm: '1.25rem' }
+      }}>
         {label}
       </Typography>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2 }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        alignItems: { xs: 'center', sm: 'center' },
+        gap: { xs: 2, sm: 3 },
+        mb: 2
+      }}>
         {/* Avatar Preview */}
         <Avatar
           src={previewUrl || undefined}
-          sx={{ 
-            width: 120, 
-            height: 120,
+          sx={{
+            width: { xs: 100, sm: 120 },
+            height: { xs: 100, sm: 120 },
             bgcolor: darkProTokens.primary,
             color: darkProTokens.background,
-            fontSize: '2rem',
+            fontSize: { xs: '1.5rem', sm: '2rem' },
             border: `3px solid ${darkProTokens.primary}30`
           }}
         >
-          {!previewUrl && <PersonIcon sx={{ fontSize: '3rem' }} />}
+          {!previewUrl && <PersonIcon sx={{ fontSize: { xs: '2.5rem', sm: '3rem' } }} />}
         </Avatar>
 
         {/* Controls */}
-        <Box sx={{ flex: 1 }}>
+        <Box sx={{ flex: 1, width: { xs: '100%', sm: 'auto' } }}>
           {!isCapturing ? (
             <>
               <input
@@ -240,13 +250,20 @@ export default function PhotoCapture({
                 onChange={handlePhotoUpload}
                 style={{ display: 'none' }}
               />
-              
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+
+              <Box sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: { xs: 1.5, sm: 2 },
+                mb: 2
+              }}>
                 <Button
                   variant="outlined"
-                  startIcon={<UploadIcon />}
+                  startIcon={<UploadIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                   onClick={handleFileSelection}
+                  fullWidth={{ xs: true, sm: false }}
                   sx={{
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
                     borderColor: darkProTokens.primary,
                     color: darkProTokens.primary,
                     '&:hover': {

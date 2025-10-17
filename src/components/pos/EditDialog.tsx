@@ -788,21 +788,29 @@ export default function EditDialog({
         }}
       >
         {/* ✅ HEADER CON INFORMACIÓN DE VENTA */}
-        <DialogTitle sx={{ 
+        <DialogTitle sx={{
           background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})`,
           color: colorTokens.textPrimary,
           fontWeight: 700,
           display: 'flex',
           alignItems: 'center',
-          gap: 2
+          gap: { xs: 1, sm: 2 },
+          p: { xs: 2, sm: 3 },
+          flexDirection: { xs: 'column', sm: 'row' }
         }}>
-          <EditIcon sx={{ fontSize: 28 }} />
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" component="div">
-              Editar Venta: {sale.sale_number}
+          <EditIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
+          <Box sx={{ flexGrow: 1, textAlign: { xs: 'center', sm: 'left' } }}>
+            <Typography variant="h6" component="div" sx={{
+              fontSize: { xs: '1rem', sm: '1.25rem' }
+            }}>
+              Editar: {sale.sale_number}
             </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.9 }}>
-              {formatTimestampForDisplay(sale.created_at)} • Base Productos: {formatPrice(baseNetTotal)}
+            <Typography variant="caption" sx={{
+              opacity: 0.9,
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
+              {formatTimestampForDisplay(sale.created_at)} • Base: {formatPrice(baseNetTotal)}
             </Typography>
           </Box>
           <Chip
@@ -816,7 +824,7 @@ export default function EditDialog({
           />
         </DialogTitle>
 
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
           {/* ✅ ALERTAS PRESERVADAS DEL PAYMENTDIALOG */}
           {commissionsError && (
             <Alert severity="error" sx={{ mb: 3 }} icon={<WarningIcon />}>
@@ -857,12 +865,12 @@ export default function EditDialog({
             </Typography>
           </Alert>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
             {/* ✅ INFORMACIÓN DE VENTA (READ-ONLY) */}
             <Grid size={{ xs: 12, md: 6 }}>
               <Paper
                 sx={{
-                  p: 3,
+                  p: { xs: 2, sm: 3 },
                   background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
                   border: `1px solid ${colorTokens.border}`,
                   borderRadius: 2
@@ -948,14 +956,17 @@ export default function EditDialog({
             <Grid size={{ xs: 12, md: 6 }}>
               <Paper
                 sx={{
-                  p: 3,
+                  p: { xs: 2, sm: 3 },
                   background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
                   border: `1px solid ${colorTokens.border}`,
                   borderRadius: 2
                 }}
               >
-                <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: { xs: 1.5, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
+                  <Typography variant="h6" fontWeight="bold" sx={{
+                    color: colorTokens.textPrimary,
+                    fontSize: { xs: '1rem', sm: '1.25rem' }
+                  }}>
                     Métodos de Pago
                   </Typography>
                   <FormControlLabel
@@ -1281,12 +1292,19 @@ export default function EditDialog({
           </Grid>
         </DialogContent>
 
-        <DialogActions sx={{ p: 3, pt: 0 }}>
+        <DialogActions sx={{
+          p: { xs: 2, sm: 3 },
+          pt: 0,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: { xs: 1, sm: 0 }
+        }}>
           <Button
             onClick={handleClose}
-            startIcon={<CloseIcon />}
+            startIcon={<CloseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
             disabled={processing}
+            fullWidth={{ xs: true, sm: false }}
             sx={{
+              fontSize: { xs: '0.875rem', sm: '1rem' },
               color: colorTokens.textSecondary,
               '&:hover': {
                 backgroundColor: colorTokens.hoverOverlay,
@@ -1301,12 +1319,14 @@ export default function EditDialog({
             onClick={handleSave}
             disabled={!canProcessPayment || validationErrors.length > 0 || processing}
             variant="contained"
-            startIcon={processing ? <CircularProgress size={16} /> : <SaveIcon />}
+            startIcon={processing ? <CircularProgress size={16} /> : <SaveIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
+            fullWidth={{ xs: true, sm: false }}
             sx={{
+              fontSize: { xs: '0.875rem', sm: '1rem' },
               background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})`,
               color: colorTokens.textPrimary,
               fontWeight: 'bold',
-              px: 4,
+              px: { xs: 3, sm: 4 },
               '&:hover': {
                 background: `linear-gradient(135deg, ${colorTokens.infoHover}, ${colorTokens.info})`
               },
@@ -1342,19 +1362,22 @@ export default function EditDialog({
           } 
         }}
       >
-        <DialogTitle sx={{ 
+        <DialogTitle sx={{
           color: colorTokens.warning,
           fontWeight: 'bold',
           display: 'flex',
           alignItems: 'center',
-          gap: 2,
+          gap: { xs: 1, sm: 2 },
+          p: { xs: 2, sm: 3 },
           background: `linear-gradient(135deg, ${colorTokens.warning}20, ${colorTokens.warning}10)`
         }}>
-          <WarningIcon sx={{ fontSize: 28 }} />
-          Confirmar Acción
+          <WarningIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
+          <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+            Confirmar Acción
+          </Typography>
         </DialogTitle>
-        
-        <DialogContent sx={{ py: 3 }}>
+
+        <DialogContent sx={{ py: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 } }}>
           <Typography variant="body1" sx={{ color: colorTokens.textPrimary, lineHeight: 1.6 }}>
             {pendingAction === 'save' ? (
               <>
@@ -1383,12 +1406,19 @@ export default function EditDialog({
           </Typography>
         </DialogContent>
         
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
+        <DialogActions sx={{
+          px: { xs: 2, sm: 3 },
+          pb: { xs: 2, sm: 3 },
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: { xs: 1, sm: 0 }
+        }}>
+          <Button
             onClick={handleConfirmClose}
-            sx={{ 
+            fullWidth={{ xs: true, sm: false }}
+            sx={{
+              fontSize: { xs: '0.875rem', sm: '1rem' },
               color: colorTokens.textSecondary,
-              '&:hover': { 
+              '&:hover': {
                 backgroundColor: colorTokens.hoverOverlay,
                 color: colorTokens.textPrimary
               }
@@ -1396,11 +1426,13 @@ export default function EditDialog({
           >
             Cancelar
           </Button>
-          <Button 
-            onClick={handleConfirm} 
+          <Button
+            onClick={handleConfirm}
             variant="contained"
             startIcon={pendingAction === 'save' ? <CheckIcon /> : <CloseIcon />}
-            sx={{ 
+            fullWidth={{ xs: true, sm: false }}
+            sx={{
+              fontSize: { xs: '0.875rem', sm: '1rem' },
               background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brandHover})`,
               color: colorTokens.textOnBrand,
               fontWeight: 'bold',

@@ -103,43 +103,52 @@ export const BasicInfoSection = React.memo<BasicInfoSectionProps>(({
         }
       }}
     >
-      <AccordionSummary 
+      <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: colorTokens.brand }} />}
-        sx={{ px: 4 }}
+        sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 1, sm: 1.5 } }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-          <Avatar sx={{ 
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2, md: 3 }, width: '100%' }}>
+          <Avatar sx={{
             background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})`,
-            color: colorTokens.neutral0
+            color: colorTokens.neutral0,
+            width: { xs: 40, sm: 48, md: 56 },
+            height: { xs: 40, sm: 48, md: 56 }
           }}>
-            <EditIcon />
+            <EditIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
           </Avatar>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ 
-              color: colorTokens.brand, 
-              fontWeight: 700
+            <Typography variant="h5" sx={{
+              color: colorTokens.brand,
+              fontWeight: 700,
+              fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
             }}>
               Información Básica
             </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
+            <Typography variant="body2" sx={{
+              color: colorTokens.neutral900,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
               Nombre, descripción y configuración general del plan
             </Typography>
           </Box>
           {isCompleted && (
-            <Chip 
-              icon={<CheckCircleIcon />} 
-              label="Completado" 
-              sx={{ 
+            <Chip
+              icon={<CheckCircleIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+              label={<Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Completado</Box>}
+              sx={{
                 bgcolor: `${colorTokens.success}20`,
                 color: colorTokens.success,
-                border: `1px solid ${colorTokens.success}40`
-              }} 
+                border: `1px solid ${colorTokens.success}40`,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' }
+              }}
             />
           )}
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: 4 }}>
-        <Grid container spacing={3}>
+      <AccordionDetails sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
           <Grid size={{ xs: 12, md: 8 }}>
             <TextField
               fullWidth
@@ -195,7 +204,7 @@ export const BasicInfoSection = React.memo<BasicInfoSectionProps>(({
                 exit={{ opacity: 0, height: 0 }}
                 style={{ width: '100%' }}
               >
-                <Grid container spacing={3} sx={{ mt: 1 }}>
+                <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mt: 1 }}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth

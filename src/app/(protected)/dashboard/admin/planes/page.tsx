@@ -334,27 +334,33 @@ const StatsCard = memo<{
   gradient?: string;
 }>(({ title, value, icon: Icon, color, gradient }) => (
   <Paper sx={{
-    p: 3,
+    p: { xs: 2, sm: 2.5, md: 3 },
     background: gradient || `linear-gradient(135deg, ${color}, ${color}CC)`,
     color: colorTokens.neutral1200,
     borderRadius: 3,
     border: `1px solid ${color}30`,
     transition: 'all 0.3s ease',
-    '&:hover': { 
+    '&:hover': {
       transform: 'translateY(-4px)',
       boxShadow: `0 8px 32px ${color}40`
     }
   }}>
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <Box>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+        <Typography variant="h4" sx={{
+          fontWeight: 700,
+          fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
+        }}>
           {value}
         </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+        <Typography variant="body2" sx={{
+          opacity: 0.9,
+          fontSize: { xs: '0.8rem', sm: '0.875rem' }
+        }}>
           {title}
         </Typography>
       </Box>
-      <Icon sx={{ fontSize: 40, opacity: 0.8 }} />
+      <Icon sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, opacity: 0.8 }} />
     </Box>
   </Paper>
 ));
@@ -448,48 +454,63 @@ export default function PlanesPage() {
   }
 
   return (
-    <Box sx={{ 
-      p: 3, 
+    <Box sx={{
+      p: { xs: 1.5, sm: 2, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh',
-      color: colorTokens.neutral1200
+      color: colorTokens.neutral1200,
+      maxWidth: '100%',
+      overflowX: 'hidden'
     }}>
       
       {/* Header principal */}
       <Paper sx={{
-        p: 3,
-        mb: 3,
+        p: { xs: 2, sm: 2.5, md: 3 },
+        mb: { xs: 2, sm: 2.5, md: 3 },
         background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
         border: `1px solid ${colorTokens.neutral400}`,
         borderRadius: 3,
         backdropFilter: 'blur(10px)'
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          mb: 3,
-          flexWrap: 'wrap',
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          mb: { xs: 2, sm: 2.5, md: 3 },
+          flexDirection: { xs: 'column', md: 'row' },
           gap: 2
         }}>
-          <Box>
-            <Typography variant="h4" sx={{ 
-              color: colorTokens.brand, 
+          <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
+            <Typography variant="h4" sx={{
+              color: colorTokens.brand,
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              textShadow: `0 0 20px ${colorTokens.brand}40`
+              gap: { xs: 1, sm: 1.5, md: 2 },
+              textShadow: `0 0 20px ${colorTokens.brand}40`,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
             }}>
-              <FitnessCenterIcon sx={{ fontSize: 40, color: colorTokens.brand }} />
+              <FitnessCenterIcon sx={{ fontSize: { xs: 28, sm: 34, md: 40 }, color: colorTokens.brand }} />
               Gestión de Planes
             </Typography>
-            <Typography variant="body1" sx={{ color: colorTokens.neutral900, mt: 1 }}>
+            <Typography variant="body1" sx={{
+              color: colorTokens.neutral900,
+              mt: 1,
+              fontSize: { xs: '0.875rem', sm: '0.9rem', md: '1rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
               Administra el catálogo de membresías disponibles
             </Typography>
           </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+
+          <Box sx={{
+            display: 'flex',
+            gap: { xs: 1, sm: 1.5, md: 2 },
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            width: { xs: '100%', md: 'auto' },
+            justifyContent: { xs: 'flex-start', md: 'flex-end' }
+          }}>
             <Chip
               icon={<TrendingUpIcon />}
               label={`${stats.active}/${stats.total} activos`}
@@ -499,18 +520,22 @@ export default function PlanesPage() {
                 color: colorTokens.success,
                 border: `1px solid ${colorTokens.success}40`,
                 fontWeight: 600,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
                 '& .MuiChip-icon': { color: colorTokens.success }
               }}
             />
-            
+
             <Button
               size="small"
-              startIcon={<RefreshIcon />}
+              startIcon={<RefreshIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
               onClick={loadPlans}
               variant="outlined"
-              sx={{ 
+              sx={{
                 color: colorTokens.brand,
                 borderColor: `${colorTokens.brand}60`,
+                fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' },
+                px: { xs: 1.5, sm: 2 },
+                py: { xs: 0.5, sm: 0.75 },
                 '&:hover': {
                   borderColor: colorTokens.brand,
                   bgcolor: `${colorTokens.brand}10`,
@@ -522,17 +547,22 @@ export default function PlanesPage() {
                 transition: 'all 0.3s ease'
               }}
             >
-              Actualizar
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Actualizar</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                <RefreshIcon />
+              </Box>
             </Button>
-            
+
             <Button
               variant="contained"
-              startIcon={<AddIcon />}
+              startIcon={<AddIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={() => router.push('/dashboard/admin/planes/crear')}
               sx={{
                 background: `linear-gradient(135deg, ${colorTokens.success}, #22C55E)`,
                 fontWeight: 600,
-                px: 3,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 0.75, sm: 1 },
+                fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.875rem' },
                 borderRadius: 2,
                 boxShadow: `0 4px 20px ${colorTokens.success}40`,
                 '&:hover': {
@@ -543,32 +573,44 @@ export default function PlanesPage() {
                 transition: 'all 0.3s ease'
               }}
             >
-              Crear Nuevo Plan
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Crear Nuevo Plan</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Nuevo</Box>
             </Button>
           </Box>
         </Box>
 
         {/* Información de resultados */}
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          p: 3,
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          p: { xs: 2, sm: 2.5, md: 3 },
+          gap: { xs: 2, md: 0 },
           bgcolor: `${colorTokens.success}10`,
           borderRadius: 2,
           border: `1px solid ${colorTokens.success}30`,
           backdropFilter: 'blur(5px)'
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <LocalOfferIcon sx={{ color: colorTokens.success, fontSize: 28 }} />
-            <Typography sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap' }}>
+            <LocalOfferIcon sx={{ color: colorTokens.success, fontSize: { xs: 24, sm: 28 } }} />
+            <Typography sx={{
+              color: colorTokens.neutral1200,
+              fontWeight: 600,
+              fontSize: { xs: '0.875rem', sm: '0.95rem', md: '1rem' }
+            }}>
               Total de planes: {stats.total}
             </Typography>
           </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2 }}>
+
+          <Box sx={{
+            display: 'flex',
+            gap: { xs: 1, sm: 1.5, md: 2 },
+            flexWrap: 'wrap',
+            width: { xs: '100%', md: 'auto' }
+          }}>
             <Chip
-              icon={<CheckCircleIcon />}
+              icon={<CheckCircleIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
               label={`${stats.active} activos`}
               size="small"
               sx={{
@@ -576,11 +618,13 @@ export default function PlanesPage() {
                 color: colorTokens.success,
                 border: `1px solid ${colorTokens.success}40`,
                 fontWeight: 600,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' },
                 '& .MuiChip-icon': { color: colorTokens.success }
               }}
             />
             <Chip
-              icon={<CancelIcon />}
+              icon={<CancelIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
               label={`${stats.total - stats.active} inactivos`}
               size="small"
               sx={{
@@ -588,11 +632,13 @@ export default function PlanesPage() {
                 color: colorTokens.danger,
                 border: `1px solid ${colorTokens.danger}40`,
                 fontWeight: 600,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' },
                 '& .MuiChip-icon': { color: colorTokens.danger }
               }}
             />
             <Chip
-              icon={<AccessTimeIcon />}
+              icon={<AccessTimeIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
               label={`${stats.withRestrictions} con restricciones`}
               size="small"
               sx={{
@@ -600,6 +646,8 @@ export default function PlanesPage() {
                 color: colorTokens.warning,
                 border: `1px solid ${colorTokens.warning}40`,
                 fontWeight: 600,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' },
                 '& .MuiChip-icon': { color: colorTokens.warning }
               }}
             />
@@ -608,7 +656,7 @@ export default function PlanesPage() {
       </Paper>
 
       {/* Estadísticas */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatsCard
             title="Total Planes"
@@ -644,76 +692,86 @@ export default function PlanesPage() {
       </Grid>
 
       {/* Tabla de planes */}
-      <TableContainer 
-        component={Paper} 
+      <TableContainer
+        component={Paper}
         sx={{
           background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
           border: `1px solid ${colorTokens.neutral400}`,
           borderRadius: 3,
-          overflow: 'hidden',
+          overflow: { xs: 'auto', md: 'hidden' },
+          overflowX: { xs: 'auto', md: 'auto' },
           backdropFilter: 'blur(10px)',
+          maxWidth: '100%',
           '& .MuiTableCell-root': {
             bgcolor: 'transparent !important',
             color: `${colorTokens.neutral1200} !important`,
-            borderColor: `${colorTokens.neutral400} !important`
+            borderColor: `${colorTokens.neutral400} !important`,
+            fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
+            padding: { xs: '8px', sm: '12px', md: '16px' }
           }
         }}
       >
         <Table stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ 
-                bgcolor: `${colorTokens.neutral400} !important`, 
-                color: `${colorTokens.neutral1200} !important`, 
+              <TableCell sx={{
+                bgcolor: `${colorTokens.neutral400} !important`,
+                color: `${colorTokens.neutral1200} !important`,
                 fontWeight: 700,
                 borderBottom: `3px solid ${colorTokens.brand}`,
-                fontSize: '1rem'
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                minWidth: { xs: 200, sm: 220, md: 250 }
               }}>
                 Plan & Popularidad
               </TableCell>
-              <TableCell sx={{ 
-                bgcolor: `${colorTokens.neutral400} !important`, 
-                color: `${colorTokens.neutral1200} !important`, 
+              <TableCell sx={{
+                bgcolor: `${colorTokens.neutral400} !important`,
+                color: `${colorTokens.neutral1200} !important`,
                 fontWeight: 700,
                 borderBottom: `3px solid ${colorTokens.brand}`,
-                fontSize: '1rem'
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                minWidth: { xs: 150, sm: 160, md: 180 }
               }}>
                 Precios
               </TableCell>
-              <TableCell sx={{ 
-                bgcolor: `${colorTokens.neutral400} !important`, 
-                color: `${colorTokens.neutral1200} !important`, 
+              <TableCell sx={{
+                bgcolor: `${colorTokens.neutral400} !important`,
+                color: `${colorTokens.neutral1200} !important`,
                 fontWeight: 700,
                 borderBottom: `3px solid ${colorTokens.brand}`,
-                fontSize: '1rem'
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                minWidth: { xs: 180, sm: 190, md: 200 }
               }}>
                 Características
               </TableCell>
-              <TableCell sx={{ 
-                bgcolor: `${colorTokens.neutral400} !important`, 
-                color: `${colorTokens.neutral1200} !important`, 
+              <TableCell sx={{
+                bgcolor: `${colorTokens.neutral400} !important`,
+                color: `${colorTokens.neutral1200} !important`,
                 fontWeight: 700,
                 borderBottom: `3px solid ${colorTokens.brand}`,
-                fontSize: '1rem'
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                minWidth: { xs: 120, sm: 130, md: 140 }
               }}>
                 Restricciones
               </TableCell>
-              <TableCell sx={{ 
-                bgcolor: `${colorTokens.neutral400} !important`, 
-                color: `${colorTokens.neutral1200} !important`, 
+              <TableCell sx={{
+                bgcolor: `${colorTokens.neutral400} !important`,
+                color: `${colorTokens.neutral1200} !important`,
                 fontWeight: 700,
                 borderBottom: `3px solid ${colorTokens.brand}`,
-                fontSize: '1rem'
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                minWidth: { xs: 100, sm: 110, md: 120 }
               }}>
                 Estado
               </TableCell>
-              <TableCell sx={{ 
-                bgcolor: `${colorTokens.neutral400} !important`, 
-                color: `${colorTokens.neutral1200} !important`, 
+              <TableCell sx={{
+                bgcolor: `${colorTokens.neutral400} !important`,
+                color: `${colorTokens.neutral1200} !important`,
                 fontWeight: 700,
                 borderBottom: `3px solid ${colorTokens.brand}`,
-                fontSize: '1rem',
-                textAlign: 'center'
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                textAlign: 'center',
+                minWidth: { xs: 120, sm: 130, md: 140 }
               }}>
                 Acciones
               </TableCell>
@@ -756,19 +814,19 @@ export default function PlanesPage() {
                     }}
                   >
                     {/* Plan & Popularidad */}
-                    <TableCell sx={{ minWidth: 250 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <TableCell sx={{ minWidth: { xs: 200, sm: 220, md: 250 } }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5, md: 2 } }}>
                         <Badge
                           badgeContent={
                             plan.is_active ? (
-                              <StarIcon sx={{ fontSize: 14, color: colorTokens.brand }} />
+                              <StarIcon sx={{ fontSize: { xs: 12, sm: 14 }, color: colorTokens.brand }} />
                             ) : null
                           }
                           color="primary"
                         >
                           <Box sx={{
-                            width: 48,
-                            height: 48,
+                            width: { xs: 40, sm: 44, md: 48 },
+                            height: { xs: 40, sm: 44, md: 48 },
                             borderRadius: 2,
                             background: `linear-gradient(135deg, ${planColor}, ${planColor}CC)`,
                             display: 'flex',
@@ -776,31 +834,36 @@ export default function PlanesPage() {
                             justifyContent: 'center',
                             color: colorTokens.neutral1200,
                             fontWeight: 700,
-                            fontSize: '1.2rem',
+                            fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
                             boxShadow: `0 4px 15px ${planColor}40`
                           }}>
                             {plan.name[0]?.toUpperCase() || 'P'}
                           </Box>
                         </Badge>
-                        
+
                         <Box sx={{ flex: 1 }}>
-                          <Typography variant="h6" sx={{ 
-                            color: colorTokens.neutral1200, 
+                          <Typography variant="h6" sx={{
+                            color: colorTokens.neutral1200,
                             fontWeight: 600,
-                            mb: 0.5
+                            mb: 0.5,
+                            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.15rem' }
                           }}>
                             {plan.name}
                           </Typography>
-                          <Typography variant="caption" sx={{ 
+                          <Typography variant="caption" sx={{
                             color: colorTokens.neutral900,
                             display: 'block',
-                            mb: 1
+                            mb: 1,
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' }
                           }}>
                             {plan.description}
                           </Typography>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+                            <Typography variant="caption" sx={{
+                              color: colorTokens.neutral900,
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                            }}>
                               Popularidad:
                             </Typography>
                             <LinearProgress
@@ -808,7 +871,7 @@ export default function PlanesPage() {
                               value={popularity}
                               sx={{
                                 flex: 1,
-                                height: 6,
+                                height: { xs: 4, sm: 5, md: 6 },
                                 borderRadius: 3,
                                 bgcolor: colorTokens.neutral400,
                                 '& .MuiLinearProgress-bar': {
@@ -818,10 +881,11 @@ export default function PlanesPage() {
                                 }
                               }}
                             />
-                            <Typography variant="caption" sx={{ 
+                            <Typography variant="caption" sx={{
                               color: planColor,
                               fontWeight: 600,
-                              minWidth: 35
+                              minWidth: { xs: 30, sm: 35 },
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' }
                             }}>
                               {popularity}%
                             </Typography>
@@ -829,74 +893,96 @@ export default function PlanesPage() {
                         </Box>
                       </Box>
                     </TableCell>
-                    
+
                     {/* Precios */}
-                    <TableCell sx={{ minWidth: 180 }}>
+                    <TableCell sx={{ minWidth: { xs: 150, sm: 160, md: 180 } }}>
                       <Box>
-                        <Typography variant="body2" sx={{ 
-                          color: colorTokens.neutral1200, 
+                        <Typography variant="body2" sx={{
+                          color: colorTokens.neutral1200,
                           fontWeight: 600,
-                          mb: 0.5
+                          mb: 0.5,
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' }
                         }}>
-                          <MonetizationOnIcon sx={{ fontSize: 16, mr: 0.5, color: planColor }} />
+                          <MonetizationOnIcon sx={{
+                            fontSize: { xs: 14, sm: 16 },
+                            mr: 0.5,
+                            color: planColor
+                          }} />
                           {formatPrice(bestPrice)}
                         </Typography>
-                        <Typography variant="caption" sx={{ 
+                        <Typography variant="caption" sx={{
                           color: colorTokens.neutral900,
-                          display: 'block'
+                          display: 'block',
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
                         }}>
                           {bestPriceLabel}
                         </Typography>
                         {plan.inscription_price > 0 && (
-                          <Typography variant="caption" sx={{ 
+                          <Typography variant="caption" sx={{
                             color: colorTokens.neutral900,
-                            display: 'block'
+                            display: 'block',
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' }
                           }}>
                             Inscripción: {formatPrice(plan.inscription_price)}
                           </Typography>
                         )}
                       </Box>
                     </TableCell>
-                    
+
                     {/* Características */}
-                    <TableCell sx={{ minWidth: 200 }}>
-                      <Box display="flex" gap={1} flexWrap="wrap">
+                    <TableCell sx={{ minWidth: { xs: 180, sm: 190, md: 200 } }}>
+                      <Box display="flex" gap={{ xs: 0.5, sm: 1 }} flexWrap="wrap">
                         {plan.gym_access && (
-                          <Chip 
-                            size="small" 
-                            label="Gimnasio" 
+                          <Chip
+                            size="small"
+                            label="Gimnasio"
                             icon={<FitnessCenterIcon />}
-                            sx={{ 
-                              bgcolor: `${colorTokens.success}20`, 
+                            sx={{
+                              bgcolor: `${colorTokens.success}20`,
                               color: colorTokens.success,
                               border: `1px solid ${colorTokens.success}40`,
-                              '& .MuiChip-icon': { color: colorTokens.success }
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                              height: { xs: '22px', sm: '24px' },
+                              '& .MuiChip-icon': {
+                                color: colorTokens.success,
+                                fontSize: { xs: 14, sm: 16 }
+                              }
                             }}
                           />
                         )}
                         {plan.classes_included && (
-                          <Chip 
-                            size="small" 
-                            label="Clases" 
+                          <Chip
+                            size="small"
+                            label="Clases"
                             icon={<GroupIcon />}
-                            sx={{ 
-                              bgcolor: `${colorTokens.neutral800}20`, 
+                            sx={{
+                              bgcolor: `${colorTokens.neutral800}20`,
                               color: colorTokens.neutral800,
                               border: `1px solid ${colorTokens.neutral800}40`,
-                              '& .MuiChip-icon': { color: colorTokens.neutral800 }
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                              height: { xs: '22px', sm: '24px' },
+                              '& .MuiChip-icon': {
+                                color: colorTokens.neutral800,
+                                fontSize: { xs: 14, sm: 16 }
+                              }
                             }}
                           />
                         )}
                         {plan.guest_passes > 0 && (
-                          <Chip 
-                            size="small" 
+                          <Chip
+                            size="small"
                             label={`${plan.guest_passes} Invitados`}
                             icon={<GroupIcon />}
-                            sx={{ 
-                              bgcolor: `${colorTokens.warning}20`, 
+                            sx={{
+                              bgcolor: `${colorTokens.warning}20`,
                               color: colorTokens.warning,
                               border: `1px solid ${colorTokens.warning}40`,
-                              '& .MuiChip-icon': { color: colorTokens.warning }
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                              height: { xs: '22px', sm: '24px' },
+                              '& .MuiChip-icon': {
+                                color: colorTokens.warning,
+                                fontSize: { xs: 14, sm: 16 }
+                              }
                             }}
                           />
                         )}
@@ -907,46 +993,58 @@ export default function PlanesPage() {
                     <TableCell>
                       {plan.access_restrictions?.access_control_enabled ? (
                         <Box>
-                          <Chip 
-                            size="small" 
+                          <Chip
+                            size="small"
                             label={`${plan.access_restrictions.max_daily_entries} entrada${plan.access_restrictions.max_daily_entries > 1 ? 's' : ''}/día`}
                             icon={<LockIcon />}
-                            sx={{ 
-                              bgcolor: `${colorTokens.warning}20`, 
+                            sx={{
+                              bgcolor: `${colorTokens.warning}20`,
                               color: colorTokens.warning,
                               border: `1px solid ${colorTokens.warning}40`,
-                              '& .MuiChip-icon': { color: colorTokens.warning },
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                              height: { xs: '22px', sm: '24px' },
+                              '& .MuiChip-icon': {
+                                color: colorTokens.warning,
+                                fontSize: { xs: 14, sm: 16 }
+                              },
                               mb: 0.5
                             }}
                           />
-                          <Typography variant="caption" sx={{ 
+                          <Typography variant="caption" sx={{
                             display: 'block',
-                            color: colorTokens.neutral900 
+                            color: colorTokens.neutral900,
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
                           }}>
                             {enabledDaysCount}/7 días activos
                           </Typography>
                         </Box>
                       ) : (
-                        <Chip 
-                          size="small" 
+                        <Chip
+                          size="small"
                           label="24/7"
                           icon={<LockOpenIcon />}
-                          sx={{ 
-                            bgcolor: `${colorTokens.success}20`, 
+                          sx={{
+                            bgcolor: `${colorTokens.success}20`,
                             color: colorTokens.success,
                             border: `1px solid ${colorTokens.success}40`,
-                            '& .MuiChip-icon': { color: colorTokens.success }
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                            height: { xs: '22px', sm: '24px' },
+                            '& .MuiChip-icon': {
+                              color: colorTokens.success,
+                              fontSize: { xs: 14, sm: 16 }
+                            }
                           }}
                         />
                       )}
                     </TableCell>
-                    
+
                     {/* Estado */}
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
                         <Switch
                           checked={plan.is_active}
                           onChange={() => togglePlanStatus(plan.id, plan.is_active)}
+                          size="small"
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': {
                               color: colorTokens.success,
@@ -956,9 +1054,10 @@ export default function PlanesPage() {
                             },
                           }}
                         />
-                        <Typography variant="caption" sx={{ 
+                        <Typography variant="caption" sx={{
                           color: plan.is_active ? colorTokens.success : colorTokens.neutral800,
-                          fontWeight: 600
+                          fontWeight: 600,
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
                         }}>
                           {plan.is_active ? 'Activo' : 'Inactivo'}
                         </Typography>
@@ -967,16 +1066,17 @@ export default function PlanesPage() {
                     
                     {/* Acciones */}
                     <TableCell sx={{ textAlign: 'center' }}>
-                      <Box display="flex" gap={1} justifyContent="center">
+                      <Box display="flex" gap={{ xs: 0.5, sm: 1 }} justifyContent="center">
                         <Tooltip title="Ver detalles completos">
-                          <IconButton 
+                          <IconButton
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
                               viewPlanDetails(plan);
                             }}
-                            sx={{ 
+                            sx={{
                               color: colorTokens.info,
+                              padding: { xs: '4px', sm: '8px' },
                               '&:hover': {
                                 bgcolor: `${colorTokens.info}15`,
                                 transform: 'scale(1.1)'
@@ -984,19 +1084,20 @@ export default function PlanesPage() {
                               transition: 'all 0.2s ease'
                             }}
                           >
-                            <VisibilityIcon />
+                            <VisibilityIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                           </IconButton>
                         </Tooltip>
-                        
+
                         <Tooltip title="Editar plan">
-                          <IconButton 
+                          <IconButton
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`/dashboard/admin/planes/${plan.id}/editar`);
                             }}
-                            sx={{ 
+                            sx={{
                               color: colorTokens.warning,
+                              padding: { xs: '4px', sm: '8px' },
                               '&:hover': {
                                 bgcolor: `${colorTokens.warning}15`,
                                 transform: 'scale(1.1)'
@@ -1004,19 +1105,20 @@ export default function PlanesPage() {
                               transition: 'all 0.2s ease'
                             }}
                           >
-                            <EditIcon />
+                            <EditIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                           </IconButton>
                         </Tooltip>
-                        
+
                         <Tooltip title="Eliminar plan">
-                          <IconButton 
+                          <IconButton
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteClick(plan);
                             }}
-                            sx={{ 
+                            sx={{
                               color: colorTokens.danger,
+                              padding: { xs: '4px', sm: '8px' },
                               '&:hover': {
                                 bgcolor: `${colorTokens.danger}15`,
                                 transform: 'scale(1.1)'
@@ -1024,7 +1126,7 @@ export default function PlanesPage() {
                               transition: 'all 0.2s ease'
                             }}
                           >
-                            <DeleteIcon />
+                            <DeleteIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                           </IconButton>
                         </Tooltip>
                       </Box>

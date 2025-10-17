@@ -24,12 +24,13 @@ export default function AdminDashboardRedirect() {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        gap: 3,
+        gap: { xs: 2, sm: 2.5, md: 3 },
         background: 'linear-gradient(135deg, #000000, #121212)',
+        p: { xs: 2, sm: 3 }
       }}
     >
       <CircularProgress
-        size={60}
+        size={{ xs: 50, sm: 55, md: 60 }}
         sx={{
           color: '#ffcc00',
         }}
@@ -39,6 +40,8 @@ export default function AdminDashboardRedirect() {
         sx={{
           color: 'rgba(255, 255, 255, 0.7)',
           fontWeight: 500,
+          fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
+          textAlign: 'center'
         }}
       >
         Cargando Dashboard...

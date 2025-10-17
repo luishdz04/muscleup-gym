@@ -285,52 +285,85 @@ export default function AlmacenesPage() {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
       {/* Header */}
-      <Paper sx={{ 
-        p: 3, 
-        mb: 3, 
+      <Paper sx={{
+        p: { xs: 2, sm: 2.5, md: 3 },
+        mb: { xs: 2, sm: 2.5, md: 3 },
         background: `linear-gradient(135deg, ${colorTokens.brand}15, ${colorTokens.info}10)`,
         borderRadius: 3,
         border: `1px solid ${colorTokens.border}`
       }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          flexWrap="wrap"
+          gap={2}
+        >
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: colorTokens.textPrimary, mb: 1 }}>
-              Gestión de Almacenes
+            <Typography variant="h4" sx={{
+              fontWeight: 700,
+              color: colorTokens.textPrimary,
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+            }}>
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                🏭 Gestión de Almacenes
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                🏭 Almacenes
+              </Box>
             </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-              Administra y controla todos los almacenes del sistema
+            <Typography variant="body2" sx={{
+              color: colorTokens.textSecondary,
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}>
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Administra y controla todos los almacenes del sistema
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                Gestión y control
+              </Box>
             </Typography>
           </Box>
-          <Stack direction="row" spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             <Button
               onClick={() => reloadWarehouses()}
               disabled={loading}
               startIcon={loading ? <CircularProgress size={20} /> : <RefreshIcon />}
+              fullWidth={{ xs: true, sm: false }}
               sx={{
                 borderRadius: 2,
-                px: 3,
+                px: { xs: 2, sm: 3 },
                 border: `2px solid ${colorTokens.brand}30`,
                 color: colorTokens.brand,
-                '&:hover': { 
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                '&:hover': {
                   backgroundColor: `${colorTokens.brand}10`,
                   border: `2px solid ${colorTokens.brand}50`
                 }
               }}
             >
-              Actualizar
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Actualizar
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                Actualizar
+              </Box>
             </Button>
             <Button
               onClick={() => handleOpenDialog()}
               variant="contained"
               startIcon={<AddIcon />}
+              fullWidth={{ xs: true, sm: false }}
               sx={{
                 background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
                 color: colorTokens.textOnBrand,
                 fontWeight: 700,
-                px: 4,
+                px: { xs: 2, sm: 4 },
                 borderRadius: 2,
+                fontSize: { xs: '0.875rem', sm: '1rem' },
                 boxShadow: `0 4px 20px ${colorTokens.brand}40`,
                 '&:hover': {
                   background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
@@ -339,14 +372,19 @@ export default function AlmacenesPage() {
                 }
               }}
             >
-              Nuevo Almacén
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Nuevo Almacén
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                Nuevo
+              </Box>
             </Button>
           </Stack>
         </Stack>
       </Paper>
 
       {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 2, sm: 2.5, md: 3 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ 
             background: `linear-gradient(135deg, ${colorTokens.brand}15, ${colorTokens.brand}05)`,
@@ -437,7 +475,12 @@ export default function AlmacenesPage() {
       </Grid>
 
       {/* Search */}
-      <Paper sx={{ p: 2, mb: 3, borderRadius: 3, border: `1px solid ${colorTokens.border}` }}>
+      <Paper sx={{
+        p: { xs: 1.5, sm: 2 },
+        mb: { xs: 2, sm: 2.5, md: 3 },
+        borderRadius: 3,
+        border: `1px solid ${colorTokens.border}`
+      }}>
         <TextField
           fullWidth
           placeholder="Buscar por nombre, código o dirección..."

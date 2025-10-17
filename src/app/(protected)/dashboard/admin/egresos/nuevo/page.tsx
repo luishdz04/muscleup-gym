@@ -351,7 +351,7 @@ export default function NuevoEgresoPage() {
   // ✅ SSR Safety
   if (!isHydrated) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: { xs: 2, sm: 3 } }}>
         <Skeleton variant="rectangular" width="100%" height={400} sx={{ borderRadius: 2 }} />
       </Box>
     );
@@ -359,11 +359,11 @@ export default function NuevoEgresoPage() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-      <Box sx={{ 
+      <Box sx={{
         minHeight: '100vh',
         background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.surfaceLevel1})`,
         color: colorTokens.textPrimary,
-        p: 4,
+        p: { xs: 2, sm: 3, md: 4 },
         // ✅ CSS GLOBAL PARA DATEPICKER (IGUAL QUE CORTES)
         '& .MuiPickersLayout-root': {
           backgroundColor: colorTokens.surfaceLevel2,
@@ -399,32 +399,50 @@ export default function NuevoEgresoPage() {
         }
       }}>
         {/* HEADER CON DETECTOR DE RANGO (IGUAL QUE CORTES) */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          mb: { xs: 3, sm: 4 },
+          gap: 2
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
             <IconButton
               onClick={() => router.push('/dashboard/admin/egresos')}
-              sx={{ 
+              sx={{
                 color: colorTokens.textSecondary,
                 '&:hover': { color: colorTokens.brand }
               }}
             >
-              <ArrowBackIcon />
+              <ArrowBackIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
             </IconButton>
-            
-            <Avatar sx={{ 
-              bgcolor: colorTokens.danger, 
-              width: 60, 
-              height: 60 
+
+            <Avatar sx={{
+              bgcolor: colorTokens.danger,
+              width: { xs: 50, sm: 60 },
+              height: { xs: 50, sm: 60 }
             }}>
-              <MoneyOffIcon sx={{ fontSize: 32 }} />
+              <MoneyOffIcon sx={{ fontSize: { xs: 26, sm: 32 } }} />
             </Avatar>
-            
+
             <Box>
-              <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
-                Crear Nuevo Egreso
+              <Typography variant="h3" fontWeight="bold" sx={{
+                color: colorTokens.textPrimary,
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+              }}>
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Crear Nuevo Egreso
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                  Nuevo Egreso
+                </Box>
               </Typography>
-              
-              <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+
+              <Typography variant="h6" sx={{
+                color: colorTokens.textSecondary,
+                fontSize: { xs: '0.875rem', sm: '1.25rem' }
+              }}>
                 {formatDateForDisplay(selectedDate.toISOString().split('T')[0])} • {currentTime}
               </Typography>
               
@@ -517,7 +535,7 @@ export default function NuevoEgresoPage() {
           )}
         </AnimatePresence>
 
-        <Grid container spacing={4}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
           {/* CONFIGURACIÓN DEL EGRESO */}
           <Grid size={{ xs: 12, md: showPreview ? 6 : 8 }}>
             <motion.div

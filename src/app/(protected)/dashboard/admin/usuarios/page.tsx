@@ -505,7 +505,7 @@ const UsersPage = memo(() => {
 
         } catch (f22Error: any) {
           console.warn('⚠️ [DELETE-USER] Error eliminando del F22:', f22Error.message);
-          toast.warning(
+          notify.error(
             `⚠️ Usuario eliminado de BD pero error en F22:\n${f22Error.message}\n\n` +
             `Puede ser necesario eliminar manualmente del dispositivo.`
           );

@@ -763,57 +763,60 @@ function RegistrarMembresiaPage() {
 
   return (
     <ErrorBoundary>
-      <Box sx={{ 
-        p: { xs: 2, sm: 3 }, 
+      <Box sx={{
+        p: { xs: 2, sm: 2.5, md: 3 },
         background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
         minHeight: '100vh',
         color: colorTokens.textPrimary
       }}>
         <Paper sx={{
-          p: { xs: 2, sm: 3 },
-          mb: 3,
+          p: { xs: 2, sm: 2.5, md: 3 },
+          mb: { xs: 2, sm: 2.5, md: 3 },
           background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
           border: `1px solid ${colorTokens.neutral400}`,
           borderRadius: 3
         }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            mb: 3,
-            flexWrap: 'wrap',
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            mb: { xs: 2, sm: 2.5, md: 3 },
             gap: 2
           }}>
             <Box>
-              <Typography variant="h4" sx={{ 
-                color: colorTokens.brand, 
+              <Typography variant="h4" sx={{
+                color: colorTokens.brand,
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 2,
-                fontSize: { xs: '1.5rem', sm: '2.125rem' }
+                gap: { xs: 1.5, sm: 2 },
+                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
               }}>
-                <PersonAddAltIcon sx={{ fontSize: { xs: 30, sm: 40 } }} />
-                Nueva Venta de Membresía
+                <PersonAddAltIcon sx={{ fontSize: { xs: 28, sm: 34, md: 40 } }} />
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Nueva Venta de Membresía</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Nueva Venta</Box>
               </Typography>
-              <Typography variant="body1" sx={{ color: colorTokens.textSecondary, mt: 1 }}>
+              <Typography variant="body1" sx={{ color: colorTokens.textSecondary, mt: 1, fontSize: { xs: '0.875rem', sm: '1rem' }, display: { xs: 'none', sm: 'block' } }}>
                 Sistema de punto de venta para membresías
               </Typography>
             </Box>
-            
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+
+            <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, alignItems: 'center', width: { xs: '100%', md: 'auto' } }}>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <ProgressIndicator currentStep={activeStep + 1} totalSteps={steps.length} />
               </Box>
               <Button
-                startIcon={<ArrowBackIcon />}
+                startIcon={<ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                 onClick={handleBack}
                 variant="outlined"
-                sx={{ 
+                sx={{
                   color: colorTokens.brand,
                   borderColor: colorTokens.brand,
                   borderWidth: '2px',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  py: { xs: 0.75, sm: 1 }
                 }}
               >
                 Dashboard
@@ -835,41 +838,45 @@ function RegistrarMembresiaPage() {
                 }
               }}
             />
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              gap: 2,
-              mt: 2,
-              p: 2,
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'center' },
+              gap: { xs: 1.5, sm: 2 },
+              mt: { xs: 1.5, sm: 2 },
+              p: { xs: 1.5, sm: 2 },
               bgcolor: `${colorTokens.brand}10`,
               borderRadius: 2,
               border: `1px solid ${colorTokens.brand}30`
             }}>
-              {steps[activeStep]?.icon}
+              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                {steps[activeStep]?.icon}
+              </Box>
               <Box sx={{ flex: 1 }}>
-                <Typography variant="body1" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+                <Typography variant="body1" sx={{ color: colorTokens.textPrimary, fontWeight: 600, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
                   Paso {activeStep + 1} de {steps.length}: {steps[activeStep]?.label}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                <Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                   {steps[activeStep]?.description}
                 </Typography>
               </Box>
-              <Chip 
+              <Chip
                 label={`${Math.round(((activeStep + 1) / steps.length) * 100)}%`}
-                sx={{ 
+                sx={{
                   backgroundColor: colorTokens.brand,
                   color: colorTokens.textOnBrand,
-                  fontWeight: 700
+                  fontWeight: 700,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
                 }}
               />
             </Box>
           </Box>
         </Paper>
 
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
           <Grid size={{ xs: 12, lg: 8 }}>
             <Paper sx={{
-              p: { xs: 2, sm: 4 },
+              p: { xs: 2, sm: 3, md: 4 },
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
               border: `1px solid ${colorTokens.neutral400}`,
               borderRadius: 3

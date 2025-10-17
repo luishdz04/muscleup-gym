@@ -515,56 +515,63 @@ export default function CuponesPage() {
   }
 
   return (
-    <Box sx={{ 
-      p: 3, 
+    <Box sx={{
+      p: { xs: 2, sm: 2.5, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.surfaceLevel1})`,
       minHeight: '100vh',
       color: colorTokens.textPrimary
     }}>
       {/* ✅ HEADER ENTERPRISE */}
       <Paper sx={{
-        p: 4,
-        mb: 4,
+        p: { xs: 2, sm: 3, md: 4 },
+        mb: { xs: 2, sm: 3, md: 4 },
         background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}98, ${colorTokens.surfaceLevel3}95)`,
         border: `2px solid ${colorTokens.brand}30`,
         borderRadius: 4,
         boxShadow: `0 8px 32px ${colorTokens.brand}10`
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          mb: 3
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          mb: { xs: 2, sm: 2.5, md: 3 },
+          gap: 2
         }}>
           <Box>
-            <Typography variant="h3" sx={{ 
-              color: colorTokens.brand, 
+            <Typography variant="h3" sx={{
+              color: colorTokens.brand,
               fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              mb: 1
+              gap: { xs: 1.5, sm: 2 },
+              mb: 1,
+              fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.5rem' }
             }}>
-              <LocalOfferIcon sx={{ fontSize: 50 }} />
-              Cupones y Descuentos
+              <LocalOfferIcon sx={{ fontSize: { xs: 36, sm: 42, md: 50 } }} />
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Cupones y Descuentos</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Cupones</Box>
             </Typography>
-            <Typography variant="h6" sx={{ 
+            <Typography variant="h6" sx={{
               color: colorTokens.textSecondary,
-              fontWeight: 300
+              fontWeight: 300,
+              fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' },
+              display: { xs: 'none', sm: 'block' }
             }}>
               Sistema de Promociones | Gestión Completa de Descuentos
             </Typography>
           </Box>
-          
-          <Stack direction="row" spacing={2}>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 1.5, md: 2 }} sx={{ width: { xs: '100%', md: 'auto' } }}>
             <Button
-              startIcon={<ArrowBackIcon />}
+              startIcon={<ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={() => router.push('/dashboard/admin/membresias')}
-              sx={{ 
+              sx={{
                 color: colorTokens.brand,
                 borderColor: `${colorTokens.brand}60`,
-                px: 3,
-                py: 1.5,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 1, sm: 1.25, md: 1.5 },
+                fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' },
                 borderRadius: 3,
                 fontWeight: 600,
                 '&:hover': {
@@ -578,16 +585,17 @@ export default function CuponesPage() {
             >
               Membresías
             </Button>
-            
+
             <Button
-              startIcon={<RefreshIcon />}
+              startIcon={<RefreshIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={loadCoupons}
               disabled={loading}
               sx={{
                 color: colorTokens.textSecondary,
                 borderColor: `${colorTokens.textSecondary}60`,
-                px: 3,
-                py: 1.5,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 1, sm: 1.25, md: 1.5 },
+                fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' },
                 borderRadius: 3,
                 fontWeight: 600,
                 '&:hover': {

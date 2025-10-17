@@ -322,57 +322,64 @@ export default function HistorialMembresiaPage() {
   }
 
   return (
-    <Box sx={{ 
-      p: 3, 
+    <Box sx={{
+      p: { xs: 2, sm: 2.5, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh',
       color: colorTokens.neutral1200
     }}>
       {/* HEADER PROFESIONAL */}
       <Paper sx={{
-        p: 4,
-        mb: 4,
+        p: { xs: 2, sm: 3, md: 4 },
+        mb: { xs: 2, sm: 3, md: 4 },
         background: `linear-gradient(135deg, ${colorTokens.neutral200}98, ${colorTokens.neutral300}95)`,
         border: `2px solid ${colorTokens.brand}30`,
         borderRadius: 4,
         boxShadow: `0 8px 32px ${colorTokens.brand}10`
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          mb: 3
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          mb: { xs: 2, sm: 2.5, md: 3 },
+          gap: 2
         }}>
           <Box>
-            <Typography variant="h3" sx={{ 
-              color: colorTokens.brand, 
+            <Typography variant="h3" sx={{
+              color: colorTokens.brand,
               fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              mb: 1
+              gap: { xs: 1, sm: 1.5, md: 2 },
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
             }}>
-              <HistoryIcon sx={{ fontSize: 50 }} />
-              Sistema de Historial de Membresías
+              <HistoryIcon sx={{ fontSize: { xs: 36, sm: 42, md: 50 } }} />
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Sistema de Historial de Membresías</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Historial</Box>
             </Typography>
-            <Typography variant="h6" sx={{ 
+            <Typography variant="h6" sx={{
               color: colorTokens.neutral800,
-              fontWeight: 300
+              fontWeight: 300,
+              fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' },
+              display: { xs: 'none', sm: 'block' }
             }}>
               Gestión Integral | Congelamiento Inteligente | Control Masivo Avanzado
             </Typography>
           </Box>
-          
-          <Stack direction="row" spacing={2}>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 1.5, md: 2 }} sx={{ width: { xs: '100%', md: 'auto' } }}>
             <Button
-              startIcon={<RefreshIcon />}
+              startIcon={<RefreshIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={forceReloadMemberships}
               disabled={false}
-              sx={{ 
+              sx={{
                 color: colorTokens.info,
                 borderColor: `${colorTokens.info}60`,
-                px: 3,
-                py: 1.5,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 1, sm: 1.25, md: 1.5 },
+                fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' },
                 borderRadius: 3,
                 fontWeight: 600,
                 '&:hover': {
@@ -386,16 +393,17 @@ export default function HistorialMembresiaPage() {
             >
               {loading || initialLoad ? 'Cargando...' : 'Actualizar'}
             </Button>
-            
+
             <Button
-              startIcon={<ArrowBackIcon />}
+              startIcon={<ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={() => router.push('/dashboard/admin/membresias')}
               disabled={false}
-              sx={{ 
+              sx={{
                 color: colorTokens.brand,
                 borderColor: `${colorTokens.brand}60`,
-                px: 3,
-                py: 1.5,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 1, sm: 1.25, md: 1.5 },
+                fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' },
                 borderRadius: 3,
                 fontWeight: 600,
                 '&:hover': {
@@ -414,152 +422,158 @@ export default function HistorialMembresiaPage() {
 
         {/* ESTADÍSTICAS - SOLO SI NO ES CARGA INICIAL */}
         {!initialLoad && (
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
               <Card sx={{
                 background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
                 border: `1px solid ${colorTokens.info}30`,
                 borderRadius: 3,
                 textAlign: 'center',
-                p: 2
+                p: { xs: 1.5, sm: 2 }
               }}>
-                <Typography variant="h4" sx={{ 
-                  color: colorTokens.info, 
+                <Typography variant="h4" sx={{
+                  color: colorTokens.info,
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 1
+                  gap: 1,
+                  fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' }
                 }}>
-                  <GroupIcon />
+                  <GroupIcon sx={{ fontSize: { xs: 20, sm: 24, md: 28 } }} />
                   {stats.total}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800, fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' } }}>
                   Total Membresías
                 </Typography>
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
               <Card sx={{
                 background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
                 border: `1px solid ${colorTokens.success}30`,
                 borderRadius: 3,
                 textAlign: 'center',
-                p: 2
+                p: { xs: 1.5, sm: 2 }
               }}>
-                <Typography variant="h4" sx={{ 
-                  color: colorTokens.success, 
+                <Typography variant="h4" sx={{
+                  color: colorTokens.success,
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 1
+                  gap: 1,
+                  fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' }
                 }}>
-                  <CheckCircleIcon />
+                  <CheckCircleIcon sx={{ fontSize: { xs: 20, sm: 24, md: 28 } }} />
                   {stats.active}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800, fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' } }}>
                   Activas
                 </Typography>
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
               <Card sx={{
                 background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
                 border: `1px solid ${colorTokens.info}30`,
                 borderRadius: 3,
                 textAlign: 'center',
-                p: 2
+                p: { xs: 1.5, sm: 2 }
               }}>
-                <Typography variant="h4" sx={{ 
-                  color: colorTokens.info, 
+                <Typography variant="h4" sx={{
+                  color: colorTokens.info,
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 1
+                  gap: 1,
+                  fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' }
                 }}>
-                  <AcUnitIcon />
+                  <AcUnitIcon sx={{ fontSize: { xs: 20, sm: 24, md: 28 } }} />
                   {stats.frozen}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800, fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' } }}>
                   Congeladas
                 </Typography>
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
               <Card sx={{
                 background: `linear-gradient(135deg, ${colorTokens.danger}20, ${colorTokens.danger}10)`,
                 border: `1px solid ${colorTokens.danger}30`,
                 borderRadius: 3,
                 textAlign: 'center',
-                p: 2
+                p: { xs: 1.5, sm: 2 }
               }}>
-                <Typography variant="h4" sx={{ 
-                  color: colorTokens.danger, 
+                <Typography variant="h4" sx={{
+                  color: colorTokens.danger,
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 1
+                  gap: 1,
+                  fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' }
                 }}>
-                  <CancelIcon />
+                  <CancelIcon sx={{ fontSize: { xs: 20, sm: 24, md: 28 } }} />
                   {stats.expired}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800, fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' } }}>
                   Vencidas
                 </Typography>
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
               <Card sx={{
                 background: `linear-gradient(135deg, ${colorTokens.brand}20, ${colorTokens.brand}10)`,
                 border: `1px solid ${colorTokens.brand}30`,
                 borderRadius: 3,
                 textAlign: 'center',
-                p: 2
+                p: { xs: 1.5, sm: 2 }
               }}>
-                <Typography variant="h5" sx={{ 
-                  color: colorTokens.brand, 
+                <Typography variant="h5" sx={{
+                  color: colorTokens.brand,
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 1
+                  gap: 1,
+                  fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
                 }}>
-                  <AttachMoneyIcon />
+                  <AttachMoneyIcon sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }} />
                   {formatPrice(stats.totalRevenue).replace('MX$', '$')}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800, fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' } }}>
                   Ingresos Totales
                 </Typography>
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
               <Card sx={{
                 background: `linear-gradient(135deg, ${colorTokens.warning}20, ${colorTokens.warning}10)`,
                 border: `1px solid ${colorTokens.warning}30`,
                 borderRadius: 3,
                 textAlign: 'center',
-                p: 2
+                p: { xs: 1.5, sm: 2 }
               }}>
-                <Typography variant="h6" sx={{ 
-                  color: colorTokens.warning, 
+                <Typography variant="h6" sx={{
+                  color: colorTokens.warning,
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 1
+                  gap: 1,
+                  fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' }
                 }}>
-                  <TrendingUpIcon />
+                  <TrendingUpIcon sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }} />
                   {formatPrice(stats.totalCommissions).replace('MX$', '$')}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral800, fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' } }}>
                   Comisiones
                 </Typography>
               </Card>

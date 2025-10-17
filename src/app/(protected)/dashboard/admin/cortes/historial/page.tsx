@@ -823,7 +823,7 @@ export default function CutsHistoryPage() {
 
         {/* ESTADÍSTICAS */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid size={{ xs: 12, md: 2.4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
               border: `2px solid ${colorTokens.brand}40`,
@@ -849,7 +849,7 @@ export default function CutsHistoryPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 2.4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
               border: `2px solid ${colorTokens.success}40`,
@@ -875,7 +875,7 @@ export default function CutsHistoryPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 2.4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
               border: `2px solid ${colorTokens.info}40`,
@@ -901,7 +901,7 @@ export default function CutsHistoryPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 2.4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
               border: `2px solid ${colorTokens.success}40`,
@@ -927,7 +927,7 @@ export default function CutsHistoryPage() {
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 2.4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <Card sx={{
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
               border: `2px solid ${colorTokens.warning}40`,
@@ -970,7 +970,7 @@ export default function CutsHistoryPage() {
             </Box>
 
             <Grid container spacing={2} rowSpacing={3}>
-              <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 6, lg: 4 }}>
                 <TextField
                   fullWidth
                   label="Buscar"
@@ -1556,7 +1556,7 @@ export default function CutsHistoryPage() {
             {selectedCut && (
               <Grid container spacing={4}>
                 {/* INFORMACIÓN GENERAL */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Card sx={{
                     backgroundColor: colorTokens.surfaceLevel3,
                     border: `1px solid ${colorTokens.neutral500}`,
@@ -1635,7 +1635,7 @@ export default function CutsHistoryPage() {
                 </Grid>
 
                 {/* RESUMEN FINANCIERO */}
-                <Grid size={{ xs: 12, md: 8 }}>
+                <Grid size={{ xs: 12, sm: 12, md: 8 }}>
                   <Card sx={{
                     backgroundColor: colorTokens.surfaceLevel3,
                     border: `1px solid ${colorTokens.neutral500}`,
@@ -1647,7 +1647,7 @@ export default function CutsHistoryPage() {
                       </Typography>
                       
                       <Grid container spacing={3}>
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -1663,7 +1663,7 @@ export default function CutsHistoryPage() {
                           </Paper>
                         </Grid>
                         
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -1679,7 +1679,7 @@ export default function CutsHistoryPage() {
                           </Paper>
                         </Grid>
                         
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                           <Paper sx={{ 
                             p: 3, 
                             textAlign: 'center',
@@ -1747,7 +1747,7 @@ export default function CutsHistoryPage() {
                       <Divider sx={{ my: 3, backgroundColor: colorTokens.neutral500 }} />
                       
                       <Grid container spacing={3}>
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h4" sx={{ color: colorTokens.brand, fontWeight: 'bold' }}>
                               {formatPrice(selectedCut.grand_total)}
@@ -1758,7 +1758,7 @@ export default function CutsHistoryPage() {
                           </Box>
                         </Grid>
                         
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h4" sx={{ color: colorTokens.danger, fontWeight: 'bold' }}>
                               -{formatPrice(selectedCut.expenses_amount)}
@@ -1769,7 +1769,7 @@ export default function CutsHistoryPage() {
                           </Box>
                         </Grid>
                         
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h4" sx={{ 
                               color: selectedCut.final_balance >= 0 ? colorTokens.success : colorTokens.danger, 

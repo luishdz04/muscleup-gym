@@ -345,40 +345,65 @@ export default function CancelLayawayDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xl" fullWidth PaperProps={{ sx: { borderRadius: 4, background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`, border: `2px solid ${colorTokens.danger}50`, color: colorTokens.textPrimary, minHeight: '80vh' }}}>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: `linear-gradient(135deg, ${colorTokens.danger}, ${colorTokens.dangerHover})`, color: colorTokens.textOnBrand, borderRadius: '16px 16px 0 0' }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Avatar sx={{ bgcolor: colorTokens.neutral0, color: colorTokens.danger, width: 50, height: 50 }}>
-            <CancelIcon sx={{ fontSize: 28 }} />
+      <DialogTitle sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: `linear-gradient(135deg, ${colorTokens.danger}, ${colorTokens.dangerHover})`,
+        color: colorTokens.textOnBrand,
+        borderRadius: '16px 16px 0 0',
+        p: { xs: 2, sm: 3 },
+        flexDirection: { xs: 'row', sm: 'row' }
+      }}>
+        <Box display="flex" alignItems="center" gap={{ xs: 1.5, sm: 2 }}>
+          <Avatar sx={{
+            bgcolor: colorTokens.neutral0,
+            color: colorTokens.danger,
+            width: { xs: 40, sm: 50 },
+            height: { xs: 40, sm: 50 }
+          }}>
+            <CancelIcon sx={{ fontSize: { xs: 22, sm: 28 } }} />
           </Avatar>
           <Box>
-            <Typography variant="h5" fontWeight="bold">Cancelar Apartado</Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9 }}>#{safeLayaway.sale_number}</Typography>
+            <Typography variant="h5" fontWeight="bold" sx={{
+              fontSize: { xs: '1.1rem', sm: '1.5rem' }
+            }}>
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Cancelar Apartado
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                Cancelar
+              </Box>
+            </Typography>
+            <Typography variant="h6" sx={{ opacity: 0.9, fontSize: { xs: '0.875rem', sm: '1.25rem' } }}>#{safeLayaway.sale_number}</Typography>
           </Box>
         </Box>
-        <IconButton onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}><CloseIcon /></IconButton>
+        <IconButton onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}>
+          <CloseIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
+        </IconButton>
       </DialogTitle>
 
       <DialogContent sx={{ p: 0 }}>
         {!completed ? (
-          <Box sx={{ p: 4 }}>
-            <Card sx={{ mb: 4, background: `${colorTokens.warning}10`, border: `1px solid ${colorTokens.warning}30`, borderRadius: 3 }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: colorTokens.warning, mb: 2, fontWeight: 700 }}>Información del Apartado</Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}><strong>Cliente:</strong> {safeLayaway.customer_name}</Typography></Grid>
-                  <Grid size={{ xs: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}><strong>Total:</strong> {formatPrice(safeLayaway.total_amount)}</Typography></Grid>
-                  <Grid size={{ xs: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}><strong>Pagado:</strong> {formatPrice(safeLayaway.paid_amount)}</Typography></Grid>
-                  <Grid size={{ xs: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}><strong>Creado:</strong> {formatTimestampForDisplay(safeLayaway.created_at)}</Typography></Grid>
+          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+            <Card sx={{ mb: { xs: 2, sm: 3, md: 4 }, background: `${colorTokens.warning}10`, border: `1px solid ${colorTokens.warning}30`, borderRadius: 3 }}>
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Typography variant="h6" sx={{ color: colorTokens.warning, mb: { xs: 1.5, sm: 2 }, fontWeight: 700, fontSize: { xs: '1rem', sm: '1.25rem' } }}>Información del Apartado</Typography>
+                <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                  <Grid size={{ xs: 6, sm: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}><strong>Cliente:</strong> {safeLayaway.customer_name}</Typography></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}><strong>Total:</strong> {formatPrice(safeLayaway.total_amount)}</Typography></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}><strong>Pagado:</strong> {formatPrice(safeLayaway.paid_amount)}</Typography></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}><strong>Creado:</strong> {formatTimestampForDisplay(safeLayaway.created_at)}</Typography></Grid>
                 </Grid>
               </CardContent>
             </Card>
 
-            <Alert severity="error" sx={{ mb: 4, background: `${colorTokens.danger}20`, border: `1px solid ${colorTokens.danger}30`, color: colorTokens.textPrimary, '& .MuiAlert-icon': { color: colorTokens.danger }}}>
+            <Alert severity="error" sx={{ mb: { xs: 2, sm: 3, md: 4 }, background: `${colorTokens.danger}20`, border: `1px solid ${colorTokens.danger}30`, color: colorTokens.textPrimary, '& .MuiAlert-icon': { color: colorTokens.danger }}}>
               <strong>ATENCIÓN:</strong> Esta acción cancelará permanentemente el apartado y puede afectar el inventario. Revise cuidadosamente antes de proceder.
             </Alert>
 
-            <Grid container spacing={4}>
-              <Grid size={{ xs: 8 }}>
+            <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+              <Grid size={{ xs: 12, lg: 8 }}>
                 <Card sx={{ background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`, border: `1px solid ${colorTokens.border}`, borderRadius: 4, p: 2 }}>
                   <Stepper activeStep={activeStep} orientation="vertical">
                     {steps.map((step, index) => (
@@ -477,8 +502,8 @@ export default function CancelLayawayDialog({
                 </Card>
               </Grid>
 
-              <Grid size={{ xs: 4 }}>
-                <Card sx={{ background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`, border: `1px solid ${colorTokens.border}`, borderRadius: 4, p: 3, position: 'sticky', top: 20 }}>
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Card sx={{ background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`, border: `1px solid ${colorTokens.border}`, borderRadius: 4, p: { xs: 2, sm: 3 }, position: { xs: 'static', lg: 'sticky' }, top: 20 }}>
                   <Typography variant="h6" sx={{ color: colorTokens.danger, mb: 3, fontWeight: 700 }}>Detalles Financieros</Typography>
                   <Stack spacing={2}>
                     <Box><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>Total apartado:</Typography><Typography variant="h6" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>{formatPrice(safeLayaway.total_amount)}</Typography></Box>
@@ -490,13 +515,13 @@ export default function CancelLayawayDialog({
             </Grid>
           </Box>
         ) : (
-          <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Box sx={{ textAlign: 'center', py: { xs: 4, sm: 6 }, px: { xs: 2, sm: 3 } }}>
             <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }}>
-              <CancelIcon sx={{ fontSize: 100, color: colorTokens.danger, mb: 3 }} />
-              <Typography variant="h3" sx={{ color: colorTokens.danger, fontWeight: 700, mb: 2 }}>Apartado Cancelado</Typography>
-              <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 4 }}>El apartado #{safeLayaway.sale_number} ha sido cancelado exitosamente</Typography>
-              {processRefund && calculations && (<Typography variant="body1" sx={{ color: colorTokens.success, mb: 3, fontWeight: 600 }}>Reembolso procesado: {formatPrice(calculations.finalRefund)}</Typography>)}
-              <Button variant="contained" onClick={handleClose} sx={{ background: `linear-gradient(135deg, ${colorTokens.danger}, ${colorTokens.dangerHover})`, color: colorTokens.textOnBrand, fontWeight: 700, px: 4, py: 1.5, borderRadius: 3 }}>Cerrar</Button>
+              <CancelIcon sx={{ fontSize: { xs: 60, sm: 80, md: 100 }, color: colorTokens.danger, mb: { xs: 2, sm: 3 } }} />
+              <Typography variant="h3" sx={{ color: colorTokens.danger, fontWeight: 700, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' } }}>Apartado Cancelado</Typography>
+              <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: { xs: 3, sm: 4 }, fontSize: { xs: '0.875rem', sm: '1.25rem' } }}>El apartado #{safeLayaway.sale_number} ha sido cancelado exitosamente</Typography>
+              {processRefund && calculations && (<Typography variant="body1" sx={{ color: colorTokens.success, mb: 3, fontWeight: 600, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Reembolso procesado: {formatPrice(calculations.finalRefund)}</Typography>)}
+              <Button variant="contained" onClick={handleClose} fullWidth={{ xs: true, sm: false }} sx={{ background: `linear-gradient(135deg, ${colorTokens.danger}, ${colorTokens.dangerHover})`, color: colorTokens.textOnBrand, fontWeight: 700, px: { xs: 3, sm: 4 }, py: { xs: 1.2, sm: 1.5 }, borderRadius: 3, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Cerrar</Button>
             </motion.div>
           </Box>
         )}

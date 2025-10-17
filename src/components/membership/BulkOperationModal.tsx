@@ -146,33 +146,38 @@ const BulkOperationModal = memo<Props>(({
         }
       }}
     >
-      <DialogTitle sx={{ 
-        color: operation.action === 'freeze' ? colorTokens.info : colorTokens.success, 
+      <DialogTitle sx={{
+        color: operation.action === 'freeze' ? colorTokens.info : colorTokens.success,
         fontWeight: 800,
-        fontSize: '1.8rem',
+        fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.8rem' },
         textAlign: 'center',
-        pb: 2,
+        pb: { xs: 1.5, sm: 2 },
+        p: { xs: 2, sm: 3 },
         display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        gap: { xs: 1, sm: 0 }
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {operation.mode === 'manual' ? 
-            <ManualIcon sx={{ fontSize: 40 }} /> : 
-            <AutoIcon sx={{ fontSize: 40 }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
+          {operation.mode === 'manual' ?
+            <ManualIcon sx={{ fontSize: { xs: 32, sm: 40 } }} /> :
+            <AutoIcon sx={{ fontSize: { xs: 32, sm: 40 } }} />
           }
-          {getBulkOperationTitle()}
+          <Typography sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem', md: '1.8rem' }, fontWeight: 800 }}>
+            {getBulkOperationTitle()}
+          </Typography>
         </Box>
-        <IconButton 
+        <IconButton
           onClick={onClose}
           disabled={loading}
           sx={{ color: colorTokens.textSecondary }}
         >
-          <CloseIcon />
+          <CloseIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
         </IconButton>
       </DialogTitle>
-      
-      <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+
+      <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto', p: { xs: 2, sm: 3 } }}>
         {!loading ? (
           <Box>
             {/* ✅ ALERTA DE ADVERTENCIA */}
@@ -600,31 +605,39 @@ const BulkOperationModal = memo<Props>(({
         )}
       </DialogContent>
       
-      <DialogActions sx={{ p: 3, gap: 2 }}>
-        <Button 
+      <DialogActions sx={{
+        p: { xs: 2, sm: 3 },
+        gap: { xs: 1.5, sm: 2 },
+        flexDirection: { xs: 'column-reverse', sm: 'row' }
+      }}>
+        <Button
           onClick={onClose}
           disabled={loading}
-          sx={{ 
+          fullWidth={{ xs: true, sm: false }}
+          sx={{
+            fontSize: { xs: '0.875rem', sm: '1rem' },
             color: colorTokens.textSecondary,
             borderColor: colorTokens.neutral400,
-            px: 3,
+            px: { xs: 2.5, sm: 3 },
             py: 1
           }}
           variant="outlined"
         >
           {loading ? 'Procesando...' : 'Cancelar'}
         </Button>
-        
+
         {!loading && (
-          <Button 
+          <Button
             onClick={onExecute}
             variant="contained"
+            fullWidth={{ xs: true, sm: false }}
             startIcon={
-              operation.action === 'freeze' ? 
-                (operation.mode === 'manual' ? <ManualIcon /> : <AutoIcon />) : 
-                (operation.mode === 'manual' ? <ManualIcon /> : <AutoIcon />)
+              operation.action === 'freeze' ?
+                (operation.mode === 'manual' ? <ManualIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> : <AutoIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />) :
+                (operation.mode === 'manual' ? <ManualIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> : <AutoIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />)
             }
             sx={{
+              fontSize: { xs: '0.875rem', sm: '1rem' },
               background: `linear-gradient(135deg, ${
                 operation.action === 'freeze' ? colorTokens.info : colorTokens.success
               }, ${
@@ -632,7 +645,7 @@ const BulkOperationModal = memo<Props>(({
               })`,
               color: colorTokens.textPrimary,
               fontWeight: 700,
-              px: 4,
+              px: { xs: 3, sm: 4 },
               py: 1,
               '&:hover': {
                 background: `linear-gradient(135deg, ${

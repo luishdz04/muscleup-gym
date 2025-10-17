@@ -205,12 +205,12 @@ export default function CrearPlanPage() {
   }
 
   return (
-    <Box sx={{ 
+    <Box sx={{
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh',
       color: colorTokens.neutral1200
     }}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
         {/* HEADER */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
@@ -218,42 +218,54 @@ export default function CrearPlanPage() {
           transition={{ duration: 0.6 }}
         >
           <Paper sx={{
-            p: 4,
-            mb: 4,
+            p: { xs: 2, sm: 3, md: 4 },
+            mb: { xs: 2, sm: 3, md: 4 },
             background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
             border: `1px solid ${colorTokens.neutral400}`,
             borderRadius: 3,
             backdropFilter: 'blur(10px)'
           }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', md: 'center' },
+              mb: { xs: 2, sm: 2.5, md: 3 },
+              gap: { xs: 2, md: 0 }
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, sm: 2.5, md: 3 } }}>
                 <Tooltip title="Volver a Planes">
                   <IconButton
                     onClick={confirmExit}
-                    sx={{ 
+                    sx={{
                       background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})`,
                       color: colorTokens.neutral0,
+                      width: { xs: 40, sm: 44, md: 48 },
+                      height: { xs: 40, sm: 44, md: 48 },
                       '&:hover': {
                         transform: 'translateX(-2px)',
                         boxShadow: `0 6px 20px ${colorTokens.brand}40`,
                       }
                     }}
                   >
-                    <ArrowBackIcon />
+                    <ArrowBackIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />
                   </IconButton>
                 </Tooltip>
-                
+
                 <Box>
-                  <Typography variant="h3" sx={{ 
-                    color: colorTokens.brand, 
+                  <Typography variant="h3" sx={{
+                    color: colorTokens.brand,
                     fontWeight: 700,
-                    mb: 1
+                    mb: 1,
+                    fontSize: { xs: '1.75rem', sm: '2.25rem', md: '3rem' }
                   }}>
                     Crear Plan
                   </Typography>
-                  <Typography variant="h6" sx={{ 
+                  <Typography variant="h6" sx={{
                     color: colorTokens.neutral900,
-                    fontWeight: 500
+                    fontWeight: 500,
+                    fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
+                    display: { xs: 'none', sm: 'block' }
                   }}>
                     Configure un nuevo plan de membresía
                   </Typography>
@@ -261,26 +273,38 @@ export default function CrearPlanPage() {
               </Box>
 
               {/* Progreso */}
-              <Box sx={{ textAlign: 'right', minWidth: 180 }}>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral900, mb: 1 }}>
+              <Box sx={{
+                textAlign: { xs: 'left', md: 'right' },
+                minWidth: { xs: '100%', md: 180 },
+                width: { xs: '100%', md: 'auto' }
+              }}>
+                <Typography variant="body2" sx={{
+                  color: colorTokens.neutral900,
+                  mb: 1,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                }}>
                   Progreso de Configuración
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={formProgress} 
-                    sx={{ 
-                      width: 120, 
-                      height: 8, 
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={formProgress}
+                    sx={{
+                      width: { xs: '100%', sm: 100, md: 120 },
+                      height: { xs: 6, sm: 7, md: 8 },
                       borderRadius: 4,
                       backgroundColor: `${colorTokens.brand}20`,
                       '& .MuiLinearProgress-bar': {
                         background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.warning})`,
                         borderRadius: 4
                       }
-                    }} 
+                    }}
                   />
-                  <Typography variant="h6" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
+                  <Typography variant="h6" sx={{
+                    color: colorTokens.brand,
+                    fontWeight: 700,
+                    fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.25rem' }
+                  }}>
                     {Math.round(formProgress)}%
                   </Typography>
                 </Box>

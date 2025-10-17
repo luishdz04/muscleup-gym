@@ -49,33 +49,37 @@ const FilterPanel = memo<Props>(({
 }) => {
   return (
     <Paper sx={{
-      p: 3,
-      mb: 3,
+      p: { xs: 2, sm: 2.5, md: 3 },
+      mb: { xs: 2, sm: 2.5, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}95, ${colorTokens.surfaceLevel3}90)`,
       border: `1px solid ${colorTokens.brand}20`,
       borderRadius: 4
     }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ 
-          color: colorTokens.brand, 
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 2, sm: 2.5, md: 3 }, gap: 2 }}>
+        <Typography variant="h5" sx={{
+          color: colorTokens.brand,
           fontWeight: 700,
           display: 'flex',
           alignItems: 'center',
-          gap: 2
+          gap: { xs: 1, sm: 1.5, md: 2 },
+          fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
         }}>
-          <SearchIcon />
-          Búsqueda y Filtros Avanzados
+          <SearchIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Búsqueda y Filtros Avanzados</Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Filtros</Box>
         </Typography>
 
         <Button
-          startIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          startIcon={showFilters ? <ExpandLessIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> : <ExpandMoreIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
           onClick={onToggleFilters}
-          sx={{ 
+          sx={{
             color: colorTokens.brand,
             borderColor: `${colorTokens.brand}60`,
-            px: 3,
-            py: 1,
+            px: { xs: 2, sm: 2.5, md: 3 },
+            py: { xs: 0.75, sm: 1 },
+            fontSize: { xs: '0.8rem', sm: '0.875rem' },
             fontWeight: 600,
+            width: { xs: '100%', sm: 'auto' },
             '&:hover': {
               borderColor: colorTokens.brand,
               backgroundColor: `${colorTokens.brand}10`
@@ -96,13 +100,13 @@ const FilterPanel = memo<Props>(({
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon sx={{ color: colorTokens.brand }} />
+              <SearchIcon sx={{ color: colorTokens.brand, fontSize: { xs: 20, sm: 22, md: 24 } }} />
             </InputAdornment>
           ),
           sx: {
             color: colorTokens.textPrimary,
             backgroundColor: `${colorTokens.neutral400}20`,
-            fontSize: '1.1rem',
+            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
             '& .MuiOutlinedInput-notchedOutline': {
               borderColor: `${colorTokens.brand}30`,
               borderWidth: 2
@@ -115,7 +119,7 @@ const FilterPanel = memo<Props>(({
             }
           }
         }}
-        sx={{ mb: 3 }}
+        sx={{ mb: { xs: 2, sm: 2.5, md: 3 } }}
       />
 
       {/* ✅ FILTROS AVANZADOS */}
@@ -127,7 +131,7 @@ const FilterPanel = memo<Props>(({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
               {/* Estado */}
               <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>

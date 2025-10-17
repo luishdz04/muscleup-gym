@@ -946,7 +946,7 @@ export default function NuevoCorteePage() {
 
         <Grid container spacing={4}>
           {/* CONFIGURACIÓN DEL CORTE */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1263,7 +1263,7 @@ export default function NuevoCorteePage() {
           </Grid>
 
           {/* RESTO DEL CONTENIDO (DATOS EDITABLES Y HISTORIAL) */}
-          <Grid size={{ xs: 12, md: 8 }}>
+          <Grid size={{ xs: 12, sm: 12, md: 8 }}>
             {loading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                 <CircularProgress size={60} sx={{ color: colorTokens.brand }} />

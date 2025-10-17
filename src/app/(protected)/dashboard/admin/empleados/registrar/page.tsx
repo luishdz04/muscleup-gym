@@ -85,7 +85,6 @@ const INITIAL_FORM: EmployeeRegistrationData = {
 const RegistrarEmpleado = () => {
   const router = useRouter();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const hydrated = useHydrated();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const { toast } = useNotifications();
@@ -384,7 +383,7 @@ const RegistrarEmpleado = () => {
         minHeight: '100vh',
         background: `radial-gradient(circle at top, ${colorTokens.surfaceLevel3} 0%, ${colorTokens.neutral0} 60%)`,
         color: colorTokens.neutral1200,
-        p: isMobile ? 2 : 4
+        p: { xs: 2, sm: 3, md: 4 }
       }}
     >
       <Box sx={{ maxWidth: 1080, mx: 'auto' }}>
@@ -393,22 +392,33 @@ const RegistrarEmpleado = () => {
           sx={{
             fontWeight: 700,
             color: colorTokens.brand,
-            mb: 1,
+            mb: { xs: 1.5, sm: 2 },
             display: 'flex',
             alignItems: 'center',
-            gap: 1
+            gap: 1,
+            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
           }}
         >
-          👨‍💼 Registrar Nuevo Usuario
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            👨‍💼 Registrar Nuevo Usuario
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            👨‍💼 Nuevo Usuario
+          </Box>
         </Typography>
-        <Typography variant="body1" sx={{ color: colorTokens.neutral900, mb: 3 }}>
+        <Typography variant="body1" sx={{
+          color: colorTokens.neutral900,
+          mb: { xs: 2, sm: 3 },
+          fontSize: { xs: '0.875rem', sm: '1rem' },
+          display: { xs: 'none', sm: 'block' }
+        }}>
           Completa la información para agregar nuevos colaboradores o administradores al sistema.
         </Typography>
 
         <Paper
           elevation={0}
           sx={{
-            p: isMobile ? 3 : 4,
+            p: { xs: 2, sm: 3, md: 4 },
             background: `linear-gradient(135deg, ${colorTokens.surfaceLevel1}, ${colorTokens.surfaceLevel2})`,
             border: `1px solid ${colorTokens.neutral400}60`,
             boxShadow: `0 12px 30px ${colorTokens.shadow}`,

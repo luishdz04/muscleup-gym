@@ -186,17 +186,17 @@ export default function ProductosPage() {
   }
 
   return (
-    <Box sx={{ 
+    <Box sx={{
       minHeight: '100vh',
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       color: colorTokens.textPrimary,
-      p: 3
+      p: { xs: 2, sm: 2.5, md: 3 }
     }}>
       {/* HEADER CON ESTADÍSTICA PRINCIPAL */}
       <Fade in timeout={1000}>
         <Paper sx={{
-          p: 4,
-          mb: 4,
+          p: { xs: 2, sm: 3, md: 4 },
+          mb: { xs: 2, sm: 3, md: 4 },
           background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
           border: `2px solid ${colorTokens.brand}30`,
           borderRadius: 4,
@@ -213,49 +213,74 @@ export default function ProductosPage() {
             background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.brandHover})`
           }
         }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Box
+            display="flex"
+            flexDirection={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            mb={{ xs: 2, sm: 3 }}
+            gap={2}
+          >
             <Box>
-              <Typography 
-                variant="h3" 
-                component="h1" 
+              <Typography
+                variant="h3"
+                component="h1"
                 sx={{
                   fontWeight: 900,
                   color: colorTokens.brand,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 2,
+                  gap: { xs: 1, sm: 2 },
                   mb: 1,
+                  fontSize: { xs: '1.75rem', sm: '2.25rem', md: '3rem' },
                   textShadow: `0 2px 8px ${colorTokens.glow}`
                 }}
               >
-                <InventoryIcon sx={{ fontSize: 50 }} />
-                Catálogo de Productos
+                <InventoryIcon sx={{ fontSize: { xs: 35, sm: 42, md: 50 } }} />
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Catálogo de Productos
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                  Productos
+                </Box>
               </Typography>
-              <Typography variant="h6" sx={{ 
+              <Typography variant="h6" sx={{
                 color: colorTokens.textSecondary,
-                fontWeight: 400
+                fontWeight: 400,
+                fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' }
               }}>
-                Gestión maestra de productos y precios
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Gestión maestra de productos y precios
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                  Gestión y precios
+                </Box>
               </Typography>
             </Box>
-            
+
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
               onClick={reload}
               disabled={loading}
-              sx={{ 
+              fullWidth={{ xs: true, sm: false }}
+              sx={{
                 color: colorTokens.textSecondary,
                 borderColor: `${colorTokens.textSecondary}60`,
-                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
+                px: { xs: 2, sm: 3 },
+                py: { xs: 1, sm: 1.5 },
+                borderRadius: 3,
+                fontWeight: 600,
+                fontSize: { xs: '0.875rem', sm: '1rem' }
               }}
             >
-              {loading ? <CircularProgress size={20} /> : 'Actualizar'}
+              {loading ? <CircularProgress size={20} /> : <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Actualizar</Box>}
+              {loading ? '' : <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Actualizar</Box>}
             </Button>
           </Box>
 
           {/* ESTADÍSTICA PRINCIPAL - PRODUCTOS DISPONIBLES */}
-          <Grid container spacing={3} justifyContent="center">
+          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} justifyContent="center">
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <Card sx={{ 
                 background: `linear-gradient(135deg, ${colorTokens.success}15, ${colorTokens.success}10)`, 
@@ -302,14 +327,14 @@ export default function ProductosPage() {
 
       {/* FILTROS */}
       <Slide in direction="up" timeout={600}>
-        <Paper sx={{ 
-          p: 3, 
-          mb: 3,
+        <Paper sx={{
+          p: { xs: 2, sm: 2.5, md: 3 },
+          mb: { xs: 2, sm: 2.5, md: 3 },
           background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
           border: `1px solid ${colorTokens.border}`,
           borderRadius: 3
         }}>
-          <Grid container spacing={2} alignItems="center">
+          <Grid container spacing={{ xs: 2, sm: 2.5 }} alignItems="center">
             <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth

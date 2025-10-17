@@ -4,7 +4,15 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(awk:*)",
+      "Bash(for file in /workspaces/muscleup-gym/src/app/(protected)/dashboard/admin/catalogo/*/*.tsx)",
+      "Bash(done)",
+      "Bash(while read f)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

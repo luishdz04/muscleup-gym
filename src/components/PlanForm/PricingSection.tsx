@@ -157,43 +157,52 @@ export const PricingSection = React.memo<PricingSectionProps>(({
         }
       }}
     >
-      <AccordionSummary 
+      <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: colorTokens.info }} />}
-        sx={{ px: 4 }}
+        sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 1, sm: 1.5 } }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-          <Avatar sx={{ 
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2, md: 3 }, width: '100%' }}>
+          <Avatar sx={{
             background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.info}CC)`,
-            color: colorTokens.neutral1200
+            color: colorTokens.neutral1200,
+            width: { xs: 40, sm: 48, md: 56 },
+            height: { xs: 40, sm: 48, md: 56 }
           }}>
-            <MonetizationOnIcon />
+            <MonetizationOnIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
           </Avatar>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ 
-              color: colorTokens.info, 
-              fontWeight: 700
+            <Typography variant="h5" sx={{
+              color: colorTokens.info,
+              fontWeight: 700,
+              fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
             }}>
               Estructura de Precios
             </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
+            <Typography variant="body2" sx={{
+              color: colorTokens.neutral900,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
               Configure los precios para diferentes modalidades de membresía
             </Typography>
           </Box>
           {bestPrice > 0 && (
-            <Chip 
-              icon={<TrendingUpIcon />} 
+            <Chip
+              icon={<TrendingUpIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
               label={`$${bestPrice.toLocaleString('es-MX')}`}
-              sx={{ 
+              sx={{
                 bgcolor: `${colorTokens.info}20`,
                 color: colorTokens.info,
-                border: `1px solid ${colorTokens.info}40`
+                border: `1px solid ${colorTokens.info}40`,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                height: { xs: '24px', sm: '28px' }
               }}
             />
           )}
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: 4 }}>
-        <Grid container spacing={4}>
+      <AccordionDetails sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
           <Grid size={{ xs: 12, md: 6 }}>
             <TextField
               fullWidth
@@ -227,17 +236,19 @@ export const PricingSection = React.memo<PricingSectionProps>(({
               }}
             />
           </Grid>
-          
+
+
           <Grid size={12}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.neutral1200, 
-              mb: 3, 
+            <Typography variant="h6" sx={{
+              color: colorTokens.neutral1200,
+              mb: { xs: 2, sm: 2.5, md: 3 },
               fontWeight: 700,
-              textAlign: 'center'
+              textAlign: 'center',
+              fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
             }}>
               Modalidades de Membresía
             </Typography>
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
               {pricingPeriods.map((period) => (
                 <Grid key={period.key} size={{ xs: 12, sm: 6, md: 4 }}>
                   <motion.div whileHover={{ scale: 1.02, y: -4 }}>
@@ -251,21 +262,26 @@ export const PricingSection = React.memo<PricingSectionProps>(({
                         boxShadow: `0 8px 25px ${period.color}20`,
                       }
                     }}>
-                      <CardContent sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography variant="h4" sx={{ mb: 1 }}>
+                      <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 }, textAlign: 'center' }}>
+                        <Typography variant="h4" sx={{
+                          mb: 1,
+                          fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
+                        }}>
                           {period.icon}
                         </Typography>
-                        <Typography variant="h6" sx={{ 
-                          color: period.color, 
-                          mb: 1, 
-                          fontWeight: 700
+                        <Typography variant="h6" sx={{
+                          color: period.color,
+                          mb: 1,
+                          fontWeight: 700,
+                          fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
                         }}>
                           {period.label}
                         </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: colorTokens.neutral900, 
-                          mb: 2, 
-                          display: 'block'
+                        <Typography variant="caption" sx={{
+                          color: colorTokens.neutral900,
+                          mb: 2,
+                          display: 'block',
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
                         }}>
                           {period.duration}
                         </Typography>
@@ -303,12 +319,13 @@ export const PricingSection = React.memo<PricingSectionProps>(({
                 bgcolor: `${colorTokens.danger}10`,
                 border: `2px solid ${colorTokens.danger}30`,
                 borderRadius: 2,
-                p: 2,
+                p: { xs: 1.5, sm: 2 },
                 textAlign: 'center'
               }}>
-                <Typography variant="body2" sx={{ 
+                <Typography variant="body2" sx={{
                   color: colorTokens.danger,
-                  fontWeight: 600
+                  fontWeight: 600,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
                 }}>
                   ⚠️ {errors.pricing}
                 </Typography>

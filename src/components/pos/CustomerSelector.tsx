@@ -155,16 +155,28 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
       }}
     >
       {/* ✅ HEADER CON BRANDING MUSCLEUP v7.0 */}
-      <DialogTitle sx={{ 
+      <DialogTitle sx={{
         background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
         color: colorTokens.textOnBrand,
         fontWeight: 700,
         display: 'flex',
         alignItems: 'center',
-        gap: 2
+        gap: { xs: 1, sm: 2 },
+        p: { xs: 2, sm: 3 }
       }}>
-        <PersonIcon sx={{ fontSize: 28 }} />
-        Seleccionar Cliente
+        <PersonIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
+        <Typography variant="h6" sx={{
+          fontSize: { xs: '1rem', sm: '1.25rem' },
+          display: { xs: 'none', sm: 'block' }
+        }}>
+          Seleccionar Cliente
+        </Typography>
+        <Typography variant="h6" sx={{
+          fontSize: '1rem',
+          display: { xs: 'block', sm: 'none' }
+        }}>
+          Cliente
+        </Typography>
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
           <Chip
             label={`${onlyClients.length} clientes`}
@@ -178,9 +190,9 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
         {/* ✅ BÚSQUEDA CON COLORTOKENS v7.0 */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: { xs: 2, sm: 3 } }}>
           <TextField
             fullWidth
             placeholder="Buscar por nombre, email o teléfono..."
@@ -366,11 +378,12 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
         )}
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, pt: 0 }}>
+      <DialogActions sx={{ p: { xs: 2, sm: 3 }, pt: 0 }}>
         <Button
           onClick={handleClose}
-          startIcon={<CloseIcon />}
+          startIcon={<CloseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
           sx={{
+            fontSize: { xs: '0.875rem', sm: '1rem' },
             color: colorTokens.textSecondary,
             '&:hover': {
               backgroundColor: colorTokens.hoverOverlay,

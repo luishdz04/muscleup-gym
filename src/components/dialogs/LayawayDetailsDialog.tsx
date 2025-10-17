@@ -210,22 +210,25 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
           alignItems: 'center',
           background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandActive})`,
           color: colorTokens.textOnBrand,
-          borderRadius: '16px 16px 0 0'
+          borderRadius: '16px 16px 0 0',
+          p: { xs: 2, sm: 3 }
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <ReceiptIcon />
-          <Typography variant="h6" fontWeight="bold">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
+          <ReceiptIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
+          <Typography variant="h6" fontWeight="bold" sx={{
+            fontSize: { xs: '1rem', sm: '1.25rem' }
+          }}>
             Apartado #{safeLayaway.sale_number}
           </Typography>
         </Box>
         <Button onClick={onClose} sx={{ color: 'inherit', minWidth: 'auto' }}>
-          <CloseIcon />
+          <CloseIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
         </Button>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, background: colorTokens.surfaceLevel1 }}>
-        <Grid container spacing={3}>
+      <DialogContent sx={{ p: { xs: 2, sm: 3 }, background: colorTokens.surfaceLevel1 }}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           
           {/* ✅ PROGRESO DEL APARTADO */}
           <Grid size={{ xs: 12 }}>
@@ -807,21 +810,24 @@ export default function LayawayDetailsDialog({ open, onClose, layaway }: Layaway
 
       <DialogActions
         sx={{
-          p: 3,
+          p: { xs: 2, sm: 3 },
           background: colorTokens.surfaceLevel2,
-          borderTop: `1px solid ${colorTokens.border}`
+          borderTop: `1px solid ${colorTokens.border}`,
+          justifyContent: 'center'
         }}
       >
         <Button
           onClick={onClose}
           variant="contained"
           size="large"
+          fullWidth={{ xs: true, sm: false }}
           sx={{
             background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandActive})`,
             color: colorTokens.textOnBrand,
             fontWeight: 700,
-            px: 4,
-            py: 1.5,
+            px: { xs: 3, sm: 4 },
+            py: { xs: 1.2, sm: 1.5 },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
             borderRadius: 3,
             '&:hover': {
               background: `linear-gradient(135deg, ${colorTokens.brandActive}, ${colorTokens.brand})`,

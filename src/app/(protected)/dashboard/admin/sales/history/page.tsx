@@ -909,59 +909,67 @@ const SalesHistoryPage = memo(() => {
 
   // ✅ CONTENIDO PRINCIPAL
   return (
-    <Box sx={{ 
-      p: 3,
+    <Box sx={{
+      p: { xs: 2, sm: 2.5, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh'
     }}>
       {/* HEADER */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 4,
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', md: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'flex-start', md: 'center' },
+        mb: { xs: 2, sm: 3, md: 4 },
         background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-        p: 3,
+        p: { xs: 2, sm: 2.5, md: 3 },
         borderRadius: 4,
-        border: `1px solid ${colorTokens.border}`
+        border: `1px solid ${colorTokens.border}`,
+        gap: 2
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar sx={{ 
-            bgcolor: colorTokens.brand, 
-            width: 56, 
-            height: 56,
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
+          <Avatar sx={{
+            bgcolor: colorTokens.brand,
+            width: { xs: 48, sm: 52, md: 56 },
+            height: { xs: 48, sm: 52, md: 56 },
             color: colorTokens.textOnBrand
           }}>
-            <History sx={{ fontSize: 30 }} />
+            <History sx={{ fontSize: { xs: 26, sm: 28, md: 30 } }} />
           </Avatar>
           <Box>
-            <Typography variant="h4" sx={{ 
-              fontWeight: 800, 
+            <Typography variant="h4" sx={{
+              fontWeight: 800,
               color: colorTokens.textPrimary,
-              mb: 1
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
             }}>
-              Historial de Ventas Directas
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Historial de Ventas Directas</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Historial Ventas</Box>
             </Typography>
-            <Typography variant="body1" sx={{ 
-              color: colorTokens.textSecondary
+            <Typography variant="body1" sx={{
+              color: colorTokens.textSecondary,
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              display: { xs: 'none', sm: 'block' }
             }}>
               Solo ventas directas - Análisis por estado
             </Typography>
           </Box>
         </Box>
-        
+
         <Button
           variant="contained"
-          startIcon={<Refresh />}
+          startIcon={<Refresh sx={{ fontSize: { xs: 18, sm: 20 } }} />}
           onClick={handleRefresh}
           disabled={loading}
           sx={{
             background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandActive})`,
             color: colorTokens.textOnBrand,
             fontWeight: 700,
-            px: 3,
-            py: 1.5,
+            px: { xs: 2, sm: 2.5, md: 3 },
+            py: { xs: 1, sm: 1.25, md: 1.5 },
+            fontSize: { xs: '0.8rem', sm: '0.875rem' },
             borderRadius: 3,
+            width: { xs: '100%', md: 'auto' },
             '&:hover': {
               background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
               transform: 'translateY(-2px)',
@@ -975,7 +983,7 @@ const SalesHistoryPage = memo(() => {
       </Box>
 
       {/* ESTADÍSTICAS */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <motion.div whileHover={{ scale: 1.02 }}>
             <Card sx={{

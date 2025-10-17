@@ -550,16 +550,29 @@ export default function PaymentDialog({
       }}
     >
       {/* ✅ HEADER CON BRANDING MUSCLEUP */}
-      <DialogTitle sx={{ 
+      <DialogTitle sx={{
         background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`,
         color: colorTokens.textPrimary,
         fontWeight: 700,
         display: 'flex',
         alignItems: 'center',
-        gap: 2
+        gap: { xs: 1, sm: 2 },
+        p: { xs: 2, sm: 3 },
+        flexDirection: { xs: 'column', sm: 'row' }
       }}>
-        <PaymentIcon sx={{ fontSize: 28 }} />
-        Procesar Pago
+        <PaymentIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
+        <Typography variant="h6" sx={{
+          fontSize: { xs: '1rem', sm: '1.25rem' },
+          display: { xs: 'none', sm: 'block' }
+        }}>
+          Procesar Pago
+        </Typography>
+        <Typography variant="h6" sx={{
+          fontSize: '1rem',
+          display: { xs: 'block', sm: 'none' }
+        }}>
+          Pago
+        </Typography>
         <Box sx={{ ml: 'auto' }}>
           <Chip
             label={commissionsLoading ? 'Calculando...' : formatPrice(finalTotal)}
@@ -573,7 +586,7 @@ export default function PaymentDialog({
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
         {/* ✅ ALERTAS DE ERROR CON MEJORES MENSAJES */}
         {commissionsError && (
           <Alert severity="error" sx={{ mb: 3 }} icon={<WarningIcon />}>
@@ -596,12 +609,12 @@ export default function PaymentDialog({
           </Alert>
         )}
 
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {/* ✅ RESUMEN DE VENTA */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Paper
               sx={{
-                p: 3,
+                p: { xs: 2, sm: 3 },
                 background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
                 border: `1px solid ${colorTokens.border}`,
                 borderRadius: 2
@@ -696,14 +709,17 @@ export default function PaymentDialog({
           <Grid size={{ xs: 12, md: 6 }}>
             <Paper
               sx={{
-                p: 3,
+                p: { xs: 2, sm: 3 },
                 background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`,
                 border: `1px solid ${colorTokens.border}`,
                 borderRadius: 2
               }}
             >
-              <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: { xs: 1.5, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
+                <Typography variant="h6" fontWeight="bold" sx={{
+                  color: colorTokens.textPrimary,
+                  fontSize: { xs: '1rem', sm: '1.25rem' }
+                }}>
                   Métodos de Pago
                 </Typography>
                 <FormControlLabel
@@ -952,12 +968,19 @@ export default function PaymentDialog({
         </Grid>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, pt: 0 }}>
+      <DialogActions sx={{
+        p: { xs: 2, sm: 3 },
+        pt: 0,
+        flexDirection: { xs: 'column-reverse', sm: 'row' },
+        gap: { xs: 1, sm: 0 }
+      }}>
         <Button
           onClick={handleClose}
-          startIcon={<CloseIcon />}
+          startIcon={<CloseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
           disabled={processing}
+          fullWidth={{ xs: true, sm: false }}
           sx={{
+            fontSize: { xs: '0.875rem', sm: '1rem' },
             color: colorTokens.textSecondary,
             '&:hover': {
               backgroundColor: colorTokens.hoverOverlay,
@@ -972,12 +995,14 @@ export default function PaymentDialog({
           onClick={processPayment}
           disabled={!canProcessPayment}
           variant="contained"
-          startIcon={processing ? <CircularProgress size={16} /> : <SuccessIcon />}
+          startIcon={processing ? <CircularProgress size={16} /> : <SuccessIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
+          fullWidth={{ xs: true, sm: false }}
           sx={{
+            fontSize: { xs: '0.875rem', sm: '1rem' },
             background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`,
             color: colorTokens.textPrimary,
             fontWeight: 'bold',
-            px: 4,
+            px: { xs: 3, sm: 4 },
             '&:hover': {
               background: `linear-gradient(135deg, ${colorTokens.successHover}, ${colorTokens.success})`
             },
@@ -987,9 +1012,9 @@ export default function PaymentDialog({
             }
           }}
         >
-          {processing 
-            ? 'Procesando...' 
-            : commissionsLoading 
+          {processing
+            ? 'Procesando...'
+            : commissionsLoading
               ? 'Calculando...'
               : `Cobrar ${formatPrice(finalTotal)}`
           }

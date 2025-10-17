@@ -141,7 +141,7 @@ const PriceCard = React.memo<{
   isPrimary?: boolean 
 }>(({ label, price, duration, isPrimary = false }) => (
   <Card sx={{
-    background: isPrimary 
+    background: isPrimary
       ? `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})`
       : `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
     border: `1px solid ${isPrimary ? colorTokens.brand : colorTokens.neutral400}`,
@@ -152,25 +152,28 @@ const PriceCard = React.memo<{
       boxShadow: `0 8px 25px ${isPrimary ? colorTokens.brand : colorTokens.neutral400}30`
     }
   }}>
-    <CardContent sx={{ p: 2.5, textAlign: 'center' }}>
-      <Typography variant="h5" sx={{ 
-        fontWeight: 700, 
+    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, textAlign: 'center' }}>
+      <Typography variant="h5" sx={{
+        fontWeight: 700,
         color: isPrimary ? colorTokens.neutral0 : colorTokens.neutral1200,
-        mb: 0.5
+        mb: 0.5,
+        fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
       }}>
         {formatPrice(price)}
       </Typography>
-      <Typography variant="body2" sx={{ 
+      <Typography variant="body2" sx={{
         color: isPrimary ? colorTokens.neutral0 : colorTokens.neutral900,
-        fontWeight: 600
+        fontWeight: 600,
+        fontSize: { xs: '0.8rem', sm: '0.875rem' }
       }}>
         {label}
       </Typography>
       {duration && duration > 0 && (
-        <Typography variant="caption" sx={{ 
+        <Typography variant="caption" sx={{
           color: isPrimary ? colorTokens.neutral200 : colorTokens.neutral800,
           display: 'block',
-          mt: 0.5
+          mt: 0.5,
+          fontSize: { xs: '0.7rem', sm: '0.75rem' }
         }}>
           {duration} {duration === 1 ? 'día' : 'días'} de duración
         </Typography>
@@ -347,13 +350,13 @@ export default function PlanDetailsPage() {
   }
 
   return (
-    <Box sx={{ 
-      p: 3,
+    <Box sx={{
+      p: { xs: 2, sm: 2.5, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh'
     }}>
       {/* Breadcrumbs */}
-      <Breadcrumbs sx={{ mb: 3, color: colorTokens.neutral900 }}>
+      <Breadcrumbs sx={{ mb: { xs: 2, sm: 2.5, md: 3 }, color: colorTokens.neutral900, fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' } }}>
         <Link 
           component="button" 
           onClick={() => handleNavigation('/dashboard')}
@@ -391,18 +394,18 @@ export default function PlanDetailsPage() {
 
       {/* Header con acciones */}
       <Paper sx={{
-        p: 3,
-        mb: 3,
+        p: { xs: 2, sm: 2.5, md: 3 },
+        mb: { xs: 2, sm: 2.5, md: 3 },
         background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
         border: `1px solid ${colorTokens.neutral400}`,
         borderRadius: 3
       }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-          <Box sx={{ flex: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'flex-start', gap: { xs: 2, md: 0 }, mb: { xs: 1.5, sm: 2 } }}>
+          <Box sx={{ flex: 1, width: { xs: '100%', md: 'auto' } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, mb: { xs: 1.5, sm: 2 } }}>
               <Box sx={{
-                width: 60,
-                height: 60,
+                width: { xs: 48, sm: 56, md: 60 },
+                height: { xs: 48, sm: 56, md: 60 },
                 borderRadius: 2,
                 background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})`,
                 display: 'flex',
@@ -410,23 +413,24 @@ export default function PlanDetailsPage() {
                 justifyContent: 'center',
                 color: colorTokens.neutral0,
                 fontWeight: 700,
-                fontSize: '1.5rem',
+                fontSize: { xs: '1.2rem', sm: '1.4rem', md: '1.5rem' },
                 boxShadow: `0 4px 20px ${colorTokens.brand}40`
               }}>
                 {plan.name[0]?.toUpperCase() || 'P'}
               </Box>
-              
+
               <Box>
-                <Typography variant="h4" sx={{ 
-                  color: colorTokens.neutral1200, 
+                <Typography variant="h4" sx={{
+                  color: colorTokens.neutral1200,
                   fontWeight: 700,
-                  mb: 0.5
+                  mb: 0.5,
+                  fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' }
                 }}>
                   {plan.name}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 }, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Chip
-                    icon={plan.is_active ? <CheckCircleIcon /> : <CancelIcon />}
+                    icon={plan.is_active ? <CheckCircleIcon sx={{ fontSize: { xs: 14, sm: 16 } }} /> : <CancelIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />}
                     label={plan.is_active ? 'Activo' : 'Inactivo'}
                     size="small"
                     sx={{
@@ -434,14 +438,16 @@ export default function PlanDetailsPage() {
                       color: plan.is_active ? colorTokens.success : colorTokens.danger,
                       border: `1px solid ${plan.is_active ? colorTokens.success : colorTokens.danger}40`,
                       fontWeight: 600,
-                      '& .MuiChip-icon': { 
-                        color: plan.is_active ? colorTokens.success : colorTokens.danger 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      height: { xs: '24px', sm: '28px' },
+                      '& .MuiChip-icon': {
+                        color: plan.is_active ? colorTokens.success : colorTokens.danger
                       }
                     }}
                   />
                   {planStats?.primaryPrice && (
                     <Chip
-                      icon={<MonetizationOnIcon />}
+                      icon={<MonetizationOnIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />}
                       label={formatPrice(planStats.primaryPrice.value)}
                       size="small"
                       sx={{
@@ -449,6 +455,8 @@ export default function PlanDetailsPage() {
                         color: colorTokens.brand,
                         border: `1px solid ${colorTokens.brand}40`,
                         fontWeight: 600,
+                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                        height: { xs: '24px', sm: '28px' },
                         '& .MuiChip-icon': { color: colorTokens.brand }
                       }}
                     />
@@ -456,24 +464,27 @@ export default function PlanDetailsPage() {
                 </Box>
               </Box>
             </Box>
-            
-            <Typography variant="body1" sx={{ 
+
+            <Typography variant="body1" sx={{
               color: colorTokens.neutral1000,
-              mb: 2,
-              lineHeight: 1.6
+              mb: { xs: 1.5, sm: 2 },
+              lineHeight: 1.6,
+              fontSize: { xs: '0.9rem', sm: '1rem' }
             }}>
               {plan.description}
             </Typography>
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+          <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5, md: 2 }, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', md: 'auto' } }}>
             <Button
-              startIcon={<ArrowBackIcon />}
+              startIcon={<ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={() => handleNavigation('/dashboard/admin/planes')}
               variant="outlined"
               sx={{
                 color: colorTokens.neutral900,
                 borderColor: colorTokens.neutral400,
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                py: { xs: 0.75, sm: 1 },
                 '&:hover': {
                   borderColor: colorTokens.neutral800,
                   bgcolor: `${colorTokens.neutral800}10`
@@ -482,30 +493,35 @@ export default function PlanDetailsPage() {
             >
               Volver
             </Button>
-            
+
             <Button
-              startIcon={<EditIcon />}
+              startIcon={<EditIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={() => handleNavigation(`/dashboard/admin/planes/${plan.id}/editar`)}
               variant="outlined"
               sx={{
                 color: colorTokens.warning,
                 borderColor: colorTokens.warning,
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                py: { xs: 0.75, sm: 1 },
                 '&:hover': {
                   borderColor: colorTokens.warning,
                   bgcolor: `${colorTokens.warning}10`
                 }
               }}
             >
-              Editar Plan
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Editar Plan</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Editar</Box>
             </Button>
-            
+
             <Button
-              startIcon={<DeleteIcon />}
+              startIcon={<DeleteIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={handleDelete}
               variant="outlined"
               sx={{
                 color: colorTokens.danger,
                 borderColor: colorTokens.danger,
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                py: { xs: 0.75, sm: 1 },
                 '&:hover': {
                   borderColor: colorTokens.danger,
                   bgcolor: `${colorTokens.danger}10`
@@ -518,30 +534,31 @@ export default function PlanDetailsPage() {
         </Box>
       </Paper>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
         {/* Precios */}
         <Grid size={{ xs: 12, md: 8 }}>
           <Paper sx={{
-            p: 3,
+            p: { xs: 2, sm: 2.5, md: 3 },
             background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
             border: `1px solid ${colorTokens.neutral400}`,
             borderRadius: 3,
-            mb: 3
+            mb: { xs: 2, sm: 2.5, md: 3 }
           }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.neutral1200, 
-              mb: 3, 
+            <Typography variant="h6" sx={{
+              color: colorTokens.neutral1200,
+              mb: { xs: 2, sm: 2.5, md: 3 },
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: 1,
+              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
             }}>
-              <MonetizationOnIcon />
+              <MonetizationOnIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />
               Estructura de Precios
             </Typography>
             
             {planStats?.prices && planStats.prices.length > 0 ? (
-              <Grid container spacing={2}>
+              <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                 {planStats.prices.map((price, index) => (
                   <Grid size={{ xs: 12, sm: 6, md: 4 }} key={price.label}>
                     <motion.div
@@ -560,7 +577,7 @@ export default function PlanDetailsPage() {
                 ))}
               </Grid>
             ) : (
-              <Typography sx={{ color: colorTokens.neutral900, fontStyle: 'italic' }}>
+              <Typography sx={{ color: colorTokens.neutral900, fontStyle: 'italic', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                 No hay precios configurados para este plan
               </Typography>
             )}
@@ -568,70 +585,71 @@ export default function PlanDetailsPage() {
 
           {/* Características */}
           <Paper sx={{
-            p: 3,
+            p: { xs: 2, sm: 2.5, md: 3 },
             background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
             border: `1px solid ${colorTokens.neutral400}`,
             borderRadius: 3,
-            mb: 3
+            mb: { xs: 2, sm: 2.5, md: 3 }
           }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.neutral1200, 
-              mb: 3, 
+            <Typography variant="h6" sx={{
+              color: colorTokens.neutral1200,
+              mb: { xs: 2, sm: 2.5, md: 3 },
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: 1,
+              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
             }}>
-              <StarIcon />
+              <StarIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />
               Características del Plan
             </Typography>
 
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 2, sm: 2.5, md: 3 } }}>
               {plan.gym_access && (
                 <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Box sx={{
-                    p: 2,
+                    p: { xs: 1.5, sm: 2 },
                     borderRadius: 2,
                     bgcolor: `${colorTokens.success}10`,
                     border: `1px solid ${colorTokens.success}30`,
                     textAlign: 'center'
                   }}>
-                    <FitnessCenterIcon sx={{ color: colorTokens.success, fontSize: 32, mb: 1 }} />
-                    <Typography variant="body2" sx={{ color: colorTokens.success, fontWeight: 600 }}>
+                    <FitnessCenterIcon sx={{ color: colorTokens.success, fontSize: { xs: 28, sm: 32 }, mb: 1 }} />
+                    <Typography variant="body2" sx={{ color: colorTokens.success, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                       Acceso al Gimnasio
                     </Typography>
                   </Box>
                 </Grid>
               )}
-              
+
               {plan.classes_included && (
                 <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Box sx={{
-                    p: 2,
+                    p: { xs: 1.5, sm: 2 },
                     borderRadius: 2,
                     bgcolor: `${colorTokens.info}10`,
                     border: `1px solid ${colorTokens.info}30`,
                     textAlign: 'center'
                   }}>
-                    <GroupIcon sx={{ color: colorTokens.info, fontSize: 32, mb: 1 }} />
-                    <Typography variant="body2" sx={{ color: colorTokens.info, fontWeight: 600 }}>
+                    <GroupIcon sx={{ color: colorTokens.info, fontSize: { xs: 28, sm: 32 }, mb: 1 }} />
+                    <Typography variant="body2" sx={{ color: colorTokens.info, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                       Clases Incluidas
                     </Typography>
                   </Box>
                 </Grid>
               )}
-              
+
               {plan.guest_passes > 0 && (
                 <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Box sx={{
-                    p: 2,
+                    p: { xs: 1.5, sm: 2 },
                     borderRadius: 2,
                     bgcolor: `${colorTokens.warning}10`,
                     border: `1px solid ${colorTokens.warning}30`,
                     textAlign: 'center'
                   }}>
-                    <GroupIcon sx={{ color: colorTokens.warning, fontSize: 32, mb: 1 }} />
-                    <Typography variant="body2" sx={{ color: colorTokens.warning, fontWeight: 600 }}>
+                    <GroupIcon sx={{ color: colorTokens.warning, fontSize: { xs: 28, sm: 32 }, mb: 1 }} />
+                    <Typography variant="body2" sx={{ color: colorTokens.warning, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                       {plan.guest_passes} Pases de Invitado
                     </Typography>
                   </Box>
@@ -641,14 +659,15 @@ export default function PlanDetailsPage() {
 
             {plan.features && plan.features.length > 0 && (
               <Box>
-                <Typography variant="subtitle2" sx={{ 
-                  color: colorTokens.neutral1200, 
-                  mb: 2, 
-                  fontWeight: 600 
+                <Typography variant="subtitle2" sx={{
+                  color: colorTokens.neutral1200,
+                  mb: { xs: 1.5, sm: 2 },
+                  fontWeight: 600,
+                  fontSize: { xs: '0.9rem', sm: '1rem' }
                 }}>
                   Características Adicionales:
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 0.75, sm: 1 } }}>
                   {plan.features.map((feature, index) => (
                     <Chip
                       key={index}
@@ -657,7 +676,8 @@ export default function PlanDetailsPage() {
                       sx={{
                         bgcolor: `${colorTokens.brand}20`,
                         color: colorTokens.brand,
-                        border: `1px solid ${colorTokens.brand}40`
+                        border: `1px solid ${colorTokens.brand}40`,
+                        fontSize: { xs: '0.7rem', sm: '0.75rem' }
                       }}
                     />
                   ))}
@@ -671,37 +691,38 @@ export default function PlanDetailsPage() {
         <Grid size={{ xs: 12, md: 4 }}>
           {/* Control de Acceso */}
           <Paper sx={{
-            p: 3,
+            p: { xs: 2, sm: 2.5, md: 3 },
             background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
             border: `1px solid ${colorTokens.neutral400}`,
             borderRadius: 3,
-            mb: 3
+            mb: { xs: 2, sm: 2.5, md: 3 }
           }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.neutral1200, 
-              mb: 3, 
+            <Typography variant="h6" sx={{
+              color: colorTokens.neutral1200,
+              mb: { xs: 2, sm: 2.5, md: 3 },
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: 1,
+              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
             }}>
-              {planStats?.hasRestrictions ? <LockIcon /> : <LockOpenIcon />}
+              {planStats?.hasRestrictions ? <LockIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} /> : <LockOpenIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />}
               Control de Acceso
             </Typography>
 
             {planStats?.hasRestrictions ? (
               <Box>
                 <Box sx={{
-                  p: 2,
+                  p: { xs: 1.5, sm: 2 },
                   borderRadius: 2,
                   bgcolor: `${colorTokens.warning}10`,
                   border: `1px solid ${colorTokens.warning}30`,
-                  mb: 2
+                  mb: { xs: 1.5, sm: 2 }
                 }}>
-                  <Typography variant="body2" sx={{ color: colorTokens.warning, fontWeight: 600, mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: colorTokens.warning, fontWeight: 600, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                     Acceso Restringido
                   </Typography>
-                  <Typography variant="body2" sx={{ color: colorTokens.neutral1200 }}>
+                  <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                     Máximo {plan.access_restrictions?.max_daily_entries} entrada
                     {(plan.access_restrictions?.max_daily_entries || 0) > 1 ? 's' : ''} por día
                   </Typography>
@@ -709,29 +730,31 @@ export default function PlanDetailsPage() {
 
                 {planStats.enabledDays && planStats.enabledDays.length > 0 && (
                   <Box>
-                    <Typography variant="subtitle2" sx={{ 
-                      color: colorTokens.neutral1200, 
-                      mb: 1, 
-                      fontWeight: 600 
+                    <Typography variant="subtitle2" sx={{
+                      color: colorTokens.neutral1200,
+                      mb: 1,
+                      fontWeight: 600,
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
                     }}>
                       Horarios Permitidos:
                     </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 0.75, sm: 1 } }}>
                       {planStats.enabledDays.map((dayInfo, index) => (
                         <Box key={index} sx={{
-                          p: 1.5,
+                          p: { xs: 1, sm: 1.5 },
                           borderRadius: 1,
                           bgcolor: colorTokens.neutral100,
                           border: `1px solid ${colorTokens.neutral400}`
                         }}>
-                          <Typography variant="caption" sx={{ 
-                            color: colorTokens.neutral1200, 
+                          <Typography variant="caption" sx={{
+                            color: colorTokens.neutral1200,
                             fontWeight: 600,
-                            display: 'block'
+                            display: 'block',
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' }
                           }}>
                             {dayInfo.day}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+                          <Typography variant="caption" sx={{ color: colorTokens.neutral900, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                             {dayInfo.schedule.start_time} - {dayInfo.schedule.end_time}
                           </Typography>
                         </Box>
@@ -742,16 +765,16 @@ export default function PlanDetailsPage() {
               </Box>
             ) : (
               <Box sx={{
-                p: 2,
+                p: { xs: 1.5, sm: 2 },
                 borderRadius: 2,
                 bgcolor: `${colorTokens.success}10`,
                 border: `1px solid ${colorTokens.success}30`,
                 textAlign: 'center'
               }}>
-                <Typography variant="body2" sx={{ color: colorTokens.success, fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.success, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                   Acceso 24/7
                 </Typography>
-                <Typography variant="caption" sx={{ color: colorTokens.neutral1000 }}>
+                <Typography variant="caption" sx={{ color: colorTokens.neutral1000, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                   Sin restricciones de horario
                 </Typography>
               </Box>
@@ -760,38 +783,39 @@ export default function PlanDetailsPage() {
 
           {/* Metadatos */}
           <Paper sx={{
-            p: 3,
+            p: { xs: 2, sm: 2.5, md: 3 },
             background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
             border: `1px solid ${colorTokens.neutral400}`,
             borderRadius: 3
           }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.neutral1200, 
-              mb: 3, 
+            <Typography variant="h6" sx={{
+              color: colorTokens.neutral1200,
+              mb: { xs: 2, sm: 2.5, md: 3 },
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: 1,
+              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
             }}>
-              <CalendarTodayIcon />
+              <CalendarTodayIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />
               Información del Plan
             </Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
               <Box>
-                <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+                <Typography variant="caption" sx={{ color: colorTokens.neutral900, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                   Creado el:
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                   {formatTimestampForDisplay(plan.created_at)}
                 </Typography>
               </Box>
 
               <Box>
-                <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+                <Typography variant="caption" sx={{ color: colorTokens.neutral900, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                   Última actualización:
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                   {formatTimestampForDisplay(plan.updated_at)}
                 </Typography>
               </Box>
@@ -799,20 +823,20 @@ export default function PlanDetailsPage() {
               <Divider sx={{ bgcolor: colorTokens.neutral400 }} />
 
               <Box>
-                <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+                <Typography variant="caption" sx={{ color: colorTokens.neutral900, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                   Tipo de vigencia:
                 </Typography>
-                <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                   {plan.validity_type || 'No especificado'}
                 </Typography>
               </Box>
 
               {plan.validity_start_date && (
                 <Box>
-                  <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+                  <Typography variant="caption" sx={{ color: colorTokens.neutral900, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                     Vigencia desde:
                   </Typography>
-                  <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+                  <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                     {formatDateForDisplay(plan.validity_start_date)}
                   </Typography>
                 </Box>
@@ -820,10 +844,10 @@ export default function PlanDetailsPage() {
 
               {plan.validity_end_date && (
                 <Box>
-                  <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+                  <Typography variant="caption" sx={{ color: colorTokens.neutral900, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                     Vigencia hasta:
                   </Typography>
-                  <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+                  <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                     {formatDateForDisplay(plan.validity_end_date)}
                   </Typography>
                 </Box>

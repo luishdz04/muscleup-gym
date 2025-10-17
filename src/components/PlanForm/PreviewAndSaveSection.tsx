@@ -127,32 +127,39 @@ export const PreviewAndSaveSection = React.memo<PreviewAndSaveSectionProps>(({
         }
       }}
     >
-      <AccordionSummary 
+      <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: colorTokens.brand }} />}
-        sx={{ px: 4 }}
+        sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 1, sm: 1.5 } }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-          <Avatar sx={{ 
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2, md: 3 }, width: '100%' }}>
+          <Avatar sx={{
             background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})`,
-            color: colorTokens.neutral0
+            color: colorTokens.neutral0,
+            width: { xs: 40, sm: 48, md: 56 },
+            height: { xs: 40, sm: 48, md: 56 }
           }}>
-            {isEditMode ? <EditIcon /> : <PreviewIcon />}
+            {isEditMode ? <EditIcon sx={{ fontSize: { xs: 20, sm: 24 } }} /> : <PreviewIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />}
           </Avatar>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ 
-              color: colorTokens.brand, 
-              fontWeight: 700
+            <Typography variant="h5" sx={{
+              color: colorTokens.brand,
+              fontWeight: 700,
+              fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
             }}>
               {sectionTitle}
             </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
+            <Typography variant="body2" sx={{
+              color: colorTokens.neutral900,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
               {sectionSubtitle}
             </Typography>
           </Box>
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: 4 }}>
-        <Grid container spacing={4}>
+      <AccordionDetails sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
           <Grid size={{ xs: 12, lg: 8 }}>
             {/* Vista previa del plan */}
             <Card sx={{
@@ -161,25 +168,34 @@ export const PreviewAndSaveSection = React.memo<PreviewAndSaveSectionProps>(({
               borderRadius: 3,
               overflow: 'hidden'
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
                 {/* HEADER */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                  <Box>
-                    <Typography variant="h3" sx={{ 
-                      color: colorTokens.brand, 
+                <Box sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  justifyContent: 'space-between',
+                  alignItems: { xs: 'flex-start', sm: 'flex-start' },
+                  mb: { xs: 2, sm: 2.5, md: 3 },
+                  gap: { xs: 2, sm: 0 }
+                }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h3" sx={{
+                      color: colorTokens.brand,
                       fontWeight: 700,
-                      mb: 1
+                      mb: 1,
+                      fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
                     }}>
                       {isEditMode ? '✏️' : '🚀'} {formData.name || 'Nombre del Plan'}
                     </Typography>
-                    <Typography variant="h6" sx={{ 
-                      color: colorTokens.neutral900, 
-                      mb: 2
+                    <Typography variant="h6" sx={{
+                      color: colorTokens.neutral900,
+                      mb: 2,
+                      fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
                     }}>
                       {formData.description || 'Descripción del plan...'}
                     </Typography>
                   </Box>
-                  <Stack spacing={1}>
+                  <Stack spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     <Chip 
                       label={formData.is_active ? 'ACTIVO' : 'INACTIVO'} 
                       sx={{
@@ -215,31 +231,39 @@ export const PreviewAndSaveSection = React.memo<PreviewAndSaveSectionProps>(({
                   </Stack>
                 </Box>
                 
-                <Divider sx={{ borderColor: `${colorTokens.brand}40`, my: 3 }} />
-                
+                <Divider sx={{ borderColor: `${colorTokens.brand}40`, my: { xs: 2, sm: 2.5, md: 3 } }} />
+
                 {/* PRECIOS */}
                 {activePrices.length > 0 && (
                   <>
-                    <Typography variant="h5" sx={{ 
-                      color: colorTokens.neutral1200, 
-                      mb: 2, 
-                      fontWeight: 700
+                    <Typography variant="h5" sx={{
+                      color: colorTokens.neutral1200,
+                      mb: { xs: 1.5, sm: 2 },
+                      fontWeight: 700,
+                      fontSize: { xs: '1.15rem', sm: '1.3rem', md: '1.5rem' }
                     }}>
                       💰 Estructura de Precios
                     </Typography>
-                    <Grid container spacing={2} sx={{ mb: 4 }}>
+                    <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 3, sm: 3.5, md: 4 } }}>
                       {activePrices.slice(0, 4).map((priceItem, index) => (
                         <Grid key={index} size={{ xs: 6, md: 3 }}>
                           <Card sx={{
                             bgcolor: colorTokens.neutral300,
-                            p: 2,
+                            p: { xs: 1.5, sm: 2 },
                             textAlign: 'center',
                             border: `1px solid ${colorTokens.brand}40`
                           }}>
-                            <Typography variant="caption" sx={{ color: colorTokens.neutral900 }}>
+                            <Typography variant="caption" sx={{
+                              color: colorTokens.neutral900,
+                              fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                            }}>
                               {priceItem.label}
                             </Typography>
-                            <Typography variant="h6" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
+                            <Typography variant="h6" sx={{
+                              color: colorTokens.brand,
+                              fontWeight: 700,
+                              fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
+                            }}>
                               {formatPrice(priceItem.price)}
                             </Typography>
                           </Card>
@@ -252,14 +276,20 @@ export const PreviewAndSaveSection = React.memo<PreviewAndSaveSectionProps>(({
                 {/* CARACTERÍSTICAS */}
                 {formData.features.length > 0 && (
                   <>
-                    <Typography variant="h5" sx={{ 
-                      color: colorTokens.neutral1200, 
-                      mb: 2, 
-                      fontWeight: 700
+                    <Typography variant="h5" sx={{
+                      color: colorTokens.neutral1200,
+                      mb: { xs: 1.5, sm: 2 },
+                      fontWeight: 700,
+                      fontSize: { xs: '1.15rem', sm: '1.3rem', md: '1.5rem' }
                     }}>
                       ✨ Características Incluidas
                     </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 4 }}>
+                    <Box sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: { xs: 0.75, sm: 1 },
+                      mb: { xs: 3, sm: 3.5, md: 4 }
+                    }}>
                       {formData.features.slice(0, 6).map((feature, index) => (
                         <Chip
                           key={index}
@@ -289,28 +319,33 @@ export const PreviewAndSaveSection = React.memo<PreviewAndSaveSectionProps>(({
                 {/* CONTROL DE ACCESO */}
                 {formData.access_control_enabled && (
                   <>
-                    <Typography variant="h5" sx={{ 
-                      color: colorTokens.neutral1200, 
-                      mb: 2, 
-                      fontWeight: 700
+                    <Typography variant="h5" sx={{
+                      color: colorTokens.neutral1200,
+                      mb: { xs: 1.5, sm: 2 },
+                      fontWeight: 700,
+                      fontSize: { xs: '1.15rem', sm: '1.3rem', md: '1.5rem' }
                     }}>
                       🔒 Control de Acceso
                     </Typography>
-                    <Box sx={{ 
-                      p: 2, 
+                    <Box sx={{
+                      p: { xs: 1.5, sm: 2 },
                       bgcolor: `${colorTokens.warning}10`,
                       border: `1px solid ${colorTokens.warning}30`,
                       borderRadius: 2,
-                      mb: 3
+                      mb: { xs: 2, sm: 2.5, md: 3 }
                     }}>
-                      <Typography variant="body1" sx={{ 
-                        color: colorTokens.warning, 
+                      <Typography variant="body1" sx={{
+                        color: colorTokens.warning,
                         fontWeight: 700,
-                        mb: 1
+                        mb: 1,
+                        fontSize: { xs: '0.9rem', sm: '0.95rem', md: '1rem' }
                       }}>
                         Límite diario: {formData.max_daily_entries} {formData.max_daily_entries === 1 ? 'entrada' : 'entradas'}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
+                      <Typography variant="body2" sx={{
+                        color: colorTokens.neutral900,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                      }}>
                         Días habilitados: {Object.values(formData.daily_schedules).filter(s => s.enabled).length} de 7
                       </Typography>
                     </Box>
@@ -326,64 +361,74 @@ export const PreviewAndSaveSection = React.memo<PreviewAndSaveSectionProps>(({
               background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
               border: `1px solid ${colorTokens.neutral400}`,
               borderRadius: 3,
-              p: 3,
-              position: 'sticky',
+              p: { xs: 2, sm: 2.5, md: 3 },
+              position: { lg: 'sticky' },
               top: 20
             }}>
-              <Typography variant="h5" sx={{ 
-                color: colorTokens.brand, 
-                mb: 3, 
+              <Typography variant="h5" sx={{
+                color: colorTokens.brand,
+                mb: { xs: 2, sm: 2.5, md: 3 },
                 fontWeight: 700,
-                textAlign: 'center'
+                textAlign: 'center',
+                fontSize: { xs: '1.15rem', sm: '1.3rem', md: '1.5rem' }
               }}>
                 {isEditMode ? '✏️ Centro de Control' : '🚀 Centro de Control'}
               </Typography>
-              
+
               {/* VALIDACIONES */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="body1" sx={{ 
-                  color: colorTokens.neutral1200, 
-                  mb: 2, 
-                  fontWeight: 700
+              <Box sx={{ mb: { xs: 2, sm: 2.5, md: 3 } }}>
+                <Typography variant="body1" sx={{
+                  color: colorTokens.neutral1200,
+                  mb: { xs: 1.5, sm: 2 },
+                  fontWeight: 700,
+                  fontSize: { xs: '0.9rem', sm: '0.95rem', md: '1rem' }
                 }}>
                   Estado de Configuración:
                 </Typography>
                 
                 {validations.map((validation, index) => (
-                  <Box key={index} sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 2, 
+                  <Box key={index} sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: { xs: 1, sm: 1.5, md: 2 },
                     mb: 1,
-                    p: 1,
-                    bgcolor: validation.check 
+                    p: { xs: 0.75, sm: 1 },
+                    bgcolor: validation.check
                       ? `${colorTokens.success}10`
                       : `${colorTokens.warning}10`,
-                    border: validation.check 
+                    border: validation.check
                       ? `1px solid ${colorTokens.success}30`
                       : `1px solid ${colorTokens.warning}30`,
                     borderRadius: 1
                   }}>
                     {validation.check ? (
-                      <CheckCircleIcon sx={{ color: colorTokens.success, fontSize: 20 }} />
+                      <CheckCircleIcon sx={{
+                        color: colorTokens.success,
+                        fontSize: { xs: 18, sm: 20 }
+                      }} />
                     ) : (
-                      <WarningIcon sx={{ color: colorTokens.warning, fontSize: 20 }} />
+                      <WarningIcon sx={{
+                        color: colorTokens.warning,
+                        fontSize: { xs: 18, sm: 20 }
+                      }} />
                     )}
-                    <Typography variant="body2" sx={{ 
+                    <Typography variant="body2" sx={{
                       color: validation.check ? colorTokens.success : colorTokens.warning,
                       fontWeight: 600,
-                      flex: 1
+                      flex: 1,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' }
                     }}>
                       {validation.label}
                     </Typography>
                   </Box>
                 ))}
               </Box>
-              
-              <Divider sx={{ borderColor: colorTokens.neutral400, my: 3 }} />
-              
+
+
+              <Divider sx={{ borderColor: colorTokens.neutral400, my: { xs: 2, sm: 2.5, md: 3 } }} />
+
               {/* BOTONES DE ACCIÓN */}
-              <Stack spacing={2}>
+              <Stack spacing={{ xs: 1.5, sm: 2 }}>
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Button
                     variant="contained"
@@ -396,9 +441,10 @@ export const PreviewAndSaveSection = React.memo<PreviewAndSaveSectionProps>(({
                       background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})`,
                       color: colorTokens.neutral0,
                       fontWeight: 700,
-                      py: 1.5,
+                      py: { xs: 1.25, sm: 1.5 },
+                      fontSize: { xs: '0.875rem', sm: '0.9rem', md: '1rem' },
                       borderRadius: 2,
-                      '&:hover': { 
+                      '&:hover': {
                         background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brand})`,
                         transform: 'translateY(-2px)',
                         boxShadow: `0 6px 20px ${colorTokens.brand}40`
@@ -425,6 +471,8 @@ export const PreviewAndSaveSection = React.memo<PreviewAndSaveSectionProps>(({
                     sx={{
                       borderColor: colorTokens.neutral400,
                       color: colorTokens.neutral900,
+                      py: { xs: 1, sm: 1.25 },
+                      fontSize: { xs: '0.875rem', sm: '0.9rem', md: '1rem' },
                       '&:hover': {
                         borderColor: colorTokens.neutral900,
                         bgcolor: `${colorTokens.brand}05`,

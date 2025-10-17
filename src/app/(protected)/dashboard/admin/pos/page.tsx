@@ -67,7 +67,7 @@ import { Product, CartItem, Customer, Coupon, Totals, SalesStats } from '@/types
 // COMPONENTES ESPECÍFICOS
 import CustomerSelector from '@/components/pos/CustomerSelector';
 import PaymentDialog from '@/components/pos/PaymentDialog';
-import LayawayDialog from '@/components/pos/LayawayDialog-DEBUG';
+import LayawayDialog from '@/components/pos/LayawayDialog';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 // ✅ ALMACÉN FIJO DESDE ENV
@@ -614,22 +614,22 @@ export default function POSPage() {
           minHeight: '100vh',
           background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.surfaceLevel1})`,
           color: colorTokens.textPrimary,
-          p: 2
+          p: { xs: 2, sm: 2.5, md: 3 }
         }}
       >
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
           {/* PANEL IZQUIERDO - PRODUCTOS */}
           <Grid size={{ xs: 12, lg: 8 }}>
             {/* Header */}
             <Paper sx={{
-              p: 4,
-              mb: 4,
+              p: { xs: 2, sm: 3, md: 4 },
+              mb: { xs: 2, sm: 3, md: 4 },
               background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
               border: `2px solid ${colorTokens.glow}`,
               borderRadius: 4,
               boxShadow: `0 8px 32px ${colorTokens.shadow}`
             }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} mb={{ xs: 2, sm: 2.5, md: 3 }} gap={2}>
                 <Box>
                   <Typography
                     variant="h3"
@@ -639,30 +639,34 @@ export default function POSPage() {
                       color: colorTokens.brand,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 2,
-                      mb: 1
+                      gap: { xs: 1.5, sm: 2 },
+                      mb: 1,
+                      fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.5rem' }
                     }}
                   >
-                    <CartIcon sx={{ fontSize: 50 }} />
+                    <CartIcon sx={{ fontSize: { xs: 36, sm: 42, md: 50 } }} />
                     POS MUP
                   </Typography>
-                  <Typography variant="h6" sx={{ 
+                  <Typography variant="h6" sx={{
                     color: colorTokens.textSecondary,
-                    fontWeight: 300
+                    fontWeight: 300,
+                    fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' },
+                    display: { xs: 'none', sm: 'block' }
                   }}>
                     Sistema de ventas MUP | Ventas | Apartados
                   </Typography>
                 </Box>
-                
-                <Box sx={{ display: 'flex', gap: 2 }}>
+
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', md: 'auto' } }}>
                   <Button
-                    startIcon={<ArrowBackIcon />}
+                    startIcon={<ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                     onClick={() => router.push('/dashboard/admin')}
-                    sx={{ 
+                    sx={{
                       color: colorTokens.brand,
                       borderColor: colorTokens.glow,
-                      px: 3,
-                      py: 1.5,
+                      px: { xs: 2, sm: 2.5, md: 3 },
+                      py: { xs: 1, sm: 1.25, md: 1.5 },
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
                       borderRadius: 3,
                       fontWeight: 600
                     }}
@@ -673,14 +677,15 @@ export default function POSPage() {
 
                   <Button
                     variant="outlined"
-                    startIcon={<RefreshIcon />}
+                    startIcon={<RefreshIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                     onClick={refreshProducts}
                     disabled={productsLoading}
                     sx={{
                       color: colorTokens.textSecondary,
                       borderColor: colorTokens.border,
-                      px: 3,
-                      py: 1.5,
+                      px: { xs: 2, sm: 2.5, md: 3 },
+                      py: { xs: 1, sm: 1.25, md: 1.5 },
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
                       borderRadius: 3,
                       fontWeight: 600
                     }}

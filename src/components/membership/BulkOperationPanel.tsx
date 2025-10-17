@@ -56,45 +56,48 @@ const BulkOperationPanel = memo<Props>(({
       transition={{ duration: 0.3 }}
     >
       <Paper sx={{
-        p: 3,
-        mb: 3,
+        p: { xs: 2, sm: 2.5, md: 3 },
+        mb: { xs: 2, sm: 2.5, md: 3 },
         background: `linear-gradient(135deg, ${colorTokens.info}20, ${colorTokens.info}10)`,
         border: `2px solid ${colorTokens.info}40`,
         borderRadius: 4,
         boxShadow: `0 8px 32px ${colorTokens.info}20`
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <BatchIcon sx={{ color: colorTokens.info, fontSize: 30 }} />
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: { xs: 1.5, sm: 2 }, gap: { xs: 1.5, sm: 0 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
+            <BatchIcon sx={{ color: colorTokens.info, fontSize: { xs: 24, sm: 28, md: 30 } }} />
             <Box>
-              <Typography variant="h6" sx={{ 
-                color: colorTokens.info, 
-                fontWeight: 700 
+              <Typography variant="h6" sx={{
+                color: colorTokens.info,
+                fontWeight: 700,
+                fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
               }}>
-                🧊 Modo Congelamiento Masivo Avanzado
+                🧊 <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Modo Congelamiento Masivo Avanzado</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Modo Masivo</Box>
               </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.neutral800 }}>
-                {selectedCount} membresías seleccionadas • Gestión inteligente simplificada
+              <Typography variant="body2" sx={{ color: colorTokens.neutral800, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                {selectedCount} membresías seleccionadas • <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Gestión inteligente simplificada</Box>
               </Typography>
             </Box>
           </Box>
 
           <IconButton
             onClick={onCloseBulkMode}
-            sx={{ 
+            sx={{
               color: colorTokens.danger,
               borderColor: `${colorTokens.danger}60`,
+              alignSelf: { xs: 'flex-end', sm: 'center' },
               '&:hover': {
                 borderColor: colorTokens.danger,
                 backgroundColor: `${colorTokens.danger}10`
               }
             }}
           >
-            <CloseIcon />
+            <CloseIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
           </IconButton>
         </Box>
 
-        <Grid container spacing={2}>
+        <Grid container spacing={{ xs: 1.5, sm: 2 }}>
           {/* Controles de Selección */}
           <Grid size={{ xs: 12, md: 3 }}>
             <Stack spacing={1}>

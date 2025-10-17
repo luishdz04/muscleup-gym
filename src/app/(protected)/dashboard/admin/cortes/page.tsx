@@ -364,7 +364,7 @@ export default function CortesPage() {
                   </Typography>
                   
                   <Grid container spacing={3}>
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.success }}>
                           {formatPrice(dailyData.totals.total)}
@@ -384,8 +384,8 @@ export default function CortesPage() {
                         />
                       </Box>
                     </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 3 }}>
+
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.warning }}>
                           {formatPrice(dailyData.totals.commissions)}
@@ -398,8 +398,8 @@ export default function CortesPage() {
                         </Typography>
                       </Box>
                     </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 3 }}>
+
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.brand }}>
                           {formatPrice(dailyData.totals.net_amount)}
@@ -412,8 +412,8 @@ export default function CortesPage() {
                         </Typography>
                       </Box>
                     </Grid>
-                    
-                    <Grid size={{ xs: 12, md: 3 }}>
+
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.info }}>
                           {dailyData.pos.transactions + dailyData.memberships.transactions + dailyData.abonos.transactions}
@@ -453,7 +453,7 @@ export default function CortesPage() {
                   
                   <Grid container spacing={3}>
                     {/* EFECTIVO */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Paper sx={{ 
                         p: 3, 
                         textAlign: 'center',
@@ -495,7 +495,7 @@ export default function CortesPage() {
                     </Grid>
 
                     {/* TRANSFERENCIA */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Paper sx={{ 
                         p: 3, 
                         textAlign: 'center',
@@ -537,7 +537,7 @@ export default function CortesPage() {
                     </Grid>
 
                     {/* TARJETA DÉBITO */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Paper sx={{ 
                         p: 3, 
                         textAlign: 'center',
@@ -579,7 +579,7 @@ export default function CortesPage() {
                     </Grid>
 
                     {/* TARJETA CRÉDITO */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Paper sx={{ 
                         p: 3, 
                         textAlign: 'center',
@@ -634,7 +634,7 @@ export default function CortesPage() {
             >
               <Grid container spacing={3}>
                 {/* PUNTO DE VENTA */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
                     border: `1px solid ${colorTokens.info}30`,
@@ -715,7 +715,7 @@ export default function CortesPage() {
                 </Grid>
 
                 {/* ABONOS */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
                     border: `1px solid ${colorTokens.warning}30`,
@@ -796,7 +796,7 @@ export default function CortesPage() {
                 </Grid>
 
                 {/* MEMBRESÍAS */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
                     border: `1px solid ${colorTokens.success}30`,
@@ -888,7 +888,7 @@ export default function CortesPage() {
             >
               <Grid container spacing={3}>
                 {/* EGRESOS */}
-                <Grid size={{ xs: 12, md: 6 }}>
+                <Grid size={{ xs: 12, sm: 12, md: 6 }}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
                     border: `2px solid ${colorTokens.danger}40`,
@@ -922,7 +922,7 @@ export default function CortesPage() {
                 </Grid>
 
                 {/* BALANCE FINAL */}
-                <Grid size={{ xs: 12, md: 6 }}>
+                <Grid size={{ xs: 12, sm: 12, md: 6 }}>
                   <Card sx={{
                     background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
                     border: `3px solid ${colorTokens.success}`,
@@ -974,7 +974,7 @@ export default function CortesPage() {
                   </Typography>
                   
                   <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                       <Button
                         fullWidth
                         variant="contained"
@@ -992,7 +992,7 @@ export default function CortesPage() {
                       </Button>
                     </Grid>
                     
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                       <Button
                         fullWidth
                         variant="outlined"
@@ -1014,7 +1014,7 @@ export default function CortesPage() {
                       </Button>
                     </Grid>
                     
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                       <Button
                         fullWidth
                         variant="outlined"

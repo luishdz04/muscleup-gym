@@ -449,36 +449,66 @@ export default function PaymentToLayawayDialog({ open, onClose, layaway, warehou
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xl" fullWidth PaperProps={{ sx: { borderRadius: 4, background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`, border: `2px solid ${colorTokens.border}`, color: colorTokens.textPrimary, minHeight: '80vh' }}}>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brand})`, color: colorTokens.textOnBrand, borderRadius: '16px 16px 0 0' }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Avatar sx={{ bgcolor: colorTokens.neutral0, color: colorTokens.warning, width: 50, height: 50 }}>
-            <PaymentIcon sx={{ fontSize: 28 }} />
+      <DialogTitle sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brand})`,
+        color: colorTokens.textOnBrand,
+        borderRadius: '16px 16px 0 0',
+        p: { xs: 2, sm: 3 },
+        flexDirection: { xs: 'row', sm: 'row' }
+      }}>
+        <Box display="flex" alignItems="center" gap={{ xs: 1.5, sm: 2 }}>
+          <Avatar sx={{
+            bgcolor: colorTokens.neutral0,
+            color: colorTokens.warning,
+            width: { xs: 40, sm: 50 },
+            height: { xs: 40, sm: 50 }
+          }}>
+            <PaymentIcon sx={{ fontSize: { xs: 22, sm: 28 } }} />
           </Avatar>
           <Box>
-            <Typography variant="h5" fontWeight="bold">Registrar Abono a Apartado</Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9 }}>Apartado #{safeLayaway.sale_number}</Typography>
+            <Typography variant="h5" fontWeight="bold" sx={{
+              fontSize: { xs: '1.1rem', sm: '1.5rem' }
+            }}>
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Registrar Abono a Apartado
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                Abono
+              </Box>
+            </Typography>
+            <Typography variant="h6" sx={{
+              opacity: 0.9,
+              fontSize: { xs: '0.875rem', sm: '1.25rem' }
+            }}>
+              #{safeLayaway.sale_number}
+            </Typography>
           </Box>
         </Box>
-        <IconButton onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}><CloseIcon /></IconButton>
+        <IconButton onClick={handleClose} sx={{ color: 'inherit' }} disabled={processing}>
+          <CloseIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
+        </IconButton>
       </DialogTitle>
 
       <DialogContent sx={{ p: 0 }}>
         {!completed ? (
-          <Box sx={{ p: 4 }}>
-            <Card sx={{ mb: 4, background: `${colorTokens.info}10`, border: `1px solid ${colorTokens.info}30`, borderRadius: 3 }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: colorTokens.info, mb: 2, fontWeight: 700 }}>Información del Apartado</Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}><strong>Cliente:</strong> {safeLayaway.customer_name}</Typography></Grid>
-                  <Grid size={{ xs: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}><strong>Total:</strong> {formatPrice(safeLayaway.total_amount)}</Typography></Grid>
-                  <Grid size={{ xs: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}><strong>Pagado:</strong> {formatPrice(safeLayaway.paid_amount)}</Typography></Grid>
-                  <Grid size={{ xs: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary }}><strong>Pendiente:</strong> {formatPrice(safeLayaway.pending_amount)}</Typography></Grid>
+          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+            <Card sx={{ mb: { xs: 2, sm: 3, md: 4 }, background: `${colorTokens.info}10`, border: `1px solid ${colorTokens.info}30`, borderRadius: 3 }}>
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Typography variant="h6" sx={{ color: colorTokens.info, mb: { xs: 1.5, sm: 2 }, fontWeight: 700, fontSize: { xs: '1rem', sm: '1.25rem' } }}>Información del Apartado</Typography>
+                <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                  <Grid size={{ xs: 6, sm: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}><strong>Cliente:</strong> {safeLayaway.customer_name}</Typography></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}><strong>Total:</strong> {formatPrice(safeLayaway.total_amount)}</Typography></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}><strong>Pagado:</strong> {formatPrice(safeLayaway.paid_amount)}</Typography></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Typography variant="body2" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}><strong>Pendiente:</strong> {formatPrice(safeLayaway.pending_amount)}</Typography></Grid>
                 </Grid>
               </CardContent>
             </Card>
 
-            <Grid container spacing={4}>
-              <Grid size={{ xs: 8 }}>
+            <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+              <Grid size={{ xs: 12, lg: 8 }}>
                 <Card sx={{ background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`, border: `1px solid ${colorTokens.border}`, borderRadius: 4, p: 2 }}>
                   <Stepper activeStep={activeStep} orientation="vertical">
                     {steps.map((step, index) => (
@@ -606,8 +636,8 @@ export default function PaymentToLayawayDialog({ open, onClose, layaway, warehou
                   </Stepper>
                 </Card>
               </Grid>
-              <Grid size={{ xs: 4 }}>
-                <Card sx={{ background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`, border: `1px solid ${colorTokens.border}`, borderRadius: 4, p: 3, height: 'fit-content', position: 'sticky', top: 20 }}>
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Card sx={{ background: `linear-gradient(135deg, ${colorTokens.surfaceLevel3}, ${colorTokens.surfaceLevel2})`, border: `1px solid ${colorTokens.border}`, borderRadius: 4, p: { xs: 2, sm: 3 }, height: 'fit-content', position: { xs: 'static', lg: 'sticky' }, top: 20 }}>
                   <Typography variant="h6" sx={{ color: colorTokens.brand, mb: 3, fontWeight: 700 }}>Resumen del Apartado</Typography>
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>Progreso actual: {Math.round((safeLayaway.paid_amount / safeLayaway.total_amount) * 100)}%</Typography>
@@ -624,13 +654,13 @@ export default function PaymentToLayawayDialog({ open, onClose, layaway, warehou
             </Grid>
           </Box>
         ) : (
-          <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Box sx={{ textAlign: 'center', py: { xs: 4, sm: 6 }, px: { xs: 2, sm: 3 } }}>
             <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }}>
-              <CheckIcon sx={{ fontSize: 100, color: colorTokens.success, mb: 3 }} />
-              <Typography variant="h3" sx={{ color: colorTokens.success, fontWeight: 700, mb: 2 }}>Abono Registrado Exitosamente</Typography>
-              <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1 }}>El pago ha sido procesado correctamente</Typography>
-              <Typography variant="body1" sx={{ color: colorTokens.textMuted, mb: 4 }}>Apartado #{safeLayaway.sale_number} • Abono: {formatPrice(actualPayment)} • Cobrado: {formatPrice(totalPayments)}</Typography>
-              <Button variant="contained" onClick={handleClose} sx={{ background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`, color: colorTokens.textOnBrand, fontWeight: 700, px: 4, py: 1.5, borderRadius: 3 }}>Cerrar</Button>
+              <CheckIcon sx={{ fontSize: { xs: 60, sm: 80, md: 100 }, color: colorTokens.success, mb: { xs: 2, sm: 3 } }} />
+              <Typography variant="h3" sx={{ color: colorTokens.success, fontWeight: 700, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' } }}>Abono Registrado Exitosamente</Typography>
+              <Typography variant="h6" sx={{ color: colorTokens.textSecondary, mb: 1, fontSize: { xs: '0.875rem', sm: '1.25rem' } }}>El pago ha sido procesado correctamente</Typography>
+              <Typography variant="body1" sx={{ color: colorTokens.textMuted, mb: { xs: 3, sm: 4 }, fontSize: { xs: '0.75rem', sm: '1rem' } }}>Apartado #{safeLayaway.sale_number} • Abono: {formatPrice(actualPayment)} • Cobrado: {formatPrice(totalPayments)}</Typography>
+              <Button variant="contained" onClick={handleClose} fullWidth={{ xs: true, sm: false }} sx={{ background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`, color: colorTokens.textOnBrand, fontWeight: 700, px: { xs: 3, sm: 4 }, py: { xs: 1.2, sm: 1.5 }, borderRadius: 3, fontSize: { xs: '0.875rem', sm: '1rem' } }}>Cerrar</Button>
             </motion.div>
           </Box>
         )}

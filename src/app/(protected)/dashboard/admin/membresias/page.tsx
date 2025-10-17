@@ -85,32 +85,32 @@ interface StatCardProps {
 }
 
 const StatCard = memo(({ title, value, icon: Icon, gradient, textColor }: StatCardProps) => (
-  <motion.div 
+  <motion.div
     whileHover={{ scale: 1.02, y: -5 }}
     transition={{ duration: 0.3 }}
   >
     <Paper sx={{
-      p: 3,
+      p: { xs: 2, sm: 2.5, md: 3 },
       background: gradient,
       color: textColor,
       borderRadius: 3,
       border: `1px solid ${colorTokens.border}`,
       transition: 'all 0.3s ease',
-      '&:hover': { 
+      '&:hover': {
         transform: 'translateY(-4px)',
         boxShadow: `0 8px 32px ${colorTokens.glow}`
       }
     }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: textColor }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, color: textColor, fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}>
             {value}
           </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9, color: `${textColor}CC` }}>
+          <Typography variant="body2" sx={{ opacity: 0.9, color: `${textColor}CC`, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
             {title}
           </Typography>
         </Box>
-        <Icon sx={{ fontSize: 40, opacity: 0.8, color: textColor }} />
+        <Icon sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, opacity: 0.8, color: textColor }} />
       </Box>
     </Paper>
   </motion.div>
@@ -203,59 +203,63 @@ function MembresiasPage() {
   }
 
   return (
-    <Box sx={{ 
-      p: 3, 
+    <Box sx={{
+      p: { xs: 2, sm: 2.5, md: 3 },
       background: `linear-gradient(135deg, ${colorTokens.neutral0}, ${colorTokens.neutral100})`,
       minHeight: '100vh',
       color: colorTokens.textPrimary
     }}>
       {/* 🎯 HEADER ENTERPRISE OPTIMIZADO */}
       <Paper sx={{
-        p: 3,
-        mb: 3,
+        p: { xs: 2, sm: 2.5, md: 3 },
+        mb: { xs: 2, sm: 2.5, md: 3 },
         background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
         border: `1px solid ${colorTokens.border}`,
         borderRadius: 3,
         backdropFilter: 'blur(10px)'
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          mb: 3,
-          flexWrap: 'wrap',
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          mb: { xs: 2, sm: 2.5, md: 3 },
           gap: 2
         }}>
           <Box>
-            <Typography variant="h4" sx={{ 
-              color: colorTokens.brand, 
+            <Typography variant="h4" sx={{
+              color: colorTokens.brand,
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              textShadow: `0 0 20px ${colorTokens.glow}`
+              gap: { xs: 1, sm: 1.5, md: 2 },
+              textShadow: `0 0 20px ${colorTokens.glow}`,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
             }}>
-              <FitnessCenterIcon sx={{ fontSize: 40, color: colorTokens.brand }} />
-              Dashboard Membresías MUP
+              <FitnessCenterIcon sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: colorTokens.brand }} />
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Dashboard Membresías MUP</Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Membresías</Box>
             </Typography>
-            <Typography variant="body1" sx={{ color: colorTokens.textSecondary, mt: 1 }}>
+            <Typography variant="body1" sx={{ color: colorTokens.textSecondary, mt: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Gestión de membresías activas, pagos y estadísticas del gimnasio
             </Typography>
           </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+
+          <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5, md: 2 }, alignItems: 'center', flexWrap: 'wrap', width: { xs: '100%', md: 'auto' } }}>
             {/* 🔔 BOTÓN DE RECORDATORIOS DE VENCIMIENTO */}
             <MembershipExpirationReminder daysBeforeExpiration={3} />
 
             <Button
               size="small"
-              startIcon={<RefreshIcon />}
+              startIcon={<RefreshIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={handleRefresh}
               disabled={refreshing}
               variant="outlined"
-              sx={{ 
+              sx={{
                 color: colorTokens.brand,
                 borderColor: colorTokens.brand + '60',
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                py: { xs: 0.75, sm: 1 },
                 '&:hover': {
                   borderColor: colorTokens.brand,
                   bgcolor: colorTokens.brand + '10',
@@ -272,16 +276,18 @@ function MembresiasPage() {
             >
               {refreshing ? 'Actualizando...' : 'Actualizar'}
             </Button>
-            
+
             <Button
               variant="contained"
               size="small"
-              startIcon={<PersonAddAltIcon />}
+              startIcon={<PersonAddAltIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={handleNewSale}
               sx={{
                 background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`,
                 fontWeight: 600,
-                px: 3,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                py: { xs: 0.75, sm: 1 },
                 borderRadius: 2,
                 boxShadow: `0 4px 20px ${colorTokens.success}40`,
                 '&:hover': {
@@ -298,30 +304,32 @@ function MembresiasPage() {
         </Box>
 
         {/* 📊 RESUMEN ENTERPRISE OPTIMIZADO */}
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          p: 3,
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', md: 'center' },
+          p: { xs: 2, sm: 2.5, md: 3 },
           bgcolor: colorTokens.brand + '10',
           borderRadius: 2,
           border: `1px solid ${colorTokens.brand}30`,
-          backdropFilter: 'blur(5px)'
+          backdropFilter: 'blur(5px)',
+          gap: { xs: 2, md: 0 }
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <PaymentIcon sx={{ color: colorTokens.brand, fontSize: 28 }} />
-            <Typography sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
+            <PaymentIcon sx={{ color: colorTokens.brand, fontSize: { xs: 24, sm: 26, md: 28 } }} />
+            <Typography sx={{ color: colorTokens.textPrimary, fontWeight: 600, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               📊 Total: {stats.total} membresías | {stats.new_this_month} nuevas este mes
             </Typography>
           </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Box sx={{ minWidth: 200 }}>
-              <LinearProgress 
-                variant="determinate" 
+
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: { xs: 2, sm: 3 } }}>
+            <Box sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+              <LinearProgress
+                variant="determinate"
                 value={stats.total > 0 ? (stats.active / stats.total) * 100 : 0}
-                sx={{ 
-                  height: 8, 
+                sx={{
+                  height: 8,
                   borderRadius: 4,
                   bgcolor: colorTokens.neutral500,
                   '& .MuiLinearProgress-bar': {
@@ -329,22 +337,25 @@ function MembresiasPage() {
                     borderRadius: 4,
                     boxShadow: `0 0 10px ${colorTokens.glow}`
                   }
-                }} 
+                }}
               />
-              <Typography variant="caption" sx={{ 
-                color: colorTokens.brand, 
+              <Typography variant="caption" sx={{
+                color: colorTokens.brand,
                 fontWeight: 600,
                 display: 'block',
                 textAlign: 'center',
-                mt: 0.5
+                mt: 0.5,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }
               }}>
                 {stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% Activas
               </Typography>
             </Box>
-            
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.brand, 
-              fontWeight: 700
+
+            <Typography variant="h6" sx={{
+              color: colorTokens.brand,
+              fontWeight: 700,
+              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' },
+              textAlign: { xs: 'center', sm: 'left' }
             }}>
               {formatPrice(stats.revenue_this_month)}
             </Typography>
@@ -353,7 +364,7 @@ function MembresiasPage() {
       </Paper>
 
       {/* 📊 ESTADÍSTICAS ENTERPRISE MEMOIZADAS */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 3.5, md: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Membresías Activas"
@@ -396,38 +407,40 @@ function MembresiasPage() {
       </Grid>
 
       {/* 🚀 ACCIONES Y ANALYTICS ENTERPRISE */}
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{
-            p: 3,
+            p: { xs: 2, sm: 2.5, md: 3 },
             background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
             border: `1px solid ${colorTokens.border}`,
             borderRadius: 3,
             height: '100%'
           }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.brand, 
-              mb: 3, 
+            <Typography variant="h6" sx={{
+              color: colorTokens.brand,
+              mb: { xs: 2, sm: 2.5, md: 3 },
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: 1,
+              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
             }}>
               ⚡ Acciones Rápidas
             </Typography>
-            
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
               <Button
                 fullWidth
                 variant="contained"
                 size="large"
-                startIcon={<PersonAddAltIcon />}
+                startIcon={<PersonAddAltIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />}
                 onClick={handleNewSale}
                 sx={{
                   background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
                   color: colorTokens.textOnBrand,
                   fontWeight: 600,
-                  py: 1.5,
+                  py: { xs: 1.25, sm: 1.5 },
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
                   borderRadius: 2,
                   justifyContent: 'flex-start',
                   '&:hover': {
@@ -439,17 +452,18 @@ function MembresiasPage() {
               >
                 💰 Nueva Venta
               </Button>
-              
+
               <Button
                 fullWidth
                 variant="outlined"
                 size="large"
-                startIcon={<HistoryIcon />}
+                startIcon={<HistoryIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />}
                 onClick={handleHistory}
                 sx={{
                   color: colorTokens.textPrimary,
                   borderColor: colorTokens.border,
-                  py: 1.5,
+                  py: { xs: 1.25, sm: 1.5 },
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
                   borderRadius: 2,
                   fontWeight: 500,
                   justifyContent: 'flex-start',
@@ -466,12 +480,13 @@ function MembresiasPage() {
                 fullWidth
                 variant="outlined"
                 size="large"
-                startIcon={<LocalOfferIcon />}
+                startIcon={<LocalOfferIcon sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }} />}
                 onClick={handleCoupons}
                 sx={{
                   color: colorTokens.warning,
                   borderColor: colorTokens.warning + '40',
-                  py: 1.5,
+                  py: { xs: 1.25, sm: 1.5 },
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
                   borderRadius: 2,
                   fontWeight: 500,
                   justifyContent: 'flex-start',
@@ -489,96 +504,104 @@ function MembresiasPage() {
 
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{
-            p: 3,
+            p: { xs: 2, sm: 2.5, md: 3 },
             background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
             border: `1px solid ${colorTokens.border}`,
             borderRadius: 3,
             height: '100%'
           }}>
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.brand, 
-              mb: 3, 
+            <Typography variant="h6" sx={{
+              color: colorTokens.brand,
+              mb: { xs: 2, sm: 2.5, md: 3 },
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: 1,
+              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
             }}>
               📈 Analytics del Mes
             </Typography>
-            
-            <Grid container spacing={2}>
-              <Grid size={6}>
-                <Box sx={{ 
-                  textAlign: 'center', 
-                  p: 2,
+
+            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Box sx={{
+                  textAlign: 'center',
+                  p: { xs: 1.5, sm: 2 },
                   bgcolor: colorTokens.success + '10',
                   borderRadius: 2,
                   border: `1px solid ${colorTokens.success}30`
                 }}>
-                  <Typography variant="h5" sx={{ 
-                    color: colorTokens.success, 
+                  <Typography variant="h5" sx={{
+                    color: colorTokens.success,
                     fontWeight: 700,
-                    mb: 0.5
+                    mb: 0.5,
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
                   }}>
                     {stats.new_this_month}
                   </Typography>
-                  <Typography variant="body2" sx={{ 
+                  <Typography variant="body2" sx={{
                     color: colorTokens.textSecondary,
-                    fontWeight: 500
+                    fontWeight: 500,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
                   }}>
                     Nuevas Membresías
                   </Typography>
                 </Box>
               </Grid>
-              
-              <Grid size={6}>
-                <Box sx={{ 
-                  textAlign: 'center', 
-                  p: 2,
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Box sx={{
+                  textAlign: 'center',
+                  p: { xs: 1.5, sm: 2 },
                   bgcolor: colorTokens.warning + '10',
                   borderRadius: 2,
                   border: `1px solid ${colorTokens.warning}30`
                 }}>
-                  <Typography variant="h5" sx={{ 
-                    color: colorTokens.warning, 
+                  <Typography variant="h5" sx={{
+                    color: colorTokens.warning,
                     fontWeight: 700,
-                    mb: 0.5
+                    mb: 0.5,
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
                   }}>
                     {stats.expiring_soon}
                   </Typography>
-                  <Typography variant="body2" sx={{ 
+                  <Typography variant="body2" sx={{
                     color: colorTokens.textSecondary,
-                    fontWeight: 500
+                    fontWeight: 500,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
                   }}>
                     Por Renovar
                   </Typography>
                 </Box>
               </Grid>
-              
+
               <Grid size={12}>
-                <Divider sx={{ borderColor: colorTokens.divider, my: 2 }} />
-                <Box sx={{ 
+                <Divider sx={{ borderColor: colorTokens.divider, my: { xs: 1.5, sm: 2 } }} />
+                <Box sx={{
                   textAlign: 'center',
-                  p: 3,
+                  p: { xs: 2, sm: 2.5, md: 3 },
                   bgcolor: colorTokens.brand + '10',
                   borderRadius: 2,
                   border: `1px solid ${colorTokens.brand}30`
                 }}>
-                  <Typography variant="h5" sx={{ 
-                    color: colorTokens.brand, 
+                  <Typography variant="h5" sx={{
+                    color: colorTokens.brand,
                     fontWeight: 700,
-                    mb: 1
+                    mb: 1,
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
                   }}>
                     {formatPrice(stats.revenue_this_month)}
                   </Typography>
-                  <Typography variant="body1" sx={{ 
+                  <Typography variant="body1" sx={{
                     color: colorTokens.textPrimary,
-                    fontWeight: 600
+                    fontWeight: 600,
+                    fontSize: { xs: '0.9rem', sm: '1rem' }
                   }}>
                     💰 Ingresos Totales
                   </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: colorTokens.textSecondary
+                  <Typography variant="body2" sx={{
+                    color: colorTokens.textSecondary,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
                   }}>
                     Facturación del mes actual
                   </Typography>

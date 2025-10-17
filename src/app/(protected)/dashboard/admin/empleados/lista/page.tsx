@@ -161,7 +161,6 @@ const normalizeStatus = (status: string | null) => {
 const ListaEmpleados = () => {
   const router = useRouter();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const hydrated = useHydrated();
   const { toast } = useNotifications();
 
@@ -369,7 +368,7 @@ const ListaEmpleados = () => {
   return (
     <Box
       sx={{
-        p: isMobile ? 2 : 3,
+        p: { xs: 2, sm: 2.5, md: 3 },
         minHeight: "100vh",
         background: `radial-gradient(circle at top, ${palette.surface3} 0%, ${palette.background} 65%)`,
         color: palette.textPrimary
@@ -378,15 +377,24 @@ const ListaEmpleados = () => {
       <Box
         sx={{
           display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          alignItems: isMobile ? "flex-start" : "center",
+          flexDirection: { xs: "column", md: "row" },
+          alignItems: { xs: "flex-start", md: "center" },
           justifyContent: "space-between",
           gap: 2,
-          mb: 4
+          mb: { xs: 3, sm: 4 }
         }}
       >
-        <Typography variant="h4" sx={{ fontWeight: 700, color: palette.primary }}>
-          👥 Lista de Usuarios del Equipo
+        <Typography variant="h4" sx={{
+          fontWeight: 700,
+          color: palette.primary,
+          fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+        }}>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            👥 Lista de Usuarios del Equipo
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            👥 Equipo
+          </Box>
         </Typography>
         <Button
           variant="contained"
@@ -405,7 +413,7 @@ const ListaEmpleados = () => {
         </Button>
       </Box>
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
@@ -490,13 +498,13 @@ const ListaEmpleados = () => {
 
       <Paper
         sx={{
-          p: isMobile ? 2 : 3,
+          p: { xs: 2, sm: 2.5, md: 3 },
           mb: 4,
           background: `linear-gradient(135deg, ${palette.surface1}, ${palette.surface2})`,
           border: `1px solid ${palette.divider}`
         }}
       >
-        <Grid container spacing={isMobile ? 2 : 3}>
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth

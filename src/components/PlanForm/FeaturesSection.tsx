@@ -111,52 +111,61 @@ export const FeaturesSection = React.memo<FeaturesSectionProps>(({
         }
       }}
     >
-      <AccordionSummary 
+      <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: colorTokens.success }} />}
-        sx={{ px: 4 }}
+        sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 1, sm: 1.5 } }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-          <Avatar sx={{ 
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2, md: 3 }, width: '100%' }}>
+          <Avatar sx={{
             background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success}CC)`,
-            color: colorTokens.neutral1200
+            color: colorTokens.neutral1200,
+            width: { xs: 40, sm: 48, md: 56 },
+            height: { xs: 40, sm: 48, md: 56 }
           }}>
-            <FeatureIcon />
+            <FeatureIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
           </Avatar>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ 
-              color: colorTokens.success, 
-              fontWeight: 700
+            <Typography variant="h5" sx={{
+              color: colorTokens.success,
+              fontWeight: 700,
+              fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
             }}>
               Características y Beneficios
             </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
+            <Typography variant="body2" sx={{
+              color: colorTokens.neutral900,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
               Defina las características incluidas en el plan
             </Typography>
           </Box>
           {formData.features.length > 0 && (
             <Badge badgeContent={formData.features.length}>
-              <Chip 
-                icon={<StarIcon />} 
-                label="Características"
-                sx={{ 
+              <Chip
+                icon={<StarIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                label={<Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Características</Box>}
+                sx={{
                   bgcolor: `${colorTokens.success}20`,
                   color: colorTokens.success,
-                  border: `1px solid ${colorTokens.success}40`
+                  border: `1px solid ${colorTokens.success}40`,
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                  height: { xs: '24px', sm: '28px' }
                 }}
               />
             </Badge>
           )}
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: 4 }}>
-        <Grid container spacing={4}>
+      <AccordionDetails sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
           {/* BENEFICIOS PRINCIPALES */}
           <Grid size={{ xs: 12, md: 4 }}>
             <Card sx={{
               background: `${colorTokens.success}10`,
               border: `2px solid ${colorTokens.success}30`,
               borderRadius: 3,
-              p: 3,
+              p: { xs: 2, sm: 2.5, md: 3 },
               height: '100%'
             }}>
               <FormControlLabel
@@ -185,13 +194,14 @@ export const FeaturesSection = React.memo<FeaturesSectionProps>(({
               />
             </Card>
           </Grid>
-          
+
+
           <Grid size={{ xs: 12, md: 4 }}>
             <Card sx={{
               background: `${colorTokens.info}10`,
               border: `2px solid ${colorTokens.info}30`,
               borderRadius: 3,
-              p: 3,
+              p: { xs: 2, sm: 2.5, md: 3 },
               height: '100%'
             }}>
               <FormControlLabel
@@ -220,13 +230,14 @@ export const FeaturesSection = React.memo<FeaturesSectionProps>(({
               />
             </Card>
           </Grid>
-          
+
+
           <Grid size={{ xs: 12, md: 4 }}>
             <Card sx={{
               background: `${colorTokens.warning}10`,
               border: `2px solid ${colorTokens.warning}30`,
               borderRadius: 3,
-              p: 3,
+              p: { xs: 2, sm: 2.5, md: 3 },
               height: '100%'
             }}>
               <Typography sx={{ color: colorTokens.neutral1200, fontWeight: 700, mb: 2 }}>
@@ -254,18 +265,24 @@ export const FeaturesSection = React.memo<FeaturesSectionProps>(({
           
           {/* CARACTERÍSTICAS PERSONALIZADAS */}
           <Grid size={12}>
-            <Divider sx={{ borderColor: colorTokens.neutral400, my: 3 }} />
-            <Typography variant="h6" sx={{ 
-              color: colorTokens.neutral1200, 
-              mb: 3, 
+            <Divider sx={{ borderColor: colorTokens.neutral400, my: { xs: 2, sm: 2.5, md: 3 } }} />
+            <Typography variant="h6" sx={{
+              color: colorTokens.neutral1200,
+              mb: { xs: 2, sm: 2.5, md: 3 },
               fontWeight: 700,
-              textAlign: 'center'
+              textAlign: 'center',
+              fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
             }}>
               Características Personalizadas
             </Typography>
-            
+
             {/* AGREGAR NUEVA CARACTERÍSTICA */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1.5, sm: 2 },
+              mb: { xs: 2, sm: 2.5, md: 3 }
+            }}>
               <TextField
                 fullWidth
                 value={newFeature}
@@ -287,12 +304,14 @@ export const FeaturesSection = React.memo<FeaturesSectionProps>(({
               <Button
                 onClick={addFeature}
                 variant="contained"
-                startIcon={<AddIcon />}
+                startIcon={<AddIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                 disabled={!newFeature.trim()}
                 sx={{
                   background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.warning})`,
                   color: colorTokens.neutral0,
-                  minWidth: 120,
+                  minWidth: { xs: '100%', sm: 120 },
+                  fontSize: { xs: '0.85rem', sm: '0.875rem' },
+                  py: { xs: 1.5, sm: 1 },
                   '&:disabled': {
                     bgcolor: colorTokens.neutral600,
                     color: colorTokens.neutral800
@@ -302,35 +321,43 @@ export const FeaturesSection = React.memo<FeaturesSectionProps>(({
                 Agregar
               </Button>
             </Box>
-            
+
             {/* MOSTRAR ERROR DE CARACTERÍSTICAS */}
             {errors.features && (
               <Box sx={{
                 bgcolor: `${colorTokens.danger}10`,
                 border: `2px solid ${colorTokens.danger}30`,
                 borderRadius: 2,
-                p: 2,
-                mb: 3,
+                p: { xs: 1.5, sm: 2 },
+                mb: { xs: 2, sm: 2.5, md: 3 },
                 textAlign: 'center'
               }}>
-                <Typography variant="body2" sx={{ 
+                <Typography variant="body2" sx={{
                   color: colorTokens.danger,
-                  fontWeight: 600
+                  fontWeight: 600,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
                 }}>
                   ⚠️ {errors.features}
                 </Typography>
               </Box>
             )}
-            
+
             {/* CARACTERÍSTICAS POPULARES */}
-            <Typography variant="body2" sx={{ 
-              color: colorTokens.neutral900, 
-              mb: 2,
-              textAlign: 'center'
+            <Typography variant="body2" sx={{
+              color: colorTokens.neutral900,
+              mb: { xs: 1.5, sm: 2 },
+              textAlign: 'center',
+              fontSize: { xs: '0.8rem', sm: '0.875rem' }
             }}>
               Características populares (clic para agregar):
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 4, justifyContent: 'center' }}>
+            <Box sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: { xs: 0.75, sm: 1 },
+              mb: { xs: 3, sm: 3.5, md: 4 },
+              justifyContent: 'center'
+            }}>
               {availablePredefinedFeatures.slice(0, 6).map((feature: string) => (
                 <Chip
                   key={feature}
@@ -359,17 +386,23 @@ export const FeaturesSection = React.memo<FeaturesSectionProps>(({
                 bgcolor: `${colorTokens.success}10`,
                 border: `2px solid ${colorTokens.success}30`,
                 borderRadius: 3,
-                p: 3
+                p: { xs: 2, sm: 2.5, md: 3 }
               }}>
-                <Typography variant="h6" sx={{ 
-                  color: colorTokens.success, 
-                  mb: 2, 
+                <Typography variant="h6" sx={{
+                  color: colorTokens.success,
+                  mb: { xs: 1.5, sm: 2 },
                   fontWeight: 700,
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
                 }}>
                   Características Incluidas ({formData.features.length}):
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+                <Box sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: { xs: 0.75, sm: 1 },
+                  justifyContent: 'center'
+                }}>
                   {formData.features.map((feature: string, index: number) => (
                     <Chip
                       key={index}

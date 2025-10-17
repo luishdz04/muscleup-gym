@@ -145,51 +145,60 @@ export const AccessControlSection = React.memo<AccessControlSectionProps>(({
         }
       }}
     >
-      <AccordionSummary 
+      <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: colorTokens.warning }} />}
-        sx={{ px: 4 }}
+        sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 1, sm: 1.5 } }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, width: '100%' }}>
-          <Avatar sx={{ 
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2, md: 3 }, width: '100%' }}>
+          <Avatar sx={{
             background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.warning}CC)`,
-            color: colorTokens.neutral0
+            color: colorTokens.neutral0,
+            width: { xs: 40, sm: 48, md: 56 },
+            height: { xs: 40, sm: 48, md: 56 }
           }}>
-            <AccessTimeIcon />
+            <AccessTimeIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
           </Avatar>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ 
-              color: colorTokens.warning, 
-              fontWeight: 700
+            <Typography variant="h5" sx={{
+              color: colorTokens.warning,
+              fontWeight: 700,
+              fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
             }}>
               Control de Acceso
             </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.neutral900 }}>
+            <Typography variant="body2" sx={{
+              color: colorTokens.neutral900,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              display: { xs: 'none', sm: 'block' }
+            }}>
               Configure límites de entrada y horarios por día
             </Typography>
           </Box>
-          <Chip 
+          <Chip
             label={formData.access_control_enabled ? 'ACTIVO' : 'DESACTIVADO'}
             sx={{
-              bgcolor: formData.access_control_enabled 
+              bgcolor: formData.access_control_enabled
                 ? `${colorTokens.warning}20`
                 : `${colorTokens.neutral600}20`,
               color: formData.access_control_enabled ? colorTokens.warning : colorTokens.neutral800,
-              border: formData.access_control_enabled 
+              border: formData.access_control_enabled
                 ? `1px solid ${colorTokens.warning}40`
-                : `1px solid ${colorTokens.neutral600}40`
+                : `1px solid ${colorTokens.neutral600}40`,
+              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+              height: { xs: '24px', sm: '28px' }
             }}
           />
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: 4 }}>
-        <Grid container spacing={4}>
+      <AccordionDetails sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
           {/* ACTIVAR CONTROL DE ACCESO */}
           <Grid size={12}>
             <Card sx={{
               bgcolor: `${colorTokens.warning}10`,
               border: `2px solid ${colorTokens.warning}30`,
               borderRadius: 3,
-              p: 3
+              p: { xs: 2, sm: 2.5, md: 3 }
             }}>
               <FormControlLabel
                 control={
@@ -226,26 +235,31 @@ export const AccessControlSection = React.memo<AccessControlSectionProps>(({
                 exit={{ opacity: 0, height: 0 }}
                 style={{ width: '100%' }}
               >
-                <Grid container spacing={4}>
+                <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
                   {/* LÍMITE DE ENTRADAS POR DÍA */}
                   <Grid size={12}>
                     <Card sx={{
                       background: `${colorTokens.danger}10`,
                       border: `2px solid ${colorTokens.danger}30`,
                       borderRadius: 3,
-                      p: 3,
+                      p: { xs: 2, sm: 2.5, md: 3 },
                       textAlign: 'center',
-                      mb: 3
+                      mb: { xs: 2, sm: 2.5, md: 3 }
                     }}>
-                      <LimitIcon sx={{ color: colorTokens.danger, fontSize: 48, mb: 2 }} />
-                      <Typography variant="h5" sx={{ 
-                        color: colorTokens.danger, 
-                        mb: 2, 
-                        fontWeight: 700
+                      <LimitIcon sx={{
+                        color: colorTokens.danger,
+                        fontSize: { xs: 40, sm: 44, md: 48 },
+                        mb: { xs: 1.5, sm: 2 }
+                      }} />
+                      <Typography variant="h5" sx={{
+                        color: colorTokens.danger,
+                        mb: { xs: 1.5, sm: 2 },
+                        fontWeight: 700,
+                        fontSize: { xs: '1.15rem', sm: '1.3rem', md: '1.5rem' }
                       }}>
                         Límite de Entradas por Día
                       </Typography>
-                      <Box sx={{ maxWidth: 300, mx: 'auto' }}>
+                      <Box sx={{ maxWidth: { xs: '100%', sm: 300 }, mx: 'auto' }}>
                         <TextField
                           fullWidth
                           type="number"
@@ -271,13 +285,14 @@ export const AccessControlSection = React.memo<AccessControlSectionProps>(({
                         bgcolor: `${colorTokens.danger}10`,
                         border: `2px solid ${colorTokens.danger}30`,
                         borderRadius: 2,
-                        p: 2,
-                        mb: 3,
+                        p: { xs: 1.5, sm: 2 },
+                        mb: { xs: 2, sm: 2.5, md: 3 },
                         textAlign: 'center'
                       }}>
-                        <Typography variant="body2" sx={{ 
+                        <Typography variant="body2" sx={{
                           color: colorTokens.danger,
-                          fontWeight: 600
+                          fontWeight: 600,
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' }
                         }}>
                           ⚠️ {errors.access_control}
                         </Typography>
@@ -287,16 +302,17 @@ export const AccessControlSection = React.memo<AccessControlSectionProps>(({
 
                   {/* HORARIOS POR DÍA */}
                   <Grid size={12}>
-                    <Typography variant="h5" sx={{ 
-                      color: colorTokens.neutral1200, 
-                      mb: 3, 
+                    <Typography variant="h5" sx={{
+                      color: colorTokens.neutral1200,
+                      mb: { xs: 2, sm: 2.5, md: 3 },
                       fontWeight: 700,
-                      textAlign: 'center'
+                      textAlign: 'center',
+                      fontSize: { xs: '1.15rem', sm: '1.3rem', md: '1.5rem' }
                     }}>
                       📅 Configuración de Horarios por Día
                     </Typography>
-                    
-                    <Grid container spacing={2}>
+
+                    <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                       {WEEKDAY_CONFIG.map((day) => (
                         <Grid key={day.key} size={{ xs: 12, md: 6, lg: 4 }}>
                           <motion.div whileHover={{ scale: 1.02 }}>
@@ -308,25 +324,32 @@ export const AccessControlSection = React.memo<AccessControlSectionProps>(({
                                 ? `2px solid ${colorTokens.success}30`
                                 : `2px solid ${colorTokens.neutral600}40`,
                               borderRadius: 3,
-                              p: 3,
+                              p: { xs: 2, sm: 2.5, md: 3 },
                               transition: 'all 0.3s ease'
                             }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                mb: { xs: 1.5, sm: 2 }
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5, md: 2 } }}>
                                   <Avatar sx={{
                                     bgcolor: formData.daily_schedules[day.key as keyof DailySchedules].enabled
                                       ? colorTokens.success
                                       : colorTokens.neutral600,
                                     color: colorTokens.neutral1200,
                                     fontWeight: 700,
-                                    width: 36,
-                                    height: 36
+                                    width: { xs: 32, sm: 34, md: 36 },
+                                    height: { xs: 32, sm: 34, md: 36 },
+                                    fontSize: { xs: '0.875rem', sm: '1rem' }
                                   }}>
                                     {day.short}
                                   </Avatar>
-                                  <Typography variant="h6" sx={{ 
+                                  <Typography variant="h6" sx={{
                                     color: colorTokens.neutral1200,
-                                    fontWeight: 700
+                                    fontWeight: 700,
+                                    fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
                                   }}>
                                     {day.label}
                                   </Typography>
@@ -350,7 +373,12 @@ export const AccessControlSection = React.memo<AccessControlSectionProps>(({
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
                                   >
-                                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                    <Box sx={{
+                                      display: 'flex',
+                                      flexDirection: { xs: 'column', sm: 'row' },
+                                      gap: { xs: 1.5, sm: 2 },
+                                      alignItems: 'center'
+                                    }}>
                                       <TextField
                                         label="Desde"
                                         type="time"
@@ -366,9 +394,12 @@ export const AccessControlSection = React.memo<AccessControlSectionProps>(({
                                         error={!!errors[`schedule_${day.key}`]}
                                         helperText={errors[`schedule_${day.key}`]}
                                         InputLabelProps={{ shrink: true }}
-                                        sx={{ ...fieldStyles, flex: 1 }}
+                                        sx={{ ...fieldStyles, flex: 1, width: { xs: '100%', sm: 'auto' } }}
                                       />
-                                      <Typography sx={{ color: colorTokens.neutral1200 }}>→</Typography>
+                                      <Typography sx={{
+                                        color: colorTokens.neutral1200,
+                                        display: { xs: 'none', sm: 'block' }
+                                      }}>→</Typography>
                                       <TextField
                                         label="Hasta"
                                         type="time"
@@ -384,7 +415,7 @@ export const AccessControlSection = React.memo<AccessControlSectionProps>(({
                                         error={!!errors[`schedule_${day.key}`]}
                                         helperText={errors[`schedule_${day.key}`]}
                                         InputLabelProps={{ shrink: true }}
-                                        sx={{ ...fieldStyles, flex: 1 }}
+                                        sx={{ ...fieldStyles, flex: 1, width: { xs: '100%', sm: 'auto' } }}
                                       />
                                     </Box>
                                   </motion.div>
