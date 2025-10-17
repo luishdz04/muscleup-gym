@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     const { data: statsData, count: totalCount } = await statsQuery;
 
-    // Calcular estadísticas
+    // Calcular estadísticas básicas
     const stats = {
       total: totalCount || 0,
       successful: statsData?.filter(log => log.success).length || 0,
@@ -161,12 +161,87 @@ export async function GET(request: NextRequest) {
       }, {}) || {}
     };
 
+    // Análisis avanzado: Top usuarios más activos
+    const topUsersMap = new Map<string, { userId: string, count: number, user: any }>();
+    logs?.forEach((log: any) => {
+      const userId = log.user_id;
+      if (topUsersMap.has(userId)) {
+        topUsersMap.get(userId)!.count++;
+      } else {
+        topUsersMap.set(userId, {
+          userId,
+          count: 1,
+          user: log.user
+        });
+      }
+    });
+    const topUsers = Array.from(topUsersMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Análisis de horarios pico
+    const hourlyStats = new Map<number, number>();
+    logs?.forEach((log: any) => {
+      const hour = new Date(log.created_at).getHours();
+      hourlyStats.set(hour, (hourlyStats.get(hour) || 0) + 1);
+    });
+
+    const peakHours = Array.from(hourlyStats.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([hour, count]) => ({ hour, count }));
+
+    const averageAccessesPerHour = logs && logs.length > 0
+      ? logs.length / hourlyStats.size
+      : 0;
+
+    // Comparación hoy vs ayer
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0).toISOString();
+    const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59).toISOString();
+
+    const { count: todayCount } = await supabase
+      .from('access_logs')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', todayStart)
+      .lte('created_at', todayEnd);
+
+    const { count: yesterdayCount } = await supabase
+      .from('access_logs')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', yesterdayStart)
+      .lte('created_at', yesterdayEnd);
+
+    const comparison = {
+      today: todayCount || 0,
+      yesterday: yesterdayCount || 0,
+      difference: (todayCount || 0) - (yesterdayCount || 0),
+      percentageChange: yesterdayCount ? (((todayCount || 0) - yesterdayCount) / yesterdayCount * 100) : 0
+    };
+
+    // Capacidad actual (últimos 30 minutos)
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+    const { count: currentCapacity } = await supabase
+      .from('access_logs')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', thirtyMinutesAgo)
+      .eq('success', true);
+
     console.log('✅ [ACCESS-LOGS API] Fetched logs:', logs?.length, 'Stats:', stats);
 
     return NextResponse.json({
       logs: logs || [],
       count: count || 0,
       stats,
+      analytics: {
+        topUsers,
+        peakHours,
+        averageAccessesPerHour,
+        comparison,
+        currentCapacity: currentCapacity || 0
+      },
       page,
       limit
     });
