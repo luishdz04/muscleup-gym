@@ -280,10 +280,15 @@ export default function HistorialAsistenciasPage() {
       );
     }
 
-    // Filtrar por rango de hora
+    // Filtrar por rango de hora (usando timezone de México)
     if (hourRangeStart !== '' && hourRangeEnd !== '') {
       filtered = filtered.filter(log => {
-        const hour = new Date(log.created_at).getHours();
+        const mexicoTime = new Date(log.created_at).toLocaleString('en-US', {
+          timeZone: 'America/Mexico_City',
+          hour: 'numeric',
+          hour12: false
+        });
+        const hour = parseInt(mexicoTime.split(',')[0]);
         return hour >= hourRangeStart && hour <= hourRangeEnd;
       });
     }
@@ -293,9 +298,14 @@ export default function HistorialAsistenciasPage() {
 
   // Datos para gráficos
   const chartData = useMemo(() => {
-    // Agrupar por hora del día
+    // Agrupar por hora del día (usando timezone de México)
     const hourlyData = logs.reduce((acc: Record<number, number>, log) => {
-      const hour = new Date(log.created_at).getHours();
+      const mexicoTime = new Date(log.created_at).toLocaleString('en-US', {
+        timeZone: 'America/Mexico_City',
+        hour: 'numeric',
+        hour12: false
+      });
+      const hour = parseInt(mexicoTime.split(',')[0]);
       acc[hour] = (acc[hour] || 0) + 1;
       return acc;
     }, {});
@@ -633,22 +643,29 @@ export default function HistorialAsistenciasPage() {
               📈 Tendencia de Asistencia (Últimos 7 Días)
             </Typography>
             {(() => {
-              // Calcular los últimos 7 días
+              // Calcular los últimos 7 días (en zona horaria de México)
+              const nowMexico = new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
+              const todayMexico = new Date(nowMexico);
+
               const last7Days = Array.from({ length: 7 }, (_, i) => {
-                const date = new Date();
+                const date = new Date(todayMexico);
                 date.setDate(date.getDate() - (6 - i));
+                const dateStr = date.toISOString().split('T')[0];
                 return {
-                  date: date.toISOString().split('T')[0],
-                  label: date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }),
-                  holiday: getHoliday(date.toISOString().split('T')[0])
+                  date: dateStr,
+                  label: date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City' }),
+                  holiday: getHoliday(dateStr)
                 };
               });
 
-              // Contar accesos por día
+              // Contar accesos por día (convertir created_at a fecha de México)
               const dailyCounts = last7Days.map(day => {
                 return logs.filter(log => {
-                  const logDate = log.created_at.split('T')[0];
-                  return logDate === day.date;
+                  // Convertir el timestamp a fecha en zona horaria de México
+                  const logDateMexico = new Date(log.created_at).toLocaleDateString('en-CA', {
+                    timeZone: 'America/Mexico_City'
+                  });
+                  return logDateMexico === day.date;
                 }).length;
               });
 

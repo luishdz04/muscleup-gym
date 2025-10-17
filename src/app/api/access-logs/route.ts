@@ -150,39 +150,75 @@ export async function GET(request: NextRequest) {
 
     const { data: statsData, count: totalCount } = await statsQuery;
 
-    // Calcular estadísticas básicas
+    // Calcular estadísticas básicas (empleados/admins NO cuentan como denegados)
+    // Necesitamos obtener los usuarios de los logs para filtrar por rol
+    const userIdsForStats = Array.from(new Set(statsData?.map(log => log.user_id) || []));
+    let usersForStats: any[] = [];
+    if (userIdsForStats.length > 0) {
+      const { data: userData } = await supabase
+        .from('Users')
+        .select('id, rol')
+        .in('id', userIdsForStats);
+      usersForStats = userData || [];
+    }
+
     const stats = {
       total: totalCount || 0,
-      successful: statsData?.filter(log => log.success).length || 0,
-      failed: statsData?.filter(log => !log.success).length || 0,
+      // Exitosos: todos los empleados/admins + clientes con success=true
+      successful: statsData?.filter(log => {
+        const user = usersForStats.find(u => u.id === log.user_id);
+        if (!user) return log.success;
+        // Empleados y admins siempre cuentan como exitosos
+        if (user.rol === 'empleado' || user.rol === 'admin') return true;
+        // Clientes solo si success=true
+        return log.success;
+      }).length || 0,
+      // Denegados: SOLO clientes con success=false
+      failed: statsData?.filter(log => {
+        const user = usersForStats.find(u => u.id === log.user_id);
+        if (!user) return !log.success;
+        // Empleados y admins NUNCA cuentan como denegados
+        if (user.rol === 'empleado' || user.rol === 'admin') return false;
+        // Solo clientes con success=false
+        return !log.success;
+      }).length || 0,
       byType: statsData?.reduce((acc: any, log) => {
         acc[log.access_type] = (acc[log.access_type] || 0) + 1;
         return acc;
       }, {}) || {}
     };
 
-    // Análisis avanzado: Top usuarios más activos
+    // Análisis avanzado: Top usuarios más activos (SOLO CLIENTES)
     const topUsersMap = new Map<string, { userId: string, count: number, user: any }>();
     logs?.forEach((log: any) => {
-      const userId = log.user_id;
-      if (topUsersMap.has(userId)) {
-        topUsersMap.get(userId)!.count++;
-      } else {
-        topUsersMap.set(userId, {
-          userId,
-          count: 1,
-          user: log.user
-        });
+      // Solo contar clientes, excluir empleados y admins
+      if (log.user && log.user.rol === 'cliente') {
+        const userId = log.user_id;
+        if (topUsersMap.has(userId)) {
+          topUsersMap.get(userId)!.count++;
+        } else {
+          topUsersMap.set(userId, {
+            userId,
+            count: 1,
+            user: log.user
+          });
+        }
       }
     });
     const topUsers = Array.from(topUsersMap.values())
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    // Análisis de horarios pico
+    // Análisis de horarios pico (usando timezone de México)
     const hourlyStats = new Map<number, number>();
     logs?.forEach((log: any) => {
-      const hour = new Date(log.created_at).getHours();
+      // Convertir a hora de México
+      const mexicoTime = new Date(log.created_at).toLocaleString('en-US', {
+        timeZone: 'America/Mexico_City',
+        hour: 'numeric',
+        hour12: false
+      });
+      const hour = parseInt(mexicoTime.split(',')[0]);
       hourlyStats.set(hour, (hourlyStats.get(hour) || 0) + 1);
     });
 
@@ -195,12 +231,28 @@ export async function GET(request: NextRequest) {
       ? logs.length / hourlyStats.size
       : 0;
 
-    // Comparación hoy vs ayer
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0).toISOString();
-    const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59).toISOString();
+    // Comparación hoy vs ayer (usando timezone de México)
+    const nowMexico = new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
+    const nowDate = new Date(nowMexico);
+
+    // Hoy en México
+    const todayYear = nowDate.getFullYear();
+    const todayMonth = String(nowDate.getMonth() + 1).padStart(2, '0');
+    const todayDay = String(nowDate.getDate()).padStart(2, '0');
+    const todayStart = `${todayYear}-${todayMonth}-${todayDay}T00:00:00`;
+    const todayEnd = `${todayYear}-${todayMonth}-${todayDay}T23:59:59`;
+
+    // Ayer en México
+    const yesterday = new Date(nowDate);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayYear = yesterday.getFullYear();
+    const yesterdayMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const yesterdayDay = String(yesterday.getDate()).padStart(2, '0');
+    const yesterdayStart = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}T00:00:00`;
+    const yesterdayEnd = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}T23:59:59`;
+
+    console.log('📅 [TODAY VS YESTERDAY] Hoy:', todayStart, 'a', todayEnd);
+    console.log('📅 [TODAY VS YESTERDAY] Ayer:', yesterdayStart, 'a', yesterdayEnd);
 
     const { count: todayCount } = await supabase
       .from('access_logs')
@@ -221,12 +273,20 @@ export async function GET(request: NextRequest) {
       percentageChange: yesterdayCount ? (((todayCount || 0) - yesterdayCount) / yesterdayCount * 100) : 0
     };
 
-    // Capacidad actual (últimos 30 minutos)
-    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+    // Capacidad actual (últimos 30 minutos en México)
+    const thirtyMinutesAgo = new Date(nowDate.getTime() - 30 * 60 * 1000);
+    const thirtyMinAgoYear = thirtyMinutesAgo.getFullYear();
+    const thirtyMinAgoMonth = String(thirtyMinutesAgo.getMonth() + 1).padStart(2, '0');
+    const thirtyMinAgoDay = String(thirtyMinutesAgo.getDate()).padStart(2, '0');
+    const thirtyMinAgoHour = String(thirtyMinutesAgo.getHours()).padStart(2, '0');
+    const thirtyMinAgoMin = String(thirtyMinutesAgo.getMinutes()).padStart(2, '0');
+    const thirtyMinAgoSec = String(thirtyMinutesAgo.getSeconds()).padStart(2, '0');
+    const thirtyMinutesAgoISO = `${thirtyMinAgoYear}-${thirtyMinAgoMonth}-${thirtyMinAgoDay}T${thirtyMinAgoHour}:${thirtyMinAgoMin}:${thirtyMinAgoSec}`;
+
     const { count: currentCapacity } = await supabase
       .from('access_logs')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', thirtyMinutesAgo)
+      .gte('created_at', thirtyMinutesAgoISO)
       .eq('success', true);
 
     console.log('✅ [ACCESS-LOGS API] Fetched logs:', logs?.length, 'Stats:', stats);
