@@ -263,8 +263,8 @@ export default function ProductosPage() {
               startIcon={<RefreshIcon />}
               onClick={reload}
               disabled={loading}
-              fullWidth={{ xs: true, sm: false }}
               sx={{
+                width: { xs: '100%', sm: 'auto' },
                 color: colorTokens.textSecondary,
                 borderColor: `${colorTokens.textSecondary}60`,
                 px: { xs: 2, sm: 3 },

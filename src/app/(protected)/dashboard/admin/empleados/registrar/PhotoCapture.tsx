@@ -261,8 +261,8 @@ export default function PhotoCapture({
                   variant="outlined"
                   startIcon={<UploadIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                   onClick={handleFileSelection}
-                  fullWidth={{ xs: true, sm: false }}
                   sx={{
+                    width: { xs: '100%', sm: 'auto' },
                     fontSize: { xs: '0.875rem', sm: '1rem' },
                     borderColor: darkProTokens.primary,
                     color: darkProTokens.primary,

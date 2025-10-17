@@ -766,3 +766,54 @@ export const timestampToMexicoDate = (timestamp: string): string => {
     return '';
   }
 };
+
+/**
+ * Obtiene el inicio de la semana (lunes) en México para una fecha dada.
+ */
+export const getStartOfWeek = (date: Date = new Date()): string => {
+  const mexicoDate = new Date(date.toLocaleString('en-US', { timeZone: MEXICO_TIMEZONE }));
+  const day = mexicoDate.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Ajustar para que lunes sea el inicio
+  mexicoDate.setDate(mexicoDate.getDate() + diff);
+
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+  const dayStr = String(mexicoDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${dayStr}`;
+};
+
+/**
+ * Obtiene el fin de la semana (domingo) en México para una fecha dada.
+ */
+export const getEndOfWeek = (date: Date = new Date()): string => {
+  const startOfWeek = getStartOfWeek(date);
+  return addDaysToDate(startOfWeek, 6);
+};
+
+/**
+ * Obtiene el primer día del mes en México para una fecha dada.
+ */
+export const getStartOfMonth = (date: Date = new Date()): string => {
+  const mexicoDate = new Date(date.toLocaleString('en-US', { timeZone: MEXICO_TIMEZONE }));
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
+
+/**
+ * Obtiene el último día del mes en México para una fecha dada.
+ */
+export const getEndOfMonth = (date: Date = new Date()): string => {
+  const mexicoDate = new Date(date.toLocaleString('en-US', { timeZone: MEXICO_TIMEZONE }));
+  const year = mexicoDate.getFullYear();
+  const month = mexicoDate.getMonth();
+
+  // Crear fecha del primer día del mes siguiente y restar un día
+  const nextMonth = new Date(year, month + 1, 1);
+  nextMonth.setDate(nextMonth.getDate() - 1);
+
+  const endYear = nextMonth.getFullYear();
+  const endMonth = String(nextMonth.getMonth() + 1).padStart(2, '0');
+  const endDay = String(nextMonth.getDate()).padStart(2, '0');
+  return `${endYear}-${endMonth}-${endDay}`;
+};

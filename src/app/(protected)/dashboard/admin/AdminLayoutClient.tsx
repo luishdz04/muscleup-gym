@@ -442,36 +442,13 @@ const menuItems: MenuItem[] = [
     ]
   },
   
-  // 🔐 CONTROL DE ACCESO
-  { 
-    text: 'Control de Acceso', 
-    icon: <SecurityIcon />,
-    submenu: true,
-    section: 'control_acceso',
-    description: 'Seguridad y control de accesos',
-    items: [
-      { 
-        text: 'Configuración', 
-        path: '/dashboard/admin/acceso/configuracion', 
-        icon: <SettingsIcon />,
-        parent: 'control_acceso',
-        section: 'config-acceso'
-      },
-      { 
-        text: 'Accesos en Tiempo Real', 
-        path: '/dashboard/admin/acceso/accesos', 
-        icon: <DoorFrontIcon />,
-        parent: 'control_acceso',
-        section: 'accesos-tiempo-real'
-      },
-      { 
-        text: 'Reportes de Acceso', 
-        path: '/dashboard/admin/acceso/reportes', 
-        icon: <FingerprintIcon />,
-        parent: 'control_acceso',
-        section: 'reportes-acceso'
-      }
-    ]
+  // 📋 HISTORIAL DE ASISTENCIAS
+  {
+    text: 'Historial de Asistencias',
+    path: '/dashboard/admin/acceso',
+    icon: <HistoryIcon />,
+    section: 'historial_asistencias',
+    description: 'Registro de accesos y asistencias'
   },
   
   // 📈 REPORTES

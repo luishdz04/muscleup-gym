@@ -332,8 +332,8 @@ export default function AlmacenesPage() {
               onClick={() => reloadWarehouses()}
               disabled={loading}
               startIcon={loading ? <CircularProgress size={20} /> : <RefreshIcon />}
-              fullWidth={{ xs: true, sm: false }}
               sx={{
+                width: { xs: '100%', sm: 'auto' },
                 borderRadius: 2,
                 px: { xs: 2, sm: 3 },
                 border: `2px solid ${colorTokens.brand}30`,
@@ -356,8 +356,8 @@ export default function AlmacenesPage() {
               onClick={() => handleOpenDialog()}
               variant="contained"
               startIcon={<AddIcon />}
-              fullWidth={{ xs: true, sm: false }}
               sx={{
+                width: { xs: '100%', sm: 'auto' },
                 background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
                 color: colorTokens.textOnBrand,
                 fontWeight: 700,

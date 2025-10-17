@@ -30,7 +30,7 @@ export default function AdminDashboardRedirect() {
       }}
     >
       <CircularProgress
-        size={{ xs: 50, sm: 55, md: 60 }}
+        size={60}
         sx={{
           color: '#ffcc00',
         }}

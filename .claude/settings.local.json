@@ -14,7 +14,11 @@
       "Bash(while read f)",
       "Bash(grep:*)",
       "Bash(for file in ./src/app/'(protected)'/dashboard/admin/membresias/historial/page.tsx ./src/app/'(protected)'/dashboard/admin/membresias/registrar/page.tsx ./src/app/'(protected)'/dashboard/admin/sales/history/page.tsx ./src/app/'(protected)'/dashboard/admin/layaways/management/page.tsx ./src/app/'(protected)'/dashboard/admin/catalogo/proveedores/page.tsx ./src/app/'(protected)'/dashboard/admin/catalogo/inventario/page.tsx)",
-      "Bash(for file in \"./src/app/(protected)/dashboard/admin/catalogo/productos/page.tsx\" \"./src/app/(protected)/dashboard/admin/catalogo/almacenes/page.tsx\" \"./src/app/(protected)/dashboard/admin/catalogo/inventario/page.tsx\" \"./src/app/(protected)/dashboard/admin/catalogo/proveedores/page.tsx\")"
+      "Bash(for file in \"./src/app/(protected)/dashboard/admin/catalogo/productos/page.tsx\" \"./src/app/(protected)/dashboard/admin/catalogo/almacenes/page.tsx\" \"./src/app/(protected)/dashboard/admin/catalogo/inventario/page.tsx\" \"./src/app/(protected)/dashboard/admin/catalogo/proveedores/page.tsx\")",
+      "Bash(rm -rf ./src/app/'(protected)'/dashboard/admin/acceso/accesos)",
+      "Bash(rm -rf ./src/app/'(protected)'/dashboard/admin/acceso/configuracion)",
+      "Bash(mkdir:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []
