@@ -990,7 +990,7 @@ export default function CuponesPage() {
             </Box>
           ) : (
             <>
-              <TableContainer>
+              <TableContainer sx={{ overflowX: 'auto' }}>
                 <Table>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: 'rgba(255, 204, 0, 0.1)' }}>

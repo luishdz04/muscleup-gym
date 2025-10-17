@@ -1009,7 +1009,7 @@ const handleDeleteExpense = async () => {
               </Box>
             ) : (
               <>
-                <TableContainer>
+                <TableContainer sx={{ overflowX: 'auto' }}>
                   <Table stickyHeader>
                     <TableHead>
                       <TableRow>

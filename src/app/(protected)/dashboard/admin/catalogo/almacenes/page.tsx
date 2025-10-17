@@ -498,7 +498,7 @@ export default function AlmacenesPage() {
 
       {/* Table */}
       <Paper sx={{ borderRadius: 3, border: `1px solid ${colorTokens.border}`, overflow: 'hidden' }}>
-        <TableContainer>
+        <TableContainer sx={{ overflowX: 'auto' }}>
           <Table>
             <TableHead sx={{ background: colorTokens.neutral100 }}>
               <TableRow>

@@ -106,7 +106,7 @@ const MembershipTable = memo<Props>(({
 
   return (
     <>
-      <TableContainer>
+      <TableContainer sx={{ overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: `${colorTokens.neutral400}30` }}>

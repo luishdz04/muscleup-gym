@@ -1632,7 +1632,7 @@ export default function InventarioPage() {
                 </Box>
               ) : (
                 <>
-                  <TableContainer>
+                  <TableContainer sx={{ overflowX: 'auto' }}>
                     <Table>
                       <TableHead>
                         <TableRow sx={{ 

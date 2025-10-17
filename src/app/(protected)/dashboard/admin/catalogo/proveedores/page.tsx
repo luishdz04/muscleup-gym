@@ -595,7 +595,7 @@ export default function ProveedoresPage() {
             </Box>
           ) : (
             <>
-              <TableContainer>
+              <TableContainer sx={{ overflowX: 'auto' }}>
                 <Table>
                   <TableHead>
                     <TableRow sx={{ 

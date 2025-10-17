@@ -765,7 +765,7 @@ export default function InventoryMovementDialog({
                   Información de Auditoría
                 </Typography>
                 
-                <TableContainer>
+                <TableContainer sx={{ overflowX: 'auto' }}>
                   <Table size="small">
                     <TableBody>
                       <TableRow>

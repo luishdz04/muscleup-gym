@@ -1266,7 +1266,7 @@ export default function CutsHistoryPage() {
               </Box>
             ) : (
               <>
-                <TableContainer>
+                <TableContainer sx={{ overflowX: 'auto' }}>
                   <Table stickyHeader>
                     <TableHead>
                       <TableRow>

@@ -973,7 +973,8 @@ const totalPending = processedLayaways
         
         <TableContainer component={Paper} sx={{
           background: colorTokens.surfaceLevel1,
-          border: `1px solid ${colorTokens.border}`
+          border: `1px solid ${colorTokens.border}`,
+          overflowX: 'auto'
         }}>
           <Table stickyHeader>
             <TableHead>

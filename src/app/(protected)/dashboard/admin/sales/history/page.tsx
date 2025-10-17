@@ -1426,7 +1426,7 @@ const SalesHistoryPage = memo(() => {
         borderRadius: 3,
         overflow: 'hidden'
       }}>
-        <TableContainer>
+        <TableContainer sx={{ overflowX: 'auto' }}>
           <Table>
             <TableHead>
               <TableRow sx={{ background: colorTokens.brand }}>

@@ -475,7 +475,7 @@ export default function ProductosPage() {
             </Box>
           ) : (
             <>
-              <TableContainer>
+              <TableContainer sx={{ overflowX: 'auto' }}>
                 <Table>
                   <TableHead>
                     <TableRow sx={{ 

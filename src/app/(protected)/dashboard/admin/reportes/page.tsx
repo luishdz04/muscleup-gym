@@ -862,7 +862,7 @@ export default function AnalisisAvanzadoPage() {
         borderRadius: 3
       }}>
         <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-          <TableContainer>
+          <TableContainer sx={{ overflowX: 'auto' }}>
             <Table size={isMobile ? 'small' : 'medium'}>
               <TableHead>
                 <TableRow>
