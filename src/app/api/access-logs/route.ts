@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     // Obtener estadísticas
     const statsQuery = supabase
       .from('access_logs')
-      .select('success, access_type, created_at', { count: 'exact' });
+      .select('user_id, success, access_type, created_at', { count: 'exact' });
 
     if (startDate) statsQuery.gte('created_at', startDate);
     if (endDate) statsQuery.lte('created_at', endDate);
@@ -188,24 +188,36 @@ export async function GET(request: NextRequest) {
       }, {}) || {}
     };
 
-    // Análisis avanzado: Top usuarios más activos (SOLO CLIENTES)
-    const topUsersMap = new Map<string, { userId: string, count: number, user: any }>();
+    // Análisis avanzado: Top usuarios más activos (SOLO CLIENTES, 1 ACCESO POR DÍA)
+    const topUsersMap = new Map<string, { userId: string, days: Set<string>, user: any }>();
     logs?.forEach((log: any) => {
       // Solo contar clientes, excluir empleados y admins
       if (log.user && log.user.rol === 'cliente') {
         const userId = log.user_id;
+        // Obtener solo la fecha (sin hora) en timezone de México
+        const logDate = new Date(log.created_at).toLocaleDateString('en-CA', {
+          timeZone: 'America/Mexico_City'
+        });
+
         if (topUsersMap.has(userId)) {
-          topUsersMap.get(userId)!.count++;
+          // Agregar el día al Set (automáticamente evita duplicados)
+          topUsersMap.get(userId)!.days.add(logDate);
         } else {
           topUsersMap.set(userId, {
             userId,
-            count: 1,
+            days: new Set([logDate]),
             user: log.user
           });
         }
       }
     });
+    // Convertir Set de días a count y ordenar
     const topUsers = Array.from(topUsersMap.values())
+      .map(({ userId, days, user }) => ({
+        userId,
+        count: days.size, // Contar días únicos
+        user
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 

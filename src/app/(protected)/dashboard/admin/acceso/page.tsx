@@ -65,6 +65,12 @@ import {
 import { LineChart } from '@mui/x-charts/LineChart';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { PieChart } from '@mui/x-charts/PieChart';
+import { ChartsReferenceLine } from '@mui/x-charts/ChartsReferenceLine';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
+import 'dayjs/locale/es-mx';
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -192,8 +198,8 @@ export default function HistorialAsistenciasPage() {
   const [userTypeFilter, setUserTypeFilter] = useState<UserTypeFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Dayjs | null>(null);
+  const [endDate, setEndDate] = useState<Dayjs | null>(null);
   const [successFilter, setSuccessFilter] = useState<string>('all');
   const [hourRangeStart, setHourRangeStart] = useState<number | ''>('');
   const [hourRangeEnd, setHourRangeEnd] = useState<number | ''>('');
@@ -219,8 +225,8 @@ export default function HistorialAsistenciasPage() {
         start = `${getStartOfMonth(new Date())}T00:00:00`;
         end = `${getEndOfMonth(new Date())}T23:59:59`;
       } else if (timeRange === 'custom') {
-        start = startDate ? `${startDate}T00:00:00` : '';
-        end = endDate ? `${endDate}T23:59:59` : '';
+        start = startDate ? `${startDate.format('YYYY-MM-DD')}T00:00:00` : '';
+        end = endDate ? `${endDate.format('YYYY-MM-DD')}T23:59:59` : '';
       }
 
       const params = new URLSearchParams({
@@ -373,7 +379,8 @@ export default function HistorialAsistenciasPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es-mx">
+      <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
       {/* Header */}
       <Paper sx={{
         p: { xs: 2, sm: 2.5, md: 3 },
@@ -650,7 +657,8 @@ export default function HistorialAsistenciasPage() {
               const last7Days = Array.from({ length: 7 }, (_, i) => {
                 const date = new Date(todayMexico);
                 date.setDate(date.getDate() - (6 - i));
-                const dateStr = date.toISOString().split('T')[0];
+                // Usar toLocaleDateString con 'en-CA' para obtener formato YYYY-MM-DD en zona horaria de México
+                const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
                 return {
                   date: dateStr,
                   label: date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City' }),
@@ -711,14 +719,32 @@ export default function HistorialAsistenciasPage() {
                           showMark: true
                         }]}
                         height={300}
-                        margin={{ top: 10, right: 10, bottom: 60, left: 60 }}
-                        slotProps={{
-                          legend: {
-                            hidden: false,
-                            position: { vertical: 'top', horizontal: 'right' }
-                          }
-                        }}
-                      />
+                        margin={{ top: 30, right: 80, bottom: 60, left: 60 }}
+                      >
+                        <ChartsReferenceLine
+                          y={Math.max(...dailyCounts)}
+                          label={`Máx: ${Math.max(...dailyCounts)}`}
+                          labelAlign="start"
+                          lineStyle={{
+                            stroke: '#d32f2f',
+                            strokeDasharray: '5 5'
+                          }}
+                        />
+                        {/* Líneas verticales para días festivos */}
+                        {last7Days.map((day, index) => day.holiday && (
+                          <ChartsReferenceLine
+                            key={day.date}
+                            x={index}
+                            label={day.holiday.emoji}
+                            labelAlign="start"
+                            lineStyle={{
+                              stroke: getHolidayColor(day.holiday.type),
+                              strokeWidth: 2,
+                              strokeDasharray: '3 3'
+                            }}
+                          />
+                        ))}
+                      </LineChart>
                       {/* Leyenda de días festivos debajo del gráfico */}
                       {holidays.length > 0 && (
                         <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -762,7 +788,27 @@ export default function HistorialAsistenciasPage() {
             height: '100%'
           }}>
             <Typography variant="h6" sx={{ mb: 2, color: colorTokens.textPrimary, fontWeight: 600 }}>
-              📊 Accesos por Hora del Día
+              📊 Accesos por Hora del Día{(() => {
+                if (startDate && endDate) {
+                  // Mostrar rango personalizado
+                  const start = startDate.locale('es-mx').format('D MMM');
+                  const end = endDate.locale('es-mx').format('D MMM');
+                  return ` (${start} - ${end})`;
+                } else if (timeRange === 'today') {
+                  const today = new Date().toLocaleDateString('es-MX', {
+                    timeZone: 'America/Mexico_City',
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                  });
+                  return ` (${today})`;
+                } else if (timeRange === 'week') {
+                  return ' (Última Semana)';
+                } else if (timeRange === 'month') {
+                  return ' (Último Mes)';
+                }
+                return ' (Todos los Registros)';
+              })()}
             </Typography>
             {chartData.hourly.data.some(v => v > 0) ? (
               <LineChart
@@ -778,8 +824,18 @@ export default function HistorialAsistenciasPage() {
                   area: true
                 }]}
                 height={300}
-                margin={{ top: 10, right: 10, bottom: 30, left: 40 }}
-              />
+                margin={{ top: 30, right: 80, bottom: 30, left: 40 }}
+              >
+                <ChartsReferenceLine
+                  y={Math.max(...chartData.hourly.data)}
+                  label={`Pico: ${Math.max(...chartData.hourly.data)}`}
+                  labelAlign="start"
+                  lineStyle={{
+                    stroke: '#d32f2f',
+                    strokeDasharray: '5 5'
+                  }}
+                />
+              </LineChart>
             ) : (
               <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
@@ -1056,25 +1112,143 @@ export default function HistorialAsistenciasPage() {
           {timeRange === 'custom' && (
             <>
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
+                <DatePicker
                   label="Fecha Inicio"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
+                  onChange={(newValue) => {
+                    // Ensure we always store a Dayjs object or null
+                    if (newValue === null) {
+                      setStartDate(null);
+                    } else if (dayjs.isDayjs(newValue)) {
+                      setStartDate(newValue);
+                    } else {
+                      setStartDate(dayjs(newValue));
+                    }
+                  }}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      size: 'small',
+                      sx: {
+                        '& .MuiOutlinedInput-root': {
+                          '&:hover fieldset': {
+                            borderColor: colorTokens.brand,
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: colorTokens.brand,
+                          },
+                        },
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: colorTokens.brand,
+                        },
+                      }
+                    },
+                    actionBar: {
+                      actions: ['clear', 'accept'],
+                    },
+                    shortcuts: {
+                      items: [
+                        {
+                          label: 'Hoy',
+                          getValue: () => dayjs(),
+                        },
+                        {
+                          label: 'Ayer',
+                          getValue: () => dayjs().subtract(1, 'day'),
+                        },
+                        {
+                          label: 'Inicio de Semana',
+                          getValue: () => dayjs().startOf('week'),
+                        },
+                        {
+                          label: 'Inicio de Mes',
+                          getValue: () => dayjs().startOf('month'),
+                        },
+                        {
+                          label: 'Hace 7 días',
+                          getValue: () => dayjs().subtract(7, 'day'),
+                        },
+                        {
+                          label: 'Hace 30 días',
+                          getValue: () => dayjs().subtract(30, 'day'),
+                        },
+                        {
+                          label: 'Reset',
+                          getValue: () => null,
+                        },
+                      ],
+                    },
+                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
+                <DatePicker
                   label="Fecha Fin"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
+                  onChange={(newValue) => {
+                    // Ensure we always store a Dayjs object or null
+                    if (newValue === null) {
+                      setEndDate(null);
+                    } else if (dayjs.isDayjs(newValue)) {
+                      setEndDate(newValue);
+                    } else {
+                      setEndDate(dayjs(newValue));
+                    }
+                  }}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      size: 'small',
+                      sx: {
+                        '& .MuiOutlinedInput-root': {
+                          '&:hover fieldset': {
+                            borderColor: colorTokens.brand,
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: colorTokens.brand,
+                          },
+                        },
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: colorTokens.brand,
+                        },
+                      }
+                    },
+                    actionBar: {
+                      actions: ['clear', 'accept'],
+                    },
+                    shortcuts: {
+                      items: [
+                        {
+                          label: 'Hoy',
+                          getValue: () => dayjs(),
+                        },
+                        {
+                          label: 'Mañana',
+                          getValue: () => dayjs().add(1, 'day'),
+                        },
+                        {
+                          label: 'Fin de Semana',
+                          getValue: () => dayjs().endOf('week'),
+                        },
+                        {
+                          label: 'Fin de Mes',
+                          getValue: () => dayjs().endOf('month'),
+                        },
+                        {
+                          label: 'En 7 días',
+                          getValue: () => dayjs().add(7, 'day'),
+                        },
+                        {
+                          label: 'En 30 días',
+                          getValue: () => dayjs().add(30, 'day'),
+                        },
+                        {
+                          label: 'Reset',
+                          getValue: () => null,
+                        },
+                      ],
+                    },
+                  }}
                 />
               </Grid>
             </>
@@ -1539,5 +1713,6 @@ export default function HistorialAsistenciasPage() {
         </DialogActions>
       </Dialog>
     </Box>
+    </LocalizationProvider>
   );
 }
