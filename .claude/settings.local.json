@@ -18,7 +18,8 @@
       "Bash(rm -rf ./src/app/'(protected)'/dashboard/admin/acceso/accesos)",
       "Bash(rm -rf ./src/app/'(protected)'/dashboard/admin/acceso/configuracion)",
       "Bash(mkdir:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

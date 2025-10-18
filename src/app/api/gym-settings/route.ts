@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAsyncServerSupabaseClient } from '@/lib/supabase/server-async';
 
-// GET - Obtener configuración del gimnasio
+// GET - Obtener configuración del gimnasio (público - no requiere autenticación)
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createAsyncServerSupabaseClient();
@@ -15,10 +15,55 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('❌ [GYM-SETTINGS] Error fetching settings:', error);
-      return NextResponse.json(
-        { error: 'Error al obtener configuración del gimnasio' },
-        { status: 500 }
-      );
+      console.error('❌ [GYM-SETTINGS] Error details:', JSON.stringify(error, null, 2));
+
+      // Si no hay datos, devolver valores por defecto
+      const defaultSettings = {
+        id: 'default',
+        gym_name: 'Muscle Up GYM',
+        gym_address: 'Francisco I. Madero 708, Colonia Lindavista, San Buenaventura, Coahuila, México',
+        gym_phone: '866 112 7905',
+        gym_email: 'administracion@muscleupgym.fitness',
+        gym_logo_url: null,
+        gym_facebook_url: 'https://www.facebook.com/Lindavistagym',
+        gym_maps_url: 'https://maps.app.goo.gl/preWqm3w7S2JZLg17',
+        gym_hours: {
+          monday: { open: '06:00', close: '23:00', enabled: true },
+          tuesday: { open: '06:00', close: '23:00', enabled: true },
+          wednesday: { open: '06:00', close: '23:00', enabled: true },
+          thursday: { open: '06:00', close: '23:00', enabled: true },
+          friday: { open: '06:00', close: '23:00', enabled: true },
+          saturday: { open: '06:00', close: '23:00', enabled: true },
+          sunday: { open: '06:00', close: '23:00', enabled: false }
+        }
+      };
+
+      console.log('⚠️ [GYM-SETTINGS] Returning default settings due to error');
+      return NextResponse.json(defaultSettings);
+    }
+
+    if (!data) {
+      console.warn('⚠️ [GYM-SETTINGS] No settings found in database, using defaults');
+      const defaultSettings = {
+        id: 'default',
+        gym_name: 'Muscle Up GYM',
+        gym_address: 'Francisco I. Madero 708, Colonia Lindavista, San Buenaventura, Coahuila, México',
+        gym_phone: '866 112 7905',
+        gym_email: 'administracion@muscleupgym.fitness',
+        gym_logo_url: null,
+        gym_facebook_url: 'https://www.facebook.com/Lindavistagym',
+        gym_maps_url: 'https://maps.app.goo.gl/preWqm3w7S2JZLg17',
+        gym_hours: {
+          monday: { open: '06:00', close: '23:00', enabled: true },
+          tuesday: { open: '06:00', close: '23:00', enabled: true },
+          wednesday: { open: '06:00', close: '23:00', enabled: true },
+          thursday: { open: '06:00', close: '23:00', enabled: true },
+          friday: { open: '06:00', close: '23:00', enabled: true },
+          saturday: { open: '06:00', close: '23:00', enabled: true },
+          sunday: { open: '06:00', close: '23:00', enabled: false }
+        }
+      };
+      return NextResponse.json(defaultSettings);
     }
 
     console.log('✅ [GYM-SETTINGS] Settings fetched successfully');
@@ -26,10 +71,30 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [GYM-SETTINGS] Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Error inesperado al obtener configuración' },
-      { status: 500 }
-    );
+
+    // Devolver valores por defecto en caso de error
+    const defaultSettings = {
+      id: 'default',
+      gym_name: 'Muscle Up GYM',
+      gym_address: 'Francisco I. Madero 708, Colonia Lindavista, San Buenaventura, Coahuila, México',
+      gym_phone: '866 112 7905',
+      gym_email: 'administracion@muscleupgym.fitness',
+      gym_logo_url: null,
+      gym_facebook_url: 'https://www.facebook.com/Lindavistagym',
+      gym_maps_url: 'https://maps.app.goo.gl/preWqm3w7S2JZLg17',
+      gym_hours: {
+        monday: { open: '06:00', close: '23:00', enabled: true },
+        tuesday: { open: '06:00', close: '23:00', enabled: true },
+        wednesday: { open: '06:00', close: '23:00', enabled: true },
+        thursday: { open: '06:00', close: '23:00', enabled: true },
+        friday: { open: '06:00', close: '23:00', enabled: true },
+        saturday: { open: '06:00', close: '23:00', enabled: true },
+        sunday: { open: '06:00', close: '23:00', enabled: false }
+      }
+    };
+
+    console.log('⚠️ [GYM-SETTINGS] Returning default settings due to unexpected error');
+    return NextResponse.json(defaultSettings);
   }
 }
 
