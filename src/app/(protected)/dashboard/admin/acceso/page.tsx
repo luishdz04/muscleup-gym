@@ -688,17 +688,17 @@ export default function HistorialAsistenciasPage() {
               });
 
               const hasData = dailyCounts.some(count => count > 0);
-              const holidays = last7Days.filter(day => day.holiday);
+              const holidayDays = last7Days.filter(day => day.holiday);
 
               return (
                 <Box>
-                  {holidays.length > 0 && (
+                  {holidayDays.length > 0 && (
                     <Alert severity="info" sx={{ mb: 2 }}>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           Días festivos en este período:
                         </Typography>
-                        {holidays.map(day => (
+                        {holidayDays.map(day => (
                           <Chip
                             key={day.date}
                             label={`${day.holiday!.emoji} ${day.holiday!.name}`}
