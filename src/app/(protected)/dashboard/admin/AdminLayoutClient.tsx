@@ -5,21 +5,21 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { keyframes } from '@mui/system';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  Box, 
-  Drawer, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Divider, 
-  IconButton, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText, 
-  Avatar, 
-  Menu, 
-  MenuItem, 
+import {
+  Box,
+  Drawer,
+  AppBar,
+  Toolbar,
+  Typography,
+  Divider,
+  IconButton,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Avatar,
+  Menu,
+  MenuItem,
   Tooltip,
   Collapse,
   useMediaQuery,
@@ -30,7 +30,8 @@ import {
   Container,
   Breadcrumbs,
   Link as MuiLink,
-  Chip
+  Chip,
+  Button
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -131,7 +132,6 @@ import DoorFrontIcon from '@mui/icons-material/DoorFront';
 import BuildIcon from '@mui/icons-material/Build';
 import SettingsIcon from '@mui/icons-material/Settings';
 import BackupIcon from '@mui/icons-material/Backup';
-import SystemUpdateIcon from '@mui/icons-material/SystemUpdate';
 
 const drawerWidth = 290;
 const mobileDrawerWidth = 280;
@@ -461,40 +461,26 @@ const menuItems: MenuItem[] = [
   },
   
   // ⚙️ HERRAMIENTAS
-  { 
-    text: 'Herramientas', 
+  {
+    text: 'Herramientas',
     icon: <BuildIcon />,
     submenu: true,
     section: 'herramientas',
     description: 'Configuración y mantenimiento',
     items: [
-      { 
-        text: 'Configuración General', 
-        path: '/dashboard/admin/herramientas/configuracion', 
+      {
+        text: 'Configuración General',
+        path: '/dashboard/admin/herramientas/configuracion',
         icon: <SettingsIcon />,
         parent: 'herramientas',
         section: 'configuracion-sistema'
       },
-      { 
-        text: 'Historial del Sistema', 
-        path: '/dashboard/admin/herramientas/historial', 
-        icon: <HistoryIcon />,
-        parent: 'herramientas',
-        section: 'historial-sistema'
-      },
-      { 
-        text: 'Respaldo de Datos', 
-        path: '/dashboard/admin/herramientas/respaldo', 
+      {
+        text: 'Respaldo de Datos',
+        path: '/dashboard/admin/herramientas/respaldos',
         icon: <BackupIcon />,
         parent: 'herramientas',
         section: 'respaldo-datos'
-      },
-      { 
-        text: 'Actualizaciones', 
-        path: '/dashboard/admin/herramientas/actualizaciones', 
-        icon: <SystemUpdateIcon />,
-        parent: 'herramientas',
-        section: 'actualizaciones'
       }
     ]
   }
@@ -893,9 +879,106 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             </Box>
             
             {/* ✅ BUSCADOR ELIMINADO - Sin funcionalidad implementada */}
-            
+
             <Box sx={{ flexGrow: 1 }} />
-            
+
+            {/* 🚀 ACCESOS DIRECTOS - Solo visible en tablet+ */}
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5, mr: 2 }}>
+              <Tooltip title="Punto de Venta" arrow>
+                <Button
+                  component={Link}
+                  href="/dashboard/admin/pos"
+                  variant="contained"
+                  size="medium"
+                  startIcon={<ShoppingCartIcon />}
+                  sx={{
+                    bgcolor: colorTokens.brand,
+                    color: colorTokens.black,
+                    fontWeight: 700,
+                    px: 2.5,
+                    borderRadius: 2,
+                    boxShadow: `0 4px 12px ${alpha(colorTokens.brand, 0.3)}`,
+                    '&:hover': {
+                      bgcolor: colorTokens.brandHover,
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 6px 16px ${alpha(colorTokens.brand, 0.4)}`
+                    },
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                >
+                  POS
+                </Button>
+              </Tooltip>
+
+              <Tooltip title="Registrar Membresía" arrow>
+                <Button
+                  component={Link}
+                  href="/dashboard/admin/membresias/registrar"
+                  variant="outlined"
+                  size="medium"
+                  startIcon={<PersonAddAltIcon />}
+                  sx={{
+                    borderColor: colorTokens.brand,
+                    color: colorTokens.brand,
+                    fontWeight: 600,
+                    px: 2.5,
+                    borderRadius: 2,
+                    borderWidth: 2,
+                    '&:hover': {
+                      borderColor: colorTokens.brandHover,
+                      borderWidth: 2,
+                      bgcolor: alpha(colorTokens.brand, 0.1),
+                      transform: 'translateY(-2px)'
+                    },
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                >
+                  Membresía
+                </Button>
+              </Tooltip>
+            </Box>
+
+            {/* 🚀 ACCESOS DIRECTOS MÓVIL - Solo íconos */}
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 0.5, mr: 1 }}>
+              <Tooltip title="Punto de Venta" arrow>
+                <IconButton
+                  component={Link}
+                  href="/dashboard/admin/pos"
+                  sx={{
+                    bgcolor: colorTokens.brand,
+                    color: colorTokens.black,
+                    width: 38,
+                    height: 38,
+                    '&:hover': {
+                      bgcolor: colorTokens.brandHover,
+                      transform: 'scale(1.05)'
+                    }
+                  }}
+                >
+                  <ShoppingCartIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Registrar Membresía" arrow>
+                <IconButton
+                  component={Link}
+                  href="/dashboard/admin/membresias/registrar"
+                  sx={{
+                    border: `2px solid ${colorTokens.brand}`,
+                    color: colorTokens.brand,
+                    width: 38,
+                    height: 38,
+                    '&:hover': {
+                      bgcolor: alpha(colorTokens.brand, 0.1),
+                      transform: 'scale(1.05)'
+                    }
+                  }}
+                >
+                  <PersonAddAltIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+
             {/* 🔔 ÁREA DE NOTIFICACIONES Y USUARIO - RESPONSIVE */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
               <Tooltip title={unreadCount > 0 ? `${unreadCount} notificaciones sin leer` : 'Sin notificaciones'}>

@@ -9,7 +9,6 @@ import {
   Tab,
   TextField,
   Button,
-  Grid,
   Alert,
   CircularProgress,
   Switch,
@@ -32,11 +31,14 @@ import {
   Chip,
   Card,
   CardContent,
-  Stack
+  Stack,
+  Divider
 } from '@mui/material';
+import { Grid } from '@mui/material';
 import { toast } from 'react-hot-toast';
 import { invalidateHolidaysCache } from '@/utils/holidays';
 import { formatDateForDisplay } from '@/utils/dateUtils';
+import { colorTokens } from '@/theme';
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -44,10 +46,9 @@ import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PaymentIcon from '@mui/icons-material/Payment';
 import EventIcon from '@mui/icons-material/Event';
-import Divider from '@mui/material/Divider';
 
 interface TabPanelProps {
-  children?: React.Node;
+  children?: React.ReactNode;
   index: number;
   value: number;
 }
@@ -104,7 +105,16 @@ export default function ConfiguracionGeneralPage() {
 
   // Estados para Gym Settings
   const [gymSettings, setGymSettings] = useState<GymSettings | null>(null);
-  const [gymForm, setGymForm] = useState({
+  const [gymForm, setGymForm] = useState<{
+    gym_name: string;
+    gym_address: string;
+    gym_phone: string;
+    gym_email: string;
+    gym_logo_url: string;
+    gym_facebook_url: string;
+    gym_maps_url: string;
+    gym_hours: Record<string, { open: string; close: string; enabled: boolean }>;
+  }>({
     gym_name: '',
     gym_address: '',
     gym_phone: '',
@@ -390,7 +400,7 @@ export default function ConfiguracionGeneralPage() {
       gym_hours: {
         ...prev.gym_hours,
         [day]: {
-          ...(prev.gym_hours[day] || { open: '06:00', close: '23:00', enabled: true }),
+          ...(prev.gym_hours[day as keyof typeof prev.gym_hours] || { open: '06:00', close: '23:00', enabled: true }),
           [field]: value
         }
       }
@@ -449,8 +459,8 @@ export default function ConfiguracionGeneralPage() {
                   </Typography>
                 </Box>
 
-                <Grid container spacing={2.5}>
-                  <Grid item xs={12} sm={6} md={4}>
+                <Grid container spacing={{ xs: 2, sm: 2.5 }}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                     <TextField
                       fullWidth
                       label="Nombre del Gimnasio"
@@ -460,7 +470,7 @@ export default function ConfiguracionGeneralPage() {
                     />
                   </Grid>
 
-                  <Grid item xs={12} sm={6} md={4}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                     <TextField
                       fullWidth
                       label="Teléfono"
@@ -470,7 +480,7 @@ export default function ConfiguracionGeneralPage() {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={4}>
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <TextField
                       fullWidth
                       label="Email (opcional)"
@@ -481,7 +491,7 @@ export default function ConfiguracionGeneralPage() {
                     />
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid size={{ xs: 12 }}>
                     <TextField
                       fullWidth
                       label="Dirección"
@@ -519,8 +529,8 @@ export default function ConfiguracionGeneralPage() {
                   </Typography>
                 </Box>
 
-                <Grid container spacing={2.5}>
-                  <Grid item xs={12}>
+                <Grid container spacing={{ xs: 2, sm: 2.5 }}>
+                  <Grid size={{ xs: 12 }}>
                     <TextField
                       fullWidth
                       label="URL del Logo (opcional)"
@@ -558,8 +568,8 @@ export default function ConfiguracionGeneralPage() {
                   </Typography>
                 </Box>
 
-                <Grid container spacing={2.5}>
-                  <Grid item xs={12} md={6}>
+                <Grid container spacing={{ xs: 2, sm: 2.5 }}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
                       label="URL de Facebook"
@@ -570,7 +580,7 @@ export default function ConfiguracionGeneralPage() {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
                       label="URL de Google Maps"
@@ -607,9 +617,9 @@ export default function ConfiguracionGeneralPage() {
                   </Typography>
                 </Box>
 
-                <Grid container spacing={2}>
+                <Grid container spacing={{ xs: 2, sm: 2 }}>
                   {daysOfWeek.map(day => (
-                    <Grid item xs={12} sm={6} key={day.key}>
+                    <Grid size={{ xs: 12, sm: 6 }} key={day.key}>
                       <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
                         <Stack spacing={1.5}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

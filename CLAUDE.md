@@ -530,3 +530,220 @@ npx prisma migrate deploy                          # Apply in production
 - **Removed**: Deprecated Supabase utility files
 - **Kept**: Essential documentation (SCHEMA_COMPLETO.txt, system guides)
 - **Result**: -14,755 lines of code (cleaner, more maintainable)
+
+## Sistema de Herramientas y Respaldos (Octubre 2025)
+
+### Configuración General
+**Ruta**: `/dashboard/admin/herramientas/configuracion`
+
+Sistema completo de configuración del gimnasio con 3 pestañas:
+
+#### Tab 1: Datos del Gimnasio
+- **Información Básica**: Nombre, teléfono, email, dirección
+- **Personalización**: URL del logo
+- **Redes Sociales**: Facebook, Google Maps
+- **Horarios de Operación**: 7 días de la semana con switches de activación
+  - Time pickers para apertura/cierre
+  - Deshabilitación individual por día
+
+#### Tab 2: Comisiones de Pago
+- CRUD completo de comisiones
+- Tipos: Porcentaje o Monto Fijo
+- Estado activo/inactivo
+- Monto mínimo configurable
+
+#### Tab 3: Días Festivos
+- CRUD completo de días festivos
+- Tipos: Oficial, Tradicional, Especial
+- Emojis personalizables
+- Invalidación automática de caché
+
+**API Routes**:
+- `GET/PUT /api/gym-settings`
+- `GET/POST/PUT/DELETE /api/payment-commissions`
+- `GET/POST/PUT/DELETE /api/holidays`
+
+---
+
+### Respaldo de Datos
+**Ruta**: `/dashboard/admin/herramientas/respaldos`
+
+Sistema de backups con Supabase PRO integration:
+
+#### Características Principales
+- **Backups Manuales**: Exportación JSON de 24 tablas vía Supabase API
+- **Backups Automáticos**: Supabase PRO (7 días de retención, PITR)
+- **Exportación a Excel**: 6 categorías seleccionables con ExcelJS
+- **Dashboard Visual**: 4 métricas en tiempo real
+
+#### Tablas Respaldadas (24 total)
+- Configuración: `gym_settings`, `holidays`, `payment_commissions`
+- Planes: `plans`, `user_memberships`, `payments`
+- Usuarios: `Users`, `addresses`, `emergency_contacts`, `membership_info`
+- Biométrico: `biometric_devices`, `fingerprint_templates`, `access_logs`
+- Inventario: `products`, `warehouses`, `inventory_movements`, `suppliers`
+- Ventas: `sales`, `sale_items`, `layaway_status_history`
+- Administración: `expenses`, `expense_categories`, `cuts`, `system_logs`
+
+**API Routes**:
+- `GET /api/backups` - Listar backups
+- `POST /api/backups/create` - Crear backup (Supabase API)
+- `GET /api/backups/[id]` - Descargar backup
+- `DELETE /api/backups/[id]` - Eliminar backup
+- `POST /api/export/excel` - Exportar a Excel
+
+**Importante**: 
+- Usa `createServerSupabaseClient()` de `/src/lib/supabase/server.ts`
+- Backups se guardan en `/backups/` (ignorados en git)
+- Formato JSON con metadata completa
+
+**Documentación Completa**: Ver `/BACKUP_SYSTEM.md`
+
+---
+
+### Accesos Directos en AppBar
+
+Botones de acceso rápido agregados en la barra superior del AdminLayout:
+
+#### Desktop (≥960px)
+- **Botón POS**: Amarillo relleno con icono de carrito
+  - Link: `/dashboard/admin/pos`
+  - Style: `contained`, `color: primary`
+  
+- **Botón Membresía**: Amarillo outlined con icono de usuario
+  - Link: `/dashboard/admin/membresias/registrar`
+  - Style: `outlined`, `color: primary`
+
+#### Móvil (<960px)
+- IconButtons compactos (38x38px)
+- Tooltips informativos
+- Mismo color scheme que desktop
+
+**Ubicación**: Entre logo/SGI y área de notificaciones
+
+---
+
+### Grid Pattern Correcto (IMPORTANTE)
+
+**SIEMPRE usar este patrón**:
+```typescript
+import { Grid } from '@mui/material';
+
+<Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+    {/* Contenido */}
+  </Grid>
+</Grid>
+```
+
+**NO usar**:
+- ❌ `import Grid from '@mui/material/Grid2'`
+- ❌ `<Grid item xs={12}>`
+- ❌ Spacing fijo sin breakpoints
+
+---
+
+### Theme Dark Centralizado
+
+**SIEMPRE importar y usar colorTokens**:
+```typescript
+import { colorTokens } from '@/theme';
+
+// Colores principales
+bgcolor: colorTokens.neutral300      // Backgrounds
+color: colorTokens.textPrimary       // Texto blanco
+color: colorTokens.textSecondary     // Texto gris claro
+color: colorTokens.brand             // Amarillo #FFCC00
+color: colorTokens.success           // Verde #22C55E
+color: colorTokens.info              // Azul #38BDF8
+color: colorTokens.warning           // Amarillo #FFCC00
+color: colorTokens.danger            // Rojo #EF4444
+border: colorTokens.border           // Borde transparente
+```
+
+**NO usar colores hardcodeados**:
+- ❌ `color: '#4ade80'`
+- ❌ `bgcolor: 'rgba(255,255,255,0.1)'`
+- ❌ `background: 'linear-gradient(...)'`
+
+**Theme ubicado en**: `/src/theme.ts`
+
+---
+
+### Supabase Server Client
+
+**Import correcto en API routes**:
+```typescript
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+
+export async function GET() {
+  const supabase = createServerSupabaseClient();
+  // NO await, ya es síncrono
+}
+```
+
+**NO usar**:
+- ❌ `createServerClient` (no existe)
+- ❌ `await createServerSupabaseClient()` (no es async)
+
+---
+
+### Estructura de Archivos Creados
+
+**Nuevos archivos**:
+```
+src/app/api/backups/
+├── route.ts              # GET listar backups
+├── create/route.ts       # POST crear backup
+└── [id]/route.ts         # GET descargar, DELETE eliminar
+
+src/app/api/export/
+└── excel/route.ts        # POST exportar a Excel
+
+src/app/(protected)/dashboard/admin/herramientas/
+├── configuracion/page.tsx    # Configuración general
+└── respaldos/page.tsx        # Respaldo de datos
+
+backups/                   # Directorio de backups (git ignored)
+└── .gitignore
+
+BACKUP_SYSTEM.md          # Documentación completa del sistema
+```
+
+---
+
+### Testing del Sistema
+
+**Verificar backups**:
+```bash
+# Listar backups
+curl http://localhost:3000/api/backups
+
+# Crear backup
+curl -X POST http://localhost:3000/api/backups/create
+
+# Verificar archivos
+ls -lh /workspaces/muscleup-gym/backups/
+```
+
+**Verificar TypeScript**:
+```bash
+npx tsc --noEmit --skipLibCheck
+# Debe mostrar 0 errores en herramientas
+```
+
+---
+
+### Checklist de Implementación
+
+Cuando agregues nuevas páginas similares:
+
+- [ ] Importar `{ Grid } from '@mui/material'`
+- [ ] Usar `size={{ xs, sm, md }}` en Grid
+- [ ] Importar y usar `colorTokens` de `/theme.ts`
+- [ ] Usar `createServerSupabaseClient()` en API routes
+- [ ] Hacer páginas responsive con breakpoints
+- [ ] Agregar ruta en `AdminLayoutClient.tsx`
+- [ ] Verificar 0 errores de TypeScript
+- [ ] Probar funcionalidad completa
+
