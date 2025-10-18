@@ -672,7 +672,7 @@ export default function HistorialAsistenciasPage() {
                 return {
                   date: dateStr,
                   label: date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City' }),
-                  holiday: getHolidaySync(dateStr, holidays)
+                  holiday: holidays.length > 0 ? getHolidaySync(dateStr, holidays) : null
                 };
               });
 
