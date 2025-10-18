@@ -29,7 +29,10 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Chip
+  Chip,
+  Card,
+  CardContent,
+  Stack
 } from '@mui/material';
 import { toast } from 'react-hot-toast';
 import { invalidateHolidaysCache } from '@/utils/holidays';
@@ -422,157 +425,255 @@ export default function ConfiguracionGeneralPage() {
 
         {/* TAB 1: Datos del Gimnasio */}
         <TabPanel value={tabValue} index={0}>
-          <Box component="form" noValidate>
-            <Grid container spacing={3}>
-              {/* Sección: Información Básica */}
-              <Grid item xs={12}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                  📋 Información Básica
-                </Typography>
-                <Divider sx={{ mt: 1, mb: 2 }} />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Nombre del Gimnasio"
-                  value={gymForm.gym_name}
-                  onChange={(e) => setGymForm({ ...gymForm, gym_name: e.target.value })}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Teléfono"
-                  value={gymForm.gym_phone}
-                  onChange={(e) => setGymForm({ ...gymForm, gym_phone: e.target.value })}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Dirección"
-                  value={gymForm.gym_address}
-                  onChange={(e) => setGymForm({ ...gymForm, gym_address: e.target.value })}
-                  multiline
-                  rows={2}
-                />
-              </Grid>
-
-              {/* Sección: Contacto Digital */}
-              <Grid item xs={12}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mt: 2 }}>
-                  ✉️ Contacto Digital
-                </Typography>
-                <Divider sx={{ mt: 1, mb: 2 }} />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Email (opcional)"
-                  type="email"
-                  value={gymForm.gym_email}
-                  onChange={(e) => setGymForm({ ...gymForm, gym_email: e.target.value })}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="URL del Logo (opcional)"
-                  value={gymForm.gym_logo_url}
-                  onChange={(e) => setGymForm({ ...gymForm, gym_logo_url: e.target.value })}
-                />
-              </Grid>
-
-              {/* Sección: Redes Sociales */}
-              <Grid item xs={12}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mt: 2 }}>
-                  🌐 Redes Sociales y Ubicación
-                </Typography>
-                <Divider sx={{ mt: 1, mb: 2 }} />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="URL de Facebook"
-                  value={gymForm.gym_facebook_url}
-                  onChange={(e) => setGymForm({ ...gymForm, gym_facebook_url: e.target.value })}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="URL de Google Maps"
-                  value={gymForm.gym_maps_url}
-                  onChange={(e) => setGymForm({ ...gymForm, gym_maps_url: e.target.value })}
-                />
-              </Grid>
-
-              {/* Sección: Horarios */}
-              <Grid item xs={12}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mt: 2 }}>
-                  🕐 Horarios de Operación
-                </Typography>
-                <Divider sx={{ mt: 1, mb: 2 }} />
-              </Grid>
-
-              {daysOfWeek.map(day => (
-                <Grid item xs={12} key={day.key}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography sx={{ minWidth: 100 }}>{day.label}</Typography>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={gymForm.gym_hours[day.key]?.enabled || false}
-                          onChange={(e) => handleHourChange(day.key, 'enabled', e.target.checked)}
-                        />
-                      }
-                      label="Abierto"
-                    />
-                    {gymForm.gym_hours[day.key]?.enabled && (
-                      <>
-                        <TextField
-                          type="time"
-                          label="Apertura"
-                          value={gymForm.gym_hours[day.key]?.open || '06:00'}
-                          onChange={(e) => handleHourChange(day.key, 'open', e.target.value)}
-                          InputLabelProps={{ shrink: true }}
-                          size="small"
-                        />
-                        <TextField
-                          type="time"
-                          label="Cierre"
-                          value={gymForm.gym_hours[day.key]?.close || '23:00'}
-                          onChange={(e) => handleHourChange(day.key, 'close', e.target.value)}
-                          InputLabelProps={{ shrink: true }}
-                          size="small"
-                        />
-                      </>
-                    )}
+          <Stack spacing={3}>
+            {/* Card: Información Básica */}
+            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Box sx={{
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.5rem',
+                    mr: 2
+                  }}>
+                    📋
                   </Box>
-                </Grid>
-              ))}
-
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
-                  <Button
-                    variant="contained"
-                    startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
-                    onClick={handleSaveGymSettings}
-                    disabled={saving}
-                  >
-                    {saving ? 'Guardando...' : 'Guardar Cambios'}
-                  </Button>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Información Básica
+                  </Typography>
                 </Box>
-              </Grid>
-            </Grid>
-          </Box>
+
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Nombre del Gimnasio"
+                      value={gymForm.gym_name}
+                      onChange={(e) => setGymForm({ ...gymForm, gym_name: e.target.value })}
+                      variant="outlined"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Teléfono"
+                      value={gymForm.gym_phone}
+                      onChange={(e) => setGymForm({ ...gymForm, gym_phone: e.target.value })}
+                      variant="outlined"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Email (opcional)"
+                      type="email"
+                      value={gymForm.gym_email}
+                      onChange={(e) => setGymForm({ ...gymForm, gym_email: e.target.value })}
+                      variant="outlined"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Dirección"
+                      value={gymForm.gym_address}
+                      onChange={(e) => setGymForm({ ...gymForm, gym_address: e.target.value })}
+                      multiline
+                      rows={3}
+                      variant="outlined"
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+
+            {/* Card: Contacto Digital */}
+            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Box sx={{
+                    bgcolor: 'info.main',
+                    color: 'white',
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.5rem',
+                    mr: 2
+                  }}>
+                    🎨
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Personalización
+                  </Typography>
+                </Box>
+
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="URL del Logo (opcional)"
+                      value={gymForm.gym_logo_url}
+                      onChange={(e) => setGymForm({ ...gymForm, gym_logo_url: e.target.value })}
+                      variant="outlined"
+                      placeholder="https://..."
+                      helperText="URL de la imagen del logo del gimnasio"
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+
+            {/* Card: Redes Sociales */}
+            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Box sx={{
+                    bgcolor: 'success.main',
+                    color: 'white',
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.5rem',
+                    mr: 2
+                  }}>
+                    🌐
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Redes Sociales y Ubicación
+                  </Typography>
+                </Box>
+
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="URL de Facebook"
+                      value={gymForm.gym_facebook_url}
+                      onChange={(e) => setGymForm({ ...gymForm, gym_facebook_url: e.target.value })}
+                      variant="outlined"
+                      placeholder="https://facebook.com/tu-gimnasio"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="URL de Google Maps"
+                      value={gymForm.gym_maps_url}
+                      onChange={(e) => setGymForm({ ...gymForm, gym_maps_url: e.target.value })}
+                      variant="outlined"
+                      placeholder="https://maps.app.goo.gl/..."
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+
+            {/* Card: Horarios de Operación */}
+            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Box sx={{
+                    bgcolor: 'warning.main',
+                    color: 'white',
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.5rem',
+                    mr: 2
+                  }}>
+                    🕐
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Horarios de Operación
+                  </Typography>
+                </Box>
+
+                <Grid container spacing={2}>
+                  {daysOfWeek.map(day => (
+                    <Grid item xs={12} sm={6} key={day.key}>
+                      <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                        <Stack spacing={1.5}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                              {day.label}
+                            </Typography>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={gymForm.gym_hours[day.key]?.enabled || false}
+                                  onChange={(e) => handleHourChange(day.key, 'enabled', e.target.checked)}
+                                  size="small"
+                                />
+                              }
+                              label={gymForm.gym_hours[day.key]?.enabled ? "Abierto" : "Cerrado"}
+                              labelPlacement="start"
+                              sx={{ m: 0 }}
+                            />
+                          </Box>
+
+                          {gymForm.gym_hours[day.key]?.enabled && (
+                            <Stack direction="row" spacing={1.5}>
+                              <TextField
+                                type="time"
+                                label="Apertura"
+                                value={gymForm.gym_hours[day.key]?.open || '06:00'}
+                                onChange={(e) => handleHourChange(day.key, 'open', e.target.value)}
+                                InputLabelProps={{ shrink: true }}
+                                size="small"
+                                fullWidth
+                              />
+                              <TextField
+                                type="time"
+                                label="Cierre"
+                                value={gymForm.gym_hours[day.key]?.close || '23:00'}
+                                onChange={(e) => handleHourChange(day.key, 'close', e.target.value)}
+                                InputLabelProps={{ shrink: true }}
+                                size="small"
+                                fullWidth
+                              />
+                            </Stack>
+                          )}
+                        </Stack>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </CardContent>
+            </Card>
+
+            {/* Botón de Guardar */}
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                onClick={handleSaveGymSettings}
+                disabled={saving}
+                sx={{ minWidth: 200 }}
+              >
+                {saving ? 'Guardando...' : 'Guardar Cambios'}
+              </Button>
+            </Box>
+          </Stack>
         </TabPanel>
 
         {/* TAB 2: Comisiones de Pago */}
