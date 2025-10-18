@@ -326,10 +326,10 @@ export default function InfoTabs() {
     }
   };
 
-  // 🤖 CÁLCULO AUTOMÁTICO DEL DÍA ACTUAL
+  // 🤖 CÁLCULO AUTOMÁTICO DEL DÍA ACTUAL Y HORARIOS DINÁMICOS
   // ✅ Solo se calcula del lado del cliente después de la hidratación
   const schedule = useMemo(() => {
-    // Si aún no está hidratado, retornar schedule sin marcar ningún día como "hoy"
+    // Si aún no está hidratado, retornar schedule vacío
     if (!hydrated) {
       return baseSchedule.map(item => ({
         ...item,
@@ -339,18 +339,48 @@ export default function InfoTabs() {
 
     const currentDayIndex = getCurrentDayIndex();
 
-    // 🐛 Debug info - Puedes quitar esto en producción
-    console.log('🗓️ Día actual detectado:', {
-      dayIndex: currentDayIndex,
-      dayName: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][currentDayIndex],
-      timestamp: new Date().toLocaleString('es-MX')
-    });
+    // Mapeo de nombres de días en inglés (de gym_hours) a español
+    const dayMapping: Record<string, { day: string; dayIndex: number }> = {
+      monday: { day: 'Lunes', dayIndex: 1 },
+      tuesday: { day: 'Martes', dayIndex: 2 },
+      wednesday: { day: 'Miércoles', dayIndex: 3 },
+      thursday: { day: 'Jueves', dayIndex: 4 },
+      friday: { day: 'Viernes', dayIndex: 5 },
+      saturday: { day: 'Sábado', dayIndex: 6 },
+      sunday: { day: 'Domingo', dayIndex: 0 }
+    };
 
+    // Generar horarios desde gym_settings
+    if (settings.gym_hours && typeof settings.gym_hours === 'object') {
+      const dynamicSchedule = Object.entries(settings.gym_hours)
+        .filter(([_, schedule]: [string, any]) => schedule.enabled) // Solo días habilitados
+        .map(([dayKey, schedule]: [string, any]) => {
+          const dayInfo = dayMapping[dayKey];
+          return {
+            day: dayInfo.day,
+            hours: `${schedule.open} - ${schedule.close}`,
+            dayIndex: dayInfo.dayIndex,
+            isToday: dayInfo.dayIndex === currentDayIndex
+          };
+        })
+        .sort((a, b) => a.dayIndex - b.dayIndex); // Ordenar por día de la semana
+
+      // 🐛 Debug info
+      console.log('🗓️ Horarios dinámicos generados:', {
+        currentDayIndex,
+        dayName: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][currentDayIndex],
+        schedule: dynamicSchedule
+      });
+
+      return dynamicSchedule;
+    }
+
+    // Fallback a horarios estáticos si no hay gym_hours
     return baseSchedule.map(item => ({
       ...item,
       isToday: item.dayIndex === currentDayIndex
     }));
-  }, [hydrated]); // Se recalcula cuando cambia el estado de hidratación
+  }, [hydrated, settings.gym_hours]); // Se recalcula cuando cambia el estado de hidratación o los horarios
 
   // Variantes de animación para el contenido de las pestañas
   const tabContentVariants = {
