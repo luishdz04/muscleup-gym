@@ -4,6 +4,7 @@ import Intro from '@/components/home/Intro';
 import Testimonials from '@/components/home/Testimonials';
 import Gallery from '@/components/home/Gallery';
 import InfoTabs from '@/components/home/InfoTabs';
+import Footer from '@/components/Footer';
 
 export default function HomePage() {
   return (
@@ -13,6 +14,7 @@ export default function HomePage() {
       <Testimonials />
       <Gallery />
       <InfoTabs />
+      <Footer />
     </div>
   );
 }

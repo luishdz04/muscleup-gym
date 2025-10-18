@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { FaCheck, FaStar, FaClock, FaBolt, FaCrown } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import Footer from '@/components/Footer';
 
 interface Plan {
   id: number;
@@ -320,6 +321,7 @@ export default function PlanesPage() {
           Los precios están expresados en pesos mexicanos (MXN) y pueden estar sujetos a cambios.
         </p>
       </motion.div>
+      <Footer />
     </div>
   );
 }

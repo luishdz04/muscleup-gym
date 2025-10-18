@@ -17,6 +17,7 @@ import {
 } from 'react-icons/fa';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import Footer from '@/components/Footer';
 
 interface Valor {
   nombre: string;
@@ -465,6 +466,7 @@ export default function SobreNosotrosPage() {
           </motion.div>
         </div>
       </motion.section>
+      <Footer />
     </div>
   );
 }

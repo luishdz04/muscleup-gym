@@ -1,6 +1,7 @@
 'use client';
 import { motion, useAnimationControls } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import Footer from '@/components/Footer';
 
 export default function SuplementosPage() {
   const [logos, setLogos] = useState([]);
@@ -654,5 +655,6 @@ Saludos.`);
         ))}
       </div>
     </motion.section>
+    <Footer />
   );
 }

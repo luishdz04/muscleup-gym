@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import { useGymSettings } from '@/hooks/useGymSettings';
+import Footer from '@/components/Footer';
 
 export default function AvisoPrivacidad() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -633,6 +634,7 @@ export default function AvisoPrivacidad() {
           </motion.div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }

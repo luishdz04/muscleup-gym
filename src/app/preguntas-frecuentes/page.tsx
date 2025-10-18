@@ -18,6 +18,7 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import { useGymSettings } from '@/hooks/useGymSettings';
+import Footer from '@/components/Footer';
 
 interface FAQItem {
   question: string;
@@ -563,6 +564,7 @@ export default function PreguntasFrecuentes() {
       >
         <ChevronUpIcon className="w-6 h-6" />
       </motion.button>
+      <Footer />
     </div>
   );
 }
