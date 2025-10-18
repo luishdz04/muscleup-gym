@@ -4,10 +4,11 @@
 -- 1. Habilitar RLS en la tabla
 ALTER TABLE public.gym_settings ENABLE ROW LEVEL SECURITY;
 
--- 2. Política para LECTURA PÚBLICA (cualquiera puede leer)
+-- 2. Política para LECTURA PÚBLICA (cualquiera puede leer, incluso anónimos)
 CREATE POLICY "Permitir lectura pública de gym_settings"
 ON public.gym_settings
 FOR SELECT
+TO public  -- Permite acceso anónimo (sin autenticación)
 USING (true);
 
 -- 3. Política para ACTUALIZACIÓN (solo admins y empleados autenticados)
