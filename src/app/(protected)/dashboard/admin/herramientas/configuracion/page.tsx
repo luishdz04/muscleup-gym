@@ -32,12 +32,15 @@ import {
   Chip
 } from '@mui/material';
 import { toast } from 'react-hot-toast';
+import { invalidateHolidaysCache } from '@/utils/holidays';
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PaymentIcon from '@mui/icons-material/Payment';
+import EventIcon from '@mui/icons-material/Event';
+import Divider from '@mui/material/Divider';
 
 interface TabPanelProps {
   children?: React.Node;
@@ -81,6 +84,15 @@ interface PaymentCommission {
   is_active: boolean;
 }
 
+interface Holiday {
+  id: string;
+  date: string;
+  name: string;
+  type: 'official' | 'traditional' | 'special';
+  emoji: string;
+  is_active: boolean;
+}
+
 export default function ConfiguracionGeneralPage() {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -111,6 +123,18 @@ export default function ConfiguracionGeneralPage() {
     is_active: true
   });
 
+  // Estados para Holidays
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [holidayDialog, setHolidayDialog] = useState(false);
+  const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
+  const [holidayForm, setHolidayForm] = useState({
+    date: '',
+    name: '',
+    type: 'official' as 'official' | 'traditional' | 'special',
+    emoji: '🎉',
+    is_active: true
+  });
+
   const daysOfWeek = [
     { key: 'monday', label: 'Lunes' },
     { key: 'tuesday', label: 'Martes' },
@@ -124,6 +148,7 @@ export default function ConfiguracionGeneralPage() {
   useEffect(() => {
     loadGymSettings();
     loadCommissions();
+    loadHolidays();
   }, []);
 
   const loadGymSettings = async () => {
@@ -160,6 +185,18 @@ export default function ConfiguracionGeneralPage() {
       }
     } catch (error) {
       console.error('Error loading commissions:', error);
+    }
+  };
+
+  const loadHolidays = async () => {
+    try {
+      const res = await fetch('/api/holidays');
+      if (res.ok) {
+        const data = await res.json();
+        setHolidays(data);
+      }
+    } catch (error) {
+      console.error('Error loading holidays:', error);
     }
   };
 
@@ -263,6 +300,86 @@ export default function ConfiguracionGeneralPage() {
     });
   };
 
+  // Funciones para Holidays
+  const handleSaveHoliday = async () => {
+    try {
+      const url = editingHoliday
+        ? `/api/holidays/${editingHoliday.id}`
+        : '/api/holidays';
+
+      const method = editingHoliday ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(holidayForm)
+      });
+
+      if (res.ok) {
+        toast.success(
+          editingHoliday
+            ? 'Día festivo actualizado exitosamente'
+            : 'Día festivo creado exitosamente'
+        );
+        invalidateHolidaysCache(); // Invalidar caché para que se recargue en otras páginas
+        loadHolidays();
+        setHolidayDialog(false);
+        resetHolidayForm();
+      } else {
+        toast.error('Error al guardar día festivo');
+      }
+    } catch (error) {
+      console.error('Error saving holiday:', error);
+      toast.error('Error al guardar día festivo');
+    }
+  };
+
+  const handleDeleteHoliday = async (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar este día festivo?')) return;
+
+    try {
+      const res = await fetch(`/api/holidays/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        toast.success('Día festivo eliminado exitosamente');
+        invalidateHolidaysCache(); // Invalidar caché para que se recargue en otras páginas
+        loadHolidays();
+      } else {
+        toast.error('Error al eliminar día festivo');
+      }
+    } catch (error) {
+      console.error('Error deleting holiday:', error);
+      toast.error('Error al eliminar día festivo');
+    }
+  };
+
+  const openHolidayDialog = (holiday?: Holiday) => {
+    if (holiday) {
+      setEditingHoliday(holiday);
+      setHolidayForm({
+        date: holiday.date,
+        name: holiday.name,
+        type: holiday.type,
+        emoji: holiday.emoji,
+        is_active: holiday.is_active
+      });
+    }
+    setHolidayDialog(true);
+  };
+
+  const resetHolidayForm = () => {
+    setEditingHoliday(null);
+    setHolidayForm({
+      date: '',
+      name: '',
+      type: 'official',
+      emoji: '🎉',
+      is_active: true
+    });
+  };
+
   const handleHourChange = (day: string, field: 'open' | 'close' | 'enabled', value: string | boolean) => {
     setGymForm(prev => ({
       ...prev,
@@ -299,16 +416,19 @@ export default function ConfiguracionGeneralPage() {
         >
           <Tab icon={<SettingsIcon />} label="Datos del Gimnasio" />
           <Tab icon={<PaymentIcon />} label="Comisiones de Pago" />
+          <Tab icon={<EventIcon />} label="Días Festivos" />
         </Tabs>
 
         {/* TAB 1: Datos del Gimnasio */}
         <TabPanel value={tabValue} index={0}>
           <Box component="form" noValidate>
             <Grid container spacing={3}>
+              {/* Sección: Información Básica */}
               <Grid item xs={12}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Información Básica
+                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                  📋 Información Básica
                 </Typography>
+                <Divider sx={{ mt: 1, mb: 2 }} />
               </Grid>
 
               <Grid item xs={12} md={6}>
@@ -340,6 +460,14 @@ export default function ConfiguracionGeneralPage() {
                 />
               </Grid>
 
+              {/* Sección: Contacto Digital */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mt: 2 }}>
+                  ✉️ Contacto Digital
+                </Typography>
+                <Divider sx={{ mt: 1, mb: 2 }} />
+              </Grid>
+
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
@@ -357,6 +485,14 @@ export default function ConfiguracionGeneralPage() {
                   value={gymForm.gym_logo_url}
                   onChange={(e) => setGymForm({ ...gymForm, gym_logo_url: e.target.value })}
                 />
+              </Grid>
+
+              {/* Sección: Redes Sociales */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mt: 2 }}>
+                  🌐 Redes Sociales y Ubicación
+                </Typography>
+                <Divider sx={{ mt: 1, mb: 2 }} />
               </Grid>
 
               <Grid item xs={12} md={6}>
@@ -377,10 +513,12 @@ export default function ConfiguracionGeneralPage() {
                 />
               </Grid>
 
+              {/* Sección: Horarios */}
               <Grid item xs={12}>
-                <Typography variant="h6" sx={{ mb: 2, mt: 2 }}>
-                  Horarios de Operación
+                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mt: 2 }}>
+                  🕐 Horarios de Operación
                 </Typography>
+                <Divider sx={{ mt: 1, mb: 2 }} />
               </Grid>
 
               {daysOfWeek.map(day => (
@@ -516,6 +654,93 @@ export default function ConfiguracionGeneralPage() {
             </Table>
           </TableContainer>
         </TabPanel>
+
+        {/* TAB 3: Días Festivos */}
+        <TabPanel value={tabValue} index={2}>
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              Gestión de Días Festivos
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => openHolidayDialog()}
+            >
+              Nuevo Día Festivo
+            </Button>
+          </Box>
+
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Fecha</TableCell>
+                  <TableCell>Nombre</TableCell>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>Emoji</TableCell>
+                  <TableCell>Estado</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {holidays.map((holiday) => (
+                  <TableRow key={holiday.id}>
+                    <TableCell>{new Date(holiday.date).toLocaleDateString('es-MX')}</TableCell>
+                    <TableCell>{holiday.name}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={
+                          holiday.type === 'official' ? 'Oficial' :
+                          holiday.type === 'traditional' ? 'Tradicional' :
+                          'Especial'
+                        }
+                        color={
+                          holiday.type === 'official' ? 'error' :
+                          holiday.type === 'traditional' ? 'warning' :
+                          'info'
+                        }
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: '1.5rem' }}>{holiday.emoji}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={holiday.is_active ? 'Activo' : 'Inactivo'}
+                        color={holiday.is_active ? 'success' : 'default'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => openHolidayDialog(holiday)}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteHoliday(holiday.id)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {holidays.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      <Typography color="text.secondary" sx={{ py: 3 }}>
+                        No hay días festivos configurados
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
       </Paper>
 
       {/* Dialog para Comisiones */}
@@ -595,6 +820,88 @@ export default function ConfiguracionGeneralPage() {
             disabled={!commissionForm.payment_method}
           >
             {editingCommission ? 'Actualizar' : 'Crear'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog para Días Festivos */}
+      <Dialog
+        open={holidayDialog}
+        onClose={() => {
+          setHolidayDialog(false);
+          resetHolidayForm();
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingHoliday ? 'Editar Día Festivo' : 'Nuevo Día Festivo'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Fecha"
+              type="date"
+              value={holidayForm.date}
+              onChange={(e) => setHolidayForm({ ...holidayForm, date: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              fullWidth
+              label="Nombre del Día Festivo"
+              value={holidayForm.name}
+              onChange={(e) => setHolidayForm({ ...holidayForm, name: e.target.value })}
+              placeholder="ej: Año Nuevo, Navidad, etc."
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Tipo</InputLabel>
+              <Select
+                value={holidayForm.type}
+                label="Tipo"
+                onChange={(e) => setHolidayForm({ ...holidayForm, type: e.target.value as 'official' | 'traditional' | 'special' })}
+              >
+                <MenuItem value="official">Oficial (🔴 Rojo)</MenuItem>
+                <MenuItem value="traditional">Tradicional (🟠 Naranja)</MenuItem>
+                <MenuItem value="special">Especial (🔵 Azul)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Emoji"
+              value={holidayForm.emoji}
+              onChange={(e) => setHolidayForm({ ...holidayForm, emoji: e.target.value })}
+              placeholder="ej: 🎉, 🎄, 🇲🇽"
+              inputProps={{ maxLength: 10 }}
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={holidayForm.is_active}
+                  onChange={(e) => setHolidayForm({ ...holidayForm, is_active: e.target.checked })}
+                />
+              }
+              label="Activo"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setHolidayDialog(false);
+            resetHolidayForm();
+          }}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveHoliday}
+            disabled={!holidayForm.date || !holidayForm.name}
+          >
+            {editingHoliday ? 'Actualizar' : 'Crear'}
           </Button>
         </DialogActions>
       </Dialog>

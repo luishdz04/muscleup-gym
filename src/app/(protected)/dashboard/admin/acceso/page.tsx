@@ -86,7 +86,7 @@ import {
   getEndOfMonth,
   daysBetween
 } from '@/utils/dateUtils';
-import { getHoliday, getHolidayColor } from '@/utils/holidays';
+import { getAllHolidays, getHolidaySync, getHolidayColor, Holiday } from '@/utils/holidays';
 
 interface AccessLog {
   id: string;
@@ -174,6 +174,7 @@ export default function HistorialAsistenciasPage() {
 
   // Estados
   const [logs, setLogs] = useState<AccessLog[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [stats, setStats] = useState<Stats>({
     total: 0,
     successful: 0,
@@ -264,6 +265,15 @@ export default function HistorialAsistenciasPage() {
       setLoading(false);
     }
   }, [userTypeFilter, page, rowsPerPage, timeRange, startDate, endDate, successFilter, toast]);
+
+  // Precargar holidays al montar
+  useEffect(() => {
+    const loadHolidays = async () => {
+      const data = await getAllHolidays();
+      setHolidays(data);
+    };
+    loadHolidays();
+  }, []);
 
   // Cargar datos al montar y cuando cambian los filtros
   useEffect(() => {
@@ -662,7 +672,7 @@ export default function HistorialAsistenciasPage() {
                 return {
                   date: dateStr,
                   label: date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City' }),
-                  holiday: getHoliday(dateStr)
+                  holiday: getHolidaySync(dateStr, holidays)
                 };
               });
 
