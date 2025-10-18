@@ -1,8 +1,8 @@
 'use client';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { 
-  ShieldCheckIcon, 
+import {
+  ShieldCheckIcon,
   ArrowLeftIcon,
   DocumentTextIcon,
   UserIcon,
@@ -15,9 +15,13 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useGymSettings } from '@/hooks/useGymSettings';
 
 export default function AvisoPrivacidad() {
   const sectionRef = useRef<HTMLDivElement>(null);
+
+  // Obtener configuración del gimnasio
+  const { settings } = useGymSettings();
   const isInView = useInView(sectionRef, { once: true, margin: "-10%" });
 
   return (
@@ -154,16 +158,15 @@ export default function AvisoPrivacidad() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <p className="text-white/90 leading-relaxed">
-                      <strong className="text-brand">Razón Social:</strong> Muscle Up GYM<br />
-                      <strong>Domicilio:</strong> Francisco I. Madero 708, Colonia Lindavista, 
-                      San Buenaventura, Coahuila, México, C.P. 25508<br />
+                      <strong className="text-brand">Razón Social:</strong> {settings.gym_name}<br />
+                      <strong>Domicilio:</strong> {settings.gym_address}<br />
                       <strong>Responsable:</strong> Administración
                     </p>
                   </div>
                   <div>
                     <p className="text-white/90 leading-relaxed">
-                      <strong>Teléfono:</strong> 866 112 7905<br />
-                      <strong>Email:</strong> administracion@muscleupgym.com.mx<br />
+                      <strong>Teléfono:</strong> {settings.gym_phone}<br />
+                      <strong>Email:</strong> {settings.gym_email || 'administracion@muscleupgym.com.mx'}<br />
                       <strong>Sitio web:</strong> www.muscleupgym.com.mx<br />
                       <strong>Horarios de atención:</strong><br />
                       Lunes a Viernes: 6:00 - 22:00 hrs<br />
@@ -463,8 +466,8 @@ export default function AvisoPrivacidad() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <p className="text-white/90">
-                      <strong>Email:</strong> administracion@muscleupgym.com.mx<br />
-                      <strong>Teléfono:</strong> 866 112 7905<br />
+                      <strong>Email:</strong> {settings.gym_email || 'administracion@muscleupgym.com.mx'}<br />
+                      <strong>Teléfono:</strong> {settings.gym_phone}<br />
                       <strong>Horario de atención:</strong><br />
                       Lunes a Viernes: 6:00 - 22:00 hrs<br />
                       Sábados: 9:00 - 17:00 hrs
@@ -472,8 +475,7 @@ export default function AvisoPrivacidad() {
                   </div>
                   <div>
                     <p className="text-white/90">
-                      <strong>Dirección:</strong> Francisco I. Madero 708, Colonia Lindavista,<br />
-                      San Buenaventura, Coahuila, México, C.P. 25508<br />
+                      <strong>Dirección:</strong> {settings.gym_address}<br />
                       <strong>Responsable:</strong> Administración
                     </p>
                   </div>

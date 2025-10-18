@@ -2,11 +2,11 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { 
-  Box, 
-  Typography, 
-  CircularProgress, 
-  Alert, 
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  Alert,
   Button,
   Paper,
   Container,
@@ -19,6 +19,7 @@ import {
   PictureAsPdf as PdfIcon,
   Home as HomeIcon
 } from '@mui/icons-material';
+import { useGymSettings } from '@/hooks/useGymSettings';
 
 // Tokens de diseño
 const darkProTokens = {
@@ -436,12 +437,12 @@ function BienvenidoContent() {
             </Button>
           </Box>
           
-          <Typography variant="caption" sx={{ 
+          <Typography variant="caption" sx={{
             color: darkProTokens.textDisabled,
             mt: 4,
             display: 'block'
           }}>
-            ¿Necesitas ayuda? Contáctanos al 866-112-7905 o administracion@muscleupgym.fitness
+            ¿Necesitas ayuda? Contáctanos al {settings.gym_phone} o {settings.gym_email || 'administracion@muscleupgym.fitness'}
           </Typography>
         </Paper>
       </Container>
@@ -450,6 +451,8 @@ function BienvenidoContent() {
 }
 
 export default function BienvenidoPage() {
+  const { settings } = useGymSettings();
+
   return (
     <Suspense fallback={
       <Box sx={{ 

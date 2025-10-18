@@ -1,7 +1,7 @@
 'use client';
 import { motion, useInView } from 'framer-motion';
 import { useRef, useState } from 'react';
-import { 
+import {
   ChevronDownIcon,
   ChevronUpIcon,
   ArrowLeftIcon,
@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useGymSettings } from '@/hooks/useGymSettings';
 
 interface FAQItem {
   question: string;
@@ -37,20 +38,24 @@ export default function PreguntasFrecuentes() {
   const isHeaderInView = useInView(headerRef, { once: true });
   const isSectionInView = useInView(sectionRef, { once: true, margin: "-10%" });
 
+  // Obtener configuración del gimnasio
+  const { settings, getPhoneLink, getAddressParts } = useGymSettings();
+  const addressParts = getAddressParts();
+
   const toggleItem = (itemId: string) => {
-    setOpenItems(prev => 
-      prev.includes(itemId) 
+    setOpenItems(prev =>
+      prev.includes(itemId)
         ? prev.filter(id => id !== itemId)
         : [...prev, itemId]
     );
   };
 
   const handleMapsClick = () => {
-    window.open('https://maps.app.goo.gl/preWqm3w7S2JZLg17', '_blank', 'noopener,noreferrer');
+    window.open(settings.gym_maps_url, '_blank', 'noopener,noreferrer');
   };
 
   const handleFacebookClick = () => {
-    window.open('https://www.facebook.com/Lindavistagym', '_blank', 'noopener,noreferrer');
+    window.open(settings.gym_facebook_url, '_blank', 'noopener,noreferrer');
   };
 
   const faqSections: FAQSection[] = [
@@ -264,10 +269,12 @@ export default function PreguntasFrecuentes() {
                   <div>
                     <div className="font-semibold text-brand mb-2 text-lg">📍 Nuestra Dirección:</div>
                     <div className="text-white/90 leading-relaxed">
-                      Francisco I. Madero 708,<br />
-                      Colonia Lindavista,<br />
-                      San Buenaventura, Coahuila,<br />
-                      México
+                      {addressParts.parts.map((part, index) => (
+                        <span key={index}>
+                          {part}
+                          {index < addressParts.parts.length - 1 && <br />}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -308,15 +315,15 @@ export default function PreguntasFrecuentes() {
                   Visitar Facebook
                 </motion.button>
                 <motion.a
-                  href="tel:8661127905"
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-xl 
+                  href={getPhoneLink()}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-xl
                            font-bold transition-all duration-300 flex items-center justify-center gap-3
                            shadow-lg hover:shadow-xl hover:scale-105"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <PhoneIcon className="w-5 h-5" />
-                  Llamar: 866 112 7905
+                  Llamar: {settings.gym_phone}
                 </motion.a>
               </div>
             </div>
@@ -531,13 +538,13 @@ export default function PreguntasFrecuentes() {
             </Link>
 
             <a
-              href="tel:8661127905"
-              className="inline-flex items-center gap-2 bg-white/10 text-white px-8 py-4 
+              href={getPhoneLink()}
+              className="inline-flex items-center gap-2 bg-white/10 text-white px-8 py-4
                        rounded-xl font-bold hover:bg-white/20 transition-all duration-300
                        border border-white/20 hover:border-white/40 shadow-lg hover:shadow-xl hover:scale-105"
             >
               <PhoneIcon className="w-5 h-5" />
-              <span>Llamar: 866 112 7905</span>
+              <span>Llamar: {settings.gym_phone}</span>
             </a>
           </motion.div>
         </div>

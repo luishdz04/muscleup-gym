@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 // ✅ IMPORTACIONES OBLIGATORIAS DE DATEUTILS
 import { getCurrentTimestamp, formatTimestampForDisplay } from '@/utils/dateUtils';
+import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 
 // ✅ FUNCIÓN HELPER PARA DETECTAR Y SANITIZAR URLs
 const isBlobUrl = (url: string): boolean => {
@@ -156,7 +157,10 @@ const processAndUploadFile = async (
 
 export async function POST(req: NextRequest) {
   console.log("🚀 API de registro v6.0 ENTERPRISE (dateUtils + auditoría) iniciada - 2025-09-23 by @luishdz044");
-  
+
+  // Obtener configuración del gimnasio
+  const gymSettings = await getGymSettings();
+
   try {
     // Obtener los datos del cuerpo de la solicitud
     const data = await req.json();
@@ -273,9 +277,9 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Muscle Up Gym <administracion@muscleupgym.fitness>',
+          from: `${gymSettings.gym_name} <${getGymEmail(gymSettings)}>`,
           to: [data.personalInfo.email],
-          subject: '¡Confirma tu cuenta en Muscle Up Gym! 💪',
+          subject: `¡Confirma tu cuenta en ${gymSettings.gym_name}! 💪`,
           html: `
             <!DOCTYPE html>
             <html lang="es">
@@ -334,16 +338,16 @@ export async function POST(req: NextRequest) {
                                     </table>
                                     
                                     <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos:</p>
-                                    <p>📞 Tel: 866-112-7905<br>
-                                       📧 Email: administracion@muscleupgym.fitness</p>
-                                    
-                                    <p style="margin-top: 25px;">Saludos,<br>El equipo de Muscle Up Gym</p>
+                                    <p>📞 Tel: ${gymSettings.gym_phone}<br>
+                                       📧 Email: ${getGymEmail(gymSettings)}</p>
+
+                                    <p style="margin-top: 25px;">Saludos,<br>El equipo de ${gymSettings.gym_name}</p>
                                 </td>
                             </tr>
             
                             <tr>
                                 <td align="center" style="padding: 20px 30px; margin-top: 30px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #777777;">
-                                    <p style="margin: 0;">© 2025 Muscle Up Gym | Tel: 866-112-7905 | administracion@muscleupgym.com.mx</p>
+                                    <p style="margin: 0;">© 2025 ${gymSettings.gym_name} | Tel: ${gymSettings.gym_phone} | ${getGymEmail(gymSettings)}</p>
                                     <p style="margin: 10px 0 0 0;">"Tu salud y bienestar son nuestra misión"</p>
                                 </td>
                             </tr>

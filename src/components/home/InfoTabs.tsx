@@ -13,6 +13,7 @@ import {
   GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 import { useHydrated } from '@/hooks/useHydrated';
+import { useGymSettings } from '@/hooks/useGymSettings';
 
 // ==========================================
 // 📝 CONFIGURACIÓN - EDITA AQUÍ TUS DATOS
@@ -71,9 +72,8 @@ const trainers = [
   // 🔄 AGREGA MÁS ENTRENADORES AQUÍ siguiendo el mismo formato
 ];
 
-// 📍 INFORMACIÓN DE UBICACIÓN - Edita aquí
-const locationInfo = {
-  address: 'Francisco I. Madero 708, Colonia Lindavista, San Buenaventura, Coahuila',
+// 📍 INFORMACIÓN DE UBICACIÓN - Ahora se obtiene de la configuración del gimnasio
+const staticLocationInfo = {
   mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3553.017366937368!2d-101.56074932591812!3d27.061199753696098!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x868bc7097088ba89%3A0xb8df300649d83db7!2sMUSCLE%20UP%20GYM!5e0!3m2!1ses!2smx!4v1748582869049!5m2!1ses!2smx',
   landmarks: [
     'Entre 2-3 minutos de la plaza principal',
@@ -82,13 +82,11 @@ const locationInfo = {
   ]
 };
 
-// 📞 INFORMACIÓN DE CONTACTO - Edita aquí
-const contactInfo = {
-  phone: '8661127905',
+// 📞 INFORMACIÓN DE CONTACTO - Se obtiene de la configuración del gimnasio
+const staticContactInfo = {
   email: 'administracion@muscleupgym.com.mx',
   schedule: 'Lunes a Viernes 8:00 – 20:00',
   socialMedia: {
-    facebook: 'https://facebook.com/tu-pagina', // 🔗 Cambia por tu URL de Facebook
     instagram: 'https://instagram.com/tu-pagina', // 🔗 Agrega tu Instagram si quieres
   }
 };
@@ -309,6 +307,24 @@ export default function InfoTabs() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-10%" });
   const hydrated = useHydrated();
+
+  // Obtener configuración del gimnasio
+  const { settings, getPhoneLink } = useGymSettings();
+
+  // Combinar configuración del gimnasio con datos estáticos
+  const locationInfo = {
+    address: settings.gym_address,
+    ...staticLocationInfo
+  };
+
+  const contactInfo = {
+    phone: settings.gym_phone.replace(/\s/g, ''),
+    ...staticContactInfo,
+    socialMedia: {
+      facebook: settings.gym_facebook_url,
+      ...staticContactInfo.socialMedia
+    }
+  };
 
   // 🤖 CÁLCULO AUTOMÁTICO DEL DÍA ACTUAL
   // ✅ Solo se calcula del lado del cliente después de la hidratación

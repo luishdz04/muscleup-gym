@@ -1,24 +1,29 @@
 'use client';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { 
+import {
   MapPinIcon,
   ShieldCheckIcon,
   QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
+import { useGymSettings } from '@/hooks/useGymSettings';
 
 export default function Footer() {
   const footerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(footerRef, { once: true, margin: "-20%" });
 
+  // Obtener configuración del gimnasio
+  const { settings, getPhoneLink, getAddressParts } = useGymSettings();
+  const addressParts = getAddressParts();
+
   // Handler para abrir Facebook
   const handleFacebookClick = () => {
-    window.open('https://www.facebook.com/Lindavistagym', '_blank', 'noopener,noreferrer');
+    window.open(settings.gym_facebook_url, '_blank', 'noopener,noreferrer');
   };
 
   // Handler para abrir Maps
   const handleMapsClick = () => {
-    window.open('https://maps.app.goo.gl/preWqm3w7S2JZLg17', '_blank', 'noopener,noreferrer');
+    window.open(settings.gym_maps_url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -75,7 +80,7 @@ export default function Footer() {
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
-                Muscle Up GYM
+                {settings.gym_name}
               </motion.h3>
               
               {/* Lema */}
@@ -137,16 +142,18 @@ export default function Footer() {
               >
                 <MapPinIcon className="w-6 h-6 text-brand flex-shrink-0 mt-1 group-hover:scale-110 transition-transform" />
                 <div className="text-left">
-                  <motion.p 
+                  <motion.p
                     className="text-white/90 text-base sm:text-lg leading-relaxed group-hover:text-white transition-colors"
                     initial={{ opacity: 0, x: -10 }}
                     animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
                     transition={{ delay: 0.5 }}
                   >
-                    Francisco I. Madero 708,<br />
-                    Colonia Lindavista,<br />
-                    San Buenaventura, Coahuila,<br />
-                    México
+                    {addressParts.parts.map((part, index) => (
+                      <span key={index}>
+                        {part}
+                        {index < addressParts.parts.length - 1 && <br />}
+                      </span>
+                    ))}
                   </motion.p>
                   <motion.p 
                     className="text-brand/80 text-sm mt-2 group-hover:text-brand transition-colors"
@@ -208,15 +215,15 @@ export default function Footer() {
                   transition={{ delay: 0.7 }}
                 >
                   <motion.a
-                    href="tel:8661127905"
-                    className="inline-flex items-center gap-2 text-white/80 hover:text-brand 
+                    href={getPhoneLink()}
+                    className="inline-flex items-center gap-2 text-white/80 hover:text-brand
                              transition-all duration-300 group"
                     whileHover={{ x: 5 }}
                   >
                     <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    <span className="text-base">866 112 7905</span>
+                    <span className="text-base">{settings.gym_phone}</span>
                   </motion.a>
                 </motion.div>
 
@@ -263,7 +270,7 @@ export default function Footer() {
             transition={{ duration: 0.6, delay: 1 }}
           >
             <p className="text-white/60 text-sm sm:text-base">
-              &copy; 2025 Muscle Up Gym. Todos los derechos reservados.
+              &copy; 2025 {settings.gym_name}. Todos los derechos reservados.
             </p>
           </motion.div>
         </motion.div>

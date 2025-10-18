@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import nodemailer from 'nodemailer';
+import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 
 export async function POST(req: NextRequest) {
   try {
     console.log("API send-welcome-email iniciada");
+
+    // Obtener configuración del gimnasio
+    const gymSettings = await getGymSettings();
+
     const body = await req.json();
     const userId = body.userId;
     
@@ -78,7 +83,7 @@ export async function POST(req: NextRequest) {
           // Convertir el Blob a Buffer para adjuntarlo
           const arrayBuffer = await pdfData.arrayBuffer();
           pdfAttachment = {
-            filename: `Contrato_Muscle_Up_Gym_${user.firstName}_${user.lastName}.pdf`,
+            filename: `Contrato_${gymSettings.gym_name.replace(/\s+/g, '_')}_${user.firstName}_${user.lastName}.pdf`,
             content: Buffer.from(arrayBuffer),
             contentType: 'application/pdf'
           };
@@ -103,6 +108,31 @@ export async function POST(req: NextRequest) {
     // Nombre completo para la personalización
     const fullName = `${user.firstName} ${user.lastName}`;
     console.log(`Enviando correo a ${user.email} para ${fullName}...`);
+
+    // Formatear horarios del gimnasio
+    const formatHours = () => {
+      if (!gymSettings.gym_hours || typeof gymSettings.gym_hours !== 'object') {
+        return '<li>Lunes a Viernes: 6:00 AM a 10:00 PM</li><li>Sábados: 9:00 AM a 5:00 PM</li>';
+      }
+
+      const hours = gymSettings.gym_hours as Record<string, { open?: string; close?: string; enabled?: boolean }>;
+      const dayNames: Record<string, string> = {
+        monday: 'Lunes',
+        tuesday: 'Martes',
+        wednesday: 'Miércoles',
+        thursday: 'Jueves',
+        friday: 'Viernes',
+        saturday: 'Sábado',
+        sunday: 'Domingo'
+      };
+
+      return Object.entries(hours)
+        .filter(([_, schedule]) => schedule.enabled)
+        .map(([day, schedule]) =>
+          `<li>${dayNames[day]}: ${schedule.open || '06:00'} - ${schedule.close || '23:00'}</li>`
+        )
+        .join('');
+    };
     
     // Preparamos el contenido del correo con o sin enlace al PDF
     let pdfContent = '';
@@ -119,19 +149,19 @@ export async function POST(req: NextRequest) {
     
     // Contenido del correo
     const mailOptions = {
-      from: `"Muscle Up Gym" <${emailUser}>`,
+      from: `"${gymSettings.gym_name}" <${emailUser}>`,
       to: user.email,
-      subject: "¡Bienvenido a Muscle Up Gym!",
+      subject: `¡Bienvenido a ${gymSettings.gym_name}!`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
           <div style="text-align: center; margin-bottom: 20px;">
-            <img src="https://muscleupgym.com.mx/wp-content/uploads/2024/02/logo-word-bueno.png" alt="Muscle Up Gym Logo" style="max-width: 200px;">
+            <img src="${gymSettings.gym_logo_url || 'https://muscleupgym.com.mx/wp-content/uploads/2024/02/logo-word-bueno.png'}" alt="${gymSettings.gym_name} Logo" style="max-width: 200px;">
           </div>
-          
+
           <h2 style="color: #000; text-align: center;">¡Hola ${fullName}!</h2>
-          
+
           <p style="color: #666; line-height: 1.6;">
-            ¡Bienvenido a Muscle Up Gym! Estamos emocionados de tenerte como parte de nuestra comunidad fitness.
+            ¡Bienvenido a ${gymSettings.gym_name}! Estamos emocionados de tenerte como parte de nuestra comunidad fitness.
           </p>
           
           ${pdfContent}
@@ -139,8 +169,7 @@ export async function POST(req: NextRequest) {
           <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
             <h3 style="color: #000; margin-top: 0;">Horario de atención:</h3>
             <ul style="color: #666; padding-left: 20px;">
-              <li>Lunes a Viernes: 6:00 AM a 10:00 PM</li>
-              <li>Sábados: 9:00 AM a 5:00 PM</li>
+              ${formatHours()}
             </ul>
           </div>
           
@@ -149,8 +178,8 @@ export async function POST(req: NextRequest) {
           </p>
           
           <ul style="color: #666; padding-left: 20px;">
-            <li>Teléfono: 866-112-7905</li>
-            <li>Email: administracion@muscleupgym.fitness</li>
+            <li>Teléfono: ${gymSettings.gym_phone}</li>
+            <li>Email: ${getGymEmail(gymSettings)}</li>
           </ul>
           
           <p style="color: #666; line-height: 1.6; text-align: center; margin-top: 30px; font-style: italic;">
@@ -159,7 +188,7 @@ export async function POST(req: NextRequest) {
           
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
             <p style="color: #999; font-size: 12px;">
-              © ${new Date().getFullYear()} Muscle Up Gym. Todos los derechos reservados.
+              © ${new Date().getFullYear()} ${gymSettings.gym_name}. Todos los derechos reservados.
             </p>
           </div>
         </div>

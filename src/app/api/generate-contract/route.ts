@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import jsPDF from 'jspdf';
 import { deleteAllUserPdfs } from '@/utils/deleteUsersPdfs';
+import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -65,15 +66,18 @@ export async function POST(req: NextRequest) {
   try {
     console.log("🚀 API generate-contract ENTERPRISE COMPLETE iniciada");
     const body = await req.json();
-    
+
+    // Obtener configuración del gimnasio
+    const gymSettings = await getGymSettings();
+
     const isRegeneration = body.isRegeneration || false;
     const userId = body.userId;
-    
+
     // 🔧 VALIDACIÓN DE ENTRADA
     if (!userId) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "ID de usuario requerido" 
+      return NextResponse.json({
+        success: false,
+        message: "ID de usuario requerido"
       }, { status: 400 });
     }
     
@@ -174,12 +178,12 @@ export async function POST(req: NextRequest) {
         doc.setFontSize(10);
         doc.setTextColor(...COLORS.WHITE);
         doc.setFont('helvetica', 'bold');
-        doc.text('MUSCLE UP GYM', LAYOUT.PAGE_WIDTH / 2, LAYOUT.FOOTER_Y + 6, {align: 'center'});
-        
+        doc.text(gymSettings.gym_name.toUpperCase(), LAYOUT.PAGE_WIDTH / 2, LAYOUT.FOOTER_Y + 6, {align: 'center'});
+
         doc.setFontSize(8);
         doc.setTextColor(...COLORS.LIGHT_GRAY);
         doc.setFont('helvetica', 'normal');
-        doc.text('Email: administracion@muscleupgym.fitness | Tel: 866-112-7905', LAYOUT.PAGE_WIDTH / 2, LAYOUT.FOOTER_Y + 11, {align: 'center'});
+        doc.text(`Email: ${getGymEmail(gymSettings)} | Tel: ${gymSettings.gym_phone}`, LAYOUT.PAGE_WIDTH / 2, LAYOUT.FOOTER_Y + 11, {align: 'center'});
         doc.text('Tu salud y bienestar es nuestra misión', LAYOUT.PAGE_WIDTH / 2, LAYOUT.FOOTER_Y + 16, {align: 'center'});
         
         // 📄 NÚMERO DE PÁGINA - DERECHA

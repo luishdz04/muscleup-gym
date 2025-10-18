@@ -3,16 +3,17 @@
 import React, { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Paper, 
-  Button, 
+import {
+  Box,
+  Container,
+  Typography,
+  Paper,
+  Button,
   LinearProgress,
-  CircularProgress 
+  CircularProgress
 } from '@mui/material';
 import { Email as EmailIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
+import { useGymSettings } from '@/hooks/useGymSettings';
 
 // 🎨 DARK PRO TOKENS
 const darkProTokens = {
@@ -32,6 +33,7 @@ function RegistroPendienteContent() {
   const [showRetry, setShowRetry] = useState(false);
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const { settings } = useGymSettings();
 
   const errorMessages = {
     'parametros-faltantes': {
@@ -363,13 +365,13 @@ function RegistroPendienteContent() {
           </Box>
           
           {/* Información de contacto */}
-          <Typography variant="caption" sx={{ 
+          <Typography variant="caption" sx={{
             color: darkProTokens.textDisabled,
             mt: 4,
             display: 'block',
             fontSize: { xs: '0.7rem', md: '0.75rem' }
           }}>
-            Muscle Up Gym | 866-112-7905 | administracion@muscleupgym.fitness<br />
+            {settings.gym_name} | {settings.gym_phone} | {settings.gym_email || 'administracion@muscleupgym.fitness'}<br />
             "Tu salud y bienestar es nuestra misión"
           </Typography>
         </Paper>
