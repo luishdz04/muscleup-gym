@@ -33,6 +33,7 @@ import {
 } from '@mui/material';
 import { toast } from 'react-hot-toast';
 import { invalidateHolidaysCache } from '@/utils/holidays';
+import { formatDateForDisplay } from '@/utils/dateUtils';
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -685,7 +686,7 @@ export default function ConfiguracionGeneralPage() {
               <TableBody>
                 {holidays.map((holiday) => (
                   <TableRow key={holiday.id}>
-                    <TableCell>{new Date(holiday.date).toLocaleDateString('es-MX')}</TableCell>
+                    <TableCell>{formatDateForDisplay(holiday.date)}</TableCell>
                     <TableCell>{holiday.name}</TableCell>
                     <TableCell>
                       <Chip
