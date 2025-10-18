@@ -138,15 +138,16 @@ Saludos.`);
   };
 
   return (
-    <motion.section 
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-      style={{
-        maxWidth: '80rem',
-        margin: '0 auto',
-        padding: '1.5rem',
-        backgroundColor: '#000000',
+    <>
+      <motion.section
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+        style={{
+          maxWidth: '80rem',
+          margin: '0 auto',
+          padding: '1.5rem',
+          backgroundColor: '#000000',
         minHeight: '100vh'
       }}
     >
@@ -656,5 +657,6 @@ Saludos.`);
       </div>
     </motion.section>
     <Footer />
+    </>
   );
 }
