@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import jsPDF from 'jspdf';
 import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 import { formatCurrency } from '@/utils/formHelpers';
-import { formatDateForDisplay, formatMexicoTime } from '@/utils/dateUtils';
+import { formatDateForDisplay, formatMexicoTime, getTodayInMexico } from '@/utils/dateUtils';
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -89,6 +89,7 @@ export async function GET(
 
     // ✅ Obtener transacciones del día usando el endpoint optimizado
     const transactionsUrl = `${request.nextUrl.origin}/api/cuts/transaction-details?date=${cut.cut_date}`;
+    console.log('📞 [CUT-PDF] Llamando endpoint transacciones:', transactionsUrl);
     const transactionsResponse = await fetch(transactionsUrl);
 
     let salesTransactions: any[] = [];
@@ -96,12 +97,15 @@ export async function GET(
 
     if (transactionsResponse.ok) {
       const transactionsData = await transactionsResponse.json();
+      console.log('📦 [CUT-PDF] Respuesta del endpoint:', JSON.stringify(transactionsData, null, 2));
 
       if (transactionsData.success) {
         salesTransactions = transactionsData.pos_transactions || [];
         membershipTransactions = transactionsData.membership_transactions || [];
 
         console.log('✅ [CUT-PDF] Transacciones obtenidas - POS:', salesTransactions.length, 'Membresías:', membershipTransactions.length);
+        console.log('🔍 [CUT-PDF] Primera venta POS:', salesTransactions[0]);
+        console.log('🔍 [CUT-PDF] Primera membresía:', membershipTransactions[0]);
       } else {
         console.error('⚠️ [CUT-PDF] Error en respuesta de transacciones:', transactionsData.error);
       }
@@ -576,6 +580,7 @@ export async function GET(
     }
 
     // --- DETALLE DE TRANSACCIONES ---
+    console.log('🎨 [CUT-PDF] Generando sección de transacciones - POS:', salesTransactions.length, 'Membresías:', membershipTransactions.length);
     if ((salesTransactions && salesTransactions.length > 0) || (membershipTransactions && membershipTransactions.length > 0)) {
       currentY = checkPageSpace(currentY, 60);
       currentY = createSectionHeader('DETALLE DE TRANSACCIONES', currentY);
@@ -669,11 +674,16 @@ export async function GET(
     // 📦 GENERAR BUFFER
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
 
+    // 📤 NOMBRE DEL ARCHIVO CON FECHA MÉXICO
+    const todayMexico = getTodayInMexico(); // YYYY-MM-DD en timezone México
+    const pdfFilename = `MUPCORTE-${todayMexico}.pdf`;
+    console.log('📄 [CUT-PDF] Nombre del archivo:', pdfFilename);
+
     // 📤 RETORNAR PDF
     return new NextResponse(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="corte-${cut.cut_number}.pdf"`,
+        'Content-Disposition': `attachment; filename="${pdfFilename}"`,
       },
     });
 
