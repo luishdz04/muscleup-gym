@@ -569,7 +569,8 @@ export default function CutsHistoryPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = cutNumber ? `corte-${cutNumber}.pdf` : `corte-${cutId.slice(0, 8)}.pdf`;
+      // El nombre del archivo viene del servidor en Content-Disposition header
+      a.download = ''; // Dejar vacío para usar el nombre del servidor
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

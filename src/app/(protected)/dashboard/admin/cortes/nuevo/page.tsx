@@ -735,7 +735,8 @@ export default function NuevoCorteePage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `corte-${createdCutId.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+      // El nombre del archivo viene del servidor en Content-Disposition header
+      a.download = ''; // Dejar vacío para usar el nombre del servidor
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
