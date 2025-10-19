@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import jsPDF from 'jspdf';
 import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 import { formatCurrency } from '@/utils/formHelpers';
-import { formatDateForDisplay, formatMexicoTime, getTodayInMexico } from '@/utils/dateUtils';
+import { formatDateForDisplay, formatMexicoTime, getTodayInMexico, getMexicoDateRange } from '@/utils/dateUtils';
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -87,31 +87,98 @@ export async function GET(
       .eq('status', 'active')
       .order('amount', { ascending: false });
 
-    // ✅ Obtener transacciones del día usando el endpoint optimizado
-    const transactionsUrl = `${request.nextUrl.origin}/api/cuts/transaction-details?date=${cut.cut_date}`;
-    console.log('📞 [CUT-PDF] Llamando endpoint transacciones:', transactionsUrl);
-    const transactionsResponse = await fetch(transactionsUrl);
+    // ✅ Obtener rango de fechas en timezone México
+    const dateRange = getMexicoDateRange(cut.cut_date);
+    console.log('📅 [CUT-PDF] Rango México para', cut.cut_date, ':', dateRange);
 
-    let salesTransactions: any[] = [];
-    let membershipTransactions: any[] = [];
+    // ✅ Obtener ventas POS directamente (sin fetch)
+    const { data: salesData, error: salesError } = await supabase
+      .from('sales')
+      .select(`
+        id,
+        created_at,
+        total_amount,
+        customer_name,
+        sale_items(product_name, quantity)
+      `)
+      .eq('sale_type', 'sale')
+      .eq('status', 'completed')
+      .gte('created_at', dateRange.startISO)
+      .lte('created_at', dateRange.endISO)
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-    if (transactionsResponse.ok) {
-      const transactionsData = await transactionsResponse.json();
-      console.log('📦 [CUT-PDF] Respuesta del endpoint:', JSON.stringify(transactionsData, null, 2));
-
-      if (transactionsData.success) {
-        salesTransactions = transactionsData.pos_transactions || [];
-        membershipTransactions = transactionsData.membership_transactions || [];
-
-        console.log('✅ [CUT-PDF] Transacciones obtenidas - POS:', salesTransactions.length, 'Membresías:', membershipTransactions.length);
-        console.log('🔍 [CUT-PDF] Primera venta POS:', salesTransactions[0]);
-        console.log('🔍 [CUT-PDF] Primera membresía:', membershipTransactions[0]);
-      } else {
-        console.error('⚠️ [CUT-PDF] Error en respuesta de transacciones:', transactionsData.error);
-      }
-    } else {
-      console.error('⚠️ [CUT-PDF] Error HTTP obteniendo transacciones:', transactionsResponse.status);
+    if (salesError) {
+      console.error('❌ [CUT-PDF] Error consultando ventas:', salesError);
     }
+
+    console.log('📦 [CUT-PDF] Ventas obtenidas:', salesData?.length || 0);
+
+    // ✅ Procesar ventas POS
+    const salesTransactions = (salesData || []).map((sale: any) => {
+      const products = (sale.sale_items || [])
+        .map((item: any) => `${item.quantity}x ${item.product_name}`)
+        .join(', ');
+
+      return {
+        id: sale.id,
+        created_at: sale.created_at,
+        customer_name: sale.customer_name || 'Cliente',
+        product_name: products || 'Venta POS',
+        amount: sale.total_amount || 0
+      };
+    });
+
+    // ✅ Obtener pagos de membresías directamente (sin fetch)
+    const { data: membershipPayments, error: membError } = await supabase
+      .from('membership_payment_details')
+      .select('membership_id, created_at')
+      .gte('created_at', dateRange.startISO)
+      .lte('created_at', dateRange.endISO);
+
+    if (membError) {
+      console.error('❌ [CUT-PDF] Error consultando pagos membresías:', membError);
+    }
+
+    const uniqueMembershipIds = [...new Set((membershipPayments || []).map(p => p.membership_id))];
+    console.log('📦 [CUT-PDF] Membresías únicas:', uniqueMembershipIds.length);
+
+    let membershipTransactions: any[] = [];
+    if (uniqueMembershipIds.length > 0) {
+      const { data: membershipsData } = await supabase
+        .from('user_memberships')
+        .select(`
+          id,
+          created_at,
+          Users!userid(firstName, lastName),
+          membership_plans!plan_id(name),
+          membership_payment_details!membership_id(amount, created_at, payment_method)
+        `)
+        .in('id', uniqueMembershipIds);
+
+      membershipTransactions = (membershipsData || []).flatMap((memb: any) => {
+        const user = Array.isArray(memb.Users) ? memb.Users[0] : memb.Users;
+        const plan = Array.isArray(memb.membership_plans) ? memb.membership_plans[0] : memb.membership_plans;
+        const payments = Array.isArray(memb.membership_payment_details)
+          ? memb.membership_payment_details
+          : [memb.membership_payment_details];
+
+        // Filtrar pagos del día
+        const paymentsOfDay = payments.filter((p: any) =>
+          p && p.created_at >= dateRange.startISO && p.created_at <= dateRange.endISO
+        );
+
+        return paymentsOfDay.map((payment: any) => ({
+          id: `${memb.id}-${payment.created_at}`,
+          created_at: payment.created_at,
+          customer_name: user ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Cliente',
+          membership_type: plan?.name || 'Plan',
+          amount: payment.amount || 0
+        }));
+      });
+    }
+
+    console.log('✅ [CUT-PDF] Transacciones procesadas - POS:', salesTransactions.length, 'Membresías:', membershipTransactions.length);
 
     // 🎨 CREAR PDF
     const doc = new jsPDF({
@@ -674,9 +741,8 @@ export async function GET(
     // 📦 GENERAR BUFFER
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
 
-    // 📤 NOMBRE DEL ARCHIVO CON FECHA MÉXICO
-    const todayMexico = getTodayInMexico(); // YYYY-MM-DD en timezone México
-    const pdfFilename = `MUPCORTE-${todayMexico}.pdf`;
+    // 📤 NOMBRE DEL ARCHIVO = cut_number del corte
+    const pdfFilename = `${cut.cut_number}.pdf`;
     console.log('📄 [CUT-PDF] Nombre del archivo:', pdfFilename);
 
     // 📤 RETORNAR PDF
