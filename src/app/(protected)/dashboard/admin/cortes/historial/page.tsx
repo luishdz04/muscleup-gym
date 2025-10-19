@@ -555,7 +555,7 @@ export default function CutsHistoryPage() {
     }
   };
 
-  const downloadCutPDF = async (cutId: string) => {
+  const downloadCutPDF = async (cutId: string, cutNumber?: string) => {
     try {
       console.log('📄 [HISTORIAL] Descargando PDF para corte:', cutId);
 
@@ -569,7 +569,7 @@ export default function CutsHistoryPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `corte-${cutId.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = cutNumber ? `corte-${cutNumber}.pdf` : `corte-${cutId.slice(0, 8)}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -1478,7 +1478,7 @@ export default function CutsHistoryPage() {
                               <Tooltip title="Descargar PDF">
                                 <IconButton
                                   size="small"
-                                  onClick={() => downloadCutPDF(cut.id)}
+                                  onClick={() => downloadCutPDF(cut.id, cut.cut_number)}
                                   sx={{
                                     color: colorTokens.danger,
                                     '&:hover': {

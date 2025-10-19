@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import jsPDF from 'jspdf';
 import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 import { formatCurrency } from '@/utils/formHelpers';
-import { formatDateForDisplay, formatMexicoTime, getMexicoDateRange } from '@/utils/dateUtils';
+import { formatDateForDisplay, formatMexicoTime } from '@/utils/dateUtils';
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -79,14 +79,6 @@ export async function GET(
 
     console.log('✅ [CUT-PDF] Datos del corte obtenidos');
 
-    // Obtener rango de fechas en timezone México (UTC timestamps)
-    const dateRange = getMexicoDateRange(cut.cut_date);
-    console.log('📅 [CUT-PDF] Rango de fechas México:', {
-      date: cut.cut_date,
-      startISO: dateRange.startISO,
-      endISO: dateRange.endISO
-    });
-
     // Obtener gastos del día
     const { data: expenses } = await supabase
       .from('expenses')
@@ -95,35 +87,27 @@ export async function GET(
       .eq('status', 'active')
       .order('amount', { ascending: false });
 
-    // Obtener ventas POS del día usando rango de México
-    const { data: salesTransactions, error: salesError } = await supabase
-      .from('sales')
-      .select('id, created_at, total_amount, customer_name, sale_items(product:products(name), quantity)')
-      .eq('sale_type', 'sale')
-      .eq('status', 'completed')
-      .gte('created_at', dateRange.startISO)
-      .lte('created_at', dateRange.endISO)
-      .order('created_at', { ascending: false })
-      .limit(20);
+    // ✅ Obtener transacciones del día usando el endpoint optimizado
+    const transactionsUrl = `${request.nextUrl.origin}/api/cuts/transaction-details?date=${cut.cut_date}`;
+    const transactionsResponse = await fetch(transactionsUrl);
 
-    if (salesError) {
-      console.error('⚠️ [CUT-PDF] Error obteniendo ventas:', salesError);
+    let salesTransactions: any[] = [];
+    let membershipTransactions: any[] = [];
+
+    if (transactionsResponse.ok) {
+      const transactionsData = await transactionsResponse.json();
+
+      if (transactionsData.success) {
+        salesTransactions = transactionsData.pos_transactions || [];
+        membershipTransactions = transactionsData.membership_transactions || [];
+
+        console.log('✅ [CUT-PDF] Transacciones obtenidas - POS:', salesTransactions.length, 'Membresías:', membershipTransactions.length);
+      } else {
+        console.error('⚠️ [CUT-PDF] Error en respuesta de transacciones:', transactionsData.error);
+      }
+    } else {
+      console.error('⚠️ [CUT-PDF] Error HTTP obteniendo transacciones:', transactionsResponse.status);
     }
-
-    // Obtener pagos de membresías del día usando rango de México
-    const { data: membershipTransactions, error: membError } = await supabase
-      .from('user_memberships')
-      .select('id, created_at, total_cost, user:Users(firstName, lastName), plan:plans(name)')
-      .gte('created_at', dateRange.startISO)
-      .lte('created_at', dateRange.endISO)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    if (membError) {
-      console.error('⚠️ [CUT-PDF] Error obteniendo membresías:', membError);
-    }
-
-    console.log('✅ [CUT-PDF] Transacciones obtenidas - POS:', salesTransactions?.length || 0, 'Membresías:', membershipTransactions?.length || 0);
 
     // 🎨 CREAR PDF
     const doc = new jsPDF({
@@ -336,7 +320,11 @@ export async function GET(
     doc.text('Hora de Corte:', LAYOUT.MARGIN_LEFT + 5, currentY);
     doc.setTextColor(...COLORS.WHITE);
     doc.setFont('helvetica', 'normal');
-    doc.text(formatMexicoTime(new Date(cut.cut_time || cut.created_at)), LAYOUT.MARGIN_LEFT + 50, currentY);
+    // Usar created_at que es un timestamp completo con timezone
+    const cutTimeFormatted = cut.created_at
+      ? formatMexicoTime(new Date(cut.created_at))
+      : 'N/A';
+    doc.text(cutTimeFormatted, LAYOUT.MARGIN_LEFT + 50, currentY);
 
     doc.setTextColor(...COLORS.GOLD);
     doc.setFont('helvetica', 'bold');
@@ -604,15 +592,11 @@ export async function GET(
         const salesWidths = [25, 50, 80, 32];
 
         const salesRows = salesTransactions.slice(0, 10).map((sale: any) => {
-          const products = (sale.sale_items || [])
-            .map((item: any) => `${item.quantity}x ${item.product?.name || 'Producto'}`)
-            .join(', ');
-
           return [
             formatMexicoTime(new Date(sale.created_at)),
             (sale.customer_name || 'Cliente').substring(0, 25),
-            products.substring(0, 40) || 'Sin detalle',
-            formatCurrency(sale.total_amount || 0)
+            (sale.product_name || 'Sin detalle').substring(0, 40),
+            formatCurrency(sale.amount || 0)
           ];
         });
 
@@ -634,14 +618,11 @@ export async function GET(
         const membWidths = [25, 60, 70, 32];
 
         const membRows = membershipTransactions.slice(0, 10).map((memb: any) => {
-          const userName = memb.user ? `${memb.user.firstName} ${memb.user.lastName}` : 'Cliente';
-          const planName = memb.plan?.name || 'Plan';
-
           return [
             formatMexicoTime(new Date(memb.created_at)),
-            userName.substring(0, 30),
-            planName.substring(0, 35),
-            formatCurrency(memb.total_cost || 0)
+            (memb.customer_name || 'Cliente').substring(0, 30),
+            (memb.membership_type || 'Plan').substring(0, 35),
+            formatCurrency(memb.amount || 0)
           ];
         });
 
